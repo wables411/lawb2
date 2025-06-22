@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { useAppKit } from '@reown/appkit/react';
-import { useAccount } from 'wagmi';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
@@ -8,6 +7,7 @@ import Popup from './components/Popup';
 import MintPopup from './components/MintPopup';
 import NFTGallery from './components/NFTGallery';
 import { createUseStyles } from 'react-jss';
+import { useAppKit } from '@reown/appkit/react';
 
 const useStyles = createUseStyles({
   body: {
@@ -16,36 +16,53 @@ const useStyles = createUseStyles({
     width: '100vw',
     fontFamily: "'MS Sans Serif', Arial, sans-serif",
     color: '#000',
-    overflow: 'hidden'
+    // overflow: 'hidden', // Removed to allow modals to be clickable
   }
 });
 
 function App() {
   const classes = useStyles();
   const { open } = useAppKit();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { connect, connectors, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { data: ens } = useEnsName({ address });
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
 
-  const handleIconClick = async (action: string, popupId?: string, url?: string) => {
+  // TikTok embed ref
+  const tiktokRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activePopup === 'halloween-popup' && tiktokRef.current) {
+      // Remove any previous script
+      const prev = tiktokRef.current.querySelector('script[data-tiktok-embed]');
+      if (prev) prev.remove();
+      // Inject TikTok script
+      const script = document.createElement('script');
+      script.src = 'https://www.tiktok.com/embed.js';
+      script.async = true;
+      script.setAttribute('data-tiktok-embed', 'true');
+      tiktokRef.current.appendChild(script);
+    }
+  }, [activePopup]);
+
+  const handleIconClick = (action: string, popupId?: string, url?: string) => {
     if (action === 'url' && url) {
       window.open(url, '_blank');
     } else if (action === 'popup' && popupId) {
       setActivePopup(popupId);
-      // Remove from minimized if it was minimized
       setMinimizedPopups(prev => {
         const newSet = new Set(prev);
         newSet.delete(popupId);
         return newSet;
       });
     } else if (action === 'wallet') {
-      try {
-        await open();
-      } catch (error) {
-        console.error('Wallet connect failed:', error);
-        alert('Wallet connect failed: ' + (error as Error).message);
+      if (!isConnected) {
+        open();
+      } else {
+        disconnect();
       }
     } else if (action === 'mint') {
       if (!address) {
@@ -176,18 +193,29 @@ function App() {
       </Popup>
 
       <Popup id="pixelawbs-popup" isOpen={activePopup === 'pixelawbs-popup'} onClose={closePopup} onMinimize={minimizePopup}>
-        <p style={{marginBottom: '10px'}}>
-          PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND COLLECT HERE OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>SCATTER.ART</a>
-        </p>
-        <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} />
-        <p style={{marginBottom: '10px'}}>
-          2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PixeladyMaker</a>
-        </p>
-        <p style={{marginBottom: '10px'}}>Chain: Ethereum</p>
-        <p style={{marginBottom: '10px'}}>
-          Collect on <a href="https://magiceden.us/collections/ethereum/0x2d278e95b2fc67d4b27a276807e24e479d9707f6" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
-        </p>
-        <img src="/assets/mint.gif" alt="Mint" style={{ maxWidth: '100%' }} />
+        {(() => {
+          const handleCollectHere = (e: React.MouseEvent<HTMLSpanElement>) => {
+            e.preventDefault();
+            setActivePopup(null);
+            setShowMintPopup(true);
+          };
+          return (
+            <>
+              <p style={{marginBottom: '10px'}}>
+                PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={handleCollectHere}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>SCATTER.ART</a>
+              </p>
+              <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} />
+              <p style={{marginBottom: '10px'}}>
+                2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PixeladyMaker</a>
+              </p>
+              <p style={{marginBottom: '10px'}}>Chain: Ethereum</p>
+              <p style={{marginBottom: '10px'}}>
+                Collect on <a href="https://magiceden.us/collections/ethereum/0x2d278e95b2fc67d4b27a276807e24e479d9707f6" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+              </p>
+              <img src="/assets/mint.gif" alt="Mint" style={{ maxWidth: '100%' }} />
+            </>
+          );
+        })()}
       </Popup>
 
       <Popup id="halloween-popup" isOpen={activePopup === 'halloween-popup'} onClose={closePopup} onMinimize={minimizePopup}>
@@ -200,7 +228,7 @@ function App() {
           Collect on <a href="https://magiceden.us/collections/base/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
-        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+        <div ref={tiktokRef} style={{ maxWidth: '400px', margin: '0 auto' }}>
           <blockquote 
             className="tiktok-embed" 
             cite="https://www.tiktok.com/@wables.eth/video/7295660710644682027" 
@@ -211,7 +239,6 @@ function App() {
               <a target="_blank" rel="noreferrer" title="@wables.eth" href="https://www.tiktok.com/@wables.eth?refer=embed">@wables.eth</a> 420 lawbsters hijacked a spirit halloween superstore 🦞🎃 minting rn on @ourzora via @PC69 <a target="_blank" rel="noreferrer" title="♬ original sound - wables.eth" href="https://www.tiktok.com/music/original-sound-7295660837769857835?refer=embed">♬ original sound - wables.eth</a>
             </section>
           </blockquote>
-          <script async src="https://www.tiktok.com/embed.js"></script>
         </div>
       </Popup>
 
@@ -271,6 +298,11 @@ function App() {
           } else {
             restorePopup(popupId);
           }
+        }}
+        connectionStatus={{
+          connected: isConnected,
+          address: address || undefined,
+          ens: ens || undefined,
         }}
       />
     </div>

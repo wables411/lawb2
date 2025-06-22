@@ -1,20 +1,18 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 
 const useStyles = createUseStyles({
   taskbar: {
     position: 'fixed',
-    bottom: 0,
     left: 0,
-    right: 0,
-    width: '100%',
-    height: '40px',
+    bottom: 0,
+    width: '100vw',
+    height: 40,
     background: '#c0c0c0',
-    borderTop: '2px solid #fff',
+    borderTop: '2px outset #fff',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 9999
+    zIndex: 200,
   },
   leftSection: {
     display: 'flex',
@@ -74,25 +72,41 @@ const useStyles = createUseStyles({
     border: '2px inset #fff',
     fontSize: '12px',
     fontFamily: 'monospace'
+  },
+  windows: {
+    display: 'flex',
+    alignItems: 'center'
+  },
+  windowButton: {
+    marginLeft: '5px',
+    padding: '5px 10px',
+    background: '#c0c0c0',
+    border: '2px outset #fff',
+    cursor: 'pointer'
   }
 });
 
 interface TaskbarProps {
-  minimizedWindows?: string[];
-  onRestoreWindow?: (popupId: string) => void;
+  minimizedWindows: string[];
+  onRestoreWindow: (popupId: string) => void;
+  walletButton?: React.ReactNode;
+  connectionStatus: {
+    connected: boolean;
+    address?: string;
+    ens?: string;
+  };
 }
 
-function Taskbar({ minimizedWindows = [], onRestoreWindow }: TaskbarProps) {
+const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, walletButton, connectionStatus }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const classes = useStyles({ isOpen: isMenuOpen });
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
-    return () => clearInterval(timer);
+    return () => clearInterval(interval);
   }, []);
 
   const formatTime = (date: Date) => {
@@ -119,20 +133,42 @@ function Taskbar({ minimizedWindows = [], onRestoreWindow }: TaskbarProps) {
         </button>
         
         {/* Minimized windows */}
-        {minimizedWindows.map(popupId => (
-          <button
-            key={popupId}
-            className={classes.minimizedWindow}
-            onClick={() => onRestoreWindow?.(popupId)}
-          >
-            {popupId.replace('-popup', '')}
-          </button>
-        ))}
+        <div className={classes.windows}>
+          {minimizedWindows.map((id) => (
+            <button
+              key={id}
+              className={classes.windowButton}
+              onClick={() => onRestoreWindow(id)}
+            >
+              {id.replace('-popup', '').replace('-', ' ').toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
       
       <div className={classes.rightSection}>
         <div className={classes.clock}>
           {formatTime(currentTime)}
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Status indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+            <span style={{
+              display: 'inline-block',
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: connectionStatus.connected ? 'limegreen' : 'red',
+              marginRight: 4,
+              border: '1px solid #222'
+            }} />
+            <span style={{ color: connectionStatus.connected ? 'limegreen' : 'red', fontWeight: 600 }}>
+              {connectionStatus.connected
+                ? (connectionStatus.ens || (connectionStatus.address ? `${connectionStatus.address.slice(0, 6)}...${connectionStatus.address.slice(-4)}` : 'Connected'))
+                : 'Disconnected'}
+            </span>
+          </div>
+          {walletButton}
         </div>
       </div>
       
@@ -205,6 +241,6 @@ function Taskbar({ minimizedWindows = [], onRestoreWindow }: TaskbarProps) {
       )}
     </div>
   );
-}
+};
 
 export default Taskbar;

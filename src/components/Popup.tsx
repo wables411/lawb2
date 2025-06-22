@@ -7,16 +7,16 @@ const useStyles = createUseStyles({
     position: 'absolute',
     background: '#c0c0c0',
     border: '2px outset #fff',
-    width: '480px',
-    height: '360px',
-    minWidth: '240px',
-    minHeight: '180px',
-    top: 'calc(50vh - 180px)',
-    left: 'calc(50vw - 240px)',
+    width: '600px',
+    height: '480px',
+    minWidth: '360px',
+    minHeight: '240px',
+    top: 'calc(50vh - 240px)',
+    left: 'calc(50vw - 300px)',
     display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
     overflow: 'auto',
-    zIndex: 5000
+    zIndex: 100
   },
   header: {
     background: 'navy',

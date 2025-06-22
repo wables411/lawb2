@@ -13,7 +13,8 @@ export default [
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        ecmaFeatures: { jsx: true }
+        ecmaFeatures: { jsx: true },
+        project: './tsconfig.json',
       },
       globals: {
         window: 'readonly',
@@ -34,6 +35,7 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      ...tsPlugin.configs['recommended-requiring-type-checking'].rules,
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       'no-useless-catch': 'error',
