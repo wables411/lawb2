@@ -15,8 +15,7 @@ const useStyles = createUseStyles({
     left: 'calc(50vw - 300px)',
     display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
-    overflow: 'auto',
-    zIndex: 100
+    overflow: 'auto'
   },
   header: {
     background: 'navy',
@@ -62,9 +61,13 @@ interface PopupProps {
   onClose: () => void;
   onMinimize?: (id: string) => void;
   children: React.ReactNode;
+  title?: string;
+  initialPosition?: { x: number, y: number };
+  initialSize?: { width: number | string, height: number | string };
+  zIndex?: number;
 }
 
-function Popup({ id, isOpen, onClose, onMinimize, children }: PopupProps) {
+function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPosition, initialSize, zIndex }: PopupProps) {
   const classes = useStyles({ isOpen });
   const nodeRef = useRef(null);
 
@@ -75,10 +78,10 @@ function Popup({ id, isOpen, onClose, onMinimize, children }: PopupProps) {
   };
 
   return (
-    <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
-      <div ref={nodeRef} className={classes.popup}>
+    <Draggable nodeRef={nodeRef} handle={`.${classes.header}`} defaultPosition={initialPosition}>
+      <div ref={nodeRef} className={classes.popup} style={{ width: initialSize?.width, height: initialSize?.height, zIndex: zIndex || 100 }}>
         <div className={classes.header}>
-          <span>{id.replace('-popup', '')}</span>
+          <span>{title || id.replace('-popup', '')}</span>
           <div className={classes.titleBarButtons}>
             <button
               className={classes.titleBarButton}
@@ -96,7 +99,9 @@ function Popup({ id, isOpen, onClose, onMinimize, children }: PopupProps) {
             </button>
           </div>
         </div>
-        <div className={classes.content}>{children}</div>
+        <div className={classes.content}>
+          {children}
+        </div>
       </div>
     </Draggable>
   );

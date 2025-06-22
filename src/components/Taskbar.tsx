@@ -12,6 +12,7 @@ const useStyles = createUseStyles({
     borderTop: '2px outset #fff',
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     zIndex: 200,
   },
   leftSection: {
@@ -21,7 +22,16 @@ const useStyles = createUseStyles({
   rightSection: {
     display: 'flex',
     alignItems: 'center',
-    marginRight: '10px'
+    marginRight: '5px',
+    height: '100%',
+  },
+  statusSection: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 8px',
+    marginRight: '4px',
+    border: '2px inset #fff',
+    height: 'calc(100% - 8px)',
   },
   menuBtn: {
     marginLeft: '5px',
@@ -71,7 +81,10 @@ const useStyles = createUseStyles({
     background: '#c0c0c0',
     border: '2px inset #fff',
     fontSize: '12px',
-    fontFamily: 'monospace'
+    fontFamily: 'monospace',
+    height: 'calc(100% - 8px)',
+    display: 'flex',
+    alignItems: 'center',
   },
   windows: {
     display: 'flex',
@@ -103,10 +116,10 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
   const classes = useStyles({ isOpen: isMenuOpen });
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, []);
 
   const formatTime = (date: Date) => {
@@ -147,11 +160,7 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
       </div>
       
       <div className={classes.rightSection}>
-        <div className={classes.clock}>
-          {formatTime(currentTime)}
-        </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Status indicator */}
+        <div className={classes.statusSection}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
             <span style={{
               display: 'inline-block',
@@ -162,13 +171,11 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               marginRight: 4,
               border: '1px solid #222'
             }} />
-            <span style={{ color: connectionStatus.connected ? 'limegreen' : 'red', fontWeight: 600 }}>
-              {connectionStatus.connected
-                ? (connectionStatus.ens || (connectionStatus.address ? `${connectionStatus.address.slice(0, 6)}...${connectionStatus.address.slice(-4)}` : 'Connected'))
-                : 'Disconnected'}
-            </span>
           </div>
           {walletButton}
+        </div>
+        <div className={classes.clock}>
+          {formatTime(currentTime)}
         </div>
       </div>
       

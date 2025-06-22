@@ -24,7 +24,7 @@ function App() {
   const classes = useStyles();
   const { open } = useAppKit();
   const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
+  const { isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
@@ -58,9 +58,11 @@ function App() {
         newSet.delete(popupId);
         return newSet;
       });
+      // The linter wants this handled, but it's a fire-and-forget visual refresh trigger.
+      void document.body.offsetWidth;
     } else if (action === 'wallet') {
       if (!isConnected) {
-        open();
+        void open();
       } else {
         disconnect();
       }
@@ -83,12 +85,18 @@ function App() {
   };
 
   const restorePopup = (popupId: string) => {
+    if (popupId === 'mint-popup') {
+      setShowMintPopup(true);
+    } else if (popupId === 'nft-gallery-popup') {
+      setShowNFTGallery(true);
+    } else {
+      setActivePopup(popupId);
+    }
     setMinimizedPopups(prev => {
       const newSet = new Set(prev);
       newSet.delete(popupId);
       return newSet;
     });
-    setActivePopup(popupId);
   };
 
   const closeMintPopup = () => setShowMintPopup(false);
@@ -104,35 +112,38 @@ function App() {
     setMinimizedPopups(prev => new Set(prev).add('nft-gallery-popup'));
   };
 
-  const restoreMintPopup = () => {
-    setMinimizedPopups(prev => {
-      const newSet = new Set(prev);
-      newSet.delete('mint-popup');
-      return newSet;
-    });
-    setShowMintPopup(true);
-  };
-
-  const restoreNFTGallery = () => {
-    setMinimizedPopups(prev => {
-      const newSet = new Set(prev);
-      newSet.delete('nft-gallery-popup');
-      return newSet;
-    });
-    setShowNFTGallery(true);
-  };
+  const walletButton = (
+    <button onClick={() => {
+      if (!isConnected) {
+        void open();
+      } else {
+        disconnect();
+      }
+    }} disabled={isPending}>
+      {isPending ? 'Connecting...' : isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Connect Wallet'}
+    </button>
+  );
 
   return (
     <div className={classes.body}>
       <Desktop onIconClick={handleIconClick} />
 
+      <Taskbar
+        minimizedWindows={Array.from(minimizedPopups)}
+        onRestoreWindow={restorePopup}
+        walletButton={walletButton}
+        connectionStatus={{
+          connected: isConnected,
+          address: address,
+          ens: ens || undefined
+        }}
+      />
+
       <Popup id="chat-popup" isOpen={activePopup === 'chat-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <p style={{marginBottom: '10px'}}>
-          Join the lawb chat! <a href="https://boards.miladychan.org/milady/33793" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>/milady/33793</a>
+          join the chat, there is no meme we lawb you <a href="https://boards.miladychan.org/milady/33793" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>/milady/33793</a>
         </p>
-        <p style={{marginBottom: '10px'}}>
-          Miladychan is not a standard imageboard. Posting is realtime—every post is visible as you type it. Here, threads are more like generals are more like open-source groupchats. Try jumping in!
-        </p>
+        <img src="/assets/miladychanfaq.png" alt="Milady Chan FAQ" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
 
       <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup}>
@@ -143,6 +154,7 @@ function App() {
           swap any sol token in your wallet directly for $LAWB
         </p>
         <a href="https://www.purity.finance/lawb" target="_blank" rel="noopener noreferrer" style={{cursor: 'pointer'}}>click to Purify</a>
+        <img src="/assets/puritylawb.png" alt="Purity Lawb" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
 
       <Popup id="lawbstarz-popup" isOpen={activePopup === 'lawbstarz-popup'} onClose={closePopup} onMinimize={minimizePopup}>
@@ -243,7 +255,6 @@ function App() {
       </Popup>
 
       <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup}>
-        <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px' }} />
         <h1 style={{marginBottom: '10px'}}>
           <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>🦞 $LAWB</a>
         </h1>
@@ -265,6 +276,9 @@ function App() {
         <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
         <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
         <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
+
+        <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
+
         <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
           <iframe 
             src="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&theme=dark&info=0" 
@@ -286,24 +300,6 @@ function App() {
         onClose={closeNFTGallery} 
         onMinimize={minimizeNFTGallery}
         walletAddress={address} 
-      />
-
-      <Taskbar 
-        minimizedWindows={Array.from(minimizedPopups)}
-        onRestoreWindow={(popupId) => {
-          if (popupId === 'mint-popup') {
-            restoreMintPopup();
-          } else if (popupId === 'nft-gallery-popup') {
-            restoreNFTGallery();
-          } else {
-            restorePopup(popupId);
-          }
-        }}
-        connectionStatus={{
-          connected: isConnected,
-          address: address || undefined,
-          ens: ens || undefined,
-        }}
       />
     </div>
   );

@@ -18,8 +18,6 @@ const ICONS = [
   { id: 'halloween', image: '/assets/lawbsterhalloween.gif', label: 'Halloween', action: 'popup', popupId: 'halloween-popup', row: -1, col: -1 },
   { id: 'lawbstation', image: '/assets/lawbstation.GIF', label: 'Lawbstation', action: 'popup', popupId: 'lawbstation-popup', row: -1, col: -1 },
   { id: 'nexus', image: '/assets/nexus.gif', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
-  // Row 3
-  { id: 'pixelawbs', image: '/assets/pixelawb.png', label: 'Pixelawbs', action: 'popup', popupId: 'pixelawbs-popup', row: 2, col: 1 },
   // Row 4
   { id: 'chat', image: '/assets/miladychan.png', label: 'Chat', action: 'popup', popupId: 'chat-popup', row: 3, col: 0 },
   { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
@@ -102,7 +100,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
             alignItems: 'center',
             minHeight: '100%',
           }}>
-            {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween'].includes(icon.id)).map(icon => (
+            {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween', 'pixelawbs'].includes(icon.id)).map(icon => (
               <Icon
                 key={icon.id}
                 image={icon.image}
