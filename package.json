@@ -1,0 +1,38 @@
+{
+  "name": "lawb2",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@reown/appkit": "1.7.10",
+    "@reown/appkit-adapter-wagmi": "1.7.10",
+    "@tanstack/react-query": "5.81.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-draggable": "^4.4.5",
+    "react-jss": "^10.10.0",
+    "react-tweet": "^3.2.2",
+    "viem": "2.31.4",
+    "wagmi": "2.15.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.0.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8"
+  },
+  "resolutions": {
+    "@reown/appkit": "1.7.10",
+    "viem": "2.31.4"
+  }
+}
