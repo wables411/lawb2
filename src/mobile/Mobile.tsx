@@ -106,7 +106,7 @@ const useStyles = createUseStyles({
     fontSize: '1rem',
     fontWeight: 'bold',
     textShadow: '1px 1px 0 #000',
-    marginRight: '12px',
+    marginRight: '24px',
   },
   pixelawbsPopupOverlay: {
     position: 'fixed',
