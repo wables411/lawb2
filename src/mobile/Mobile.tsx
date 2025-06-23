@@ -212,67 +212,6 @@ interface FolderNFT {
   description: string;
 }
 
-interface FolderPopupProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  nfts: FolderNFT[];
-}
-
-function FolderPopup({ open, onClose, title, nfts }: FolderPopupProps) {
-  const handleIconClick = (id: string) => {
-    switch (id) {
-      case 'lawbsters': setShowLawbsters(true); break;
-      case 'lawbstarz': setShowLawbstarz(true); break;
-      case 'pixelawbs': setShowPixelawbs(true); break;
-      case 'halloween': setShowHalloween(true); break;
-      case 'lawbstation': setShowLawbstation(true); break;
-      case 'nexus': setShowNexus(true); break;
-      default: break;
-    }
-  };
-  return (
-    <MobilePopup98 isOpen={open} onClose={onClose} title={title}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
-        {nfts.map((nft: FolderNFT) => (
-          <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8, cursor: 'pointer' }} onClick={() => handleIconClick(nft.id)}>
-            <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
-            <span style={{ fontWeight: 'bold', fontSize: 14 }}>{nft.name}</span>
-            <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
-          </div>
-        ))}
-      </div>
-    </MobilePopup98>
-  );
-}
-
-function LawbPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const classes = useStyles();
-  if (!open) return null;
-  return (
-    <div className={classes.pixelawbsPopupOverlay}>
-      <div className={classes.pixelawbsPopup} style={{ maxWidth: 420, width: '90vw', height: '70vh', overflowY: 'auto' }}>
-        <button className={classes.closeButton} onClick={onClose}>&times;</button>
-        <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem', fontSize: '1.2rem' }}>$LAWB</h2>
-        <img src="/assets/lawbticker.gif" alt="$lawb" style={{ width: '100%', marginBottom: 12 }} />
-        <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 14, marginBottom: 12 }}>
-          <b>Solana:</b> 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6<br />
-          <b>Arbitrum:</b> 0x741f8FbF42485E772D97f1955c31a5B8098aC962<br />
-          <b>Sanko:</b> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F<br />
-        </div>
-        <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
-          <a href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Dexscreener</a><br />
-          <a href="https://pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Pump.fun</a><br />
-          <a href="https://magiceden.io/marketplace/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Magic Eden</a><br />
-        </div>
-        <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
-          <b>THERE IS NO MEME WE $LAWB YOU</b>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const Mobile = () => {
   const classes = useStyles();
   const { open } = useAppKit();
@@ -323,6 +262,67 @@ const Mobile = () => {
 
   if (activeView === 'gallery') {
     return <MobileNFTGallery onBack={() => setActiveView('main')} walletAddress={address || undefined} />;
+  }
+
+  interface FolderPopupProps {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    nfts: FolderNFT[];
+  }
+
+  function FolderPopup({ open, onClose, title, nfts }: FolderPopupProps) {
+    const handleIconClick = (id: string) => {
+      switch (id) {
+        case 'lawbsters': setShowLawbsters(true); break;
+        case 'lawbstarz': setShowLawbstarz(true); break;
+        case 'pixelawbs': setShowPixelawbs(true); break;
+        case 'halloween': setShowHalloween(true); break;
+        case 'lawbstation': setShowLawbstation(true); break;
+        case 'nexus': setShowNexus(true); break;
+        default: break;
+      }
+    };
+    return (
+      <MobilePopup98 isOpen={open} onClose={onClose} title={title}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
+          {nfts.map((nft: FolderNFT) => (
+            <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8, cursor: 'pointer' }} onClick={() => handleIconClick(nft.id)}>
+              <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
+              <span style={{ fontWeight: 'bold', fontSize: 14 }}>{nft.name}</span>
+              <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
+            </div>
+          ))}
+        </div>
+      </MobilePopup98>
+    );
+  }
+
+  function LawbPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const classes = useStyles();
+    if (!open) return null;
+    return (
+      <div className={classes.pixelawbsPopupOverlay}>
+        <div className={classes.pixelawbsPopup} style={{ maxWidth: 420, width: '90vw', height: '70vh', overflowY: 'auto' }}>
+          <button className={classes.closeButton} onClick={onClose}>&times;</button>
+          <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem', fontSize: '1.2rem' }}>$LAWB</h2>
+          <img src="/assets/lawbticker.gif" alt="$lawb" style={{ width: '100%', marginBottom: 12 }} />
+          <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 14, marginBottom: 12 }}>
+            <b>Solana:</b> 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6<br />
+            <b>Arbitrum:</b> 0x741f8FbF42485E772D97f1955c31a5B8098aC962<br />
+            <b>Sanko:</b> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F<br />
+          </div>
+          <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
+            <a href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Dexscreener</a><br />
+            <a href="https://pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Pump.fun</a><br />
+            <a href="https://magiceden.io/marketplace/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Magic Eden</a><br />
+          </div>
+          <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
+            <b>THERE IS NO MEME WE $LAWB YOU</b>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
