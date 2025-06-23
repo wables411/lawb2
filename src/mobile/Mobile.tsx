@@ -161,6 +161,7 @@ const useStyles = createUseStyles({
     display: 'flex',
     alignItems: 'flex-end',
     justifyContent: 'center',
+    pointerEvents: 'auto',
   },
   menuModal: {
     width: '100vw',
@@ -174,6 +175,7 @@ const useStyles = createUseStyles({
     alignItems: 'center',
     gap: '8px',
     zIndex: 3100,
+    marginBottom: '56px',
   },
   menuLink: {
     display: 'block',
@@ -220,7 +222,7 @@ const Mobile = () => {
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
   const [activeView, setActiveView] = useState<ActiveView>('main');
-  const [showPixelawbsPopup, setShowPixelawbsPopup] = useState(true);
+  const [showPixelawbsPopup, setShowPixelawbsPopup] = useState(false);
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMintPopup, setShowMintPopup] = useState(false);
@@ -258,6 +260,10 @@ const Mobile = () => {
       setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    setShowPixelawbsPopup(true);
   }, []);
 
   if (activeView === 'gallery') {
