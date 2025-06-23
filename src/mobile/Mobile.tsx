@@ -237,8 +237,10 @@ const Mobile = () => {
   const [showNexus, setShowNexus] = useState(false);
 
   const icons = [
+    { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
+    { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Wallet', icon: '/assets/wallet.png', action: () => {
       if (!isConnected) {
         void open();
@@ -246,8 +248,6 @@ const Mobile = () => {
         disconnect();
       }
     }, disabled: isPending },
-    { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
-    { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
@@ -344,19 +344,17 @@ const Mobile = () => {
           </div>
         ))}
       </div>
-      {/* Pixelawbs Popup */}
+      {/* Pixelawbs Popup (on load) */}
       {showPixelawbsPopup && (
-        <div className={classes.pixelawbsPopupOverlay}>
-          <div className={classes.pixelawbsPopup}>
-            <button className={classes.closeButton} onClick={() => setShowPixelawbsPopup(false)}>&times;</button>
-            <img src="/assets/mint.gif" alt="Pixelawbs" style={{ width: '100%', marginBottom: '1rem' }} />
-            <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem' }}>PIXELAWBS</h2>
-            <video src="/assets/pixelawbs.mp4" controls style={{ width: '100%', borderRadius: '8px', marginBottom: '1rem' }} poster="/assets/pixelawb.png" preload="none" />
-            <p style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: '1rem', textAlign: 'center' }}>
-              2222 Pixelated Lawbsters inspired by PixeladyMaker. Mint now on Ethereum!
-            </p>
-          </div>
-        </div>
+        <MobilePopup98 isOpen={showPixelawbsPopup} onClose={() => setShowPixelawbsPopup(false)} title="Pixelawbs">
+          <p style={{marginBottom: '10px'}}>
+            PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={() => { setShowPixelawbsPopup(false); setShowMintPopup(true); }}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>SCATTER.ART</a>
+          </p>
+          <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} preload="none" />
+          <p style={{marginBottom: '10px'}}>
+            2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PixeladyMaker</a>
+          </p>
+        </MobilePopup98>
       )}
       {/* Mobile Menu Modal */}
       {menuOpen && (
