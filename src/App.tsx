@@ -233,7 +233,7 @@ function App() {
               <p style={{marginBottom: '10px'}}>
                 PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={handleCollectHere}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>SCATTER.ART</a>
               </p>
-              <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} />
+              <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} poster="/assets/pixelawb.png" preload="none" />
               <p style={{marginBottom: '10px'}}>
                 2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PixeladyMaker</a>
               </p>

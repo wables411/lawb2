@@ -207,7 +207,11 @@ const MobileNFTGallery: React.FC<MobileNFTGalleryProps> = ({ onBack, walletAddre
       <div className={classes.grid}>
         {nfts.map((nft) => (
           <div key={nft.id} className={classes.gridItem} onClick={() => void handleNftClick(nft)}>
-            <img src={nft.image} alt={nft.name} />
+            <img 
+              src={nft.image} 
+              alt={nft.name} 
+              onError={e => { (e.currentTarget as HTMLImageElement).src = '/assets/pixelawb.png'; }}
+            />
             <span>{nft.name}</span>
           </div>
         ))}
