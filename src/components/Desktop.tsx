@@ -70,77 +70,86 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
   return (
     <div style={{ 
       position: 'relative',
-      width: '100%',
-      height: 'calc(100vh - 60px)',
-      padding: '10px',
-      zIndex: 10,
-      overflow: 'visible'
+      width: '100vw',
+      height: '100vh',
+      background: "url('/assets/background.gif') no-repeat center center fixed",
+      backgroundSize: 'cover',
+      overflow: 'hidden',
     }}>
-      {desktopIcons.map(icon => (
-        <Icon
-          key={icon.id}
-          image={icon.image}
-          label={icon.label}
-          action={icon.action}
-          popupId={icon.popupId}
-          folderId={icon.folderId}
-          position={positions[icon.id]}
-          onDrag={(_e, data) => handleDrag(icon.id, data)}
-          onClick={handleIconClick}
-        />
-      ))}
-      {openFolders['evm-folder'] && (
-        <Popup id="evm-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
-            gap: 24,
-            padding: 32,
-            justifyItems: 'center',
-            alignItems: 'center',
-            minHeight: '100%',
-          }}>
-            {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween', 'pixelawbs'].includes(icon.id)).map(icon => (
-              <Icon
-                key={icon.id}
-                image={icon.image}
-                label={icon.label}
-                action={icon.action}
-                popupId={icon.popupId}
-                folderId={icon.folderId}
-                onClick={handleIconClick}
-                isInFolder={true}
-              />
-            ))}
-          </div>
-        </Popup>
-      )}
-      {openFolders['sol-folder'] && (
-        <Popup id="sol-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
-            gap: 24,
-            padding: 32,
-            justifyItems: 'center',
-            alignItems: 'center',
-            minHeight: '100%',
-          }}>
-            {ICONS.filter(icon => ['lawbstation', 'nexus'].includes(icon.id)).map(icon => (
-              <Icon
-                key={icon.id}
-                image={icon.image}
-                label={icon.label}
-                action={icon.action}
-                popupId={icon.popupId}
-                folderId={icon.folderId}
-                onClick={handleIconClick}
-                isInFolder={true}
-              />
-            ))}
-          </div>
-        </Popup>
-      )}
+      <div style={{ 
+        position: 'relative',
+        width: '100%',
+        height: 'calc(100vh - 60px)',
+        padding: '10px',
+        zIndex: 10,
+        overflow: 'visible'
+      }}>
+        {desktopIcons.map(icon => (
+          <Icon
+            key={icon.id}
+            image={icon.image}
+            label={icon.label}
+            action={icon.action}
+            popupId={icon.popupId}
+            folderId={icon.folderId}
+            position={positions[icon.id]}
+            onDrag={(_e, data) => handleDrag(icon.id, data)}
+            onClick={handleIconClick}
+          />
+        ))}
+        {openFolders['evm-folder'] && (
+          <Popup id="evm-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: 24,
+              padding: 32,
+              justifyItems: 'center',
+              alignItems: 'center',
+              minHeight: '100%',
+            }}>
+              {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween', 'pixelawbs'].includes(icon.id)).map(icon => (
+                <Icon
+                  key={icon.id}
+                  image={icon.image}
+                  label={icon.label}
+                  action={icon.action}
+                  popupId={icon.popupId}
+                  folderId={icon.folderId}
+                  onClick={handleIconClick}
+                  isInFolder={true}
+                />
+              ))}
+            </div>
+          </Popup>
+        )}
+        {openFolders['sol-folder'] && (
+          <Popup id="sol-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: 24,
+              padding: 32,
+              justifyItems: 'center',
+              alignItems: 'center',
+              minHeight: '100%',
+            }}>
+              {ICONS.filter(icon => ['lawbstation', 'nexus'].includes(icon.id)).map(icon => (
+                <Icon
+                  key={icon.id}
+                  image={icon.image}
+                  label={icon.label}
+                  action={icon.action}
+                  popupId={icon.popupId}
+                  folderId={icon.folderId}
+                  onClick={handleIconClick}
+                  isInFolder={true}
+                />
+              ))}
+            </div>
+          </Popup>
+        )}
+      </div>
     </div>
   );
 };

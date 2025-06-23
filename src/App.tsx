@@ -113,15 +113,32 @@ function App() {
   };
 
   const walletButton = (
-    <button onClick={() => {
-      if (!isConnected) {
-        void open();
-      } else {
-        disconnect();
-      }
-    }} disabled={isPending}>
-      {isPending ? 'Connecting...' : isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Connect Wallet'}
-    </button>
+    <div 
+      onClick={() => {
+        if (!isConnected) {
+          void open();
+        } else {
+          disconnect();
+        }
+      }} 
+      style={{ 
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        color: isConnected ? 'limegreen' : 'red',
+        fontWeight: 'bold'
+      }}
+    >
+      <span style={{
+        height: '10px',
+        width: '10px',
+        borderRadius: '50%',
+        backgroundColor: isConnected ? 'limegreen' : 'red',
+        marginRight: '8px',
+        border: '1px solid black'
+      }}></span>
+      {isPending ? 'Connecting...' : isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
+    </div>
   );
 
   return (
