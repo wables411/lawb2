@@ -3,6 +3,7 @@ import { createUseStyles } from 'react-jss';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import MobileNFTGallery from './MobileNFTGallery';
+import MobileMintPopup from './MobileMintPopup';
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -18,7 +19,7 @@ const useStyles = createUseStyles({
     overflow: 'hidden',
   },
   header: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: '#c00',
     padding: '0.75rem 0',
     border: 'none',
     textAlign: 'center',
@@ -26,11 +27,12 @@ const useStyles = createUseStyles({
   },
   title: {
     margin: 0,
-    fontSize: '2rem',
+    fontSize: '1.1rem',
     fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif",
-    color: '#00ffff',
-    letterSpacing: '2px',
-    textShadow: '2px 2px 0 #000',
+    color: '#fff',
+    letterSpacing: '1px',
+    textShadow: '1px 1px 0 #000',
+    textTransform: 'uppercase',
   },
   iconGrid: {
     display: 'flex',
@@ -58,7 +60,8 @@ const useStyles = createUseStyles({
     position: 'fixed',
     left: 0,
     bottom: 0,
-    width: '100vw',
+    width: '100%',
+    maxWidth: '100vw',
     height: '56px',
     background: 'rgba(0,0,0,0.85)',
     display: 'flex',
@@ -145,9 +148,123 @@ const useStyles = createUseStyles({
     cursor: 'pointer',
     boxShadow: '1px 1px 0 #000',
   },
+  menuOverlay: {
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(0,0,0,0.4)',
+    zIndex: 3000,
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  menuModal: {
+    width: '100vw',
+    background: '#c0c0c0',
+    borderTopLeftRadius: '16px',
+    borderTopRightRadius: '16px',
+    boxShadow: '0 -4px 24px rgba(0,0,0,0.2)',
+    padding: '18px 0 8px 0',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+    zIndex: 3100,
+  },
+  menuLink: {
+    display: 'block',
+    width: '90%',
+    padding: '12px',
+    color: '#000',
+    textDecoration: 'none',
+    background: '#e0e0e0',
+    borderRadius: '8px',
+    fontWeight: 'bold',
+    fontSize: '1.1rem',
+    textAlign: 'center',
+    marginBottom: '4px',
+    border: '2px outset #fff',
+    boxShadow: '1px 1px 0 #aaa',
+  },
 });
 
 type ActiveView = 'main' | 'gallery';
+
+const EVM_NFTS = [
+  { id: 'lawbsters', name: 'Lawbsters', image: '/assets/lawbsters.gif', description: '420 Lawbsters. ETH.' },
+  { id: 'lawbstarz', name: 'Lawbstarz', image: '/assets/lawbstarz.gif', description: '666 Lawbstarz. ETH.' },
+  { id: 'halloween', name: 'Halloween', image: '/assets/lawbsterhalloween.gif', description: 'Halloween Lawbsters. BASE.' },
+  { id: 'pixelawbs', name: 'Pixelawbs', image: '/assets/pixelawb.png', description: '2222 Pixelawbs. ETH.' },
+];
+const SOL_NFTS = [
+  { id: 'lawbstation', name: 'Lawbstation', image: '/assets/lawbstation.GIF', description: 'Lawbstation. SOL.' },
+  { id: 'nexus', name: 'Nexus', image: '/assets/nexus.gif', description: 'Nexus. SOL.' },
+];
+
+interface FolderNFT {
+  id: string;
+  name: string;
+  image: string;
+  description: string;
+}
+
+interface FolderPopupProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  nfts: FolderNFT[];
+}
+
+function FolderPopup({ open, onClose, title, nfts }: FolderPopupProps) {
+  const classes = useStyles();
+  if (!open) return null;
+  return (
+    <div className={classes.pixelawbsPopupOverlay}>
+      <div className={classes.pixelawbsPopup} style={{ maxWidth: 420, width: '90vw', height: '70vh', overflowY: 'auto' }}>
+        <button className={classes.closeButton} onClick={onClose}>&times;</button>
+        <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem', fontSize: '1.2rem' }}>{title}</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
+          {nfts.map((nft: FolderNFT) => (
+            <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8 }}>
+              <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
+              <span style={{ fontWeight: 'bold', fontSize: 14 }}>{nft.name}</span>
+              <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LawbPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const classes = useStyles();
+  if (!open) return null;
+  return (
+    <div className={classes.pixelawbsPopupOverlay}>
+      <div className={classes.pixelawbsPopup} style={{ maxWidth: 420, width: '90vw', height: '70vh', overflowY: 'auto' }}>
+        <button className={classes.closeButton} onClick={onClose}>&times;</button>
+        <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem', fontSize: '1.2rem' }}>$LAWB</h2>
+        <img src="/assets/lawbticker.gif" alt="$lawb" style={{ width: '100%', marginBottom: 12 }} />
+        <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 14, marginBottom: 12 }}>
+          <b>Solana:</b> 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6<br />
+          <b>Arbitrum:</b> 0x741f8FbF42485E772D97f1955c31a5B8098aC962<br />
+          <b>Sanko:</b> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F<br />
+        </div>
+        <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
+          <a href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Dexscreener</a><br />
+          <a href="https://pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Pump.fun</a><br />
+          <a href="https://magiceden.io/marketplace/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Magic Eden</a><br />
+        </div>
+        <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
+          <b>THERE IS NO MEME WE $LAWB YOU</b>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const Mobile = () => {
   const classes = useStyles();
@@ -159,31 +276,24 @@ const Mobile = () => {
   const [activeView, setActiveView] = useState<ActiveView>('main');
   const [showPixelawbsPopup, setShowPixelawbsPopup] = useState(true);
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-
-  const handleOpenGallery = () => {
-    if (!address) {
-      alert('Please connect your wallet to view your collection.');
-      return;
-    }
-    setActiveView('gallery');
-  };
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showMintPopup, setShowMintPopup] = useState(false);
+  const [showEvmFolder, setShowEvmFolder] = useState(false);
+  const [showSolFolder, setShowSolFolder] = useState(false);
+  const [showLawbPopup, setShowLawbPopup] = useState(false);
 
   const icons = [
-    { label: 'EVM LAWB GALLERY', icon: '/assets/folder.png', action: handleOpenGallery },
-    { label: 'Mint Pixelawbs', icon: '/assets/mint.gif', action: () => alert('Minting coming soon to mobile!') },
-    { 
-      label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Connect Wallet', 
-      icon: '/assets/wallet.png', 
-      action: () => {
-        if (!isConnected) {
-          void open();
-        } else {
-          disconnect();
-        }
-      },
-      disabled: isPending
-    },
-    { label: 'Twitter', icon: '/assets/icon1.png', action: () => window.open('https://twitter.com/lawbsterdao', '_blank') },
+    { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
+    { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
+    { label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Wallet', icon: '/assets/wallet.png', action: () => {
+      if (!isConnected) {
+        void open();
+      } else {
+        disconnect();
+      }
+    }, disabled: isPending },
+    { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
+    { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
@@ -205,7 +315,7 @@ const Mobile = () => {
   return (
     <div className={classes.mobileContainer}>
       <header className={classes.header}>
-        <h1 className={classes.title}>LAWB</h1>
+        <h1 className={classes.title}>there is no meme we lawb you</h1>
       </header>
       <div className={classes.iconGrid}>
         {icons.map(icon => (
@@ -229,9 +339,32 @@ const Mobile = () => {
           </div>
         </div>
       )}
+      {/* Mobile Menu Modal */}
+      {menuOpen && (
+        <div className={classes.menuOverlay} onClick={() => setMenuOpen(false)}>
+          <div className={classes.menuModal} onClick={e => e.stopPropagation()}>
+            <a href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Dexscreener</a>
+            <a href="https://x.com/lawbstation" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbStation Twitter</a>
+            <a href="https://x.com/lawbnexus" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbNexus Twitter</a>
+            <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/info/" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>NFTX - Lawbsters</a>
+            <a href="https://purity.finance/lawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Purity</a>
+            <a href="https://uwu.pro/memoji/ulawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>UwU LAWB</a>
+            <a href="https://t.me/lawblawblawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Telegram</a>
+            <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
+          </div>
+        </div>
+      )}
+      {/* Mobile Mint Popup */}
+      <MobileMintPopup isOpen={showMintPopup} onClose={() => setShowMintPopup(false)} walletAddress={address || ''} />
+      {/* EVM Folder Popup */}
+      <FolderPopup open={showEvmFolder} onClose={() => setShowEvmFolder(false)} title="EVM NFT'S FOLDER" nfts={EVM_NFTS} />
+      {/* SOL Folder Popup */}
+      <FolderPopup open={showSolFolder} onClose={() => setShowSolFolder(false)} title="SOL NFTS FOLDER" nfts={SOL_NFTS} />
+      {/* $LAWB Popup */}
+      <LawbPopup open={showLawbPopup} onClose={() => setShowLawbPopup(false)} />
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
-        <button className={classes.menuButton}>Menu</button>
+        <button className={classes.menuButton} onClick={() => setMenuOpen(true)}>Menu</button>
         <div className={classes.walletStatus}>
           <span style={{
             height: '10px',

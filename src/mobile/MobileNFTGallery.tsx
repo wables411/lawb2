@@ -102,6 +102,8 @@ interface NFT {
   image: string;
   name: string;
   chain_id?: number;
+  image_url?: string;
+  image_url_shrunk?: string;
 }
 
 interface MobileNFTGalleryProps {
@@ -205,16 +207,28 @@ const MobileNFTGallery: React.FC<MobileNFTGalleryProps> = ({ onBack, walletAddre
         ))}
       </div>
       <div className={classes.grid}>
-        {nfts.map((nft) => (
-          <div key={nft.id} className={classes.gridItem} onClick={() => void handleNftClick(nft)}>
-            <img 
-              src={nft.image} 
-              alt={nft.name} 
-              onError={e => { (e.currentTarget as HTMLImageElement).src = '/assets/pixelawb.png'; }}
-            />
-            <span>{nft.name}</span>
-          </div>
-        ))}
+        {nfts.map((nft) => {
+          // Try to get the best image URL
+          let imgSrc = nft.image || nft.image_url || nft.image_url_shrunk || '/assets/pixelawb.png';
+          return (
+            <div key={nft.id} className={classes.gridItem} onClick={() => void handleNftClick(nft)}>
+              <img 
+                src={imgSrc} 
+                alt={nft.name} 
+                onError={e => {
+                  if (e.currentTarget.src !== nft.image_url && nft.image_url) {
+                    e.currentTarget.src = nft.image_url;
+                  } else if (e.currentTarget.src !== nft.image_url_shrunk && nft.image_url_shrunk) {
+                    e.currentTarget.src = nft.image_url_shrunk;
+                  } else {
+                    e.currentTarget.src = '/assets/pixelawb.png';
+                  }
+                }}
+              />
+              <span>{nft.name}</span>
+            </div>
+          );
+        })}
       </div>
     </>
   );
