@@ -4,6 +4,7 @@ import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
+import MobilePopup98 from './MobilePopup98';
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -105,6 +106,7 @@ const useStyles = createUseStyles({
     fontSize: '1rem',
     fontWeight: 'bold',
     textShadow: '1px 1px 0 #000',
+    marginRight: '12px',
   },
   pixelawbsPopupOverlay: {
     position: 'fixed',
@@ -218,24 +220,29 @@ interface FolderPopupProps {
 }
 
 function FolderPopup({ open, onClose, title, nfts }: FolderPopupProps) {
-  const classes = useStyles();
-  if (!open) return null;
+  const handleIconClick = (id: string) => {
+    switch (id) {
+      case 'lawbsters': setShowLawbsters(true); break;
+      case 'lawbstarz': setShowLawbstarz(true); break;
+      case 'pixelawbs': setShowPixelawbs(true); break;
+      case 'halloween': setShowHalloween(true); break;
+      case 'lawbstation': setShowLawbstation(true); break;
+      case 'nexus': setShowNexus(true); break;
+      default: break;
+    }
+  };
   return (
-    <div className={classes.pixelawbsPopupOverlay}>
-      <div className={classes.pixelawbsPopup} style={{ maxWidth: 420, width: '90vw', height: '70vh', overflowY: 'auto' }}>
-        <button className={classes.closeButton} onClick={onClose}>&times;</button>
-        <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem', fontSize: '1.2rem' }}>{title}</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
-          {nfts.map((nft: FolderNFT) => (
-            <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8 }}>
-              <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
-              <span style={{ fontWeight: 'bold', fontSize: 14 }}>{nft.name}</span>
-              <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
-            </div>
-          ))}
-        </div>
+    <MobilePopup98 isOpen={open} onClose={onClose} title={title}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
+        {nfts.map((nft: FolderNFT) => (
+          <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8, cursor: 'pointer' }} onClick={() => handleIconClick(nft.id)}>
+            <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
+            <span style={{ fontWeight: 'bold', fontSize: 14 }}>{nft.name}</span>
+            <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
+          </div>
+        ))}
       </div>
-    </div>
+    </MobilePopup98>
   );
 }
 
@@ -281,6 +288,12 @@ const Mobile = () => {
   const [showEvmFolder, setShowEvmFolder] = useState(false);
   const [showSolFolder, setShowSolFolder] = useState(false);
   const [showLawbPopup, setShowLawbPopup] = useState(false);
+  const [showLawbsters, setShowLawbsters] = useState(false);
+  const [showLawbstarz, setShowLawbstarz] = useState(false);
+  const [showPixelawbs, setShowPixelawbs] = useState(false);
+  const [showHalloween, setShowHalloween] = useState(false);
+  const [showLawbstation, setShowLawbstation] = useState(false);
+  const [showNexus, setShowNexus] = useState(false);
 
   const icons = [
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
@@ -362,6 +375,72 @@ const Mobile = () => {
       <FolderPopup open={showSolFolder} onClose={() => setShowSolFolder(false)} title="SOL NFTS FOLDER" nfts={SOL_NFTS} />
       {/* $LAWB Popup */}
       <LawbPopup open={showLawbPopup} onClose={() => setShowLawbPopup(false)} />
+      {/* Lawbsters Popup */}
+      <MobilePopup98 isOpen={showLawbsters} onClose={() => setShowLawbsters(false)} title="Lawbsters">
+        <p style={{marginBottom: '10px'}}>
+          420 Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap. A <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Cigawrette Packs</a> derivative.
+        </p>
+        <p>Chain: Ethereum</p>
+        <p style={{marginBottom: '10px'}}>
+          Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>NFTX</a>
+        </p>
+        <img src="/assets/lawbsters.gif" alt="Lawbsters" style={{ width: '100%', marginTop: '10px' }} />
+      </MobilePopup98>
+      {/* Lawbstarz Popup */}
+      <MobilePopup98 isOpen={showLawbstarz} onClose={() => setShowLawbstarz(false)} title="Lawbstarz">
+        <p style={{marginBottom: '10px'}}>
+          ☆ LAWBSTARZ 666x LOBSTERS DRIPPED IN BUTTER ☆ 666x PREMIUM PFP COLLECTION ☆ LAWBSTARZ IS A MUSIC NFT ☆ LAWBSTARZ IS AN <a href="https://allstarz.world" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>ALLSTARZ</a> DERIVATIVE ☆ LAWBSTARZ IS INSPIRED BY <a href="https://www.remilia.org/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>REMILIA CORP</a> ☆ LED BY NETWORK SPIRITUALITY ☆ 666 <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>CIGAWRETTEPACKS</a> WERE CONSUMED BY <a href="https://x.com/portionclub69" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PORTIONCLUB69</a> AND FRIENDS DURING THE CREATION OF LAWBSTARZ v1 ☆
+        </p>
+        <p>Chain: Ethereum</p>
+        <p>
+          Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+        </p>
+        <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
+      </MobilePopup98>
+      {/* Pixelawbs Popup */}
+      <MobilePopup98 isOpen={showPixelawbs} onClose={() => setShowPixelawbs(false)} title="Pixelawbs">
+        <p style={{marginBottom: '10px'}}>
+          PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={() => { setShowPixelawbs(false); setShowMintPopup(true); }}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>SCATTER.ART</a>
+        </p>
+        <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} preload="none" />
+        <p style={{marginBottom: '10px'}}>
+          2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PixeladyMaker</a>
+        </p>
+      </MobilePopup98>
+      {/* Halloween Popup */}
+      <MobilePopup98 isOpen={showHalloween} onClose={() => setShowHalloween(false)} title="A Lawbster Halloween">
+        <h3 style={{marginBottom: '10px'}}>A LAWBSTER HALLOWEEN</h3>
+        <p style={{marginBottom: '10px'}}>
+          a Lawbster Halloween party seems nice but a a group of what seems to be humans controlled by lobsters just hijacked the Spirit Halloween Superstore.
+        </p>
+        <p style={{marginBottom: '10px'}}>Chain: Base</p>
+        <p style={{marginBottom: '10px'}}>
+          Collect on <a href="https://magiceden.us/collections/base/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+        </p>
+        <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
+      </MobilePopup98>
+      {/* Lawbstation Popup */}
+      <MobilePopup98 isOpen={showLawbstation} onClose={() => setShowLawbstation(false)} title="Lawbstation">
+        <p style={{marginBottom: '10px'}}>
+          Lawbstations: low poly Lawbsters viewed through various cathode-ray tubes built on <a href="https://www.miladystation2.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>MiladyStation</a> technology. Inspired by Milady, Allstarz, Rusty Rollers, Cigawrette Packs, SPX6900 and Radbro. Brought to you in part by PortionClub and Mony Corp Group. LawbStations seem nice but a lobster controlled by MiladyStation will never achieve anything without a roadmap.
+        </p>
+        <p style={{marginBottom: '10px'}}>Chain: Solana</p>
+        <p style={{marginBottom: '10px'}}>
+          <a href="https://magiceden.us/marketplace/lawbstation" target="_blank" rel="noopener noreferrer">Collect Lawbstations on Secondary</a>
+        </p>
+        <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
+        <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', marginTop: '10px' }} />
+      </MobilePopup98>
+      {/* Nexus Popup */}
+      <MobilePopup98 isOpen={showNexus} onClose={() => setShowNexus(false)} title="Nexus">
+        <p style={{marginBottom: '10px'}}>
+          1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://magiceden.us/marketplace/lawbnexus" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+        </p>
+        <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
+        <video controls src="/assets/nexusminting.mp4" style={{ width: '100%' }} />
+      </MobilePopup98>
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
         <button className={classes.menuButton} onClick={() => setMenuOpen(true)}>Menu</button>

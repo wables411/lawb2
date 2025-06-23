@@ -16,6 +16,7 @@ const ICONS = [
   { id: 'lawbstarz', image: '/assets/lawbstarz.gif', label: 'Lawbstarz', action: 'popup', popupId: 'lawbstarz-popup', row: -1, col: -1 },
   { id: 'lawbsters', image: '/assets/lawbsters.gif', label: 'Lawbsters', action: 'popup', popupId: 'lawbsters-popup', row: -1, col: -1 },
   { id: 'halloween', image: '/assets/lawbsterhalloween.gif', label: 'Halloween', action: 'popup', popupId: 'halloween-popup', row: -1, col: -1 },
+  { id: 'pixelawbs', image: '/assets/pixelawb.png', label: 'Pixelawbs', action: 'popup', popupId: 'pixelawbs-popup', row: -1, col: -1 },
   { id: 'lawbstation', image: '/assets/lawbstation.GIF', label: 'Lawbstation', action: 'popup', popupId: 'lawbstation-popup', row: -1, col: -1 },
   { id: 'nexus', image: '/assets/nexus.gif', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
   // Row 4
