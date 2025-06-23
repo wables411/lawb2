@@ -305,29 +305,32 @@ const Mobile = () => {
   }
 
   function LawbPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
-    const classes = useStyles();
     if (!open) return null;
     return (
-      <div className={classes.pixelawbsPopupOverlay}>
-        <div className={classes.pixelawbsPopup} style={{ maxWidth: 420, width: '90vw', height: '70vh', overflowY: 'auto' }}>
-          <button className={classes.closeButton} onClick={onClose}>&times;</button>
-          <h2 style={{ color: '#008080', fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif", marginBottom: '1rem', fontSize: '1.2rem' }}>$LAWB</h2>
-          <img src="/assets/lawbticker.gif" alt="$lawb" style={{ width: '100%', marginBottom: 12 }} />
-          <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 14, marginBottom: 12 }}>
-            <b>Solana:</b> 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6<br />
-            <b>Arbitrum:</b> 0x741f8FbF42485E772D97f1955c31a5B8098aC962<br />
-            <b>Sanko:</b> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F<br />
-          </div>
-          <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
-            <a href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Dexscreener</a><br />
-            <a href="https://pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Pump.fun</a><br />
-            <a href="https://magiceden.io/marketplace/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#00f', textDecoration: 'underline' }}>Magic Eden</a><br />
-          </div>
-          <div style={{ color: '#000', fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, marginBottom: 12 }}>
-            <b>THERE IS NO MEME WE $LAWB YOU</b>
-          </div>
-        </div>
-      </div>
+      <MobilePopup98 isOpen={open} onClose={onClose} title="$LAWB">
+        <h1 style={{marginBottom: '10px'}}>
+          <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>🦞 $LAWB</a>
+        </h1>
+        <p style={{marginBottom: '10px'}}>
+          $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>pump.fun</a>.
+        </p>
+        <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
+        <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
+        <p style={{marginBottom: '10px'}}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
+        <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
+        <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
+        <p style={{marginBottom: '10px'}}>
+          if you wish to bridge your $lawb token from solana to arbitrum to sanko, a wormhole is available via <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>https://portalbridge.com/</a>
+        </p>
+        <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
+        <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
+        <p style={{marginBottom: '10px'}}>step 3. select token quantity, confirm transactions.</p>
+        <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
+        <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
+        <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
+        <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
+        <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
+      </MobilePopup98>
     );
   }
 
