@@ -5,6 +5,7 @@ import { useAppKit } from '@reown/appkit/react';
 import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
+import MemeGenerator from '../components/MemeGenerator';
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -235,6 +236,7 @@ const Mobile = () => {
   const [showHalloween, setShowHalloween] = useState(false);
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
+  const [showMemeGenerator, setShowMemeGenerator] = useState(false);
 
   const icons = [
     { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
@@ -375,6 +377,7 @@ const Mobile = () => {
             <a href="https://t.me/lawblawblawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Telegram</a>
             <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
             <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
+            <button className={classes.menuLink} onClick={() => { setMenuOpen(false); setShowMemeGenerator(true); }} style={{ border: 'none', cursor: 'pointer', width: '90%', margin: '0 auto', display: 'block' }}>Meme Generator</button>
           </div>
         </div>
       )}
@@ -451,6 +454,10 @@ const Mobile = () => {
         </p>
         <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
         <video controls src="/assets/nexusminting.mp4" style={{ width: '100%' }} />
+      </MobilePopup98>
+      {/* Meme Generator Popup */}
+      <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
+        <MemeGenerator />
       </MobilePopup98>
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
