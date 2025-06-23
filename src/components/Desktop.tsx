@@ -10,6 +10,7 @@ const ICONS = [
   { id: 'wallet', image: '/assets/wallet.png', label: 'Wallet', action: 'wallet', row: 0, col: 0 },
   { id: 'mint', image: '/assets/mint.gif', label: 'Mint', action: 'mint', row: 0, col: 1 },
   { id: 'gallery', image: '/assets/lawbstarz.gif', label: 'NFT Gallery', action: 'nft-gallery', row: 0, col: 2 },
+  { id: 'meme-generator', image: '/assets/meme.gif', label: 'Meme Generator', action: 'meme-generator', row: 0, col: 4 },
   // Row 2
   { id: 'purity', image: '/assets/purityfinance.png', label: 'Purity', action: 'popup', popupId: 'purity-popup', row: 1, col: 0 },
   // NFT icons for folders (not shown on desktop)

@@ -180,7 +180,7 @@ const useStyles = createUseStyles({
   menuLink: {
     display: 'block',
     width: '90%',
-    padding: '12px',
+    padding: '8px',
     color: '#000',
     textDecoration: 'none',
     background: '#e0e0e0',
@@ -374,6 +374,7 @@ const Mobile = () => {
             <a href="https://uwu.pro/memoji/ulawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>UwU LAWB</a>
             <a href="https://t.me/lawblawblawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Telegram</a>
             <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
+            <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
           </div>
         </div>
       )}

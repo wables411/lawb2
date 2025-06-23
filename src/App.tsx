@@ -6,6 +6,7 @@ import Taskbar from './components/Taskbar';
 import Popup from './components/Popup';
 import MintPopup from './components/MintPopup';
 import NFTGallery from './components/NFTGallery';
+import MemeGenerator from './components/MemeGenerator';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
 
@@ -31,6 +32,7 @@ function App() {
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
+  const [showMemeGenerator, setShowMemeGenerator] = useState(false);
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -74,6 +76,8 @@ function App() {
       setShowMintPopup(true);
     } else if (action === 'nft-gallery') {
       setShowNFTGallery(true);
+    } else if (action === 'meme-generator') {
+      setShowMemeGenerator(true);
     }
   };
 
@@ -89,6 +93,8 @@ function App() {
       setShowMintPopup(true);
     } else if (popupId === 'nft-gallery-popup') {
       setShowNFTGallery(true);
+    } else if (popupId === 'meme-generator-popup') {
+      setShowMemeGenerator(true);
     } else {
       setActivePopup(popupId);
     }
@@ -101,6 +107,7 @@ function App() {
 
   const closeMintPopup = () => setShowMintPopup(false);
   const closeNFTGallery = () => setShowNFTGallery(false);
+  const closeMemeGenerator = () => setShowMemeGenerator(false);
 
   const minimizeMintPopup = () => {
     setShowMintPopup(false);
@@ -110,6 +117,11 @@ function App() {
   const minimizeNFTGallery = () => {
     setShowNFTGallery(false);
     setMinimizedPopups(prev => new Set(prev).add('nft-gallery-popup'));
+  };
+
+  const minimizeMemeGenerator = () => {
+    setShowMemeGenerator(false);
+    setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
   };
 
   const walletButton = (
@@ -318,6 +330,10 @@ function App() {
         onMinimize={minimizeNFTGallery}
         walletAddress={address} 
       />
+
+      <Popup id="meme-generator-popup" isOpen={showMemeGenerator} onClose={closeMemeGenerator} onMinimize={minimizeMemeGenerator}>
+        <MemeGenerator />
+      </Popup>
     </div>
   );
 }

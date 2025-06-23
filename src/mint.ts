@@ -240,3 +240,58 @@ export async function getOpenSeaSingleNFT(chain: string, contractAddress: string
     return data.nft;
   } catch (error) { console.error('Error getting single OpenSea NFT:', error); throw error; }
 }
+
+// Function to fetch Solana NFTs from OpenSea
+export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: number = 50): Promise<NFTResponse> {
+  const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+  const url = `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?chain=solana&limit=${pageSize}`;
+
+  try {
+    const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
+    if (!response.ok) {
+      throw new Error(`Failed to get OpenSea Solana NFTs: ${response.statusText}`);
+    }
+
+    const data = await response.json() as OpenSeaApiResponse;
+    
+    const transformedNfts: NFT[] = data.nfts.map((nft): NFT => ({
+      id: nft.identifier,
+      address: nft.contract,
+      token_id: parseInt(nft.identifier, 10),
+      attributes: JSON.stringify(nft.traits || []),
+      name: nft.name || `#${nft.identifier}`,
+      image_url: nft.image_url,
+      owner_of: nft.owners?.[0]?.address || '',
+      block_minted: 0,
+      contract_type: 'SOL',
+      description: nft.description || '',
+      image: nft.image_url,
+      image_url_shrunk: nft.image_url,
+      animation_url: nft.animation_url,
+      metadata: '',
+      chain_id: 1399811149, // Solana chain ID
+      old_image_url: '',
+      old_token_uri: '',
+      token_uri: '',
+      log_index: 0,
+      transaction_index: 0,
+      collection_id: collectionSlug,
+      num_items: 1,
+      created_at: nft.updated_at || new Date().toISOString(),
+      updated_at: nft.updated_at || new Date().toISOString(),
+      owners: nft.owners?.map((o) => ({ owner_of: o.address, quantity: o.quantity })) || []
+    }));
+
+    return {
+      page: 1,
+      pageSize: pageSize,
+      totalCount: transformedNfts.length,
+      totalPages: 1,
+      data: transformedNfts
+    };
+
+  } catch (error) {
+    console.error('Error getting OpenSea Solana NFTs:', error);
+    throw error;
+  }
+}

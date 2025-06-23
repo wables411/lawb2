@@ -52,7 +52,7 @@ const useStyles = createUseStyles({
   },
   menuLink: {
     display: 'block',
-    padding: '8px 12px',
+    padding: '6px 12px',
     color: '#000',
     textDecoration: 'none',
     background: '#c0c0c0',
@@ -243,6 +243,15 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
             onClick={handleMenuLinkClick}
           >
             Discord
+          </a>
+          <a 
+            href="https://store.fun/lawbshop" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={classes.menuLink} 
+            onClick={handleMenuLinkClick}
+          >
+            Lawb.Shop
           </a>
         </div>
       )}
