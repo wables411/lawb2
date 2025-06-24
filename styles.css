@@ -5,6 +5,7 @@ body {
   background-size: cover;
   font-family: 'MS Sans Serif', Arial, sans-serif;
   color: #000;
+  cursor: url('/assets/lawbpointer.png'), auto;
 }
 #desktop {
   position: relative;

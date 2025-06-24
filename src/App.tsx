@@ -17,6 +17,7 @@ const useStyles = createUseStyles({
     width: '100vw',
     fontFamily: "'MS Sans Serif', Arial, sans-serif",
     color: '#000',
+    cursor: 'url("/assets/lawbpointer.png"), auto',
     // overflow: 'hidden', // Removed to allow modals to be clickable
   }
 });
