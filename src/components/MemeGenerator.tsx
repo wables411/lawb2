@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { createUseStyles } from 'react-jss';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs } from '../mint';
 
@@ -6,83 +6,68 @@ const useStyles = createUseStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
-    padding: 16,
+    gap: 4,
+    padding: 4,
     background: '#c0c0c0',
     border: '2px outset #fff',
     borderRadius: 8,
     maxWidth: 500,
     width: '100%',
     fontFamily: 'monospace',
-    fontSize: 12,
+    fontSize: 11,
   },
   header: {
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   subtitle: {
     color: '#000',
-    fontSize: '11px',
+    fontSize: '10px',
     textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 1.3,
+    marginBottom: 2,
+    lineHeight: 1.1,
   },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 2,
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 1,
   },
   sectionTitle: {
     fontWeight: 'bold',
     color: '#000',
-    fontSize: 12,
+    fontSize: 11,
     borderBottom: '1px solid #888',
-    paddingBottom: 2,
+    paddingBottom: 0,
   },
   row: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 3,
     flexWrap: 'wrap',
   },
   label: {
-    minWidth: 80,
+    minWidth: 55,
     color: '#000',
     fontWeight: 'bold',
-    fontSize: 11,
+    fontSize: 10,
   },
   input: {
     flex: 1,
-    minWidth: 120,
-    padding: '4px 6px',
+    minWidth: 70,
+    padding: '2px 3px',
     border: '2px inset #fff',
     background: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'monospace',
     color: '#000',
   },
   button: {
-    padding: '6px 12px',
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    cursor: 'pointer',
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#000',
-    '&:hover': {
-      background: '#d0d0d0',
-    },
-    '&:active': {
-      border: '2px inset #fff',
-    },
-  },
-  effectButton: {
-    padding: '4px 8px',
+    padding: '3px 8px',
     background: '#c0c0c0',
     border: '2px outset #fff',
     cursor: 'pointer',
@@ -96,11 +81,26 @@ const useStyles = createUseStyles({
       border: '2px inset #fff',
     },
   },
+  effectButton: {
+    padding: '2px 5px',
+    background: '#c0c0c0',
+    border: '2px outset #fff',
+    cursor: 'pointer',
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#000',
+    '&:hover': {
+      background: '#d0d0d0',
+    },
+    '&:active': {
+      border: '2px inset #fff',
+    },
+  },
   memeArea: {
     display: 'flex',
     justifyContent: 'center',
     position: 'relative',
-    marginTop: 8,
+    marginTop: 1,
   },
   canvas: {
     border: '2px inset #fff',
@@ -119,14 +119,14 @@ const useStyles = createUseStyles({
     border: '2px outset #fff',
     borderRadius: 4,
     zIndex: 10,
-    minWidth: 160,
-    maxHeight: 200,
+    minWidth: 100,
+    maxHeight: 100,
     overflowY: 'auto',
   },
   dropdownItem: {
-    padding: '6px 8px',
+    padding: '3px 5px',
     cursor: 'pointer',
-    fontSize: 11,
+    fontSize: 9,
     borderBottom: '1px solid #eee',
     '&:hover': {
       background: '#f0f0f0',
@@ -134,9 +134,9 @@ const useStyles = createUseStyles({
   },
   actions: {
     display: 'flex',
-    gap: 8,
+    gap: 3,
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 1,
   },
 });
 
@@ -166,156 +166,142 @@ function MemeGenerator() {
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [loadingNft, setLoadingNft] = useState(false);
 
-  // Basic drawing functionality
-  const drawMeme = () => {
+  // drawText and applyEffectsSafely moved inside drawMeme
+  const drawMeme = useCallback(() => {
+    // drawText helper
+    const drawText = (ctx: CanvasRenderingContext2D) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      ctx.textAlign = 'center';
+      // Function to wrap text
+      const wrapText = (text: string, maxWidth: number) => {
+        const words = text.split(' ');
+        const lines: string[] = [];
+        let currentLine = '';
+        for (let i = 0; i < words.length; i++) {
+          const testLine = currentLine ? currentLine + ' ' + words[i] : words[i];
+          const width = ctx.measureText(testLine).width;
+          if (width <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            if (currentLine) lines.push(currentLine);
+            currentLine = words[i];
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+        return lines;
+      };
+      // Draw top text
+      if (topText) {
+        ctx.font = `bold ${topFontSize}px Impact`;
+        const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
+        // Set font before wrapping for accurate measurement
+        const lines = (function() {
+          ctx.font = `bold ${topFontSize}px Impact`;
+          return wrapText(topText, maxWidth);
+        })();
+        lines.forEach((line, index) => {
+          const y = topFontSize + 10 + (index * topFontSize * 1.2);
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 4;
+          ctx.strokeText(line, canvas.width / 2, y);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(line, canvas.width / 2, y);
+        });
+      }
+      // Draw bottom text
+      if (bottomText) {
+        ctx.font = `bold ${bottomFontSize}px Impact`;
+        const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
+        // Set font before wrapping for accurate measurement
+        const lines = (function() {
+          ctx.font = `bold ${bottomFontSize}px Impact`;
+          return wrapText(bottomText, maxWidth);
+        })();
+        // Draw from the bottom up: last line is above the bottom edge by 12px, previous lines above
+        const bottomMargin = 12;
+        lines.forEach((line, index) => {
+          // The last line is at the bottomMargin, previous lines stack upward
+          const y = canvas.height - bottomMargin - ((lines.length - 1 - index) * bottomFontSize * 1.2);
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 4;
+          ctx.strokeText(line, canvas.width / 2, y);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(line, canvas.width / 2, y);
+        });
+      }
+    };
+
+    // applyEffectsSafely helper
+    const applyEffectsSafely = (canvas: HTMLCanvasElement) => {
+      try {
+        if (deepFry) applyDeepFry(canvas);
+        if (pixelate) applyPixelate(canvas);
+        if (grain) applyGrain(canvas);
+      } catch (error) {
+        console.warn('Effects could not be applied due to CORS restrictions. Try uploading your own image instead.');
+        // Reset effect states to prevent confusion
+        setDeepFry(false);
+        setPixelate(false);
+        setGrain(false);
+      }
+    };
+
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     // Draw background image if available
     if (nftImage) {
       console.log('Loading image:', nftImage);
-        const img = new Image();
+      const img = new Image();
       img.crossOrigin = 'anonymous'; // Try to fix CORS issue
-      
-        img.onload = () => {
+      img.onload = () => {
         console.log('Image loaded successfully:', img.width, 'x', img.height);
         // Check if canvas still exists and is the same one
         const currentCanvas = canvasRef.current;
         if (!currentCanvas || currentCanvas !== canvas) return;
-        
         const currentCtx = currentCanvas.getContext('2d');
         if (!currentCtx) return;
-        
         // Clear and redraw everything
         currentCtx.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
-        
         // Calculate aspect ratio to fit image properly
         const scale = Math.min(currentCanvas.width / img.width, currentCanvas.height / img.height);
         const x = (currentCanvas.width - img.width * scale) / 2;
         const y = (currentCanvas.height - img.height * scale) / 2;
-        
         console.log('Drawing image at:', x, y, 'with scale:', scale);
         currentCtx.drawImage(img, x, y, img.width * scale, img.height * scale);
         drawText(currentCtx);
-        
         // Apply effects after drawing everything
         applyEffectsSafely(currentCanvas);
       };
-      
       img.onerror = (error) => {
         console.error('Failed to load image:', nftImage, error);
         // Check if canvas still exists and is the same one
         const currentCanvas = canvasRef.current;
         if (!currentCanvas || currentCanvas !== canvas) return;
-        
         const currentCtx = currentCanvas.getContext('2d');
         if (!currentCtx) return;
-        
         // Clear and draw placeholder background
         currentCtx.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
         currentCtx.fillStyle = '#333';
         currentCtx.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
         drawText(currentCtx);
-        
         // Apply effects to placeholder
         applyEffectsSafely(currentCanvas);
       };
-      
       img.src = nftImage;
     } else {
       // Draw placeholder background
       ctx.fillStyle = '#333';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       drawText(ctx);
-      
       // Apply effects after drawing everything
       applyEffectsSafely(canvas);
     }
-  };
-
-  const drawText = (ctx: CanvasRenderingContext2D) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    ctx.textAlign = 'center';
-    
-    // Function to wrap text
-    const wrapText = (text: string, maxWidth: number) => {
-      const words = text.split(' ');
-      const lines: string[] = [];
-      let currentLine = words[0];
-      
-      for (let i = 1; i < words.length; i++) {
-        const word = words[i];
-        const width = ctx.measureText(currentLine + ' ' + word).width;
-        if (width < maxWidth) {
-          currentLine += ' ' + word;
-        } else {
-          lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      lines.push(currentLine);
-      return lines;
-    };
-    
-    // Draw top text
-    if (topText) {
-      ctx.font = `bold ${topFontSize}px Impact`;
-      const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
-      const lines = wrapText(topText, maxWidth);
-      
-      lines.forEach((line, index) => {
-        const y = topFontSize + 10 + (index * topFontSize * 1.2);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 4;
-        ctx.strokeText(line, canvas.width / 2, y);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(line, canvas.width / 2, y);
-      });
-    }
-    
-    // Draw bottom text
-    if (bottomText) {
-      ctx.font = `bold ${bottomFontSize}px Impact`;
-      const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
-      const lines = wrapText(bottomText, maxWidth);
-      
-      // Calculate total height of bottom text
-      const totalHeight = lines.length * bottomFontSize * 1.2;
-      const startY = canvas.height - totalHeight - 10;
-      
-      lines.forEach((line, index) => {
-        const y = startY + (index * bottomFontSize * 1.2);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 4;
-        ctx.strokeText(line, canvas.width / 2, y);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(line, canvas.width / 2, y);
-      });
-    }
-  };
-
-  // Safely apply effects with CORS error handling
-  const applyEffectsSafely = (canvas: HTMLCanvasElement) => {
-    try {
-      if (deepFry) applyDeepFry(canvas);
-      if (pixelate) applyPixelate(canvas);
-      if (grain) applyGrain(canvas);
-    } catch (error) {
-      console.warn('Effects could not be applied due to CORS restrictions. Try uploading your own image instead.');
-      // Reset effect states to prevent confusion
-      setDeepFry(false);
-      setPixelate(false);
-      setGrain(false);
-    }
-  };
+  }, [nftImage, topText, topFontSize, bottomText, bottomFontSize, deepFry, pixelate, grain]);
 
   // Effect functions
   const applyDeepFry = (canvas: HTMLCanvasElement) => {
@@ -404,7 +390,7 @@ function MemeGenerator() {
   // Redraw when text, image, or effects change
   useEffect(() => {
     drawMeme();
-  }, [topText, bottomText, topFontSize, bottomFontSize, nftImage, deepFry, pixelate, grain]);
+  }, [drawMeme]);
 
   // Handlers
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -544,7 +530,7 @@ function MemeGenerator() {
       </div>
 
       <div className={classes.memeArea}>
-        <canvas ref={canvasRef} width={400} height={400} className={classes.canvas} />
+        <canvas ref={canvasRef} width={320} height={320} className={classes.canvas} />
       </div>
     </div>
   );

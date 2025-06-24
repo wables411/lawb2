@@ -176,9 +176,12 @@ const useStyles = createUseStyles({
     alignItems: 'center',
     gap: '6px',
     zIndex: 3100,
-    marginBottom: '60px',
-    maxHeight: '70vh',
-    overflowY: 'auto'
+    marginBottom: '70px',
+    maxHeight: 'calc(70vh - 56px)',
+    overflowY: 'auto',
+    position: 'absolute',
+    left: 0,
+    bottom: '56px',
   },
   menuLink: {
     display: 'block',
