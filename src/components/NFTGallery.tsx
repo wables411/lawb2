@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Draggable from 'react-draggable';
-import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT } from '../mint';
+import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs } from '../mint';
 import { createUseStyles } from 'react-jss';
 import NFTDetailPopup from './NFTDetailPopup';
+import { useAppKit } from '@reown/appkit/react';
 
 const useStyles = createUseStyles({
   popup: {
@@ -147,7 +148,7 @@ type ViewMode = 'all' | 'recent' | 'owned';
 type Collection = {
   slug: string;
   name: string;
-  api: 'scatter' | 'opensea';
+  api: 'scatter' | 'opensea' | 'opensea-solana';
   chain?: string;
 }
 
@@ -156,10 +157,31 @@ const COLLECTIONS: Collection[] = [
   { slug: 'lawbsters', name: 'Lawbsters', api: 'opensea', chain: 'ethereum' },
   { slug: 'lawbstarz', name: 'Lawbstarz', api: 'scatter' },
   { slug: 'a-lawbster-halloween', name: 'Halloween', api: 'opensea', chain: 'base' },
+  { slug: 'lawbstation', name: 'Lawbstation', api: 'opensea-solana', chain: 'solana' },
+  { slug: 'lawbnexus', name: 'Nexus', api: 'opensea-solana', chain: 'solana' },
 ];
+
+declare global {
+  interface Window {
+    reown?: {
+      request: (args: { method: string; params: object }) => Promise<unknown>;
+    };
+    solana?: {
+      isPhantom?: boolean;
+      connect: () => Promise<{ publicKey: { toString: () => string } }>;
+      publicKey?: { toString: () => string };
+    };
+    solflare?: {
+      isSolflare?: boolean;
+      connect: () => Promise<{ publicKey: { toString: () => string } }>;
+      publicKey?: { toString: () => string };
+    };
+  }
+}
 
 const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, walletAddress }) => {
   const classes = useStyles({ isOpen });
+  const { open } = useAppKit();
   const nodeRef = useRef(null);
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,6 +192,37 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
   const [totalCount, setTotalCount] = useState(0);
   const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
   const [currentCollection, setCurrentCollection] = useState<Collection>(COLLECTIONS[0]);
+  const [showSolanaPrompt, setShowSolanaPrompt] = useState(false);
+  const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
+
+  const connectSolanaWallet = useCallback(async () => {
+    try {
+      if (window.solana?.isPhantom) {
+        const response = await window.solana.connect();
+        setSolanaAddress(response.publicKey.toString());
+        return;
+      }
+      if (window.solflare?.isSolflare) {
+        const response = await window.solflare.connect();
+        setSolanaAddress(response.publicKey.toString());
+        return;
+      }
+      void open();
+    } catch (err) {
+      console.error('Failed to connect Solana wallet:', err);
+      alert('Failed to connect Solana wallet. Please make sure Phantom or Solflare is installed.');
+    }
+    setShowSolanaPrompt(false);
+  }, [open]);
+
+  // Check for existing Solana connection on mount
+  useEffect(() => {
+    if (window.solana?.publicKey) {
+      setSolanaAddress(window.solana.publicKey.toString());
+    } else if (window.solflare?.publicKey) {
+      setSolanaAddress(window.solflare.publicKey.toString());
+    }
+  }, []);
 
   useEffect(() => {
     const fetchNfts = async () => {
@@ -177,14 +230,56 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
       setError(null);
       try {
         let response;
-        const walletAddressToFetch = viewMode === 'owned' ? walletAddress : undefined;
+        let walletAddressToFetch: string | undefined = viewMode === 'owned' ? (walletAddress || undefined) : undefined;
 
-        if (currentCollection.api === 'opensea') {
+        if (currentCollection.api === 'opensea-solana') {
+          if (viewMode === 'owned' && !solanaAddress) {
+            setShowSolanaPrompt(true);
+            setLoading(false);
+            return;
+          }
+          walletAddressToFetch = solanaAddress || undefined;
+          
+          // Fetch all NFTs from collection (should now include owner data)
+          response = await getOpenSeaSolanaNFTs(currentCollection.slug, 50);
+          console.log('Fetched Solana NFTs from collection:', response.data.length);
+          
+          // Filter by owner if needed
+          if (viewMode === 'owned' && solanaAddress) {
+            console.log('Filtering for owner:', solanaAddress);
+            console.log('Sample NFT owner data:', response.data[0]?.owners);
+            console.log('All NFTs owner data:', response.data.map(nft => ({
+              name: nft.name,
+              owners: nft.owners,
+              owner_of: nft.owner_of
+            })));
+            
+            // Check if we have owner data
+            const hasOwnerData = response.data.some(nft => nft.owners && nft.owners.length > 0);
+            
+            if (!hasOwnerData) {
+              console.log('No owner data available from OpenSea for Solana collection');
+              // For Solana collections without owner data, show all NFTs with a note
+              setError('Owner data not available for this Solana collection. Showing all NFTs.');
+              // Don't filter - show all NFTs
+            } else {
+              response.data = response.data.filter(nft => {
+                const hasOwner = nft.owners.some(o => 
+                  o.owner_of && o.owner_of.toLowerCase() === solanaAddress.toLowerCase()
+                );
+                if (hasOwner) {
+                  console.log('Found owned NFT:', nft.name);
+                }
+                return hasOwner;
+              });
+              console.log('NFTs after filtering:', response.data.length);
+            }
+          }
+        } else if (currentCollection.api === 'opensea') {
           response = await getOpenSeaNFTs(currentCollection.slug, 50, walletAddressToFetch);
         } else {
           response = await getCollectionNFTs(currentCollection.slug, currentPage, 50, walletAddressToFetch);
         }
-        
         setNfts(response.data);
         setTotalPages(response.totalPages);
         setTotalCount(response.totalCount);
@@ -203,10 +298,21 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
     if (isOpen) {
       void fetchNfts();
     }
-  }, [isOpen, currentPage, viewMode, walletAddress, currentCollection]);
+  }, [isOpen, currentPage, viewMode, walletAddress, currentCollection, solanaAddress]);
+
+  useEffect(() => {
+    if (showSolanaPrompt) {
+      void connectSolanaWallet();
+    }
+  }, [showSolanaPrompt, connectSolanaWallet]);
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
-  const getOwnerInfo = (nft: NFT) => nft.owners.length > 0 ? `${nft.owners[0].owner_of.substring(0, 6)}...` : 'N/A';
+  const getOwnerInfo = (nft: NFT) => {
+    if (currentCollection.api === 'opensea-solana' && (!nft.owners || nft.owners.length === 0)) {
+      return 'Owner data unavailable';
+    }
+    return nft.owners.length > 0 ? `${nft.owners[0].owner_of.substring(0, 6)}...` : 'N/A';
+  };
   
   const handleMinimize = () => {
     if (onMinimize) {
@@ -241,7 +347,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
       <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
         <div ref={nodeRef} className={classes.popup}>
           <div className={classes.header}>
-            <span>EVM LAWB GALLERY</span>
+            <span>LAWB NFT GALLERY</span>
             <div className={classes.titleBarButtons}>
               <button
                 className={classes.titleBarButton}
@@ -271,7 +377,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             ))}
           </div>
           <div className={classes.content}>
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setViewMode('all')}
                 style={{
@@ -300,19 +406,49 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
               </button>
               <button
                 onClick={() => setViewMode('owned')}
-                disabled={!walletAddress}
+                disabled={!walletAddress && !solanaAddress}
                 style={{
                   background: viewMode === 'owned' ? '#808080' : '#c0c0c0',
                   border: '2px outset #c0c0c0',
                   padding: '8px 16px',
-                  cursor: walletAddress ? 'pointer' : 'not-allowed',
+                  cursor: (walletAddress || solanaAddress) ? 'pointer' : 'not-allowed',
                   color: viewMode === 'owned' ? 'white' : 'black',
-                  opacity: walletAddress ? 1 : 0.6
+                  opacity: (walletAddress || solanaAddress) ? 1 : 0.6
                 }}
               >
                 My NFTs
               </button>
+              
+              {/* Solana Connection Button */}
+              {currentCollection.api === 'opensea-solana' && (
+                <button
+                  onClick={() => { void connectSolanaWallet(); }}
+                  style={{
+                    background: solanaAddress ? '#4CAF50' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    color: solanaAddress ? 'white' : 'black',
+                    marginLeft: 'auto'
+                  }}
+                >
+                  {solanaAddress ? `Solana: ${solanaAddress.slice(0, 4)}...${solanaAddress.slice(-4)}` : 'Connect Solana'}
+                </button>
+              )}
             </div>
+
+            {/* Solana Connection Status */}
+            {currentCollection.api === 'opensea-solana' && !solanaAddress && (
+              <div style={{ 
+                backgroundColor: '#fff3cd', 
+                border: '1px solid #ffeaa7', 
+                padding: '10px', 
+                marginBottom: '10px',
+                color: '#856404'
+              }}>
+                Connect your Solana wallet (Phantom or Solflare) to view your NFTs from this collection.
+              </div>
+            )}
 
             {error && (
               <div style={{ 
@@ -332,8 +468,8 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
               <>
                 <div style={{ marginBottom: '10px', fontSize: '14px' }}>
                   {viewMode === 'all' && `Showing all NFTs (${totalCount} total)`}
-                  {viewMode === 'recent' && `Recently minted NFTs by ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`}
-                  {viewMode === 'owned' && `NFTs owned by ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`}
+                  {viewMode === 'recent' && `Recently minted NFTs by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
+                  {viewMode === 'owned' && `NFTs owned by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
                 </div>
 
                 {nfts.length === 0 ? (

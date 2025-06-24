@@ -241,10 +241,10 @@ export async function getOpenSeaSingleNFT(chain: string, contractAddress: string
   } catch (error) { console.error('Error getting single OpenSea NFT:', error); throw error; }
 }
 
-// Function to fetch Solana NFTs from OpenSea
+// Function to fetch Solana NFTs from OpenSea with owner data
 export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: number = 50): Promise<NFTResponse> {
   const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-  const url = `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?chain=solana&limit=${pageSize}`;
+  const url = `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?chain=solana&limit=${pageSize}&include_orders=true`;
 
   try {
     const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
@@ -253,6 +253,10 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
     }
 
     const data = await response.json() as OpenSeaApiResponse;
+    console.log('Solana collection response:', data);
+    console.log('Sample NFT from response:', data.nfts[0]);
+    console.log('Sample NFT owners:', data.nfts[0]?.owners);
+    console.log('Sample NFT full structure:', JSON.stringify(data.nfts[0], null, 2));
     
     const transformedNfts: NFT[] = data.nfts.map((nft): NFT => ({
       id: nft.identifier,
@@ -294,4 +298,88 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
     console.error('Error getting OpenSea Solana NFTs:', error);
     throw error;
   }
+}
+
+// Function to fetch Solana NFTs from OpenSea by owner
+export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
+  const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+  
+  // Try different OpenSea endpoints for Solana
+  const endpoints = [
+    `https://api.opensea.io/api/v2/chain/solana/account/${ownerAddress}/nfts?limit=${pageSize}`,
+    `https://api.opensea.io/api/v2/chain/solana/account/${ownerAddress}/nfts?limit=${pageSize}&include_orders=false`,
+    `https://api.opensea.io/api/v2/chain/solana/account/${ownerAddress}/nfts?limit=${pageSize}&include_orders=false&include_metadata=true`
+  ];
+
+  for (const url of endpoints) {
+    console.log('Trying OpenSea endpoint:', url);
+
+    try {
+      const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error response:', errorText);
+        continue; // Try next endpoint
+      }
+
+      const data = await response.json() as OpenSeaApiResponse;
+      console.log('Raw API response:', data);
+      console.log('Number of NFTs returned:', data.nfts?.length || 0);
+      
+      if (data.nfts && data.nfts.length > 0) {
+        const transformedNfts: NFT[] = data.nfts.map((nft): NFT => ({
+          id: nft.identifier,
+          address: nft.contract,
+          token_id: parseInt(nft.identifier, 10),
+          attributes: JSON.stringify(nft.traits || []),
+          name: nft.name || `#${nft.identifier}`,
+          image_url: nft.image_url,
+          owner_of: ownerAddress,
+          block_minted: 0,
+          contract_type: 'SOL',
+          description: nft.description || '',
+          image: nft.image_url,
+          image_url_shrunk: nft.image_url,
+          animation_url: nft.animation_url,
+          metadata: '',
+          chain_id: 1399811149,
+          old_image_url: '',
+          old_token_uri: '',
+          token_uri: '',
+          log_index: 0,
+          transaction_index: 0,
+          collection_id: '',
+          num_items: 1,
+          created_at: nft.updated_at || new Date().toISOString(),
+          updated_at: nft.updated_at || new Date().toISOString(),
+          owners: [{ owner_of: ownerAddress, quantity: 1 }]
+        }));
+
+        console.log('Transformed NFTs:', transformedNfts.length);
+
+        return {
+          page: 1,
+          pageSize: pageSize,
+          totalCount: transformedNfts.length,
+          totalPages: 1,
+          data: transformedNfts
+        };
+      }
+    } catch (error) {
+      console.error('Error with endpoint:', url, error);
+      continue; // Try next endpoint
+    }
+  }
+
+  // If all endpoints fail, return empty result
+  console.log('All OpenSea endpoints failed, returning empty result');
+  return {
+    page: 1,
+    pageSize: pageSize,
+    totalCount: 0,
+    totalPages: 1,
+    data: []
+  };
 }
