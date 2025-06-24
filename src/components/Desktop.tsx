@@ -2,7 +2,19 @@ import React, { useState } from 'react';
 import Icon from './Icon';
 import Popup from './Popup';
 
-const ICONS = [
+interface DesktopIcon {
+  id: string;
+  image: string;
+  label: string;
+  action: string;
+  url?: string;
+  popupId?: string;
+  folderId?: string;
+  row: number;
+  col: number;
+}
+
+const ICONS: DesktopIcon[] = [
   // Folders
   { id: 'evm-folder', image: '/assets/evmfolder.png', label: 'EVM NFTs', action: 'folder', folderId: 'evm-folder', row: 0, col: 3 },
   { id: 'sol-folder', image: '/assets/solfolder.png', label: 'SOL NFTs', action: 'folder', folderId: 'sol-folder', row: 1, col: 3 },
@@ -13,6 +25,7 @@ const ICONS = [
   { id: 'meme-generator', image: '/assets/meme.gif', label: 'Meme Generator', action: 'meme-generator', row: 0, col: 4 },
   // Row 2
   { id: 'purity', image: '/assets/purityfinance.png', label: 'Purity', action: 'popup', popupId: 'purity-popup', row: 1, col: 0 },
+  { id: 'lawbshop', image: '/assets/lawbshop.png', label: 'Lawb.Shop', action: 'url', url: 'https://store.fun/lawbshop', row: 1, col: 1 },
   // NFT icons for folders (not shown on desktop)
   { id: 'lawbstarz', image: '/assets/lawbstarz.gif', label: 'Lawbstarz', action: 'popup', popupId: 'lawbstarz-popup', row: -1, col: -1 },
   { id: 'lawbsters', image: '/assets/lawbsters.gif', label: 'Lawbsters', action: 'popup', popupId: 'lawbsters-popup', row: -1, col: -1 },
@@ -92,6 +105,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
             image={icon.image}
             label={icon.label}
             action={icon.action}
+            url={icon.url}
             popupId={icon.popupId}
             folderId={icon.folderId}
             position={positions[icon.id]}

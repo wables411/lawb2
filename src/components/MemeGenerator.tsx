@@ -6,109 +6,137 @@ const useStyles = createUseStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    gap: 16,
     padding: 16,
-    maxWidth: '600px',
-    maxHeight: '80vh',
-    overflowY: 'auto',
-    fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif",
-    color: '#000',
+    background: '#c0c0c0',
+    border: '2px outset #fff',
+    borderRadius: 8,
+    maxWidth: 500,
+    width: '100%',
+    fontFamily: 'monospace',
+    fontSize: 12,
   },
-  controls: {
+  header: {
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: '#000',
+    fontSize: '11px',
+    textAlign: 'center',
+    marginBottom: 12,
+    lineHeight: 1.3,
+  },
+  content: {
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
-    width: '100%',
-    maxWidth: 420,
-    marginBottom: 16,
-    alignItems: 'center',
   },
-  memeArea: {
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    borderRadius: 12,
-    padding: 16,
+  section: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    position: 'relative',
-    width: '100%',
-    maxWidth: 420,
+    gap: 8,
   },
-  canvas: {
-    background: '#000',
-    borderRadius: 8,
-    width: 400,
-    height: 400,
-    maxWidth: '100%',
-    maxHeight: '60vh',
+  sectionTitle: {
+    fontWeight: 'bold',
+    color: '#000',
+    fontSize: 12,
+    borderBottom: '1px solid #888',
+    paddingBottom: 2,
   },
   row: {
     display: 'flex',
-    gap: 12,
     alignItems: 'center',
+    gap: 8,
     flexWrap: 'wrap',
-    justifyContent: 'center',
   },
   label: {
-    fontWeight: 'bold',
+    minWidth: 80,
     color: '#000',
-    fontSize: 12,
-    marginRight: 8,
+    fontWeight: 'bold',
+    fontSize: 11,
   },
   input: {
-    fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif",
-    fontSize: 12,
-    padding: 4,
-    borderRadius: 4,
-    border: '1px solid #888',
+    flex: 1,
+    minWidth: 120,
+    padding: '4px 6px',
+    border: '2px inset #fff',
+    background: '#fff',
+    fontSize: 11,
+    fontFamily: 'monospace',
+    color: '#000',
   },
   button: {
-    background: '#00ffff',
-    color: '#000',
-    fontWeight: 'bold',
-    border: 'none',
-    borderRadius: 4,
-    padding: '8px 16px',
-    fontSize: 12,
+    padding: '6px 12px',
+    background: '#c0c0c0',
+    border: '2px outset #fff',
     cursor: 'pointer',
-    fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif",
-    boxShadow: '2px 2px 0 #000',
-    marginRight: 8,
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#000',
+    '&:hover': {
+      background: '#d0d0d0',
+    },
+    '&:active': {
+      border: '2px inset #fff',
+    },
   },
   effectButton: {
-    extend: 'button',
-    background: '#e0e0e0',
-    color: '#000',
+    padding: '4px 8px',
+    background: '#c0c0c0',
     border: '2px outset #fff',
-    marginRight: 8,
-    marginBottom: 8,
+    cursor: 'pointer',
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
+    '&:hover': {
+      background: '#d0d0d0',
+    },
+    '&:active': {
+      border: '2px inset #fff',
+    },
   },
-  nftPicker: {
+  memeArea: {
+    display: 'flex',
+    justifyContent: 'center',
+    position: 'relative',
+    marginTop: 8,
+  },
+  canvas: {
+    border: '2px inset #fff',
+    background: '#333',
+    maxWidth: '100%',
+    height: 'auto',
+  },
+  dropdown: {
+    position: 'relative',
+  },
+  dropdownContent: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    background: '#fff',
+    border: '2px outset #fff',
+    borderRadius: 4,
+    zIndex: 10,
+    minWidth: 160,
+    maxHeight: 200,
+    overflowY: 'auto',
+  },
+  dropdownItem: {
+    padding: '6px 8px',
+    cursor: 'pointer',
+    fontSize: 11,
+    borderBottom: '1px solid #eee',
+    '&:hover': {
+      background: '#f0f0f0',
+    },
+  },
+  actions: {
     display: 'flex',
     gap: 8,
-    marginBottom: 8,
-    flexWrap: 'wrap',
-  },
-  nftThumb: {
-    width: 48,
-    height: 48,
-    border: '2px solid #00ffff',
-    borderRadius: 6,
-    cursor: 'pointer',
-    objectFit: 'cover',
-    background: '#fff',
-  },
-  stampThumb: {
-    width: 36,
-    height: 36,
-    border: '2px solid #888',
-    borderRadius: 6,
-    cursor: 'pointer',
-    objectFit: 'contain',
-    background: '#fff',
-    marginRight: 8,
+    justifyContent: 'center',
+    marginTop: 8,
   },
 });
 
@@ -142,8 +170,8 @@ function MemeGenerator() {
   const drawMeme = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
+
+      const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
     // Clear canvas
@@ -152,10 +180,10 @@ function MemeGenerator() {
     // Draw background image if available
     if (nftImage) {
       console.log('Loading image:', nftImage);
-      const img = new Image();
+        const img = new Image();
       img.crossOrigin = 'anonymous'; // Try to fix CORS issue
       
-      img.onload = () => {
+        img.onload = () => {
         console.log('Image loaded successfully:', img.width, 'x', img.height);
         // Check if canvas still exists and is the same one
         const currentCanvas = canvasRef.current;
@@ -216,25 +244,61 @@ function MemeGenerator() {
     if (!canvas) return;
     
     ctx.textAlign = 'center';
-    ctx.font = `bold ${topFontSize}px Impact`;
+    
+    // Function to wrap text
+    const wrapText = (text: string, maxWidth: number) => {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = words[0];
+      
+      for (let i = 1; i < words.length; i++) {
+        const word = words[i];
+        const width = ctx.measureText(currentLine + ' ' + word).width;
+        if (width < maxWidth) {
+          currentLine += ' ' + word;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      lines.push(currentLine);
+      return lines;
+    };
     
     // Draw top text
     if (topText) {
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 4;
-      ctx.strokeText(topText, canvas.width / 2, topFontSize + 10);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(topText, canvas.width / 2, topFontSize + 10);
+      ctx.font = `bold ${topFontSize}px Impact`;
+      const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
+      const lines = wrapText(topText, maxWidth);
+      
+      lines.forEach((line, index) => {
+        const y = topFontSize + 10 + (index * topFontSize * 1.2);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 4;
+        ctx.strokeText(line, canvas.width / 2, y);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(line, canvas.width / 2, y);
+      });
     }
     
     // Draw bottom text
     if (bottomText) {
       ctx.font = `bold ${bottomFontSize}px Impact`;
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 4;
-      ctx.strokeText(bottomText, canvas.width / 2, canvas.height - 10);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(bottomText, canvas.width / 2, canvas.height - 10);
+      const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
+      const lines = wrapText(bottomText, maxWidth);
+      
+      // Calculate total height of bottom text
+      const totalHeight = lines.length * bottomFontSize * 1.2;
+      const startY = canvas.height - totalHeight - 10;
+      
+      lines.forEach((line, index) => {
+        const y = startY + (index * bottomFontSize * 1.2);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 4;
+        ctx.strokeText(line, canvas.width / 2, y);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(line, canvas.width / 2, y);
+      });
     }
   };
 
@@ -415,57 +479,65 @@ function MemeGenerator() {
 
   return (
     <div className={classes.container}>
-      <h2 style={{ color: '#00ffff', textShadow: '1px 1px 0 #000', marginBottom: 8, fontSize: '16px' }}>Lawb Meme Maker</h2>
-      <p style={{ color: '#ccc', fontSize: '12px', marginBottom: 16, textAlign: 'center' }}>
-        find memes or upload your own to{' '}
-        <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#00ffff', textDecoration: 'underline' }}>
-          Meme Depot
-        </a>
-      </p>
+      <div className={classes.header}>
+        <h2 style={{ color: '#00ffff', textShadow: '1px 1px 0 #000', marginBottom: 8, fontSize: '16px' }}>Lawb Meme Maker</h2>
+        <p className={classes.subtitle}>
+          find memes or upload your own on{' '}
+          <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#ff0000', textDecoration: 'underline' }}>
+            Meme Depot
+          </a>
+        </p>
+      </div>
       
-      <div className={classes.controls}>
-        <div className={classes.row}>
-          {/* NFT Collection Dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button className={classes.button} onClick={() => setShowCollectionDropdown(v => !v)}>
-              Collections
-            </button>
-            {showCollectionDropdown && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, background: '#fff', color: '#000', border: '2px outset #00ffff', borderRadius: 6, zIndex: 10, minWidth: 160 }}>
-                {NFT_COLLECTIONS.map(col => (
-                  <div key={col.id} style={{ padding: 8, cursor: 'pointer', borderBottom: '1px solid #eee' }} onClick={() => { void handlePickRandomNft(col); }}>
-                    {col.name}
-                  </div>
-                ))}
-              </div>
-            )}
+    <div className={classes.content}>
+        <div className={classes.section}>
+          <div className={classes.sectionTitle}>Collections</div>
+          <div className={classes.row}>
+            <div className={classes.dropdown}>
+              <button className={classes.button} onClick={() => setShowCollectionDropdown(v => !v)}>
+                Collections
+              </button>
+              {showCollectionDropdown && (
+                <div className={classes.dropdownContent}>
+                  {NFT_COLLECTIONS.map(col => (
+                    <div key={col.id} className={classes.dropdownItem} onClick={() => { void handlePickRandomNft(col); }}>
+                      {col.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <label className={classes.button} style={{ marginBottom: 0 }}>
+              Upload Image
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+            </label>
+            {loadingNft && <span style={{ color: '#00ffff', marginLeft: 8, fontSize: '12px' }}>Loading NFT...</span>}
           </div>
-          {/* Image Upload */}
-          <label className={classes.button} style={{ marginBottom: 0 }}>
-            Upload Image
-            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-          </label>
-          {loadingNft && <span style={{ color: '#00ffff', marginLeft: 8, fontSize: '12px' }}>Loading NFT...</span>}
         </div>
-        <div className={classes.row}>
-          <span className={classes.label}>Top Text:</span>
-          <input className={classes.input} type="text" value={topText} onChange={e => setTopText(e.target.value)} placeholder="Top text" />
-          <span className={classes.label}>Size:</span>
-          <input className={classes.input} type="number" min={10} max={100} value={topFontSize} onChange={e => setTopFontSize(Number(e.target.value))} style={{ width: 60 }} />
+        <div className={classes.section}>
+          <div className={classes.sectionTitle}>Text</div>
+          <div className={classes.row}>
+            <span className={classes.label}>Top Text:</span>
+            <input className={classes.input} type="text" value={topText} onChange={e => setTopText(e.target.value)} placeholder="Enter top text..." />
+            <span className={classes.label}>Size:</span>
+            <input className={classes.input} type="number" min={10} max={100} value={topFontSize} onChange={e => setTopFontSize(Number(e.target.value))} style={{ width: 60, textAlign: 'center' }} />
+          </div>
+          <div className={classes.row}>
+            <span className={classes.label}>Bottom Text:</span>
+            <input className={classes.input} type="text" value={bottomText} onChange={e => setBottomText(e.target.value)} placeholder="Enter bottom text..." />
+            <span className={classes.label}>Size:</span>
+            <input className={classes.input} type="number" min={10} max={100} value={bottomFontSize} onChange={e => setBottomFontSize(Number(e.target.value))} style={{ width: 60, textAlign: 'center' }} />
+          </div>
         </div>
-        <div className={classes.row}>
-          <span className={classes.label}>Bottom Text:</span>
-          <input className={classes.input} type="text" value={bottomText} onChange={e => setBottomText(e.target.value)} placeholder="Bottom text" />
-          <span className={classes.label}>Size:</span>
-          <input className={classes.input} type="number" min={10} max={100} value={bottomFontSize} onChange={e => setBottomFontSize(Number(e.target.value))} style={{ width: 60 }} />
+        <div className={classes.section}>
+          <div className={classes.sectionTitle}>Effects</div>
+          <div className={classes.row}>
+            <button className={classes.effectButton} style={{ background: deepFry ? '#00ffff' : undefined }} onClick={() => setDeepFry(v => !v)}>Deep Fry</button>
+            <button className={classes.effectButton} style={{ background: pixelate ? '#00ffff' : undefined }} onClick={() => setPixelate(v => !v)}>Pixelate</button>
+            <button className={classes.effectButton} style={{ background: grain ? '#00ffff' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
+          </div>
         </div>
-        <div className={classes.row}>
-          <span className={classes.label}>Effects:</span>
-          <button className={classes.effectButton} style={{ background: deepFry ? '#00ffff' : undefined }} onClick={() => setDeepFry(v => !v)}>Deep Fry</button>
-          <button className={classes.effectButton} style={{ background: pixelate ? '#00ffff' : undefined }} onClick={() => setPixelate(v => !v)}>Pixelate</button>
-          <button className={classes.effectButton} style={{ background: grain ? '#00ffff' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
-        </div>
-        <div className={classes.row}>
+        <div className={classes.actions}>
           <button className={classes.button} onClick={handleSave}>Save Image</button>
           <button className={classes.button} onClick={handleRestart}>Restart</button>
         </div>

@@ -42,22 +42,24 @@ const useStyles = createUseStyles({
   },
   menu: {
     position: 'absolute',
-    bottom: '40px',
+    bottom: '45px',
     left: '5px',
     background: '#c0c0c0',
     border: '2px outset #fff',
     padding: '5px',
     display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
-    zIndex: 9999
+    zIndex: 9999,
+    maxHeight: '300px',
+    overflowY: 'auto'
   },
   menuLink: {
     display: 'block',
-    padding: '6px 12px',
+    padding: '4px 12px',
     color: '#000',
     textDecoration: 'none',
     background: '#c0c0c0',
     border: '2px outset #fff',
-    marginBottom: '2px',
+    marginBottom: '1px',
     cursor: 'pointer',
     fontSize: '12px',
     '&:hover': {
