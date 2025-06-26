@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { createClient } from '@supabase/supabase-js';
 import './ChessGame.css';
@@ -28,7 +28,7 @@ interface LeaderboardEntry {
 }
 
 // Chess piece images
-const pieceImages = {
+const pieceImages: { [key: string]: string } = {
   // Red pieces (uppercase)
   'R': '/images/redrook.png',
   'N': '/images/redknight.png',
@@ -43,12 +43,6 @@ const pieceImages = {
   'q': '/images/bluequeen.png',
   'k': '/images/blueking.png',
   'p': '/images/bluepawn.png'
-};
-
-// Fallback piece symbols
-const pieceSymbols = {
-  'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟',
-  'r': '♖', 'n': '♘', 'b': '♗', 'q': '♕', 'k': '♔', 'p': '♙'
 };
 
 // Initial board state
@@ -187,29 +181,32 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   const loadLeaderboard = async () => {
     try {
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database timeout')), 10000)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error('Database timeout')), 10000)
       );
-      
+
       const dataPromise = supabase
         .from('leaderboard')
         .select('*')
         .order('points', { ascending: false });
-      
-      const { data, error } = await Promise.race([dataPromise, timeoutPromise]) as any;
-      
-      if (error) throw error;
-      
-      // Normalize addresses to lowercase for consistency
-      const normalizedData = (data || []).map((entry: any) => ({
-        ...entry,
-        username: entry.username.toLowerCase()
-      }));
-      
-      setLeaderboardData(normalizedData);
+
+      type SupabaseLeaderboardResponse = {
+        data: LeaderboardEntry[] | null;
+        error: Error | null;
+      };
+      const { data, error } = (await Promise.race([dataPromise, timeoutPromise])) as SupabaseLeaderboardResponse;
+
+      if (error) {
+        setStatus('Failed to load leaderboard');
+        console.error('Leaderboard error:', error);
+        return;
+      }
+      if (data) {
+        setLeaderboardData(data);
+      }
     } catch (error) {
-      console.error('Error loading leaderboard:', error);
-      setLeaderboardData([]); // Set empty array on error
+      setStatus('Failed to load leaderboard');
+      console.error('Leaderboard error:', error);
     }
   };
 
@@ -270,7 +267,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   };
 
   // Utility functions
-  const getPieceColor = (piece: string): 'blue' | 'red' => {
+  const getPieceColor = (piece: string | null): 'blue' | 'red' => {
     if (!piece) return 'blue';
     return piece === piece.toUpperCase() ? 'red' : 'blue';
   };
@@ -566,7 +563,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     const piece = board[from.row][from.col];
     const capturedPiece = board[to.row][to.col];
     const pieceColor = getPieceColor(piece);
-    const pieceType = piece.toLowerCase();
+    const pieceType = piece ? piece.toLowerCase() : '';
     
     // Create new board state
     const newBoard = board.map(row => [...row]);
@@ -674,7 +671,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
             setMoveHistory(prev => [...prev, moveNotation]);
             
             // Check game end
-            const aiNextPlayer = nextPlayer === 'blue' ? 'red' : 'blue';
+            const aiNextPlayer = (nextPlayer === 'blue' ? 'red' : 'blue') as 'blue' | 'red';
             const gameEndResult = checkGameEnd(aiBoard, aiNextPlayer);
             
             if (gameEndResult) {
@@ -897,7 +894,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
           <div
             className="piece"
             style={{
-              backgroundImage: `url(${pieceImages[piece]})`,
+              backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
               backgroundSize: 'contain',
               backgroundRepeat: 'no-repeat',
               backgroundPosition: 'center'
@@ -929,7 +926,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
                   setPromotionMove(null);
                 }}
                 style={{
-                  backgroundImage: `url(${pieceImages[piece]})`,
+                  backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
                   backgroundSize: 'contain',
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'center'
@@ -1005,16 +1002,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboardData.slice(0, 10).map((entry, index) => (
-                    <tr key={entry.username}>
-                      <td>{index + 1}</td>
-                      <td>{formatAddress(entry.username)}</td>
-                      <td>{entry.wins}</td>
-                      <td>{entry.losses}</td>
-                      <td>{entry.draws}</td>
-                      <td>{entry.points}</td>
-                    </tr>
-                  ))}
+                  {leaderboardData.slice(0, 10).map((entry, index) => {
+                    const typedEntry = entry as LeaderboardEntry;
+                    return (
+                      <tr key={typedEntry.username}>
+                        <td>{index + 1}</td>
+                        <td>{formatAddress(typedEntry.username)}</td>
+                        <td>{typedEntry.wins}</td>
+                        <td>{typedEntry.losses}</td>
+                        <td>{typedEntry.draws}</td>
+                        <td>{typedEntry.points}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1187,16 +1187,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
                         </tr>
                       </thead>
                       <tbody>
-                        {leaderboardData.slice(0, 10).map((entry, index) => (
-                          <tr key={entry.username}>
-                            <td>{index + 1}</td>
-                            <td>{formatAddress(entry.username)}</td>
-                            <td>{entry.wins}</td>
-                            <td>{entry.losses}</td>
-                            <td>{entry.draws}</td>
-                            <td>{entry.points}</td>
-                          </tr>
-                        ))}
+                        {leaderboardData.slice(0, 10).map((entry, index) => {
+                          const typedEntry = entry as LeaderboardEntry;
+                          return (
+                            <tr key={typedEntry.username}>
+                              <td>{index + 1}</td>
+                              <td>{formatAddress(typedEntry.username)}</td>
+                              <td>{typedEntry.wins}</td>
+                              <td>{typedEntry.losses}</td>
+                              <td>{typedEntry.draws}</td>
+                              <td>{typedEntry.points}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
