@@ -246,7 +246,7 @@ const Mobile = () => {
   const [showChessGame, setShowChessGame] = useState(false);
 
   const icons = [
-    { label: 'Chess', icon: '/assets/chess.png', action: () => setShowChessGame(true) },
+    { label: 'Chess', icon: '/images/chessboard5.png', action: () => setShowChessGame(true) },
     { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },

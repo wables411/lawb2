@@ -611,7 +611,8 @@
     transform: none;
     padding-bottom: 60px; /* extra space for taskbar */
     box-sizing: border-box;
-    max-height: calc(100vh - 60px);
+    max-height: 100vh;
+    overflow: hidden;
   }
   .chess-header {
     height: 36px;
@@ -623,6 +624,8 @@
     padding: 6px;
     gap: 8px;
     min-height: 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 36px - 60px);
   }
   .game-container,
   .difficulty-selection-row {
@@ -630,6 +633,10 @@
     gap: 10px;
     align-items: stretch;
     width: 100%;
+    min-width: 0;
+    max-width: 100vw;
+    margin: 0;
+    overflow: visible;
   }
   .gallery-main-area,
   .difficulty-gallery-col,
@@ -641,11 +648,14 @@
     justify-content: center;
     align-items: center;
     margin: 0 auto;
+    overflow: visible;
   }
   .piece-gallery,
   .piece-gallery-sm {
     max-width: 100vw;
     padding: 10px 2vw 8px 2vw;
+    overflow-y: auto;
+    max-height: 220px;
   }
   .piece-gallery-grid {
     grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
@@ -685,14 +695,17 @@
     width: 100vw;
     max-width: 100vw;
     justify-content: center;
+    overflow: visible;
   }
   .chessboard {
-    width: 90vw;
-    height: 90vw;
-    min-width: 240px;
-    min-height: 240px;
-    max-width: 98vw;
-    max-height: 98vw;
+    width: 96vw;
+    height: 96vw;
+    min-width: 160px;
+    min-height: 160px;
+    max-width: 99vw;
+    max-height: 99vw;
+    margin: 0 auto;
+    display: block;
   }
   .game-controls {
     flex-direction: row;
@@ -704,6 +717,10 @@
   .difficulty-selection-panel {
     padding: 12px 6px 10px 6px;
     gap: 8px;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow: visible;
   }
   .difficulty-btn {
     width: 100px;
