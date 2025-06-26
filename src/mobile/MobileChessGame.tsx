@@ -1,5 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createUseStyles } from 'react-jss';
+import { useAccount } from 'wagmi';
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase configuration
+const supabaseUrl = 'https://roxwocgknkiqnsgiojgz.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3NjMxMTIsImV4cCI6MjA0NjMzOTExMn0.NbLMZom-gk7XYGdV4MtXYcgR8R1s8xthrIQ0hpQfx9Y';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Game modes
+const GameMode = {
+  AI: 'ai',
+  ONLINE: 'online'
+} as const;
+
+// Leaderboard data type
+interface LeaderboardEntry {
+  username: string;
+  chain_type: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  total_games: number;
+  points: number;
+  updated_at: string;
+}
 
 const useStyles = createUseStyles({
   mobileChessContainer: {
@@ -28,6 +54,15 @@ const useStyles = createUseStyles({
     fontWeight: 'bold',
     '&:active': {
       border: '2px inset #fff',
+    },
+    '&.selected': {
+      background: '#000080',
+      color: 'white',
+      border: '2px inset #fff',
+    },
+    '&.disabled': {
+      opacity: 0.6,
+      cursor: 'not-allowed',
     },
   },
   difficultySelection: {
@@ -223,6 +258,12 @@ const useStyles = createUseStyles({
       border: '2px inset #fff',
     },
   },
+  walletRequired: {
+    textAlign: 'center',
+    padding: '20px',
+    background: '#f0f0f0',
+    border: '2px inset #c0c0c0',
+  },
 });
 
 // Chess piece images
@@ -241,6 +282,18 @@ const pieceImages: { [key: string]: string } = {
   'p': '/images/bluepawn.png'
 };
 
+// Initial board state (matching desktop)
+const initialBoard: (string | null)[][] = [
+  ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
+  ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+  ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']
+];
+
 // Utility to switch player color
 const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
 
@@ -255,45 +308,183 @@ const pieceGallery = [
 ];
 
 interface MobileChessGameProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
-const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
+const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   const classes = useStyles();
+  const { address: walletAddress } = useAccount();
+  
+  // Game state
   const [gameState, setGameState] = useState<'menu' | 'difficulty' | 'game'>('menu');
-  const [selectedMode, setSelectedMode] = useState<'ai' | 'multiplayer'>('ai');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
-  const [board, setBoard] = useState<string[][]>([]);
+  const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.AI);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'hard'>('easy');
+  const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)));
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
-  const [selectedSquare, setSelectedSquare] = useState<[number, number] | null>(null);
-  const [legalMoves, setLegalMoves] = useState<[number, number][]>([]);
-  const [gameStatus, setGameStatus] = useState<string>('');
+  const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
+  const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
+  const [gameStatus, setGameStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
-  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  
+  const aiWorkerRef = useRef<Worker | null>(null);
+  const isAIMovingRef = useRef<boolean>(false);
+  const boardRef = useRef<(string | null)[][]>(board);
 
-  // Initialize board
+  // Update board ref whenever board state changes
   useEffect(() => {
-    const initialBoard = [
-      ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
-      ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-      ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']
-    ];
-    setBoard(initialBoard);
+    boardRef.current = board;
+  }, [board]);
+
+  // Check wallet connection and update status
+  useEffect(() => {
+    if (!walletAddress) {
+      setGameStatus('Connect wallet to play');
+      setGameState('menu');
+    } else {
+      setGameStatus('Select game mode');
+    }
+  }, [walletAddress]);
+
+  // Initialize AI worker
+  useEffect(() => {
+    if (typeof Worker !== 'undefined') {
+      try {
+        aiWorkerRef.current = new Worker('/aiWorker.js');
+        aiWorkerRef.current.onmessage = (e: MessageEvent) => {
+          const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
+          if (move) {
+            setGameStatus('AI made a move');
+            isAIMovingRef.current = false;
+            makeMove(move.from, move.to, true);
+          } else {
+            isAIMovingRef.current = false;
+            setGameStatus('AI could not find a move');
+          }
+        };
+        aiWorkerRef.current.onerror = (error: ErrorEvent) => {
+          console.error('AI Worker error:', error);
+          setGameStatus('AI worker error - using fallback mode');
+          isAIMovingRef.current = false;
+        };
+      } catch (error) {
+        console.error('Failed to initialize AI worker:', error);
+        setGameStatus('AI worker failed to load - using fallback mode');
+      }
+    }
+    return () => {
+      if (aiWorkerRef.current) {
+        aiWorkerRef.current.terminate();
+      }
+    };
   }, []);
 
-  const handleGameModeSelect = (mode: 'ai' | 'multiplayer') => {
-    setSelectedMode(mode);
-    setGameState('difficulty');
+  // Load leaderboard
+  useEffect(() => {
+    void loadLeaderboard();
+  }, []);
+
+  // Load leaderboard data
+  const loadLeaderboard = async () => {
+    try {
+      type SupabaseLeaderboardResponse = {
+        data: LeaderboardEntry[] | null;
+        error: Error | null;
+      };
+      
+      const { data, error } = (await supabase
+        .from('leaderboard')
+        .select('*')
+        .order('points', { ascending: false })) as SupabaseLeaderboardResponse;
+
+      if (error) {
+        console.error('Failed to load leaderboard:', error);
+        return;
+      }
+
+      if (data) {
+        setLeaderboardData(data);
+      }
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+    }
   };
 
-  const handleDifficultySelect = (difficulty: 'easy' | 'medium' | 'hard') => {
-    setSelectedDifficulty(difficulty);
-    setGameState('game');
+  const getPieceColor = (piece: string | null): 'blue' | 'red' => {
+    if (!piece) return 'blue';
+    return piece === piece.toLowerCase() ? 'blue' : 'red';
+  };
+
+  const getLegalMoves = (from: { row: number; col: number }): { row: number; col: number }[] => {
+    const moves: { row: number; col: number }[] = [];
+    const piece = board[from.row][from.col];
+    if (!piece) return moves;
+
+    const pieceColor = getPieceColor(piece);
+    if (pieceColor !== currentPlayer) return moves;
+
+    // Simple legal move calculation (simplified for mobile)
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const targetPiece = board[r][c];
+        if (!targetPiece || getPieceColor(targetPiece) !== pieceColor) {
+          moves.push({ row: r, col: c });
+        }
+      }
+    }
+
+    return moves;
+  };
+
+  const makeMove = (from: { row: number; col: number }, to: { row: number; col: number }, isAIMove = false) => {
+    const newBoard = board.map(row => [...row]);
+    const piece = newBoard[from.row][from.col];
+    
+    if (!piece) return;
+
+    newBoard[to.row][to.col] = piece;
+    newBoard[from.row][from.col] = null;
+    
+    setBoard(newBoard);
+    setCurrentPlayer(switchPlayer(currentPlayer));
+    setMoveHistory(prev => [...prev, `${from.row},${from.col} -> ${to.row},${to.col}`]);
+    setSelectedPiece(null);
+    setLegalMoves([]);
+    
+    // AI move for AI mode
+    if (gameMode === GameMode.AI && !isAIMove && currentPlayer === 'blue') {
+      window.setTimeout(() => {
+        if (aiWorkerRef.current && !isAIMovingRef.current) {
+          isAIMovingRef.current = true;
+          aiWorkerRef.current.postMessage({
+            board: newBoard,
+            difficulty: selectedDifficulty,
+            player: 'red'
+          });
+        } else {
+          // Fallback random move
+          const aiMoves = [];
+          for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+              if (newBoard[r][c] && getPieceColor(newBoard[r][c]) === 'red') {
+                for (let tr = 0; tr < 8; tr++) {
+                  for (let tc = 0; tc < 8; tc++) {
+                    if (!newBoard[tr][tc] || getPieceColor(newBoard[tr][tc]) === 'blue') {
+                      aiMoves.push({ from: { row: r, col: c }, to: { row: tr, col: tc } });
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          if (aiMoves.length > 0) {
+            const randomMove = aiMoves[Math.floor(Math.random() * aiMoves.length)];
+            makeMove(randomMove.from, randomMove.to, true);
+          }
+        }
+      }, 500);
+    }
   };
 
   const handleSquareClick = (row: number, col: number) => {
@@ -301,85 +492,28 @@ const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
 
     const piece = board[row][col];
     
-    if (selectedSquare) {
+    if (selectedPiece) {
       // Move piece
-      const [fromRow, fromCol] = selectedSquare;
-      if (legalMoves.some(([r, c]) => r === row && c === col)) {
-        const newBoard = board.map(row => [...row]);
-        newBoard[row][col] = newBoard[fromRow][fromCol];
-        newBoard[fromRow][fromCol] = '';
-        
-        setBoard(newBoard);
-        setCurrentPlayer(switchPlayer(currentPlayer));
-        setMoveHistory(prev => [...prev, `${fromRow},${fromCol} -> ${row},${col}`]);
-        
-        // Simple AI move for AI mode
-        if (selectedMode === 'ai' && currentPlayer === 'blue') {
-          setTimeout(() => {
-            // Simple random AI move
-            const aiMoves = [];
-            for (let r = 0; r < 8; r++) {
-              for (let c = 0; c < 8; c++) {
-                if (newBoard[r][c] && newBoard[r][c] === newBoard[r][c].toLowerCase()) {
-                  // Find possible moves for this piece
-                  for (let tr = 0; tr < 8; tr++) {
-                    for (let tc = 0; tc < 8; tc++) {
-                      if (newBoard[tr][tc] === '' || newBoard[tr][tc] === newBoard[tr][tc].toUpperCase()) {
-                        aiMoves.push([r, c, tr, tc]);
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            
-            if (aiMoves.length > 0) {
-              const [fromR, fromC, toR, toC] = aiMoves[Math.floor(Math.random() * aiMoves.length)];
-              const aiBoard = newBoard.map(row => [...row]);
-              aiBoard[toR][toC] = aiBoard[fromR][fromC];
-              aiBoard[fromR][fromC] = '';
-              setBoard(aiBoard);
-              setCurrentPlayer('blue');
-              setMoveHistory(prev => [...prev, `AI: ${fromR},${fromC} -> ${toR},${toC}`]);
-            }
-          }, 500);
-        }
+      const [fromRow, fromCol] = [selectedPiece.row, selectedPiece.col];
+      if (legalMoves.some(move => move.row === row && move.col === col)) {
+        makeMove({ row: fromRow, col: fromCol }, { row, col });
       }
       
-      setSelectedSquare(null);
+      setSelectedPiece(null);
       setLegalMoves([]);
-    } else if (piece && piece === piece.toLowerCase() === (currentPlayer === 'blue')) {
+    } else if (piece && getPieceColor(piece) === currentPlayer) {
       // Select piece
-      setSelectedSquare([row, col]);
-      // Calculate legal moves (simplified)
-      const moves: [number, number][] = [];
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          if (board[r][c] === '' || board[r][c] === board[r][c].toUpperCase()) {
-            moves.push([r, c]);
-          }
-        }
-      }
-      setLegalMoves(moves);
+      setSelectedPiece({ row, col });
+      setLegalMoves(getLegalMoves({ row, col }));
     }
   };
 
   const resetGame = () => {
-    const initialBoard = [
-      ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
-      ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-      ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']
-    ];
-    setBoard(initialBoard);
+    setBoard(JSON.parse(JSON.stringify(initialBoard)) as (string | null)[][]);
     setCurrentPlayer('blue');
-    setSelectedSquare(null);
+    setSelectedPiece(null);
     setLegalMoves([]);
-    setGameStatus('');
+    setGameStatus('Game reset');
     setMoveHistory([]);
   };
 
@@ -388,14 +522,40 @@ const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
     resetGame();
   };
 
+  const handleGameModeSelect = (mode: typeof GameMode[keyof typeof GameMode]) => {
+    setGameMode(mode);
+    setGameState('difficulty');
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Wallet required screen
+  if (!walletAddress) {
+    return (
+      <div className={classes.mobileChessContainer}>
+        <div className={classes.walletRequired}>
+          <p>Connect your wallet to play chess</p>
+        </div>
+      </div>
+    );
+  }
+
   const renderGameModeSelection = () => (
     <div className={classes.gameModeSelection}>
       <h3 style={{ textAlign: 'center', margin: '0 0 12px 0', fontSize: '16px' }}>Select Game Mode</h3>
-      <div className={classes.gameModeOption} onClick={() => handleGameModeSelect('ai')}>
+      <div 
+        className={`${classes.gameModeOption} ${gameMode === GameMode.AI ? 'selected' : ''}`}
+        onClick={() => handleGameModeSelect(GameMode.AI)}
+      >
         VS the House
       </div>
-      <div className={classes.gameModeOption} onClick={() => handleGameModeSelect('multiplayer')}>
-        Multiplayer
+      <div 
+        className={`${classes.gameModeOption} disabled`}
+        onClick={() => {}} // Disabled
+      >
+        PvP Under Construction
       </div>
     </div>
   );
@@ -425,16 +585,10 @@ const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
           Easy
         </button>
         <button 
-          className={`${classes.difficultyButton} ${selectedDifficulty === 'medium' ? 'selected' : ''}`}
-          onClick={() => setSelectedDifficulty('medium')}
-        >
-          Medium
-        </button>
-        <button 
           className={`${classes.difficultyButton} ${selectedDifficulty === 'hard' ? 'selected' : ''}`}
           onClick={() => setSelectedDifficulty('hard')}
         >
-          Hard
+          Kinda Harder
         </button>
       </div>
 
@@ -449,17 +603,21 @@ const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
             <tr>
               <th className={classes.leaderboardTableTh}>Rank</th>
               <th className={classes.leaderboardTableTh}>Player</th>
-              <th className={classes.leaderboardTableTh}>Wins</th>
-              <th className={classes.leaderboardTableTh}>Losses</th>
+              <th className={classes.leaderboardTableTh}>W</th>
+              <th className={classes.leaderboardTableTh}>L</th>
+              <th className={classes.leaderboardTableTh}>D</th>
+              <th className={classes.leaderboardTableTh}>Points</th>
             </tr>
           </thead>
           <tbody>
             {leaderboardData.slice(0, 5).map((entry, index) => (
-              <tr key={index}>
+              <tr key={entry.username}>
                 <td className={classes.leaderboardTableTd}>{index + 1}</td>
-                <td className={classes.leaderboardTableTd}>{entry.username?.slice(0, 8)}...</td>
+                <td className={classes.leaderboardTableTd}>{formatAddress(entry.username)}</td>
                 <td className={classes.leaderboardTableTd}>{entry.wins}</td>
                 <td className={classes.leaderboardTableTd}>{entry.losses}</td>
+                <td className={classes.leaderboardTableTd}>{entry.draws}</td>
+                <td className={classes.leaderboardTableTd}>{entry.points}</td>
               </tr>
             ))}
           </tbody>
@@ -474,8 +632,8 @@ const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
         {board.map((row, rowIndex) =>
           row.map((piece, colIndex) => {
             const isLight = (rowIndex + colIndex) % 2 === 0;
-            const isSelected = selectedSquare && selectedSquare[0] === rowIndex && selectedSquare[1] === colIndex;
-            const isLegalMove = legalMoves.some(([r, c]) => r === rowIndex && c === colIndex);
+            const isSelected = selectedPiece && selectedPiece.row === rowIndex && selectedPiece.col === colIndex;
+            const isLegalMove = legalMoves.some(move => move.row === rowIndex && move.col === colIndex);
             
             return (
               <div
@@ -499,7 +657,10 @@ const MobileChessGame: React.FC<MobileChessGameProps> = ({ onClose }) => {
 
       <div className={classes.gameInfo}>
         <div className={classes.status}>
-          Current Player: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
+          {gameStatus}
+        </div>
+        <div className={classes.status}>
+          Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
         </div>
         
         <div className={classes.moveHistory}>
