@@ -64,18 +64,18 @@ interface ChessGameProps {
 
 // Piece gallery data
 const pieceGallery = [
-  { key: 'K', name: 'Red King', img: '/public/images/redking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-  { key: 'Q', name: 'Red Queen', img: '/public/images/redqueen.png', desc: 'The Queen moves any number of squares in any direction.' },
-  { key: 'R', name: 'Red Rook', img: '/public/images/redrook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
-  { key: 'B', name: 'Red Bishop', img: '/public/images/redbishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
-  { key: 'N', name: 'Red Knight', img: '/public/images/redknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-  { key: 'P', name: 'Red Pawn', img: '/public/images/redpawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
-  { key: 'k', name: 'Blue King', img: '/public/images/blueking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-  { key: 'q', name: 'Blue Queen', img: '/public/images/bluequeen.png', desc: 'The Queen moves any number of squares in any direction.' },
-  { key: 'r', name: 'Blue Rook', img: '/public/images/bluerook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
-  { key: 'b', name: 'Blue Bishop', img: '/public/images/bluebishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
-  { key: 'n', name: 'Blue Knight', img: '/public/images/blueknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-  { key: 'p', name: 'Blue Pawn', img: '/public/images/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+  { key: 'K', name: 'Red King', img: '/images/redking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+  { key: 'Q', name: 'Red Queen', img: '/images/redqueen.png', desc: 'The Queen moves any number of squares in any direction.' },
+  { key: 'R', name: 'Red Rook', img: '/images/redrook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
+  { key: 'B', name: 'Red Bishop', img: '/images/redbishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
+  { key: 'N', name: 'Red Knight', img: '/images/redknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+  { key: 'P', name: 'Red Pawn', img: '/images/redpawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+  { key: 'k', name: 'Blue King', img: '/images/blueking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+  { key: 'q', name: 'Blue Queen', img: '/images/bluequeen.png', desc: 'The Queen moves any number of squares in any direction.' },
+  { key: 'r', name: 'Blue Rook', img: '/images/bluerook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
+  { key: 'b', name: 'Blue Bishop', img: '/images/bluebishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
+  { key: 'n', name: 'Blue Knight', img: '/images/blueknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+  { key: 'p', name: 'Blue Pawn', img: '/images/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
 ];
 
 export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => {
