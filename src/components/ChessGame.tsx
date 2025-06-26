@@ -130,7 +130,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
       setShowGame(false);
       setShowDifficulty(false);
       setShowMultiplayer(false);
-    } else {
+          } else {
       setStatus('Select game mode');
     }
   }, [walletAddress]);
@@ -189,7 +189,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
         .from('leaderboard')
         .select('*')
         .order('points', { ascending: false });
-
+      
       type SupabaseLeaderboardResponse = {
         data: LeaderboardEntry[] | null;
         error: Error | null;
@@ -233,8 +233,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
       const points = (existingRecord?.points || 0) + pointsToAdd;
 
       if (existingRecord) {
-        await supabase
-          .from('leaderboard')
+      await supabase
+        .from('leaderboard')
           .update({
             wins,
             losses,
@@ -249,14 +249,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
           .from('leaderboard')
           .insert({
             username: normalizedAddress,
-            chain_type: 'evm',
-            wins,
-            losses,
-            draws,
-            total_games,
-            points,
+          chain_type: 'evm',
+          wins,
+          losses,
+          draws,
+          total_games,
+          points,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString()
           });
       }
 
@@ -566,7 +566,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     const pieceType = piece ? piece.toLowerCase() : '';
     
     // Create new board state
-    const newBoard = board.map(row => [...row]);
+      const newBoard = board.map(row => [...row]);
     newBoard[to.row][to.col] = pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7)) 
       ? (pieceColor === 'blue' ? promotionPiece : promotionPiece.toUpperCase())
       : piece;
@@ -620,7 +620,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     setMoveHistory(prev => [...prev, moveNotation]);
     
     // Check game end
-    const nextPlayer = currentPlayer === 'blue' ? 'red' : 'blue';
+    const nextPlayer: 'blue' | 'red' = switchPlayer(currentPlayer);
     const gameEndResult = checkGameEnd(newBoard, nextPlayer);
     
     if (gameEndResult) {
@@ -633,7 +633,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     }
     
     // Switch players
-    setCurrentPlayer(nextPlayer);
+      setCurrentPlayer(nextPlayer);
     
     // AI move - only if it's AI's turn and we're in AI mode and this wasn't an AI move
     if (!isAIMove && gameMode === GameMode.AI && nextPlayer === 'red' && gameState === 'active') {
@@ -662,8 +662,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
             
             // Update state
             setBoard(aiBoard);
-            setSelectedPiece(null);
-            setLegalMoves([]);
+      setSelectedPiece(null);
+      setLegalMoves([]);
             setLastMove({ from, to });
             
             // Add to move history
@@ -671,7 +671,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
             setMoveHistory(prev => [...prev, moveNotation]);
             
             // Check game end
-            const aiNextPlayer = (nextPlayer === 'blue' ? 'red' : 'blue') as 'blue' | 'red';
+            const aiNextPlayer: 'blue' | 'red' = switchPlayer(nextPlayer);
             const gameEndResult = checkGameEnd(aiBoard, aiNextPlayer);
             
             if (gameEndResult) {
@@ -850,9 +850,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
       
       if (error || !data) {
         setStatus('Game not found or already full');
-        return;
-      }
-      
+      return;
+    }
+
       const { error: updateError } = await supabase
         .from('chess_games')
         .update({
@@ -883,8 +883,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     const isLegalMove = legalMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
                                    lastMove.to.row === row && lastMove.to.col === col);
-    
-    return (
+
+  return (
       <div
         key={`${row}-${col}`}
         className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
@@ -893,7 +893,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
         {piece && (
           <div
             className="piece"
-            style={{
+              style={{
               backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
               backgroundSize: 'contain',
               backgroundRepeat: 'no-repeat',
@@ -925,7 +925,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
                   setShowPromotion(false);
                   setPromotionMove(null);
                 }}
-                style={{
+            style={{
                   backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
                   backgroundSize: 'contain',
                   backgroundRepeat: 'no-repeat',
@@ -933,8 +933,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
                 }}
               />
             ))}
-          </div>
         </div>
+      </div>
       </div>
     );
   };
@@ -952,11 +952,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
             {selectedGalleryPiece === piece.key && (
               <div className="piece-gallery-desc">{piece.desc}</div>
             )}
-          </div>
+            </div>
         ))}
-      </div>
+              </div>
       <div className="piece-gallery-tip">{tipText}</div>
-    </div>
+                </div>
   );
 
   const renderDifficultySelection = () => (
@@ -966,25 +966,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
       </div>
       <div className="difficulty-controls-col">
         <div className="difficulty-selection-panel">
-          <h3>Select Difficulty</h3>
-          <button 
-            className={`difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
-            onClick={() => setDifficulty('easy')}
-          >
-            Easy
-          </button>
-          <button 
-            className={`difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
-            onClick={() => setDifficulty('hard')}
-          >
+                  <h3>Select Difficulty</h3>
+                  <button 
+                    className={`difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
+                    onClick={() => setDifficulty('easy')}
+                  >
+                    Easy
+                  </button>
+                  <button 
+                    className={`difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
+                    onClick={() => setDifficulty('hard')}
+                  >
             Kinda Harder
-          </button>
+                  </button>
           <button 
             className="start-btn"
             onClick={startGame}
           >
-            Start Game
-          </button>
+                    Start Game
+                  </button>
         </div>
         <div className="difficulty-leaderboard-panel">
           <div className="leaderboard">
@@ -1024,6 +1024,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     </div>
   );
 
+  // Utility to switch player color
+  const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
+
   // Main render
   if (!walletAddress) {
     return (
@@ -1058,8 +1061,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
         {!showGame && !showDifficulty && !showMultiplayer && (
           <div className="gallery-main-area">
             {renderPieceGallery(false)}
-          </div>
-        )}
+                </div>
+              )}
 
         {!showGame && !showDifficulty && !showMultiplayer && (
           <div className="game-mode-selection">
@@ -1094,36 +1097,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
 
         {showDifficulty && renderDifficultySelection()}
 
-        {showMultiplayer && (
+              {showMultiplayer && (
           <div className="multiplayer-selection">
             <h3>Multiplayer</h3>
-            <div className="wager-input">
+                  <div className="wager-input">
               <label>Wager (ETH):</label>
-              <input
-                type="number"
-                value={wager}
+                    <input 
+                      type="number" 
+                      value={wager}
                 onChange={(e) => setWager(parseFloat(e.target.value) || 0.1)}
                 min="0.01"
                 step="0.01"
-              />
-            </div>
+                    />
+                  </div>
             <button onClick={createGame}>Create Game</button>
-            <div className="join-game">
-              <input
-                type="text"
-                value={inviteCode}
+                  <div className="join-game">
+                    <input 
+                      type="text" 
+                      value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
                 placeholder="Enter invite code"
-              />
+                    />
               <button onClick={joinGame}>Join Game</button>
-            </div>
+                  </div>
             {status && status.includes('Game created!') && (
               <div className="game-created">
                 <p>{status}</p>
               </div>
             )}
-          </div>
-        )}
+                </div>
+              )}
 
         {showGame && (
           <div className="game-container">
@@ -1143,7 +1146,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
             
             {/* Center - Main Game Area */}
             <div className="game-main">
-              <div className="game-info">
+                  <div className="game-info">
                 <div className="status">{status}</div>
                 <div className="current-player">
                   Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
@@ -1151,17 +1154,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
                 <div className="wager-display">
                   Wager: {gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}
                 </div>
-              </div>
-              
+                  </div>
+
               <div className="chessboard-container">
-                <div className="chessboard">
+                  <div className="chessboard">
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="board-row">
                       {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                    </div>
-                  ))}
+                              </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
               
               <div className="game-controls">
                 <button onClick={resetGame}>New Game</button>
@@ -1172,45 +1175,45 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
             {/* Right Sidebar - Leaderboard */}
             {!showGame && !showDifficulty && !showMultiplayer && (
               <div className="right-sidebar">
-                <div className="leaderboard">
-                  <h3>Leaderboard</h3>
+              <div className="leaderboard">
+                <h3>Leaderboard</h3>
                   <div className="leaderboard-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Player</th>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
                           <th>W</th>
                           <th>L</th>
                           <th>D</th>
-                          <th>Points</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                      <th>Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                         {leaderboardData.slice(0, 10).map((entry, index) => {
                           const typedEntry = entry as LeaderboardEntry;
                           return (
                             <tr key={typedEntry.username}>
-                              <td>{index + 1}</td>
+                        <td>{index + 1}</td>
                               <td>{formatAddress(typedEntry.username)}</td>
                               <td>{typedEntry.wins}</td>
                               <td>{typedEntry.losses}</td>
                               <td>{typedEntry.draws}</td>
                               <td>{typedEntry.points}</td>
-                            </tr>
+                      </tr>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </div>
+                  </tbody>
+                </table>
+              </div>
                 </div>
               </div>
-            )}
-          </div>
+          )}
+        </div>
         )}
       </div>
 
       {renderPromotionDialog()}
     </div>
   );
-};
+}; 
