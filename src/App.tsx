@@ -7,6 +7,7 @@ import Popup from './components/Popup';
 import MintPopup from './components/MintPopup';
 import NFTGallery from './components/NFTGallery';
 import MemeGenerator from './components/MemeGenerator';
+import { ChessGame } from './components/ChessGame';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
 
@@ -34,6 +35,7 @@ function App() {
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [showChessGame, setShowChessGame] = useState(false);
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -79,6 +81,8 @@ function App() {
       setShowNFTGallery(true);
     } else if (action === 'meme-generator') {
       setShowMemeGenerator(true);
+    } else if (action === 'chess') {
+      setShowChessGame(true);
     }
   };
 
@@ -96,6 +100,8 @@ function App() {
       setShowNFTGallery(true);
     } else if (popupId === 'meme-generator-popup') {
       setShowMemeGenerator(true);
+    } else if (popupId === 'chess-game-popup') {
+      setShowChessGame(true);
     } else {
       setActivePopup(popupId);
     }
@@ -109,6 +115,7 @@ function App() {
   const closeMintPopup = () => setShowMintPopup(false);
   const closeNFTGallery = () => setShowNFTGallery(false);
   const closeMemeGenerator = () => setShowMemeGenerator(false);
+  const closeChessGame = () => setShowChessGame(false);
 
   const minimizeMintPopup = () => {
     setShowMintPopup(false);
@@ -123,6 +130,11 @@ function App() {
   const minimizeMemeGenerator = () => {
     setShowMemeGenerator(false);
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
+  };
+
+  const minimizeChessGame = () => {
+    setShowChessGame(false);
+    setMinimizedPopups(prev => new Set(prev).add('chess-game-popup'));
   };
 
   const walletButton = (
@@ -335,6 +347,8 @@ function App() {
       <Popup id="meme-generator-popup" isOpen={showMemeGenerator} onClose={closeMemeGenerator} onMinimize={minimizeMemeGenerator}>
         <MemeGenerator />
       </Popup>
+
+      {showChessGame && <ChessGame onClose={closeChessGame} onMinimize={minimizeChessGame} />}
     </div>
   );
 }

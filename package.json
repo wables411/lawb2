@@ -10,7 +10,9 @@
   "dependencies": {
     "@reown/appkit": "^1.2.2",
     "@reown/appkit-adapter-wagmi": "1.7.10",
+    "@supabase/supabase-js": "^2.50.1",
     "@tanstack/react-query": "5.81.0",
+    "ethers": "^6.14.4",
     "jss-preset-default": "^10.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
