@@ -122,7 +122,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           />
         ))}
         {openFolders['evm-folder'] && (
-          <Popup id="evm-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))}>
+          <Popup id="evm-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} zIndex={3001}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
@@ -148,7 +148,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           </Popup>
         )}
         {openFolders['sol-folder'] && (
-          <Popup id="sol-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))}>
+          <Popup id="sol-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} zIndex={3001}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
