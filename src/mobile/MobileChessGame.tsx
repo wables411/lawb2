@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useAccount } from 'wagmi';
 import { createClient } from '@supabase/supabase-js';
+import './MobileChessGame.css';
 
 // Supabase configuration
 const supabaseUrl = 'https://roxwocgknkiqnsgiojgz.supabase.co';
@@ -316,14 +317,14 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   const { address: walletAddress } = useAccount();
   
   // Game state
-  const [gameState, setGameState] = useState<'menu' | 'difficulty' | 'game'>('menu');
+  const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
   const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.AI);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'hard'>('easy');
-  const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)));
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)) as (string | null)[][]);
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
-  const [gameStatus, setGameStatus] = useState<string>('Connect wallet to play');
+  const [status, setStatus] = useState('Select game mode');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   
@@ -339,10 +340,10 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   // Check wallet connection and update status
   useEffect(() => {
     if (!walletAddress) {
-      setGameStatus('Connect wallet to play');
-      setGameState('menu');
+      setStatus('Connect wallet to play');
+      setGameState('active');
     } else {
-      setGameStatus('Select game mode');
+      setStatus('Select game mode');
     }
   }, [walletAddress]);
 
@@ -354,22 +355,22 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
         aiWorkerRef.current.onmessage = (e: MessageEvent) => {
           const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
           if (move) {
-            setGameStatus('AI made a move');
+            setStatus('AI made a move');
             isAIMovingRef.current = false;
             makeMove(move.from, move.to, true);
           } else {
             isAIMovingRef.current = false;
-            setGameStatus('AI could not find a move');
+            setStatus('AI could not find a move');
           }
         };
         aiWorkerRef.current.onerror = (error: ErrorEvent) => {
           console.error('AI Worker error:', error);
-          setGameStatus('AI worker error - using fallback mode');
+          setStatus('AI worker error - using fallback mode');
           isAIMovingRef.current = false;
         };
       } catch (error) {
         console.error('Failed to initialize AI worker:', error);
-        setGameStatus('AI worker failed to load - using fallback mode');
+        setStatus('AI worker failed to load - using fallback mode');
       }
     }
     return () => {
@@ -387,15 +388,10 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   // Load leaderboard data
   const loadLeaderboard = async () => {
     try {
-      type SupabaseLeaderboardResponse = {
-        data: LeaderboardEntry[] | null;
-        error: Error | null;
-      };
-      
-      const { data, error } = (await supabase
+      const { data, error } = await supabase
         .from('leaderboard')
         .select('*')
-        .order('points', { ascending: false })) as SupabaseLeaderboardResponse;
+        .order('points', { ascending: false });
 
       if (error) {
         console.error('Failed to load leaderboard:', error);
@@ -403,7 +399,7 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
       }
 
       if (data) {
-        setLeaderboardData(data);
+        setLeaderboardData(data as LeaderboardEntry[]);
       }
     } catch (error) {
       console.error('Error loading leaderboard:', error);
@@ -412,21 +408,21 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
 
   const getPieceColor = (piece: string | null): 'blue' | 'red' => {
     if (!piece) return 'blue';
-    return piece === piece.toLowerCase() ? 'blue' : 'red';
+    return piece === piece.toUpperCase() ? 'red' : 'blue';
   };
 
-  const getLegalMoves = (from: { row: number; col: number }): { row: number; col: number }[] => {
+  const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer): { row: number; col: number }[] => {
     const moves: { row: number; col: number }[] = [];
-    const piece = board[from.row][from.col];
+    const piece = boardState[from.row][from.col];
     if (!piece) return moves;
 
     const pieceColor = getPieceColor(piece);
-    if (pieceColor !== currentPlayer) return moves;
+    if (pieceColor !== player) return moves;
 
     // Simple legal move calculation (simplified for mobile)
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        const targetPiece = board[r][c];
+        const targetPiece = boardState[r][c];
         if (!targetPiece || getPieceColor(targetPiece) !== pieceColor) {
           moves.push({ row: r, col: c });
         }
@@ -458,7 +454,7 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
           isAIMovingRef.current = true;
           aiWorkerRef.current.postMessage({
             board: newBoard,
-            difficulty: selectedDifficulty,
+            difficulty: difficulty,
             player: 'red'
           });
         } else {
@@ -488,7 +484,7 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   };
 
   const handleSquareClick = (row: number, col: number) => {
-    if (gameState !== 'game') return;
+    if (gameState !== 'active' || isAIMovingRef.current) return;
 
     const piece = board[row][col];
     
@@ -513,18 +509,19 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
     setCurrentPlayer('blue');
     setSelectedPiece(null);
     setLegalMoves([]);
-    setGameStatus('Game reset');
+    setGameState('active');
     setMoveHistory([]);
+    setStatus('Select game mode');
   };
 
   const backToMenu = () => {
-    setGameState('menu');
+    setGameState('active');
     resetGame();
   };
 
   const handleGameModeSelect = (mode: typeof GameMode[keyof typeof GameMode]) => {
     setGameMode(mode);
-    setGameState('difficulty');
+    setGameState('active');
   };
 
   const formatAddress = (address: string) => {
@@ -579,20 +576,26 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
 
       <div className={classes.difficultyButtons}>
         <button 
-          className={`${classes.difficultyButton} ${selectedDifficulty === 'easy' ? 'selected' : ''}`}
-          onClick={() => setSelectedDifficulty('easy')}
+          className={`${classes.difficultyButton} ${difficulty === 'easy' ? 'selected' : ''}`}
+          onClick={() => setDifficulty('easy')}
         >
           Easy
         </button>
         <button 
-          className={`${classes.difficultyButton} ${selectedDifficulty === 'hard' ? 'selected' : ''}`}
-          onClick={() => setSelectedDifficulty('hard')}
+          className={`${classes.difficultyButton} ${difficulty === 'medium' ? 'selected' : ''}`}
+          onClick={() => setDifficulty('medium')}
         >
-          Kinda Harder
+          Medium
+        </button>
+        <button 
+          className={`${classes.difficultyButton} ${difficulty === 'hard' ? 'selected' : ''}`}
+          onClick={() => setDifficulty('hard')}
+        >
+          Hard
         </button>
       </div>
 
-      <button className={classes.startButton} onClick={() => setGameState('game')}>
+      <button className={classes.startButton} onClick={() => setGameState('active')}>
         Start Game
       </button>
 
@@ -657,7 +660,7 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
 
       <div className={classes.gameInfo}>
         <div className={classes.status}>
-          {gameStatus}
+          {status}
         </div>
         <div className={classes.status}>
           Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
@@ -684,9 +687,9 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
 
   return (
     <div className={classes.mobileChessContainer}>
-      {gameState === 'menu' && renderGameModeSelection()}
-      {gameState === 'difficulty' && renderDifficultySelection()}
-      {gameState === 'game' && renderGame()}
+      {gameState === 'active' && renderGameModeSelection()}
+      {gameState === 'active' && renderDifficultySelection()}
+      {gameState === 'active' && renderGame()}
     </div>
   );
 };
