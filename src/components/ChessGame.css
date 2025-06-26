@@ -4,17 +4,15 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 95vw;
-  max-width: 1600px;
-  height: 90vh;
-  max-height: 900px;
+  width: 90vw;
+  height: 85vh;
   background: #c0c0c0;
   border: 3px outset #c0c0c0;
-  border-radius: 0;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
   display: flex;
   flex-direction: column;
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  padding: 0;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
   overflow: hidden;
 }
@@ -67,22 +65,21 @@
 }
 
 .chess-content {
-  flex: 1;
-  padding: 12px;
-  overflow: hidden;
   display: flex;
-  gap: 12px;
+  flex: 1;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
   min-height: 0;
-  align-items: stretch;
 }
 
 /* Three-column layout */
 .game-container {
   display: flex;
-  gap: 12px;
-  height: 100%;
-  align-items: stretch;
-  width: 100%;
+  flex: 1;
+  gap: 8px;
+  min-height: 0;
+  padding: 0 8px;
 }
 
 /* Left Sidebar - Move History */
@@ -362,6 +359,7 @@
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  padding: 0 20px;
 }
 
 .game-mode-selection h3 {
@@ -427,6 +425,7 @@
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  padding: 0 20px;
 }
 
 .difficulty-selection h3 {
@@ -882,12 +881,12 @@
 }
 
 .gallery-main-area {
-  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
   min-height: 0;
+  padding: 0 8px;
 }
 
 .piece-gallery {
@@ -975,12 +974,10 @@
 
 .difficulty-selection-row {
   display: flex;
-  flex-direction: row;
+  gap: 16px;
   align-items: flex-start;
-  justify-content: center;
-  gap: 32px;
   width: 100%;
-  min-height: 350px;
+  padding: 0 8px;
 }
 
 .difficulty-gallery-col {
