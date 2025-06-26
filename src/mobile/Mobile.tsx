@@ -6,6 +6,7 @@ import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
+import { ChessGame } from '../components/ChessGame';
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -242,8 +243,10 @@ const Mobile = () => {
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [showChessGame, setShowChessGame] = useState(false);
 
   const icons = [
+    { label: 'Chess', icon: '/assets/chess.png', action: () => setShowChessGame(true) },
     { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
@@ -463,6 +466,10 @@ const Mobile = () => {
       {/* Meme Generator Popup */}
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
+      </MobilePopup98>
+      {/* Chess Game Popup */}
+      <MobilePopup98 isOpen={showChessGame} onClose={() => setShowChessGame(false)} title="Chess">
+        <ChessGame onClose={() => setShowChessGame(false)} />
       </MobilePopup98>
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
