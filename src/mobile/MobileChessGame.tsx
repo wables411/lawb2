@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createUseStyles } from 'react-jss';
-import { useAccount } from 'wagmi';
 import { createClient } from '@supabase/supabase-js';
 import './MobileChessGame.css';
 
@@ -28,253 +26,16 @@ interface LeaderboardEntry {
   updated_at: string;
 }
 
-const useStyles = createUseStyles({
-  mobileChessContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    maxHeight: '100%',
-    overflow: 'hidden',
-    fontFamily: "'MS Sans Serif', Arial, sans-serif",
-  },
-  gameModeSelection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    padding: '8px',
-    height: '100%',
-    overflowY: 'auto',
-  },
-  gameModeOption: {
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    padding: '12px',
-    cursor: 'pointer',
-    textAlign: 'center',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    '&:active': {
-      border: '2px inset #fff',
-    },
-    '&.selected': {
-      background: '#000080',
-      color: 'white',
-      border: '2px inset #fff',
-    },
-    '&.disabled': {
-      opacity: 0.6,
-      cursor: 'not-allowed',
-    },
-  },
-  difficultySelection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    padding: '8px',
-    height: '100%',
-    overflowY: 'auto',
-  },
-  difficultyButtons: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '8px',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  difficultyButton: {
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    padding: '8px 12px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    minWidth: '60px',
-    '&.selected': {
-      background: '#000080',
-      color: 'white',
-      border: '2px inset #fff',
-    },
-    '&:active': {
-      border: '2px inset #fff',
-    },
-  },
-  startButton: {
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    padding: '10px 20px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    marginTop: '8px',
-    alignSelf: 'center',
-    '&:active': {
-      border: '2px inset #fff',
-    },
-  },
-  pieceGallery: {
-    maxHeight: '120px',
-    overflowY: 'auto',
-    marginBottom: '8px',
-    padding: '4px',
-    background: '#f0f0f0',
-    border: '1px inset #fff',
-  },
-  pieceGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(40px, 1fr))',
-    gap: '4px',
-  },
-  pieceItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '2px',
-    fontSize: '8px',
-    textAlign: 'center',
-  },
-  pieceImage: {
-    width: '24px',
-    height: '24px',
-    marginBottom: '2px',
-  },
-  pieceName: {
-    fontSize: '8px',
-    fontWeight: 'bold',
-  },
-  pieceDesc: {
-    fontSize: '7px',
-    color: '#666',
-  },
-  leaderboard: {
-    maxHeight: '100px',
-    overflowY: 'auto',
-    fontSize: '10px',
-    background: '#f0f0f0',
-    border: '1px inset #fff',
-    padding: '4px',
-  },
-  leaderboardTable: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '9px',
-  },
-  leaderboardTableTh: {
-    background: '#000080',
-    color: 'white',
-    padding: '2px 4px',
-    textAlign: 'center',
-    fontWeight: 'bold',
-    border: '1px solid #c0c0c0',
-  },
-  leaderboardTableTd: {
-    padding: '2px 4px',
-    textAlign: 'center',
-    border: '1px solid #c0c0c0',
-    background: 'white',
-  },
-  gameBoard: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    overflow: 'hidden',
-  },
-  chessboard: {
-    width: '100%',
-    maxWidth: '280px',
-    height: '280px',
-    margin: '0 auto',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(8, 1fr)',
-    gridTemplateRows: 'repeat(8, 1fr)',
-    border: '2px solid #000',
-    flexShrink: 0,
-  },
-  square: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    position: 'relative',
-  },
-  squareLight: {
-    backgroundColor: '#f0d9b5',
-  },
-  squareDark: {
-    backgroundColor: '#b58863',
-  },
-  squareSelected: {
-    backgroundColor: 'rgba(0, 255, 0, 0.3)',
-  },
-  squareLegalMove: {
-    backgroundColor: 'rgba(0, 255, 0, 0.2)',
-  },
-  squareLastMove: {
-    backgroundColor: 'rgba(255, 255, 0, 0.3)',
-  },
-  piece: {
-    width: '80%',
-    height: '80%',
-    backgroundSize: 'contain',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center',
-    cursor: 'pointer',
-  },
-  gameInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    padding: '8px',
-    fontSize: '12px',
-    overflowY: 'auto',
-    flex: 1,
-  },
-  status: {
-    fontWeight: 'bold',
-    textAlign: 'center',
-    padding: '4px',
-    background: '#f0f0f0',
-    border: '1px inset #fff',
-  },
-  moveHistory: {
-    maxHeight: '80px',
-    overflowY: 'auto',
-    background: '#f0f0f0',
-    border: '1px inset #fff',
-    padding: '4px',
-    fontSize: '10px',
-  },
-  gameControls: {
-    display: 'flex',
-    gap: '8px',
-    justifyContent: 'center',
-    padding: '8px',
-    flexWrap: 'wrap',
-  },
-  controlButton: {
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    padding: '6px 12px',
-    cursor: 'pointer',
-    fontSize: '11px',
-    '&:active': {
-      border: '2px inset #fff',
-    },
-  },
-  walletRequired: {
-    textAlign: 'center',
-    padding: '20px',
-    background: '#f0f0f0',
-    border: '2px inset #c0c0c0',
-  },
-});
-
 // Chess piece images
 const pieceImages: { [key: string]: string } = {
+  // Red pieces (uppercase)
   'R': '/images/redrook.png',
   'N': '/images/redknight.png',
   'B': '/images/redbishop.png',
   'Q': '/images/redqueen.png',
   'K': '/images/redking.png',
   'P': '/images/redpawn.png',
+  // Blue pieces (lowercase)
   'r': '/images/bluerook.png',
   'n': '/images/blueknight.png',
   'b': '/images/bluebishop.png',
@@ -283,7 +44,7 @@ const pieceImages: { [key: string]: string } = {
   'p': '/images/bluepawn.png'
 };
 
-// Initial board state (matching desktop)
+// Initial board state
 const initialBoard: (string | null)[][] = [
   ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
   ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
@@ -295,38 +56,60 @@ const initialBoard: (string | null)[][] = [
   ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']
 ];
 
-// Utility to switch player color
-const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
-
-// Chess piece gallery for mobile
-const pieceGallery = [
-  { key: 'K', name: 'Red King', img: '/images/redking.png', desc: 'Moves one square in any direction' },
-  { key: 'Q', name: 'Red Queen', img: '/images/redqueen.png', desc: 'Moves any number of squares in any direction' },
-  { key: 'R', name: 'Red Rook', img: '/images/redrook.png', desc: 'Moves any number of squares horizontally or vertically' },
-  { key: 'B', name: 'Red Bishop', img: '/images/redbishop.png', desc: 'Moves any number of squares diagonally' },
-  { key: 'N', name: 'Red Knight', img: '/images/redknight.png', desc: 'Moves in an L-shape: 2 squares in one direction, then 1 square perpendicular' },
-  { key: 'P', name: 'Red Pawn', img: '/images/redpawn.png', desc: 'Moves forward one square, captures diagonally' },
-];
-
-interface MobileChessGameProps {
-  onClose?: () => void;
+interface ChessGameProps {
+  onClose: () => void;
+  walletAddress: string | null;
 }
 
-const MobileChessGame: React.FC<MobileChessGameProps> = () => {
-  const classes = useStyles();
-  const { address: walletAddress } = useAccount();
-  
+// Piece gallery data
+const pieceGallery = [
+  { key: 'K', name: 'Red King', img: '/images/redking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+  { key: 'Q', name: 'Red Queen', img: '/images/redqueen.png', desc: 'The Queen moves any number of squares in any direction.' },
+  { key: 'R', name: 'Red Rook', img: '/images/redrook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
+  { key: 'B', name: 'Red Bishop', img: '/images/redbishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
+  { key: 'N', name: 'Red Knight', img: '/images/redknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+  { key: 'P', name: 'Red Pawn', img: '/images/redpawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+  { key: 'k', name: 'Blue King', img: '/images/blueking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+  { key: 'q', name: 'Blue Queen', img: '/images/bluequeen.png', desc: 'The Queen moves any number of squares in any direction.' },
+  { key: 'r', name: 'Blue Rook', img: '/images/bluerook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
+  { key: 'b', name: 'Blue Bishop', img: '/images/bluebishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
+  { key: 'n', name: 'Blue Knight', img: '/images/blueknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+  { key: 'p', name: 'Blue Pawn', img: '/images/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+];
+
+export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddress }) => {
   // Game state
-  const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
   const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.AI);
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)) as (string | null)[][]);
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
-  const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
-  const [status, setStatus] = useState('Select game mode');
+  const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
+  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('easy');
+  const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
+  const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  
+  // UI state
+  const [showDifficulty, setShowDifficulty] = useState(false);
+  const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [showGame, setShowGame] = useState(false);
+  const [showPromotion, setShowPromotion] = useState(false);
+  const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  
+  // Multiplayer state
+  const [inviteCode, setInviteCode] = useState<string>('');
+  const [wager, setWager] = useState<number>(0.1);
+  
+  // Piece state tracking
+  const [pieceState, setPieceState] = useState({
+    blueKingMoved: false,
+    redKingMoved: false,
+    blueRooksMove: { left: false, right: false },
+    redRooksMove: { left: false, right: false },
+    lastPawnDoubleMove: null as { row: number; col: number } | null
+  });
   
   const aiWorkerRef = useRef<Worker | null>(null);
   const isAIMovingRef = useRef<boolean>(false);
@@ -341,7 +124,9 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   useEffect(() => {
     if (!walletAddress) {
       setStatus('Connect wallet to play');
-      setGameState('active');
+      setShowGame(false);
+      setShowDifficulty(false);
+      setShowMultiplayer(false);
     } else {
       setStatus('Select game mode');
     }
@@ -349,30 +134,34 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
 
   // Initialize AI worker
   useEffect(() => {
-    if (typeof Worker !== 'undefined') {
-      try {
-        aiWorkerRef.current = new Worker('/aiWorker.js');
-        aiWorkerRef.current.onmessage = (e: MessageEvent) => {
-          const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
-          if (move) {
-            setStatus('AI made a move');
-            isAIMovingRef.current = false;
-            makeMove(move.from, move.to, true);
-          } else {
-            isAIMovingRef.current = false;
-            setStatus('AI could not find a move');
-          }
-        };
-        aiWorkerRef.current.onerror = (error: ErrorEvent) => {
-          console.error('AI Worker error:', error);
-          setStatus('AI worker error - using fallback mode');
-          isAIMovingRef.current = false;
-        };
-      } catch (error) {
-        console.error('Failed to initialize AI worker:', error);
-        setStatus('AI worker failed to load - using fallback mode');
-      }
-    }
+    // Temporarily disable AI worker to test basic flow
+    console.log('AI worker disabled for testing');
+    setStatus('AI worker disabled for testing');
+    
+    // if (typeof Worker !== 'undefined') {
+    //   try {
+    //     aiWorkerRef.current = new Worker('/aiWorker.js');
+    //     aiWorkerRef.current.onmessage = (e: MessageEvent) => {
+    //       const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
+    //       if (move) {
+    //         setStatus('AI made a move');
+    //         isAIMovingRef.current = false;
+    //         makeMove(move.from, move.to, true);
+    //       } else {
+    //         isAIMovingRef.current = false;
+    //         setStatus('AI could not find a move');
+    //       }
+    //     };
+    //     aiWorkerRef.current.onerror = (error: ErrorEvent) => {
+    //       console.error('AI Worker error:', error);
+    //       setStatus('AI worker error - using fallback mode');
+    //       isAIMovingRef.current = false;
+    //     };
+    //   } catch (error) {
+    //     console.error('Failed to initialize AI worker:', error);
+    //     setStatus('AI worker failed to load - using fallback mode');
+    //   }
+    // }
     return () => {
       if (aiWorkerRef.current) {
         aiWorkerRef.current.terminate();
@@ -388,310 +177,1035 @@ const MobileChessGame: React.FC<MobileChessGameProps> = () => {
   // Load leaderboard data
   const loadLeaderboard = async () => {
     try {
-      const { data, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error('Database timeout')), 10000)
+      );
+
+      const dataPromise = supabase
         .from('leaderboard')
         .select('*')
         .order('points', { ascending: false });
+      
+      type SupabaseLeaderboardResponse = {
+        data: LeaderboardEntry[] | null;
+        error: Error | null;
+      };
+      const { data, error } = (await Promise.race([dataPromise, timeoutPromise])) as SupabaseLeaderboardResponse;
 
       if (error) {
-        console.error('Failed to load leaderboard:', error);
+        setStatus('Failed to load leaderboard');
+        console.error('Leaderboard error:', error);
         return;
       }
-
       if (data) {
-        setLeaderboardData(data as LeaderboardEntry[]);
+        setLeaderboardData(data);
       }
     } catch (error) {
-      console.error('Error loading leaderboard:', error);
+      setStatus('Failed to load leaderboard');
+      console.error('Leaderboard error:', error);
     }
   };
 
+  // Update score
+  const updateScore = async (gameResult: 'win' | 'loss' | 'draw') => {
+    if (!walletAddress) return;
+    
+    try {
+      const { data: existingEntry } = await supabase
+        .from('chess_leaderboard')
+        .select('*')
+        .eq('username', walletAddress.toLowerCase())
+        .eq('chain_type', 'evm')
+        .single();
+
+      if (existingEntry) {
+        const entry = existingEntry as LeaderboardEntry;
+        const newWins = entry.wins + (gameResult === 'win' ? 1 : 0);
+        const newLosses = entry.losses + (gameResult === 'loss' ? 1 : 0);
+        const newDraws = entry.draws + (gameResult === 'draw' ? 1 : 0);
+        const newTotal = newWins + newLosses + newDraws;
+        const newPoints = newWins * 3 + newDraws;
+
+        await supabase
+          .from('chess_leaderboard')
+          .update({
+            wins: newWins,
+            losses: newLosses,
+            draws: newDraws,
+            total_games: newTotal,
+            points: newPoints,
+            updated_at: new Date().toISOString()
+          })
+          .eq('username', walletAddress.toLowerCase())
+          .eq('chain_type', 'evm');
+      } else {
+        await supabase
+          .from('chess_leaderboard')
+          .insert({
+            username: walletAddress.toLowerCase(),
+            chain_type: 'evm',
+            wins: gameResult === 'win' ? 1 : 0,
+            losses: gameResult === 'loss' ? 1 : 0,
+            draws: gameResult === 'draw' ? 1 : 0,
+            total_games: 1,
+            points: gameResult === 'win' ? 3 : gameResult === 'draw' ? 1 : 0,
+            updated_at: new Date().toISOString()
+          });
+      }
+      
+      void loadLeaderboard();
+    } catch (error) {
+      console.error('Error updating score:', error);
+    }
+  };
+
+  // Utility functions
   const getPieceColor = (piece: string | null): 'blue' | 'red' => {
     if (!piece) return 'blue';
     return piece === piece.toUpperCase() ? 'red' : 'blue';
   };
 
+  const isWithinBoard = (row: number, col: number): boolean => {
+    return row >= 0 && row < 8 && col >= 0 && col < 8;
+  };
+
+  const coordsToAlgebraic = (row: number, col: number): string => {
+    return `${String.fromCharCode(97 + col)}${8 - row}`;
+  };
+
+  // Check if king is in check
+  const isKingInCheck = (board: (string | null)[][], player: 'blue' | 'red'): boolean => {
+    const kingSymbol = player === 'blue' ? 'k' : 'K';
+    let kingPos: { row: number; col: number } | null = null;
+    
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (board[r][c] === kingSymbol) {
+          kingPos = { row: r, col: c };
+          break;
+        }
+      }
+      if (kingPos) break;
+    }
+    
+    if (!kingPos) {
+      console.log(`King not found for ${player}`);
+      return false;
+    }
+    
+    const attackingColor = player === 'blue' ? 'red' : 'blue';
+    const isUnderAttack = isSquareUnderAttack(kingPos.row, kingPos.col, attackingColor, board);
+    console.log(`${player} king at ${kingPos.row},${kingPos.col} under attack: ${isUnderAttack}`);
+    return isUnderAttack;
+  };
+
+  // Check if square is under attack
+  const isSquareUnderAttack = (row: number, col: number, attackingColor: 'blue' | 'red', board: (string | null)[][]): boolean => {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = board[r][c];
+        if (piece && getPieceColor(piece) === attackingColor) {
+          if (canPieceMove(piece, r, c, row, col, false, attackingColor, board)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  // Check if move would expose king to check
+  const wouldMoveExposeCheck = (startRow: number, startCol: number, endRow: number, endCol: number, player: 'blue' | 'red', boardState = board): boolean => {
+    const tempBoard = boardState.map(row => [...row]);
+    const piece = tempBoard[startRow][startCol];
+    tempBoard[endRow][endCol] = piece;
+    tempBoard[startRow][startCol] = null;
+    
+    return isKingInCheck(tempBoard, player);
+  };
+
+  // Move validation functions
+  const isValidPawnMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
+    const direction = color === 'blue' ? -1 : 1;
+    const startingRow = color === 'blue' ? 6 : 1;
+    
+    // Forward move (1 square)
+    if (startCol === endCol && endRow === startRow + direction) {
+      return board[endRow][endCol] === null;
+    }
+    
+    // Initial 2-square move
+    if (startCol === endCol && startRow === startingRow && endRow === startRow + 2 * direction) {
+      return board[startRow + direction][startCol] === null && board[endRow][endCol] === null;
+    }
+    
+    // Capture move (diagonal)
+    if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
+      const targetPiece = board[endRow][endCol];
+      return targetPiece !== null && getPieceColor(targetPiece) !== color;
+    }
+    
+    // En passant
+    if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
+      const targetPiece = board[startRow][endCol];
+      if (targetPiece && getPieceColor(targetPiece) !== color && targetPiece.toLowerCase() === 'p') {
+        if (pieceState.lastPawnDoubleMove && 
+            pieceState.lastPawnDoubleMove.row === startRow && 
+            pieceState.lastPawnDoubleMove.col === endCol) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+
+  const isValidRookMove = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
+    if (startRow !== endRow && startCol !== endCol) return false;
+    return isPathClear(startRow, startCol, endRow, endCol, board);
+  };
+
+  const isValidKnightMove = (startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+    const rowDiff = Math.abs(startRow - endRow);
+    const colDiff = Math.abs(startCol - endCol);
+    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+  };
+
+  const isValidBishopMove = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
+    if (Math.abs(startRow - endRow) !== Math.abs(startCol - endCol)) return false;
+    return isPathClear(startRow, startCol, endRow, endCol, board);
+  };
+
+  const isValidQueenMove = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
+    return isValidRookMove(startRow, startCol, endRow, endCol, board) || 
+           isValidBishopMove(startRow, startCol, endRow, endCol, board);
+  };
+
+  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+    const rowDiff = Math.abs(startRow - endRow);
+    const colDiff = Math.abs(startCol - endCol);
+    
+    // Normal king move
+    if (rowDiff <= 1 && colDiff <= 1) return true;
+    
+    // Castling
+    if (rowDiff === 0 && colDiff === 2) {
+      if (color === 'blue' && !pieceState.blueKingMoved) {
+        if (endCol === 6 && !pieceState.blueRooksMove.right) return true; // Kingside
+        if (endCol === 2 && !pieceState.blueRooksMove.left) return true;  // Queenside
+      } else if (color === 'red' && !pieceState.redKingMoved) {
+        if (endCol === 6 && !pieceState.redRooksMove.right) return true; // Kingside
+        if (endCol === 2 && !pieceState.redRooksMove.left) return true;  // Queenside
+      }
+    }
+    
+    return false;
+  };
+
+  const isPathClear = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
+    const rowStep = startRow === endRow ? 0 : (endRow - startRow) / Math.abs(endRow - startRow);
+    const colStep = startCol === endCol ? 0 : (endCol - startCol) / Math.abs(endCol - startCol);
+    
+    let currentRow = startRow + rowStep;
+    let currentCol = startCol + colStep;
+    
+    while (currentRow !== endRow || currentCol !== endCol) {
+      if (board[currentRow][currentCol] !== null) return false;
+      currentRow += rowStep;
+      currentCol += colStep;
+    }
+    
+    return true;
+  };
+
+  const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board): boolean => {
+    if (!isWithinBoard(endRow, endCol)) return false;
+    
+    const targetPiece = boardState[endRow][endCol];
+    if (targetPiece && getPieceColor(targetPiece) === playerColor) return false;
+    
+    const pieceType = piece.toLowerCase();
+    let isValid = false;
+    
+    switch (pieceType) {
+      case 'p':
+        isValid = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'r':
+        isValid = isValidRookMove(startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'n':
+        isValid = isValidKnightMove(startRow, startCol, endRow, endCol);
+        break;
+      case 'b':
+        isValid = isValidBishopMove(startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'q':
+        isValid = isValidQueenMove(startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'k':
+        isValid = isValidKingMove(playerColor, startRow, startCol, endRow, endCol);
+        break;
+    }
+    
+    if (isValid && checkForCheck) {
+      return !wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState);
+    }
+    
+    return isValid;
+  };
+
+  // Get legal moves for a piece
   const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer): { row: number; col: number }[] => {
     const moves: { row: number; col: number }[] = [];
     const piece = boardState[from.row][from.col];
-    if (!piece) return moves;
-
-    const pieceColor = getPieceColor(piece);
-    if (pieceColor !== player) return moves;
-
-    // Simple legal move calculation (simplified for mobile)
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const targetPiece = boardState[r][c];
-        if (!targetPiece || getPieceColor(targetPiece) !== pieceColor) {
-          moves.push({ row: r, col: c });
+    
+    if (!piece || getPieceColor(piece) !== player) return moves;
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState)) {
+          moves.push({ row, col });
         }
       }
     }
-
+    
     return moves;
   };
 
-  const makeMove = (from: { row: number; col: number }, to: { row: number; col: number }, isAIMove = false) => {
-    const newBoard = board.map(row => [...row]);
-    const piece = newBoard[from.row][from.col];
+  // Check for checkmate
+  const isCheckmate = (player: 'blue' | 'red', boardState = board): boolean => {
+    if (!isKingInCheck(boardState, player)) return false;
     
-    if (!piece) return;
-
-    newBoard[to.row][to.col] = piece;
-    newBoard[from.row][from.col] = null;
-    
-    setBoard(newBoard);
-    setCurrentPlayer(switchPlayer(currentPlayer));
-    setMoveHistory(prev => [...prev, `${from.row},${from.col} -> ${to.row},${to.col}`]);
-    setSelectedPiece(null);
-    setLegalMoves([]);
-    
-    // AI move for AI mode
-    if (gameMode === GameMode.AI && !isAIMove && currentPlayer === 'blue') {
-      window.setTimeout(() => {
-        if (aiWorkerRef.current && !isAIMovingRef.current) {
-          isAIMovingRef.current = true;
-          aiWorkerRef.current.postMessage({
-            board: newBoard,
-            difficulty: difficulty,
-            player: 'red'
-          });
-        } else {
-          // Fallback random move
-          const aiMoves = [];
-          for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-              if (newBoard[r][c] && getPieceColor(newBoard[r][c]) === 'red') {
-                for (let tr = 0; tr < 8; tr++) {
-                  for (let tc = 0; tc < 8; tc++) {
-                    if (!newBoard[tr][tc] || getPieceColor(newBoard[tr][tc]) === 'blue') {
-                      aiMoves.push({ from: { row: r, col: c }, to: { row: tr, col: tc } });
-                    }
-                  }
-                }
-              }
-            }
-          }
-          
-          if (aiMoves.length > 0) {
-            const randomMove = aiMoves[Math.floor(Math.random() * aiMoves.length)];
-            makeMove(randomMove.from, randomMove.to, true);
-          }
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = boardState[row][col];
+        if (piece && getPieceColor(piece) === player) {
+          const legalMoves = getLegalMoves({ row, col }, boardState, player);
+          if (legalMoves.length > 0) return false;
         }
-      }, 500);
+      }
     }
+    
+    return true;
   };
 
+  // Check for stalemate
+  const isStalemate = (player: 'blue' | 'red', boardState = board): boolean => {
+    if (isKingInCheck(boardState, player)) return false;
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = boardState[row][col];
+        if (piece && getPieceColor(piece) === player) {
+          const legalMoves = getLegalMoves({ row, col }, boardState, player);
+          if (legalMoves.length > 0) return false;
+        }
+      }
+    }
+    
+    return true;
+  };
+
+  // Handle square click
   const handleSquareClick = (row: number, col: number) => {
     if (gameState !== 'active' || isAIMovingRef.current) return;
-
-    const piece = board[row][col];
     
-    if (selectedPiece) {
-      // Move piece
-      const [fromRow, fromCol] = [selectedPiece.row, selectedPiece.col];
-      if (legalMoves.some(move => move.row === row && move.col === col)) {
-        makeMove({ row: fromRow, col: fromCol }, { row, col });
+    const piece = board[row][col];
+    const pieceColor = piece ? getPieceColor(piece) : null;
+    
+    // If a piece is selected and we click on a legal move
+    if (selectedPiece && legalMoves.some(move => move.row === row && move.col === col)) {
+      makeMove(selectedPiece, { row, col });
+      return;
+    }
+    
+    // If we click on a piece of the current player
+    if (piece && pieceColor === currentPlayer) {
+      const moves = getLegalMoves({ row, col });
+      setSelectedPiece({ row, col });
+      setLegalMoves(moves);
+      return;
+    }
+    
+    // Deselect if clicking on invalid square
+    setSelectedPiece(null);
+    setLegalMoves([]);
+  };
+
+  // Make a move
+  const makeMove = (from: { row: number; col: number }, to: { row: number; col: number }, isAIMove = false) => {
+    const piece = board[from.row][from.col];
+    if (!piece) return;
+    
+    const pieceColor = getPieceColor(piece);
+    const pieceType = piece.toLowerCase();
+    
+    // Check for pawn promotion
+    if (pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7))) {
+      setPromotionMove({ from, to });
+      setShowPromotion(true);
+      return;
+    }
+    
+    executeMove(from, to, 'q', isAIMove);
+  };
+
+  // Execute move
+  const executeMove = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove = false) => {
+    const piece = board[from.row][from.col];
+    const capturedPiece = board[to.row][to.col];
+    const pieceColor = getPieceColor(piece);
+    const pieceType = piece ? piece.toLowerCase() : '';
+    
+    // Create new board state
+      const newBoard = board.map(row => [...row]);
+    newBoard[to.row][to.col] = pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7)) 
+      ? (pieceColor === 'blue' ? promotionPiece : promotionPiece.toUpperCase())
+      : piece;
+    newBoard[from.row][from.col] = null;
+    
+    // Update piece state for castling
+    const newPieceState = { ...pieceState };
+    if (pieceType === 'k') {
+      if (pieceColor === 'blue') {
+        newPieceState.blueKingMoved = true;
+      } else {
+        newPieceState.redKingMoved = true;
       }
+    } else if (pieceType === 'r') {
+      if (pieceColor === 'blue') {
+        if (from.col === 0) newPieceState.blueRooksMove.left = true;
+        if (from.col === 7) newPieceState.blueRooksMove.right = true;
+      } else {
+        if (from.col === 0) newPieceState.redRooksMove.left = true;
+        if (from.col === 7) newPieceState.redRooksMove.right = true;
+      }
+    }
+    
+    // Handle pawn double move for en passant
+    if (pieceType === 'p' && Math.abs(from.row - to.row) === 2) {
+      newPieceState.lastPawnDoubleMove = { row: to.row, col: to.col };
+    } else {
+      newPieceState.lastPawnDoubleMove = null;
+    }
+    
+    // Handle castling
+    if (pieceType === 'k' && Math.abs(from.col - to.col) === 2) {
+      if (to.col === 6) { // Kingside
+        newBoard[from.row][7] = null;
+        newBoard[from.row][5] = pieceColor === 'blue' ? 'r' : 'R';
+      } else if (to.col === 2) { // Queenside
+        newBoard[from.row][0] = null;
+        newBoard[from.row][3] = pieceColor === 'blue' ? 'r' : 'R';
+      }
+    }
+    
+    // Update state
+    setBoard(newBoard);
+    setPieceState(newPieceState);
+    setSelectedPiece(null);
+    setLegalMoves([]);
+    setLastMove({ from, to });
+    
+    // Add to move history
+    const moveNotation = `${coordsToAlgebraic(from.row, from.col)}-${coordsToAlgebraic(to.row, to.col)}`;
+    setMoveHistory(prev => [...prev, moveNotation]);
+    
+    // Check game end
+    const nextPlayer: 'blue' | 'red' = switchPlayer(currentPlayer);
+    const gameEndResult = checkGameEnd(newBoard, nextPlayer);
+    
+    if (gameEndResult) {
+      setGameState(gameEndResult);
+      if (gameMode === GameMode.AI) {
+        const result = gameEndResult === 'checkmate' ? (nextPlayer === 'blue' ? 'win' : 'loss') : 'draw';
+        void updateScore(result);
+      }
+      return;
+    }
+    
+    // Switch players
+      setCurrentPlayer(nextPlayer);
+    
+    // AI move - only if it's AI's turn and we're in AI mode and this wasn't an AI move
+    if (!isAIMove && gameMode === GameMode.AI && nextPlayer === 'red' && gameState === 'active') {
+      setStatus('AI is thinking...');
+      isAIMovingRef.current = true;
       
+      // Use only fallback AI move for testing
+      setTimeout(() => {
+        // Use the updated board state for AI move calculation
+        const aiMove = getRandomAIMove(newBoard);
+        if (aiMove) {
+          // Create a new executeMove function that works with the updated board
+          const executeAIMove = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q') => {
+            const piece = newBoard[from.row][from.col];
+            if (!piece) return;
+            
+            const pieceColor = getPieceColor(piece);
+            const pieceType = piece.toLowerCase();
+            
+            // Create new board state from the updated board
+            const aiBoard = newBoard.map(row => [...row]);
+            aiBoard[to.row][to.col] = pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7)) 
+              ? (pieceColor === 'blue' ? promotionPiece : promotionPiece.toUpperCase())
+              : piece;
+            aiBoard[from.row][from.col] = null;
+            
+            // Update state
+            setBoard(aiBoard);
       setSelectedPiece(null);
       setLegalMoves([]);
-    } else if (piece && getPieceColor(piece) === currentPlayer) {
-      // Select piece
-      setSelectedPiece({ row, col });
-      setLegalMoves(getLegalMoves({ row, col }));
+            setLastMove({ from, to });
+            
+            // Add to move history
+            const moveNotation = `${coordsToAlgebraic(from.row, from.col)}-${coordsToAlgebraic(to.row, to.col)}`;
+            setMoveHistory(prev => [...prev, moveNotation]);
+            
+            // Check game end
+            const aiNextPlayer: 'blue' | 'red' = switchPlayer(nextPlayer);
+            const gameEndResult = checkGameEnd(aiBoard, aiNextPlayer);
+            
+            if (gameEndResult) {
+              setGameState(gameEndResult);
+              if (gameMode === GameMode.AI) {
+                const result = gameEndResult === 'checkmate' ? (aiNextPlayer === 'blue' ? 'win' : 'loss') : 'draw';
+                void updateScore(result);
+              }
+              return;
+            }
+            
+            // Switch players
+            setCurrentPlayer(aiNextPlayer);
+            setStatus(`Your turn (${aiNextPlayer})`);
+          };
+          
+          executeAIMove(aiMove.from, aiMove.to, 'q');
+        } else {
+          setStatus('AI could not find a move');
+        }
+        isAIMovingRef.current = false;
+      }, 1000);
+    } else {
+      setStatus(`Your turn (${nextPlayer})`);
     }
   };
 
+  // Check game end
+  const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
+    console.log('Checking game end for player:', playerToMove);
+    console.log('Is king in check:', isKingInCheck(boardState, playerToMove));
+    
+    if (isCheckmate(playerToMove, boardState)) {
+      console.log('CHECKMATE detected!');
+      setStatus(`Checkmate! ${playerToMove === 'blue' ? 'Red' : 'Blue'} wins!`);
+      return 'checkmate';
+    }
+    
+    if (isStalemate(playerToMove, boardState)) {
+      console.log('STALEMATE detected!');
+      setStatus('Stalemate! Game is a draw.');
+      return 'stalemate';
+    }
+    
+    if (isKingInCheck(boardState, playerToMove)) {
+      console.log('CHECK detected!');
+      setStatus(`${playerToMove === 'blue' ? 'Blue' : 'Red'} is in check!`);
+    } else {
+      setStatus(`Your turn (${playerToMove})`);
+    }
+    
+    return null;
+  };
+
+  // Simple AI move (fallback)
+  const getRandomAIMove = (boardState: (string | null)[][]): { from: { row: number; col: number }; to: { row: number; col: number } } | null => {
+    const aiPieces: { row: number; col: number }[] = [];
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = boardState[row][col];
+        if (piece && getPieceColor(piece) === 'red') {
+          aiPieces.push({ row, col });
+        }
+      }
+    }
+    
+    // Shuffle pieces for randomness
+    for (let i = aiPieces.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [aiPieces[i], aiPieces[j]] = [aiPieces[j], aiPieces[i]];
+    }
+    
+    for (const piece of aiPieces) {
+      const legalMoves = getLegalMoves(piece, boardState, 'red');
+      if (legalMoves.length > 0) {
+        const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        // Double-check that this move doesn't put the AI's king in check
+        const tempBoard = boardState.map(row => [...row]);
+        const pieceSymbol = tempBoard[piece.row][piece.col];
+        tempBoard[randomMove.row][randomMove.col] = pieceSymbol;
+        tempBoard[piece.row][piece.col] = null;
+        
+        if (!isKingInCheck(tempBoard, 'red')) {
+          return { from: piece, to: randomMove };
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  // Game control functions
   const resetGame = () => {
-    setBoard(JSON.parse(JSON.stringify(initialBoard)) as (string | null)[][]);
+    setBoard(JSON.parse(JSON.stringify(initialBoard)));
     setCurrentPlayer('blue');
     setSelectedPiece(null);
-    setLegalMoves([]);
     setGameState('active');
     setMoveHistory([]);
+    setLegalMoves([]);
+    setLastMove(null);
+    setShowGame(false);
+    setShowDifficulty(false);
+    setShowMultiplayer(false);
     setStatus('Select game mode');
+    setPieceState({
+      blueKingMoved: false,
+      redKingMoved: false,
+      blueRooksMove: { left: false, right: false },
+      redRooksMove: { left: false, right: false },
+      lastPawnDoubleMove: null
+    });
+    // Cancel any AI move in progress
+    if (isAIMovingRef.current) isAIMovingRef.current = false;
   };
 
-  const backToMenu = () => {
-    setGameState('active');
-    resetGame();
+  const startAIGame = () => {
+    console.log('startAIGame called');
+    setShowDifficulty(true);
+    setShowMultiplayer(false);
+    setStatus('Select difficulty');
   };
 
-  const handleGameModeSelect = (mode: typeof GameMode[keyof typeof GameMode]) => {
-    setGameMode(mode);
-    setGameState('active');
+  const startMultiplayerGame = () => {
+    console.log('startMultiplayerGame called');
+    setShowMultiplayer(true);
+    setShowDifficulty(false);
+    setStatus('Set wager and create/join game');
+  };
+
+  const startGame = () => {
+    console.log('startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
+    setShowGame(true);
+    setShowDifficulty(false);
+    setShowMultiplayer(false);
+    setStatus(`Your turn (${currentPlayer})`);
+  };
+
+  const createGame = async () => {
+    if (!walletAddress) return;
+    
+    try {
+      const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { error } = await supabase
+        .from('chess_games')
+        .insert({
+          game_id: gameId,
+          blue_player: walletAddress,
+          board: JSON.stringify({ positions: board, piece_state: pieceState }),
+          current_player: 'blue',
+          game_state: 'waiting',
+          bet_amount: wager,
+          chain: 'evm',
+          is_public: true
+        });
+      
+      if (error) throw error;
+      
+      setStatus(`Game created! Share code: ${gameId}`);
+    } catch (error) {
+      console.error('Error creating game:', error);
+      setStatus('Failed to create game');
+    }
+  };
+
+  const joinGame = async () => {
+    if (!walletAddress || !inviteCode) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('chess_games')
+        .select('*')
+        .eq('game_id', inviteCode)
+        .eq('game_state', 'waiting')
+        .single();
+      
+      if (error || !data) {
+        setStatus('Game not found or already full');
+      return;
+    }
+
+      const { error: updateError } = await supabase
+        .from('chess_games')
+        .update({
+          red_player: walletAddress,
+          game_state: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('game_id', inviteCode);
+      
+      if (updateError) throw updateError;
+      
+      setStatus('Joined game! Waiting for opponent...');
+      startGame();
+    } catch (error) {
+      console.error('Error joining game:', error);
+      setStatus('Failed to join game');
+    }
   };
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  // Wallet required screen
+  // Render functions
+  const renderSquare = (row: number, col: number) => {
+    const piece = board[row][col];
+    const isSelected = selectedPiece?.row === row && selectedPiece?.col === col;
+    const isLegalMove = legalMoves.some(move => move.row === row && move.col === col);
+    const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
+                                   lastMove.to.row === row && lastMove.to.col === col);
+
+  return (
+      <div
+        key={`${row}-${col}`}
+        className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
+        onClick={() => handleSquareClick(row, col)}
+      >
+        {piece && (
+          <div
+            className="piece"
+              style={{
+              backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center'
+            }}
+          />
+        )}
+        {isLegalMove && <div className="legal-move-indicator" />}
+      </div>
+    );
+  };
+
+  const renderPromotionDialog = () => {
+    if (!showPromotion || !promotionMove) return null;
+    
+    const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
+    
+    return (
+      <div className="promotion-dialog">
+        <div className="promotion-content">
+          <h3>Choose promotion piece:</h3>
+          <div className="promotion-pieces">
+            {pieces.map(piece => (
+              <div
+                key={piece}
+                className="promotion-piece"
+                onClick={() => {
+                  executeMove(promotionMove.from, promotionMove.to, piece);
+                  setShowPromotion(false);
+                  setPromotionMove(null);
+                }}
+            style={{
+                  backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
+                  backgroundSize: 'contain',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'center'
+                }}
+              />
+            ))}
+        </div>
+      </div>
+      </div>
+    );
+  };
+
+  const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
+
+  const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => (
+    <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
+      <h3>Lawbstation Chess Pieces</h3>
+      <div className="piece-gallery-grid">
+        {pieceGallery.map(piece => (
+          <div key={piece.key} className="piece-gallery-item" onClick={() => setSelectedGalleryPiece(piece.key)}>
+            <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
+            <div className="piece-gallery-name">{piece.name}</div>
+            {selectedGalleryPiece === piece.key && (
+              <div className="piece-gallery-desc">{piece.desc}</div>
+            )}
+            </div>
+        ))}
+              </div>
+      <div className="piece-gallery-tip">{tipText}</div>
+                </div>
+  );
+
+  const renderDifficultySelection = () => (
+    <div className="difficulty-selection-row">
+      <div className="difficulty-gallery-col">
+        {renderPieceGallery(true, 'click for chess piece movements')}
+      </div>
+      <div className="difficulty-controls-col">
+        <div className="difficulty-selection-panel">
+                  <h3>Select Difficulty</h3>
+                  <button 
+                    className={`difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
+                    onClick={() => setDifficulty('easy')}
+                  >
+                    Easy
+                  </button>
+                  <button 
+                    className={`difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
+                    onClick={() => setDifficulty('hard')}
+                  >
+            Kinda Harder
+                  </button>
+          <button 
+            className="start-btn"
+            onClick={startGame}
+          >
+                    Start Game
+                  </button>
+        </div>
+        <div className="difficulty-leaderboard-panel">
+          <div className="leaderboard">
+            <h3>Leaderboard</h3>
+            <div className="leaderboard-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>W</th>
+                    <th>L</th>
+                    <th>D</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboardData.slice(0, 10).map((entry, index) => {
+                    const typedEntry = entry as LeaderboardEntry;
+                    return (
+                      <tr key={typedEntry.username}>
+                        <td>{index + 1}</td>
+                        <td>{formatAddress(typedEntry.username)}</td>
+                        <td>{typedEntry.wins}</td>
+                        <td>{typedEntry.losses}</td>
+                        <td>{typedEntry.draws}</td>
+                        <td>{typedEntry.points}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Utility to switch player color
+  const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
+
+  // Main render
   if (!walletAddress) {
     return (
-      <div className={classes.mobileChessContainer}>
-        <div className={classes.walletRequired}>
-          <p>Connect your wallet to play chess</p>
+      <div className="chess-game">
+        <div className="chess-header">
+          <h2>Lawb Chess</h2>
+          <div className="chess-controls">
+            <button onClick={onClose}>×</button>
+          </div>
+        </div>
+        <div className="chess-content">
+          <div className="wallet-required">
+            <p>Connect your wallet to play chess</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const renderGameModeSelection = () => (
-    <div className={classes.gameModeSelection}>
-      <h3 style={{ textAlign: 'center', margin: '0 0 12px 0', fontSize: '16px' }}>Select Game Mode</h3>
-      <div 
-        className={`${classes.gameModeOption} ${gameMode === GameMode.AI ? 'selected' : ''}`}
-        onClick={() => handleGameModeSelect(GameMode.AI)}
-      >
-        VS the House
-      </div>
-      <div 
-        className={`${classes.gameModeOption} disabled`}
-        onClick={() => {}} // Disabled
-      >
-        PvP Under Construction
-      </div>
-    </div>
-  );
-
-  const renderDifficultySelection = () => (
-    <div className={classes.difficultySelection}>
-      <h3 style={{ textAlign: 'center', margin: '0 0 12px 0', fontSize: '16px' }}>Select Difficulty</h3>
-      
-      <div className={classes.pieceGallery}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textAlign: 'center' }}>Lawbstation Chess Pieces</h4>
-        <div className={classes.pieceGrid}>
-          {pieceGallery.map(piece => (
-            <div key={piece.key} className={classes.pieceItem}>
-              <img src={piece.img} alt={piece.name} className={classes.pieceImage} />
-              <div className={classes.pieceName}>{piece.name}</div>
-              <div className={classes.pieceDesc}>{piece.desc}</div>
-            </div>
-          ))}
+  return (
+    <div className="chess-game">
+      <div className="chess-header">
+        <h2>Lawb Chess</h2>
+        <div className="chess-controls">
+          <button onClick={onClose}>×</button>
         </div>
       </div>
+      
+      <div className="chess-content">
+        {!showGame && !showDifficulty && !showMultiplayer && (
+          <div className="gallery-main-area">
+            {renderPieceGallery(false)}
+                </div>
+              )}
 
-      <div className={classes.difficultyButtons}>
-        <button 
-          className={`${classes.difficultyButton} ${difficulty === 'easy' ? 'selected' : ''}`}
-          onClick={() => setDifficulty('easy')}
-        >
-          Easy
-        </button>
-        <button 
-          className={`${classes.difficultyButton} ${difficulty === 'medium' ? 'selected' : ''}`}
-          onClick={() => setDifficulty('medium')}
-        >
-          Medium
-        </button>
-        <button 
-          className={`${classes.difficultyButton} ${difficulty === 'hard' ? 'selected' : ''}`}
-          onClick={() => setDifficulty('hard')}
-        >
-          Hard
-        </button>
-      </div>
+        {!showGame && !showDifficulty && !showMultiplayer && (
+          <div className="game-mode-selection">
+            <h3>Select Game Mode</h3>
+            <button 
+              className={`mode-btn ${gameMode === GameMode.AI ? 'selected' : ''}`}
+              onClick={() => setGameMode(GameMode.AI)}
+            >
+              VS the House
+            </button>
+            <button 
+              className={`mode-btn ${gameMode === GameMode.ONLINE ? 'selected' : ''}`}
+              onClick={() => setGameMode(GameMode.ONLINE)}
+              disabled
+            >
+              PvP Under Construction
+            </button>
+            <button 
+              className="start-btn"
+              onClick={() => {
+                if (gameMode === GameMode.AI) {
+                  startAIGame();
+                } else {
+                  startMultiplayerGame();
+                }
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        )}
 
-      <button className={classes.startButton} onClick={() => setGameState('active')}>
-        Start Game
-      </button>
+        {showDifficulty && renderDifficultySelection()}
 
-      <div className={classes.leaderboard}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textAlign: 'center' }}>Leaderboard</h4>
-        <table className={classes.leaderboardTable}>
-          <thead>
-            <tr>
-              <th className={classes.leaderboardTableTh}>Rank</th>
-              <th className={classes.leaderboardTableTh}>Player</th>
-              <th className={classes.leaderboardTableTh}>W</th>
-              <th className={classes.leaderboardTableTh}>L</th>
-              <th className={classes.leaderboardTableTh}>D</th>
-              <th className={classes.leaderboardTableTh}>Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboardData.slice(0, 5).map((entry, index) => (
-              <tr key={entry.username}>
-                <td className={classes.leaderboardTableTd}>{index + 1}</td>
-                <td className={classes.leaderboardTableTd}>{formatAddress(entry.username)}</td>
-                <td className={classes.leaderboardTableTd}>{entry.wins}</td>
-                <td className={classes.leaderboardTableTd}>{entry.losses}</td>
-                <td className={classes.leaderboardTableTd}>{entry.draws}</td>
-                <td className={classes.leaderboardTableTd}>{entry.points}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const renderGame = () => (
-    <div className={classes.gameBoard}>
-      <div className={classes.chessboard}>
-        {board.map((row, rowIndex) =>
-          row.map((piece, colIndex) => {
-            const isLight = (rowIndex + colIndex) % 2 === 0;
-            const isSelected = selectedPiece && selectedPiece.row === rowIndex && selectedPiece.col === colIndex;
-            const isLegalMove = legalMoves.some(move => move.row === rowIndex && move.col === colIndex);
-            
-            return (
-              <div
-                key={`${rowIndex}-${colIndex}`}
-                className={`${classes.square} ${isLight ? classes.squareLight : classes.squareDark} ${
-                  isSelected ? classes.squareSelected : ''
-                } ${isLegalMove ? classes.squareLegalMove : ''}`}
-                onClick={() => handleSquareClick(rowIndex, colIndex)}
-              >
-                {piece && (
-                  <div
-                    className={classes.piece}
-                    style={{ backgroundImage: `url(${pieceImages[piece]})` }}
-                  />
-                )}
+              {showMultiplayer && (
+          <div className="multiplayer-selection">
+            <h3>Multiplayer</h3>
+                  <div className="wager-input">
+              <label>Wager (ETH):</label>
+                    <input 
+                      type="number" 
+                      value={wager}
+                onChange={(e) => setWager(parseFloat(e.target.value) || 0.1)}
+                min="0.01"
+                step="0.01"
+                    />
+                  </div>
+            <button onClick={createGame}>Create Game</button>
+                  <div className="join-game">
+                    <input 
+                      type="text" 
+                      value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Enter invite code"
+                    />
+              <button onClick={joinGame}>Join Game</button>
+                  </div>
+            {status && status.includes('Game created!') && (
+              <div className="game-created">
+                <p>{status}</p>
               </div>
-            );
-          })
+            )}
+                </div>
+              )}
+
+        {showGame && (
+          <div className="game-container">
+            {/* Left Sidebar - Move History */}
+            <div className="left-sidebar">
+              <div className="move-history">
+                <h4>Move History</h4>
+                <div className="moves">
+                  {moveHistory.slice().reverse().map((move, index) => (
+                    <span key={moveHistory.length - 1 - index} className="move">
+                      {Math.floor((moveHistory.length - 1 - index) / 2) + 1}.{(moveHistory.length - 1 - index) % 2 === 0 ? '' : ' '}{move}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Center - Main Game Area */}
+            <div className="game-main">
+                  <div className="game-info">
+                <div className="status">{status}</div>
+                <div className="current-player">
+                  Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
+                </div>
+                <div className="wager-display">
+                  Wager: {gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}
+                </div>
+                  </div>
+
+              <div className="chessboard-container">
+                  <div className="chessboard">
+                  {Array.from({ length: 8 }, (_, row) => (
+                    <div key={row} className="board-row">
+                      {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
+                              </div>
+                    ))}
+                  </div>
+                </div>
+              
+              <div className="game-controls">
+                <button onClick={resetGame}>New Game</button>
+                <button onClick={resetGame}>Back to Menu</button>
+              </div>
+            </div>
+            
+            {/* Right Sidebar - Leaderboard */}
+            {!showGame && !showDifficulty && !showMultiplayer && (
+              <div className="right-sidebar">
+              <div className="leaderboard">
+                <h3>Leaderboard</h3>
+                  <div className="leaderboard-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                          <th>W</th>
+                          <th>L</th>
+                          <th>D</th>
+                      <th>Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                        {leaderboardData.slice(0, 10).map((entry, index) => {
+                          const typedEntry = entry as LeaderboardEntry;
+                          return (
+                            <tr key={typedEntry.username}>
+                        <td>{index + 1}</td>
+                              <td>{formatAddress(typedEntry.username)}</td>
+                              <td>{typedEntry.wins}</td>
+                              <td>{typedEntry.losses}</td>
+                              <td>{typedEntry.draws}</td>
+                              <td>{typedEntry.points}</td>
+                      </tr>
+                          );
+                        })}
+                  </tbody>
+                </table>
+              </div>
+                </div>
+              </div>
+          )}
+        </div>
         )}
       </div>
 
-      <div className={classes.gameInfo}>
-        <div className={classes.status}>
-          {status}
-        </div>
-        <div className={classes.status}>
-          Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
-        </div>
-        
-        <div className={classes.moveHistory}>
-          <h4 style={{ margin: '0 0 4px 0', fontSize: '11px' }}>Move History</h4>
-          {moveHistory.slice(-5).map((move, index) => (
-            <div key={index} style={{ fontSize: '9px' }}>{move}</div>
-          ))}
-        </div>
-
-        <div className={classes.gameControls}>
-          <button className={classes.controlButton} onClick={resetGame}>
-            New Game
-          </button>
-          <button className={classes.controlButton} onClick={backToMenu}>
-            Back to Menu
-          </button>
-        </div>
-      </div>
+      {renderPromotionDialog()}
     </div>
   );
-
-  return (
-    <div className={classes.mobileChessContainer}>
-      {gameState === 'active' && renderGameModeSelection()}
-      {gameState === 'active' && renderDifficultySelection()}
-      {gameState === 'active' && renderGame()}
-    </div>
-  );
-};
-
-export default MobileChessGame; 
+}; 
