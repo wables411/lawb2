@@ -1,0 +1,209 @@
+.mobile-chess-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100vw;
+  max-width: 100vw;
+  min-height: 100vh;
+  background: #181818;
+  color: #fff;
+  font-family: 'Press Start 2P', 'MS Sans Serif', Arial, sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.mobile-chess-header {
+  width: 100vw;
+  background: #c00;
+  color: #fff;
+  text-align: center;
+  font-size: 1.1rem;
+  padding: 0.75rem 0;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 0 #000;
+  text-transform: uppercase;
+}
+
+.mobile-chess-board-wrapper {
+  width: 98vw;
+  max-width: 98vw;
+  aspect-ratio: 1 / 1;
+  background: #222;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  margin: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-chess-board {
+  width: 92vw;
+  max-width: 92vw;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mobile-chess-square {
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5vw;
+  user-select: none;
+}
+
+.mobile-chess-square.light {
+  background: #f0d9b5;
+}
+
+.mobile-chess-square.dark {
+  background: #b58863;
+}
+
+.mobile-chess-square.selected {
+  outline: 2px solid #00ffff;
+  z-index: 2;
+}
+
+.mobile-chess-square.legal-move {
+  box-shadow: 0 0 0 3px #00ffff inset;
+}
+
+.mobile-chess-piece {
+  width: 8vw;
+  height: 8vw;
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.mobile-chess-controls {
+  width: 98vw;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.5rem 0;
+  gap: 0.5rem;
+}
+
+.mobile-chess-btn {
+  background: #00ffff;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-family: 'Press Start 2P', 'MS Sans Serif', Arial, sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 #000;
+  margin: 0 0.25rem;
+}
+
+.mobile-chess-status {
+  width: 98vw;
+  text-align: center;
+  font-size: 1rem;
+  margin: 0.5rem 0;
+  color: #00ffff;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.mobile-chess-move-history {
+  width: 98vw;
+  max-height: 18vh;
+  overflow-y: auto;
+  background: #222;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.mobile-chess-leaderboard {
+  width: 98vw;
+  max-height: 18vh;
+  overflow-y: auto;
+  background: #222;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.mobile-chess-section-title {
+  font-size: 1rem;
+  color: #00ffff;
+  margin-bottom: 0.25rem;
+  text-align: left;
+}
+
+.mobile-chess-difficulty {
+  width: 98vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.mobile-chess-difficulty-btn {
+  background: #00ffff;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-family: 'Press Start 2P', 'MS Sans Serif', Arial, sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 #000;
+  margin: 0.25rem 0;
+}
+
+.mobile-chess-piece-gallery {
+  width: 98vw;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 0.5rem 0;
+}
+
+.mobile-chess-piece-gallery-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #333;
+  border-radius: 8px;
+  padding: 0.5rem;
+  width: 80px;
+  margin: 0.25rem;
+}
+
+.mobile-chess-piece-gallery-item img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  margin-bottom: 0.25rem;
+}
+
+.mobile-chess-piece-gallery-item span {
+  font-size: 0.8rem;
+  color: #fff;
+  text-align: center;
+} 

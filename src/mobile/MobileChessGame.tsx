@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import './MobileChessGame.css';
+// import './MobileChessGame.css';
 
 // Supabase configuration
 const supabaseUrl = 'https://roxwocgknkiqnsgiojgz.supabase.co';

@@ -5,7 +5,7 @@ import { useAppKit } from '@reown/appkit/react';
 import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
-import MobileChessGame from './MobileChessGame';
+import { MobileChessGame } from './MobileChessGame';
 import MemeGenerator from '../components/MemeGenerator';
 
 const useStyles = createUseStyles({
@@ -469,7 +469,7 @@ const Mobile = () => {
       </MobilePopup98>
       {/* Chess Game Popup */}
       <MobilePopup98 isOpen={showChessGame} onClose={() => setShowChessGame(false)} title="Chess">
-        <MobileChessGame onClose={() => setShowChessGame(false)} />
+        <MobileChessGame onClose={() => setShowChessGame(false)} walletAddress={address || ''} />
       </MobilePopup98>
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
