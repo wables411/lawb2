@@ -887,14 +887,14 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   return (
       <div
         key={`${row}-${col}`}
-        className={`mobile-chess-square ${(row + col) % 2 === 0 ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
+        className={`chess-game-square ${(row + col) % 2 === 0 ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
         onClick={() => handleSquareClick(row, col)}
       >
         {piece && (
           <img
             src={pieceImages[piece]}
             alt={piece}
-            className="mobile-chess-piece"
+            className="chess-game-piece"
           />
         )}
       </div>
@@ -907,14 +907,14 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
     const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
     
     return (
-      <div className="promotion-dialog">
-        <div className="promotion-content">
+      <div className="chess-game-promotion-dialog">
+        <div className="chess-game-promotion-content">
           <h3>Choose promotion piece:</h3>
-          <div className="promotion-pieces">
+          <div className="chess-game-promotion-pieces">
             {pieces.map(piece => (
               <div
                 key={piece}
-                className="promotion-piece"
+                className="chess-game-promotion-piece"
                 onClick={() => {
                   executeMove(promotionMove.from, promotionMove.to, piece);
                   setShowPromotion(false);
@@ -937,54 +937,54 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
 
   const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => (
-    <div className={`mobile-chess-piece-gallery${small ? ' mobile-chess-piece-gallery-sm' : ''}`}>
-      <h3 className="mobile-chess-section-title">Lawbstation Chess Pieces</h3>
-      <div className="mobile-chess-piece-gallery-grid">
+    <div className={`chess-game-piece-gallery${small ? ' chess-game-piece-gallery-sm' : ''}`}>
+      <h3 className="chess-game-section-title">Lawbstation Chess Pieces</h3>
+      <div className="chess-game-piece-gallery-grid">
         {pieceGallery.map(piece => (
-          <div key={piece.key} className="mobile-chess-piece-gallery-item" onClick={() => setSelectedGalleryPiece(piece.key)}>
-            <img src={piece.img} alt={piece.name} className="mobile-chess-piece-gallery-img" />
-            <div className="mobile-chess-piece-gallery-name">{piece.name}</div>
+          <div key={piece.key} className="chess-game-piece-gallery-item" onClick={() => setSelectedGalleryPiece(piece.key)}>
+            <img src={piece.img} alt={piece.name} className="chess-game-piece-gallery-img" />
+            <div className="chess-game-piece-gallery-name">{piece.name}</div>
             {selectedGalleryPiece === piece.key && (
-              <div className="mobile-chess-piece-gallery-desc">{piece.desc}</div>
+              <div className="chess-game-piece-gallery-desc">{piece.desc}</div>
             )}
           </div>
         ))}
       </div>
-      <div className="mobile-chess-piece-gallery-tip">{tipText}</div>
+      <div className="chess-game-piece-gallery-tip">{tipText}</div>
     </div>
   );
 
   const renderDifficultySelection = () => (
-    <div className="mobile-chess-difficulty-selection-row">
-      <div className="mobile-chess-difficulty-gallery-col">
+    <div className="chess-game-difficulty-selection-row">
+      <div className="chess-game-difficulty-gallery-col">
         {renderPieceGallery(true, 'click for chess piece movements')}
       </div>
-      <div className="mobile-chess-difficulty-controls-col">
-        <div className="mobile-chess-difficulty-selection-panel">
-          <h3 className="mobile-chess-section-title">Select Difficulty</h3>
+      <div className="chess-game-difficulty-controls-col">
+        <div className="chess-game-difficulty-selection-panel">
+          <h3 className="chess-game-section-title">Select Difficulty</h3>
           <button 
-            className={`mobile-chess-difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
+            className={`chess-game-difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
             onClick={() => setDifficulty('easy')}
           >
             Easy
           </button>
           <button 
-            className={`mobile-chess-difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
+            className={`chess-game-difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
             onClick={() => setDifficulty('hard')}
           >
             Kinda Harder
           </button>
           <button 
-            className="mobile-chess-btn"
+            className="chess-game-btn"
             onClick={startGame}
           >
             Start Game
           </button>
         </div>
-        <div className="mobile-chess-difficulty-leaderboard-panel">
-          <div className="mobile-chess-leaderboard">
-            <h3 className="mobile-chess-section-title">Leaderboard</h3>
-            <div className="mobile-chess-leaderboard-table">
+        <div className="chess-game-difficulty-leaderboard-panel">
+          <div className="chess-game-leaderboard">
+            <h3 className="chess-game-section-title">Leaderboard</h3>
+            <div className="chess-game-leaderboard-table">
               <table>
                 <thead>
                   <tr>
@@ -1025,14 +1025,14 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   // Main render
   if (!walletAddress) {
     return (
-      <div className="mobile-chess-container">
-        <div className="mobile-chess-header">
+      <div className="chess-game">
+        <div className="chess-header">
           <h2>Lawb Chess</h2>
-          <div className="mobile-chess-controls">
-            <button className="mobile-chess-btn" onClick={onClose}>×</button>
+          <div className="chess-controls">
+            <button className="chess-btn" onClick={onClose}>×</button>
           </div>
         </div>
-        <div className="mobile-chess-status">
+        <div className="chess-status">
           <p>Connect your wallet to play chess</p>
         </div>
       </div>
@@ -1047,29 +1047,29 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
       
       <div className="chess-content">
         {!showGame && !showDifficulty && !showMultiplayer && (
-          <div className="mobile-chess-piece-gallery">
+          <div className="chess-game-piece-gallery">
             {renderPieceGallery(false)}
           </div>
         )}
 
         {!showGame && !showDifficulty && !showMultiplayer && (
-          <div className="mobile-chess-game-mode-selection">
-            <h3 className="mobile-chess-section-title">Select Game Mode</h3>
+          <div className="chess-game-game-mode-selection">
+            <h3 className="chess-game-section-title">Select Game Mode</h3>
             <button 
-              className={`mobile-chess-btn ${gameMode === GameMode.AI ? 'selected' : ''}`}
+              className={`chess-game-btn ${gameMode === GameMode.AI ? 'selected' : ''}`}
               onClick={() => setGameMode(GameMode.AI)}
             >
               VS the House
             </button>
             <button 
-              className={`mobile-chess-btn ${gameMode === GameMode.ONLINE ? 'selected' : ''}`}
+              className={`chess-game-btn ${gameMode === GameMode.ONLINE ? 'selected' : ''}`}
               onClick={() => setGameMode(GameMode.ONLINE)}
               disabled
             >
               PvP Under Construction
             </button>
             <button 
-              className="mobile-chess-btn"
+              className="chess-game-btn"
               onClick={() => {
                 if (gameMode === GameMode.AI) {
                   startAIGame();
@@ -1086,9 +1086,9 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
         {showDifficulty && renderDifficultySelection()}
 
         {showMultiplayer && (
-          <div className="mobile-chess-multiplayer-selection">
-            <h3 className="mobile-chess-section-title">Multiplayer</h3>
-            <div className="mobile-chess-wager-input">
+          <div className="chess-game-multiplayer-selection">
+            <h3 className="chess-game-section-title">Multiplayer</h3>
+            <div className="chess-game-wager-input">
               <label>Wager (ETH):</label>
               <input 
                 type="number" 
@@ -1098,18 +1098,18 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
                 step="0.01"
               />
             </div>
-            <button className="mobile-chess-btn" onClick={createGame}>Create Game</button>
-            <div className="mobile-chess-join-game">
+            <button className="chess-game-btn" onClick={createGame}>Create Game</button>
+            <div className="chess-game-join-game">
               <input 
                 type="text" 
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
                 placeholder="Enter invite code"
               />
-              <button className="mobile-chess-btn" onClick={joinGame}>Join Game</button>
+              <button className="chess-game-btn" onClick={joinGame}>Join Game</button>
             </div>
             {status && status.includes('Game created!') && (
-              <div className="mobile-chess-game-created">
+              <div className="chess-game-game-created">
                 <p>{status}</p>
               </div>
             )}
@@ -1117,13 +1117,13 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
         )}
 
         {showGame && (
-          <div className="mobile-chess-game-container">
+          <div className="chess-game-game-container">
             {/* Left Sidebar - Move History */}
-            <div className="mobile-chess-move-history">
-              <h4 className="mobile-chess-section-title">Move History</h4>
-              <div className="mobile-chess-moves">
+            <div className="chess-game-move-history">
+              <h4 className="chess-game-section-title">Move History</h4>
+              <div className="chess-game-moves">
                 {moveHistory.slice().reverse().map((move, index) => (
-                  <span key={moveHistory.length - 1 - index} className="mobile-chess-move">
+                  <span key={moveHistory.length - 1 - index} className="chess-game-move">
                     {Math.floor((moveHistory.length - 1 - index) / 2) + 1}.{(moveHistory.length - 1 - index) % 2 === 0 ? '' : ' '}{move}
                   </span>
                 ))}
@@ -1131,26 +1131,26 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
             </div>
             
             {/* Center - Main Game Area */}
-            <div className="mobile-chess-game-main">
-              <div className="mobile-chess-game-info">
-                <div className="mobile-chess-status">{status}</div>
-                <div className="mobile-chess-current-player">
+            <div className="chess-game-game-main">
+              <div className="chess-game-game-info">
+                <div className="chess-game-status">{status}</div>
+                <div className="chess-game-current-player">
                   Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
                 </div>
-                <div className="mobile-chess-wager-display">
+                <div className="chess-game-wager-display">
                   Wager: {gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}
                 </div>
               </div>
 
-              <div className="mobile-chess-board-wrapper">
-                <div className="mobile-chess-board" style={{
+              <div className="chess-game-board-wrapper">
+                <div className="chess-game-board" style={{
                   backgroundImage: `url('/images/chessboard${currentChessboard}.png')`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat'
                 }}>
                   {Array.from({ length: 8 }, (_, row) => (
-                    <div key={row} className="mobile-chess-board-row">
+                    <div key={row} className="chess-game-board-row">
                       {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
                     </div>
                   ))}
@@ -1165,9 +1165,9 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
             
             {/* Right Sidebar - Leaderboard */}
             {!showGame && !showDifficulty && !showMultiplayer && (
-              <div className="mobile-chess-leaderboard">
-                <h3 className="mobile-chess-section-title">Leaderboard</h3>
-                <div className="mobile-chess-leaderboard-table">
+              <div className="chess-game-leaderboard">
+                <h3 className="chess-game-section-title">Leaderboard</h3>
+                <div className="chess-game-leaderboard-table">
                   <table>
                     <thead>
                       <tr>
