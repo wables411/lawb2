@@ -25,8 +25,8 @@
 }
 
 .mobile-chess-board-wrapper {
-  width: 98vw;
-  max-width: 98vw;
+  width: 90vw;
+  max-width: 90vw;
   aspect-ratio: 1 / 1;
   background: #222;
   border-radius: 12px;
@@ -38,8 +38,8 @@
 }
 
 .mobile-chess-board {
-  width: 92vw;
-  max-width: 92vw;
+  width: 85vw;
+  max-width: 85vw;
   aspect-ratio: 1 / 1;
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -78,10 +78,10 @@
 }
 
 .mobile-chess-piece {
-  width: 10vw;
-  height: 10vw;
-  max-width: 50px;
-  max-height: 50px;
+  width: 8vw;
+  height: 8vw;
+  max-width: 35px;
+  max-height: 35px;
   object-fit: contain;
   pointer-events: none;
 }
@@ -177,7 +177,7 @@
 
 .mobile-chess-piece-gallery {
   width: 98vw;
-  max-height: 25vh;
+  max-height: 20vh;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
