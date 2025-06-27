@@ -91,6 +91,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  const [currentChessboard, setCurrentChessboard] = useState<number>(1);
   
   // UI state
   const [showDifficulty, setShowDifficulty] = useState(false);
@@ -1018,6 +1019,18 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   // Utility to switch player color
   const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
 
+  // Chessboard selection
+  const cycleChessboard = () => {
+    setCurrentChessboard(prev => prev === 6 ? 1 : prev + 1);
+  };
+
+  const getChessboardStyle = () => ({
+    backgroundImage: `url('/images/chessboard${currentChessboard}.png')`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat'
+  } as React.CSSProperties);
+
   // Main render
   if (!walletAddress) {
     return (
@@ -1142,7 +1155,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
               </div>
 
               <div className="mobile-chess-board-wrapper">
-                <div className="mobile-chess-board">
+                <div className="mobile-chess-board" style={getChessboardStyle()}>
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="mobile-chess-board-row">
                       {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
@@ -1153,6 +1166,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
               
               <div className="mobile-chess-game-controls">
                 <button className="mobile-chess-btn" onClick={resetGame}>New Game</button>
+                <button className="mobile-chess-btn" onClick={cycleChessboard}>Board {currentChessboard}</button>
                 <button className="mobile-chess-btn" onClick={resetGame}>Back to Menu</button>
               </div>
             </div>
