@@ -91,7 +91,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
-  const [currentChessboard, setCurrentChessboard] = useState<number>(1);
+  const [currentChessboard, setCurrentChessboard] = useState<number>(getRandomChessboardNumber());
   
   // UI state
   const [showDifficulty, setShowDifficulty] = useState(false);
@@ -782,6 +782,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
     });
     // Cancel any AI move in progress
     if (isAIMovingRef.current) isAIMovingRef.current = false;
+    setCurrentChessboard(getRandomChessboardNumber());
   };
 
   const startAIGame = () => {
@@ -789,6 +790,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
     setShowDifficulty(true);
     setShowMultiplayer(false);
     setStatus('Select difficulty');
+    setCurrentChessboard(getRandomChessboardNumber());
   };
 
   const startMultiplayerGame = () => {
@@ -796,6 +798,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
     setShowMultiplayer(true);
     setShowDifficulty(false);
     setStatus('Set wager and create/join game');
+    setCurrentChessboard(getRandomChessboardNumber());
   };
 
   const startGame = () => {
@@ -804,6 +807,7 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
     setShowDifficulty(false);
     setShowMultiplayer(false);
     setStatus(`Your turn (${currentPlayer})`);
+    setCurrentChessboard(getRandomChessboardNumber());
   };
 
   const createGame = async () => {
@@ -893,7 +897,6 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
             className="mobile-chess-piece"
           />
         )}
-        {isLegalMove && <div className="legal-move-indicator" />}
       </div>
     );
   };
@@ -1019,18 +1022,6 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   // Utility to switch player color
   const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
 
-  // Chessboard selection
-  const cycleChessboard = () => {
-    setCurrentChessboard(prev => prev === 6 ? 1 : prev + 1);
-  };
-
-  const getChessboardStyle = () => ({
-    backgroundImage: `url('/images/chessboard${currentChessboard}.png')`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat'
-  } as React.CSSProperties);
-
   // Main render
   if (!walletAddress) {
     return (
@@ -1049,15 +1040,12 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
   }
 
   return (
-    <div className="mobile-chess-container">
-      <div className="mobile-chess-header">
+    <div className="chess-game">
+      <div className="chess-header">
         <h2>Lawb Chess</h2>
-        <div className="mobile-chess-controls">
-          <button className="mobile-chess-btn" onClick={onClose}>×</button>
-        </div>
       </div>
       
-      <div className="mobile-chess-content">
+      <div className="chess-content">
         {!showGame && !showDifficulty && !showMultiplayer && (
           <div className="mobile-chess-piece-gallery">
             {renderPieceGallery(false)}
@@ -1155,7 +1143,12 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
               </div>
 
               <div className="mobile-chess-board-wrapper">
-                <div className="mobile-chess-board" style={getChessboardStyle()}>
+                <div className="mobile-chess-board" style={{
+                  backgroundImage: `url('/images/chessboard${currentChessboard}.png')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}>
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="mobile-chess-board-row">
                       {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
@@ -1164,10 +1157,9 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
                 </div>
               </div>
               
-              <div className="mobile-chess-game-controls">
-                <button className="mobile-chess-btn" onClick={resetGame}>New Game</button>
-                <button className="mobile-chess-btn" onClick={cycleChessboard}>Board {currentChessboard}</button>
-                <button className="mobile-chess-btn" onClick={resetGame}>Back to Menu</button>
+              <div className="chess-game-controls">
+                <button className="start-btn" onClick={resetGame}>New Game</button>
+                <button className="start-btn" onClick={resetGame}>Back to Menu</button>
               </div>
             </div>
             
@@ -1213,4 +1205,8 @@ export const MobileChessGame: React.FC<ChessGameProps> = ({ onClose, walletAddre
       {renderPromotionDialog()}
     </div>
   );
-}; 
+};
+
+function getRandomChessboardNumber() {
+  return Math.floor(Math.random() * 6) + 1;
+} 
