@@ -767,7 +767,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const fen = boardToFEN(board, currentPlayer);
             console.log('[DEBUG] Sending FEN to Stockfish API:', fen);
             
-            const response = await fetch('http://localhost:3001/api/stockfish', {
+            // Use production API endpoint
+            const apiUrl = 'https://lawb-chess-api.wablesphoto.workers.dev/stockfish';
+            
+            const response = await fetch(apiUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ fen, movetime: 1200 })
