@@ -316,18 +316,26 @@ self.onmessage = (e) => {
     });
 
     let bestMove = null;
-    if (difficulty === 'hard') {
+    if (difficulty === 'kinda harder') {
         let bestScore = -Infinity;
         const alpha = -Infinity;
         const beta = Infinity;
-
+        const moveScores = [];
         for (const move of moves) {
             const tempBoard = board.map(row => [...row]);
-            const score = minimax(tempBoard, move, 2, false, alpha, beta); // Reduced depth to 2
+            const score = minimax(tempBoard, move, 5, false, alpha, beta); // Depth 5 for 'kinda harder'
+            moveScores.push({ move, score });
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
             }
+        }
+        // Add a small random factor: pick randomly among the top 2 moves if their scores are close
+        moveScores.sort((a, b) => b.score - a.score);
+        if (moveScores.length > 1 && Math.abs(moveScores[0].score - moveScores[1].score) < 50) {
+            bestMove = moveScores[Math.floor(Math.random() * 2)].move;
+        } else {
+            bestMove = moveScores[0].move;
         }
     } else {
         bestMove = moves[Math.floor(Math.random() * moves.length)];

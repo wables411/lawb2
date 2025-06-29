@@ -218,6 +218,8 @@ self.onmessage = (e) => {
 
     function evaluateBoard(board) {
         let score = 0;
+        
+        // Material and positional evaluation
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
                 const piece = board[row][col];
@@ -246,69 +248,240 @@ self.onmessage = (e) => {
                 }
             }
         }
+
+        // Additional strategic evaluations
+        score += evaluatePawnStructure(board);
+        score += evaluateKingSafety(board);
+        score += evaluateCenterControl(board);
+        score += evaluatePieceMobility(board);
+
         return score;
     }
 
-    function minimax(board, depth, alpha, beta, maximizingPlayer) {
-        if (depth === 0) {
-            return evaluateBoard(board);
-        }
-
-        const color = maximizingPlayer ? 'blue' : 'red';
-        const moves = getAllLegalMoves(color, board);
-
-        if (moves.length === 0) {
-            // Checkmate or stalemate
-            if (isInCheck(color, board)) {
-                return maximizingPlayer ? -20000 : 20000; // Checkmate
+    function evaluatePawnStructure(board) {
+        let score = 0;
+        
+        // Evaluate doubled pawns, isolated pawns, and pawn chains
+        for (let col = 0; col < 8; col++) {
+            let bluePawns = 0, redPawns = 0;
+            for (let row = 0; row < 8; row++) {
+                if (board[row][col] === 'p') bluePawns++;
+                if (board[row][col] === 'P') redPawns++;
             }
-            return 0; // Stalemate
+            
+            // Penalize doubled pawns
+            if (bluePawns > 1) score -= 30 * (bluePawns - 1);
+            if (redPawns > 1) score += 30 * (redPawns - 1);
+            
+            // Bonus for pawns in center files (d, e)
+            if (col >= 3 && col <= 4) {
+                score += bluePawns * 10;
+                score -= redPawns * 10;
+            }
         }
+        
+        return score;
+    }
 
-        if (maximizingPlayer) {
-            let maxEval = -Infinity;
-            for (const move of moves) {
-                const newBoard = board.map(row => [...row]);
-                newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col];
-                newBoard[move.from.row][move.from.col] = null;
-                
-                const evaluation = minimax(newBoard, depth - 1, alpha, beta, false);
-                maxEval = Math.max(maxEval, evaluation);
-                alpha = Math.max(alpha, evaluation);
-                if (beta <= alpha) break;
+    function evaluateKingSafety(board) {
+        let score = 0;
+        
+        // Find kings
+        let blueKingRow = -1, blueKingCol = -1;
+        let redKingRow = -1, redKingCol = -1;
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                if (board[row][col] === 'k') {
+                    blueKingRow = row;
+                    blueKingCol = col;
+                } else if (board[row][col] === 'K') {
+                    redKingRow = row;
+                    redKingCol = col;
+                }
             }
-            return maxEval;
-        } else {
-            let minEval = Infinity;
-            for (const move of moves) {
-                const newBoard = board.map(row => [...row]);
-                newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col];
-                newBoard[move.from.row][move.from.col] = null;
-                
-                const evaluation = minimax(newBoard, depth - 1, alpha, beta, true);
-                minEval = Math.min(minEval, evaluation);
-                beta = Math.min(beta, evaluation);
-                if (beta <= alpha) break;
-            }
-            return minEval;
         }
+        
+        // Penalize kings in center during middlegame
+        if (blueKingRow >= 3 && blueKingRow <= 4 && blueKingCol >= 3 && blueKingCol <= 4) {
+            score -= 50;
+        }
+        if (redKingRow >= 3 && redKingRow <= 4 && redKingCol >= 3 && redKingCol <= 4) {
+            score += 50;
+        }
+        
+        return score;
+    }
+
+    function evaluateCenterControl(board) {
+        let score = 0;
+        
+        // Bonus for pieces controlling center squares
+        const centerSquares = [
+            [3, 3], [3, 4], [4, 3], [4, 4], // d4, e4, d5, e5
+            [2, 3], [2, 4], [5, 3], [5, 4]  // d3, e3, d6, e6
+        ];
+        
+        for (const [row, col] of centerSquares) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece) {
+                        const color = getPieceColor(piece);
+                        const pieceType = piece.toLowerCase();
+                        
+                        if (canPieceMove(piece, r, c, row, col, board, false)) {
+                            const value = PIECE_VALUES[pieceType] / 100;
+                            if (color === 'blue') {
+                                score += value;
+                            } else {
+                                score -= value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return score;
+    }
+
+    function evaluatePieceMobility(board) {
+        let score = 0;
+        
+        const blueMoves = getAllLegalMoves('blue', board).length;
+        const redMoves = getAllLegalMoves('red', board).length;
+        
+        score += (blueMoves - redMoves) * 5;
+        
+        return score;
     }
 
     function findBestMove(board, color, difficulty) {
         const moves = getAllLegalMoves(color, board);
         if (moves.length === 0) return null;
 
-        const depth = difficulty === 'hard' ? 4 : 2;
+        // Enhanced difficulty settings with timeout protection
+        let depth;
+        let useRandomness;
+        let timeout;
+        let evalFn = evaluateBoard;
+        switch (difficulty) {
+            case 'novice':
+                depth = 1;
+                useRandomness = 0.7; // High randomness for novice
+                timeout = 1000; // 1 second
+                break;
+            case 'intermediate':
+                depth = 2;
+                useRandomness = 0.3;
+                timeout = 2000; // 2 seconds
+                break;
+            case 'world-class':
+                depth = 3;
+                useRandomness = 0;
+                timeout = 3000; // 3 seconds
+                // Use a more aggressive evaluation for world-class mode
+                evalFn = function(board, lastMove) {
+                  let score = 2 * evaluateBoard(board);
+                  score += 2 * evaluateCenterControl(board);
+                  score += 2 * evaluateKingSafety(board);
+                  // Bonus for recent capture
+                  if (lastMove && board[lastMove.to.row][lastMove.to.col] && getPieceColor(board[lastMove.to.row][lastMove.to.col]) === 'red') {
+                    score += 400; // Big bonus for capturing a blue piece
+                  }
+                  // Bonus for threatening blue pieces
+                  for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                      const piece = board[row][col];
+                      if (piece && getPieceColor(piece) === 'red') {
+                        for (let r = 0; r < 8; r++) {
+                          for (let c = 0; c < 8; c++) {
+                            if (getPieceColor(board[r][c]) === 'blue' && canPieceMove(piece, row, col, r, c, board, false)) {
+                              score += 30; // Bonus for threatening a blue piece
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  return score;
+                };
+                break;
+            default:
+                depth = 2;
+                useRandomness = 0.1;
+                timeout = 2000;
+        }
+
+        // Add randomness for more human-like play (not in world-class mode)
+        if (useRandomness > 0 && Math.random() < useRandomness) {
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            return randomMove;
+        }
+
         let bestMove = null;
         let bestValue = color === 'blue' ? -Infinity : Infinity;
+        let startTime = Date.now();
 
-        for (const move of moves) {
+        // Sort moves to improve alpha-beta pruning efficiency
+        const sortedMoves = moves.sort((a, b) => {
+            // Prioritize captures and checks
+            const aIsCapture = board[a.to.row][a.to.col] !== null;
+            const bIsCapture = board[b.to.row][b.to.col] !== null;
+            if (aIsCapture && !bIsCapture) return -1;
+            if (!aIsCapture && bIsCapture) return 1;
+            return 0;
+        });
+
+        function minimaxCustom(board, depth, alpha, beta, maximizingPlayer, lastMove) {
+            if (depth === 0) {
+                return evalFn(board, lastMove);
+            }
+            const color = maximizingPlayer ? 'blue' : 'red';
+            const moves = getAllLegalMoves(color, board);
+            if (moves.length === 0) {
+                if (isInCheck(color, board)) {
+                    return maximizingPlayer ? -20000 : 20000;
+                }
+                return 0;
+            }
+            if (maximizingPlayer) {
+                let maxEval = -Infinity;
+                for (const move of moves) {
+                    const newBoard = board.map(row => [...row]);
+                    newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col];
+                    newBoard[move.from.row][move.from.col] = null;
+                    const evaluation = minimaxCustom(newBoard, depth - 1, alpha, beta, false, move);
+                    maxEval = Math.max(maxEval, evaluation);
+                    alpha = Math.max(alpha, evaluation);
+                    if (beta <= alpha) break;
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (const move of moves) {
+                    const newBoard = board.map(row => [...row]);
+                    newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col];
+                    newBoard[move.from.row][move.from.col] = null;
+                    const evaluation = minimaxCustom(newBoard, depth - 1, alpha, beta, true, move);
+                    minEval = Math.min(minEval, evaluation);
+                    beta = Math.min(beta, evaluation);
+                    if (beta <= alpha) break;
+                }
+                return minEval;
+            }
+        }
+
+        for (const move of sortedMoves) {
+            if (Date.now() - startTime > timeout) {
+                console.log('AI timeout, returning best move so far');
+                break;
+            }
             const newBoard = board.map(row => [...row]);
             newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col];
             newBoard[move.from.row][move.from.col] = null;
-            
-            const value = minimax(newBoard, depth - 1, -Infinity, Infinity, color === 'red');
-            
+            const value = minimaxCustom(newBoard, depth - 1, -Infinity, Infinity, color === 'red', move);
             if (color === 'blue' && value > bestValue) {
                 bestValue = value;
                 bestMove = move;
@@ -317,7 +490,9 @@ self.onmessage = (e) => {
                 bestMove = move;
             }
         }
-
+        if (!bestMove && moves.length > 0) {
+            bestMove = moves[0];
+        }
         return bestMove;
     }
 

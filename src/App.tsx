@@ -10,6 +10,7 @@ import MemeGenerator from './components/MemeGenerator';
 import { ChessGame } from './components/ChessGame';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
+import { useNavigate } from 'react-router-dom';
 
 const useStyles = createUseStyles({
   body: {
@@ -35,7 +36,8 @@ function App() {
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
-  const [showChessGame, setShowChessGame] = useState(false);
+  const [showChessLoading, setShowChessLoading] = useState(false);
+  const navigate = useNavigate();
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,6 @@ function App() {
         newSet.delete(popupId);
         return newSet;
       });
-      // The linter wants this handled, but it's a fire-and-forget visual refresh trigger.
       void document.body.offsetWidth;
     } else if (action === 'wallet') {
       if (!isConnected) {
@@ -82,7 +83,29 @@ function App() {
     } else if (action === 'meme-generator') {
       setShowMemeGenerator(true);
     } else if (action === 'chess') {
-      setShowChessGame(true);
+      if (!isConnected) {
+        void open().then(() => {
+          // Wait for connection, then navigate
+          const checkConnection = () => {
+            if (window.ethereum && window.ethereum.selectedAddress) {
+              setShowChessLoading(true);
+              setTimeout(() => {
+                setShowChessLoading(false);
+                navigate('/chess');
+              }, 1500);
+            } else {
+              setTimeout(checkConnection, 200);
+            }
+          };
+          checkConnection();
+        });
+      } else {
+        setShowChessLoading(true);
+        setTimeout(() => {
+          setShowChessLoading(false);
+          navigate('/chess');
+        }, 1500);
+      }
     }
   };
 
@@ -100,8 +123,6 @@ function App() {
       setShowNFTGallery(true);
     } else if (popupId === 'meme-generator-popup') {
       setShowMemeGenerator(true);
-    } else if (popupId === 'chess-game-popup') {
-      setShowChessGame(true);
     } else {
       setActivePopup(popupId);
     }
@@ -115,7 +136,6 @@ function App() {
   const closeMintPopup = () => setShowMintPopup(false);
   const closeNFTGallery = () => setShowNFTGallery(false);
   const closeMemeGenerator = () => setShowMemeGenerator(false);
-  const closeChessGame = () => setShowChessGame(false);
 
   const minimizeMintPopup = () => {
     setShowMintPopup(false);
@@ -130,11 +150,6 @@ function App() {
   const minimizeMemeGenerator = () => {
     setShowMemeGenerator(false);
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
-  };
-
-  const minimizeChessGame = () => {
-    setShowChessGame(false);
-    setMinimizedPopups(prev => new Set(prev).add('chess-game-popup'));
   };
 
   const walletButton = (
@@ -168,6 +183,24 @@ function App() {
 
   return (
     <div className={classes.body}>
+      {showChessLoading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: '#000',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }}>
+          <img src="/images/blueknight.png" alt="Booting Chess..." style={{ width: 120, height: 120, marginBottom: 32 }} />
+          <div style={{ color: '#fff', fontSize: 28, fontFamily: 'monospace', letterSpacing: 2 }}>LOADING LAWB CHESS...</div>
+        </div>
+      )}
       <Desktop onIconClick={handleIconClick} />
 
       <Taskbar
@@ -347,8 +380,6 @@ function App() {
       <Popup id="meme-generator-popup" isOpen={showMemeGenerator} onClose={closeMemeGenerator} onMinimize={minimizeMemeGenerator}>
         <MemeGenerator />
       </Popup>
-
-      {showChessGame && <ChessGame onClose={closeChessGame} onMinimize={minimizeChessGame} />}
     </div>
   );
 }

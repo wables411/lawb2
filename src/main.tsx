@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { wagmiAdapter } from './appkit.ts';
 import './appkit.ts'; // This initializes the AppKit
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ChessPage from './components/ChessPage'; // to be created
 
 const queryClient = new QueryClient();
 
@@ -21,7 +23,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <Root />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Root />} />
+            <Route path="/chess" element={<ChessPage />} />
+          </Routes>
+        </BrowserRouter>
       </QueryClientProvider>
     </WagmiProvider>
   </React.StrictMode>,

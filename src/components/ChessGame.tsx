@@ -60,6 +60,7 @@ const initialBoard: (string | null)[][] = [
 interface ChessGameProps {
   onClose: () => void;
   onMinimize?: () => void;
+  fullscreen?: boolean;
 }
 
 // Piece gallery data
@@ -78,7 +79,10 @@ const pieceGallery = [
   { key: 'p', name: 'Blue Pawn', img: '/images/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
 ];
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => {
+// Add 'world-class' to difficulty type
+type Difficulty = 'novice' | 'intermediate' | 'world-class';
+
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false }) => {
   const { address: walletAddress } = useAccount();
   
   // Game state
@@ -87,7 +91,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
-  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('easy');
+  const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
   const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -95,15 +99,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // UI state
-  const [showDifficulty, setShowDifficulty] = useState(false);
-  const [showMultiplayer, setShowMultiplayer] = useState(false);
   const [showGame, setShowGame] = useState(false);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
+  // Capture animation state
+  const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
+  
   // Multiplayer state
-  const [inviteCode, setInviteCode] = useState<string>('');
-  const [wager, setWager] = useState<number>(0.1);
+  const [inviteCode] = useState<string>('');
+  const [wager] = useState<number>(0.1);
   
   // Piece state tracking
   const [pieceState, setPieceState] = useState({
@@ -115,8 +120,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   });
   
   const aiWorkerRef = useRef<Worker | null>(null);
-  const isAIMovingRef = useRef<boolean>(false);
-  const boardRef = useRef<(string | null)[][]>(board);
+  const isAIMovingRef = useRef(false);
+  const boardRef = useRef(board);
+  const makeMoveRef = useRef<((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove?: boolean) => void) | null>(null);
+  const aiTimeoutRef = useRef<number | null>(null);
+  const lastAIMoveRef = useRef(false);
+
+  // Add showDifficulty state
+  const [showDifficulty, setShowDifficulty] = useState(false);
+
+  // Add state for piece gallery modal
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+
+  // Add state for leaderboard updated message
+  const [showLeaderboardUpdated, setShowLeaderboardUpdated] = useState(false);
+
+  // Add dark mode state
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem('lawb_chess_dark_mode') === 'true';
+    }
+    return false;
+  });
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('lawb_chess_dark_mode', String(!prev));
+      }
+      return !prev;
+    });
+  };
 
   // Update board ref whenever board state changes
   useEffect(() => {
@@ -128,48 +161,52 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     if (!walletAddress) {
       setStatus('Connect wallet to play');
       setShowGame(false);
-      setShowDifficulty(false);
-      setShowMultiplayer(false);
-          } else {
+    } else {
       setStatus('Select game mode');
     }
   }, [walletAddress]);
 
   // Initialize AI worker
   useEffect(() => {
-    // Temporarily disable AI worker to test basic flow
-    console.log('AI worker disabled for testing');
-    setStatus('AI worker disabled for testing');
-    
-    // if (typeof Worker !== 'undefined') {
-    //   try {
-    //     aiWorkerRef.current = new Worker('/aiWorker.js');
-    //     aiWorkerRef.current.onmessage = (e: MessageEvent) => {
-    //       const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
-    //       if (move) {
-    //         setStatus('AI made a move');
-    //         isAIMovingRef.current = false;
-    //         makeMove(move.from, move.to, true);
-    //       } else {
-    //         isAIMovingRef.current = false;
-    //         setStatus('AI could not find a move');
-    //       }
-    //     };
-    //     aiWorkerRef.current.onerror = (error: ErrorEvent) => {
-    //       console.error('AI Worker error:', error);
-    //       setStatus('AI worker error - using fallback mode');
-    //       isAIMovingRef.current = false;
-    //     };
-    //   } catch (error) {
-    //     console.error('Failed to initialize AI worker:', error);
-    //     setStatus('AI worker failed to load - using fallback mode');
-    //   }
-    // }
+    if (!aiWorkerRef.current && typeof Worker !== 'undefined') {
+      aiWorkerRef.current = new Worker('/aiWorker.js');
+      aiWorkerRef.current.onmessage = (e: MessageEvent) => {
+        console.log('[DEBUG] AI worker response received:', e.data);
+        const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
+        // Only apply if it's still AI's turn and game is active
+        if (move && isAIMovingRef.current && gameState === 'active') {
+          console.log('[DEBUG] AI worker move is valid, executing:', move);
+          isAIMovingRef.current = false;
+          if (aiTimeoutRef.current) { window.clearTimeout(aiTimeoutRef.current); aiTimeoutRef.current = null; }
+          if (makeMoveRef.current) {
+            makeMoveRef.current(move.from, move.to, true);
+          }
+        } else {
+          console.log('[DEBUG] AI worker move rejected:', {
+            hasMove: !!move,
+            isAIMoving: isAIMovingRef.current,
+            gameState,
+            currentPlayer
+          });
+        }
+      };
+      aiWorkerRef.current.onerror = (error: ErrorEvent) => {
+        console.error('[DEBUG] AI worker error:', error);
+        setStatus('AI worker error - using fallback mode');
+        isAIMovingRef.current = false;
+      };
+    }
     return () => {
       if (aiWorkerRef.current) {
         aiWorkerRef.current.terminate();
+        aiWorkerRef.current = null;
+      }
+      if (aiTimeoutRef.current) {
+        window.clearTimeout(aiTimeoutRef.current);
+        aiTimeoutRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load leaderboard
@@ -178,41 +215,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   }, []);
 
   // Load leaderboard data
-  const loadLeaderboard = async () => {
+  const loadLeaderboard = async (): Promise<void> => {
     try {
-      // Add timeout to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) =>
         window.setTimeout(() => reject(new Error('Database timeout')), 10000)
       );
-
       const dataPromise = supabase
         .from('leaderboard')
         .select('*')
         .order('points', { ascending: false });
-      
       type SupabaseLeaderboardResponse = {
         data: LeaderboardEntry[] | null;
-        error: Error | null;
+        error: unknown;
       };
-      const { data, error } = (await Promise.race([dataPromise, timeoutPromise])) as SupabaseLeaderboardResponse;
-
-      if (error) {
-        setStatus('Failed to load leaderboard');
-        console.error('Leaderboard error:', error);
-        return;
-      }
-      if (data) {
-        setLeaderboardData(data);
-      }
-    } catch (error) {
+      const resp = await Promise.race([dataPromise, timeoutPromise]) as SupabaseLeaderboardResponse;
+      if (resp.error) throw resp.error;
+      if (resp.data) setLeaderboardData(resp.data);
+      console.log('Leaderboard data loaded:', resp.data);
+    } catch (err) {
       setStatus('Failed to load leaderboard');
-      console.error('Leaderboard error:', error);
+      console.error('Leaderboard error:', err);
     }
   };
 
   // Update score
   const updateScore = async (gameResult: 'win' | 'loss' | 'draw') => {
-    if (!walletAddress) return;
+    console.log('[DEBUG] updateScore called with:', gameResult);
+    if (!walletAddress) {
+      console.log('[DEBUG] No wallet address, returning');
+      return;
+    }
 
     try {
       // Normalize wallet address to lowercase for consistent database queries
@@ -224,42 +256,52 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
         .eq('username', normalizedAddress)
         .maybeSingle();
 
-      const wins = (existingRecord?.wins || 0) + (gameResult === 'win' ? 1 : 0);
-      const losses = (existingRecord?.losses || 0) + (gameResult === 'loss' ? 1 : 0);
-      const draws = (existingRecord?.draws || 0) + (gameResult === 'draw' ? 1 : 0);
+      // Debug log for types
+      console.log('[Leaderboard] existingRecord types:', {
+        wins: typeof existingRecord?.wins,
+        losses: typeof existingRecord?.losses,
+        draws: typeof existingRecord?.draws,
+        points: typeof existingRecord?.points,
+        existingRecord
+      });
+
+      // Force integer conversion
+      const wins = (parseInt((existingRecord && typeof existingRecord === 'object' && 'wins' in existingRecord && typeof (existingRecord as Record<string, unknown>).wins === 'string' ? (existingRecord as Record<string, string>).wins : '0'), 10) || 0) + (gameResult === 'win' ? 1 : 0);
+      const losses = (parseInt((existingRecord && typeof existingRecord === 'object' && 'losses' in existingRecord && typeof (existingRecord as Record<string, unknown>).losses === 'string' ? (existingRecord as Record<string, string>).losses : '0'), 10) || 0) + (gameResult === 'loss' ? 1 : 0);
+      const draws = (parseInt((existingRecord && typeof existingRecord === 'object' && 'draws' in existingRecord && typeof (existingRecord as Record<string, unknown>).draws === 'string' ? (existingRecord as Record<string, string>).draws : '0'), 10) || 0) + (gameResult === 'draw' ? 1 : 0);
       const total_games = wins + losses + draws;
-      const pointsToAdd = gameResult === 'win' ? (difficulty === 'hard' ? 5 : 3) : 
+      const pointsToAdd = gameResult === 'win' ? (difficulty === 'world-class' ? 5 : 3) : 
                          gameResult === 'draw' ? 1 : 0;
-      const points = (existingRecord?.points || 0) + pointsToAdd;
+      const points = (parseInt((existingRecord && typeof existingRecord === 'object' && 'points' in existingRecord && typeof (existingRecord as Record<string, unknown>).points === 'string' ? (existingRecord as Record<string, string>).points : '0'), 10) || 0) + pointsToAdd;
 
-      if (existingRecord) {
-      await supabase
+      console.log('[Leaderboard] updateScore:', {
+        normalizedAddress,
+        gameResult,
+        wins,
+        losses,
+        draws,
+        total_games,
+        points,
+        existingRecord
+      });
+
+      // Use upsert with onConflict like the original working implementation
+      const record = {
+        username: normalizedAddress,
+        chain_type: 'evm',
+        wins,
+        losses,
+        draws,
+        total_games,
+        points,
+        updated_at: new Date().toISOString()
+      };
+
+      const response = await supabase
         .from('leaderboard')
-          .update({
-            wins,
-            losses,
-            draws,
-            total_games,
-            points,
-            updated_at: new Date().toISOString()
-          })
-          .eq('username', normalizedAddress);
-      } else {
-        await supabase
-          .from('leaderboard')
-          .insert({
-            username: normalizedAddress,
-          chain_type: 'evm',
-          wins,
-          losses,
-          draws,
-          total_games,
-          points,
-            created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-          });
-      }
+        .upsert(record, { onConflict: 'username' });
 
+      console.log('[Leaderboard] Supabase response:', response);
       void loadLeaderboard();
     } catch (error) {
       console.error('Error updating score:', error);
@@ -542,14 +584,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
 
   // Make a move
   const makeMove = (from: { row: number; col: number }, to: { row: number; col: number }, isAIMove = false) => {
+    lastAIMoveRef.current = !!isAIMove;
     const piece = board[from.row][from.col];
     if (!piece) return;
     
-    const pieceColor = getPieceColor(piece);
-    const pieceType = piece.toLowerCase();
-    
     // Check for pawn promotion
-    if (pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7))) {
+    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
       setPromotionMove({ from, to });
       setShowPromotion(true);
       return;
@@ -558,30 +598,78 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     executeMove(from, to, 'q', isAIMove);
   };
 
+  // Store makeMove in ref for AI worker access
+  makeMoveRef.current = makeMove;
+
   // Execute move
   const executeMove = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove = false) => {
     const piece = board[from.row][from.col];
     const capturedPiece = board[to.row][to.col];
-    const pieceColor = getPieceColor(piece);
-    const pieceType = piece ? piece.toLowerCase() : '';
     
-    // Create new board state
-      const newBoard = board.map(row => [...row]);
-    newBoard[to.row][to.col] = pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7)) 
-      ? (pieceColor === 'blue' ? promotionPiece : promotionPiece.toUpperCase())
-      : piece;
+    // Check if this is a capture move
+    const isCapture = capturedPiece !== null;
+    
+    // If it's a capture, show the explosion animation first
+    if (isCapture) {
+      setCaptureAnimation({ row: to.row, col: to.col, show: true });
+      
+      // Wait for animation to complete before executing the move
+      setTimeout(() => {
+        executeMoveAfterAnimation(from, to, promotionPiece, isAIMove, board);
+        setCaptureAnimation(null);
+      }, 500); // Animation duration
+      return;
+    }
+    
+    // If not a capture, execute move immediately
+    executeMoveAfterAnimation(from, to, promotionPiece, isAIMove, board);
+  };
+
+  // Execute move after animation (or immediately if no animation)
+  const executeMoveAfterAnimation = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove = false, currentBoardState = board) => {
+    const piece = currentBoardState[from.row][from.col];
+    
+    console.log('[DEBUG] executeMoveAfterAnimation called:', {
+      from,
+      to,
+      piece,
+      currentPlayer,
+      isAIMove,
+      gameMode,
+      difficulty
+    });
+    
+    // Create new board state from the passed board state
+    const newBoard = currentBoardState.map(row => [...row]);
+    
+    // Handle pawn promotion
+    if (piece && piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      // Convert promotion piece to correct case based on player color
+      const promotedPiece = getPieceColor(piece) === 'blue' ? promotionPiece.toLowerCase() : promotionPiece.toUpperCase();
+      newBoard[to.row][to.col] = promotedPiece;
+    } else {
+      newBoard[to.row][to.col] = piece ? piece : '';
+    }
+    
     newBoard[from.row][from.col] = null;
+    
+    console.log('[DEBUG] Board state after move:', {
+      fromPiece: currentBoardState[from.row][from.col],
+      toPiece: currentBoardState[to.row][to.col],
+      newFromPiece: newBoard[from.row][from.col],
+      newToPiece: newBoard[to.row][to.col]
+    });
     
     // Update piece state for castling
     const newPieceState = { ...pieceState };
-    if (pieceType === 'k') {
-      if (pieceColor === 'blue') {
+    if (piece && piece.toLowerCase() === 'k') {
+      if (getPieceColor(piece) === 'blue') {
         newPieceState.blueKingMoved = true;
       } else {
         newPieceState.redKingMoved = true;
       }
-    } else if (pieceType === 'r') {
-      if (pieceColor === 'blue') {
+    } else if (piece && piece.toLowerCase() === 'r') {
+      if (getPieceColor(piece) === 'blue') {
         if (from.col === 0) newPieceState.blueRooksMove.left = true;
         if (from.col === 7) newPieceState.blueRooksMove.right = true;
       } else {
@@ -591,20 +679,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     }
     
     // Handle pawn double move for en passant
-    if (pieceType === 'p' && Math.abs(from.row - to.row) === 2) {
+    if (piece && piece.toLowerCase() === 'p' && Math.abs(from.row - to.row) === 2) {
       newPieceState.lastPawnDoubleMove = { row: to.row, col: to.col };
     } else {
       newPieceState.lastPawnDoubleMove = null;
     }
     
     // Handle castling
-    if (pieceType === 'k' && Math.abs(from.col - to.col) === 2) {
+    if (piece && piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
       if (to.col === 6) { // Kingside
         newBoard[from.row][7] = null;
-        newBoard[from.row][5] = pieceColor === 'blue' ? 'r' : 'R';
+        newBoard[from.row][5] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
       } else if (to.col === 2) { // Queenside
         newBoard[from.row][0] = null;
-        newBoard[from.row][3] = pieceColor === 'blue' ? 'r' : 'R';
+        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
       }
     }
     
@@ -615,6 +703,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     setLegalMoves([]);
     setLastMove({ from, to });
     
+    console.log('[DEBUG] State updated, currentPlayer before switch:', currentPlayer);
+    
     // Add to move history
     const moveNotation = `${coordsToAlgebraic(from.row, from.col)}-${coordsToAlgebraic(to.row, to.col)}`;
     setMoveHistory(prev => [...prev, moveNotation]);
@@ -624,80 +714,152 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     const gameEndResult = checkGameEnd(newBoard, nextPlayer);
     
     if (gameEndResult) {
+      console.log('[DEBUG] Game ended with result:', gameEndResult);
       setGameState(gameEndResult);
       if (gameMode === GameMode.AI) {
-        const result = gameEndResult === 'checkmate' ? (nextPlayer === 'blue' ? 'win' : 'loss') : 'draw';
-        void updateScore(result);
+        console.log('[DEBUG] AI mode detected, calling updateScore');
+        // Fix: Use the same logic as the original working implementation
+        // winner is 'blue' when blue wins, 'red' when red wins, 'draw' for stalemate
+        const winner = gameEndResult === 'checkmate' ? (nextPlayer === 'blue' ? 'red' : 'blue') : 'draw';
+        const result = winner === 'blue' ? 'win' : winner === 'red' ? 'loss' : 'draw';
+        console.log('[DEBUG] Calculated result for updateScore:', result);
+        void updateScore(result).then(() => {
+          setStatus(prev => prev + ' Leaderboard has been updated!');
+          setShowLeaderboardUpdated(true);
+          window.setTimeout(() => {
+            setShowLeaderboardUpdated(false);
+            console.log('Leaderboard updated!');
+            setStatus(gameEndResult === 'checkmate'
+              ? `Checkmate! ${nextPlayer === 'blue' ? 'Red' : 'Blue'} wins!`
+              : 'Stalemate! Game is a draw.');
+          }, 3000);
+        });
+      } else {
+        console.log('[DEBUG] Not AI mode, gameMode is:', gameMode);
       }
       return;
     }
     
     // Switch players
-      setCurrentPlayer(nextPlayer);
+    setCurrentPlayer(nextPlayer);
+    console.log('[DEBUG] Player switched to:', nextPlayer);
     
-    // AI move - only if it's AI's turn and we're in AI mode and this wasn't an AI move
-    if (!isAIMove && gameMode === GameMode.AI && nextPlayer === 'red' && gameState === 'active') {
-      setStatus('AI is thinking...');
-      isAIMovingRef.current = true;
-      
-      // Use only fallback AI move for testing
-      setTimeout(() => {
-        // Use the updated board state for AI move calculation
-        const aiMove = getRandomAIMove(newBoard);
-        if (aiMove) {
-          // Create a new executeMove function that works with the updated board
-          const executeAIMove = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q') => {
-            const piece = newBoard[from.row][from.col];
-            if (!piece) return;
-            
-            const pieceColor = getPieceColor(piece);
-            const pieceType = piece.toLowerCase();
-            
-            // Create new board state from the updated board
-            const aiBoard = newBoard.map(row => [...row]);
-            aiBoard[to.row][to.col] = pieceType === 'p' && ((pieceColor === 'blue' && to.row === 0) || (pieceColor === 'red' && to.row === 7)) 
-              ? (pieceColor === 'blue' ? promotionPiece : promotionPiece.toUpperCase())
-              : piece;
-            aiBoard[from.row][from.col] = null;
-            
-            // Update state
-            setBoard(aiBoard);
-      setSelectedPiece(null);
-      setLegalMoves([]);
-            setLastMove({ from, to });
-            
-            // Add to move history
-            const moveNotation = `${coordsToAlgebraic(from.row, from.col)}-${coordsToAlgebraic(to.row, to.col)}`;
-            setMoveHistory(prev => [...prev, moveNotation]);
-            
-            // Check game end
-            const aiNextPlayer: 'blue' | 'red' = switchPlayer(nextPlayer);
-            const gameEndResult = checkGameEnd(aiBoard, aiNextPlayer);
-            
-            if (gameEndResult) {
-              setGameState(gameEndResult);
-              if (gameMode === GameMode.AI) {
-                const result = gameEndResult === 'checkmate' ? (aiNextPlayer === 'blue' ? 'win' : 'loss') : 'draw';
-                void updateScore(result);
-              }
-              return;
-            }
-            
-            // Switch players
-            setCurrentPlayer(aiNextPlayer);
-            setStatus(`Your turn (${aiNextPlayer})`);
-          };
-          
-          executeAIMove(aiMove.from, aiMove.to, 'q');
-        } else {
-          setStatus('AI could not find a move');
-        }
-        isAIMovingRef.current = false;
-      }, 1000);
-    } else {
-      setStatus(`Your turn (${nextPlayer})`);
+    // Reset AI moving flag if this was an AI move
+    if (isAIMove) {
+      isAIMovingRef.current = false;
     }
   };
+
+  // AI move effect - trigger AI move when it's red's turn
+  useEffect(() => {
+    if (!isAIMovingRef.current && gameMode === GameMode.AI && currentPlayer === 'red' && !lastAIMoveRef.current) {
+      console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
+      // Set AI moving flag to prevent player moves during AI turn
+      isAIMovingRef.current = true;
+      
+      if (difficulty === 'world-class') {
+        // Use Stockfish API for world-class difficulty
+        console.log('[DEBUG] Using Stockfish API for world-class difficulty');
+        
+        // Use async IIFE to handle the API call
+        (async () => {
+          try {
+            const fen = boardToFEN(board, currentPlayer);
+            console.log('[DEBUG] Sending FEN to Stockfish API:', fen);
+            
+            const response = await fetch('http://localhost:3001/api/stockfish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fen, movetime: 1200 })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('[DEBUG] Stockfish API response:', data);
+            
+            if (data.bestmove) {
+              // Convert Stockfish move format (e.g., "e2e4") to our format
+              const stockfishMoveStr = data.bestmove;
+              console.log('[DEBUG] Stockfish bestmove:', stockfishMoveStr);
+              
+              // Parse Stockfish move format (e.g., "e2e4" -> from: {row: 6, col: 4}, to: {row: 4, col: 4})
+              const fromCol = stockfishMoveStr.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
+              const fromRow = 8 - parseInt(stockfishMoveStr[1]); // '1' = 7, '2' = 6, etc.
+              const toCol = stockfishMoveStr.charCodeAt(2) - 97;
+              const toRow = 8 - parseInt(stockfishMoveStr[3]);
+              
+              const stockfishMove = {
+                from: { row: fromRow, col: fromCol },
+                to: { row: toRow, col: toCol }
+              };
+              
+              console.log('[DEBUG] Converted Stockfish move:', stockfishMove);
+              
+              // Validate the move using canPieceMove
+              const piece = board[stockfishMove.from.row][stockfishMove.from.col];
+              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, stockfishMove.from.row, stockfishMove.from.col, stockfishMove.to.row, stockfishMove.to.col, true, 'red', board)) {
+                console.log('[DEBUG] AI move is legal, executing');
+                makeMove(stockfishMove.from, stockfishMove.to, true);
+              } else {
+                console.log('[DEBUG] AI move is illegal, using fallback');
+                const fallbackMove = getRandomAIMove(board);
+                if (fallbackMove) {
+                  makeMove(fallbackMove.from, fallbackMove.to, true);
+                }
+              }
+            } else {
+              console.log('[DEBUG] No move from Stockfish, using fallback');
+              const fallbackMove = getRandomAIMove(board);
+              if (fallbackMove) {
+                makeMove(fallbackMove.from, fallbackMove.to, true);
+              }
+            }
+          } catch (error) {
+            console.error('[DEBUG] Stockfish API error:', error);
+            console.log('[DEBUG] Using fallback due to API error');
+            const fallbackMove = getRandomAIMove(board);
+            if (fallbackMove) {
+              makeMove(fallbackMove.from, fallbackMove.to, true);
+            }
+          } finally {
+            // Reset AI moving flag
+            isAIMovingRef.current = false;
+          }
+        })();
+      } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
+        // Use existing AI worker for 'intermediate' mode
+        console.log('[DEBUG] Using AI worker for intermediate mode');
+        aiWorkerRef.current.postMessage({
+          board: board,
+          currentPlayer: currentPlayer,
+          difficulty,
+          pieceState: pieceState
+        });
+        
+        // Add timeout fallback in case worker doesn't respond
+        aiTimeoutRef.current = window.setTimeout(() => {
+          console.log('[DEBUG] AI worker timeout, using fallback');
+          isAIMovingRef.current = false;
+          const fallbackMove = getRandomAIMove(board);
+          if (fallbackMove) {
+            makeMove(fallbackMove.from, fallbackMove.to, true);
+          }
+        }, 3000); // 3 second timeout
+      } else if (difficulty === 'novice') {
+        // Use simple random moves for 'novice' mode
+        console.log('[DEBUG] Using simple AI for novice mode');
+        const fallbackMove = getRandomAIMove(board);
+        if (fallbackMove) {
+          makeMove(fallbackMove.from, fallbackMove.to, true);
+        }
+        // Reset AI moving flag
+        isAIMovingRef.current = false;
+      }
+    }
+  }, [currentPlayer, gameMode, difficulty, board, pieceState]);
 
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
@@ -774,8 +936,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     setLegalMoves([]);
     setLastMove(null);
     setShowGame(false);
-    setShowDifficulty(false);
-    setShowMultiplayer(false);
     setStatus('Select game mode');
     setPieceState({
       blueKingMoved: false,
@@ -788,17 +948,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     if (isAIMovingRef.current) isAIMovingRef.current = false;
   };
 
+  // Update startAIGame to show difficulty selection instead of starting the game immediately
   const startAIGame = () => {
-    console.log('startAIGame called');
     setShowDifficulty(true);
-    setShowMultiplayer(false);
-    setStatus('Select difficulty');
   };
 
   const startMultiplayerGame = () => {
-    console.log('startMultiplayerGame called');
-    setShowMultiplayer(true);
-    setShowDifficulty(false);
+    setShowGame(true);
     setStatus('Set wager and create/join game');
   };
 
@@ -806,7 +962,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
     console.log('startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
     setShowGame(true);
     setShowDifficulty(false);
-    setShowMultiplayer(false);
     setStatus(`Your turn (${currentPlayer})`);
   };
 
@@ -960,260 +1115,275 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize }) => 
   );
 
   const renderDifficultySelection = () => (
-    <div className="difficulty-selection-row">
-      <div className="difficulty-gallery-col">
-        {renderPieceGallery(true, 'click for chess piece movements')}
-      </div>
+    <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
         <div className="difficulty-selection-panel">
-                  <h3>Select Difficulty</h3>
-                  <button 
-                    className={`difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
-                    onClick={() => setDifficulty('easy')}
-                  >
-                    Easy
-                  </button>
-                  <button 
-                    className={`difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
-                    onClick={() => setDifficulty('hard')}
-                  >
-            Kinda Harder
-                  </button>
+          <h3>Select Difficulty</h3>
           <button 
-            className="start-btn"
-            onClick={startGame}
+            className={`difficulty-btn${difficulty === 'novice' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('novice'); setShowGame(true); setShowDifficulty(false); setStatus(`Your turn (${currentPlayer})`); }}
           >
-                    Start Game
-                  </button>
-        </div>
-        <div className="difficulty-leaderboard-panel">
-          <div className="leaderboard">
-            <h3>Leaderboard</h3>
-            <div className="leaderboard-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Player</th>
-                    <th>W</th>
-                    <th>L</th>
-                    <th>D</th>
-                    <th>Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboardData.slice(0, 10).map((entry, index) => {
-                    const typedEntry = entry as LeaderboardEntry;
-                    return (
-                      <tr key={typedEntry.username}>
-                        <td>{index + 1}</td>
-                        <td>{formatAddress(typedEntry.username)}</td>
-                        <td>{typedEntry.wins}</td>
-                        <td>{typedEntry.losses}</td>
-                        <td>{typedEntry.draws}</td>
-                        <td>{typedEntry.points}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            Novice
+          </button>
+          <button 
+            className={`difficulty-btn${difficulty === 'intermediate' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('intermediate'); setShowGame(true); setShowDifficulty(false); setStatus(`Your turn (${currentPlayer})`); }}
+          >
+            Intermediate
+          </button>
+          <button 
+            className={`difficulty-btn${difficulty === 'world-class' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('world-class'); setShowGame(true); setShowDifficulty(false); setStatus(`Your turn (${currentPlayer})`); }}
+          >
+            World-Class
+          </button>
         </div>
       </div>
     </div>
   );
 
-  // Utility to switch player color
-  const switchPlayer = (player: 'blue' | 'red'): 'blue' | 'red' => (player === 'blue' ? 'red' : 'blue');
-
-  // Main render
-  if (!walletAddress) {
-    return (
-      <div className="chess-game">
+  return (
+    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
+      {/* Always show header at the top */}
+      {!fullscreen && (
         <div className="chess-header">
           <h2>Lawb Chess</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
             <button onClick={onClose}>×</button>
-          </div>
-        </div>
-        <div className="chess-content">
-          <div className="wallet-required">
-            <p>Connect your wallet to play chess</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="chess-game">
-      <div className="chess-header">
-        <h2>Lawb Chess</h2>
-        <div className="chess-controls">
-          {onMinimize && <button onClick={onMinimize}>_</button>}
-          <button onClick={onClose}>×</button>
-        </div>
-      </div>
-      
-      <div className="chess-content">
-        {!showGame && !showDifficulty && !showMultiplayer && (
-          <div className="gallery-main-area">
-            {renderPieceGallery(false)}
-                </div>
-              )}
-
-        {!showGame && !showDifficulty && !showMultiplayer && (
-          <div className="game-mode-selection">
-            <h3>Select Game Mode</h3>
-            <button 
-              className={`mode-btn ${gameMode === GameMode.AI ? 'selected' : ''}`}
-              onClick={() => setGameMode(GameMode.AI)}
+            <button
+              className="dark-mode-toggle"
+              onClick={toggleDarkMode}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ marginLeft: 12 }}
             >
-              VS the House
-            </button>
-            <button 
-              className={`mode-btn ${gameMode === GameMode.ONLINE ? 'selected' : ''}`}
-              onClick={() => setGameMode(GameMode.ONLINE)}
-              disabled
-            >
-              PvP Under Construction
-            </button>
-            <button 
-              className="start-btn"
-              onClick={() => {
-                if (gameMode === GameMode.AI) {
-                  startAIGame();
-                } else {
-                  startMultiplayerGame();
-                }
-              }}
-            >
-              Continue
+              {darkMode ? '☀️' : '🌙'}
             </button>
           </div>
-        )}
-
-        {showDifficulty && renderDifficultySelection()}
-
-              {showMultiplayer && (
-          <div className="multiplayer-selection">
-            <h3>Multiplayer</h3>
-                  <div className="wager-input">
-              <label>Wager (ETH):</label>
-                    <input 
-                      type="number" 
-                      value={wager}
-                onChange={(e) => setWager(parseFloat(e.target.value) || 0.1)}
-                min="0.01"
-                step="0.01"
-                    />
-                  </div>
-            <button onClick={createGame}>Create Game</button>
-                  <div className="join-game">
-                    <input 
-                      type="text" 
-                      value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="Enter invite code"
-                    />
-              <button onClick={joinGame}>Join Game</button>
-                  </div>
-            {status && status.includes('Game created!') && (
-              <div className="game-created">
-                <p>{status}</p>
-              </div>
-            )}
-                </div>
-              )}
-
-        {showGame && (
-          <div className="game-container">
-            {/* Left Sidebar - Move History */}
-            <div className="left-sidebar">
+        </div>
+      )}
+      <div className="game-stable-layout">
+        {/* Left Sidebar */}
+        <div className="left-sidebar">
+          {/* Only show Move History and status when a game is active */}
+          {showGame && (
+            <>
+              <div className="move-history-status">{status}</div>
               <div className="move-history">
-                <h4>Move History</h4>
-                <div className="moves">
-                  {moveHistory.slice().reverse().map((move, index) => (
-                    <span key={moveHistory.length - 1 - index} className="move">
-                      {Math.floor((moveHistory.length - 1 - index) / 2) + 1}.{(moveHistory.length - 1 - index) % 2 === 0 ? '' : ' '}{move}
-                    </span>
+                <div className="move-history-title">Move History</div>
+                <ul className="move-history-list">
+                  {moveHistory.slice().reverse().map((move, idx) => (
+                    <li key={moveHistory.length - 1 - idx}>{move}</li>
                   ))}
-                </div>
+                </ul>
               </div>
-            </div>
-            
-            {/* Center - Main Game Area */}
-            <div className="game-main">
-                  <div className="game-info">
-                <div className="status">{status}</div>
-                <div className="current-player">
-                  Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
-                </div>
-                <div className="wager-display">
-                  Wager: {gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}
-                </div>
-                  </div>
-
-              <div className="chessboard-container">
-                  <div className="chessboard">
-                  {Array.from({ length: 8 }, (_, row) => (
-                    <div key={row} className="board-row">
-                      {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                              </div>
-                    ))}
-                  </div>
-                </div>
-              
-              <div className="game-controls">
-                <button onClick={resetGame}>New Game</button>
-                <button onClick={resetGame}>Back to Menu</button>
-              </div>
-            </div>
-            
-            {/* Right Sidebar - Leaderboard */}
-            {!showGame && !showDifficulty && !showMultiplayer && (
-              <div className="right-sidebar">
-              <div className="leaderboard">
-                <h3>Leaderboard</h3>
-                  <div className="leaderboard-table">
+            </>
+          )}
+          {/* Only show leaderboard in left sidebar when no game is active */}
+          {!showGame && (
+            <div className="leaderboard">
+              <h3>Leaderboard</h3>
+              <div className="leaderboard-table">
                 <table>
                   <thead>
                     <tr>
                       <th>Rank</th>
                       <th>Player</th>
-                          <th>W</th>
-                          <th>L</th>
-                          <th>D</th>
+                      <th>W</th>
+                      <th>L</th>
+                      <th>D</th>
                       <th>Points</th>
                     </tr>
                   </thead>
                   <tbody>
-                        {leaderboardData.slice(0, 10).map((entry, index) => {
-                          const typedEntry = entry as LeaderboardEntry;
-                          return (
-                            <tr key={typedEntry.username}>
-                        <td>{index + 1}</td>
-                              <td>{formatAddress(typedEntry.username)}</td>
-                              <td>{typedEntry.wins}</td>
-                              <td>{typedEntry.losses}</td>
-                              <td>{typedEntry.draws}</td>
-                              <td>{typedEntry.points}</td>
-                      </tr>
-                          );
-                        })}
+                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 10).map((entry, index: number) => {
+                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                        const typedEntry = entry as LeaderboardEntry;
+                        return (
+                          <tr key={typedEntry.username}>
+                            <td>{index + 1}</td>
+                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td>{typedEntry.wins}</td>
+                            <td>{typedEntry.losses}</td>
+                            <td>{typedEntry.draws}</td>
+                            <td>{typedEntry.points}</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
                   </tbody>
                 </table>
               </div>
-                </div>
-              </div>
+            </div>
           )}
         </div>
-        )}
-      </div>
 
+        {/* Center Area */}
+        <div className="center-area">
+          <div className="game-info">
+            <div className="game-info-bar">
+              <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
+                Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
+              </span>
+              <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
+              {showGame && !showDifficulty && (
+                <span className={difficulty === 'novice' ? 'mode-novice' : difficulty === 'intermediate' ? 'mode-intermediate' : 'mode-world-class'}>
+                  Mode: {difficulty === 'novice' ? 'Novice' : difficulty === 'intermediate' ? 'Intermediate' : 'World-Class'}
+                </span>
+              )}
+            </div>
+          </div>
+          {showGame ? (
+            <div className="chess-main-area">
+              <div className="chessboard-container">
+                <div className="chessboard">
+                  {Array.from({ length: 8 }, (_, row) => (
+                    <div key={row} className="board-row">
+                      {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
+                    </div>
+                  ))}
+                  {/* Capture Animation Overlay */}
+                  {captureAnimation && captureAnimation.show && (
+                    <div 
+                      className="capture-animation"
+                      style={{
+                        position: 'absolute',
+                        top: `${captureAnimation.row * 12.5}%`,
+                        left: `${captureAnimation.col * 12.5}%`,
+                        width: '12.5%',
+                        height: '12.5%',
+                        zIndex: 10
+                      }}
+                    >
+                      <img 
+                        src="/images/capture.gif" 
+                        alt="capture" 
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="game-controls">
+                <button onClick={() => setShowGalleryModal(true)}>Chess Piece Info</button>
+                <button onClick={resetGame}>New Game</button>
+                <button onClick={resetGame}>Back to Menu</button>
+              </div>
+            </div>
+          ) : showDifficulty ? (
+            renderDifficultySelection()
+          ) : (
+            <div className="game-mode-panel">
+              <h3 className="game-mode-title">Select Game Mode</h3>
+              <button 
+                className={`mode-btn ${gameMode === GameMode.AI ? 'selected' : ''}`}
+                onClick={() => setGameMode(GameMode.AI)}
+              >
+                VS THE HOUSE
+              </button>
+              <div className="pvp-under-construction">
+                <button className="mode-btn" disabled>PVP UNDER CONSTRUCTION</button>
+                <img src="/images/chessboard4.png" alt="Chessboard" style={{ display: 'block', margin: '16px auto 0 auto', width: '180px', maxWidth: '90%' }} />
+              </div>
+              <button className="start-btn continue-btn" onClick={() => setShowDifficulty(true)}>Continue</button>
+            </div>
+          )}
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="right-sidebar">
+          {showGame ? (
+            <div className="leaderboard">
+              <h3>Leaderboard</h3>
+              <div className="leaderboard-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>W</th>
+                      <th>L</th>
+                      <th>D</th>
+                      <th>Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 10).map((entry, index: number) => {
+                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                        const typedEntry = entry as LeaderboardEntry;
+                        return (
+                          <tr key={typedEntry.username}>
+                            <td>{index + 1}</td>
+                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td>{typedEntry.wins}</td>
+                            <td>{typedEntry.losses}</td>
+                            <td>{typedEntry.draws}</td>
+                            <td>{typedEntry.points}</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="piece-gallery-panel">
+              {renderPieceGallery(false)}
+            </div>
+          )}
+        </div>
+      </div>
+      {showGalleryModal && (
+        <div className="gallery-modal-overlay" onClick={() => setShowGalleryModal(false)}>
+          <div className="gallery-modal" onClick={e => e.stopPropagation()}>
+            <button className="close-modal-btn" onClick={() => setShowGalleryModal(false)}>×</button>
+            {renderPieceGallery(false)}
+          </div>
+        </div>
+      )}
       {renderPromotionDialog()}
+      {showLeaderboardUpdated && (
+        <div className="leaderboard-updated-msg">Leaderboard updated!</div>
+      )}
     </div>
   );
-}; 
+};
+
+// Utility to switch player color
+function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
+  return player === 'blue' ? 'red' : 'blue';
+}
+
+// Update boardToFEN to map custom codes to standard FEN
+function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): string {
+  let fen = '';
+  for (let row = 0; row < 8; row++) {
+    let empty = 0;
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (!piece) {
+        empty++;
+      } else {
+        if (empty > 0) { fen += empty; empty = 0; }
+        // Map blue (lowercase) to white (uppercase), red (uppercase) to black (lowercase)
+        if (piece >= 'a' && piece <= 'z') {
+          fen += piece.toUpperCase(); // blue -> white
+        } else if (piece >= 'A' && piece <= 'Z') {
+          fen += piece.toLowerCase(); // red -> black
+        } else {
+          fen += piece;
+        }
+      }
+    }
+    if (empty > 0) fen += empty;
+    if (row < 7) fen += '/';
+  }
+  // Side to move: blue = w, red = b
+  fen += ' ' + (currentPlayer === 'blue' ? 'w' : 'b');
+  fen += ' - - 0 1';
+  return fen;
+}
