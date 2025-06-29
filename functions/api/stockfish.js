@@ -78,6 +78,7 @@ class AdvancedChessEngine {
     this.board = this.initializeBoard();
     this.currentPlayer = 'white';
     this.moveHistory = [];
+    this.transpositionTable = new Map();
   }
 
   initializeBoard() {
@@ -130,66 +131,167 @@ class AdvancedChessEngine {
     const fenKey = this.boardToFEN().split(' ')[0] + ' ' + this.currentPlayer[0];
     if (OPENING_MOVES[fenKey]) {
       const openingMove = OPENING_MOVES[fenKey][Math.floor(Math.random() * OPENING_MOVES[fenKey].length)];
-      if (this.isLegalMove(openingMove)) {
+      const moveObj = this.notationToMove(openingMove);
+      if (moveObj && this.isLegalMove(moveObj)) {
         return openingMove;
       }
     }
 
-    // Use minimax with alpha-beta pruning for deeper analysis
+    // Use iterative deepening with time management
     const legalMoves = this.getLegalMoves();
     if (legalMoves.length === 0) return null;
 
     let bestMove = legalMoves[0];
-    let bestScore = -Infinity;
-    const depth = Math.min(4, Math.floor(movetime / 300)); // Adjust depth based on time
+    const startTime = Date.now();
+    const maxDepth = Math.min(6, Math.floor(movetime / 200)); // Deeper search for world-class
 
-    for (const move of legalMoves) {
-      this.makeMove(move);
-      const score = -this.minimax(depth - 1, -Infinity, Infinity, false);
-      this.undoMove(move);
+    // Sort moves for better pruning
+    const sortedMoves = this.sortMoves(legalMoves);
 
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = move;
+    // Iterative deepening
+    for (let depth = 1; depth <= maxDepth; depth++) {
+      if (Date.now() - startTime > movetime * 0.8) break; // Use 80% of time
+
+      let alpha = -Infinity;
+      let beta = Infinity;
+      let currentBestMove = sortedMoves[0];
+      let currentBestScore = -Infinity;
+
+      for (const move of sortedMoves) {
+        this.makeMove(move);
+        const score = -this.negamax(depth - 1, -beta, -alpha, false, startTime, movetime);
+        this.undoMove(move);
+
+        if (score > currentBestScore) {
+          currentBestScore = score;
+          currentBestMove = move;
+        }
+        alpha = Math.max(alpha, score);
+        if (alpha >= beta) break; // Beta cutoff
       }
+
+      bestMove = currentBestMove;
     }
 
     return this.moveToNotation(bestMove);
   }
 
-  minimax(depth, alpha, beta, isMaximizing) {
+  sortMoves(moves) {
+    return moves.sort((a, b) => {
+      // Prioritize captures (MVV-LVA)
+      const aIsCapture = this.board[a.to[0]][a.to[1]] !== null;
+      const bIsCapture = this.board[b.to[0]][b.to[1]] !== null;
+      
+      if (aIsCapture && !bIsCapture) return -1;
+      if (!aIsCapture && bIsCapture) return 1;
+      
+      if (aIsCapture && bIsCapture) {
+        const aValue = this.getPieceValue(this.board[a.to[0]][a.to[1]]);
+        const bValue = this.getPieceValue(this.board[b.to[0]][b.to[1]]);
+        return bValue - aValue; // Higher value captures first
+      }
+      
+      // Prioritize checks
+      this.makeMove(a);
+      const aIsCheck = this.isKingInCheck();
+      this.undoMove(a);
+      
+      this.makeMove(b);
+      const bIsCheck = this.isKingInCheck();
+      this.undoMove(b);
+      
+      if (aIsCheck && !bIsCheck) return -1;
+      if (!aIsCheck && bIsCheck) return 1;
+      
+      return 0;
+    });
+  }
+
+  negamax(depth, alpha, beta, isMaximizing, startTime, movetime) {
+    // Time management
+    if (Date.now() - startTime > movetime * 0.8) {
+      return 0; // Return neutral score if time runs out
+    }
+
+    // Transposition table lookup
+    const hash = this.getPositionHash();
+    if (this.transpositionTable.has(hash)) {
+      const entry = this.transpositionTable.get(hash);
+      if (entry.depth >= depth) {
+        return entry.score;
+      }
+    }
+
     if (depth === 0) {
-      return this.evaluatePosition();
+      return this.quiescence(alpha, beta, isMaximizing, startTime, movetime);
     }
 
     const legalMoves = this.getLegalMoves();
     if (legalMoves.length === 0) {
-      return this.isKingInCheck() ? -10000 : 0; // Checkmate or stalemate
+      if (this.isKingInCheck()) {
+        return -10000; // Checkmate
+      }
+      return 0; // Stalemate
     }
 
-    if (isMaximizing) {
-      let maxScore = -Infinity;
-      for (const move of legalMoves) {
-        this.makeMove(move);
-        const score = this.minimax(depth - 1, alpha, beta, false);
-        this.undoMove(move);
-        maxScore = Math.max(maxScore, score);
-        alpha = Math.max(alpha, score);
-        if (beta <= alpha) break; // Alpha-beta pruning
-      }
-      return maxScore;
-    } else {
-      let minScore = Infinity;
-      for (const move of legalMoves) {
-        this.makeMove(move);
-        const score = this.minimax(depth - 1, alpha, beta, true);
-        this.undoMove(move);
-        minScore = Math.min(minScore, score);
-        beta = Math.min(beta, score);
-        if (beta <= alpha) break; // Alpha-beta pruning
-      }
-      return minScore;
+    const sortedMoves = this.sortMoves(legalMoves);
+    let bestScore = -Infinity;
+
+    for (const move of sortedMoves) {
+      this.makeMove(move);
+      const score = -this.negamax(depth - 1, -beta, -alpha, !isMaximizing, startTime, movetime);
+      this.undoMove(move);
+
+      bestScore = Math.max(bestScore, score);
+      alpha = Math.max(alpha, score);
+      if (alpha >= beta) break; // Beta cutoff
     }
+
+    // Store in transposition table
+    this.transpositionTable.set(hash, { depth, score: bestScore });
+
+    return bestScore;
+  }
+
+  quiescence(alpha, beta, isMaximizing, startTime, movetime) {
+    // Time management
+    if (Date.now() - startTime > movetime * 0.8) {
+      return 0;
+    }
+
+    const standPat = this.evaluatePosition();
+    if (standPat >= beta) return beta;
+
+    if (alpha < standPat) alpha = standPat;
+
+    const captures = this.getLegalMoves().filter(move => 
+      this.board[move.to[0]][move.to[1]] !== null
+    );
+
+    for (const move of captures) {
+      this.makeMove(move);
+      const score = -this.quiescence(-beta, -alpha, !isMaximizing, startTime, movetime);
+      this.undoMove(move);
+
+      if (score >= beta) return beta;
+      if (score > alpha) alpha = score;
+    }
+
+    return alpha;
+  }
+
+  getPositionHash() {
+    // Simple hash for transposition table
+    let hash = 0;
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.board[row][col];
+        if (piece) {
+          hash = hash * 31 + piece.charCodeAt(0) + row * 8 + col;
+        }
+      }
+    }
+    return hash;
   }
 
   evaluatePosition() {
@@ -203,51 +305,54 @@ class AdvancedChessEngine {
 
         const isWhite = piece === piece.toUpperCase();
         const pieceType = piece.toUpperCase();
-        const multiplier = isWhite ? 1 : -1;
-
+        const value = this.getPieceValue(piece);
+        
         // Material value
-        score += this.getPieceValue(pieceType) * multiplier;
-
+        score += isWhite ? value : -value;
+        
         // Positional value
-        if (isWhite) {
-          score += PIECE_SQUARE_TABLES[pieceType][row][col];
-        } else {
-          score += PIECE_SQUARE_TABLES[pieceType][7-row][col];
+        const table = PIECE_SQUARE_TABLES[pieceType];
+        if (table) {
+          const tableRow = isWhite ? row : 7 - row;
+          const positionalValue = table[tableRow][col];
+          score += isWhite ? positionalValue : -positionalValue;
         }
       }
     }
 
-    // Mobility bonus
+    // Mobility evaluation
     const whiteMobility = this.getLegalMovesForPlayer('white').length;
     const blackMobility = this.getLegalMovesForPlayer('black').length;
     score += (whiteMobility - blackMobility) * 10;
 
-    // Center control bonus
+    // Center control
     score += this.evaluateCenterControl();
+
+    // King safety
+    score += this.evaluateKingSafety();
+
+    // Pawn structure
+    score += this.evaluatePawnStructure();
 
     return score;
   }
 
   getPieceValue(piece) {
     const values = { 'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 20000 };
-    return values[piece] || 0;
+    return values[piece.toUpperCase()] || 0;
   }
 
   evaluateCenterControl() {
     let score = 0;
-    const centerSquares = [[3, 3], [3, 4], [4, 3], [4, 4]];
+    const centerSquares = [[3, 3], [3, 4], [4, 3], [4, 4], [2, 3], [2, 4], [5, 3], [5, 4]];
     
     for (const [row, col] of centerSquares) {
-      for (let drow = -1; drow <= 1; drow++) {
-        for (let dcol = -1; dcol <= 1; dcol++) {
-          const newRow = row + drow;
-          const newCol = col + dcol;
-          if (this.isValidPosition(newRow, newCol)) {
-            const piece = this.board[newRow][newCol];
-            if (piece) {
-              const isWhite = piece === piece.toUpperCase();
-              score += isWhite ? 5 : -5;
-            }
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = this.board[r][c];
+          if (piece && this.canPieceAttack(r, c, row, col)) {
+            const isWhite = piece === piece.toUpperCase();
+            score += isWhite ? 5 : -5;
           }
         }
       }
@@ -256,25 +361,134 @@ class AdvancedChessEngine {
     return score;
   }
 
+  evaluateKingSafety() {
+    let score = 0;
+    
+    // Find kings
+    const whiteKing = this.findKing('white');
+    const blackKing = this.findKing('black');
+    
+    if (whiteKing) {
+      const [row, col] = whiteKing;
+      // Penalize king in center during middlegame
+      if (row >= 3 && row <= 4 && col >= 3 && col <= 4) {
+        score -= 50;
+      }
+      // Bonus for castled king
+      if (row === 7 && (col === 1 || col === 6)) {
+        score += 30;
+      }
+    }
+    
+    if (blackKing) {
+      const [row, col] = blackKing;
+      if (row >= 3 && row <= 4 && col >= 3 && col <= 4) {
+        score += 50;
+      }
+      if (row === 0 && (col === 1 || col === 6)) {
+        score -= 30;
+      }
+    }
+    
+    return score;
+  }
+
+  evaluatePawnStructure() {
+    let score = 0;
+    
+    // Doubled pawns penalty
+    for (let col = 0; col < 8; col++) {
+      let whitePawns = 0, blackPawns = 0;
+      for (let row = 0; row < 8; row++) {
+        if (this.board[row][col] === 'P') whitePawns++;
+        if (this.board[row][col] === 'p') blackPawns++;
+      }
+      if (whitePawns > 1) score -= 20 * (whitePawns - 1);
+      if (blackPawns > 1) score += 20 * (blackPawns - 1);
+    }
+    
+    return score;
+  }
+
+  canPieceAttack(fromRow, fromCol, toRow, toCol) {
+    const piece = this.board[fromRow][fromCol];
+    if (!piece) return false;
+    
+    const pieceType = piece.toUpperCase();
+    const isWhite = piece === piece.toUpperCase();
+    
+    switch (pieceType) {
+      case 'P': return this.canPawnAttack(fromRow, fromCol, toRow, toCol, isWhite);
+      case 'N': return this.canKnightAttack(fromRow, fromCol, toRow, toCol);
+      case 'B': return this.canBishopAttack(fromRow, fromCol, toRow, toCol);
+      case 'R': return this.canRookAttack(fromRow, fromCol, toRow, toCol);
+      case 'Q': return this.canQueenAttack(fromRow, fromCol, toRow, toCol);
+      case 'K': return this.canKingAttack(fromRow, fromCol, toRow, toCol);
+      default: return false;
+    }
+  }
+
+  canPawnAttack(fromRow, fromCol, toRow, toCol, isWhite) {
+    const direction = isWhite ? -1 : 1;
+    return Math.abs(fromCol - toCol) === 1 && (toRow - fromRow) === direction;
+  }
+
+  canKnightAttack(fromRow, fromCol, toRow, toCol) {
+    const rowDiff = Math.abs(fromRow - toRow);
+    const colDiff = Math.abs(fromCol - toCol);
+    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+  }
+
+  canBishopAttack(fromRow, fromCol, toRow, toCol) {
+    if (Math.abs(fromRow - toRow) !== Math.abs(fromCol - toCol)) return false;
+    return this.isPathClear(fromRow, fromCol, toRow, toCol);
+  }
+
+  canRookAttack(fromRow, fromCol, toRow, toCol) {
+    if (fromRow !== toRow && fromCol !== toCol) return false;
+    return this.isPathClear(fromRow, fromCol, toRow, toCol);
+  }
+
+  canQueenAttack(fromRow, fromCol, toRow, toCol) {
+    return this.canRookAttack(fromRow, fromCol, toRow, toCol) || 
+           this.canBishopAttack(fromRow, fromCol, toRow, toCol);
+  }
+
+  canKingAttack(fromRow, fromCol, toRow, toCol) {
+    return Math.abs(fromRow - toRow) <= 1 && Math.abs(fromCol - toCol) <= 1;
+  }
+
+  isPathClear(fromRow, fromCol, toRow, toCol) {
+    const rowDir = fromRow === toRow ? 0 : (toRow > fromRow ? 1 : -1);
+    const colDir = fromCol === toCol ? 0 : (toCol > fromCol ? 1 : -1);
+    
+    let currentRow = fromRow + rowDir;
+    let currentCol = fromCol + colDir;
+    
+    while (currentRow !== toRow || currentCol !== toCol) {
+      if (this.board[currentRow][currentCol] !== null) return false;
+      currentRow += rowDir;
+      currentCol += colDir;
+    }
+    
+    return true;
+  }
+
   getLegalMoves() {
+    return this.getLegalMovesForPlayer(this.currentPlayer);
+  }
+
+  getLegalMovesForPlayer(player) {
     const moves = [];
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
-        if (piece && this.isPieceOfPlayer(piece, this.currentPlayer)) {
+        if (piece && this.isPieceOfPlayer(piece, player)) {
           const pieceMoves = this.getMovesForPiece(row, col, piece);
           moves.push(...pieceMoves);
         }
       }
     }
-    return moves;
-  }
-
-  getLegalMovesForPlayer(player) {
-    const originalPlayer = this.currentPlayer;
-    this.currentPlayer = player;
-    const moves = this.getLegalMoves();
-    this.currentPlayer = originalPlayer;
     return moves;
   }
 
@@ -284,64 +498,57 @@ class AdvancedChessEngine {
   }
 
   getMovesForPiece(row, col, piece) {
-    const moves = [];
+    const pieceType = piece.toUpperCase();
     const isWhite = piece === piece.toUpperCase();
-    const pieceType = piece.toLowerCase();
     
     switch (pieceType) {
-      case 'p': moves.push(...this.getPawnMoves(row, col, isWhite)); break;
-      case 'r': moves.push(...this.getRookMoves(row, col)); break;
-      case 'n': moves.push(...this.getKnightMoves(row, col)); break;
-      case 'b': moves.push(...this.getBishopMoves(row, col)); break;
-      case 'q': moves.push(...this.getQueenMoves(row, col)); break;
-      case 'k': moves.push(...this.getKingMoves(row, col)); break;
+      case 'P': return this.getPawnMoves(row, col, isWhite);
+      case 'N': return this.getKnightMoves(row, col);
+      case 'B': return this.getBishopMoves(row, col);
+      case 'R': return this.getRookMoves(row, col);
+      case 'Q': return this.getQueenMoves(row, col);
+      case 'K': return this.getKingMoves(row, col);
+      default: return [];
     }
-    
-    return moves;
   }
 
   getPawnMoves(row, col, isWhite) {
     const moves = [];
     const direction = isWhite ? -1 : 1;
-    const startRow = isWhite ? 6 : 1;
+    const startRank = isWhite ? 6 : 1;
     
     // Forward move
-    if (this.isValidPosition(row + direction, col) && !this.board[row + direction][col]) {
-      moves.push({ from: [row, col], to: [row + direction, col] });
+    const newRow = row + direction;
+    if (this.isValidPosition(newRow, col) && this.board[newRow][col] === null) {
+      if (this.isLegalMove({ from: [row, col], to: [newRow, col] })) {
+        moves.push({ from: [row, col], to: [newRow, col] });
+      }
       
-      // Double move from starting position
-      if (row === startRow && !this.board[row + 2 * direction][col]) {
-        moves.push({ from: [row, col], to: [row + 2 * direction, col] });
+      // Initial two-square move
+      if (row === startRank) {
+        const doubleRow = row + 2 * direction;
+        if (this.isValidPosition(doubleRow, col) && this.board[doubleRow][col] === null) {
+          if (this.isLegalMove({ from: [row, col], to: [doubleRow, col] })) {
+            moves.push({ from: [row, col], to: [doubleRow, col] });
+          }
+        }
       }
     }
     
     // Captures
-    for (let dcol of [-1, 1]) {
-      const newRow = row + direction;
-      const newCol = col + dcol;
-      if (this.isValidPosition(newRow, newCol) && 
-          this.board[newRow][newCol] && 
-          !this.isPieceOfPlayer(this.board[newRow][newCol], isWhite ? 'white' : 'black')) {
-        moves.push({ from: [row, col], to: [newRow, newCol] });
+    for (const colOffset of [-1, 1]) {
+      const newCol = col + colOffset;
+      if (this.isValidPosition(newRow, newCol)) {
+        const targetPiece = this.board[newRow][newCol];
+        if (targetPiece && this.isPieceOfPlayer(targetPiece, isWhite ? 'black' : 'white')) {
+          if (this.isLegalMove({ from: [row, col], to: [newRow, newCol] })) {
+            moves.push({ from: [row, col], to: [newRow, newCol] });
+          }
+        }
       }
     }
     
     return moves;
-  }
-
-  getRookMoves(row, col) {
-    return this.getSlidingMoves(row, col, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
-  }
-
-  getBishopMoves(row, col) {
-    return this.getSlidingMoves(row, col, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
-  }
-
-  getQueenMoves(row, col) {
-    return this.getSlidingMoves(row, col, [
-      [-1, 0], [1, 0], [0, -1], [0, 1],
-      [-1, -1], [-1, 1], [1, -1], [1, 1]
-    ]);
   }
 
   getKnightMoves(row, col) {
@@ -351,61 +558,85 @@ class AdvancedChessEngine {
       [1, -2], [1, 2], [2, -1], [2, 1]
     ];
     
-    for (let [drow, dcol] of knightMoves) {
-      const newRow = row + drow;
-      const newCol = col + dcol;
-      if (this.isValidPosition(newRow, newCol) && 
-          (!this.board[newRow][newCol] || 
-           !this.isPieceOfPlayer(this.board[newRow][newCol], this.currentPlayer))) {
-        moves.push({ from: [row, col], to: [newRow, newCol] });
+    for (const [rowOffset, colOffset] of knightMoves) {
+      const newRow = row + rowOffset;
+      const newCol = col + colOffset;
+      
+      if (this.isValidPosition(newRow, newCol)) {
+        const targetPiece = this.board[newRow][newCol];
+        if (!targetPiece || !this.isPieceOfPlayer(targetPiece, this.currentPlayer)) {
+          if (this.isLegalMove({ from: [row, col], to: [newRow, newCol] })) {
+            moves.push({ from: [row, col], to: [newRow, newCol] });
+          }
+        }
       }
     }
     
     return moves;
   }
 
+  getBishopMoves(row, col) {
+    return this.getSlidingMoves(row, col, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+  }
+
+  getRookMoves(row, col) {
+    return this.getSlidingMoves(row, col, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
+  }
+
+  getQueenMoves(row, col) {
+    return this.getSlidingMoves(row, col, [
+      [-1, -1], [-1, 1], [1, -1], [1, 1],
+      [-1, 0], [1, 0], [0, -1], [0, 1]
+    ]);
+  }
+
   getKingMoves(row, col) {
     const moves = [];
-    const kingMoves = [
-      [-1, -1], [-1, 0], [-1, 1],
-      [0, -1], [0, 1],
-      [1, -1], [1, 0], [1, 1]
-    ];
-    
-    for (let [drow, dcol] of kingMoves) {
-      const newRow = row + drow;
-      const newCol = col + dcol;
-      if (this.isValidPosition(newRow, newCol) && 
-          (!this.board[newRow][newCol] || 
-           !this.isPieceOfPlayer(this.board[newRow][newCol], this.currentPlayer))) {
-        moves.push({ from: [row, col], to: [newRow, newCol] });
+    for (let rowOffset = -1; rowOffset <= 1; rowOffset++) {
+      for (let colOffset = -1; colOffset <= 1; colOffset++) {
+        if (rowOffset === 0 && colOffset === 0) continue;
+        
+        const newRow = row + rowOffset;
+        const newCol = col + colOffset;
+        
+        if (this.isValidPosition(newRow, newCol)) {
+          const targetPiece = this.board[newRow][newCol];
+          if (!targetPiece || !this.isPieceOfPlayer(targetPiece, this.currentPlayer)) {
+            if (this.isLegalMove({ from: [row, col], to: [newRow, newCol] })) {
+              moves.push({ from: [row, col], to: [newRow, newCol] });
+            }
+          }
+        }
       }
     }
-    
     return moves;
   }
 
   getSlidingMoves(row, col, directions) {
     const moves = [];
     
-    for (let [drow, dcol] of directions) {
-      let newRow = row + drow;
-      let newCol = col + dcol;
+    for (const [rowDir, colDir] of directions) {
+      let currentRow = row + rowDir;
+      let currentCol = col + colDir;
       
-      while (this.isValidPosition(newRow, newCol)) {
-        const targetPiece = this.board[newRow][newCol];
+      while (this.isValidPosition(currentRow, currentCol)) {
+        const targetPiece = this.board[currentRow][currentCol];
         
-        if (!targetPiece) {
-          moves.push({ from: [row, col], to: [newRow, newCol] });
+        if (targetPiece === null) {
+          if (this.isLegalMove({ from: [row, col], to: [currentRow, currentCol] })) {
+            moves.push({ from: [row, col], to: [currentRow, currentCol] });
+          }
         } else {
           if (!this.isPieceOfPlayer(targetPiece, this.currentPlayer)) {
-            moves.push({ from: [row, col], to: [newRow, newCol] });
+            if (this.isLegalMove({ from: [row, col], to: [currentRow, currentCol] })) {
+              moves.push({ from: [row, col], to: [currentRow, currentCol] });
+            }
           }
           break;
         }
         
-        newRow += drow;
-        newCol += dcol;
+        currentRow += rowDir;
+        currentCol += colDir;
       }
     }
     
@@ -416,14 +647,90 @@ class AdvancedChessEngine {
     return row >= 0 && row < 8 && col >= 0 && col < 8;
   }
 
-  isLegalMove(moveNotation) {
-    const move = this.notationToMove(moveNotation);
-    if (!move) return false;
+  isLegalMove(move) {
+    // Handle string notation
+    if (typeof move === 'string') {
+      const moveObj = this.notationToMove(move);
+      if (!moveObj) return false;
+      move = moveObj;
+    }
     
+    if (!move || !this.isValidPosition(move.from[0], move.from[1]) || 
+        !this.isValidPosition(move.to[0], move.to[1])) {
+      return false;
+    }
+    
+    // Check if piece exists and belongs to current player
+    const piece = this.board[move.from[0]][move.from[1]];
+    if (!piece || !this.isPieceOfPlayer(piece, this.currentPlayer)) {
+      return false;
+    }
+    
+    // Check if target square is not occupied by own piece
+    const targetPiece = this.board[move.to[0]][move.to[1]];
+    if (targetPiece && this.isPieceOfPlayer(targetPiece, this.currentPlayer)) {
+      return false;
+    }
+    
+    // Check if move is valid for the piece type
+    const pieceType = piece.toUpperCase();
+    let isValidMove = false;
+    
+    switch (pieceType) {
+      case 'P': 
+        isValidMove = this.isValidPawnMove(move.from[0], move.from[1], move.to[0], move.to[1], piece === piece.toUpperCase());
+        break;
+      case 'N': 
+        isValidMove = this.canKnightAttack(move.from[0], move.from[1], move.to[0], move.to[1]);
+        break;
+      case 'B': 
+        isValidMove = this.canBishopAttack(move.from[0], move.from[1], move.to[0], move.to[1]);
+        break;
+      case 'R': 
+        isValidMove = this.canRookAttack(move.from[0], move.from[1], move.to[0], move.to[1]);
+        break;
+      case 'Q': 
+        isValidMove = this.canQueenAttack(move.from[0], move.from[1], move.to[0], move.to[1]);
+        break;
+      case 'K': 
+        isValidMove = this.canKingAttack(move.from[0], move.from[1], move.to[0], move.to[1]);
+        break;
+    }
+    
+    if (!isValidMove) return false;
+    
+    // Check if move would leave king in check
     this.makeMove(move);
     const isLegal = !this.isKingInCheck();
     this.undoMove(move);
+    
     return isLegal;
+  }
+
+  isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite) {
+    const direction = isWhite ? -1 : 1;
+    const startRank = isWhite ? 6 : 1;
+    
+    // Forward move
+    if (fromCol === toCol && toRow === fromRow + direction && this.board[toRow][toCol] === null) {
+      return true;
+    }
+    
+    // Initial two-square move
+    if (fromCol === toCol && fromRow === startRank && 
+        toRow === fromRow + 2 * direction && 
+        this.board[fromRow + direction][fromCol] === null && 
+        this.board[toRow][toCol] === null) {
+      return true;
+    }
+    
+    // Capture
+    if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction) {
+      return this.board[toRow][toCol] !== null && 
+             !this.isPieceOfPlayer(this.board[toRow][toCol], isWhite ? 'white' : 'black');
+    }
+    
+    return false;
   }
 
   makeMove(move) {
@@ -465,8 +772,7 @@ class AdvancedChessEngine {
       for (let c = 0; c < 8; c++) {
         const piece = this.board[r][c];
         if (piece && this.isPieceOfPlayer(piece, attackingPlayer)) {
-          const moves = this.getMovesForPiece(r, c, piece);
-          if (moves.some(move => move.to[0] === row && move.to[1] === col)) {
+          if (this.canPieceAttack(r, c, row, col)) {
             return true;
           }
         }
