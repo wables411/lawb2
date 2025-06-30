@@ -984,45 +984,27 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     if (!isAIMovingRef.current && gameMode === GameMode.AI && currentPlayer === 'red' && !lastAIMoveRef.current) {
       console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
-      // Set AI moving flag to prevent player moves during AI turn
       isAIMovingRef.current = true;
-      
+
       if (difficulty === 'world-class' || difficulty === 'master-class') {
-        // Use Stockfish for world-class and master-class difficulty
-        console.log(`[DEBUG] Using Stockfish for ${difficulty} difficulty`);
-        
-        if (stockfishReady) {
-          const timeLimit = difficulty === 'master-class' ? 12000 : 8000; // 12 seconds for master-class, 8 for world-class
-          setStatus(`${difficulty === 'master-class' ? 'Master-class' : 'World-class'} AI is calculating...`);
-          console.log(`[DEBUG] Using LawbBot for ${difficulty} difficulty`);
-          
-          getStockfishMove(boardToFEN(board, currentPlayer), timeLimit).then(move => {
-            if (move && move !== '(none)') {
-              // Convert Stockfish move (e.g., "e2e4") to our format
-              const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
-              const fromRow = 8 - parseInt(move[1]);
-              const toCol = move.charCodeAt(2) - 97;
-              const toRow = 8 - parseInt(move[3]);
-              
-              const moveObj = {
-                from: { row: fromRow, col: fromCol },
-                to: { row: toRow, col: toCol }
-              };
-              
-              console.log('[DEBUG] LawbBot move:', move, 'converted to:', moveObj);
-              makeMove(moveObj.from, moveObj.to, true);
-            } else {
-              console.log('[DEBUG] LawbBot returned no valid move, using fallback');
-              const fallbackMove = getRandomAIMove(board);
-              if (fallbackMove) {
-                makeMove(fallbackMove.from, fallbackMove.to, true);
-              }
-            }
-            isAIMovingRef.current = false;
-          }).catch(error => {
-            console.error('[DEBUG] LawbBot error:', error);
-            console.log(`[DEBUG] Falling back to AI worker for ${difficulty} difficulty`);
-            // Fallback to AI worker
+        // Always use Cloudflare Worker API in production for strongest AI
+        const useWorkerAPI = import.meta.env.PROD;
+        const timeLimit = difficulty === 'master-class' ? 12000 : 8000;
+        setStatus(`${difficulty === 'master-class' ? 'Master-class' : 'World-class'} AI is calculating...`);
+        console.log(`[DEBUG] Using ${useWorkerAPI ? 'Cloudflare Worker API' : 'LawbBot (WASM)'} for ${difficulty} difficulty`);
+
+        const getMove = useWorkerAPI ? getCloudflareStockfishMove : getStockfishMove;
+        getMove(boardToFEN(board, currentPlayer), timeLimit).then(move => {
+          if (move && move !== '(none)') {
+            const fromCol = move.charCodeAt(0) - 97;
+            const fromRow = 8 - parseInt(move[1]);
+            const toCol = move.charCodeAt(2) - 97;
+            const toRow = 8 - parseInt(move[3]);
+            const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+            console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
+            makeMove(moveObj.from, moveObj.to, true);
+          } else {
+            console.log('[DEBUG] Stockfish returned no valid move, using fallback');
             if (aiWorkerRef.current) {
               aiWorkerRef.current.postMessage({
                 board: board,
@@ -1030,8 +1012,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 difficulty: difficulty,
                 pieceState: pieceState
               });
-              
-              // Add timeout fallback in case worker doesn't respond
               aiTimeoutRef.current = window.setTimeout(() => {
                 console.log('[DEBUG] AI worker timeout, using simple fallback');
                 isAIMovingRef.current = false;
@@ -1040,19 +1020,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 if (fallbackMove) {
                   makeMove(fallbackMove.from, fallbackMove.to, true);
                 }
-              }, 3000); // 3 second timeout
+              }, 8000);
             } else {
-              // Final fallback to simple AI
               const fallbackMove = getRandomAIMove(board);
               if (fallbackMove) {
                 makeMove(fallbackMove.from, fallbackMove.to, true);
               }
               isAIMovingRef.current = false;
             }
-          });
-        } else {
-          console.log(`[DEBUG] LawbBot not ready, using AI worker fallback for ${difficulty}`);
-          // Stockfish not ready, use AI worker as fallback
+          }
+          isAIMovingRef.current = false;
+        }).catch(error => {
+          console.error('[DEBUG] Stockfish error:', error);
+          console.log('[DEBUG] Falling back to AI worker for', difficulty, 'difficulty');
           if (aiWorkerRef.current) {
             aiWorkerRef.current.postMessage({
               board: board,
@@ -1060,8 +1040,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               difficulty: difficulty,
               pieceState: pieceState
             });
-            
-            // Add timeout fallback in case worker doesn't respond
             aiTimeoutRef.current = window.setTimeout(() => {
               console.log('[DEBUG] AI worker timeout, using simple fallback');
               isAIMovingRef.current = false;
@@ -1070,53 +1048,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               if (fallbackMove) {
                 makeMove(fallbackMove.from, fallbackMove.to, true);
               }
-            }, 8000); // Increased to 8 second timeout for intermediate difficulty
+            }, 8000);
           } else {
-            // Final fallback to simple AI
             const fallbackMove = getRandomAIMove(board);
             if (fallbackMove) {
               makeMove(fallbackMove.from, fallbackMove.to, true);
             }
             isAIMovingRef.current = false;
           }
-        }
-      } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
-        // Use existing AI worker for 'intermediate' mode
-        console.log('[DEBUG] Using AI worker for intermediate mode');
-        aiWorkerRef.current.postMessage({
-          board: board,
-          currentPlayer: currentPlayer,
-          difficulty,
-          pieceState: pieceState
         });
-        
-        // Add timeout fallback in case worker doesn't respond
-        aiTimeoutRef.current = window.setTimeout(() => {
-          console.log('[DEBUG] AI worker timeout, using fallback');
-          isAIMovingRef.current = false;
-          aiTimeoutRef.current = null;
-          const fallbackMove = getRandomAIMove(board);
-          if (fallbackMove) {
-            makeMove(fallbackMove.from, fallbackMove.to, true);
-          }
-        }, 3000); // 3 second timeout
+      } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
+        // ... existing code ...
       } else if (difficulty === 'novice') {
-        // Use simple random moves for 'novice' mode
-        console.log('[DEBUG] Using simple AI for novice mode');
-        const fallbackMove = getRandomAIMove(board);
-        if (fallbackMove) {
-          makeMove(fallbackMove.from, fallbackMove.to, true);
-        }
-        // Reset AI moving flag
-        isAIMovingRef.current = false;
+        // ... existing code ...
       } else {
-        // Fallback for any other case
-        console.log('[DEBUG] Using fallback AI');
-        const fallbackMove = getRandomAIMove(board);
-        if (fallbackMove) {
-          makeMove(fallbackMove.from, fallbackMove.to, true);
-        }
-        isAIMovingRef.current = false;
+        // ... existing code ...
       }
     }
   }, [currentPlayer, gameMode, difficulty, board, pieceState, stockfishReady]);
