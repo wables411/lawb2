@@ -70,7 +70,24 @@ const ChessPage: React.FC = () => {
         </span>
       </div>
       <div className="chess98-content">
-        <ChessGame fullscreen={true} onClose={() => {}} onMinimize={() => {}} />
+        {isConnected && address ? (
+          <ChessGame fullscreen={true} onClose={() => {}} onMinimize={() => {}} />
+        ) : (
+          <div className="wallet-required" style={{ marginTop: 80 }}>
+            <h3 style={{ marginBottom: 12, color: darkMode ? '#00ff00' : '#0a2a7a' }}>Wallet Required</h3>
+            <p style={{ color: darkMode ? '#00ff00' : '#222' }}>
+              You must connect your wallet to play chess and appear on the leaderboard.<br />
+              <span style={{ fontSize: 13, opacity: 0.8 }}>(Wallet address is your username.)</span>
+            </p>
+            <button
+              className="start-btn"
+              style={{ marginTop: 18, background: darkMode ? '#222' : '#008000', color: darkMode ? '#00ff00' : '#fff', border: darkMode ? '2px solid #00ff00' : undefined }}
+              onClick={() => window.dispatchEvent(new CustomEvent('open-wallet-connect'))}
+            >
+              Connect Wallet
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
