@@ -39,13 +39,13 @@ app.post('/api/stockfish', (req, res) => {
         if (trimmedLine.startsWith('bestmove')) {
           bestmove = trimmedLine.split(' ')[1];
           clearTimeout(timeout);
-          stockfish.kill();
+      stockfish.kill();
           console.log(`Best move found: ${bestmove}`);
           responseSent = true;
-          res.json({ bestmove });
-        }
+      res.json({ bestmove });
+    }
       }
-    });
+  });
   });
 
   stockfish.stderr.on('data', (data) => {

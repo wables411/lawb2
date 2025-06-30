@@ -79,6 +79,7 @@ class AdvancedChessEngine {
     this.currentPlayer = 'white';
     this.moveHistory = [];
     this.transpositionTable = new Map();
+    this.nodesSearched = 0;
   }
 
   initializeBoard() {
@@ -127,6 +128,8 @@ class AdvancedChessEngine {
   }
 
   findBestMove(movetime = 1200) {
+    this.nodesSearched = 0;
+    
     // Check opening theory first
     const fenKey = this.boardToFEN().split(' ')[0] + ' ' + this.currentPlayer[0];
     if (OPENING_MOVES[fenKey]) {
@@ -143,7 +146,7 @@ class AdvancedChessEngine {
 
     let bestMove = legalMoves[0];
     const startTime = Date.now();
-    const maxDepth = Math.min(6, Math.floor(movetime / 200)); // Deeper search for world-class
+    const maxDepth = Math.min(8, Math.floor(movetime / 150)); // Deeper search for world-class
 
     // Sort moves for better pruning
     const sortedMoves = this.sortMoves(legalMoves);
@@ -208,6 +211,8 @@ class AdvancedChessEngine {
   }
 
   negamax(depth, alpha, beta, isMaximizing, startTime, movetime) {
+    this.nodesSearched++;
+    
     // Time management
     if (Date.now() - startTime > movetime * 0.8) {
       return 0; // Return neutral score if time runs out
@@ -254,6 +259,8 @@ class AdvancedChessEngine {
   }
 
   quiescence(alpha, beta, isMaximizing, startTime, movetime) {
+    this.nodesSearched++;
+    
     // Time management
     if (Date.now() - startTime > movetime * 0.8) {
       return 0;
@@ -320,13 +327,8 @@ class AdvancedChessEngine {
       }
     }
 
-    // Mobility evaluation
-    const whiteMobility = this.getLegalMovesForPlayer('white').length;
-    const blackMobility = this.getLegalMovesForPlayer('black').length;
-    score += (whiteMobility - blackMobility) * 10;
-
-    // Center control
-    score += this.evaluateCenterControl();
+    // Simple center control (much faster)
+    score += this.evaluateSimpleCenterControl();
 
     // King safety
     score += this.evaluateKingSafety();
@@ -342,18 +344,21 @@ class AdvancedChessEngine {
     return values[piece.toUpperCase()] || 0;
   }
 
-  evaluateCenterControl() {
+  evaluateSimpleCenterControl() {
     let score = 0;
-    const centerSquares = [[3, 3], [3, 4], [4, 3], [4, 4], [2, 3], [2, 4], [5, 3], [5, 4]];
+    const centerSquares = [[3, 3], [3, 4], [4, 3], [4, 4]];
     
     for (const [row, col] of centerSquares) {
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          const piece = this.board[r][c];
-          if (piece && this.canPieceAttack(r, c, row, col)) {
-            const isWhite = piece === piece.toUpperCase();
-            score += isWhite ? 5 : -5;
-          }
+      const piece = this.board[row][col];
+      if (piece) {
+        const isWhite = piece === piece.toUpperCase();
+        const pieceType = piece.toUpperCase();
+        
+        // Bonus for controlling center
+        if (pieceType === 'P') {
+          score += isWhite ? 30 : -30;
+        } else if (pieceType === 'N' || pieceType === 'B') {
+          score += isWhite ? 20 : -20;
         }
       }
     }
@@ -883,7 +888,8 @@ export default {
       const response = {
         bestmove: bestmove,
         fen: fen,
-        movetime: movetime
+        movetime: movetime,
+        nodes: engine.nodesSearched
       };
 
       return new Response(JSON.stringify(response), {

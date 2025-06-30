@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { createClient } from '@supabase/supabase-js';
 import './ChessGame.css';
@@ -8,6 +8,12 @@ const supabaseUrl = 'https://roxwocgknkiqnsgiojgz.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3NjMxMTIsImV4cCI6MjA0NjMzOTExMn0.NbLMZom-gk7XYGdV4MtXYcgR8R1s8xthrIQ0hpQfx9Y';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Service role client for leaderboard updates (bypasses RLS)
+const supabaseService = createClient(
+  supabaseUrl, 
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMDc2MzExMiwiZXhwIjoyMDQ2MzM5MTEyfQ.US6YTQfWVWNAfmEopBpD580jsaevKv_Ev7dGFeqFptA'
+);
 
 // Game modes
 const GameMode = {
@@ -80,7 +86,214 @@ const pieceGallery = [
 ];
 
 // Add 'world-class' to difficulty type
-type Difficulty = 'novice' | 'intermediate' | 'world-class';
+type Difficulty = 'novice' | 'intermediate' | 'world-class' | 'master-class';
+
+// Stockfish integration for world-class AI
+const useStockfish = () => {
+  const [stockfishReady, setStockfishReady] = useState(false);
+  const stockfishRef = useRef<any>(null);
+  const isInitializingRef = useRef(false);
+
+  useEffect(() => {
+    if (isInitializingRef.current || stockfishRef.current) {
+      return; // Already initializing or already loaded
+    }
+
+    isInitializingRef.current = true;
+    console.log('[DEBUG] Initializing LawbBot...');
+    
+    const loadStockfish = () => {
+      try {
+        // Try to load Stockfish directly without worker first
+        const script = document.createElement('script');
+        script.src = '/stockfish.js';
+        script.onload = () => {
+          console.log('[DEBUG] LawbBot script loaded, initializing...');
+          
+          // Initialize Stockfish directly
+          if (typeof window !== 'undefined' && (window as any).Stockfish) {
+            const Stockfish = (window as any).Stockfish;
+            Stockfish().then((sf: any) => {
+              console.log('[DEBUG] LawbBot initialized successfully');
+              stockfishRef.current = sf;
+              setStockfishReady(true);
+              isInitializingRef.current = false;
+              
+              // Configure Stockfish for better performance
+              sf.postMessage('setoption name Threads value 4');
+              sf.postMessage('setoption name Hash value 128');
+              sf.postMessage('setoption name MultiPV value 1');
+            }).catch((error: any) => {
+              console.error('[DEBUG] LawbBot initialization failed:', error);
+              setStockfishReady(false);
+              isInitializingRef.current = false;
+            });
+          } else {
+            console.error('[DEBUG] LawbBot not found in window object');
+            setStockfishReady(false);
+            isInitializingRef.current = false;
+          }
+        };
+        script.onerror = (error) => {
+          console.error('[DEBUG] Failed to load LawbBot script:', error);
+          setStockfishReady(false);
+          isInitializingRef.current = false;
+        };
+        document.head.appendChild(script);
+        
+      } catch (error) {
+        console.error('[DEBUG] Failed to create LawbBot script:', error);
+        setStockfishReady(false);
+        isInitializingRef.current = false;
+      }
+    };
+
+    void loadStockfish();
+
+    return () => {
+      if (stockfishRef.current) {
+        try {
+          stockfishRef.current.terminate();
+        } catch (e) {
+          console.warn('[DEBUG] Error terminating LawbBot:', e);
+        }
+        stockfishRef.current = null;
+      }
+      isInitializingRef.current = false;
+    };
+  }, []);
+
+  const getStockfishMove = useCallback((fen: string, timeLimit: number = 4000): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!stockfishRef.current) {
+        console.warn('[DEBUG] Stockfish not ready, using fallback');
+        resolve(null);
+        return;
+      }
+
+      console.log('[DEBUG] Starting Stockfish calculation for FEN:', fen, 'timeLimit:', timeLimit);
+      let bestMove: string | null = null;
+      let isResolved = false;
+
+      const messageHandler = (message: string) => {
+        console.log('[DEBUG] Stockfish message:', message);
+        if (typeof message === 'string' && message.startsWith('bestmove ')) {
+          const parts = message.split(' ');
+          bestMove = parts[1] || null;
+          console.log('[DEBUG] Stockfish bestmove found:', bestMove);
+          if (!isResolved) {
+            isResolved = true;
+            stockfishRef.current?.removeMessageListener(messageHandler);
+            resolve(bestMove);
+          }
+        }
+      };
+
+      try {
+        stockfishRef.current.addMessageListener(messageHandler);
+
+        // Set up Stockfish with higher depth for master-class
+        stockfishRef.current.postMessage('uci');
+        stockfishRef.current.postMessage('isready');
+        stockfishRef.current.postMessage(`position fen ${fen}`);
+        
+        // Use longer time limits for master-class
+        const adjustedTimeLimit = timeLimit > 5000 ? timeLimit * 1.5 : timeLimit;
+        stockfishRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 20`);
+
+        // Timeout fallback - longer for master-class
+        const timeoutDuration = timeLimit > 5000 ? timeLimit * 2 : timeLimit + 1000;
+        window.setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            try {
+              stockfishRef.current?.removeMessageListener(messageHandler);
+            } catch (e) {
+              console.warn('[DEBUG] Error removing message listener:', e);
+            }
+            console.warn('[DEBUG] Stockfish timeout after', timeoutDuration, 'ms');
+            resolve(bestMove);
+          }
+        }, timeoutDuration);
+      } catch (error) {
+        console.error('[DEBUG] Stockfish communication error:', error);
+        resolve(null);
+      }
+    });
+  }, []);
+
+  // Cloudflare Worker Stockfish API for production
+  const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
+    try {
+      // Use Cloudflare Worker API (using the deployed worker URL)
+      const cloudflareUrl = 'https://lawb-chess-api.wablesphoto.workers.dev';
+      
+      const response = await fetch(cloudflareUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fen,
+          movetime: timeLimit
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { bestmove?: string };
+        return data.bestmove || null;
+      } else {
+        console.warn('[DEBUG] Cloudflare API failed, falling back to client-side Stockfish');
+        return null;
+      }
+    } catch (error) {
+      console.warn('[DEBUG] Cloudflare API error:', error);
+      return null;
+    }
+  }, []);
+
+  return { stockfishReady, getStockfishMove, getCloudflareStockfishMove };
+};
+
+// Lichess API integration for opening database and analysis
+const useLichessAPI = () => {
+  const [openingData, setOpeningData] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const getOpeningData = useCallback(async (fen: string) => {
+    try {
+      setIsAnalyzing(true);
+      // Get opening data from Lichess API
+      const response = await fetch(`https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(fen)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOpeningData(data);
+        return data;
+      }
+    } catch (error) {
+      console.warn('[DEBUG] Lichess API error:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+    return null;
+  }, []);
+
+  const getMoveAnalysis = useCallback(async (fen: string, move: string) => {
+    try {
+      // Get move analysis from Lichess API
+      const response = await fetch(`https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(fen)}&play=${move}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+    } catch (error) {
+      console.warn('[DEBUG] Lichess move analysis error:', error);
+    }
+    return null;
+  }, []);
+
+  return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
+};
 
 export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false }) => {
   const { address: walletAddress } = useAccount();
@@ -151,6 +364,56 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     });
   };
 
+  // Add Stockfish integration
+  const { stockfishReady, getStockfishMove, getCloudflareStockfishMove } = useStockfish();
+
+  // Add Lichess API integration
+  const { openingData, isAnalyzing, getOpeningData, getMoveAnalysis } = useLichessAPI();
+
+  // Add state for Stockfish status
+  const [stockfishStatus, setStockfishStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+
+  // Add state for opening suggestions
+  const [showOpeningSuggestions, setShowOpeningSuggestions] = useState(false);
+  const [openingSuggestions, setOpeningSuggestions] = useState<any[]>([]);
+
+  // Add state for random chessboard selection
+  const [selectedChessboard, setSelectedChessboard] = useState<string>('/images/chessboard1.png');
+
+  // Function to randomly select a chessboard
+  const selectRandomChessboard = () => {
+    const chessboards = [
+      '/images/chessboard1.png',
+      '/images/chessboard2.png',
+      '/images/chessboard3.png',
+      '/images/chessboard4.png',
+      '/images/chessboard5.png',
+      '/images/chessboard6.png'
+    ];
+    const randomIndex = Math.floor(Math.random() * chessboards.length);
+    const selected = chessboards[randomIndex];
+    console.log('[DEBUG] Random chessboard selected:', selected, '(index:', randomIndex, ')');
+    return selected;
+  };
+
+  // Update Stockfish status when ready state changes
+  useEffect(() => {
+    if (stockfishReady) {
+      setStockfishStatus('ready');
+    } else {
+      // Check if we've tried to load Stockfish and failed
+      const timeoutId = window.setTimeout(() => {
+        if (!stockfishReady) {
+          setStockfishStatus('failed');
+          console.warn('[DEBUG] Stockfish failed to load within timeout');
+        }
+      }, 10000); // Increased to 10 second timeout
+      
+      // Cleanup timeout if Stockfish loads before timeout
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [stockfishReady]);
+
   // Update board ref whenever board state changes
   useEffect(() => {
     boardRef.current = board;
@@ -161,7 +424,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (!walletAddress) {
       setStatus('Connect wallet to play');
       setShowGame(false);
-    } else {
+          } else {
       setStatus('Select game mode');
     }
   }, [walletAddress]);
@@ -172,22 +435,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       aiWorkerRef.current = new Worker('/aiWorker.js');
       aiWorkerRef.current.onmessage = (e: MessageEvent) => {
         console.log('[DEBUG] AI worker response received:', e.data);
-        const { move } = e.data as { move?: { from: { row: number; col: number }; to: { row: number; col: number } } };
+        const { move, nodes } = e.data as {
+          move?: { from: { row: number; col: number }; to: { row: number; col: number } };
+          nodes?: number;
+        };
         // Only apply if it's still AI's turn and game is active
         if (move && isAIMovingRef.current && gameState === 'active') {
           console.log('[DEBUG] AI worker move is valid, executing:', move);
+          console.log('[DEBUG] AI searched', nodes, 'nodes');
           isAIMovingRef.current = false;
-          if (aiTimeoutRef.current) { window.clearTimeout(aiTimeoutRef.current); aiTimeoutRef.current = null; }
+          // Clear any pending timeout
+          if (aiTimeoutRef.current) { 
+            window.clearTimeout(aiTimeoutRef.current); 
+            aiTimeoutRef.current = null; 
+          }
           if (makeMoveRef.current) {
             makeMoveRef.current(move.from, move.to, true);
           }
         } else {
-          console.log('[DEBUG] AI worker move rejected:', {
-            hasMove: !!move,
-            isAIMoving: isAIMovingRef.current,
-            gameState,
-            currentPlayer
-          });
+          console.log('[DEBUG] AI worker response ignored - not AI turn or game not active');
         }
       };
       aiWorkerRef.current.onerror = (error: ErrorEvent) => {
@@ -233,7 +499,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       if (resp.data) setLeaderboardData(resp.data);
       console.log('Leaderboard data loaded:', resp.data);
     } catch (err) {
-      setStatus('Failed to load leaderboard');
+        setStatus('Failed to load leaderboard');
       console.error('Leaderboard error:', err);
     }
   };
@@ -250,61 +516,109 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // Normalize wallet address to lowercase for consistent database queries
       const normalizedAddress = walletAddress.toLowerCase();
       
-      const { data: existingRecord } = await supabase
+      // Use service role client to bypass RLS
+      const { data: existingRecord } = await supabaseService
         .from('leaderboard')
         .select('*')
         .eq('username', normalizedAddress)
         .maybeSingle();
 
-      // Debug log for types
-      console.log('[Leaderboard] existingRecord types:', {
-        wins: typeof existingRecord?.wins,
-        losses: typeof existingRecord?.losses,
-        draws: typeof existingRecord?.draws,
-        points: typeof existingRecord?.points,
-        existingRecord
+      console.log('[DEBUG] Existing record:', existingRecord);
+
+      // Simplified integer conversion with fallbacks
+      const currentWins = existingRecord?.wins ? Number(existingRecord.wins) : 0;
+      const currentLosses = existingRecord?.losses ? Number(existingRecord.losses) : 0;
+      const currentDraws = existingRecord?.draws ? Number(existingRecord.draws) : 0;
+      const currentTotalGames = existingRecord?.total_games ? Number(existingRecord.total_games) : 0;
+      const currentPoints = existingRecord?.points ? Number(existingRecord.points) : 0;
+
+      console.log('[DEBUG] Score calculation:', {
+        currentWins,
+        currentLosses,
+        currentDraws,
+        currentTotalGames,
+        currentPoints,
+        gameResult
       });
 
-      // Force integer conversion
-      const wins = (parseInt((existingRecord && typeof existingRecord === 'object' && 'wins' in existingRecord && typeof (existingRecord as Record<string, unknown>).wins === 'string' ? (existingRecord as Record<string, string>).wins : '0'), 10) || 0) + (gameResult === 'win' ? 1 : 0);
-      const losses = (parseInt((existingRecord && typeof existingRecord === 'object' && 'losses' in existingRecord && typeof (existingRecord as Record<string, unknown>).losses === 'string' ? (existingRecord as Record<string, string>).losses : '0'), 10) || 0) + (gameResult === 'loss' ? 1 : 0);
-      const draws = (parseInt((existingRecord && typeof existingRecord === 'object' && 'draws' in existingRecord && typeof (existingRecord as Record<string, unknown>).draws === 'string' ? (existingRecord as Record<string, string>).draws : '0'), 10) || 0) + (gameResult === 'draw' ? 1 : 0);
-      const total_games = wins + losses + draws;
-      const pointsToAdd = gameResult === 'win' ? (difficulty === 'world-class' ? 5 : 3) : 
-                         gameResult === 'draw' ? 1 : 0;
-      const points = (parseInt((existingRecord && typeof existingRecord === 'object' && 'points' in existingRecord && typeof (existingRecord as Record<string, unknown>).points === 'string' ? (existingRecord as Record<string, string>).points : '0'), 10) || 0) + pointsToAdd;
+      // Calculate new values
+      const newWins = currentWins + (gameResult === 'win' ? 1 : 0);
+      const newLosses = currentLosses + (gameResult === 'loss' ? 1 : 0);
+      const newDraws = currentDraws + (gameResult === 'draw' ? 1 : 0);
+      const newTotalGames = currentTotalGames + 1;
+      
+      // Calculate points based on difficulty and result
+      let pointsToAdd = 0;
+      if (gameResult === 'win') {
+        switch (difficulty) {
+          case 'novice': pointsToAdd = 1; break;
+          case 'intermediate': pointsToAdd = 3; break;
+          case 'world-class': pointsToAdd = 5; break;
+          case 'master-class': pointsToAdd = 10; break;
+          default: pointsToAdd = 1;
+        }
+      } else if (gameResult === 'draw') {
+        pointsToAdd = 1; // 1 point for draw regardless of difficulty
+      }
+      // Loss = 0 points
+      
+      const newPoints = currentPoints + pointsToAdd;
 
-      console.log('[Leaderboard] updateScore:', {
-        normalizedAddress,
-        gameResult,
-        wins,
-        losses,
-        draws,
-        total_games,
-        points,
-        existingRecord
+      console.log('[DEBUG] New values:', {
+        newWins,
+        newLosses,
+        newDraws,
+        newTotalGames,
+        newPoints,
+        pointsToAdd
       });
 
-      // Use upsert with onConflict like the original working implementation
-      const record = {
-        username: normalizedAddress,
-        chain_type: 'evm',
-        wins,
-        losses,
-        draws,
-        total_games,
-        points,
-        updated_at: new Date().toISOString()
-      };
+      if (existingRecord) {
+        // Update existing record
+        const { error } = await supabaseService
+          .from('leaderboard')
+          .update({
+            wins: newWins,
+            losses: newLosses,
+            draws: newDraws,
+            total_games: newTotalGames,
+            points: newPoints,
+            updated_at: new Date().toISOString()
+          })
+          .eq('username', normalizedAddress);
 
-      const response = await supabase
-        .from('leaderboard')
-        .upsert(record, { onConflict: 'username' });
+        if (error) {
+          console.error('[DEBUG] Error updating leaderboard:', error);
+          return;
+        }
+      } else {
+        // Insert new record
+        const { error } = await supabaseService
+          .from('leaderboard')
+          .insert({
+            username: normalizedAddress,
+            chain_type: 'ethereum',
+            wins: newWins,
+            losses: newLosses,
+            draws: newDraws,
+            total_games: newTotalGames,
+            points: newPoints,
+            updated_at: new Date().toISOString()
+          });
 
-      console.log('[Leaderboard] Supabase response:', response);
-      void loadLeaderboard();
+        if (error) {
+          console.error('[DEBUG] Error inserting leaderboard record:', error);
+          return;
+        }
+      }
+
+      console.log('[DEBUG] Leaderboard updated successfully');
+      
+      // Reload leaderboard data
+      await loadLeaderboard();
+      
     } catch (error) {
-      console.error('Error updating score:', error);
+      console.error('[DEBUG] Error in updateScore:', error);
     }
   };
 
@@ -601,154 +915,70 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Store makeMove in ref for AI worker access
   makeMoveRef.current = makeMove;
 
-  // Execute move
-  const executeMove = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove = false) => {
-    const piece = board[from.row][from.col];
-    const capturedPiece = board[to.row][to.col];
+  // Enhanced move execution with opening analysis
+  const executeMoveAfterAnimation = useCallback((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove: boolean = false) => {
+    console.log('[DEBUG] executeMoveAfterAnimation called:', { from, to, isAIMove });
     
-    // Check if this is a capture move
-    const isCapture = capturedPiece !== null;
+    const newBoard = board.map(row => [...row]);
+    const piece = newBoard[from.row][from.col];
     
-    // If it's a capture, show the explosion animation first
-    if (isCapture) {
-      setCaptureAnimation({ row: to.row, col: to.col, show: true });
-      
-      // Wait for animation to complete before executing the move
-      setTimeout(() => {
-        executeMoveAfterAnimation(from, to, promotionPiece, isAIMove, board);
-        setCaptureAnimation(null);
-      }, 500); // Animation duration
-      return;
-    }
+    if (!piece) return;
     
-    // If not a capture, execute move immediately
-    executeMoveAfterAnimation(from, to, promotionPiece, isAIMove, board);
-  };
-
-  // Execute move after animation (or immediately if no animation)
-  const executeMoveAfterAnimation = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove = false, currentBoardState = board) => {
-    const piece = currentBoardState[from.row][from.col];
-    
-    console.log('[DEBUG] executeMoveAfterAnimation called:', {
-      from,
-      to,
-      piece,
-      currentPlayer,
-      isAIMove,
-      gameMode,
-      difficulty
-    });
-    
-    // Create new board state from the passed board state
-    const newBoard = currentBoardState.map(row => [...row]);
-    
-    // Handle pawn promotion
-    if (piece && piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      // Convert promotion piece to correct case based on player color
-      const promotedPiece = getPieceColor(piece) === 'blue' ? promotionPiece.toLowerCase() : promotionPiece.toUpperCase();
-      newBoard[to.row][to.col] = promotedPiece;
-    } else {
-      newBoard[to.row][to.col] = piece ? piece : '';
-    }
-    
+    // Execute the move
+    newBoard[to.row][to.col] = piece;
     newBoard[from.row][from.col] = null;
     
-    console.log('[DEBUG] Board state after move:', {
-      fromPiece: currentBoardState[from.row][from.col],
-      toPiece: currentBoardState[to.row][to.col],
-      newFromPiece: newBoard[from.row][from.col],
-      newToPiece: newBoard[to.row][to.col]
-    });
+    // Handle special moves (castling, en passant, pawn promotion)
+    handleSpecialMoves(newBoard, from, to, piece);
     
-    // Update piece state for castling
-    const newPieceState = { ...pieceState };
-    if (piece && piece.toLowerCase() === 'k') {
-      if (getPieceColor(piece) === 'blue') {
-        newPieceState.blueKingMoved = true;
-      } else {
-        newPieceState.redKingMoved = true;
-      }
-    } else if (piece && piece.toLowerCase() === 'r') {
-      if (getPieceColor(piece) === 'blue') {
-        if (from.col === 0) newPieceState.blueRooksMove.left = true;
-        if (from.col === 7) newPieceState.blueRooksMove.right = true;
-      } else {
-        if (from.col === 0) newPieceState.redRooksMove.left = true;
-        if (from.col === 7) newPieceState.redRooksMove.right = true;
-      }
-    }
+    console.log('[DEBUG] Board state after move:', newBoard);
     
-    // Handle pawn double move for en passant
-    if (piece && piece.toLowerCase() === 'p' && Math.abs(from.row - to.row) === 2) {
-      newPieceState.lastPawnDoubleMove = { row: to.row, col: to.col };
-    } else {
-      newPieceState.lastPawnDoubleMove = null;
-    }
-    
-    // Handle castling
-    if (piece && piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
-      if (to.col === 6) { // Kingside
-        newBoard[from.row][7] = null;
-        newBoard[from.row][5] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
-      } else if (to.col === 2) { // Queenside
-        newBoard[from.row][0] = null;
-        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
-      }
-    }
-    
-    // Update state
+    // Update board state
     setBoard(newBoard);
-    setPieceState(newPieceState);
+    
+    // Update move history
+    const moveNotation = getMoveNotation(from, to, piece, newBoard);
+    setMoveHistory(prev => [...prev, moveNotation]);
+    
+    // Update last move for highlighting
+    setLastMove({ from, to });
+    
+    // Clear selection
     setSelectedPiece(null);
     setLegalMoves([]);
-    setLastMove({ from, to });
+    
+    // Check for opening analysis (first 10 moves)
+    if (moveHistory.length < 10 && !isAIMove) {
+      const fen = boardToFEN(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
+      getOpeningData(fen).then(data => {
+        if (data && data.moves && data.moves.length > 0) {
+          setOpeningSuggestions(data.moves.slice(0, 3)); // Top 3 moves
+          setShowOpeningSuggestions(true);
+          // Auto-hide after 5 seconds
+          setTimeout(() => setShowOpeningSuggestions(false), 5000);
+        }
+      });
+    }
+    
+    // Update piece state
+    updatePieceState(from, to, piece);
     
     console.log('[DEBUG] State updated, currentPlayer before switch:', currentPlayer);
     
-    // Add to move history
-    const moveNotation = `${coordsToAlgebraic(from.row, from.col)}-${coordsToAlgebraic(to.row, to.col)}`;
-    setMoveHistory(prev => [...prev, moveNotation]);
-    
-    // Check game end
-    const nextPlayer: 'blue' | 'red' = switchPlayer(currentPlayer);
-    const gameEndResult = checkGameEnd(newBoard, nextPlayer);
-    
-    if (gameEndResult) {
-      console.log('[DEBUG] Game ended with result:', gameEndResult);
-      setGameState(gameEndResult);
-      if (gameMode === GameMode.AI) {
-        console.log('[DEBUG] AI mode detected, calling updateScore');
-        // Fix: Use the same logic as the original working implementation
-        // winner is 'blue' when blue wins, 'red' when red wins, 'draw' for stalemate
-        const winner = gameEndResult === 'checkmate' ? (nextPlayer === 'blue' ? 'red' : 'blue') : 'draw';
-        const result = winner === 'blue' ? 'win' : winner === 'red' ? 'loss' : 'draw';
-        console.log('[DEBUG] Calculated result for updateScore:', result);
-        void updateScore(result).then(() => {
-          setStatus(prev => prev + ' Leaderboard has been updated!');
-          setShowLeaderboardUpdated(true);
-          window.setTimeout(() => {
-            setShowLeaderboardUpdated(false);
-            console.log('Leaderboard updated!');
-            setStatus(gameEndResult === 'checkmate'
-              ? `Checkmate! ${nextPlayer === 'blue' ? 'Red' : 'Blue'} wins!`
-              : 'Stalemate! Game is a draw.');
-          }, 3000);
-        });
-      } else {
-        console.log('[DEBUG] Not AI mode, gameMode is:', gameMode);
-      }
-      return;
-    }
-    
     // Switch players
-    setCurrentPlayer(nextPlayer);
-    console.log('[DEBUG] Player switched to:', nextPlayer);
+    setCurrentPlayer(prev => {
+      const newPlayer = prev === 'blue' ? 'red' : 'blue';
+      console.log('[DEBUG] Player switched to:', newPlayer);
+      return newPlayer;
+    });
     
-    // Reset AI moving flag if this was an AI move
-    if (isAIMove) {
-      isAIMovingRef.current = false;
-    }
-  };
+    // Check game end conditions
+    checkGameEnd(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
+    
+    // Reset AI moving flag
+    isAIMovingRef.current = false;
+    lastAIMoveRef.current = false;
+  }, [board, currentPlayer, moveHistory, getOpeningData]);
 
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
@@ -757,81 +987,99 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // Set AI moving flag to prevent player moves during AI turn
       isAIMovingRef.current = true;
       
-      if (difficulty === 'world-class') {
-        // Use Stockfish API for world-class difficulty
-        console.log('[DEBUG] Using Stockfish API for world-class difficulty');
+      if (difficulty === 'world-class' || difficulty === 'master-class') {
+        // Use Stockfish for world-class and master-class difficulty
+        console.log(`[DEBUG] Using Stockfish for ${difficulty} difficulty`);
         
-        // Use async IIFE to handle the API call
-        (async () => {
-          try {
-            const fen = boardToFEN(board, currentPlayer);
-            console.log('[DEBUG] Sending FEN to Stockfish API:', fen);
-            
-            // Use production API endpoint
-            const apiUrl = 'https://lawb-chess-api.wablesphoto.workers.dev/stockfish';
-            
-            const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ fen, movetime: 1200 })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('[DEBUG] Stockfish API response:', data);
-            
-            if (data.bestmove) {
-              // Convert Stockfish move format (e.g., "e2e4") to our format
-              const stockfishMoveStr = data.bestmove;
-              console.log('[DEBUG] Stockfish bestmove:', stockfishMoveStr);
+        if (stockfishReady) {
+          const timeLimit = difficulty === 'master-class' ? 12000 : 8000; // 12 seconds for master-class, 8 for world-class
+          setStatus(`${difficulty === 'master-class' ? 'Master-class' : 'World-class'} AI is calculating...`);
+          console.log(`[DEBUG] Using LawbBot for ${difficulty} difficulty`);
+          
+          getStockfishMove(boardToFEN(board, currentPlayer), timeLimit).then(move => {
+            if (move && move !== '(none)') {
+              // Convert Stockfish move (e.g., "e2e4") to our format
+              const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
+              const fromRow = 8 - parseInt(move[1]);
+              const toCol = move.charCodeAt(2) - 97;
+              const toRow = 8 - parseInt(move[3]);
               
-              // Parse Stockfish move format (e.g., "e2e4" -> from: {row: 6, col: 4}, to: {row: 4, col: 4})
-              const fromCol = stockfishMoveStr.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
-              const fromRow = 8 - parseInt(stockfishMoveStr[1]); // '1' = 7, '2' = 6, etc.
-              const toCol = stockfishMoveStr.charCodeAt(2) - 97;
-              const toRow = 8 - parseInt(stockfishMoveStr[3]);
-              
-              const stockfishMove = {
+              const moveObj = {
                 from: { row: fromRow, col: fromCol },
                 to: { row: toRow, col: toCol }
               };
               
-              console.log('[DEBUG] Converted Stockfish move:', stockfishMove);
-              
-              // Validate the move using canPieceMove
-              const piece = board[stockfishMove.from.row][stockfishMove.from.col];
-              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, stockfishMove.from.row, stockfishMove.from.col, stockfishMove.to.row, stockfishMove.to.col, true, 'red', board)) {
-                console.log('[DEBUG] AI move is legal, executing');
-                makeMove(stockfishMove.from, stockfishMove.to, true);
-              } else {
-                console.log('[DEBUG] AI move is illegal, using fallback');
-                const fallbackMove = getRandomAIMove(board);
-                if (fallbackMove) {
-                  makeMove(fallbackMove.from, fallbackMove.to, true);
-                }
-              }
+              console.log('[DEBUG] LawbBot move:', move, 'converted to:', moveObj);
+              makeMove(moveObj.from, moveObj.to, true);
             } else {
-              console.log('[DEBUG] No move from Stockfish, using fallback');
+              console.log('[DEBUG] LawbBot returned no valid move, using fallback');
               const fallbackMove = getRandomAIMove(board);
               if (fallbackMove) {
                 makeMove(fallbackMove.from, fallbackMove.to, true);
               }
             }
-          } catch (error) {
-            console.error('[DEBUG] Stockfish API error:', error);
-            console.log('[DEBUG] Using fallback due to API error');
+            isAIMovingRef.current = false;
+          }).catch(error => {
+            console.error('[DEBUG] LawbBot error:', error);
+            console.log(`[DEBUG] Falling back to AI worker for ${difficulty} difficulty`);
+            // Fallback to AI worker
+            if (aiWorkerRef.current) {
+              aiWorkerRef.current.postMessage({
+                board: board,
+                currentPlayer: currentPlayer,
+                difficulty: difficulty,
+                pieceState: pieceState
+              });
+              
+              // Add timeout fallback in case worker doesn't respond
+              aiTimeoutRef.current = window.setTimeout(() => {
+                console.log('[DEBUG] AI worker timeout, using simple fallback');
+                isAIMovingRef.current = false;
+                aiTimeoutRef.current = null;
+                const fallbackMove = getRandomAIMove(board);
+                if (fallbackMove) {
+                  makeMove(fallbackMove.from, fallbackMove.to, true);
+                }
+              }, 3000); // 3 second timeout
+            } else {
+              // Final fallback to simple AI
+              const fallbackMove = getRandomAIMove(board);
+              if (fallbackMove) {
+                makeMove(fallbackMove.from, fallbackMove.to, true);
+              }
+              isAIMovingRef.current = false;
+            }
+          });
+        } else {
+          console.log(`[DEBUG] LawbBot not ready, using AI worker fallback for ${difficulty}`);
+          // Stockfish not ready, use AI worker as fallback
+          if (aiWorkerRef.current) {
+            aiWorkerRef.current.postMessage({
+              board: board,
+              currentPlayer: currentPlayer,
+              difficulty: difficulty,
+              pieceState: pieceState
+            });
+            
+            // Add timeout fallback in case worker doesn't respond
+            aiTimeoutRef.current = window.setTimeout(() => {
+              console.log('[DEBUG] AI worker timeout, using simple fallback');
+              isAIMovingRef.current = false;
+              aiTimeoutRef.current = null;
+              const fallbackMove = getRandomAIMove(board);
+              if (fallbackMove) {
+                makeMove(fallbackMove.from, fallbackMove.to, true);
+              }
+            }, 8000); // Increased to 8 second timeout for intermediate difficulty
+          } else {
+            // Final fallback to simple AI
             const fallbackMove = getRandomAIMove(board);
             if (fallbackMove) {
               makeMove(fallbackMove.from, fallbackMove.to, true);
             }
-          } finally {
-            // Reset AI moving flag
             isAIMovingRef.current = false;
           }
-        })();
+        }
       } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
         // Use existing AI worker for 'intermediate' mode
         console.log('[DEBUG] Using AI worker for intermediate mode');
@@ -846,6 +1094,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         aiTimeoutRef.current = window.setTimeout(() => {
           console.log('[DEBUG] AI worker timeout, using fallback');
           isAIMovingRef.current = false;
+          aiTimeoutRef.current = null;
           const fallbackMove = getRandomAIMove(board);
           if (fallbackMove) {
             makeMove(fallbackMove.from, fallbackMove.to, true);
@@ -860,9 +1109,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         }
         // Reset AI moving flag
         isAIMovingRef.current = false;
+      } else {
+        // Fallback for any other case
+        console.log('[DEBUG] Using fallback AI');
+        const fallbackMove = getRandomAIMove(board);
+        if (fallbackMove) {
+          makeMove(fallbackMove.from, fallbackMove.to, true);
+        }
+        isAIMovingRef.current = false;
       }
     }
-  }, [currentPlayer, gameMode, difficulty, board, pieceState]);
+  }, [currentPlayer, gameMode, difficulty, board, pieceState, stockfishReady]);
 
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
@@ -871,13 +1128,39 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     if (isCheckmate(playerToMove, boardState)) {
       console.log('CHECKMATE detected!');
-      setStatus(`Checkmate! ${playerToMove === 'blue' ? 'Red' : 'Blue'} wins!`);
+      setGameState('checkmate');
+      
+      // Determine winner and update leaderboard
+      const winner = playerToMove === 'blue' ? 'red' : 'blue';
+      const isPlayerWin = winner === 'blue'; // Blue is always the human player
+      
+      if (isPlayerWin) {
+        setStatus(`Checkmate! You win!`);
+        // Update leaderboard for player win
+        void updateScore('win');
+        setShowLeaderboardUpdated(true);
+        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      } else {
+        setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
+        // Update leaderboard for player loss
+        void updateScore('loss');
+        setShowLeaderboardUpdated(true);
+        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      }
+      
       return 'checkmate';
     }
     
     if (isStalemate(playerToMove, boardState)) {
       console.log('STALEMATE detected!');
+      setGameState('stalemate');
       setStatus('Stalemate! Game is a draw.');
+      
+      // Update leaderboard for draw
+      void updateScore('draw');
+      setShowLeaderboardUpdated(true);
+      setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      
       return 'stalemate';
     }
     
@@ -885,7 +1168,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.log('CHECK detected!');
       setStatus(`${playerToMove === 'blue' ? 'Blue' : 'Red'} is in check!`);
     } else {
-      setStatus(`Your turn (${playerToMove})`);
+      setStatus(`Your turn`);
     }
     
     return null;
@@ -910,19 +1193,52 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       [aiPieces[i], aiPieces[j]] = [aiPieces[j], aiPieces[i]];
     }
     
+    // First, look for captures
+    const captureMoves: { from: { row: number; col: number }; to: { row: number; col: number }; value: number }[] = [];
+    const regularMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
+    
     for (const piece of aiPieces) {
       const legalMoves = getLegalMoves(piece, boardState, 'red');
-      if (legalMoves.length > 0) {
-        const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-        // Double-check that this move doesn't put the AI's king in check
-        const tempBoard = boardState.map(row => [...row]);
-        const pieceSymbol = tempBoard[piece.row][piece.col];
-        tempBoard[randomMove.row][randomMove.col] = pieceSymbol;
-        tempBoard[piece.row][piece.col] = null;
-        
-        if (!isKingInCheck(tempBoard, 'red')) {
-          return { from: piece, to: randomMove };
+      for (const move of legalMoves) {
+        const targetPiece = boardState[move.row][move.col];
+        if (targetPiece && getPieceColor(targetPiece) === 'blue') {
+          // This is a capture move
+          const pieceValues: { [key: string]: number } = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+          const value = pieceValues[targetPiece.toLowerCase()] || 0;
+          captureMoves.push({ from: piece, to: move, value });
+        } else {
+          regularMoves.push({ from: piece, to: move });
         }
+      }
+    }
+    
+    // Sort capture moves by value (highest first)
+    captureMoves.sort((a, b) => b.value - a.value);
+    
+    // If we have captures, prefer the highest value capture
+    if (captureMoves.length > 0) {
+      const bestCapture = captureMoves[0];
+      // Double-check that this move doesn't put the AI's king in check
+      const tempBoard = boardState.map(row => [...row]);
+      const pieceSymbol = tempBoard[bestCapture.from.row][bestCapture.from.col];
+      tempBoard[bestCapture.to.row][bestCapture.to.col] = pieceSymbol;
+      tempBoard[bestCapture.from.row][bestCapture.from.col] = null;
+      
+      if (!isKingInCheck(tempBoard, 'red')) {
+        return { from: bestCapture.from, to: bestCapture.to };
+      }
+    }
+    
+    // If no good captures, use regular moves
+    for (const move of regularMoves) {
+      // Double-check that this move doesn't put the AI's king in check
+      const tempBoard = boardState.map(row => [...row]);
+      const pieceSymbol = tempBoard[move.from.row][move.from.col];
+      tempBoard[move.to.row][move.to.col] = pieceSymbol;
+      tempBoard[move.from.row][move.from.col] = null;
+      
+      if (!isKingInCheck(tempBoard, 'red')) {
+        return move;
       }
     }
     
@@ -947,6 +1263,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       redRooksMove: { left: false, right: false },
       lastPawnDoubleMove: null
     });
+    // Select a new random chessboard for the next game
+    setSelectedChessboard(selectRandomChessboard());
     // Cancel any AI move in progress
     if (isAIMovingRef.current) isAIMovingRef.current = false;
   };
@@ -962,10 +1280,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
 
   const startGame = () => {
-    console.log('startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
+    console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
     setShowGame(true);
     setShowDifficulty(false);
-    setStatus(`Your turn (${currentPlayer})`);
+    setStatus(`Game started! Your turn`);
+    // Select a random chessboard for this game
+    const newChessboard = selectRandomChessboard();
+    setSelectedChessboard(newChessboard);
+    console.log('[DEBUG] Game started with chessboard:', newChessboard);
   };
 
   const createGame = async () => {
@@ -1121,29 +1443,114 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
         <div className="difficulty-selection-panel">
-          <h3>Select Difficulty</h3>
-          <button 
+                  <h3>Select Difficulty</h3>
+                  <button 
             className={`difficulty-btn${difficulty === 'novice' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('novice'); setShowGame(true); setShowDifficulty(false); setStatus(`Your turn (${currentPlayer})`); }}
-          >
+            onClick={() => { setDifficulty('novice'); startGame(); }}
+                  >
             Novice
-          </button>
-          <button 
+                  </button>
+                  <button 
             className={`difficulty-btn${difficulty === 'intermediate' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('intermediate'); setShowGame(true); setShowDifficulty(false); setStatus(`Your turn (${currentPlayer})`); }}
-          >
+            onClick={() => { setDifficulty('intermediate'); startGame(); }}
+                  >
             Intermediate
-          </button>
+                  </button>
           <button 
             className={`difficulty-btn${difficulty === 'world-class' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('world-class'); setShowGame(true); setShowDifficulty(false); setStatus(`Your turn (${currentPlayer})`); }}
+            onClick={() => { setDifficulty('world-class'); startGame(); }}
           >
             World-Class
-          </button>
+                  </button>
+          <button 
+            className={`difficulty-btn${difficulty === 'master-class' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('master-class'); startGame(); }}
+          >
+            Master-Class
+                  </button>
         </div>
       </div>
     </div>
   );
+
+  // Helper functions for move execution
+  const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
+    // Handle pawn promotion
+    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      const promotedPiece = getPieceColor(piece) === 'blue' ? 'q' : 'Q';
+      newBoard[to.row][to.col] = promotedPiece;
+    }
+    
+    // Handle castling
+    if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
+      if (to.col === 6) { // Kingside
+        newBoard[from.row][7] = null;
+        newBoard[from.row][5] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
+      } else if (to.col === 2) { // Queenside
+        newBoard[from.row][0] = null;
+        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
+      }
+    }
+  };
+
+  const getMoveNotation = (from: { row: number; col: number }, to: { row: number; col: number }, piece: string, board: (string | null)[][]) => {
+    const fromSquare = coordsToAlgebraic(from.row, from.col);
+    const toSquare = coordsToAlgebraic(to.row, to.col);
+    return `${fromSquare}-${toSquare}`;
+  };
+
+  const updatePieceState = (from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
+    const newPieceState = { ...pieceState };
+    
+    if (piece.toLowerCase() === 'k') {
+      if (getPieceColor(piece) === 'blue') {
+        newPieceState.blueKingMoved = true;
+      } else {
+        newPieceState.redKingMoved = true;
+      }
+    } else if (piece.toLowerCase() === 'r') {
+      if (getPieceColor(piece) === 'blue') {
+        if (from.col === 0) newPieceState.blueRooksMove.left = true;
+        if (from.col === 7) newPieceState.blueRooksMove.right = true;
+      } else {
+        if (from.col === 0) newPieceState.redRooksMove.left = true;
+        if (from.col === 7) newPieceState.redRooksMove.right = true;
+      }
+    }
+    
+    // Handle pawn double move for en passant
+    if (piece.toLowerCase() === 'p' && Math.abs(from.row - to.row) === 2) {
+      newPieceState.lastPawnDoubleMove = { row: to.row, col: to.col };
+    } else {
+      newPieceState.lastPawnDoubleMove = null;
+    }
+    
+    setPieceState(newPieceState);
+  };
+
+  // Execute move with capture animation
+  const executeMove = (from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove = false) => {
+    const piece = board[from.row][from.col];
+    const capturedPiece = board[to.row][to.col];
+    
+    // Check if this is a capture move
+    const isCapture = capturedPiece !== null;
+    
+    // If it's a capture, show the explosion animation first
+    if (isCapture) {
+      setCaptureAnimation({ row: to.row, col: to.col, show: true });
+      
+      // Wait for animation to complete before executing the move
+      setTimeout(() => {
+        executeMoveAfterAnimation(from, to, isAIMove);
+        setCaptureAnimation(null);
+      }, 500); // Animation duration
+      return;
+    }
+    
+    // If not a capture, execute move immediately
+    executeMoveAfterAnimation(from, to, isAIMove);
+  };
 
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
@@ -1185,68 +1592,88 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
           {/* Only show leaderboard in left sidebar when no game is active */}
           {!showGame && (
-            <div className="leaderboard">
-              <h3>Leaderboard</h3>
-              <div className="leaderboard-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Player</th>
-                      <th>W</th>
-                      <th>L</th>
-                      <th>D</th>
-                      <th>Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+          <div className="leaderboard">
+            <h3>Leaderboard</h3>
+            <div className="leaderboard-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>W</th>
+                    <th>L</th>
+                    <th>D</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody>
                     {Array.isArray(leaderboardData) && leaderboardData.slice(0, 10).map((entry, index: number) => {
                       if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                        const typedEntry = entry as LeaderboardEntry;
-                        return (
-                          <tr key={typedEntry.username}>
-                            <td>{index + 1}</td>
-                            <td>{formatAddress(typedEntry.username)}</td>
-                            <td>{typedEntry.wins}</td>
-                            <td>{typedEntry.losses}</td>
-                            <td>{typedEntry.draws}</td>
-                            <td>{typedEntry.points}</td>
-                          </tr>
-                        );
+                    const typedEntry = entry as LeaderboardEntry;
+                    return (
+                      <tr key={typedEntry.username}>
+                        <td>{index + 1}</td>
+                        <td>{formatAddress(typedEntry.username)}</td>
+                        <td>{typedEntry.wins}</td>
+                        <td>{typedEntry.losses}</td>
+                        <td>{typedEntry.draws}</td>
+                        <td>{typedEntry.points}</td>
+                      </tr>
+                    );
                       }
                       return null;
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+                </div>
+              )}
+          </div>
 
         {/* Center Area */}
         <div className="center-area">
-          <div className="game-info">
+                  <div className="game-info">
             <div className="game-info-bar">
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
-                Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
+                  Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
               </span>
               <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
               {showGame && !showDifficulty && (
-                <span className={difficulty === 'novice' ? 'mode-novice' : difficulty === 'intermediate' ? 'mode-intermediate' : 'mode-world-class'}>
-                  Mode: {difficulty === 'novice' ? 'Novice' : difficulty === 'intermediate' ? 'Intermediate' : 'World-Class'}
+                <span className={difficulty === 'novice' ? 'mode-novice' : difficulty === 'intermediate' ? 'mode-intermediate' : difficulty === 'world-class' ? 'mode-world-class' : 'mode-master-class'}>
+                  Mode: {difficulty === 'novice' ? 'Novice' : difficulty === 'intermediate' ? 'Intermediate' : difficulty === 'world-class' ? 'World-Class' : 'Master-Class'}
                 </span>
               )}
-            </div>
-          </div>
+              {(difficulty === 'world-class' || difficulty === 'master-class') && (
+                <span className={`stockfish-status ${stockfishStatus}`}>
+                  LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
+                </span>
+              )}
+              {showOpeningSuggestions && openingSuggestions.length > 0 && (
+                <div className="opening-suggestions">
+                  <span className="opening-label">Opening:</span>
+                  {openingSuggestions.map((move, index) => (
+                    <span key={index} className="opening-move">
+                      {move.san} ({Math.round(move.white + move.draws + move.black)} games)
+                    </span>
+                  ))}
+                </div>
+              )}
+                </div>
+                </div>
           {showGame ? (
             <div className="chess-main-area">
               <div className="chessboard-container">
-                <div className="chessboard">
+                  <div 
+                    className="chessboard"
+                    style={{
+                      backgroundImage: `url(${selectedChessboard})`
+                    }}
+                  >
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="board-row">
                       {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                    </div>
-                  ))}
+                              </div>
+                    ))}
                   {/* Capture Animation Overlay */}
                   {captureAnimation && captureAnimation.show && (
                     <div 
@@ -1265,7 +1692,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                         alt="capture" 
                         style={{ width: '100%', height: '100%' }}
                       />
-                    </div>
+                  </div>
                   )}
                 </div>
               </div>
@@ -1291,52 +1718,65 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <img src="/images/chessboard4.png" alt="Chessboard" style={{ display: 'block', margin: '16px auto 0 auto', width: '180px', maxWidth: '90%' }} />
               </div>
               <button className="start-btn continue-btn" onClick={() => setShowDifficulty(true)}>Continue</button>
+              
+              <div className="how-to-section">
+                <h4>How to Play</h4>
+                <div className="how-to-content">
+                  <p><strong>Chess Basics:</strong> Move pieces to capture your opponent's king. Each piece moves differently - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
+                  
+                  <p><strong>Wallet Connection:</strong> Connect your wallet to track your progress and compete on the leaderboard. Your wallet address serves as your username.</p>
+                  
+                  <p><strong>Points System:</strong> Win points by defeating the AI - Novice (1pt), Intermediate (3pts), World-Class (5pts), Master-Class (10pts). Draws earn 1 point regardless of difficulty.</p>
+                  
+                  <p><strong>AI Difficulty:</strong> Novice=Easy, Intermediate=kinda harder, World-Class= harder than Intermediate, Master-Class=currently most difficult lawbBot.</p>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-
+            </div>
+            
         {/* Right Sidebar */}
-        <div className="right-sidebar">
+              <div className="right-sidebar">
           {showGame ? (
-            <div className="leaderboard">
-              <h3>Leaderboard</h3>
-              <div className="leaderboard-table">
+              <div className="leaderboard">
+                <h3>Leaderboard</h3>
+                  <div className="leaderboard-table">
                 <table>
                   <thead>
                     <tr>
                       <th>Rank</th>
                       <th>Player</th>
-                      <th>W</th>
-                      <th>L</th>
-                      <th>D</th>
+                          <th>W</th>
+                          <th>L</th>
+                          <th>D</th>
                       <th>Points</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Array.isArray(leaderboardData) && leaderboardData.slice(0, 10).map((entry, index: number) => {
                       if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                        const typedEntry = entry as LeaderboardEntry;
-                        return (
-                          <tr key={typedEntry.username}>
-                            <td>{index + 1}</td>
-                            <td>{formatAddress(typedEntry.username)}</td>
-                            <td>{typedEntry.wins}</td>
-                            <td>{typedEntry.losses}</td>
-                            <td>{typedEntry.draws}</td>
-                            <td>{typedEntry.points}</td>
-                          </tr>
-                        );
+                          const typedEntry = entry as LeaderboardEntry;
+                          return (
+                            <tr key={typedEntry.username}>
+                        <td>{index + 1}</td>
+                              <td>{formatAddress(typedEntry.username)}</td>
+                              <td>{typedEntry.wins}</td>
+                              <td>{typedEntry.losses}</td>
+                              <td>{typedEntry.draws}</td>
+                              <td>{typedEntry.points}</td>
+                      </tr>
+                          );
                       }
                       return null;
-                    })}
+                        })}
                   </tbody>
                 </table>
               </div>
-            </div>
+                </div>
           ) : (
             <div className="piece-gallery-panel">
               {renderPieceGallery(false)}
-            </div>
+              </div>
           )}
         </div>
       </div>
@@ -1354,7 +1794,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       )}
     </div>
   );
-};
+}; 
 
 // Utility to switch player color
 function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
