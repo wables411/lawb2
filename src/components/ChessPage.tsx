@@ -2,23 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useNavigate } from 'react-router-dom';
 import { ChessGame } from './ChessGame';
+import { useAppKit } from '@reown/appkit/react';
 
 const ChessPage: React.FC = () => {
   const [showWarning, setShowWarning] = useState(false);
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
+  const { open } = useAppKit();
 
   // Dark mode state and toggle
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
-      return localStorage.getItem('lawb_chess_dark_mode') === 'true';
+      return window.localStorage.getItem('lawb_chess_dark_mode') === 'true';
     }
     return false;
   });
   const toggleDarkMode = () => {
     setDarkMode((prev) => {
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('lawb_chess_dark_mode', String(!prev));
+        window.localStorage.setItem('lawb_chess_dark_mode', String(!prev));
       }
       return !prev;
     });
@@ -55,7 +57,7 @@ const ChessPage: React.FC = () => {
           {isConnected && address ? (
             <span title={address}>{address.slice(0, 6)}...{address.slice(-4)}</span>
           ) : (
-            <span style={{ color: '#fff', cursor: 'pointer' }} onClick={() => window.dispatchEvent(new CustomEvent('open-wallet-connect'))}>Connect Wallet</span>
+            <span style={{ color: '#fff', cursor: 'pointer' }} onClick={() => { void open(); }}>Connect Wallet</span>
           )}
           {/* Dark mode toggle button next to wallet */}
           <button
@@ -82,7 +84,7 @@ const ChessPage: React.FC = () => {
             <button
               className="start-btn"
               style={{ marginTop: 18, background: darkMode ? '#222' : '#008000', color: darkMode ? '#00ff00' : '#fff', border: darkMode ? '2px solid #00ff00' : undefined }}
-              onClick={() => window.dispatchEvent(new CustomEvent('open-wallet-connect'))}
+              onClick={() => { void open(); }}
             >
               Connect Wallet
             </button>
