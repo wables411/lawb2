@@ -13,9 +13,10 @@ import ChessPage from './components/ChessPage'; // to be created
 
 const queryClient = new QueryClient();
 
+const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
+
 const Root = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
-
   return isMobile ? <Mobile /> : <App />;
 };
 
@@ -25,11 +26,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Root />} />
-            <Route path="/chess" element={<ChessPage />} />
+            {isChessSubdomain ? (
+              <Route path="/*" element={<ChessPage />} />
+            ) : (
+              <>
+                <Route path="/" element={<Root />} />
+                <Route path="/chess" element={<ChessPage />} />
+              </>
+            )}
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
     </WagmiProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
