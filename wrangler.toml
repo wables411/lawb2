@@ -1,4 +1,4 @@
-name = "lawb2"
+name = "lawb-chess-api"
 compatibility_date = "2024-01-01"
 
 [build]
