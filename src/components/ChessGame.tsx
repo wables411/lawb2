@@ -782,14 +782,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
 
   const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board): boolean => {
-    if (!isWithinBoard(endRow, endCol)) return false;
-    
+    if (!isWithinBoard(endRow, endCol)) {
+      console.log('[ILLEGAL MOVE] Out of board:', { piece, startRow, startCol, endRow, endCol });
+      return false;
+    }
     const targetPiece = boardState[endRow][endCol];
-    if (targetPiece && getPieceColor(targetPiece) === playerColor) return false;
-    
+    if (targetPiece && getPieceColor(targetPiece) === playerColor) {
+      console.log('[ILLEGAL MOVE] Capturing own piece:', { piece, startRow, startCol, endRow, endCol });
+      return false;
+    }
     const pieceType = piece.toLowerCase();
     let isValid = false;
-    
     switch (pieceType) {
       case 'p':
         isValid = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
@@ -810,11 +813,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         isValid = isValidKingMove(playerColor, startRow, startCol, endRow, endCol);
         break;
     }
-    
-    if (isValid && checkForCheck) {
-      return !wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState);
+    if (!isValid) {
+      console.log('[ILLEGAL MOVE] Piece cannot move that way:', { piece, startRow, startCol, endRow, endCol });
+      return false;
     }
-    
+    if (isValid && checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState)) {
+      console.log('[ILLEGAL MOVE] Move exposes king to check:', { piece, startRow, startCol, endRow, endCol });
+      return false;
+    }
     return isValid;
   };
 
@@ -898,8 +904,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Make a move
   const makeMove = (from: { row: number; col: number }, to: { row: number; col: number }, isAIMove = false) => {
-    lastAIMoveRef.current = !!isAIMove;
     const piece = board[from.row][from.col];
+    console.log('[MOVE ATTEMPT]', { from, to, piece, isAIMove, board: JSON.parse(JSON.stringify(board)), moveHistory });
     if (!piece) return;
     
     // Check for pawn promotion
@@ -938,7 +944,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     // Update move history
     const moveNotation = getMoveNotation(from, to, piece, newBoard);
-    setMoveHistory(prev => [...prev, moveNotation]);
+    setMoveHistory(prev => {
+      const updated = [...prev, moveNotation];
+      console.log('[MOVE HISTORY UPDATED]', updated);
+      return updated;
+    });
     
     // Update last move for highlighting
     setLastMove({ from, to });
@@ -1073,7 +1083,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     console.log('Is king in check:', isKingInCheck(boardState, playerToMove));
     
     if (isCheckmate(playerToMove, boardState)) {
-      console.log('CHECKMATE detected!');
+      console.log('[GAME END] CHECKMATE', { winner: playerToMove === 'blue' ? 'red' : 'blue', board: JSON.parse(JSON.stringify(boardState)), moveHistory });
       setGameState('checkmate');
       
       // Determine winner and update leaderboard
@@ -1098,7 +1108,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
     
     if (isStalemate(playerToMove, boardState)) {
-      console.log('STALEMATE detected!');
+      console.log('[GAME END] STALEMATE', { board: JSON.parse(JSON.stringify(boardState)), moveHistory });
       setGameState('stalemate');
       setStatus('Stalemate! Game is a draw.');
       
