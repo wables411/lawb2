@@ -1,14 +1,9 @@
 name = "lawb-chess-api"
 compatibility_date = "2024-01-01"
-
-[build]
-command = "npm run build"
-
-[site]
-bucket = "./dist"
+main = "functions/api/stockfish.js"
 
 [env.production]
-name = "lawb2-production"
+name = "lawb-chess-api"
 
 [env.staging]
-name = "lawb2-staging" 
+name = "lawb-chess-api-staging" 
