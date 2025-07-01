@@ -1,3 +1,7 @@
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
 /*.wasm
   Content-Type: application/wasm
   Cache-Control: public, max-age=31536000
