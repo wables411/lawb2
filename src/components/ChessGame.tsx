@@ -228,24 +228,44 @@ const useStockfish = () => {
       // Use Cloudflare Worker API (using the deployed worker URL)
       const cloudflareUrl = 'https://lawb-chess-api.wablesphoto.workers.dev';
       
-      const response = await fetch(cloudflareUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fen,
-          movetime: timeLimit
-        })
-      });
+      // Add retry logic for CORS issues
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`[DEBUG] Attempting API call ${attempt}/3`);
+          
+          const response = await fetch(cloudflareUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fen,
+              movetime: timeLimit
+            })
+          });
 
-      if (response.ok) {
-        const data = await response.json() as { bestmove?: string };
-        return data.bestmove || null;
-      } else {
-        console.warn('[DEBUG] Cloudflare API failed, falling back to client-side Stockfish');
-        return null;
+          if (response.ok) {
+            const data = await response.json() as { bestmove?: string };
+            console.log(`[DEBUG] API call successful on attempt ${attempt}`);
+            return data.bestmove || null;
+          } else {
+            console.warn(`[DEBUG] Cloudflare API failed with status ${response.status} on attempt ${attempt}`);
+            lastError = new Error(`HTTP ${response.status}`);
+          }
+        } catch (error) {
+          console.warn(`[DEBUG] Cloudflare API error on attempt ${attempt}:`, error);
+          lastError = error as Error;
+          
+          // Wait a bit before retrying
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
       }
+      
+      console.warn('[DEBUG] All API attempts failed, falling back to client-side Stockfish');
+      return null;
     } catch (error) {
       console.warn('[DEBUG] Cloudflare API error:', error);
       return null;
@@ -338,6 +358,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const makeMoveRef = useRef<((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove?: boolean) => void) | null>(null);
   const aiTimeoutRef = useRef<number | null>(null);
   const lastAIMoveRef = useRef(false);
+  const apiCallInProgressRef = useRef(false);
 
   // Add showDifficulty state
   const [showDifficulty, setShowDifficulty] = useState(false);
@@ -1009,6 +1030,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         console.log('[DEBUG] Current board state:', JSON.stringify(board));
         console.log('[DEBUG] Current player:', currentPlayer);
 
+        // Prevent multiple simultaneous API calls
+        if (apiCallInProgressRef.current) {
+          console.log('[DEBUG] API call already in progress, skipping');
+          return;
+        }
+        
+        apiCallInProgressRef.current = true;
         const getMove = useWorkerAPI ? getCloudflareStockfishMove : getStockfishMove;
         getMove(fen, timeLimit).then(move => {
           console.log('[DEBUG] API returned move:', move);
@@ -1036,6 +1064,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   makeMove(fallbackMove.from, fallbackMove.to, true);
                 }
                 isAIMovingRef.current = false;
+                apiCallInProgressRef.current = false;
               }
             } else {
               console.log('[DEBUG] Invalid move coordinates, using fallback');
@@ -1044,6 +1073,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 makeMove(fallbackMove.from, fallbackMove.to, true);
               }
               isAIMovingRef.current = false;
+              apiCallInProgressRef.current = false;
             }
           } else {
             console.log('[DEBUG] Stockfish returned no valid move, using fallback');
@@ -1052,6 +1082,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               makeMove(fallbackMove.from, fallbackMove.to, true);
             }
             isAIMovingRef.current = false;
+            apiCallInProgressRef.current = false;
           }
         }).catch(error => {
           console.error('[DEBUG] Stockfish error:', error);
@@ -1061,6 +1092,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             makeMove(fallbackMove.from, fallbackMove.to, true);
           }
           isAIMovingRef.current = false;
+          apiCallInProgressRef.current = false;
         });
       } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
         console.log('[DEBUG] Using AI worker for intermediate difficulty');
