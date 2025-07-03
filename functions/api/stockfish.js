@@ -146,10 +146,13 @@ class AdvancedChessEngine {
 
     let bestMove = legalMoves[0];
     const startTime = Date.now();
-    const maxDepth = Math.min(8, Math.floor(movetime / 150)); // Deeper search for world-class
+    const maxDepth = Math.min(12, Math.floor(movetime / 100)); // Much deeper search for master-class
 
     // Sort moves for better pruning
     const sortedMoves = this.sortMoves(legalMoves);
+
+    // Store all moves with their scores for randomization
+    const moveScores = [];
 
     // Iterative deepening
     for (let depth = 1; depth <= maxDepth; depth++) {
@@ -159,11 +162,14 @@ class AdvancedChessEngine {
       let beta = Infinity;
       let currentBestMove = sortedMoves[0];
       let currentBestScore = -Infinity;
+      moveScores.length = 0; // Clear previous scores
 
       for (const move of sortedMoves) {
         this.makeMove(move);
         const score = -this.negamax(depth - 1, -beta, -alpha, false, startTime, movetime);
         this.undoMove(move);
+
+        moveScores.push({ move, score });
 
         if (score > currentBestScore) {
           currentBestScore = score;
@@ -174,6 +180,24 @@ class AdvancedChessEngine {
       }
 
       bestMove = currentBestMove;
+    }
+
+    // Add randomization for moves with similar scores (but less for master-class)
+    if (moveScores.length > 1) {
+      const bestScore = moveScores[0].score;
+      const similarMoves = moveScores.filter(ms => 
+        Math.abs(ms.score - bestScore) <= 25 // Tighter range for master-class
+      );
+      
+      if (similarMoves.length > 1) {
+        // Prefer the best move more often for master-class
+        if (Math.random() < 0.8) {
+          bestMove = moveScores[0].move; // 80% chance to pick the best move
+        } else {
+          const randomIndex = Math.floor(Math.random() * similarMoves.length);
+          bestMove = similarMoves[randomIndex].move;
+        }
+      }
     }
 
     return this.moveToNotation(bestMove);
@@ -336,6 +360,12 @@ class AdvancedChessEngine {
     // Pawn structure
     score += this.evaluatePawnStructure();
 
+    // Mobility bonus (encourage piece activity)
+    score += this.evaluateMobility();
+
+    // Development bonus (encourage piece development)
+    score += this.evaluateDevelopment();
+
     return score;
   }
 
@@ -410,6 +440,51 @@ class AdvancedChessEngine {
       }
       if (whitePawns > 1) score -= 20 * (whitePawns - 1);
       if (blackPawns > 1) score += 20 * (blackPawns - 1);
+    }
+    
+    return score;
+  }
+
+  evaluateMobility() {
+    let score = 0;
+    
+    // Count legal moves for each side
+    const currentPlayer = this.currentPlayer;
+    
+    this.currentPlayer = 'white';
+    const whiteMoves = this.getLegalMoves().length;
+    
+    this.currentPlayer = 'black';
+    const blackMoves = this.getLegalMoves().length;
+    
+    this.currentPlayer = currentPlayer;
+    
+    // Mobility bonus (more moves = better position)
+    score += (whiteMoves - blackMoves) * 5;
+    
+    return score;
+  }
+
+  evaluateDevelopment() {
+    let score = 0;
+    
+    // Bonus for developed pieces (not on back rank)
+    for (let col = 0; col < 8; col++) {
+      // White pieces
+      if (this.board[6][col] === null && this.board[7][col] !== null) {
+        const piece = this.board[7][col];
+        if (piece === 'R' || piece === 'N' || piece === 'B') {
+          score -= 10; // Penalty for undeveloped pieces
+        }
+      }
+      
+      // Black pieces
+      if (this.board[1][col] === null && this.board[0][col] !== null) {
+        const piece = this.board[0][col];
+        if (piece === 'r' || piece === 'n' || piece === 'b') {
+          score += 10; // Penalty for undeveloped pieces
+        }
+      }
     }
     
     return score;

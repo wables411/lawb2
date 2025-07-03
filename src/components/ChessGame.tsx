@@ -668,7 +668,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       for (let c = 0; c < 8; c++) {
         const piece = board[r][c];
         if (piece && getPieceColor(piece) === attackingColor) {
-          if (canPieceMove(piece, r, c, row, col, false, attackingColor, board)) {
+          if (canPieceMove(piece, r, c, row, col, false, attackingColor, board, true)) {
             return true;
           }
         }
@@ -781,14 +781,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return true;
   };
 
-  const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board): boolean => {
+  const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board, silent = false): boolean => {
     if (!isWithinBoard(endRow, endCol)) {
-      console.log('[ILLEGAL MOVE] Out of board:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) console.log('[ILLEGAL MOVE] Out of board:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     const targetPiece = boardState[endRow][endCol];
     if (targetPiece && getPieceColor(targetPiece) === playerColor) {
-      console.log('[ILLEGAL MOVE] Capturing own piece:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) console.log('[ILLEGAL MOVE] Capturing own piece:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     const pieceType = piece.toLowerCase();
@@ -814,11 +814,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         break;
     }
     if (!isValid) {
-      console.log('[ILLEGAL MOVE] Piece cannot move that way:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) console.log('[ILLEGAL MOVE] Piece cannot move that way:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     if (isValid && checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState)) {
-      console.log('[ILLEGAL MOVE] Move exposes king to check:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) console.log('[ILLEGAL MOVE] Move exposes king to check:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     return isValid;
@@ -833,7 +833,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
-        if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState)) {
+        if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState, true)) {
           moves.push({ row, col });
         }
       }
@@ -1003,76 +1003,100 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setStatus(`${difficulty === 'master-class' ? 'Master-class' : 'World-class'} AI is calculating...`);
         console.log(`[DEBUG] Using ${useWorkerAPI ? 'Cloudflare Worker API' : 'LawbBot (WASM)'} for ${difficulty} difficulty`);
 
+        // Generate FEN and log it for debugging
+        const fen = boardToFEN(board, currentPlayer);
+        console.log('[DEBUG] Sending FEN to API:', fen);
+        console.log('[DEBUG] Current board state:', JSON.stringify(board));
+        console.log('[DEBUG] Current player:', currentPlayer);
+
         const getMove = useWorkerAPI ? getCloudflareStockfishMove : getStockfishMove;
-        getMove(boardToFEN(board, currentPlayer), timeLimit).then(move => {
-          if (move && move !== '(none)') {
+        getMove(fen, timeLimit).then(move => {
+          console.log('[DEBUG] API returned move:', move);
+          if (move && move !== '(none)' && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
             const fromRow = 8 - parseInt(move[1]);
             const toCol = move.charCodeAt(2) - 97;
             const toRow = 8 - parseInt(move[3]);
-            const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
-            console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
-            makeMove(moveObj.from, moveObj.to, true);
-          } else {
-            console.log('[DEBUG] Stockfish returned no valid move, using fallback');
-            if (aiWorkerRef.current) {
-              aiWorkerRef.current.postMessage({
-                board: board,
-                currentPlayer: currentPlayer,
-                difficulty: difficulty,
-                pieceState: pieceState
-              });
-              aiTimeoutRef.current = window.setTimeout(() => {
-                console.log('[DEBUG] AI worker timeout, using simple fallback');
-                isAIMovingRef.current = false;
-                aiTimeoutRef.current = null;
+            
+            // Validate move coordinates
+            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
+                toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
+              const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+              console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
+              
+              // Validate that the move is legal
+              const piece = board[fromRow][fromCol];
+              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
+                console.log('[DEBUG] Move is legal, executing...');
+                makeMove(moveObj.from, moveObj.to, true);
+              } else {
+                console.log('[DEBUG] Move is not legal, using fallback');
                 const fallbackMove = getRandomAIMove(board);
                 if (fallbackMove) {
                   makeMove(fallbackMove.from, fallbackMove.to, true);
                 }
-              }, 8000);
+                isAIMovingRef.current = false;
+              }
             } else {
+              console.log('[DEBUG] Invalid move coordinates, using fallback');
               const fallbackMove = getRandomAIMove(board);
               if (fallbackMove) {
                 makeMove(fallbackMove.from, fallbackMove.to, true);
               }
               isAIMovingRef.current = false;
             }
-          }
-          isAIMovingRef.current = false;
-        }).catch(error => {
-          console.error('[DEBUG] Stockfish error:', error);
-          console.log('[DEBUG] Falling back to AI worker for', difficulty, 'difficulty');
-          if (aiWorkerRef.current) {
-            aiWorkerRef.current.postMessage({
-              board: board,
-              currentPlayer: currentPlayer,
-              difficulty: difficulty,
-              pieceState: pieceState
-            });
-            aiTimeoutRef.current = window.setTimeout(() => {
-              console.log('[DEBUG] AI worker timeout, using simple fallback');
-              isAIMovingRef.current = false;
-              aiTimeoutRef.current = null;
-              const fallbackMove = getRandomAIMove(board);
-              if (fallbackMove) {
-                makeMove(fallbackMove.from, fallbackMove.to, true);
-              }
-            }, 8000);
           } else {
+            console.log('[DEBUG] Stockfish returned no valid move, using fallback');
             const fallbackMove = getRandomAIMove(board);
             if (fallbackMove) {
               makeMove(fallbackMove.from, fallbackMove.to, true);
             }
             isAIMovingRef.current = false;
           }
+        }).catch(error => {
+          console.error('[DEBUG] Stockfish error:', error);
+          console.log('[DEBUG] Falling back to simple AI for', difficulty, 'difficulty');
+          const fallbackMove = getRandomAIMove(board);
+          if (fallbackMove) {
+            makeMove(fallbackMove.from, fallbackMove.to, true);
+          }
+          isAIMovingRef.current = false;
         });
       } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
-        // ... existing code ...
+        console.log('[DEBUG] Using AI worker for intermediate difficulty');
+        setStatus('Intermediate AI is calculating...');
+        aiWorkerRef.current.postMessage({
+          board: board,
+          currentPlayer: currentPlayer,
+          difficulty: difficulty,
+          pieceState: pieceState
+        });
+        aiTimeoutRef.current = window.setTimeout(() => {
+          console.log('[DEBUG] AI worker timeout, using simple fallback');
+          isAIMovingRef.current = false;
+          aiTimeoutRef.current = null;
+          const fallbackMove = getRandomAIMove(board);
+          if (fallbackMove) {
+            makeMove(fallbackMove.from, fallbackMove.to, true);
+          }
+        }, 5000);
       } else if (difficulty === 'novice') {
-        // ... existing code ...
+        console.log('[DEBUG] Using simple AI for novice difficulty');
+        setStatus('Novice AI is thinking...');
+        setTimeout(() => {
+          const fallbackMove = getRandomAIMove(board);
+          if (fallbackMove) {
+            makeMove(fallbackMove.from, fallbackMove.to, true);
+          }
+          isAIMovingRef.current = false;
+        }, 1000);
       } else {
-        // ... existing code ...
+        console.log('[DEBUG] No AI method available, using simple fallback');
+        const fallbackMove = getRandomAIMove(board);
+        if (fallbackMove) {
+          makeMove(fallbackMove.from, fallbackMove.to, true);
+        }
+        isAIMovingRef.current = false;
       }
     }
   }, [currentPlayer, gameMode, difficulty, board, pieceState, stockfishReady]);
@@ -1080,6 +1104,31 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
     console.log('Checking game end for player:', playerToMove);
+    
+    // Check for king capture first
+    const blueKingFound = boardState.some(row => row.some(piece => piece === 'k'));
+    const redKingFound = boardState.some(row => row.some(piece => piece === 'K'));
+    
+    if (!blueKingFound) {
+      console.log('[GAME END] KING CAPTURED - Red wins!');
+      setGameState('checkmate');
+      setStatus('King captured! Red wins!');
+      void updateScore('loss');
+      setShowLeaderboardUpdated(true);
+      setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      return 'checkmate';
+    }
+    
+    if (!redKingFound) {
+      console.log('[GAME END] KING CAPTURED - Blue wins!');
+      setGameState('checkmate');
+      setStatus('King captured! You win!');
+      void updateScore('win');
+      setShowLeaderboardUpdated(true);
+      setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      return 'checkmate';
+    }
+    
     console.log('Is king in check:', isKingInCheck(boardState, playerToMove));
     
     if (isCheckmate(playerToMove, boardState)) {

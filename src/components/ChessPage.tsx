@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { useNavigate } from 'react-router-dom';
 import { ChessGame } from './ChessGame';
 import { useAppKit } from '@reown/appkit/react';
 
 const ChessPage: React.FC = () => {
   const [showWarning, setShowWarning] = useState(false);
-  const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const { open } = useAppKit();
 
@@ -42,7 +40,8 @@ const ChessPage: React.FC = () => {
       setShowWarning(true);
       window.setTimeout(() => setShowWarning(false), 4000); // auto-hide after 4s
     } else {
-      navigate('/');
+      // Navigate to the main lawb.xyz site
+      window.location.href = 'https://lawb.xyz';
     }
   };
 
