@@ -282,10 +282,10 @@ self.onmessage = (e) => {
 
         let bestMove = moves[0];
         let bestValue = color === 'red' ? -Infinity : Infinity;
-        let nodesSearched = 0;
+        let nodesSearched = { count: 0 };
 
-        // Simple minimax with limited depth for intermediate difficulty
-        const searchDepth = 3; // Reduced depth for faster response
+        // Adjust search depth based on difficulty
+        const searchDepth = difficulty === 'intermediate' ? 4 : 2;
         
         for (const move of moves) {
             const tempBoard = board.map(row => [...row]);
@@ -303,7 +303,7 @@ self.onmessage = (e) => {
             }
         }
 
-        return { move: bestMove, nodes: nodesSearched };
+        return { move: bestMove, nodes: nodesSearched.count };
     }
 
     function minimax(board, depth, color, isMaximizing, currentDepth, nodesSearched) {
