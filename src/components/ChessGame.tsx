@@ -226,7 +226,7 @@ const useStockfish = () => {
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
     try {
       // Use Cloudflare Worker API (using the deployed worker URL)
-      const cloudflareUrl = '/api/stockfish';
+      const cloudflareUrl = 'https://chess.lawb.xyz/api/stockfish';
       
       // Add retry logic for CORS issues
       let lastError: Error | null = null;
@@ -1086,31 +1086,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toCol = move.charCodeAt(2) - 97;
             const toRow = 8 - parseInt(move[3]);
             
-            // Fix coordinate conversion for board orientation
-            // FEN has white at bottom, but frontend has blue at top
-            // When currentPlayer is 'red', we're playing as black in FEN, so flip coordinates
-            const actualFromRow = currentPlayer === 'red' ? 7 - fromRow : fromRow;
-            const actualToRow = currentPlayer === 'red' ? 7 - toRow : toRow;
-            
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
               move,
               fromCol, fromRow, toCol, toRow,
-              actualFromRow, actualToRow,
               fromColValid: fromCol >= 0 && fromCol < 8,
-              fromRowValid: actualFromRow >= 0 && actualFromRow < 8,
+              fromRowValid: fromRow >= 0 && fromRow < 8,
               toColValid: toCol >= 0 && toCol < 8,
-              toRowValid: actualToRow >= 0 && actualToRow < 8
+              toRowValid: toRow >= 0 && toRow < 8
             });
             console.log('[DEBUG] Move coordinates expanded:', 
               'move:', move,
-              'fromCol:', fromCol, 'fromRow:', fromRow, 'actualFromRow:', actualFromRow,
-              'toCol:', toCol, 'toRow:', toRow, 'actualToRow:', actualToRow
+              'fromCol:', fromCol, 'fromRow:', fromRow, 
+              'toCol:', toCol, 'toRow:', toRow
             );
             
-            if (fromCol >= 0 && fromCol < 8 && actualFromRow >= 0 && actualFromRow < 8 && 
-                toCol >= 0 && toCol < 8 && actualToRow >= 0 && actualToRow < 8) {
-              const moveObj = { from: { row: actualFromRow, col: fromCol }, to: { row: actualToRow, col: toCol } };
+            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
+                toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
+              const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
               
               // Validate that the move is legal
