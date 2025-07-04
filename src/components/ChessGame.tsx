@@ -1055,6 +1055,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               
               // Validate that the move is legal
               const piece = board[fromRow][fromCol];
+              console.log('[DEBUG] Validating move:', {
+                piece,
+                fromRow,
+                fromCol,
+                toRow,
+                toCol,
+                pieceColor: piece ? getPieceColor(piece) : 'null',
+                isRedPiece: piece && getPieceColor(piece) === 'red',
+                canMove: piece ? canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) : false
+              });
+              
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
                 console.log('[DEBUG] Move is legal, executing...');
                 makeMove(moveObj.from, moveObj.to, true);
