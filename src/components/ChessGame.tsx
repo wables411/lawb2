@@ -1086,32 +1086,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toCol = move.charCodeAt(2) - 97;
             const toRow = 8 - parseInt(move[3]);
             
-            // Fix coordinate conversion for board orientation
-            // FEN has white at bottom, but frontend has red (uppercase) at top
-            // When currentPlayer is 'red', we're playing as white in FEN
-            // When currentPlayer is 'blue', we're playing as black in FEN
-            const actualFromRow = currentPlayer === 'red' ? fromRow : 7 - fromRow;
-            const actualToRow = currentPlayer === 'red' ? toRow : 7 - toRow;
-            
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
               move,
               fromCol, fromRow, toCol, toRow,
-              actualFromRow, actualToRow,
               fromColValid: fromCol >= 0 && fromCol < 8,
-              fromRowValid: actualFromRow >= 0 && actualFromRow < 8,
+              fromRowValid: fromRow >= 0 && fromRow < 8,
               toColValid: toCol >= 0 && toCol < 8,
-              toRowValid: actualToRow >= 0 && actualToRow < 8
+              toRowValid: toRow >= 0 && toRow < 8
             });
-            console.log('[DEBUG] Move coordinates expanded:', 
-              'move:', move,
-              'fromCol:', fromCol, 'fromRow:', fromRow, 'actualFromRow:', actualFromRow,
-              'toCol:', toCol, 'toRow:', toRow, 'actualToRow:', actualToRow
-            );
             
-            if (fromCol >= 0 && fromCol < 8 && actualFromRow >= 0 && actualFromRow < 8 && 
-                toCol >= 0 && toCol < 8 && actualToRow >= 0 && actualToRow < 8) {
-              const moveObj = { from: { row: actualFromRow, col: fromCol }, to: { row: actualToRow, col: toCol } };
+            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
+                toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
+              const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
               
               // Validate that the move is legal
@@ -1125,15 +1112,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 pieceColor: piece ? getPieceColor(piece) : 'null',
                 isRedPiece: piece && getPieceColor(piece) === 'red',
                 canMove: piece ? canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) : false
-              }, null, 2));
-              console.log('[DEBUG] Validating move expanded:', JSON.stringify({
-                piece,
-                fromRow,
-                fromCol,
-                toRow,
-                toCol,
-                pieceColor: piece ? getPieceColor(piece) : 'null',
-                isRedPiece: piece && getPieceColor(piece) === 'red'
               }, null, 2));
               
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
