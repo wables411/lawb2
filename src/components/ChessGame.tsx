@@ -1009,6 +1009,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Reset AI moving flag
     isAIMovingRef.current = false;
     lastAIMoveRef.current = false;
+    apiCallInProgressRef.current = false;
   }, [board, currentPlayer, moveHistory, getOpeningData]);
 
   // AI move effect - trigger AI move when it's red's turn
