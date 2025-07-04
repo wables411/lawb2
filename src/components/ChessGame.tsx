@@ -846,7 +846,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         break;
     }
     if (!isValid) {
-      if (!silent) console.log('[ILLEGAL MOVE] Piece cannot move that way:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) console.log('[ILLEGAL MOVE] Piece cannot move that way:', { 
+        piece, startRow, startCol, endRow, endCol, playerColor, pieceType,
+        targetPiece: boardState[endRow][endCol],
+        targetPieceColor: boardState[endRow][endCol] ? getPieceColor(boardState[endRow][endCol]) : null
+      });
       return false;
     }
     if (isValid && checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState)) {
@@ -1059,6 +1063,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toRow = 8 - parseInt(move[3]);
             
             // Validate move coordinates
+            console.log('[DEBUG] Move coordinates:', {
+              move,
+              fromCol, fromRow, toCol, toRow,
+              fromColValid: fromCol >= 0 && fromCol < 8,
+              fromRowValid: fromRow >= 0 && fromRow < 8,
+              toColValid: toCol >= 0 && toCol < 8,
+              toRowValid: toRow >= 0 && toRow < 8
+            });
+            
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
                 toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
