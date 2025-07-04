@@ -817,6 +817,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     switch (pieceType) {
       case 'p':
         isValid = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
+        if (!isValid && !silent) {
+          console.log('[DEBUG] Pawn move validation failed:', {
+            piece, startRow, startCol, endRow, endCol, playerColor,
+            direction: playerColor === 'blue' ? -1 : 1,
+            startingRow: playerColor === 'blue' ? 6 : 1,
+            targetPiece: boardState[endRow][endCol],
+            isForwardMove: startCol === endCol && endRow === startRow + (playerColor === 'blue' ? -1 : 1),
+            isDoubleMove: startCol === endCol && startRow === (playerColor === 'blue' ? 6 : 1) && endRow === startRow + 2 * (playerColor === 'blue' ? -1 : 1),
+            isCapture: Math.abs(startCol - endCol) === 1 && endRow === startRow + (playerColor === 'blue' ? -1 : 1)
+          });
+        }
         break;
       case 'r':
         isValid = isValidRookMove(startRow, startCol, endRow, endCol, boardState);
