@@ -75,7 +75,7 @@ class LichessChessEngine {
     if (isBlackTurn) {
       // Black moves (from 7th/8th rank to 5th/6th rank)
       return ['e7e5', 'd7d5', 'c7c5', 'g8f6', 'b8c6', 'd7d6', 'e7e6', 'g7g6'][Math.floor(Math.random() * 8)];
-    } else {
+        } else {
       // White moves (from 2nd rank to 4th rank)
       return ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3', 'd2d3', 'e2e3', 'g2g3'][Math.floor(Math.random() * 8)];
     }
@@ -123,7 +123,7 @@ export default {
       // Use Lichess API for smart chess analysis
       const engine = new LichessChessEngine();
       const bestmove = await engine.findBestMove(fen, difficulty, movetime);
-
+      
       if (!bestmove) {
         return new Response(JSON.stringify({ error: 'No legal moves found' }), {
           status: 400,
@@ -133,7 +133,7 @@ export default {
           },
         });
       }
-
+      
       const response = {
         bestmove,
         nodes: engine.nodesSearched,
