@@ -226,7 +226,7 @@ const useStockfish = () => {
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
     try {
       // Use Cloudflare Worker API (using the deployed worker URL)
-      const cloudflareUrl = 'https://chess.lawb.xyz/api/stockfish';
+      const cloudflareUrl = 'https://lawb.xyz/api/stockfish';
       
       // Add retry logic for CORS issues
       let lastError: Error | null = null;
