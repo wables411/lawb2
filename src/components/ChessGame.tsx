@@ -713,19 +713,41 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const direction = color === 'blue' ? -1 : 1;
     const startingRow = color === 'blue' ? 6 : 1;
     
+    console.log('[DEBUG] Pawn validation details:', JSON.stringify({
+      color,
+      startRow,
+      startCol,
+      endRow,
+      endCol,
+      direction,
+      startingRow,
+      isSameCol: startCol === endCol,
+      isForwardOne: endRow === startRow + direction,
+      isAtStartingRow: startRow === startingRow,
+      isDoubleMove: endRow === startRow + 2 * direction,
+      isDiagonal: Math.abs(startCol - endCol) === 1,
+      targetSquare: board[endRow] && board[endRow][endCol]
+    }, null, 2));
+    
     // Forward move (1 square)
     if (startCol === endCol && endRow === startRow + direction) {
+      console.log('[DEBUG] Pawn forward move (1 square) - target square:', board[endRow][endCol]);
       return board[endRow][endCol] === null;
     }
     
     // Initial 2-square move
     if (startCol === endCol && startRow === startingRow && endRow === startRow + 2 * direction) {
+      console.log('[DEBUG] Pawn double move - checking path:', {
+        intermediateSquare: board[startRow + direction][startCol],
+        targetSquare: board[endRow][endCol]
+      });
       return board[startRow + direction][startCol] === null && board[endRow][endCol] === null;
     }
     
     // Capture move (diagonal)
     if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
       const targetPiece = board[endRow][endCol];
+      console.log('[DEBUG] Pawn capture move - target piece:', targetPiece);
       return targetPiece !== null && getPieceColor(targetPiece) !== color;
     }
     
@@ -736,11 +758,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         if (pieceState.lastPawnDoubleMove && 
             pieceState.lastPawnDoubleMove.row === startRow && 
             pieceState.lastPawnDoubleMove.col === endCol) {
+          console.log('[DEBUG] Pawn en passant move');
           return true;
         }
       }
     }
     
+    console.log('[DEBUG] Pawn move validation failed - no valid move pattern matched');
     return false;
   };
 
@@ -1062,24 +1086,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toCol = move.charCodeAt(2) - 97;
             const toRow = 8 - parseInt(move[3]);
             
+            // Fix coordinate conversion for board orientation
+            // FEN has white at bottom, but frontend has blue at top
+            // When currentPlayer is 'red', we're playing as black in FEN, so flip coordinates
+            const actualFromRow = currentPlayer === 'red' ? 7 - fromRow : fromRow;
+            const actualToRow = currentPlayer === 'red' ? 7 - toRow : toRow;
+            
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
               move,
               fromCol, fromRow, toCol, toRow,
+              actualFromRow, actualToRow,
               fromColValid: fromCol >= 0 && fromCol < 8,
-              fromRowValid: fromRow >= 0 && fromRow < 8,
+              fromRowValid: actualFromRow >= 0 && actualFromRow < 8,
               toColValid: toCol >= 0 && toCol < 8,
-              toRowValid: toRow >= 0 && toRow < 8
+              toRowValid: actualToRow >= 0 && actualToRow < 8
             });
+            console.log('[DEBUG] Move coordinates expanded:', 
+              'move:', move,
+              'fromCol:', fromCol, 'fromRow:', fromRow, 'actualFromRow:', actualFromRow,
+              'toCol:', toCol, 'toRow:', toRow, 'actualToRow:', actualToRow
+            );
             
-            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
-                toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
-              const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+            if (fromCol >= 0 && fromCol < 8 && actualFromRow >= 0 && actualFromRow < 8 && 
+                toCol >= 0 && toCol < 8 && actualToRow >= 0 && actualToRow < 8) {
+              const moveObj = { from: { row: actualFromRow, col: fromCol }, to: { row: actualToRow, col: toCol } };
               console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
               
               // Validate that the move is legal
               const piece = board[fromRow][fromCol];
-              console.log('[DEBUG] Validating move:', {
+              console.log('[DEBUG] Validating move:', JSON.stringify({
                 piece,
                 fromRow,
                 fromCol,
@@ -1088,7 +1124,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 pieceColor: piece ? getPieceColor(piece) : 'null',
                 isRedPiece: piece && getPieceColor(piece) === 'red',
                 canMove: piece ? canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) : false
-              });
+              }, null, 2));
+              console.log('[DEBUG] Validating move expanded:', JSON.stringify({
+                piece,
+                fromRow,
+                fromCol,
+                toRow,
+                toCol,
+                pieceColor: piece ? getPieceColor(piece) : 'null',
+                isRedPiece: piece && getPieceColor(piece) === 'red'
+              }, null, 2));
               
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
                 console.log('[DEBUG] Move is legal, executing...');
