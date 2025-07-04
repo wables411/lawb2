@@ -57,6 +57,9 @@ class LichessChessEngine {
 
   // Simple fallback for when Lichess API fails
   getRandomLegalMove(fen) {
+    // Determine whose turn it is from FEN
+    const isBlackTurn = fen.includes(' b ');
+    
     // Basic legal moves for common positions
     const commonMoves = {
       'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w': ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3'],
@@ -68,8 +71,14 @@ class LichessChessEngine {
       return commonMoves[fen][Math.floor(Math.random() * commonMoves[fen].length)];
     }
 
-    // Very basic fallback - just return a random pawn move
-    return ['e2e4', 'd2d4', 'c2c4', 'g1f3'][Math.floor(Math.random() * 4)];
+    // Very basic fallback - return moves for the correct side
+    if (isBlackTurn) {
+      // Black moves (from 7th/8th rank to 5th/6th rank)
+      return ['e7e5', 'd7d5', 'c7c5', 'g8f6', 'b8c6', 'd7d6', 'e7e6', 'g7g6'][Math.floor(Math.random() * 8)];
+    } else {
+      // White moves (from 2nd rank to 4th rank)
+      return ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3', 'd2d3', 'e2e3', 'g2g3'][Math.floor(Math.random() * 8)];
+    }
   }
 }
 
