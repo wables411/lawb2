@@ -1,0 +1,9 @@
+name = "lawb-chess-api"
+compatibility_date = "2024-01-01"
+main = "src/stockfish-worker.js"
+
+[env.production]
+name = "lawb-chess-api"
+
+[env.staging]
+name = "lawb-chess-api-staging" 
