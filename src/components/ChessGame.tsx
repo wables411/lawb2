@@ -1148,9 +1148,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
-            const fromRow = parseInt(move[1]) - 1; // Flip row coordinates for our board orientation
+            const fromRow = 8 - parseInt(move[1]); // Convert from Stockfish (White perspective) to our board (Red at top)
             const toCol = move.charCodeAt(2) - 97;
-            const toRow = parseInt(move[3]) - 1; // Flip row coordinates for our board orientation
+            const toRow = 8 - parseInt(move[3]); // Convert from Stockfish (White perspective) to our board (Red at top)
             
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
