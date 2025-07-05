@@ -1164,8 +1164,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 canMove: piece ? canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) : false
               }, null, 2));
               
-              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
-                console.log('[DEBUG] Move is legal, executing...');
+              // Check if the piece is a red piece (uppercase) and can move legally
+              if (piece && piece >= 'A' && piece <= 'Z' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
+                console.log('[DEBUG] Red piece move is legal, executing...');
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
                 console.log('[DEBUG] Move is not legal, using fallback');
