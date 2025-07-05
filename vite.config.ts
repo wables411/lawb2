@@ -11,7 +11,7 @@ export default defineConfig({
     },
     proxy: {
       '/api/stockfish': {
-        target: 'https://5721e1ad.lawb2.pages.dev',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/stockfish/, '/api/stockfish')
       }
