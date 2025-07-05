@@ -29,17 +29,23 @@ class StockfishWasmEngine {
       // Configure engine for maximum strength
       this.engine.postMessage('setoption name Skill Level value 20');
       this.engine.postMessage('setoption name MultiPV value 1');
-      this.engine.postMessage('setoption name Threads value 1');
-      this.engine.postMessage('setoption name Hash value 32');
+      this.engine.postMessage('setoption name Threads value 4');
+      this.engine.postMessage('setoption name Hash value 128');
+      this.engine.postMessage('setoption name Contempt value 0');
+      this.engine.postMessage('setoption name Move Overhead value 10');
+      this.engine.postMessage('setoption name Minimum Thinking Time value 20');
+      this.engine.postMessage('setoption name Slow Mover value 100');
+      this.engine.postMessage('setoption name UCI_Chess960 value false');
       
     } catch (error) {
-      // Fallback to strong moves if Stockfish fails
-      return this.getStrongFallbackMove();
+      console.error('Stockfish initialization failed:', error);
+      // Don't return fallback move here, let the caller handle it
+      throw error;
     }
   }
 
   // Get best move using Stockfish WASM
-  async findBestMove(fen, movetime = 5000) {
+  async findBestMove(fen, movetime = 10000) {
     try {
       await this.init();
       
@@ -47,14 +53,14 @@ class StockfishWasmEngine {
         let bestmove = null;
         let timeoutId = null;
         
-        // Set timeout
+        // Set timeout - longer for master-class
         // @ts-ignore - setTimeout is available in Cloudflare Pages
         timeoutId = setTimeout(() => {
           if (!bestmove) {
             this.engine.postMessage('stop');
             reject(new Error('Stockfish timeout'));
           }
-        }, movetime + 1000);
+        }, movetime + 2000);
         
         // Listen for engine messages
         this.engine.addMessageListener((message) => {
@@ -72,21 +78,25 @@ class StockfishWasmEngine {
           }
         });
         
-        // Send position and start analysis
+        // Send position and start analysis with higher depth
         this.engine.postMessage(`position fen ${fen}`);
-        this.engine.postMessage(`go movetime ${movetime}`);
+        this.engine.postMessage(`go movetime ${movetime} depth 25`);
       });
       
     } catch (error) {
-      // Fallback to strong moves if Stockfish fails
+      console.error('Stockfish analysis failed:', error);
+      // Return a strong fallback move instead of throwing
       return this.getStrongFallbackMove();
     }
   }
 
   // Strong fallback moves when Stockfish fails
   getStrongFallbackMove() {
-    // Strong fallback moves
-    const strongMoves = ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3', 'd2d3', 'e2e3', 'g2g3'];
+    // Strong opening and middle game moves
+    const strongMoves = [
+      'e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3', 'd2d3', 'e2e3', 'g2g3',
+      'f2f4', 'b2b3', 'c2c3', 'd2d5', 'e2e5', 'f2f5', 'g2g4', 'h2h4'
+    ];
     return strongMoves[Math.floor(Math.random() * strongMoves.length)];
   }
 }

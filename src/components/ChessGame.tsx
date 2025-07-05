@@ -1115,7 +1115,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       if (difficulty === 'world-class' || difficulty === 'master-class') {
         // Always use Cloudflare Worker API in production for strongest AI
         const useWorkerAPI = import.meta.env.PROD;
-        const timeLimit = difficulty === 'master-class' ? 12000 : 8000;
+        const timeLimit = difficulty === 'master-class' ? 15000 : 8000; // Increased from 12000 to 15000
         setStatus(`${difficulty === 'master-class' ? 'Master-class' : 'World-class'} AI is calculating...`);
         console.log(`[DEBUG] Using ${useWorkerAPI ? 'Cloudflare Worker API' : 'LawbBot (WASM)'} for ${difficulty} difficulty`);
 
@@ -1158,12 +1158,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         getMove(fen, timeLimit).then(move => {
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
-            // CORRECT coordinate conversion: Stockfish uses a1-h8 (White perspective), we use 0-7 arrays (Red at top)
-            // Since our FEN reads board from bottom to top, we need to flip the row coordinates
+            // SIMPLE coordinate conversion: Stockfish uses a1-h8, we use 0-7 arrays
+            // Our FEN reads board from bottom (row 7) to top (row 0)
+            // So Stockfish row 1 = our row 7, Stockfish row 8 = our row 0
+            
             const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
-            const fromRow = 8 - parseInt(move[1]);   // '1' = row 7, '2' = row 6, etc. (flipped to match FEN)
+            const fromRowStockfish = parseInt(move[1]); // Stockfish row (1-8)
             const toCol = move.charCodeAt(2) - 97;
-            const toRow = 8 - parseInt(move[3]);     // '1' = row 7, '2' = row 6, etc. (flipped to match FEN)
+            const toRowStockfish = parseInt(move[3]); // Stockfish row (1-8)
+            
+            // Direct conversion: Stockfish row 1 = our row 7, Stockfish row 8 = our row 0
+            const fromRow = 8 - fromRowStockfish;
+            const toRow = 8 - toRowStockfish;
             
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
@@ -1172,7 +1178,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               fromColValid: fromCol >= 0 && fromCol < 8,
               fromRowValid: fromRow >= 0 && fromRow < 8,
               toColValid: toCol >= 0 && toCol < 8,
-              toRowValid: toRow >= 0 && toRow < 8
+              toRowValid: toRow >= 0 && toRow < 8,
+              fromPiece: board[fromRow]?.[fromCol],
+              toPiece: board[toRow]?.[toCol]
             });
             
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
