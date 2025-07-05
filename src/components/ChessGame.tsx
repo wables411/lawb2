@@ -225,16 +225,17 @@ const useStockfish = () => {
   // Cloudflare Worker Stockfish API for production
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
     try {
-      // Use Cloudflare Worker API (using the deployed worker URL)
-      const cloudflareUrl = 'https://lawb.xyz/api/stockfish';
+      // Try local API first (for development), then fallback to production
+      const apiUrls = [
+        '/api/stockfish', // Local development proxy
+        'https://5721e1ad.lawb2.pages.dev/api/stockfish' // Production
+      ];
       
-      // Add retry logic for CORS issues
-      let lastError: Error | null = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (const apiUrl of apiUrls) {
         try {
-          console.log(`[DEBUG] Attempting API call ${attempt}/3`);
+          console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
           
-          const response = await fetch(cloudflareUrl, {
+          const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -247,27 +248,20 @@ const useStockfish = () => {
 
           if (response.ok) {
             const data = await response.json() as { bestmove?: string };
-            console.log(`[DEBUG] API call successful on attempt ${attempt}`);
+            console.log(`[DEBUG] API call successful to ${apiUrl}:`, data);
             return data.bestmove || null;
           } else {
-            console.warn(`[DEBUG] Cloudflare API failed with status ${response.status} on attempt ${attempt}`);
-            lastError = new Error(`HTTP ${response.status}`);
+            console.warn(`[DEBUG] API failed with status ${response.status} on ${apiUrl}`);
           }
         } catch (error) {
-          console.warn(`[DEBUG] Cloudflare API error on attempt ${attempt}:`, error);
-          lastError = error as Error;
-          
-          // Wait a bit before retrying
-          if (attempt < 3) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          console.warn(`[DEBUG] API error on ${apiUrl}:`, error);
         }
       }
       
       console.warn('[DEBUG] All API attempts failed, falling back to client-side Stockfish');
       return null;
     } catch (error) {
-      console.warn('[DEBUG] Cloudflare API error:', error);
+      console.warn('[DEBUG] API error:', error);
       return null;
     }
   }, []);
@@ -713,21 +707,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const direction = color === 'blue' ? -1 : 1;
     const startingRow = color === 'blue' ? 6 : 1;
     
-    console.log('[DEBUG] Pawn validation details:', JSON.stringify({
-      color,
-      startRow,
-      startCol,
-      endRow,
-      endCol,
-      direction,
-      startingRow,
-      isSameCol: startCol === endCol,
-      isForwardOne: endRow === startRow + direction,
-      isAtStartingRow: startRow === startingRow,
-      isDoubleMove: endRow === startRow + 2 * direction,
-      isDiagonal: Math.abs(startCol - endCol) === 1,
-      targetSquare: board[endRow] && board[endRow][endCol]
-    }, null, 2));
+    // Check if target square is within board bounds
+    if (!isWithinBoard(endRow, endCol)) {
+      return false;
+    }
+    
+    // Early validation - pawns can only move forward
+    if (color === 'blue' && endRow >= startRow) return false; // Blue pawns move up (decreasing row)
+    if (color === 'red' && endRow <= startRow) return false;  // Red pawns move down (increasing row)
+    
+    // Only log for potentially valid moves (within reasonable range)
+    const rowDiff = Math.abs(endRow - startRow);
+    const colDiff = Math.abs(endCol - startCol);
+    
+    if (rowDiff <= 2 && colDiff <= 1) {
+      console.log('[DEBUG] Pawn validation details:', JSON.stringify({
+        color,
+        startRow,
+        startCol,
+        endRow,
+        endCol,
+        direction,
+        startingRow,
+        isSameCol: startCol === endCol,
+        isForwardOne: endRow === startRow + direction,
+        isAtStartingRow: startRow === startingRow,
+        isDoubleMove: endRow === startRow + 2 * direction,
+        isDiagonal: Math.abs(startCol - endCol) === 1,
+        targetSquare: board[endRow] && board[endRow][endCol]
+      }, null, 2));
+    }
     
     // Forward move (1 square)
     if (startCol === endCol && endRow === startRow + direction) {
@@ -751,7 +760,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return targetPiece !== null && getPieceColor(targetPiece) !== color;
     }
     
-    // En passant
+    // En passant (only if no regular capture is possible)
     if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
       const targetPiece = board[startRow][endCol];
       if (targetPiece && getPieceColor(targetPiece) !== color && targetPiece.toLowerCase() === 'p') {
@@ -764,7 +773,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }
     }
     
-    console.log('[DEBUG] Pawn move validation failed - no valid move pattern matched');
+    if (rowDiff <= 2 && colDiff <= 1) {
+      console.log('[DEBUG] Pawn move validation failed - no valid move pattern matched');
+    }
     return false;
   };
 
@@ -891,10 +902,49 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     if (!piece || getPieceColor(piece) !== player) return moves;
     
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState, true)) {
-          moves.push({ row, col });
+    const pieceType = piece.toLowerCase();
+    
+    // Optimize move generation based on piece type
+    if (pieceType === 'p') {
+      // For pawns, only check relevant squares
+      const direction = player === 'blue' ? -1 : 1;
+      const startingRow = player === 'blue' ? 6 : 1;
+      
+      // Forward moves
+      const forwardRow = from.row + direction;
+      if (forwardRow >= 0 && forwardRow < 8) {
+        if (canPieceMove(piece, from.row, from.col, forwardRow, from.col, true, player, boardState, true)) {
+          moves.push({ row: forwardRow, col: from.col });
+        }
+      }
+      
+      // Double move from starting position
+      if (from.row === startingRow) {
+        const doubleRow = from.row + 2 * direction;
+        if (doubleRow >= 0 && doubleRow < 8) {
+          if (canPieceMove(piece, from.row, from.col, doubleRow, from.col, true, player, boardState, true)) {
+            moves.push({ row: doubleRow, col: from.col });
+          }
+        }
+      }
+      
+      // Diagonal captures
+      for (const colOffset of [-1, 1]) {
+        const captureCol = from.col + colOffset;
+        const captureRow = from.row + direction;
+        if (captureCol >= 0 && captureCol < 8 && captureRow >= 0 && captureRow < 8) {
+          if (canPieceMove(piece, from.row, from.col, captureRow, captureCol, true, player, boardState, true)) {
+            moves.push({ row: captureRow, col: captureCol });
+          }
+        }
+      }
+    } else {
+      // For other pieces, check all squares but use silent mode
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState, true)) {
+            moves.push({ row, col });
+          }
         }
       }
     }

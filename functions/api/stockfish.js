@@ -1,4 +1,4 @@
-// Cloudflare Worker for Chess AI using Lichess Cloud Evaluation
+// Cloudflare Pages Function for Chess AI using Lichess Cloud Evaluation
 // World-class chess engine for maximum strength
 
 // Difficulty settings for move selection
@@ -162,81 +162,81 @@ class AdvancedChessEngine {
   }
 }
 
-export default {
-  async fetch(request) {
-    // Handle CORS preflight requests
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': 'https://lawb.xyz',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Max-Age': '86400',
-        },
-      });
-    }
+export async function onRequest(context) {
+  const { request } = context;
 
-    // Only allow POST requests
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { 
-        status: 405,
-        headers: {
-          'Access-Control-Allow-Origin': 'https://lawb.xyz',
-        }
-      });
-    }
-
-    try {
-      const { fen, movetime = 5000, difficulty = 'master-class' } = await request.json();
-
-      if (!fen) {
-        return new Response(JSON.stringify({ error: 'FEN position required' }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': 'https://lawb.xyz',
-          },
-        });
-      }
-
-      // Use advanced chess engine with Lichess Cloud Evaluation
-      const engine = new AdvancedChessEngine();
-      const bestmove = await engine.findBestMove(fen, difficulty, movetime);
-      
-      if (!bestmove) {
-        return new Response(JSON.stringify({ error: 'No legal moves found' }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': 'https://lawb.xyz',
-          },
-        });
-      }
-      
-      const response = {
-        bestmove,
-        nodes: engine.nodesSearched,
-        difficulty,
-        movetime
-      };
-
-      return new Response(JSON.stringify(response), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'https://lawb.xyz',
-        },
-      });
-
-    } catch (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'https://lawb.xyz',
-        },
-      });
-    }
+  // Handle CORS preflight requests
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
-}; 
+
+  // Only allow POST requests
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { 
+      status: 405,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
+  }
+
+  try {
+    const { fen, movetime = 5000, difficulty = 'master-class' } = await request.json();
+
+    if (!fen) {
+      return new Response(JSON.stringify({ error: 'FEN position required' }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    // Use advanced chess engine with Lichess Cloud Evaluation
+    const engine = new AdvancedChessEngine();
+    const bestmove = await engine.findBestMove(fen, difficulty, movetime);
+    
+    if (!bestmove) {
+      return new Response(JSON.stringify({ error: 'No legal moves found' }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+    
+    const response = {
+      bestmove,
+      nodes: engine.nodesSearched,
+      difficulty,
+      movetime
+    };
+
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  }
+} 
