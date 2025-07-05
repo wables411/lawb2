@@ -11,7 +11,9 @@ export default defineConfig({
     },
     proxy: {
       '/api/stockfish': {
-        target: 'http://localhost:3001',
+        target: process.env.NODE_ENV === 'production' 
+          ? 'https://5721e1ad.lawb2.pages.dev'
+          : 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/stockfish/, '/api/stockfish')
       }
