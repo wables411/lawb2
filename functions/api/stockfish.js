@@ -1,7 +1,8 @@
+// @ts-ignore - Cloudflare Pages environment
 // Cloudflare Pages Function for Chess AI using Stockfish WASM
 // Master-class chess engine for maximum strength
 
-// Stockfish WASM implementation for Cloudflare Workers
+// Stockfish WASM implementation for Cloudflare Pages
 class StockfishWasmEngine {
   constructor() {
     this.nodesSearched = 0;
@@ -33,7 +34,7 @@ class StockfishWasmEngine {
       
     } catch (error) {
       // Fallback to strong moves if Stockfish fails
-      return this.getStrongFallbackMove(fen);
+      return this.getStrongFallbackMove();
     }
   }
 
@@ -46,7 +47,8 @@ class StockfishWasmEngine {
         let bestmove = null;
         let timeoutId = null;
         
-        // Set timeout using Cloudflare Workers timer
+        // Set timeout
+        // @ts-ignore - setTimeout is available in Cloudflare Pages
         timeoutId = setTimeout(() => {
           if (!bestmove) {
             this.engine.postMessage('stop');
@@ -58,6 +60,7 @@ class StockfishWasmEngine {
         this.engine.addMessageListener((message) => {
           if (message.startsWith('bestmove')) {
             bestmove = message.split(' ')[1];
+            // @ts-ignore - clearTimeout is available in Cloudflare Pages
             clearTimeout(timeoutId);
             resolve(bestmove);
           } else if (message.includes('nodes')) {
@@ -76,39 +79,25 @@ class StockfishWasmEngine {
       
     } catch (error) {
       // Fallback to strong moves if Stockfish fails
-      return this.getStrongFallbackMove(fen);
+      return this.getStrongFallbackMove();
     }
   }
 
   // Strong fallback moves when Stockfish fails
-  getStrongFallbackMove(fen) {
-    const isBlackTurn = fen.includes(' b ');
-    
-    // Strong opening moves
-    const strongMoves = {
-      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w': ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3'],
-      'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b': ['e7e5', 'c7c5', 'e7e6', 'd7d5', 'g8f6'],
-      'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b': ['d7d5', 'g8f6', 'e7e6', 'c7c5', 'g7g6']
-    };
-
-    if (strongMoves[fen]) {
-      return strongMoves[fen][Math.floor(Math.random() * strongMoves[fen].length)];
-    }
-
+  getStrongFallbackMove() {
     // Strong fallback moves
-    if (isBlackTurn) {
-      return ['e7e5', 'd7d5', 'c7c5', 'g8f6', 'b8c6', 'd7d6', 'e7e6', 'g7g6'][Math.floor(Math.random() * 8)];
-    } else {
-      return ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3', 'd2d3', 'e2e3', 'g2g3'][Math.floor(Math.random() * 8)];
-    }
+    const strongMoves = ['e2e4', 'd2d4', 'c2c4', 'g1f3', 'b1c3', 'd2d3', 'e2e3', 'g2g3'];
+    return strongMoves[Math.floor(Math.random() * strongMoves.length)];
   }
 }
 
+// Cloudflare Pages Function handler
 export async function onRequest(context) {
   const { request } = context;
 
   // Handle CORS preflight requests
   if (request.method === 'OPTIONS') {
+    // @ts-ignore - Response is available in Cloudflare Pages
     return new Response(null, {
       status: 200,
       headers: {
@@ -122,6 +111,7 @@ export async function onRequest(context) {
 
   // Only allow POST requests
   if (request.method !== 'POST') {
+    // @ts-ignore - Response is available in Cloudflare Pages
     return new Response('Method not allowed', { 
       status: 405,
       headers: {
@@ -134,6 +124,7 @@ export async function onRequest(context) {
     const { fen, movetime = 5000, difficulty = 'master-class' } = await request.json();
 
     if (!fen) {
+      // @ts-ignore - Response is available in Cloudflare Pages
       return new Response(JSON.stringify({ error: 'FEN position required' }), {
         status: 400,
         headers: {
@@ -145,9 +136,10 @@ export async function onRequest(context) {
 
     // Use Stockfish WASM engine
     const engine = new StockfishWasmEngine();
-    const bestmove = await engine.findBestMove(fen, difficulty, movetime);
+    const bestmove = await engine.findBestMove(fen, movetime);
     
     if (!bestmove) {
+      // @ts-ignore - Response is available in Cloudflare Pages
       return new Response(JSON.stringify({ error: 'No legal moves found' }), {
         status: 400,
         headers: {
@@ -164,6 +156,7 @@ export async function onRequest(context) {
       movetime
     };
 
+    // @ts-ignore - Response is available in Cloudflare Pages
     return new Response(JSON.stringify(response), {
       status: 200,
       headers: {
@@ -173,6 +166,7 @@ export async function onRequest(context) {
     });
 
   } catch (error) {
+    // @ts-ignore - Response is available in Cloudflare Pages
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: {
