@@ -1147,10 +1147,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         getMove(fen, timeLimit).then(move => {
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
-            const fromCol = move.charCodeAt(0) - 97;
-            const fromRow = 8 - parseInt(move[1]); // Convert from Stockfish (White perspective) to our board (Red at top)
+            // Simple coordinate conversion: Stockfish uses a1-h8, we use 0-7 arrays
+            const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
+            const fromRow = 8 - parseInt(move[1]);   // '1' = row 7, '2' = row 6, etc.
             const toCol = move.charCodeAt(2) - 97;
-            const toRow = 8 - parseInt(move[3]); // Convert from Stockfish (White perspective) to our board (Red at top)
+            const toRow = 8 - parseInt(move[3]);
             
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
@@ -1965,7 +1966,7 @@ function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
   return player === 'blue' ? 'red' : 'blue';
 }
 
-// Update boardToFEN to map custom codes to standard FEN
+// Simple FEN conversion - no flipping, just direct mapping
 function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): string {
   let fen = '';
   for (let row = 0; row < 8; row++) {
@@ -1976,20 +1977,14 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
         empty++;
       } else {
         if (empty > 0) { fen += empty; empty = 0; }
-        // Map blue (lowercase) to white (uppercase), red (uppercase) to black (lowercase)
-        if (piece >= 'a' && piece <= 'z') {
-          fen += piece.toUpperCase(); // blue -> white
-        } else if (piece >= 'A' && piece <= 'Z') {
-          fen += piece.toLowerCase(); // red -> black
-        } else {
-          fen += piece;
-        }
+        // Direct mapping: red pieces (uppercase) stay uppercase, blue pieces (lowercase) stay lowercase
+        fen += piece;
       }
     }
     if (empty > 0) fen += empty;
     if (row < 7) fen += '/';
   }
-  // Side to move: blue = w, red = b (but since red pieces are black, we need to flip this)
+  // Side to move: blue = w, red = b
   fen += ' ' + (currentPlayer === 'blue' ? 'w' : 'b');
   fen += ' - - 0 1';
   return fen;
