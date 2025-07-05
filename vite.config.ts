@@ -12,10 +12,10 @@ export default defineConfig({
     proxy: {
       '/api/stockfish': {
         target: process.env.NODE_ENV === 'production' 
-          ? 'https://5721e1ad.lawb2.pages.dev'
+          ? 'https://lawb-chess-api.wablesphoto.workers.dev'
           : 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/stockfish/, '/api/stockfish')
+        rewrite: (path) => path.replace(/^\/api\/stockfish/, '')
       }
     }
   }

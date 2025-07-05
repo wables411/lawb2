@@ -228,7 +228,7 @@ const useStockfish = () => {
       // Try local API first (for development), then fallback to production
       const apiUrls = [
         '/api/stockfish', // Local development proxy
-        'https://5721e1ad.lawb2.pages.dev/api/stockfish' // Production
+        'https://lawb-chess-api.wablesphoto.workers.dev' // Production Workers API
       ];
       
       for (const apiUrl of apiUrls) {
