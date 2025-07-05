@@ -391,6 +391,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for opening suggestions
   const [showOpeningSuggestions, setShowOpeningSuggestions] = useState(false);
   const [openingSuggestions, setOpeningSuggestions] = useState<any[]>([]);
+  const [isUpdatingBoard, setIsUpdatingBoard] = useState(false);
 
   // Add state for random chessboard selection
   const [selectedChessboard, setSelectedChessboard] = useState<string>('/images/chessboard1.png');
@@ -1035,6 +1036,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const executeMoveAfterAnimation = useCallback((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove: boolean = false) => {
     console.log('[DEBUG] executeMoveAfterAnimation called:', { from, to, isAIMove });
     
+    // Set flag to prevent AI validation during board update
+    setIsUpdatingBoard(true);
+    
     const newBoard = board.map(row => [...row]);
     const piece = newBoard[from.row][from.col];
     
@@ -1048,9 +1052,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     handleSpecialMoves(newBoard, from, to, piece);
     
     console.log('[DEBUG] Board state after move:', newBoard);
-    
-    // Update board state
-    setBoard(newBoard);
     
     // Update move history
     const moveNotation = getMoveNotation(from, to, piece, newBoard);
@@ -1095,15 +1096,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Check game end conditions
     checkGameEnd(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
     
-    // Reset AI moving flag
+    // Update board state AFTER all other state updates to prevent AI validation issues
+    setBoard(newBoard);
+    
+    // Reset AI moving flag and allow AI validation again
     isAIMovingRef.current = false;
     lastAIMoveRef.current = false;
     apiCallInProgressRef.current = false;
+    setIsUpdatingBoard(false);
   }, [board, currentPlayer, moveHistory, getOpeningData]);
 
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
-    if (!isAIMovingRef.current && gameMode === GameMode.AI && currentPlayer === 'red' && !lastAIMoveRef.current) {
+    if (!isAIMovingRef.current && gameMode === GameMode.AI && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
       console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
       isAIMovingRef.current = true;
 
