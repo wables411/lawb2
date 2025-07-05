@@ -1119,6 +1119,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         console.log('[DEBUG] Sending FEN to API:', fen);
         console.log('[DEBUG] Current board state:', JSON.stringify(board));
         console.log('[DEBUG] Current player:', currentPlayer);
+        
+        // Debug: Check if board and FEN are in sync
+        console.log('[DEBUG] Board vs FEN check:');
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = board[row][col];
+            if (piece) {
+              console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
+            }
+          }
+        }
 
         // Prevent multiple simultaneous API calls
         if (apiCallInProgressRef.current) {
