@@ -1158,7 +1158,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         getMove(fen, timeLimit).then(move => {
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
-            // ROBUST coordinate conversion with validation
+            // FIXED coordinate conversion
+            // Stockfish uses a1-h8 notation where a1 is bottom-left
+            // Our board has Red pieces (uppercase) at top (row 0), Blue pieces (lowercase) at bottom (row 7)
+            // FEN maps: Red pieces -> Black (top), Blue pieces -> White (bottom)
+            // So Stockfish row 1 = our row 7 (Blue pieces), Stockfish row 8 = our row 0 (Red pieces)
             const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
             const fromRowStockfish = parseInt(move[1]); // Stockfish row (1-8)
             const toCol = move.charCodeAt(2) - 97;
@@ -1176,6 +1180,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               const piece = board[fromRow][fromCol];
               
               console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj, 'piece:', piece);
+              console.log('[DEBUG] Board state at move coordinates:');
+              for (let r = 0; r < 8; r++) {
+                let rowStr = '';
+                for (let c = 0; c < 8; c++) {
+                  const p = board[r][c];
+                  rowStr += p || '.';
+                }
+                console.log(`[DEBUG] Row ${r}: ${rowStr}`);
+              }
               
               // Try to find a legal move for the current player (red pieces)
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
