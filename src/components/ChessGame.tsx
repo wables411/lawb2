@@ -1096,7 +1096,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Check game end conditions
     checkGameEnd(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
     
-    // Update board state AFTER all other state updates to prevent AI validation issues
+    // Update board state IMMEDIATELY to ensure AI validation uses correct state
     setBoard(newBoard);
     
     // Reset AI moving flag and allow AI validation again
@@ -1135,6 +1135,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             }
           }
         }
+        
+        // Debug: Check if board and FEN are in sync
+        console.log('[DEBUG] Board vs FEN check:');
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = board[row][col];
+            if (piece) {
+              console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
+            }
+          }
+        }
 
         // Prevent multiple simultaneous API calls
         if (apiCallInProgressRef.current) {
@@ -1147,11 +1158,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         getMove(fen, timeLimit).then(move => {
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
-            // Simple coordinate conversion: Stockfish uses a1-h8, we use 0-7 arrays
+            // CORRECT coordinate conversion: Stockfish uses a1-h8 (White perspective), we use 0-7 arrays (Red at top)
+            // Since our FEN reads board from bottom to top, we need to flip the row coordinates
             const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
-            const fromRow = 8 - parseInt(move[1]);   // '1' = row 7, '2' = row 6, etc.
+            const fromRow = 8 - parseInt(move[1]);   // '1' = row 7, '2' = row 6, etc. (flipped to match FEN)
             const toCol = move.charCodeAt(2) - 97;
-            const toRow = 8 - parseInt(move[3]);
+            const toRow = 8 - parseInt(move[3]);     // '1' = row 7, '2' = row 6, etc. (flipped to match FEN)
             
             // Validate move coordinates
             console.log('[DEBUG] Move coordinates:', {
@@ -1966,10 +1978,15 @@ function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
   return player === 'blue' ? 'red' : 'blue';
 }
 
-// Simple FEN conversion - no flipping, just direct mapping
+// CORRECT FEN conversion for Stockfish compatibility
+// Stockfish expects White at bottom (a1-h1), Black at top (a8-h8)
+// Our board has Red at top (Black in Stockfish) and Blue at bottom (White in Stockfish)
 function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): string {
   let fen = '';
-  for (let row = 0; row < 8; row++) {
+  // Read board from Stockfish's perspective (White at bottom, Black at top)
+  // Since our board has Red at top (Black in Stockfish) and Blue at bottom (White in Stockfish)
+  // We need to read the board from bottom to top
+  for (let row = 7; row >= 0; row--) {
     let empty = 0;
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col];
@@ -1977,14 +1994,20 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
         empty++;
       } else {
         if (empty > 0) { fen += empty; empty = 0; }
-        // Direct mapping: red pieces (uppercase) stay uppercase, blue pieces (lowercase) stay lowercase
-        fen += piece;
+        // Map blue (lowercase) to white (uppercase), red (uppercase) to black (lowercase)
+        if (piece >= 'a' && piece <= 'z') {
+          fen += piece.toUpperCase(); // blue -> white
+        } else if (piece >= 'A' && piece <= 'Z') {
+          fen += piece.toLowerCase(); // red -> black
+        } else {
+          fen += piece;
+        }
       }
     }
     if (empty > 0) fen += empty;
-    if (row < 7) fen += '/';
+    if (row > 0) fen += '/';
   }
-  // Side to move: blue = w, red = b
+  // Side to move: blue = w, red = b (but since red pieces are black, we need to flip this)
   fen += ' ' + (currentPlayer === 'blue' ? 'w' : 'b');
   fen += ' - - 0 1';
   return fen;
