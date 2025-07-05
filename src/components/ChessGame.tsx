@@ -1158,58 +1158,61 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         getMove(fen, timeLimit).then(move => {
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
-            // SIMPLE coordinate conversion: Stockfish uses a1-h8, we use 0-7 arrays
-            // Our FEN reads board from bottom (row 7) to top (row 0)
-            // So Stockfish row 1 = our row 7, Stockfish row 8 = our row 0
-            
+            // ROBUST coordinate conversion with validation
             const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
             const fromRowStockfish = parseInt(move[1]); // Stockfish row (1-8)
             const toCol = move.charCodeAt(2) - 97;
             const toRowStockfish = parseInt(move[3]); // Stockfish row (1-8)
             
-            // Direct conversion: Stockfish row 1 = our row 7, Stockfish row 8 = our row 0
+            // Convert Stockfish coordinates to our board coordinates
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
             
-            // Validate move coordinates
-            console.log('[DEBUG] Move coordinates:', {
-              move,
-              fromCol, fromRow, toCol, toRow,
-              fromColValid: fromCol >= 0 && fromCol < 8,
-              fromRowValid: fromRow >= 0 && fromRow < 8,
-              toColValid: toCol >= 0 && toCol < 8,
-              toRowValid: toRow >= 0 && toRow < 8,
-              fromPiece: board[fromRow]?.[fromCol],
-              toPiece: board[toRow]?.[toCol]
-            });
-            
+            // ROBUST move validation and execution
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
                 toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
+              
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
-              console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj);
-              
-              // Validate that the move is legal
               const piece = board[fromRow][fromCol];
-              console.log('[DEBUG] Validating move:', JSON.stringify({
-                piece,
-                fromRow,
-                fromCol,
-                toRow,
-                toCol,
-                pieceColor: piece ? getPieceColor(piece) : 'null',
-                isRedPiece: piece && getPieceColor(piece) === 'red',
-                canMove: piece ? canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) : false
-              }, null, 2));
               
-              // Check if the piece is a red piece (uppercase) and can move legally
-              if (piece && piece >= 'A' && piece <= 'Z' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
+              console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj, 'piece:', piece);
+              
+              // Try to find a legal move for the current player (red pieces)
+              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
                 console.log('[DEBUG] Red piece move is legal, executing...');
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
-                console.log('[DEBUG] Move is not legal, using fallback');
-                const fallbackMove = getRandomAIMove(board);
-                if (fallbackMove) {
-                  makeMove(fallbackMove.from, fallbackMove.to, true);
+                console.log('[DEBUG] Stockfish move not legal, finding alternative...');
+                
+                // Find all legal moves for red pieces
+                const legalMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
+                
+                for (let r = 0; r < 8; r++) {
+                  for (let c = 0; c < 8; c++) {
+                    const p = board[r][c];
+                    if (p && getPieceColor(p) === 'red') {
+                      for (let tr = 0; tr < 8; tr++) {
+                        for (let tc = 0; tc < 8; tc++) {
+                          if (canPieceMove(p, r, c, tr, tc, true, 'red', board)) {
+                            legalMoves.push({ from: { row: r, col: c }, to: { row: tr, col: tc } });
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                if (legalMoves.length > 0) {
+                  // Pick the first legal move (or could be smarter about it)
+                  const bestMove = legalMoves[0];
+                  console.log('[DEBUG] Using alternative legal move:', bestMove);
+                  makeMove(bestMove.from, bestMove.to, true);
+                } else {
+                  console.log('[DEBUG] No legal moves found, using fallback');
+                  const fallbackMove = getRandomAIMove(board);
+                  if (fallbackMove) {
+                    makeMove(fallbackMove.from, fallbackMove.to, true);
+                  }
                 }
                 isAIMovingRef.current = false;
                 apiCallInProgressRef.current = false;
