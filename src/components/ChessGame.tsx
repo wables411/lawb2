@@ -1973,7 +1973,7 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
     if (empty > 0) fen += empty;
     if (row < 7) fen += '/';
   }
-  // Side to move: blue = w, red = b
+  // Side to move: blue = w, red = b (but since red pieces are black, we need to flip this)
   fen += ' ' + (currentPlayer === 'blue' ? 'w' : 'b');
   fen += ' - - 0 1';
   return fen;
