@@ -12,7 +12,7 @@ export default defineConfig({
     proxy: {
       '/api/stockfish': {
         target: process.env.NODE_ENV === 'production' 
-          ? 'https://lawb.xyz/.netlify/functions/stockfish'
+          ? 'https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish'
           : 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/stockfish/, '')

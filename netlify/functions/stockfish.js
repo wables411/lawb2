@@ -8,14 +8,25 @@ function generateMoveWithChessJS(fen) {
     
     if (moves.length === 0) return null;
     
-    // Simple AI: prefer captures and checks
+    // Improved AI: prioritize better moves
     const captures = moves.filter(move => move.flags.includes('c'));
     const checks = moves.filter(move => move.san.includes('+'));
+    const pawnMoves = moves.filter(move => move.piece === 'p');
+    const centerMoves = moves.filter(move => {
+      const to = move.to;
+      return (to === 'e4' || to === 'e5' || to === 'd4' || to === 'd5' || 
+              to === 'c4' || to === 'c5' || to === 'f4' || to === 'f5');
+    });
     
+    // Priority order: captures > checks > center moves > pawn moves > others
     if (captures.length > 0) {
       return captures[Math.floor(Math.random() * captures.length)];
     } else if (checks.length > 0) {
       return checks[Math.floor(Math.random() * checks.length)];
+    } else if (centerMoves.length > 0) {
+      return centerMoves[Math.floor(Math.random() * centerMoves.length)];
+    } else if (pawnMoves.length > 0) {
+      return pawnMoves[Math.floor(Math.random() * pawnMoves.length)];
     } else {
       return moves[Math.floor(Math.random() * moves.length)];
     }
