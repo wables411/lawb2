@@ -214,7 +214,7 @@ function generateGrandMasterMove(chess) {
       const piece = board[row][col];
       if (piece) {
         totalPieces++;
-        if (piece.toLowerCase() === 'q') queens++;
+        if (piece.type === 'q') queens++;
       }
     }
   }
@@ -407,11 +407,12 @@ function calculateMaterialAdvantage(chess) {
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col];
       if (piece) {
-        const value = pieceValues[piece.toLowerCase()] || 0;
-        if (piece === piece.toUpperCase()) {
-          advantage += value; // Red pieces (uppercase)
+        // piece.type is always lowercase, piece.color is 'w' or 'b'
+        const value = pieceValues[piece.type] || 0;
+        if (piece.color === 'w') {
+          advantage += value; // White pieces
         } else {
-          advantage -= value; // Blue pieces (lowercase)
+          advantage -= value; // Black pieces
         }
       }
     }
