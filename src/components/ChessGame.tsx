@@ -717,47 +717,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (color === 'blue' && endRow >= startRow) return false; // Blue pawns move up (decreasing row)
     if (color === 'red' && endRow <= startRow) return false;  // Red pawns move down (increasing row)
     
-    // Only log for potentially valid moves (within reasonable range)
+    // Only log for potentially valid moves (within reasonable range) - reduced logging
     const rowDiff = Math.abs(endRow - startRow);
     const colDiff = Math.abs(endCol - startCol);
     
-    if (rowDiff <= 2 && colDiff <= 1) {
-      console.log('[DEBUG] Pawn validation details:', JSON.stringify({
-        color,
-        startRow,
-        startCol,
-        endRow,
-        endCol,
-        direction,
-        startingRow,
-        isSameCol: startCol === endCol,
-        isForwardOne: endRow === startRow + direction,
-        isAtStartingRow: startRow === startingRow,
-        isDoubleMove: endRow === startRow + 2 * direction,
-        isDiagonal: Math.abs(startCol - endCol) === 1,
-        targetSquare: board[endRow] && board[endRow][endCol]
-      }, null, 2));
+    // Only log if this is a valid pawn move pattern to reduce spam
+    const isValidPattern = (rowDiff === 1 && colDiff === 0) || 
+                          (rowDiff === 2 && colDiff === 0 && startRow === startingRow) ||
+                          (rowDiff === 1 && colDiff === 1);
+    
+    if (isValidPattern && rowDiff <= 2 && colDiff <= 1) {
+      // Reduced logging - only log key details
+      console.log('[DEBUG] Pawn move check:', { color, from: `${startRow},${startCol}`, to: `${endRow},${endCol}` });
     }
     
     // Forward move (1 square)
     if (startCol === endCol && endRow === startRow + direction) {
-      console.log('[DEBUG] Pawn forward move (1 square) - target square:', board[endRow][endCol]);
       return board[endRow][endCol] === null;
     }
     
     // Initial 2-square move
     if (startCol === endCol && startRow === startingRow && endRow === startRow + 2 * direction) {
-      console.log('[DEBUG] Pawn double move - checking path:', {
-        intermediateSquare: board[startRow + direction][startCol],
-        targetSquare: board[endRow][endCol]
-      });
       return board[startRow + direction][startCol] === null && board[endRow][endCol] === null;
     }
     
     // Capture move (diagonal)
     if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
       const targetPiece = board[endRow][endCol];
-      console.log('[DEBUG] Pawn capture move - target piece:', targetPiece);
       return targetPiece !== null && getPieceColor(targetPiece) !== color;
     }
     
@@ -774,9 +760,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }
     }
     
-    if (rowDiff <= 2 && colDiff <= 1) {
-      console.log('[DEBUG] Pawn move validation failed - no valid move pattern matched');
-    }
     return false;
   };
 
@@ -853,17 +836,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     switch (pieceType) {
       case 'p':
         isValid = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
-        if (!isValid && !silent) {
-          console.log('[DEBUG] Pawn move validation failed:', {
-            piece, startRow, startCol, endRow, endCol, playerColor,
-            direction: playerColor === 'blue' ? -1 : 1,
-            startingRow: playerColor === 'blue' ? 6 : 1,
-            targetPiece: boardState[endRow][endCol],
-            isForwardMove: startCol === endCol && endRow === startRow + (playerColor === 'blue' ? -1 : 1),
-            isDoubleMove: startCol === endCol && startRow === (playerColor === 'blue' ? 6 : 1) && endRow === startRow + 2 * (playerColor === 'blue' ? -1 : 1),
-            isCapture: Math.abs(startCol - endCol) === 1 && endRow === startRow + (playerColor === 'blue' ? -1 : 1)
-          });
-        }
         break;
       case 'r':
         isValid = isValidRookMove(startRow, startCol, endRow, endCol, boardState);
@@ -896,7 +868,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return isValid;
   };
 
-  // Get legal moves for a piece
+  // Get legal moves for a piece (optimized)
   const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer): { row: number; col: number }[] => {
     const moves: { row: number; col: number }[] = [];
     const piece = boardState[from.row][from.col];
@@ -939,8 +911,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }
       }
+    } else if (pieceType === 'n') {
+      // For knights, only check L-shaped moves
+      const knightMoves = [
+        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+        [1, -2], [1, 2], [2, -1], [2, 1]
+      ];
+      
+      for (const [rowOffset, colOffset] of knightMoves) {
+        const newRow = from.row + rowOffset;
+        const newCol = from.col + colOffset;
+        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+          if (canPieceMove(piece, from.row, from.col, newRow, newCol, true, player, boardState, true)) {
+            moves.push({ row: newRow, col: newCol });
+          }
+        }
+      }
     } else {
-      // For other pieces, check all squares but use silent mode
+      // For other pieces (rook, bishop, queen, king), check all squares but use silent mode
       for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
           if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState, true)) {
@@ -1197,19 +1185,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               } else {
                 console.log('[DEBUG] Stockfish move not legal, finding alternative...');
                 
-                // Find all legal moves for red pieces
+                // Find all legal moves for red pieces (optimized)
                 const legalMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
                 
                 for (let r = 0; r < 8; r++) {
                   for (let c = 0; c < 8; c++) {
                     const p = board[r][c];
                     if (p && getPieceColor(p) === 'red') {
-                      for (let tr = 0; tr < 8; tr++) {
-                        for (let tc = 0; tc < 8; tc++) {
-                          if (canPieceMove(p, r, c, tr, tc, true, 'red', board)) {
-                            legalMoves.push({ from: { row: r, col: c }, to: { row: tr, col: tc } });
-                          }
-                        }
+                      // Use optimized getLegalMoves instead of testing every square
+                      const moves = getLegalMoves({ row: r, col: c }, board, 'red');
+                      for (const move of moves) {
+                        legalMoves.push({ from: { row: r, col: c }, to: move });
                       }
                     }
                   }

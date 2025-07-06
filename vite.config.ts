@@ -11,11 +11,9 @@ export default defineConfig({
     },
     proxy: {
       '/api/stockfish': {
-        target: process.env.NODE_ENV === 'production' 
-          ? 'https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish'
-          : 'http://localhost:3001',
+        target: 'https://stellular-palmier-549883.netlify.app',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/stockfish/, '')
+        rewrite: (path) => path.replace(/^\/api\/stockfish/, '/.netlify/functions/stockfish')
       }
     }
   }
