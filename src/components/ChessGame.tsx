@@ -1153,8 +1153,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toRowStockfish = parseInt(move[3]); // Stockfish row (1-8)
             
             // Convert Stockfish coordinates to our board coordinates
+            // Stockfish: a1=bottom-left, h8=top-right
+            // Our board: row 0=top (red pieces), row 7=bottom (blue pieces)
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
+            
+            // Debug the conversion
+            console.log('[DEBUG] Move conversion:', {
+              original: move,
+              fromCol, fromRowStockfish, fromRow,
+              toCol, toRowStockfish, toRow,
+              fromPiece: board[fromRow]?.[fromCol],
+              toPiece: board[toRow]?.[toCol]
+            });
             
             // ROBUST move validation and execution
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
