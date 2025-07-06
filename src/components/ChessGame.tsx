@@ -222,44 +222,36 @@ const useStockfish = () => {
     });
   }, []);
 
-  // Cloudflare Worker Stockfish API for production
+  // Netlify Function Stockfish API for production
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
     try {
-      // Try local API first (for development), then fallback to production
-      const apiUrls = [
-        '/api/stockfish', // Local development proxy
-        'https://lawb-chess-api.wablesphoto.workers.dev' // Production Workers API
-      ];
+      // Use Netlify function directly in production, local proxy in development
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiUrl = isDevelopment 
+        ? '/api/stockfish' // Local development proxy
+        : 'https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish'; // Production Netlify function
       
-      for (const apiUrl of apiUrls) {
-        try {
-          console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
-          
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              fen,
-              movetime: timeLimit
-            })
-          });
+      console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fen,
+          movetime: timeLimit
+        })
+      });
 
-          if (response.ok) {
-            const data = await response.json() as { bestmove?: string };
-            console.log(`[DEBUG] API call successful to ${apiUrl}:`, data);
-            return data.bestmove || null;
-          } else {
-            console.warn(`[DEBUG] API failed with status ${response.status} on ${apiUrl}`);
-          }
-        } catch (error) {
-          console.warn(`[DEBUG] API error on ${apiUrl}:`, error);
-        }
+      if (response.ok) {
+        const data = await response.json() as { move?: string };
+        console.log(`[DEBUG] API call successful to ${apiUrl}:`, data);
+        return data.move || null; // Netlify function returns 'move', not 'bestmove'
+      } else {
+        console.warn(`[DEBUG] API failed with status ${response.status} on ${apiUrl}`);
+        return null;
       }
-      
-      console.warn('[DEBUG] All API attempts failed, falling back to client-side Stockfish');
-      return null;
     } catch (error) {
       console.warn('[DEBUG] API error:', error);
       return null;
@@ -726,8 +718,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                           (rowDiff === 2 && colDiff === 0 && startRow === startingRow) ||
                           (rowDiff === 1 && colDiff === 1);
     
-    if (isValidPattern && rowDiff <= 2 && colDiff <= 1) {
-      // Reduced logging - only log key details
+    // Further reduce logging - only log in development mode
+    if (isValidPattern && rowDiff <= 2 && colDiff <= 1 && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       console.log('[DEBUG] Pawn move check:', { color, from: `${startRow},${startCol}`, to: `${endRow},${endCol}` });
     }
     
@@ -1110,27 +1102,31 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         // Generate FEN and log it for debugging
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);
-        console.log('[DEBUG] Current board state:', JSON.stringify(board));
-        console.log('[DEBUG] Current player:', currentPlayer);
         
-        // Debug: Check if board and FEN are in sync
-        console.log('[DEBUG] Board vs FEN check:');
-        for (let row = 0; row < 8; row++) {
-          for (let col = 0; col < 8; col++) {
-            const piece = board[row][col];
-            if (piece) {
-              console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
+        // Only show detailed board state in development mode
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          console.log('[DEBUG] Current board state:', JSON.stringify(board));
+          console.log('[DEBUG] Current player:', currentPlayer);
+          
+          // Debug: Check if board and FEN are in sync
+          console.log('[DEBUG] Board vs FEN check:');
+          for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+              const piece = board[row][col];
+              if (piece) {
+                console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
+              }
             }
           }
-        }
-        
-        // Debug: Check if board and FEN are in sync
-        console.log('[DEBUG] Board vs FEN check:');
-        for (let row = 0; row < 8; row++) {
-          for (let col = 0; col < 8; col++) {
-            const piece = board[row][col];
-            if (piece) {
-              console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
+          
+          // Debug: Check if board and FEN are in sync
+          console.log('[DEBUG] Board vs FEN check:');
+          for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+              const piece = board[row][col];
+              if (piece) {
+                console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
+              }
             }
           }
         }
@@ -1168,14 +1164,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               const piece = board[fromRow][fromCol];
               
               console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj, 'piece:', piece);
-              console.log('[DEBUG] Board state at move coordinates:');
-              for (let r = 0; r < 8; r++) {
-                let rowStr = '';
-                for (let c = 0; c < 8; c++) {
-                  const p = board[r][c];
-                  rowStr += p || '.';
+              // Only show board state in development mode
+              if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log('[DEBUG] Board state at move coordinates:');
+                for (let r = 0; r < 8; r++) {
+                  let rowStr = '';
+                  for (let c = 0; c < 8; c++) {
+                    const p = board[r][c];
+                    rowStr += p || '.';
+                  }
+                  console.log(`[DEBUG] Row ${r}: ${rowStr}`);
                 }
-                console.log(`[DEBUG] Row ${r}: ${rowStr}`);
               }
               
               // Try to find a legal move for the current player (red pieces)
