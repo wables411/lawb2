@@ -2128,7 +2128,11 @@
 .game-info-bar .mode-intermediate {
   color: #ff8c00;
 }
-.game-info-bar .mode-world-class {
+.game-info-bar .mode-master {
+  color: #ff6600;
+}
+
+.game-info-bar .mode-grand-master {
   color: #ff0000;
 }
 
@@ -2241,7 +2245,12 @@ html.chess-dark-mode, body.chess-dark-mode {
   color: #ff8c00 !important;
   text-shadow: 0 0 6px #ff8c00, 0 0 2px #ff8c00;
 }
-.chess-dark-mode .mode-world-class {
+.chess-dark-mode .mode-master {
+  color: #ff6600;
+  font-weight: bold;
+}
+
+.chess-dark-mode .mode-grand-master {
   color: #800080;
   font-weight: bold;
 }

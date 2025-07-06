@@ -1,11 +1,146 @@
 import { Chess } from 'chess.js';
 
-// Unbeatable AI evaluation for master-class difficulty
-function evaluatePositionUnbeatable(chess) {
+// Novice AI - Very easy to beat
+function generateNoviceMove(chess) {
   const moves = chess.moves({ verbose: true });
   if (moves.length === 0) return null;
   
-  // Advanced piece-square tables for unbeatable play
+  // Novice makes many mistakes:
+  // - Random moves 70% of the time
+  // - Sometimes makes obvious blunders
+  // - Rarely sees simple tactics
+  
+  const random = Math.random();
+  
+  if (random < 0.7) {
+    // 70% random moves
+    return moves[Math.floor(Math.random() * moves.length)];
+  } else if (random < 0.85) {
+    // 15% - sometimes captures if available
+    const captures = moves.filter(move => move.flags.includes('c'));
+    if (captures.length > 0) {
+      return captures[Math.floor(Math.random() * captures.length)];
+    }
+    return moves[Math.floor(Math.random() * moves.length)];
+  } else {
+    // 15% - occasionally makes a reasonable move
+    const reasonableMoves = moves.filter(move => {
+      // Avoid moving king unless necessary
+      if (move.piece === 'k' && !chess.inCheck()) return false;
+      return true;
+    });
+    return reasonableMoves[Math.floor(Math.random() * reasonableMoves.length)];
+  }
+}
+
+// Intermediate AI - Moderate challenge
+function generateIntermediateMove(chess) {
+  const moves = chess.moves({ verbose: true });
+  if (moves.length === 0) return null;
+  
+  // Intermediate plays reasonably but makes mistakes:
+  // - Prioritizes captures and checks
+  // - Basic positional understanding
+  // - Still misses complex tactics
+  
+  const captures = moves.filter(move => move.flags.includes('c'));
+  const checks = moves.filter(move => move.san.includes('+'));
+  const centerMoves = moves.filter(move => {
+    const to = move.to;
+    return (to === 'e4' || to === 'e5' || to === 'd4' || to === 'd5' || 
+            to === 'c4' || to === 'c5' || to === 'f4' || to === 'f5');
+  });
+  
+  // Prioritize captures and checks
+  if (captures.length > 0) {
+    return captures[Math.floor(Math.random() * captures.length)];
+  } else if (checks.length > 0) {
+    return checks[Math.floor(Math.random() * checks.length)];
+  } else if (centerMoves.length > 0) {
+    return centerMoves[Math.floor(Math.random() * centerMoves.length)];
+  } else {
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+}
+
+// Master AI - Very strong, hard to beat
+function generateMasterMove(chess) {
+  const moves = chess.moves({ verbose: true });
+  if (moves.length === 0) return null;
+  
+  // Master plays very well:
+  // - Strong tactical awareness
+  // - Good positional understanding
+  // - Advanced strategies
+  // - Still makes occasional mistakes
+  
+  const scoredMoves = moves.map(move => {
+    let score = 0;
+    
+    // Tactical advantages
+    if (move.san.includes('#')) {
+      score += 50000; // Checkmate
+    } else if (move.san.includes('+')) {
+      score += 2000; // Check
+    }
+    
+    // Material gain
+    if (move.flags.includes('c')) {
+      const pieceValues = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+      const capturedValue = pieceValues[move.captured] || 0;
+      const movingValue = pieceValues[move.piece] || 0;
+      
+      if (capturedValue > movingValue) {
+        score += capturedValue * 10; // Winning captures
+      } else if (capturedValue === movingValue) {
+        score += 50; // Equal trades
+      } else {
+        score -= movingValue; // Losing trades
+      }
+    }
+    
+    // Positional advantages
+    const centerSquares = ['e4', 'e5', 'd4', 'd5', 'c4', 'c5', 'f4', 'f5'];
+    if (centerSquares.includes(move.to)) {
+      score += 60;
+    }
+    
+    // Pawn advancement
+    if (move.piece === 'p') {
+      const rank = parseInt(move.to[1]);
+      if (rank >= 5) score += 80;
+      if (rank >= 6) score += 150;
+    }
+    
+    // Piece development
+    if ((move.piece === 'n' || move.piece === 'b') && move.from[1] === '1') {
+      score += 80;
+    }
+    
+    // King safety
+    if (move.piece === 'k' && chess.history().length < 20) {
+      score -= 500;
+    }
+    
+    // Add some randomness to make it beatable
+    score += Math.random() * 100;
+    
+    return { ...move, score };
+  });
+  
+  scoredMoves.sort((a, b) => b.score - a.score);
+  
+  // Pick from top 3 moves with some randomness
+  const topMoves = scoredMoves.slice(0, 3);
+  return topMoves[Math.floor(Math.random() * topMoves.length)];
+}
+
+// Grand-Master AI - Virtually unbeatable
+function generateGrandMasterMove(chess) {
+  const moves = chess.moves({ verbose: true });
+  if (moves.length === 0) return null;
+  
+  // Advanced piece-square tables for grand-master play
   const pieceSquareTables = {
     'p': [ // Pawn
       [0,  0,  0,  0,  0,  0,  0,  0],
@@ -69,15 +204,33 @@ function evaluatePositionUnbeatable(chess) {
     ]
   };
 
-  // Score each move with unbeatable precision
+  // Count pieces to determine game phase
+  const board = chess.board();
+  let totalPieces = 0;
+  let queens = 0;
+  
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece) {
+        totalPieces++;
+        if (piece.toLowerCase() === 'q') queens++;
+      }
+    }
+  }
+  
+  const isEndgame = totalPieces <= 12 || queens === 0;
+  const isLateEndgame = totalPieces <= 6;
+
+  // Score each move with grand-master precision
   const scoredMoves = moves.map(move => {
     let score = 0;
     
     // 1. IMMEDIATE TACTICAL ADVANTAGES (highest priority)
     if (move.san.includes('#')) {
-      score += 100000; // Checkmate
+      score += 1000000; // Checkmate
     } else if (move.san.includes('+')) {
-      score += 5000; // Check
+      score += 10000; // Check
     }
     
     // 2. MATERIAL GAIN (with advanced evaluation)
@@ -86,13 +239,12 @@ function evaluatePositionUnbeatable(chess) {
       const capturedValue = pieceValues[move.captured] || 0;
       const movingValue = pieceValues[move.piece] || 0;
       
-      // Advanced capture evaluation
       if (capturedValue > movingValue) {
-        score += capturedValue * 15; // Winning captures
+        score += capturedValue * 20; // Winning captures
       } else if (capturedValue === movingValue) {
-        score += 50; // Equal trades
+        score += 100; // Equal trades
       } else {
-        score -= movingValue * 2; // Losing trades (avoid)
+        score -= movingValue * 3; // Losing trades
       }
     }
     
@@ -106,96 +258,166 @@ function evaluatePositionUnbeatable(chess) {
     }
     
     // 4. ADVANCED STRATEGIC EVALUATION
-    // Pawn structure
     if (piece === 'p') {
       const rank = parseInt(move.to[1]);
-      if (rank >= 5) score += 100; // Advanced pawns
-      if (rank >= 6) score += 200; // Very advanced pawns
-      if (rank >= 7) score += 500; // Pawn promotion threat
+      if (rank >= 5) score += 150;
+      if (rank >= 6) score += 300;
+      if (rank >= 7) score += 1000;
       
       // Doubled pawns penalty
       const file = move.to[0];
       const pawnsInFile = chess.board().filter(row => 
         row[file.charCodeAt(0) - 97] === 'p'
       ).length;
-      if (pawnsInFile > 1) score -= 50;
+      if (pawnsInFile > 1) score -= 100;
     }
     
     // 5. PIECE DEVELOPMENT AND ACTIVITY
     if ((piece === 'n' || piece === 'b') && move.from[1] === '1') {
-      score += 100; // Early development
+      score += 150;
     }
     
-    // 6. KING SAFETY (critical for unbeatable play)
+    // 6. KING SAFETY
     if (piece === 'k') {
       const gamePhase = chess.history().length;
       if (gamePhase < 15) {
-        score -= 1000; // Avoid king moves in opening
+        score -= 2000;
       } else if (gamePhase < 30) {
-        score -= 500; // Be cautious in middlegame
+        score -= 1000;
       }
       
-      // Castling bonus
       if (move.san.includes('O-O') || move.san.includes('O-O-O')) {
-        score += 300;
-      }
-    }
-    
-    // 7. ROOK ACTIVITY AND OPEN FILES
-    if (piece === 'r') {
-      const file = move.to[0];
-      const centerFiles = ['d', 'e'];
-      if (centerFiles.includes(file)) {
-        score += 150; // Rooks on open center files
+        score += 500;
       }
       
-      // 7th rank bonus
-      if (parseInt(move.to[1]) === 7) {
+      if (isEndgame) {
         score += 200;
       }
     }
     
-    // 8. QUEEN ACTIVITY (but not too early)
+    // 7. ROOK ACTIVITY
+    if (piece === 'r') {
+      const file = move.to[0];
+      const centerFiles = ['d', 'e'];
+      if (centerFiles.includes(file)) {
+        score += 250;
+      }
+      
+      if (parseInt(move.to[1]) === 7) {
+        score += 300;
+      }
+      
+      const rooksOnFile = chess.board().filter(row => 
+        row[file.charCodeAt(0) - 97] === 'r'
+      ).length;
+      if (rooksOnFile > 1) score += 200;
+    }
+    
+    // 8. QUEEN ACTIVITY
     if (piece === 'q') {
       const gamePhase = chess.history().length;
       if (gamePhase < 10) {
-        score -= 200; // Don't develop queen too early
+        score -= 300;
       } else {
-        score += 50; // Queen activity in middlegame
+        score += 100;
+      }
+      
+      if (isEndgame) {
+        score += 300;
       }
     }
     
     // 9. CENTER CONTROL
     const centerSquares = ['e4', 'e5', 'd4', 'd5', 'c4', 'c5', 'f4', 'f5'];
     if (centerSquares.includes(move.to)) {
-      score += 80;
+      score += 120;
     }
     
     // 10. TEMPO AND INITIATIVE
     if (chess.inCheck()) {
-      score += 200; // Responding to checks
+      score += 500;
     }
     
-    // 11. FORK AND PIN OPPORTUNITIES
-    // Check if move creates tactical opportunities
+    // 11. TACTICAL OPPORTUNITIES
     const tempChess = new Chess(chess.fen());
     tempChess.move(move);
     
-    // Check for discovered attacks
     const opponentMoves = tempChess.moves({ verbose: true });
     const tacticalMoves = opponentMoves.filter(m => 
       m.flags.includes('c') || m.san.includes('+')
     );
-    score += tacticalMoves.length * 50;
+    score += tacticalMoves.length * 100;
+    
+    // 12. ENDGAME SPECIFIC EVALUATION
+    if (isEndgame) {
+      if (piece === 'p') {
+        const rank = parseInt(move.to[1]);
+        score += rank * 50;
+        
+        const file = move.to[0];
+        const isPassedPawn = !chess.board().some((row, r) => {
+          if (r === toRow) return false;
+          const enemyPawn = row[file.charCodeAt(0) - 97];
+          return enemyPawn === 'p' && r > toRow;
+        });
+        if (isPassedPawn) score += 500;
+      }
+      
+      if (piece === 'k' && isLateEndgame) {
+        score += 400;
+      }
+      
+      if (piece === 'r' && isEndgame) {
+        score += 200;
+      }
+    }
+    
+    // 13. STALEMATE PREVENTION
+    if (isEndgame && totalPieces <= 8) {
+      const tempChess2 = new Chess(chess.fen());
+      tempChess2.move(move);
+      
+      const opponentMovesAfter = tempChess2.moves();
+      if (opponentMovesAfter.length === 0 && !tempChess2.inCheck()) {
+        score -= 10000;
+      }
+    }
+    
+    // 14. AGGRESSIVE PLAY IN WINNING POSITIONS
+    const materialAdvantage = calculateMaterialAdvantage(chess);
+    if (materialAdvantage > 200) {
+      score += 300;
+    }
     
     return { ...move, score };
   });
   
-  // Sort by score (highest first) and pick the absolute best move
+  // Sort by score and pick the absolute best move (no randomness for grand-master)
   scoredMoves.sort((a, b) => b.score - a.score);
-  
-  // For unbeatable play, always pick the best move (no randomness)
   return scoredMoves[0];
+}
+
+// Helper function to calculate material advantage
+function calculateMaterialAdvantage(chess) {
+  const pieceValues = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+  let advantage = 0;
+  
+  const board = chess.board();
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece) {
+        const value = pieceValues[piece.toLowerCase()] || 0;
+        if (piece === piece.toUpperCase()) {
+          advantage += value; // Red pieces (uppercase)
+        } else {
+          advantage -= value; // Blue pieces (lowercase)
+        }
+      }
+    }
+  }
+  
+  return advantage;
 }
 
 // Generate moves based on difficulty
@@ -206,43 +428,17 @@ function generateMoveWithChessJS(fen, difficulty = 'intermediate') {
     
     if (moves.length === 0) return null;
     
-    if (difficulty === 'novice') {
-      // Random moves for novice
-      return moves[Math.floor(Math.random() * moves.length)];
-    } else if (difficulty === 'intermediate') {
-      // Basic strategy for intermediate
-      const captures = moves.filter(move => move.flags.includes('c'));
-      const checks = moves.filter(move => move.san.includes('+'));
-      
-      if (captures.length > 0) {
-        return captures[Math.floor(Math.random() * captures.length)];
-      } else if (checks.length > 0) {
-        return checks[Math.floor(Math.random() * checks.length)];
-      } else {
-        return moves[Math.floor(Math.random() * moves.length)];
-      }
-    } else if (difficulty === 'world-class') {
-      // Advanced strategy for world-class
-      const captures = moves.filter(move => move.flags.includes('c'));
-      const checks = moves.filter(move => move.san.includes('+'));
-      const centerMoves = moves.filter(move => {
-        const to = move.to;
-        return (to === 'e4' || to === 'e5' || to === 'd4' || to === 'd5' || 
-                to === 'c4' || to === 'c5' || to === 'f4' || to === 'f5');
-      });
-      
-      if (captures.length > 0) {
-        return captures[Math.floor(Math.random() * captures.length)];
-      } else if (checks.length > 0) {
-        return checks[Math.floor(Math.random() * checks.length)];
-      } else if (centerMoves.length > 0) {
-        return centerMoves[Math.floor(Math.random() * centerMoves.length)];
-      } else {
-        return moves[Math.floor(Math.random() * moves.length)];
-      }
-    } else {
-      // Master-class: use unbeatable evaluation
-      return evaluatePositionUnbeatable(chess);
+    switch (difficulty) {
+      case 'novice':
+        return generateNoviceMove(chess);
+      case 'intermediate':
+        return generateIntermediateMove(chess);
+      case 'master':
+        return generateMasterMove(chess);
+      case 'grand-master':
+        return generateGrandMasterMove(chess);
+      default:
+        return generateIntermediateMove(chess);
     }
   } catch (error) {
     return null;
@@ -267,7 +463,7 @@ export async function handler(event) {
   }
 
   try {
-    const { fen, difficulty = 'master-class' } = JSON.parse(event.body || '{}');
+    const { fen, difficulty = 'intermediate' } = JSON.parse(event.body || '{}');
     
     if (!fen) {
       return {

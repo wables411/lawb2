@@ -85,10 +85,10 @@ const pieceGallery = [
   { key: 'p', name: 'Blue Pawn', img: '/images/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
 ];
 
-// Add 'world-class' to difficulty type
-type Difficulty = 'novice' | 'intermediate' | 'world-class' | 'master-class';
+// Updated difficulty levels
+type Difficulty = 'novice' | 'intermediate' | 'master' | 'grand-master';
 
-// Stockfish integration for world-class AI
+// Stockfish integration for grand-master AI
 const useStockfish = () => {
   const [stockfishReady, setStockfishReady] = useState(false);
   const stockfishRef = useRef<any>(null);
@@ -561,8 +561,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         switch (difficulty) {
           case 'novice': pointsToAdd = 1; break;
           case 'intermediate': pointsToAdd = 3; break;
-          case 'world-class': pointsToAdd = 5; break;
-          case 'master-class': pointsToAdd = 10; break;
+                  case 'master': pointsToAdd = 5; break;
+        case 'grand-master': pointsToAdd = 10; break;
           default: pointsToAdd = 1;
         }
       } else if (gameResult === 'draw') {
@@ -1092,11 +1092,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
       isAIMovingRef.current = true;
 
-      if (difficulty === 'world-class' || difficulty === 'master-class') {
+      if (difficulty === 'master' || difficulty === 'grand-master') {
         // Always use Cloudflare Worker API in production for strongest AI
         const useWorkerAPI = import.meta.env.PROD;
-        const timeLimit = difficulty === 'master-class' ? 15000 : 8000; // Increased from 12000 to 15000
-        setStatus(`${difficulty === 'master-class' ? 'UNBEATABLE AI' : 'World-class'} AI is calculating...`);
+        const timeLimit = difficulty === 'grand-master' ? 15000 : 8000; // Increased from 12000 to 15000
+        setStatus(`${difficulty === 'grand-master' ? 'GRAND-MASTER AI' : 'Master'} AI is calculating...`);
         console.log(`[DEBUG] Using ${useWorkerAPI ? 'Cloudflare Worker API' : 'LawbBot (WASM)'} for ${difficulty} difficulty`);
 
         // Generate FEN and log it for debugging
@@ -1631,23 +1631,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   >
             Intermediate
                   </button>
-          <button 
-            className={`difficulty-btn${difficulty === 'world-class' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('world-class'); startGame(); }}
+                            <button 
+            className={`difficulty-btn${difficulty === 'master' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('master'); startGame(); }}
           >
-            World-Class
+            Master
                   </button>
           <button 
-            className={`difficulty-btn${difficulty === 'master-class' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('master-class'); startGame(); }}
+            className={`difficulty-btn${difficulty === 'grand-master' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('grand-master'); startGame(); }}
             style={{ 
-              background: difficulty === 'master-class' ? 'linear-gradient(45deg, #ff0000, #ff6600)' : undefined,
-              color: difficulty === 'master-class' ? 'white' : undefined,
+              background: difficulty === 'grand-master' ? 'linear-gradient(45deg, #ff0000, #ff6600)' : undefined,
+              color: difficulty === 'grand-master' ? 'white' : undefined,
               fontWeight: 'bold',
-              textShadow: difficulty === 'master-class' ? '0 0 10px rgba(255,255,255,0.8)' : undefined
+              textShadow: difficulty === 'grand-master' ? '0 0 10px rgba(255,255,255,0.8)' : undefined
             }}
           >
-            🏆 UNBEATABLE 🏆
+            🏆 GRAND-MASTER 🏆
                   </button>
         </div>
       </div>
@@ -1918,11 +1918,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </span>
               <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
               {showGame && !showDifficulty && (
-                <span className={difficulty === 'novice' ? 'mode-novice' : difficulty === 'intermediate' ? 'mode-intermediate' : difficulty === 'world-class' ? 'mode-world-class' : 'mode-master-class'}>
-                  Mode: {difficulty === 'novice' ? 'Novice' : difficulty === 'intermediate' ? 'Intermediate' : difficulty === 'world-class' ? 'World-Class' : 'Master-Class'}
+                                  <span className={difficulty === 'novice' ? 'mode-novice' : difficulty === 'intermediate' ? 'mode-intermediate' : difficulty === 'master' ? 'mode-master' : 'mode-grand-master'}>
+                  Mode: {difficulty === 'novice' ? 'Novice' : difficulty === 'intermediate' ? 'Intermediate' : difficulty === 'master' ? 'Master' : 'Grand-Master'}
                 </span>
               )}
-              {(difficulty === 'world-class' || difficulty === 'master-class') && (
+                              {(difficulty === 'master' || difficulty === 'grand-master') && (
                 <span className={`stockfish-status ${stockfishStatus}`}>
                   LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
                 </span>
@@ -2042,9 +2042,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   
                   <p><strong>Wallet Connection:</strong> Connect your wallet to track your progress and compete on the leaderboard. Your wallet address serves as your username.</p>
                   
-                  <p><strong>Points System:</strong> Win points by defeating the AI - Novice (1pt), Intermediate (3pts), World-Class (5pts), Master-Class (10pts). Draws earn 1 point regardless of difficulty.</p>
+                  <p><strong>Points System:</strong> Win points by defeating the AI - Novice (1pt), Intermediate (3pts), Master (5pts), Grand-Master (10pts). Draws earn 1 point regardless of difficulty.</p>
                   
-                  <p><strong>AI Difficulty:</strong> Novice=Easy, Intermediate=kinda harder, World-Class= harder than Intermediate, Master-Class=currently most difficult lawbBot.</p>
+                  <p><strong>AI Difficulty:</strong> Novice=Easy, Intermediate=Moderate, Master=Very Strong, Grand-Master=Virtually Unbeatable.</p>
                 </div>
               </div>
             </div>
