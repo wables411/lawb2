@@ -465,7 +465,11 @@ export async function handler(event) {
   try {
     const { fen, difficulty = 'intermediate' } = JSON.parse(event.body || '{}');
     
+    // Debug logging
+    console.log('[DEBUG] Received FEN:', fen);
+    console.log('[DEBUG] Difficulty:', difficulty);
     if (!fen) {
+      console.log('[DEBUG] No FEN provided');
       return {
         statusCode: 400,
         headers,
@@ -475,7 +479,11 @@ export async function handler(event) {
 
     // Check if game is already over
     const chess = new Chess(fen);
+    console.log('[DEBUG] Parsed board:', chess.board());
+    const moves = chess.moves({ verbose: true });
+    console.log('[DEBUG] Number of moves available:', moves.length);
     if (chess.isGameOver()) {
+      console.log('[DEBUG] Game is already over');
       return {
         statusCode: 400,
         headers,
@@ -486,6 +494,7 @@ export async function handler(event) {
     const chessMove = generateMoveWithChessJS(fen, difficulty);
     
     if (!chessMove) {
+      console.log('[DEBUG] No valid moves available for FEN:', fen);
       return {
         statusCode: 400,
         headers,
@@ -494,6 +503,7 @@ export async function handler(event) {
     }
 
     const move = chessMove.from + chessMove.to;
+    console.log('[DEBUG] Selected move:', move);
 
     return {
       statusCode: 200,
@@ -502,7 +512,7 @@ export async function handler(event) {
     };
 
   } catch (error) {
-    // console.error('Function error:', error);
+    console.log('[DEBUG] Internal server error:', error);
     return {
       statusCode: 500,
       headers,
