@@ -229,7 +229,7 @@ const useStockfish = () => {
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const apiUrl = isDevelopment 
         ? '/api/stockfish' // Local development proxy
-        : 'https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish'; // Production Netlify function
+        : '/api/stockfish'; // Production VPS AI server
       
       console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       
@@ -1114,7 +1114,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           difficulty,
           movetime: timeLimit
         };
-        fetch('https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish', {
+        fetch('/api/stockfish', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
