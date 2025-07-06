@@ -131,9 +131,13 @@ export async function onRequest(context) {
   }
 
   try {
-    const { fen, movetime = 5000, difficulty = 'master-class' } = await request.json();
+    const body = await request.json();
+    console.log('[DEBUG] Received request body:', body);
+    
+    const { fen, movetime = 5000, difficulty = 'master-class' } = body;
 
     if (!fen) {
+      console.log('[DEBUG] Missing FEN in request');
       // @ts-ignore - Response is available in Cloudflare Pages
       return new Response(JSON.stringify({ error: 'FEN position required' }), {
         status: 400,
@@ -143,12 +147,25 @@ export async function onRequest(context) {
         },
       });
     }
+    
+    console.log('[DEBUG] Processing FEN:', fen, 'difficulty:', difficulty, 'movetime:', movetime);
 
     // Use Stockfish WASM engine
     const engine = new StockfishWasmEngine();
-    const bestmove = await engine.findBestMove(fen, movetime);
+    let bestmove;
+    
+    try {
+      bestmove = await engine.findBestMove(fen, movetime);
+      console.log('[DEBUG] Stockfish returned move:', bestmove);
+    } catch (error) {
+      console.log('[DEBUG] Stockfish error:', error.message);
+      // Return a fallback move instead of error
+      bestmove = engine.getStrongFallbackMove();
+      console.log('[DEBUG] Using fallback move:', bestmove);
+    }
     
     if (!bestmove) {
+      console.log('[DEBUG] No move available, returning error');
       // @ts-ignore - Response is available in Cloudflare Pages
       return new Response(JSON.stringify({ error: 'No legal moves found' }), {
         status: 400,

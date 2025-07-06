@@ -1132,7 +1132,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
           throw new Error('API call failed');
         }).then(data => {
-          const move = data.move;
+          const move = data.bestmove || data.move; // Handle both response formats
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
             // FIXED coordinate conversion
