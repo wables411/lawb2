@@ -222,14 +222,14 @@ const useStockfish = () => {
     });
   }, []);
 
-  // Netlify Function Stockfish API for production
+  // DigitalOcean VPS Stockfish API for production
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
     try {
-      // Use Netlify function directly in production, local proxy in development
+      // Use DigitalOcean VPS in production, local proxy in development
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const apiUrl = isDevelopment 
         ? '/api/stockfish' // Local development proxy
-        : '/api/stockfish'; // Production VPS AI server
+        : 'http://107.170.71.63:3001/api/stockfish'; // Production DigitalOcean VPS
       
       console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       

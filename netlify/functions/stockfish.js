@@ -522,7 +522,7 @@ export async function handler(event) {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ move })
+      body: JSON.stringify({ bestmove: move })
     };
 
   } catch (error) {
