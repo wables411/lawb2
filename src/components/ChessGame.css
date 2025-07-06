@@ -2567,3 +2567,292 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .chess-dark-mode .opening-move {
   color: #00ff00;
 } 
+
+/* Epic Chess Game Animations */
+
+@keyframes particle-explosion {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes epic-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.6);
+  }
+}
+
+@keyframes victory-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes check-flash {
+  0%, 100% {
+    background-color: rgba(255, 0, 0, 0.1);
+  }
+  50% {
+    background-color: rgba(255, 0, 0, 0.3);
+  }
+}
+
+/* Epic mode styles */
+.epic-mode .chessboard {
+  animation: epic-glow 2s ease-in-out infinite;
+}
+
+.epic-mode .chess-square {
+  transition: all 0.3s ease;
+}
+
+.epic-mode .chess-square:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+
+/* Victory celebration styles */
+.victory-celebration {
+  animation: victory-pulse 0.5s ease-in-out infinite;
+}
+
+/* Check indicator */
+.square-in-check {
+  animation: check-flash 1s ease-in-out infinite;
+}
+
+/* Enhanced piece animations */
+.chess-piece {
+  transition: all 0.2s ease;
+}
+
+.chess-piece:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* Move indicator */
+.move-indicator {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+  pointer-events: none;
+  animation: move-indicator 0.5s ease-out;
+}
+
+@keyframes move-indicator {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Epic status bar */
+.epic-status {
+  background: linear-gradient(45deg, #ff4444, #44ff44, #4444ff, #ffff44);
+  background-size: 400% 400%;
+  animation: epic-gradient 3s ease infinite;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+@keyframes epic-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Enhanced controls */
+.epic-controls {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.epic-button {
+  background: linear-gradient(45deg, #ff4444, #ff8844);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.epic-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
+}
+
+.epic-button:active {
+  transform: translateY(0);
+}
+
+/* Toggle switches */
+.epic-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+}
+
+.epic-toggle input[type="checkbox"] {
+  appearance: none;
+  width: 40px;
+  height: 20px;
+  background: #ccc;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.epic-toggle input[type="checkbox"]:checked {
+  background: linear-gradient(45deg, #44ff44, #44cc44);
+}
+
+.epic-toggle input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: all 0.3s ease;
+}
+
+.epic-toggle input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+/* Victory modal */
+.victory-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: victory-modal-fade 0.5s ease-out;
+}
+
+@keyframes victory-modal-fade {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.victory-content {
+  background: linear-gradient(45deg, #ff4444, #ff8844, #ffff44, #44ff44, #4444ff);
+  background-size: 400% 400%;
+  animation: epic-gradient 2s ease infinite;
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Enhanced board glow */
+.chessboard-container {
+  position: relative;
+}
+
+.chessboard-container::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: linear-gradient(45deg, #ff4444, #44ff44, #4444ff, #ffff44);
+  background-size: 400% 400%;
+  animation: epic-gradient 4s ease infinite;
+  border-radius: 15px;
+  z-index: -1;
+  opacity: 0.3;
+  filter: blur(10px);
+}
+
+/* Piece capture animation */
+.piece-captured {
+  animation: piece-capture 0.5s ease-out;
+}
+
+@keyframes piece-capture {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0) rotate(360deg);
+    opacity: 0;
+  }
+}

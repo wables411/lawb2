@@ -1333,12 +1333,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       
       if (isPlayerWin) {
         setStatus(`Checkmate! You win!`);
+        playSound('checkmate');
+        triggerVictoryCelebration();
         // Update leaderboard for player win
         void updateScore('win');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
         setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
+        playSound('checkmate');
         // Update leaderboard for player loss
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
@@ -1363,6 +1366,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     if (isKingInCheck(boardState, playerToMove)) {
       console.log('CHECK detected!');
+      playSound('check');
       setStatus(`${playerToMove === 'blue' ? 'Blue' : 'Red'} is in check!`);
     } else {
       setStatus(`Your turn`);
@@ -1733,6 +1737,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Check if this is a capture move
     const isCapture = capturedPiece !== null;
     
+    // Play sound effects and create particle effects
+    if (isCapture) {
+      playSound('capture');
+      createParticleEffect(to.row, to.col, capturedPiece);
+    } else {
+      playSound('move');
+    }
+    
     // If it's a capture, show the explosion animation first
     if (isCapture) {
       setCaptureAnimation({ row: to.row, col: to.col, show: true });
@@ -1749,8 +1761,98 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     executeMoveAfterAnimation(from, to, isAIMove);
   };
 
+  // Add epic sound effects and visual enhancements
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [particleEffects, setParticleEffects] = useState(true);
+  const [victoryCelebration, setVictoryCelebration] = useState(false);
+  const [epicMode, setEpicMode] = useState(false);
+
+  // Sound effects
+  const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory') => {
+    if (!soundEnabled) return;
+    
+    const audio = new Audio();
+    switch (soundType) {
+      case 'move':
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        break;
+      case 'capture':
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        break;
+      case 'check':
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        break;
+      case 'checkmate':
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        break;
+      case 'victory':
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        break;
+    }
+    audio.play().catch(() => {}); // Ignore audio errors
+  };
+
+  // Particle effect for captures
+  const createParticleEffect = (row: number, col: number, piece: string) => {
+    if (!particleEffects) return;
+    
+    const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+    if (!square) return;
+    
+    const rect = square.getBoundingClientRect();
+    const colors = getPieceColor(piece) === 'red' ? ['#ff4444', '#ff6666', '#ff8888'] : ['#4444ff', '#6666ff', '#8888ff'];
+    
+    for (let i = 0; i < 8; i++) {
+      const particle = document.createElement('div');
+      particle.style.cssText = `
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: ${colors[Math.floor(Math.random() * colors.length)]};
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 1000;
+        left: ${rect.left + rect.width / 2}px;
+        top: ${rect.top + rect.height / 2}px;
+        animation: particle-explosion 0.8s ease-out forwards;
+      `;
+      
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), 800);
+    }
+  };
+
+  // Victory celebration
+  const triggerVictoryCelebration = () => {
+    if (!victoryCelebration) return;
+    
+    setEpicMode(true);
+    playSound('victory');
+    
+    // Create confetti effect
+    for (let i = 0; i < 50; i++) {
+      setTimeout(() => {
+        const confetti = document.createElement('div');
+        confetti.style.cssText = `
+          position: fixed;
+          width: 10px;
+          height: 10px;
+          background: ${['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff'][Math.floor(Math.random() * 5)]};
+          left: ${Math.random() * window.innerWidth}px;
+          top: -10px;
+          z-index: 9999;
+          animation: confetti-fall 3s linear forwards;
+        `;
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 3000);
+      }, i * 100);
+    }
+    
+    setTimeout(() => setEpicMode(false), 5000);
+  };
+
   return (
-    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
+    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}${epicMode ? ' epic-mode' : ''}`}>
       {/* Always show header at the top */}
       {!fullscreen && (
         <div className="chess-header">
@@ -1897,6 +1999,43 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <button onClick={() => setShowGalleryModal(true)}>Chess Piece Info</button>
                 <button onClick={resetGame}>New Game</button>
                 <button onClick={resetGame}>Back to Menu</button>
+              </div>
+              
+              {/* Epic Controls */}
+              <div className="epic-controls">
+                <div className="epic-toggle">
+                  <input 
+                    type="checkbox" 
+                    id="sound-toggle" 
+                    checked={soundEnabled} 
+                    onChange={(e) => setSoundEnabled(e.target.checked)}
+                  />
+                  <label htmlFor="sound-toggle">🎵 Sound Effects</label>
+                </div>
+                <div className="epic-toggle">
+                  <input 
+                    type="checkbox" 
+                    id="particle-toggle" 
+                    checked={particleEffects} 
+                    onChange={(e) => setParticleEffects(e.target.checked)}
+                  />
+                  <label htmlFor="particle-toggle">✨ Particle Effects</label>
+                </div>
+                <div className="epic-toggle">
+                  <input 
+                    type="checkbox" 
+                    id="victory-toggle" 
+                    checked={victoryCelebration} 
+                    onChange={(e) => setVictoryCelebration(e.target.checked)}
+                  />
+                  <label htmlFor="victory-toggle">🎉 Victory Celebration</label>
+                </div>
+                <button 
+                  className="epic-button" 
+                  onClick={() => setEpicMode(!epicMode)}
+                >
+                  {epicMode ? '🚀 Epic Mode ON' : '⚡ Enable Epic Mode'}
+                </button>
               </div>
             </div>
           ) : showDifficulty ? (
