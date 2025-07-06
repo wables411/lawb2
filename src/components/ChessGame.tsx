@@ -1139,7 +1139,26 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         
         apiCallInProgressRef.current = true;
         const getMove = useWorkerAPI ? getCloudflareStockfishMove : getStockfishMove;
-        getMove(fen, timeLimit).then(move => {
+        // Pass difficulty parameter to the API
+        const apiData = {
+          fen,
+          difficulty,
+          movetime: timeLimit
+        };
+        
+        fetch('https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(apiData)
+        }).then(response => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error('API call failed');
+        }).then(data => {
+          const move = data.move;
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
             // FIXED coordinate conversion
