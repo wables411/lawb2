@@ -2003,10 +2003,9 @@ function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
 // Our board has Red at top (Black in Stockfish) and Blue at bottom (White in Stockfish)
 function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): string {
   let fen = '';
-  // Read board from Stockfish's perspective (White at bottom, Black at top)
-  // Since our board has Red at top (Black in Stockfish) and Blue at bottom (White in Stockfish)
-  // We need to read the board from bottom to top
-  for (let row = 7; row >= 0; row--) {
+  // Read board from top to bottom to match our coordinate system
+  // Row 0 (top) = Stockfish row 8, Row 7 (bottom) = Stockfish row 1
+  for (let row = 0; row < 8; row++) {
     let empty = 0;
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col];
@@ -2025,9 +2024,9 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
       }
     }
     if (empty > 0) fen += empty;
-    if (row > 0) fen += '/';
+    if (row < 7) fen += '/';
   }
-  // Side to move: blue = w, red = b (but since red pieces are black, we need to flip this)
+  // Side to move: blue = w, red = b
   fen += ' ' + (currentPlayer === 'blue' ? 'w' : 'b');
   fen += ' - - 0 1';
   return fen;
