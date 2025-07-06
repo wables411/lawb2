@@ -426,21 +426,34 @@ function generateMoveWithChessJS(fen, difficulty = 'intermediate') {
     const chess = new Chess(fen);
     const moves = chess.moves({ verbose: true });
     
+    console.log('[DEBUG] generateMoveWithChessJS - moves available:', moves.length);
+    console.log('[DEBUG] generateMoveWithChessJS - difficulty:', difficulty);
+    
     if (moves.length === 0) return null;
     
+    let result;
     switch (difficulty) {
       case 'novice':
-        return generateNoviceMove(chess);
+        result = generateNoviceMove(chess);
+        break;
       case 'intermediate':
-        return generateIntermediateMove(chess);
+        result = generateIntermediateMove(chess);
+        break;
       case 'master':
-        return generateMasterMove(chess);
+        result = generateMasterMove(chess);
+        break;
       case 'grand-master':
-        return generateGrandMasterMove(chess);
+        result = generateGrandMasterMove(chess);
+        break;
       default:
-        return generateIntermediateMove(chess);
+        result = generateIntermediateMove(chess);
     }
+    
+    console.log('[DEBUG] generateMoveWithChessJS - result:', result);
+    return result;
   } catch (error) {
+    console.log('[DEBUG] generateMoveWithChessJS - ERROR:', error);
+    console.log('[DEBUG] generateMoveWithChessJS - ERROR stack:', error.stack);
     return null;
   }
 }
