@@ -1,84 +1,118 @@
-// @ts-ignore - Cloudflare Pages environment
-// Cloudflare Pages Function for Chess AI using Stockfish WASM
-// Master-class chess engine for maximum strength
+// @ts-ignore - Netlify Functions environment
+// Netlify Function for Chess AI using Stockfish WASM
+// Grand-master chess engine for maximum strength
 
-// Stockfish WASM implementation for Cloudflare Pages
+// Enhanced Stockfish WASM implementation for Netlify Functions
 class StockfishWasmEngine {
   constructor() {
     this.nodesSearched = 0;
     this.engine = null;
+    this.isInitialized = false;
   }
 
-  // Initialize Stockfish WASM
+  // Initialize Stockfish WASM with better error handling
   async init(skill = 20) {
-    if (this.engine) return;
+    if (this.isInitialized) return;
+    
     try {
+      // Use a more reliable Stockfish import
       const Stockfish = await import('https://unpkg.com/stockfish@15.1.0/stockfish.js');
       this.engine = Stockfish();
-      await new Promise((resolve) => {
+      
+      // Wait for engine to be ready
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Stockfish initialization timeout'));
+        }, 10000);
+        
         this.engine.addMessageListener((message) => {
-          if (message === 'readyok') resolve();
+          if (message === 'readyok') {
+            clearTimeout(timeout);
+            resolve();
+          }
         });
+        
         this.engine.postMessage('isready');
       });
-      // Configure engine for selected skill
+      
+      // Configure engine for maximum strength
       this.engine.postMessage(`setoption name Skill Level value ${skill}`);
       this.engine.postMessage('setoption name MultiPV value 1');
-      this.engine.postMessage('setoption name Threads value 4');
-      this.engine.postMessage('setoption name Hash value 128');
+      this.engine.postMessage('setoption name Threads value 1'); // Single thread for serverless
+      this.engine.postMessage('setoption name Hash value 256'); // More hash for better analysis
       this.engine.postMessage('setoption name Contempt value 0');
-      this.engine.postMessage('setoption name Move Overhead value 10');
-      this.engine.postMessage('setoption name Minimum Thinking Time value 20');
+      this.engine.postMessage('setoption name Move Overhead value 0');
+      this.engine.postMessage('setoption name Minimum Thinking Time value 0');
       this.engine.postMessage('setoption name Slow Mover value 100');
       this.engine.postMessage('setoption name UCI_Chess960 value false');
+      
+      this.isInitialized = true;
+      console.log('[DEBUG] Stockfish initialized successfully with skill:', skill);
     } catch (error) {
-      console.error('Stockfish initialization failed:', error);
-      throw error;
+      console.error('[DEBUG] Stockfish initialization failed:', error);
+      throw new Error(`Stockfish initialization failed: ${error.message}`);
     }
   }
 
-  // Get best move using Stockfish WASM
+  // Get best move using Stockfish WASM with enhanced error handling
   async findBestMove(fen, movetime = 10000, skill = 20, depth = 25) {
     try {
       await this.init(skill);
+      
       return new Promise((resolve, reject) => {
         let bestmove = null;
-        let timeoutId = null;
-        timeoutId = setTimeout(() => {
-          if (!bestmove) {
+        let analysisComplete = false;
+        
+        // Set a timeout that's slightly longer than movetime
+        const timeoutId = setTimeout(() => {
+          if (!analysisComplete) {
             this.engine.postMessage('stop');
-            reject(new Error('Stockfish timeout'));
+            if (bestmove) {
+              console.log('[DEBUG] Stockfish timeout but got move:', bestmove);
+              resolve(bestmove);
+            } else {
+              reject(new Error('Stockfish analysis timeout'));
+            }
           }
-        }, movetime + 2000);
+        }, movetime + 3000);
+        
         this.engine.addMessageListener((message) => {
+          console.log('[DEBUG] Stockfish message:', message);
+          
           if (message.startsWith('bestmove')) {
             bestmove = message.split(' ')[1];
+            analysisComplete = true;
             clearTimeout(timeoutId);
+            console.log('[DEBUG] Stockfish best move:', bestmove);
             resolve(bestmove);
           } else if (message.includes('nodes')) {
             const nodesMatch = message.match(/nodes (\d+)/);
             if (nodesMatch) {
               this.nodesSearched = parseInt(nodesMatch[1]);
             }
+          } else if (message.includes('info') && message.includes('score')) {
+            // Log evaluation info
+            console.log('[DEBUG] Stockfish evaluation:', message);
           }
         });
+        
+        // Set position and start analysis
         this.engine.postMessage(`position fen ${fen}`);
         this.engine.postMessage(`go movetime ${movetime} depth ${depth}`);
       });
     } catch (error) {
-      console.error('Stockfish analysis failed:', error);
+      console.error('[DEBUG] Stockfish analysis failed:', error);
       throw error;
     }
   }
 }
 
-// Cloudflare Pages Function handler
+// Netlify Function handler
 export async function onRequest(context) {
   const { request } = context;
 
   // Handle CORS preflight requests
   if (request.method === 'OPTIONS') {
-    // @ts-ignore - Response is available in Cloudflare Pages
     return new Response(null, {
       status: 200,
       headers: {
@@ -92,7 +126,6 @@ export async function onRequest(context) {
 
   // Only allow POST requests
   if (request.method !== 'POST') {
-    // @ts-ignore - Response is available in Cloudflare Pages
     return new Response('Method not allowed', { 
       status: 405,
       headers: {
@@ -104,7 +137,9 @@ export async function onRequest(context) {
   try {
     const body = await request.json();
     console.log('[DEBUG] Received request body:', body);
-    const { fen, movetime = 5000, difficulty = 'master-class' } = body;
+    
+    const { fen, movetime = 5000, difficulty = 'grand-master' } = body;
+
     if (!fen) {
       console.log('[DEBUG] Missing FEN in request');
       return new Response(JSON.stringify({ error: 'FEN position required' }), {
@@ -115,9 +150,12 @@ export async function onRequest(context) {
         },
       });
     }
+
     console.log('[DEBUG] Processing FEN:', fen, 'difficulty:', difficulty, 'movetime:', movetime);
-    // Set Stockfish parameters by difficulty
-    let skill = 20, depth = 25, moveTime = movetime;
+
+    // Set Stockfish parameters by difficulty - MAXIMUM STRENGTH
+    let skill = 20, depth = 50, moveTime = movetime;
+    
     if (difficulty === 'novice') {
       skill = 1; depth = 4; moveTime = 1000;
     } else if (difficulty === 'intermediate') {
@@ -125,13 +163,17 @@ export async function onRequest(context) {
     } else if (difficulty === 'master') {
       skill = 15; depth = 20; moveTime = 6000;
     } else if (difficulty === 'grand-master') {
-      skill = 20; depth = 50; moveTime = 12000;
+      skill = 20; depth = 50; moveTime = 12000; // MAXIMUM STRENGTH
     }
+
+    console.log('[DEBUG] Using parameters - skill:', skill, 'depth:', depth, 'movetime:', moveTime);
+
     const engine = new StockfishWasmEngine();
     let bestmove;
+
     try {
       bestmove = await engine.findBestMove(fen, moveTime, skill, depth);
-      console.log('[DEBUG] Stockfish returned move:', bestmove);
+      console.log('[DEBUG] Stockfish returned move:', bestmove, 'nodes:', engine.nodesSearched);
     } catch (error) {
       console.log('[DEBUG] Stockfish error:', error.message);
       return new Response(JSON.stringify({ error: error.message }), {
@@ -142,8 +184,9 @@ export async function onRequest(context) {
         },
       });
     }
-    if (!bestmove) {
-      console.log('[DEBUG] No move available, returning error');
+
+    if (!bestmove || bestmove === '(none)') {
+      console.log('[DEBUG] No legal moves found');
       return new Response(JSON.stringify({ error: 'No legal moves found' }), {
         status: 400,
         headers: {
@@ -152,12 +195,18 @@ export async function onRequest(context) {
         },
       });
     }
+
     const response = {
       bestmove,
       nodes: engine.nodesSearched,
       difficulty,
-      movetime: moveTime
+      movetime: moveTime,
+      skill,
+      depth
     };
+
+    console.log('[DEBUG] Returning response:', response);
+
     return new Response(JSON.stringify(response), {
       status: 200,
       headers: {
@@ -166,6 +215,7 @@ export async function onRequest(context) {
       },
     });
   } catch (error) {
+    console.error('[DEBUG] Function error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: {
