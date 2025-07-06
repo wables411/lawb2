@@ -1097,10 +1097,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       if (['novice', 'intermediate', 'master', 'grand-master'].includes(difficulty)) {
         // Always use Stockfish API for all difficulties
         const timeLimit =
-          difficulty === 'grand-master' ? 15000 :
-          difficulty === 'master' ? 8000 :
-          difficulty === 'intermediate' ? 4000 :
-          2000;
+          difficulty === 'grand-master' ? 8000 :
+          difficulty === 'master' ? 4000 :
+          difficulty === 'intermediate' ? 2000 :
+          1000;
         setStatus(`${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} AI is calculating...`);
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);

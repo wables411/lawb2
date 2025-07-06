@@ -123,9 +123,9 @@ export async function onRequest(context) {
     } else if (difficulty === 'intermediate') {
       skill = 5; depth = 8; moveTime = 2000;
     } else if (difficulty === 'master') {
-      skill = 10; depth = 15; moveTime = 5000;
+      skill = 10; depth = 15; moveTime = 4000;
     } else if (difficulty === 'grand-master') {
-      skill = 20; depth = 25; moveTime = 15000;
+      skill = 20; depth = 25; moveTime = 8000;
     }
     const engine = new StockfishWasmEngine();
     let bestmove;
