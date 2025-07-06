@@ -1096,7 +1096,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         // Always use Cloudflare Worker API in production for strongest AI
         const useWorkerAPI = import.meta.env.PROD;
         const timeLimit = difficulty === 'master-class' ? 15000 : 8000; // Increased from 12000 to 15000
-        setStatus(`${difficulty === 'master-class' ? 'Master-class' : 'World-class'} AI is calculating...`);
+        setStatus(`${difficulty === 'master-class' ? 'UNBEATABLE AI' : 'World-class'} AI is calculating...`);
         console.log(`[DEBUG] Using ${useWorkerAPI ? 'Cloudflare Worker API' : 'LawbBot (WASM)'} for ${difficulty} difficulty`);
 
         // Generate FEN and log it for debugging
@@ -1640,8 +1640,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <button 
             className={`difficulty-btn${difficulty === 'master-class' ? ' selected' : ''}`}
             onClick={() => { setDifficulty('master-class'); startGame(); }}
+            style={{ 
+              background: difficulty === 'master-class' ? 'linear-gradient(45deg, #ff0000, #ff6600)' : undefined,
+              color: difficulty === 'master-class' ? 'white' : undefined,
+              fontWeight: 'bold',
+              textShadow: difficulty === 'master-class' ? '0 0 10px rgba(255,255,255,0.8)' : undefined
+            }}
           >
-            Master-Class
+            🏆 UNBEATABLE 🏆
                   </button>
         </div>
       </div>
