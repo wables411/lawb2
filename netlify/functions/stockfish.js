@@ -1,67 +1,72 @@
 import { Chess } from 'chess.js';
 
-// Stockfish WebAssembly integration for strong AI
-let stockfish = null;
-let stockfishReady = false;
-
-// Initialize Stockfish
-async function initStockfish() {
-  if (stockfish) return;
+// Strong move evaluation for master-class difficulty
+function evaluatePosition(chess) {
+  const moves = chess.moves({ verbose: true });
+  if (moves.length === 0) return null;
   
-  try {
-    // Import Stockfish WASM
-    const { default: Stockfish } = await import('stockfish');
-    stockfish = Stockfish();
+  // Score each move based on multiple factors
+  const scoredMoves = moves.map(move => {
+    let score = 0;
     
-    stockfish.onmessage = (event) => {
-      const message = event.data;
-      if (message.includes('uciok')) {
-        stockfishReady = true;
-      }
-    };
-    
-    // Initialize UCI
-    stockfish.postMessage('uci');
-    stockfish.postMessage('isready');
-  } catch (error) {
-    // console.error('Failed to load Stockfish:', error);
-  }
-}
-
-// Generate strong move using Stockfish
-async function generateStockfishMove(fen, timeLimit = 5000) {
-  if (!stockfishReady) {
-    await initStockfish();
-    // Simple wait for Stockfish to be ready
-    let attempts = 0;
-    while (!stockfishReady && attempts < 50) {
-      await new Promise(resolve => resolve());
-      attempts++;
+    // Material gain (captures)
+    if (move.flags.includes('c')) {
+      const pieceValues = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+      const capturedValue = pieceValues[move.captured] || 0;
+      const movingValue = pieceValues[move.piece] || 0;
+      score += capturedValue * 10 - movingValue; // Prioritize good captures
     }
-  }
-  
-  return new Promise((resolve) => {
-    let bestMove = null;
     
-    stockfish.onmessage = (event) => {
-      const message = event.data;
-      
-      if (message.startsWith('bestmove')) {
-        const move = message.split(' ')[1];
-        if (move && move !== '(none)') {
-          bestMove = move;
-        }
-        resolve(bestMove);
-      }
-    };
+    // Checks
+    if (move.san.includes('+')) {
+      score += 500;
+    }
     
-    // Set up position and calculate
-    stockfish.postMessage(`position fen ${fen}`);
-    stockfish.postMessage(`go movetime ${timeLimit}`);
+    // Checkmate
+    if (move.san.includes('#')) {
+      score += 10000;
+    }
+    
+    // Center control
+    const centerSquares = ['e4', 'e5', 'd4', 'd5', 'c4', 'c5', 'f4', 'f5'];
+    if (centerSquares.includes(move.to)) {
+      score += 50;
+    }
+    
+    // Pawn advancement
+    if (move.piece === 'p') {
+      const rank = parseInt(move.to[1]);
+      if (rank >= 5) score += 30; // Advanced pawns
+      if (rank >= 6) score += 50; // Very advanced pawns
+    }
+    
+    // Piece development (knights and bishops to good squares)
+    if ((move.piece === 'n' || move.piece === 'b') && move.from[1] === '1') {
+      score += 20;
+    }
+    
+    // King safety (avoid moving king in middle game)
+    if (move.piece === 'k' && chess.history().length < 20) {
+      score -= 100;
+    }
+    
+    // Rook activity
+    if (move.piece === 'r' && (move.to[0] === 'e' || move.to[0] === 'd')) {
+      score += 30; // Rooks on open files
+    }
+    
+    return { ...move, score };
   });
+  
+  // Sort by score (highest first)
+  scoredMoves.sort((a, b) => b.score - a.score);
+  
+  // For master-class, pick from top 3 moves with some randomness
+  const topMoves = scoredMoves.slice(0, 3);
+  return topMoves[Math.floor(Math.random() * topMoves.length)];
 }
 
-// Fallback to chess.js for weaker difficulties
+// Generate moves based on difficulty
 function generateMoveWithChessJS(fen, difficulty = 'intermediate') {
   try {
     const chess = new Chess(fen);
@@ -69,7 +74,6 @@ function generateMoveWithChessJS(fen, difficulty = 'intermediate') {
     
     if (moves.length === 0) return null;
     
-    // Different strategies based on difficulty
     if (difficulty === 'novice') {
       // Random moves for novice
       return moves[Math.floor(Math.random() * moves.length)];
@@ -85,8 +89,8 @@ function generateMoveWithChessJS(fen, difficulty = 'intermediate') {
       } else {
         return moves[Math.floor(Math.random() * moves.length)];
       }
-    } else {
-      // World-class: more sophisticated
+    } else if (difficulty === 'world-class') {
+      // Advanced strategy for world-class
       const captures = moves.filter(move => move.flags.includes('c'));
       const checks = moves.filter(move => move.san.includes('+'));
       const centerMoves = moves.filter(move => {
@@ -104,6 +108,9 @@ function generateMoveWithChessJS(fen, difficulty = 'intermediate') {
       } else {
         return moves[Math.floor(Math.random() * moves.length)];
       }
+    } else {
+      // Master-class: use strong evaluation
+      return evaluatePosition(chess);
     }
   } catch (error) {
     return null;
@@ -128,7 +135,7 @@ export async function handler(event) {
   }
 
   try {
-    const { fen, difficulty = 'master-class', movetime = 5000 } = JSON.parse(event.body || '{}');
+    const { fen, difficulty = 'master-class' } = JSON.parse(event.body || '{}');
     
     if (!fen) {
       return {
@@ -138,29 +145,27 @@ export async function handler(event) {
       };
     }
 
-    let move = null;
-    
-    // Use Stockfish for master-class, chess.js for others
-    if (difficulty === 'master-class') {
-      try {
-        move = await generateStockfishMove(fen, movetime);
-      } catch (error) {
-        // console.error('Stockfish failed, falling back to chess.js:', error);
-        const chessMove = generateMoveWithChessJS(fen, 'world-class');
-        move = chessMove ? chessMove.from + chessMove.to : null;
-      }
-    } else {
-      const chessMove = generateMoveWithChessJS(fen, difficulty);
-      move = chessMove ? chessMove.from + chessMove.to : null;
+    // Check if game is already over
+    const chess = new Chess(fen);
+    if (chess.isGameOver()) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Game is already over' })
+      };
     }
+
+    const chessMove = generateMoveWithChessJS(fen, difficulty);
     
-    if (!move) {
+    if (!chessMove) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({ error: 'No valid moves available' })
       };
     }
+
+    const move = chessMove.from + chessMove.to;
 
     return {
       statusCode: 200,

@@ -1014,7 +1014,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Enhanced move execution with opening analysis
   const executeMoveAfterAnimation = useCallback((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove: boolean = false) => {
-    console.log('[DEBUG] executeMoveAfterAnimation called:', { from, to, isAIMove });
+    
     
     // Set flag to prevent AI validation during board update
     setIsUpdatingBoard(true);
@@ -1031,7 +1031,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Handle special moves (castling, en passant, pawn promotion)
     handleSpecialMoves(newBoard, from, to, piece);
     
-    console.log('[DEBUG] Board state after move:', newBoard);
+    
     
     // Update move history
     const moveNotation = getMoveNotation(from, to, piece, newBoard);
@@ -1064,7 +1064,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Update piece state
     updatePieceState(from, to, piece);
     
-    console.log('[DEBUG] State updated, currentPlayer before switch:', currentPlayer);
+    
     
     // Switch players
     setCurrentPlayer(prev => {
@@ -1103,33 +1103,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);
         
-        // Only show detailed board state in development mode
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          console.log('[DEBUG] Current board state:', JSON.stringify(board));
-          console.log('[DEBUG] Current player:', currentPlayer);
-          
-          // Debug: Check if board and FEN are in sync
-          console.log('[DEBUG] Board vs FEN check:');
-          for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-              const piece = board[row][col];
-              if (piece) {
-                console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
-              }
-            }
-          }
-          
-          // Debug: Check if board and FEN are in sync
-          console.log('[DEBUG] Board vs FEN check:');
-          for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-              const piece = board[row][col];
-              if (piece) {
-                console.log(`[DEBUG] Board[${row}][${col}] = "${piece}" (${getPieceColor(piece)})`);
-              }
-            }
-          }
-        }
+
 
         // Prevent multiple simultaneous API calls
         if (apiCallInProgressRef.current) {
@@ -1177,14 +1151,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
             
-            // Debug the conversion
-            console.log('[DEBUG] Move conversion:', {
-              original: move,
-              fromCol, fromRowStockfish, fromRow,
-              toCol, toRowStockfish, toRow,
-              fromPiece: board[fromRow]?.[fromCol],
-              toPiece: board[toRow]?.[toCol]
-            });
+            
             
             // ROBUST move validation and execution
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
@@ -1193,19 +1160,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               const piece = board[fromRow][fromCol];
               
-              console.log('[DEBUG] Stockfish move:', move, 'converted to:', moveObj, 'piece:', piece);
-              // Only show board state in development mode
-              if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log('[DEBUG] Board state at move coordinates:');
-                for (let r = 0; r < 8; r++) {
-                  let rowStr = '';
-                  for (let c = 0; c < 8; c++) {
-                    const p = board[r][c];
-                    rowStr += p || '.';
-                  }
-                  console.log(`[DEBUG] Row ${r}: ${rowStr}`);
-                }
-              }
+
               
               // Try to find a legal move for the current player (red pieces)
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
