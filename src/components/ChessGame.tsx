@@ -1070,6 +1070,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setCurrentPlayer(prev => {
       const newPlayer = prev === 'blue' ? 'red' : 'blue';
       console.log('[DEBUG] Player switched to:', newPlayer);
+      // Check game end for the player who is about to move (after switch)
+      checkGameEnd(newBoard, newPlayer);
       return newPlayer;
     });
     
@@ -1092,34 +1094,26 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
       isAIMovingRef.current = true;
 
-      if (difficulty === 'master' || difficulty === 'grand-master') {
-        // Always use Cloudflare Worker API in production for strongest AI
-        const useWorkerAPI = import.meta.env.PROD;
-        const timeLimit = difficulty === 'grand-master' ? 15000 : 8000; // Increased from 12000 to 15000
-        setStatus(`${difficulty === 'grand-master' ? 'GRAND-MASTER AI' : 'Master'} AI is calculating...`);
-        console.log(`[DEBUG] Using ${useWorkerAPI ? 'Cloudflare Worker API' : 'LawbBot (WASM)'} for ${difficulty} difficulty`);
-
-        // Generate FEN and log it for debugging
+      if (['novice', 'intermediate', 'master', 'grand-master'].includes(difficulty)) {
+        // Always use Stockfish API for all difficulties
+        const timeLimit =
+          difficulty === 'grand-master' ? 15000 :
+          difficulty === 'master' ? 8000 :
+          difficulty === 'intermediate' ? 4000 :
+          2000;
+        setStatus(`${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} AI is calculating...`);
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);
-        
-
-
-        // Prevent multiple simultaneous API calls
         if (apiCallInProgressRef.current) {
           console.log('[DEBUG] API call already in progress, skipping');
           return;
         }
-        
         apiCallInProgressRef.current = true;
-        const getMove = useWorkerAPI ? getCloudflareStockfishMove : getStockfishMove;
-        // Pass difficulty parameter to the API
         const apiData = {
           fen,
           difficulty,
           movetime: timeLimit
         };
-        
         fetch('https://stellular-palmier-549883.netlify.app/.netlify/functions/stockfish', {
           method: 'POST',
           headers: {
@@ -1132,137 +1126,44 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
           throw new Error('API call failed');
         }).then(data => {
-          const move = data.bestmove || data.move; // Handle both response formats
+          const move = data.bestmove || data.move;
           console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
-            // FIXED coordinate conversion
-            // Stockfish uses a1-h8 notation where a1 is bottom-left
-            // Our board has Red pieces (uppercase) at top (row 0), Blue pieces (lowercase) at bottom (row 7)
-            // FEN maps: Red pieces -> Black (top), Blue pieces -> White (bottom)
-            // So Stockfish row 1 = our row 7 (Blue pieces), Stockfish row 8 = our row 0 (Red pieces)
-            const fromCol = move.charCodeAt(0) - 97; // 'a' = 0, 'b' = 1, etc.
-            const fromRowStockfish = parseInt(move[1]); // Stockfish row (1-8)
+            const fromCol = move.charCodeAt(0) - 97;
+            const fromRowStockfish = parseInt(move[1]);
             const toCol = move.charCodeAt(2) - 97;
-            const toRowStockfish = parseInt(move[3]); // Stockfish row (1-8)
-            
-            // Convert Stockfish coordinates to our board coordinates
-            // Stockfish: a1=bottom-left, h8=top-right
-            // Our board: row 0=top (red pieces), row 7=bottom (blue pieces)
+            const toRowStockfish = parseInt(move[3]);
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
-            
-            
-            
-            // ROBUST move validation and execution
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
                 toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
-              
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               const piece = board[fromRow][fromCol];
-              
-
-              
-              // Try to find a legal move for the current player (red pieces)
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
                 console.log('[DEBUG] Red piece move is legal, executing...');
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
-                console.log('[DEBUG] Stockfish move not legal, finding alternative...');
-                
-                // Find all legal moves for red pieces (optimized)
-                const legalMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
-                
-                for (let r = 0; r < 8; r++) {
-                  for (let c = 0; c < 8; c++) {
-                    const p = board[r][c];
-                    if (p && getPieceColor(p) === 'red') {
-                      // Use optimized getLegalMoves instead of testing every square
-                      const moves = getLegalMoves({ row: r, col: c }, board, 'red');
-                      for (const move of moves) {
-                        legalMoves.push({ from: { row: r, col: c }, to: move });
-                      }
-                    }
-                  }
-                }
-                
-                if (legalMoves.length > 0) {
-                  // Pick the first legal move (or could be smarter about it)
-                  const bestMove = legalMoves[0];
-                  console.log('[DEBUG] Using alternative legal move:', bestMove);
-                  makeMove(bestMove.from, bestMove.to, true);
-                } else {
-                  console.log('[DEBUG] No legal moves found, using fallback');
-                  const fallbackMove = getRandomAIMove(board);
-                  if (fallbackMove) {
-                    makeMove(fallbackMove.from, fallbackMove.to, true);
-                  }
-                }
+                // If Stockfish move is not legal, do nothing (no fallback)
+                console.log('[DEBUG] Stockfish move not legal, skipping move.');
                 isAIMovingRef.current = false;
                 apiCallInProgressRef.current = false;
               }
             } else {
-              console.log('[DEBUG] Invalid move coordinates, using fallback');
-              const fallbackMove = getRandomAIMove(board);
-              if (fallbackMove) {
-                makeMove(fallbackMove.from, fallbackMove.to, true);
-              }
+              console.log('[DEBUG] Invalid move coordinates, skipping move.');
               isAIMovingRef.current = false;
               apiCallInProgressRef.current = false;
             }
           } else {
-            console.log('[DEBUG] Stockfish returned no valid move, using fallback');
-            const fallbackMove = getRandomAIMove(board);
-            if (fallbackMove) {
-              makeMove(fallbackMove.from, fallbackMove.to, true);
-            }
+            console.log('[DEBUG] Stockfish returned no valid move, skipping move.');
             isAIMovingRef.current = false;
             apiCallInProgressRef.current = false;
           }
         }).catch(error => {
           console.error('[DEBUG] Stockfish error:', error);
-          console.log('[DEBUG] Falling back to simple AI for', difficulty, 'difficulty');
-          const fallbackMove = getRandomAIMove(board);
-          if (fallbackMove) {
-            makeMove(fallbackMove.from, fallbackMove.to, true);
-          }
+          setStatus('AI error. Please try again.');
           isAIMovingRef.current = false;
           apiCallInProgressRef.current = false;
         });
-      } else if (difficulty === 'intermediate' && aiWorkerRef.current) {
-        console.log('[DEBUG] Using AI worker for intermediate difficulty');
-        setStatus('Intermediate AI is calculating...');
-        aiWorkerRef.current.postMessage({
-          board: board,
-          currentPlayer: currentPlayer,
-          difficulty: difficulty,
-          pieceState: pieceState
-        });
-        aiTimeoutRef.current = window.setTimeout(() => {
-          console.log('[DEBUG] AI worker timeout, using simple fallback');
-          isAIMovingRef.current = false;
-          aiTimeoutRef.current = null;
-          const fallbackMove = getRandomAIMove(board);
-          if (fallbackMove) {
-            makeMove(fallbackMove.from, fallbackMove.to, true);
-          }
-        }, 5000);
-      } else if (difficulty === 'novice') {
-        console.log('[DEBUG] Using simple AI for novice difficulty');
-        setStatus('Novice AI is thinking...');
-        setTimeout(() => {
-          const fallbackMove = getRandomAIMove(board);
-          if (fallbackMove) {
-            makeMove(fallbackMove.from, fallbackMove.to, true);
-          }
-          isAIMovingRef.current = false;
-        }, 1000);
-      } else {
-        console.log('[DEBUG] No AI method available, using simple fallback');
-        const fallbackMove = getRandomAIMove(board);
-        if (fallbackMove) {
-          makeMove(fallbackMove.from, fallbackMove.to, true);
-        }
-        isAIMovingRef.current = false;
       }
     }
   }, [currentPlayer, gameMode, difficulty, board, pieceState, stockfishReady]);
