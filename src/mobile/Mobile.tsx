@@ -337,6 +337,18 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
         <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
         <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
+        <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
+          <iframe 
+            height="100%" 
+            width="100%" 
+            id="geckoterminal-embed" 
+            title="GeckoTerminal Embed" 
+            src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" 
+            frameBorder="0" 
+            allow="clipboard-write" 
+            allowFullScreen
+          />
+        </div>
       </MobilePopup98>
     );
   }
@@ -373,7 +385,7 @@ const Mobile = () => {
       {menuOpen && (
         <div className={classes.menuOverlay} onClick={() => setMenuOpen(false)}>
           <div className={classes.menuModal} onClick={e => e.stopPropagation()}>
-            <a href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Dexscreener</a>
+            <a href="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>GeckoTerminal</a>
             <a href="https://x.com/lawbstation" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbStation Twitter</a>
             <a href="https://x.com/lawbnexus" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbNexus Twitter</a>
             <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/info/" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>NFTX - Lawbsters</a>

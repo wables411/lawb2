@@ -356,9 +356,14 @@ function App() {
 
         <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
           <iframe 
-            src="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&theme=dark&info=0" 
-            title="DexScreener"
-            style={{ width: '100%', height: '100%', border: 'none' }}
+            height="100%" 
+            width="100%" 
+            id="geckoterminal-embed" 
+            title="GeckoTerminal Embed" 
+            src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" 
+            frameBorder="0" 
+            allow="clipboard-write" 
+            allowFullScreen
           />
         </div>
       </Popup>

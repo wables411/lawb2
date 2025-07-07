@@ -184,13 +184,13 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
       {isMenuOpen && (
         <div className={classes.menu}>
           <a 
-            href="https://dexscreener.com/solana/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep" 
+            href="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" 
             target="_blank" 
             rel="noopener noreferrer" 
             className={classes.menuLink} 
             onClick={handleMenuLinkClick}
           >
-            Dexscreener
+            GeckoTerminal
           </a>
           <a 
             href="https://x.com/lawbstation" 
