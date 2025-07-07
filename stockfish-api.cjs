@@ -4,7 +4,11 @@ const { spawn } = require('child_process');
 const cors = require('cors');
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: ['https://lawb.xyz', 'https://www.lawb.xyz', 'http://localhost:3000', 'http://localhost:5173'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 
 // Health check endpoint
 app.get('/api/stockfish', (req, res) => {
