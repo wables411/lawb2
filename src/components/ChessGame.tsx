@@ -1231,7 +1231,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Simple AI move (fallback)
   const getRandomAIMove = (boardState: (string | null)[][]): { from: { row: number; col: number }; to: { row: number; col: number } } | null => {
     const aiPieces: { row: number; col: number }[] = [];
-    
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = boardState[row][col];
@@ -1240,17 +1239,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         }
       }
     }
-    
     // Shuffle pieces for randomness
     for (let i = aiPieces.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [aiPieces[i], aiPieces[j]] = [aiPieces[j], aiPieces[i]];
     }
-    
-    // First, look for captures
+    // Separate moves into captures and non-captures
     const captureMoves: { from: { row: number; col: number }; to: { row: number; col: number }; value: number }[] = [];
-    const regularMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
-    
+    const nonCaptureMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
     for (const piece of aiPieces) {
       const legalMoves = getLegalMoves(piece, boardState, 'red');
       for (const move of legalMoves) {
@@ -1261,41 +1257,32 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           const value = pieceValues[targetPiece.toLowerCase()] || 0;
           captureMoves.push({ from: piece, to: move, value });
         } else {
-          regularMoves.push({ from: piece, to: move });
+          nonCaptureMoves.push({ from: piece, to: move });
         }
       }
     }
-    
-    // Sort capture moves by value (highest first)
-    captureMoves.sort((a, b) => b.value - a.value);
-    
-    // If we have captures, prefer the highest value capture
-    if (captureMoves.length > 0) {
-      const bestCapture = captureMoves[0];
-      // Double-check that this move doesn't put the AI's king in check
-      const tempBoard = boardState.map(row => [...row]);
-      const pieceSymbol = tempBoard[bestCapture.from.row][bestCapture.from.col];
-      tempBoard[bestCapture.to.row][bestCapture.to.col] = pieceSymbol;
-      tempBoard[bestCapture.from.row][bestCapture.from.col] = null;
-      
-      if (!isKingInCheck(tempBoard, 'red')) {
-        return { from: bestCapture.from, to: bestCapture.to };
-      }
-    }
-    
-    // If no good captures, use regular moves
-    for (const move of regularMoves) {
+    // Prefer non-capturing moves
+    for (const move of nonCaptureMoves) {
       // Double-check that this move doesn't put the AI's king in check
       const tempBoard = boardState.map(row => [...row]);
       const pieceSymbol = tempBoard[move.from.row][move.from.col];
       tempBoard[move.to.row][move.to.col] = pieceSymbol;
       tempBoard[move.from.row][move.from.col] = null;
-      
       if (!isKingInCheck(tempBoard, 'red')) {
         return move;
       }
     }
-    
+    // If no non-capturing moves, pick a random capture (lowest value first for passivity)
+    captureMoves.sort((a, b) => a.value - b.value);
+    for (const bestCapture of captureMoves) {
+      const tempBoard = boardState.map(row => [...row]);
+      const pieceSymbol = tempBoard[bestCapture.from.row][bestCapture.from.col];
+      tempBoard[bestCapture.to.row][bestCapture.to.col] = pieceSymbol;
+      tempBoard[bestCapture.from.row][bestCapture.from.col] = null;
+      if (!isKingInCheck(tempBoard, 'red')) {
+        return { from: bestCapture.from, to: bestCapture.to };
+      }
+    }
     return null;
   };
 
