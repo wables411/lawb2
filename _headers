@@ -17,6 +17,12 @@
 /*.gif
   Cache-Control: public, max-age=31536000
 
+# Allow iframes and embeds on $lawb page
+/lawb
+  X-Frame-Options:
+  Cross-Origin-Opener-Policy:
+  Cross-Origin-Embedder-Policy:
+
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
