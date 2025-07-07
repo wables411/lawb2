@@ -66,6 +66,7 @@ const useStyles = createUseStyles({
     fontSize: 10,
     fontFamily: 'monospace',
     color: '#000',
+    textTransform: 'uppercase',
   },
   button: {
     padding: '3px 8px',
@@ -682,7 +683,7 @@ function MemeGenerator() {
               {/* Remove sticker button */}
               <button style={{ position: 'absolute', top: -12, left: -12, width: 16, height: 16, background: '#f00', color: '#fff', border: 'none', borderRadius: '50%', fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => removeSticker(sticker.id)}>×</button>
               {/* Place sticker button */}
-              <button style={{ position: 'absolute', bottom: -12, left: '50%', transform: 'translateX(-50%)', width: 40, height: 18, background: '#0f0', color: '#000', border: '1px solid #888', borderRadius: 4, fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => setPlacingStickerId(null)}>Place</button>
+              <button style={{ position: 'absolute', bottom: -12, left: '50%', transform: 'translateX(-50%)', width: 40, height: 18, background: '#0f0', color: '#000', border: '1px solid #888', borderRadius: 4, fontSize: 8, cursor: 'pointer', zIndex: 12 }} onClick={() => setPlacingStickerId(null)}>Place</button>
             </div>
           ) : null
         ))}
