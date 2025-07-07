@@ -88,7 +88,7 @@ const pieceGallery = [
 // Updated difficulty levels
 type Difficulty = 'play';
 
-// Stockfish integration for grand-master AI
+// Stockfish integration for chess AI
 const useStockfish = () => {
   const [stockfishReady, setStockfishReady] = useState(false);
   const stockfishRef = useRef<any>(null);
@@ -192,16 +192,16 @@ const useStockfish = () => {
       try {
         stockfishRef.current.addMessageListener(messageHandler);
 
-        // Set up Stockfish with higher depth for master-class
+        // Set up Stockfish with higher depth
         stockfishRef.current.postMessage('uci');
         stockfishRef.current.postMessage('isready');
         stockfishRef.current.postMessage(`position fen ${fen}`);
         
-        // Use longer time limits for master-class
+        // Use longer time limits
         const adjustedTimeLimit = timeLimit > 5000 ? timeLimit * 1.5 : timeLimit;
         stockfishRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 20`);
 
-        // Timeout fallback - longer for master-class
+        // Timeout fallback
         const timeoutDuration = timeLimit > 5000 ? timeLimit * 2 : timeLimit + 1000;
         window.setTimeout(() => {
           if (!isResolved) {
@@ -557,10 +557,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       let pointsToAdd = 0;
       if (gameResult === 'win') {
         switch (difficulty) {
-          case 'novice': pointsToAdd = 1; break;
-          case 'intermediate': pointsToAdd = 3; break;
-                  case 'master': pointsToAdd = 5; break;
-        case 'grand-master': pointsToAdd = 10; break;
+                case 'play': pointsToAdd = 10; break;
           default: pointsToAdd = 1;
         }
       } else if (gameResult === 'draw') {
