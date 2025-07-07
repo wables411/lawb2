@@ -1795,7 +1795,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
               {showGame && !showDifficulty && (
                                   <span className="mode-play">
-                  Mode: Play
+                  Mode: {difficulty === 'easy' ? 'Easy' : 'Hard'}
                 </span>
               )}
                               {difficulty === 'easy' && (
@@ -1984,7 +1984,22 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       )}
       {showDefeat && (
         <>
-          <div className="blood-overlay" />
+          <div className="blood-overlay">
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <div
+                key={i}
+                className="blood-drip"
+                style={{
+                  left: `${10 + i * 14}%`,
+                  animationDelay: `${0.5 + i * 0.3}s`,
+                  background: `linear-gradient(to bottom, #a80000 0%, #d10000 80%, #5a0000 100%)`,
+                  width: `${14 + Math.random() * 10}px`,
+                  height: `${50 + Math.random() * 30}px`,
+                  opacity: 0.85 + Math.random() * 0.1
+                }}
+              />
+            ))}
+          </div>
           <div className="defeat-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)',pointerEvents:'none'}}>
             <img src="/images/loser.gif" alt="Defeat" style={{width:'320px',height:'auto',zIndex:2}} />
             <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24,pointerEvents:'none'}}>

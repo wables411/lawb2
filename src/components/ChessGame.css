@@ -2908,7 +2908,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   opacity: 0.92;
   z-index: 1999;
   pointer-events: none;
-  animation: blood-drip 2.5s cubic-bezier(0.4,0,0.2,1) forwards;
+  animation: blood-drip 4s cubic-bezier(0.4,0,0.2,1) forwards;
   box-shadow: 0 0 60px 20px #a80000;
 }
 @keyframes blood-drip {
@@ -2916,13 +2916,39 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     height: 0;
     opacity: 0.7;
   }
-  60% {
-    height: 80vh;
-    opacity: 0.92;
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
     height: 100vh;
     opacity: 0.98;
+  }
+}
+.blood-drip {
+  position: absolute;
+  top: 0;
+  width: 18px;
+  height: 60px;
+  background: linear-gradient(to bottom, #a80000 0%, #d10000 80%, #5a0000 100%);
+  border-radius: 50% 50% 60% 60%/60% 60% 100% 100%;
+  opacity: 0.85;
+  z-index: 2000;
+  animation: blood-drip-fall 2.8s linear forwards;
+}
+@keyframes blood-drip-fall {
+  0% {
+    top: -60px;
+    opacity: 0.7;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    top: 100vh;
+    opacity: 0.1;
   }
 }
 
