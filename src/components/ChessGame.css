@@ -2936,3 +2936,10 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   pointer-events: auto;
   z-index: 3000;
 }
+.victory-overlay, .balloons-container {
+  pointer-events: none;
+}
+.victory-overlay button {
+  pointer-events: auto;
+  z-index: 3000;
+}

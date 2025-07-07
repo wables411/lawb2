@@ -1261,9 +1261,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         }
       }
     }
+    // 30% chance to capture if possible, otherwise prefer non-capturing moves
+    if (captureMoves.length > 0 && Math.random() < 0.3) {
+      captureMoves.sort((a, b) => a.value - b.value);
+      for (const bestCapture of captureMoves) {
+        const tempBoard = boardState.map(row => [...row]);
+        const pieceSymbol = tempBoard[bestCapture.from.row][bestCapture.from.col];
+        tempBoard[bestCapture.to.row][bestCapture.to.col] = pieceSymbol;
+        tempBoard[bestCapture.from.row][bestCapture.from.col] = null;
+        if (!isKingInCheck(tempBoard, 'red')) {
+          return { from: bestCapture.from, to: bestCapture.to };
+        }
+      }
+    }
     // Prefer non-capturing moves
     for (const move of nonCaptureMoves) {
-      // Double-check that this move doesn't put the AI's king in check
       const tempBoard = boardState.map(row => [...row]);
       const pieceSymbol = tempBoard[move.from.row][move.from.col];
       tempBoard[move.to.row][move.to.col] = pieceSymbol;
@@ -1288,6 +1300,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Game control functions
   const resetGame = () => {
+    playStartSound();
     setBoard(JSON.parse(JSON.stringify(initialBoard)));
     setCurrentPlayer('blue');
     setSelectedPiece(null);
@@ -1312,6 +1325,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Update startAIGame to show difficulty selection instead of starting the game immediately
   const startAIGame = () => {
+    playStartSound();
     setShowDifficulty(true);
   };
 
@@ -1687,6 +1701,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setShowGame(false);
   };
 
+  // Play start.mp3 when a new game starts
+  const playStartSound = () => {
+    const audio = new Audio('/images/start.mp3');
+    audio.play().catch(() => {});
+  };
+
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
       {/* Always show header at the top */}
@@ -1952,17 +1972,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       {showLeaderboardUpdated && (
         <div className="leaderboard-updated-msg">Leaderboard updated!</div>
       )}
-      {showVictory && (
-        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.7)'}}>
-          {/* Balloons animation */}
-          <div className="balloons-container" style={{position:'absolute',width:'100vw',height:'100vh',pointerEvents:'none'}}>
-            {[...Array(12)].map((_,i)=>(
-              <div key={i} className="balloon" style={{position:'absolute',left:`${8+i*7}%`,bottom:'-120px',animation:`balloon-float 4s ${i*0.3}s forwards`}}>
-                <svg width="60" height="100"><ellipse cx="30" cy="60" rx="25" ry="35" fill={`hsl(${i*30},80%,60%)`} /><rect x="27" y="95" width="6" height="20" fill="#888" /></svg>
-              </div>
-            ))}
+      {showVictory && victoryCelebration && (
+        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
+          <div className="balloons-container">{/* ...balloons code... */}</div>
+          <img src="/images/victory.gif" alt="Victory" style={{width:'320px',height:'auto',zIndex:2}} />
+          <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24}}>
+            <button onClick={handleNewGame}>New Game</button>
+            <button onClick={handleBackToMenu}>Back to Menu</button>
           </div>
-          <img src="/images/victory.gif" alt="Victory!" style={{width:'320px',height:'auto',zIndex:2}} />
         </div>
       )}
       {showDefeat && (
