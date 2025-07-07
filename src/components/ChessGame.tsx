@@ -227,9 +227,7 @@ const useStockfish = () => {
     try {
       // Use DigitalOcean VPS in production, local proxy in development
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const apiUrl = isDevelopment 
-        ? '/api/stockfish' // Local development proxy
-        : 'http://107.170.71.63:3001/api/stockfish'; // Production DigitalOcean VPS
+      const apiUrl = 'http://107.170.71.63:3001/api/stockfish'; // Always use DigitalOcean VPS
       
       console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       
