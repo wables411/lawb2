@@ -1091,7 +1091,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
       if (difficulty === 'play') {
         // Use Stockfish API
-        const timeLimit = 12000;
+        const timeLimit = 3000;
         setStatus('AI is calculating...');
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);

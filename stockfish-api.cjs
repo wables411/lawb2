@@ -3,11 +3,9 @@ const http = require('http');
 const { spawn } = require('child_process');
 const url = require('url');
 
-// CORS headers
+// CORS headers - removed since Nginx handles this
 function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS handled by Nginx
 }
 
 // Parse JSON from request body
@@ -74,7 +72,7 @@ const server = http.createServer(async (req, res) => {
           res.statusCode = 500;
           res.end(JSON.stringify({ error: 'Request timed out' }));
         }
-      }, 15000);
+      }, 5000);
 
       stockfish.stdout.on('data', (data) => {
         const lines = data.toString().split('\n');
@@ -131,8 +129,9 @@ const server = http.createServer(async (req, res) => {
       // Send commands to Stockfish
       stockfish.stdin.write('uci\n');
       stockfish.stdin.write('isready\n');
+      stockfish.stdin.write('setoption name Skill Level value 15\n');
       stockfish.stdin.write(`position fen ${fen}\n`);
-      stockfish.stdin.write(`go movetime ${movetime || 1000}\n`);
+      stockfish.stdin.write(`go movetime ${movetime || 2000} depth 15\n`);
       
     } catch (error) {
       console.error('Server error:', error);
