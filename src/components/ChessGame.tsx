@@ -1112,7 +1112,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           difficulty,
           movetime: timeLimit
         };
-        fetch('/api/stockfish', {
+        fetch('http://107.170.71.63:3001/api/stockfish', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
