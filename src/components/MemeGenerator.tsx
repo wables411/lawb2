@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs } from '../mint';
 import { v4 as uuidv4 } from 'uuid';
@@ -188,13 +188,35 @@ function MemeGenerator() {
   const [stickers, setStickers] = useState<Sticker[]>([]);
   const [activeStickerId, setActiveStickerId] = useState<string | null>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
+  // Add placing state
+  const [placingStickerId, setPlacingStickerId] = useState<string | null>(null);
 
   // drawText and applyEffectsSafely moved inside drawMeme
-  const drawMeme = useCallback(() => {
-    // drawText helper
+  const drawMemeToCanvas = async (canvas: HTMLCanvasElement) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Draw background image
+    if (nftImage) {
+      await new Promise<void>((resolve) => {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = nftImage;
+      });
+    } else {
+      ctx.fillStyle = '#333';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // Draw text
     const drawText = (ctx: CanvasRenderingContext2D) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
       ctx.textAlign = 'center';
       // Function to wrap text
       const wrapText = (text: string, maxWidth: number) => {
@@ -217,12 +239,8 @@ function MemeGenerator() {
       // Draw top text
       if (topText) {
         ctx.font = `bold ${topFontSize}px Impact`;
-        const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
-        // Set font before wrapping for accurate measurement
-        const lines = (function() {
-          ctx.font = `bold ${topFontSize}px Impact`;
-          return wrapText(topText, maxWidth);
-        })();
+        const maxWidth = canvas.width * 0.9;
+        const lines = wrapText(topText, maxWidth);
         lines.forEach((line, index) => {
           const y = topFontSize + 10 + (index * topFontSize * 1.2);
           ctx.strokeStyle = '#000';
@@ -235,16 +253,10 @@ function MemeGenerator() {
       // Draw bottom text
       if (bottomText) {
         ctx.font = `bold ${bottomFontSize}px Impact`;
-        const maxWidth = canvas.width * 0.9; // Leave 10% margin on each side
-        // Set font before wrapping for accurate measurement
-        const lines = (function() {
-          ctx.font = `bold ${bottomFontSize}px Impact`;
-          return wrapText(bottomText, maxWidth);
-        })();
-        // Draw from the bottom up: last line is above the bottom edge by 12px, previous lines above
+        const maxWidth = canvas.width * 0.9;
+        const lines = wrapText(bottomText, maxWidth);
         const bottomMargin = 12;
         lines.forEach((line, index) => {
-          // The last line is at the bottomMargin, previous lines stack upward
           const y = canvas.height - bottomMargin - ((lines.length - 1 - index) * bottomFontSize * 1.2);
           ctx.strokeStyle = '#000';
           ctx.lineWidth = 4;
@@ -254,81 +266,34 @@ function MemeGenerator() {
         });
       }
     };
-
-    // applyEffectsSafely helper
-    const applyEffectsSafely = (canvas: HTMLCanvasElement) => {
-      try {
-        if (deepFry) applyDeepFry(canvas);
-        if (pixelate) applyPixelate(canvas);
-        if (grain) applyGrain(canvas);
-      } catch (error) {
-        console.warn('Effects could not be applied due to CORS restrictions. Try uploading your own image instead.');
-        // Reset effect states to prevent confusion
-        setDeepFry(false);
-        setPixelate(false);
-        setGrain(false);
-      }
-    };
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw background image if available
-    if (nftImage) {
-      console.log('Loading image:', nftImage);
-      const img = new Image();
-      img.crossOrigin = 'anonymous'; // Try to fix CORS issue
+    drawText(ctx);
+    // Draw stickers (wait for all images to load)
+    await Promise.all(stickers.map(sticker => new Promise<void>(resolve => {
+      const img = new window.Image();
+      img.src = sticker.src;
       img.onload = () => {
-        console.log('Image loaded successfully:', img.width, 'x', img.height);
-        // Check if canvas still exists and is the same one
-        const currentCanvas = canvasRef.current;
-        if (!currentCanvas || currentCanvas !== canvas) return;
-        const currentCtx = currentCanvas.getContext('2d');
-        if (!currentCtx) return;
-        // Clear and redraw everything
-        currentCtx.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
-        // Calculate aspect ratio to fit image properly
-        const scale = Math.min(currentCanvas.width / img.width, currentCanvas.height / img.height);
-        const x = (currentCanvas.width - img.width * scale) / 2;
-        const y = (currentCanvas.height - img.height * scale) / 2;
-        console.log('Drawing image at:', x, y, 'with scale:', scale);
-        currentCtx.drawImage(img, x, y, img.width * scale, img.height * scale);
-        drawText(currentCtx);
-        // Apply effects after drawing everything
-        applyEffectsSafely(currentCanvas);
+        ctx.save();
+        ctx.translate(sticker.x, sticker.y);
+        ctx.rotate((sticker.rotation * Math.PI) / 180);
+        ctx.scale(sticker.scale, sticker.scale);
+        ctx.drawImage(img, -40, -40, 80, 80);
+        ctx.restore();
+        resolve();
       };
-      img.onerror = (error) => {
-        console.error('Failed to load image:', nftImage, error);
-        // Check if canvas still exists and is the same one
-        const currentCanvas = canvasRef.current;
-        if (!currentCanvas || currentCanvas !== canvas) return;
-        const currentCtx = currentCanvas.getContext('2d');
-        if (!currentCtx) return;
-        // Clear and draw placeholder background
-        currentCtx.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
-        currentCtx.fillStyle = '#333';
-        currentCtx.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
-        drawText(currentCtx);
-        // Apply effects to placeholder
-        applyEffectsSafely(currentCanvas);
-      };
-      img.src = nftImage;
-    } else {
-      // Draw placeholder background
-      ctx.fillStyle = '#333';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      drawText(ctx);
-      // Apply effects after drawing everything
-      applyEffectsSafely(canvas);
+      img.onerror = () => resolve();
+    })));
+    // Apply effects last
+    try {
+      if (deepFry) applyDeepFry(canvas);
+      if (pixelate) applyPixelate(canvas);
+      if (grain) applyGrain(canvas);
+    } catch (error: unknown) {
+      console.warn('Effects could not be applied due to CORS restrictions. Try uploading your own image instead.', error);
+      setDeepFry(false);
+      setPixelate(false);
+      setGrain(false);
     }
-    // After drawing text, draw stickers
-    if (ctx) {
-      drawStickers(ctx);
-    }
-  }, [nftImage, topText, topFontSize, bottomText, bottomFontSize, deepFry, pixelate, grain, stickers]);
+  };
 
   // Effect functions
   const applyDeepFry = (canvas: HTMLCanvasElement) => {
@@ -416,8 +381,10 @@ function MemeGenerator() {
 
   // Redraw when text, image, or effects change
   useEffect(() => {
-    drawMeme();
-  }, [drawMeme]);
+    if (canvasRef.current) {
+      void drawMemeToCanvas(canvasRef.current);
+    }
+  }, [drawMemeToCanvas]);
 
   // Handlers
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -436,11 +403,10 @@ function MemeGenerator() {
     setPixelate(false);
     setGrain(false);
   };
-  const handleSave = () => {
+  const handleSave = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    // Create a temporary link to download the canvas
+    await drawMemeToCanvas(canvas);
     const link = document.createElement('a');
     link.download = 'meme.png';
     link.href = canvas.toDataURL('image/png');
@@ -513,34 +479,47 @@ function MemeGenerator() {
       addSticker(url);
     }
   };
-  // Drag, rotate, resize logic
+  // Update sticker drag logic to clamp to canvas
   const handleStickerDrag = (id: string, dx: number, dy: number) => {
-    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s));
+    setStickers(stickers => stickers.map(s => {
+      if (s.id !== id) return s;
+      let newX = s.x + dx;
+      let newY = s.y + dy;
+      // Clamp to canvas (assume sticker is 80x80 * scale, center is at (x, y))
+      const halfW = 40 * s.scale;
+      const halfH = 40 * s.scale;
+      newX = Math.max(halfW, Math.min(320 - halfW, newX));
+      newY = Math.max(halfH, Math.min(320 - halfH, newY));
+      return { ...s, x: newX, y: newY };
+    }));
   };
-  const handleStickerRotate = (id: string, angle: number) => {
-    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, rotation: s.rotation + angle } : s));
+  // Improved rotation: use angle between mouse and sticker center
+  const handleStickerRotate = (id: string, startAngle: number, startRotation: number, mouseX: number, mouseY: number) => {
+    setStickers(stickers => stickers.map(s => {
+      if (s.id !== id) return s;
+      // Calculate angle from sticker center to mouse
+      const centerX = s.x;
+      const centerY = s.y;
+      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * 180 / Math.PI;
+      return { ...s, rotation: startRotation + (angle - startAngle) };
+    }));
   };
-  const handleStickerResize = (id: string, scaleDelta: number) => {
-    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.2, s.scale * scaleDelta) } : s));
+  // Place sticker mode logic
+  const handleStickerClick = (id: string) => {
+    if (placingStickerId === id) {
+      setPlacingStickerId(null); // Place sticker
+    } else {
+      setPlacingStickerId(id); // Activate sticker for moving
+    }
   };
   // Remove sticker
   const removeSticker = (id: string) => {
     setStickers(stickers => stickers.filter(s => s.id !== id));
   };
 
-  // Draw stickers on export
-  const drawStickers = (ctx: CanvasRenderingContext2D) => {
-    stickers.forEach(sticker => {
-      const img = new window.Image();
-      img.src = sticker.src;
-      // Draw with transforms
-      ctx.save();
-      ctx.translate(sticker.x, sticker.y);
-      ctx.rotate((sticker.rotation * Math.PI) / 180);
-      ctx.scale(sticker.scale, sticker.scale);
-      ctx.drawImage(img, -40, -40, 80, 80); // 80x80 default sticker size
-      ctx.restore();
-    });
+  // Ensure handleStickerResize is defined
+  const handleStickerResize = (id: string, scaleDelta: number) => {
+    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.2, s.scale * scaleDelta) } : s));
   };
 
   return (
@@ -637,17 +616,23 @@ function MemeGenerator() {
               width: 80 * sticker.scale,
               height: 80 * sticker.scale,
               transform: `rotate(${sticker.rotation}deg)`,
-              cursor: activeStickerId === sticker.id ? 'move' : 'pointer',
+              cursor: placingStickerId === sticker.id ? 'move' : 'pointer',
               pointerEvents: 'auto',
               zIndex: 10,
+              border: placingStickerId === sticker.id ? '2px solid #00f' : undefined,
+              boxShadow: placingStickerId === sticker.id ? '0 0 8px #00f' : undefined,
             }}
             onMouseDown={e => {
-              setActiveStickerId(sticker.id);
-              e.stopPropagation();
+              if (placingStickerId === sticker.id) {
+                setActiveStickerId(sticker.id);
+                e.stopPropagation();
+              } else {
+                handleStickerClick(sticker.id);
+              }
             }}
             onMouseUp={() => setActiveStickerId(null)}
             onMouseMove={e => {
-              if (activeStickerId === sticker.id && e.buttons === 1) {
+              if (activeStickerId === sticker.id && e.buttons === 1 && placingStickerId === sticker.id) {
                 handleStickerDrag(sticker.id, e.movementX, e.movementY);
               }
             }}
@@ -656,11 +641,15 @@ function MemeGenerator() {
             {/* Rotate handle */}
             <div style={{ position: 'absolute', right: -12, top: '40%', width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'grab', zIndex: 11 }}
               onMouseDown={e => {
+                if (placingStickerId !== sticker.id) return;
                 e.stopPropagation();
-                const startY = e.clientY;
+                const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                const centerX = rect ? rect.left + rect.width / 2 : 0;
+                const centerY = rect ? rect.top + rect.height / 2 : 0;
+                const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+                const startRotation = sticker.rotation;
                 const onMove = (moveEvent: MouseEvent) => {
-                  const delta = moveEvent.clientY - startY;
-                  handleStickerRotate(sticker.id, delta);
+                  handleStickerRotate(sticker.id, startAngle, startRotation, moveEvent.clientX, moveEvent.clientY);
                 };
                 const onUp = () => {
                   window.removeEventListener('mousemove', onMove);
@@ -673,6 +662,7 @@ function MemeGenerator() {
             {/* Resize handle */}
             <div style={{ position: 'absolute', bottom: -12, right: -12, width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'nwse-resize', zIndex: 11 }}
               onMouseDown={e => {
+                if (placingStickerId !== sticker.id) return;
                 e.stopPropagation();
                 const startX = e.clientX;
                 const onMove = (moveEvent: MouseEvent) => {
