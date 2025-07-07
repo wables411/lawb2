@@ -86,7 +86,7 @@ const pieceGallery = [
 ];
 
 // Updated difficulty levels
-type Difficulty = 'easy' | 'play';
+type Difficulty = 'play';
 
 // Stockfish integration for grand-master AI
 const useStockfish = () => {
@@ -308,7 +308,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [difficulty, setDifficulty] = useState<Difficulty>('play');
   const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -1092,10 +1092,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
       isAIMovingRef.current = true;
 
-      if (difficulty === 'easy' || difficulty === 'play') {
-        // Use Stockfish API with different time limits
-        const timeLimit = difficulty === 'play' ? 12000 : 2000;
-        setStatus(`${difficulty === 'play' ? 'Strong AI' : 'Easy AI'} is calculating...`);
+      if (difficulty === 'play') {
+        // Use Stockfish API
+        const timeLimit = 12000;
+        setStatus('AI is calculating...');
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);
         if (apiCallInProgressRef.current) {
@@ -1513,33 +1513,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
         <div className="difficulty-selection-panel">
-                  <h3>Select Difficulty</h3>
-                  <button 
-            className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('easy'); startGame(); }}
-            style={{ 
-              background: difficulty === 'easy' ? 'linear-gradient(45deg, #4CAF50, #45a049)' : undefined,
-              color: difficulty === 'easy' ? 'white' : undefined,
-              fontWeight: 'bold',
-              fontSize: '1.1em',
-              padding: '12px 25px'
-            }}
-                  >
-            🟢 Easy
-                  </button>
+                  <h3>Ready to Play</h3>
                   <button 
             className={`difficulty-btn${difficulty === 'play' ? ' selected' : ''}`}
             onClick={() => { setDifficulty('play'); startGame(); }}
             style={{ 
-              background: difficulty === 'play' ? 'linear-gradient(45deg, #ff0000, #ff6600)' : undefined,
-              color: difficulty === 'play' ? 'white' : undefined,
+              background: 'linear-gradient(45deg, #ff0000, #ff6600)',
+              color: 'white',
               fontWeight: 'bold',
-              textShadow: difficulty === 'play' ? '0 0 10px rgba(255,255,255,0.8)' : undefined,
+              textShadow: '0 0 10px rgba(255,255,255,0.8)',
               fontSize: '1.2em',
               padding: '15px 30px'
             }}
                   >
-            🏆 Play (Hard)
+            🎮 PLAY 🎮
                   </button>
         </div>
       </div>
@@ -1810,11 +1797,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </span>
               <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
               {showGame && !showDifficulty && (
-                                  <span className={difficulty === 'easy' ? 'mode-easy' : 'mode-play'}>
-                  Mode: {difficulty === 'easy' ? 'Easy' : 'Play (Hard)'}
+                                  <span className="mode-play">
+                  Mode: Play
                 </span>
               )}
-                              {(difficulty === 'easy' || difficulty === 'play') && (
+                              {difficulty === 'play' && (
                 <span className={`stockfish-status ${stockfishStatus}`}>
                   LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
                 </span>
@@ -1934,9 +1921,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   
                   <p><strong>Wallet Connection:</strong> Connect your wallet to track your progress and compete on the leaderboard. Your wallet address serves as your username.</p>
                   
-                  <p><strong>Points System:</strong> Win points by defeating the AI - Easy (3pts), Play/Hard (10pts). Draws earn 1 point.</p>
+                  <p><strong>Points System:</strong> Win points by defeating the AI - Play (10pts). Draws earn 1 point.</p>
                   
-                  <p><strong>AI Difficulty:</strong> Easy=Beginner friendly, Play/Hard=Strong challenge.</p>
+                  <p><strong>AI Difficulty:</strong> Play against a strong chess AI.</p>
                 </div>
               </div>
             </div>

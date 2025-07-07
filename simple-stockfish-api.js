@@ -4,29 +4,13 @@ const url = require('url');
 
 // Helper function to get difficulty settings
 function getDifficultySettings(difficulty) {
-  switch (difficulty) {
-    case 'easy':
-      return {
-        skillLevel: 5,
-        depth: 8,
-        movetime: 2000,
-        description: 'Easy - beginner friendly'
-      };
-    case 'play':
-      return {
-        skillLevel: 20,
-        depth: 25,
-        movetime: 12000,
-        description: 'Hard - strong challenge'
-      };
-    default:
-      return {
-        skillLevel: 20,
-        depth: 25,
-        movetime: 12000,
-        description: 'Hard - strong challenge'
-      };
-  }
+  // Only support 'play' difficulty
+  return {
+    skillLevel: 20,
+    depth: 25,
+    movetime: 12000,
+    description: 'Strong chess AI'
+  };
 }
 
 // CORS headers
@@ -76,7 +60,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && parsedUrl.pathname === '/api/stockfish') {
     try {
       const body = await parseJsonBody(req);
-      const { fen, difficulty = 'easy', movetime } = body;
+      const { fen, difficulty = 'play', movetime } = body;
       
       console.log(`Received request for FEN: ${fen}, difficulty: ${difficulty}, movetime: ${movetime}`);
       
