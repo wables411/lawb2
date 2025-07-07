@@ -456,20 +456,24 @@ function MemeGenerator() {
     }
   };
 
-  // Add sticker (stock or uploaded)
+  // Improved addSticker: use functional setStickers, prevent duplicates
   const addSticker = (src: string) => {
-    if (stickers.length >= 2) return;
-    setStickers([
-      ...stickers,
-      {
-        id: uuidv4(),
-        src,
-        x: 80 + stickers.length * 40,
-        y: 80 + stickers.length * 40,
-        scale: 1,
-        rotation: 0,
-      },
-    ]);
+    setStickers(prev => {
+      if (prev.length >= 2) return prev;
+      // Prevent adding the same sticker twice in rapid succession
+      if (prev.some(s => s.src === src && !s.id.startsWith('upload-'))) return prev;
+      return [
+        ...prev,
+        {
+          id: uuidv4(),
+          src,
+          x: 80 + prev.length * 40,
+          y: 80 + prev.length * 40,
+          scale: 1,
+          rotation: 0,
+        },
+      ];
+    });
   };
   // Upload sticker handler
   const handleStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -479,13 +483,12 @@ function MemeGenerator() {
       addSticker(url);
     }
   };
-  // Update sticker drag logic to clamp to canvas
+  // Less sensitive drag
   const handleStickerDrag = (id: string, dx: number, dy: number) => {
     setStickers(stickers => stickers.map(s => {
       if (s.id !== id) return s;
-      let newX = s.x + dx;
-      let newY = s.y + dy;
-      // Clamp to canvas (assume sticker is 80x80 * scale, center is at (x, y))
+      let newX = s.x + dx / 2; // Reduce drag sensitivity
+      let newY = s.y + dy / 2;
       const halfW = 40 * s.scale;
       const halfH = 40 * s.scale;
       newX = Math.max(halfW, Math.min(320 - halfW, newX));
@@ -493,15 +496,14 @@ function MemeGenerator() {
       return { ...s, x: newX, y: newY };
     }));
   };
-  // Improved rotation: use angle between mouse and sticker center
+  // Less sensitive rotation
   const handleStickerRotate = (id: string, startAngle: number, startRotation: number, mouseX: number, mouseY: number) => {
     setStickers(stickers => stickers.map(s => {
       if (s.id !== id) return s;
-      // Calculate angle from sticker center to mouse
       const centerX = s.x;
       const centerY = s.y;
       const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * 180 / Math.PI;
-      return { ...s, rotation: startRotation + (angle - startAngle) };
+      return { ...s, rotation: startRotation + (angle - startAngle) * 0.5 }; // Slow down rotation
     }));
   };
   // Place sticker mode logic
@@ -517,9 +519,9 @@ function MemeGenerator() {
     setStickers(stickers => stickers.filter(s => s.id !== id));
   };
 
-  // Ensure handleStickerResize is defined
+  // Less sensitive resize
   const handleStickerResize = (id: string, scaleDelta: number) => {
-    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.2, s.scale * scaleDelta) } : s));
+    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.2, s.scale * (1 + (scaleDelta - 1) * 0.2)) } : s));
   };
 
   return (
