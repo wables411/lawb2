@@ -227,7 +227,7 @@ const useStockfish = () => {
     try {
       // Use DigitalOcean VPS in production, local proxy in development
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const apiUrl = 'http://107.170.71.63:3001/api/stockfish'; // Always use DigitalOcean VPS
+      const apiUrl = 'https://107.170.71.63/api/stockfish'; // Always use DigitalOcean VPS with HTTPS
       
       console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       
@@ -1112,7 +1112,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           difficulty,
           movetime: timeLimit
         };
-        fetch('http://107.170.71.63:3001/api/stockfish', {
+        fetch('https://107.170.71.63/api/stockfish', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
