@@ -1523,7 +1523,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               padding: '15px 30px'
             }}
                   >
-            🎮 PLAY 🎮
+            PLAY
                   </button>
         </div>
       </div>
