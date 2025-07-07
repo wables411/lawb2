@@ -86,7 +86,7 @@ const pieceGallery = [
 ];
 
 // Updated difficulty levels
-type Difficulty = 'novice' | 'intermediate' | 'master' | 'grand-master';
+type Difficulty = 'play';
 
 // Stockfish integration for grand-master AI
 const useStockfish = () => {
@@ -308,7 +308,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
-  const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
+  const [difficulty, setDifficulty] = useState<Difficulty>('play');
   const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -1092,14 +1092,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
       isAIMovingRef.current = true;
 
-      if (['novice', 'intermediate', 'master', 'grand-master'].includes(difficulty)) {
-        // Always use Stockfish API for all difficulties
-        const timeLimit =
-          difficulty === 'grand-master' ? 12000 :
-          difficulty === 'master' ? 6000 :
-          difficulty === 'intermediate' ? 2000 :
-          1000;
-        setStatus(`${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} AI is calculating...`);
+      if (difficulty === 'play') {
+        // Always use Stockfish API
+        const timeLimit = 12000;
+        setStatus('AI is calculating...');
         const fen = boardToFEN(board, currentPlayer);
         console.log('[DEBUG] Sending FEN to API:', fen);
         if (apiCallInProgressRef.current) {
@@ -1517,36 +1513,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
         <div className="difficulty-selection-panel">
-                  <h3>Select Difficulty</h3>
+                  <h3>Ready to Play</h3>
                   <button 
-            className={`difficulty-btn${difficulty === 'novice' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('novice'); startGame(); }}
-                  >
-            Novice
-                  </button>
-                  <button 
-            className={`difficulty-btn${difficulty === 'intermediate' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('intermediate'); startGame(); }}
-                  >
-            Intermediate
-                  </button>
-                            <button 
-            className={`difficulty-btn${difficulty === 'master' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('master'); startGame(); }}
-          >
-            Master
-                  </button>
-          <button 
-            className={`difficulty-btn${difficulty === 'grand-master' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('grand-master'); startGame(); }}
+            className={`difficulty-btn${difficulty === 'play' ? ' selected' : ''}`}
+            onClick={() => { setDifficulty('play'); startGame(); }}
             style={{ 
-              background: difficulty === 'grand-master' ? 'linear-gradient(45deg, #ff0000, #ff6600)' : undefined,
-              color: difficulty === 'grand-master' ? 'white' : undefined,
+              background: 'linear-gradient(45deg, #ff0000, #ff6600)',
+              color: 'white',
               fontWeight: 'bold',
-              textShadow: difficulty === 'grand-master' ? '0 0 10px rgba(255,255,255,0.8)' : undefined
+              textShadow: '0 0 10px rgba(255,255,255,0.8)',
+              fontSize: '1.2em',
+              padding: '15px 30px'
             }}
-          >
-            🏆 GRAND-MASTER 🏆
+                  >
+            🎮 PLAY 🎮
                   </button>
         </div>
       </div>
@@ -1817,11 +1797,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </span>
               <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
               {showGame && !showDifficulty && (
-                                  <span className={difficulty === 'novice' ? 'mode-novice' : difficulty === 'intermediate' ? 'mode-intermediate' : difficulty === 'master' ? 'mode-master' : 'mode-grand-master'}>
-                  Mode: {difficulty === 'novice' ? 'Novice' : difficulty === 'intermediate' ? 'Intermediate' : difficulty === 'master' ? 'Master' : 'Grand-Master'}
+                                  <span className="mode-play">
+                  Mode: Play
                 </span>
               )}
-                              {(difficulty === 'master' || difficulty === 'grand-master') && (
+                              {difficulty === 'play' && (
                 <span className={`stockfish-status ${stockfishStatus}`}>
                   LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
                 </span>
@@ -1941,9 +1921,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   
                   <p><strong>Wallet Connection:</strong> Connect your wallet to track your progress and compete on the leaderboard. Your wallet address serves as your username.</p>
                   
-                  <p><strong>Points System:</strong> Win points by defeating the AI - Novice (1pt), Intermediate (3pts), Master (5pts), Grand-Master (10pts). Draws earn 1 point regardless of difficulty.</p>
+                  <p><strong>Points System:</strong> Win points by defeating the AI - Play (10pts). Draws earn 1 point.</p>
                   
-                  <p><strong>AI Difficulty:</strong> Novice=Easy, Intermediate=Moderate, Master=Very Strong, Grand-Master=Virtually Unbeatable.</p>
+                  <p><strong>AI Difficulty:</strong> Play against a strong chess AI.</p>
                 </div>
               </div>
             </div>

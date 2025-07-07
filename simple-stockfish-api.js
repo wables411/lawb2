@@ -4,43 +4,13 @@ const url = require('url');
 
 // Helper function to get difficulty settings
 function getDifficultySettings(difficulty) {
-  switch (difficulty) {
-    case 'novice':
-      return {
-        skillLevel: 1,
-        depth: 8,
-        movetime: 1000,
-        description: 'Very easy - makes many mistakes'
-      };
-    case 'intermediate':
-      return {
-        skillLevel: 5,
-        depth: 12,
-        movetime: 2000,
-        description: 'Moderate challenge - plays reasonably'
-      };
-    case 'master':
-      return {
-        skillLevel: 15,
-        depth: 18,
-        movetime: 6000,
-        description: 'Very strong - hard to beat'
-      };
-    case 'grand-master':
-      return {
-        skillLevel: 20,
-        depth: 25,
-        movetime: 12000,
-        description: 'Virtually unbeatable'
-      };
-    default:
-      return {
-        skillLevel: 10,
-        depth: 15,
-        movetime: 3000,
-        description: 'Default intermediate level'
-      };
-  }
+  // Only support 'play' difficulty
+  return {
+    skillLevel: 20,
+    depth: 25,
+    movetime: 12000,
+    description: 'Strong chess AI'
+  };
 }
 
 // CORS headers
@@ -90,7 +60,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && parsedUrl.pathname === '/api/stockfish') {
     try {
       const body = await parseJsonBody(req);
-      const { fen, difficulty = 'intermediate', movetime } = body;
+      const { fen, difficulty = 'play', movetime } = body;
       
       console.log(`Received request for FEN: ${fen}, difficulty: ${difficulty}, movetime: ${movetime}`);
       
@@ -113,7 +83,7 @@ const server = http.createServer(async (req, res) => {
       let responseSent = false;
 
       // Set a timeout to prevent hanging
-      const timeoutDuration = difficulty === 'grand-master' ? 20000 : 15000;
+      const timeoutDuration = 20000;
       timeout = setTimeout(() => {
         if (!responseSent) {
           console.log('Request timed out, killing Stockfish process');
