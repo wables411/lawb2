@@ -483,12 +483,12 @@ function MemeGenerator() {
       addSticker(url);
     }
   };
-  // Less sensitive drag
+  // Adjust drag sensitivity for more natural movement
   const handleStickerDrag = (id: string, dx: number, dy: number) => {
     setStickers(stickers => stickers.map(s => {
       if (s.id !== id) return s;
-      let newX = s.x + dx / 2; // Reduce drag sensitivity
-      let newY = s.y + dy / 2;
+      let newX = s.x + dx / 1.2; // Slightly less slow
+      let newY = s.y + dy / 1.2;
       const halfW = 40 * s.scale;
       const halfH = 40 * s.scale;
       newX = Math.max(halfW, Math.min(320 - halfW, newX));
@@ -609,79 +609,77 @@ function MemeGenerator() {
       {/* Overlay stickers for manipulation */}
       <div style={{ position: 'absolute', left: 0, top: 0, width: 320, height: 320, pointerEvents: 'none' }}>
         {stickers.map(sticker => (
-          <div
-            key={sticker.id}
-            style={{
-              position: 'absolute',
-              left: sticker.x,
-              top: sticker.y,
-              width: 80 * sticker.scale,
-              height: 80 * sticker.scale,
-              transform: `rotate(${sticker.rotation}deg)`,
-              cursor: placingStickerId === sticker.id ? 'move' : 'pointer',
-              pointerEvents: 'auto',
-              zIndex: 10,
-              border: placingStickerId === sticker.id ? '2px solid #00f' : undefined,
-              boxShadow: placingStickerId === sticker.id ? '0 0 8px #00f' : undefined,
-            }}
-            onMouseDown={e => {
-              if (placingStickerId === sticker.id) {
+          placingStickerId === sticker.id ? (
+            <div
+              key={sticker.id}
+              style={{
+                position: 'absolute',
+                left: sticker.x,
+                top: sticker.y,
+                width: 80 * sticker.scale,
+                height: 80 * sticker.scale,
+                transform: `rotate(${sticker.rotation}deg)`,
+                cursor: 'move',
+                pointerEvents: 'auto',
+                zIndex: 10,
+                border: '2px solid #00f',
+                boxShadow: '0 0 8px #00f',
+              }}
+              onMouseDown={e => {
                 setActiveStickerId(sticker.id);
                 e.stopPropagation();
-              } else {
-                handleStickerClick(sticker.id);
-              }
-            }}
-            onMouseUp={() => setActiveStickerId(null)}
-            onMouseMove={e => {
-              if (activeStickerId === sticker.id && e.buttons === 1 && placingStickerId === sticker.id) {
-                handleStickerDrag(sticker.id, e.movementX, e.movementY);
-              }
-            }}
-          >
-            <img src={sticker.src} alt="sticker" style={{ width: '100%', height: '100%', userSelect: 'none', pointerEvents: 'none' }} draggable={false} />
-            {/* Rotate handle */}
-            <div style={{ position: 'absolute', right: -12, top: '40%', width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'grab', zIndex: 11 }}
-              onMouseDown={e => {
-                if (placingStickerId !== sticker.id) return;
-                e.stopPropagation();
-                const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                const centerX = rect ? rect.left + rect.width / 2 : 0;
-                const centerY = rect ? rect.top + rect.height / 2 : 0;
-                const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
-                const startRotation = sticker.rotation;
-                const onMove = (moveEvent: MouseEvent) => {
-                  handleStickerRotate(sticker.id, startAngle, startRotation, moveEvent.clientX, moveEvent.clientY);
-                };
-                const onUp = () => {
-                  window.removeEventListener('mousemove', onMove);
-                  window.removeEventListener('mouseup', onUp);
-                };
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
               }}
-            />
-            {/* Resize handle */}
-            <div style={{ position: 'absolute', bottom: -12, right: -12, width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'nwse-resize', zIndex: 11 }}
-              onMouseDown={e => {
-                if (placingStickerId !== sticker.id) return;
-                e.stopPropagation();
-                const startX = e.clientX;
-                const onMove = (moveEvent: MouseEvent) => {
-                  const delta = (moveEvent.clientX - startX) / 80;
-                  handleStickerResize(sticker.id, 1 + delta);
-                };
-                const onUp = () => {
-                  window.removeEventListener('mousemove', onMove);
-                  window.removeEventListener('mouseup', onUp);
-                };
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
+              onMouseUp={() => setActiveStickerId(null)}
+              onMouseMove={e => {
+                if (activeStickerId === sticker.id && e.buttons === 1) {
+                  handleStickerDrag(sticker.id, e.movementX, e.movementY);
+                }
               }}
-            />
-            {/* Remove sticker button */}
-            <button style={{ position: 'absolute', top: -12, left: -12, width: 16, height: 16, background: '#f00', color: '#fff', border: 'none', borderRadius: '50%', fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => removeSticker(sticker.id)}>×</button>
-          </div>
+            >
+              <img src={sticker.src} alt="sticker" style={{ width: '100%', height: '100%', userSelect: 'none', pointerEvents: 'none' }} draggable={false} />
+              {/* Rotate handle */}
+              <div style={{ position: 'absolute', right: -12, top: '40%', width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'grab', zIndex: 11 }}
+                onMouseDown={e => {
+                  e.stopPropagation();
+                  const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                  const centerX = rect ? rect.left + rect.width / 2 : 0;
+                  const centerY = rect ? rect.top + rect.height / 2 : 0;
+                  const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+                  const startRotation = sticker.rotation;
+                  const onMove = (moveEvent: MouseEvent) => {
+                    handleStickerRotate(sticker.id, startAngle, startRotation, moveEvent.clientX, moveEvent.clientY);
+                  };
+                  const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                  };
+                  window.addEventListener('mousemove', onMove);
+                  window.addEventListener('mouseup', onUp);
+                }}
+              />
+              {/* Resize handle */}
+              <div style={{ position: 'absolute', bottom: -12, right: -12, width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'nwse-resize', zIndex: 11 }}
+                onMouseDown={e => {
+                  e.stopPropagation();
+                  const startX = e.clientX;
+                  const onMove = (moveEvent: MouseEvent) => {
+                    const delta = (moveEvent.clientX - startX) / 80;
+                    handleStickerResize(sticker.id, 1 + delta);
+                  };
+                  const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                  };
+                  window.addEventListener('mousemove', onMove);
+                  window.addEventListener('mouseup', onUp);
+                }}
+              />
+              {/* Remove sticker button */}
+              <button style={{ position: 'absolute', top: -12, left: -12, width: 16, height: 16, background: '#f00', color: '#fff', border: 'none', borderRadius: '50%', fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => removeSticker(sticker.id)}>×</button>
+              {/* Place sticker button */}
+              <button style={{ position: 'absolute', bottom: -12, left: '50%', transform: 'translateX(-50%)', width: 40, height: 18, background: '#0f0', color: '#000', border: '1px solid #888', borderRadius: 4, fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => setPlacingStickerId(null)}>Place</button>
+            </div>
+          ) : null
         ))}
       </div>
     </div>
