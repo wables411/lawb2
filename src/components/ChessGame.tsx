@@ -86,7 +86,7 @@ const pieceGallery = [
 ];
 
 // Updated difficulty levels
-type Difficulty = 'play';
+type Difficulty = 'easy' | 'hard';
 
 // Stockfish integration for chess AI
 const useStockfish = () => {
@@ -308,7 +308,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
-  const [difficulty, setDifficulty] = useState<Difficulty>('play');
+  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('hard');
   const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -557,7 +557,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       let pointsToAdd = 0;
       if (gameResult === 'win') {
         switch (difficulty) {
-                case 'play': pointsToAdd = 10; break;
+                case 'easy': pointsToAdd = 10; break;
           default: pointsToAdd = 1;
         }
       } else if (gameResult === 'draw') {
@@ -1086,39 +1086,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
     if (!isAIMovingRef.current && gameMode === GameMode.AI && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
-      console.log('[DEBUG] Starting AI move for difficulty:', difficulty);
       isAIMovingRef.current = true;
-
-      if (difficulty === 'play') {
-        // Use Stockfish API
-        const timeLimit = 3000;
+      if (difficulty === 'easy') {
+        // Easy: random move
+        setTimeout(() => {
+          const move = getRandomAIMove(board);
+          if (move) {
+            makeMove(move.from, move.to, true);
+          } else {
+            isAIMovingRef.current = false;
+          }
+        }, 600);
+      } else {
+        // Hard: Stockfish API
         setStatus('AI is calculating...');
         const fen = boardToFEN(board, currentPlayer);
-        console.log('[DEBUG] Sending FEN to API:', fen);
-        if (apiCallInProgressRef.current) {
-          console.log('[DEBUG] API call already in progress, skipping');
-          return;
-        }
+        if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
-        const apiData = {
-          fen,
-          difficulty,
-          movetime: timeLimit
-        };
+        const apiData = { fen, difficulty, movetime: 3000 };
         fetch('https://chess.lawb.xyz/api/stockfish', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(apiData)
         }).then(response => {
-          if (response.ok) {
-            return response.json();
-          }
+          if (response.ok) return response.json();
           throw new Error('API call failed');
         }).then(data => {
           const move = data.bestmove || data.move;
-          console.log('[DEBUG] API returned move:', move);
           if (move && move !== '(none)' && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
             const fromRowStockfish = parseInt(move[1]);
@@ -1126,31 +1120,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toRowStockfish = parseInt(move[3]);
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
-            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && 
-                toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
+            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               const piece = board[fromRow][fromCol];
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
-                console.log('[DEBUG] Red piece move is legal, executing...');
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
-                // If Stockfish move is not legal, do nothing (no fallback)
-                console.log('[DEBUG] Stockfish move not legal, skipping move.');
                 isAIMovingRef.current = false;
                 apiCallInProgressRef.current = false;
               }
             } else {
-              console.log('[DEBUG] Invalid move coordinates, skipping move.');
               isAIMovingRef.current = false;
               apiCallInProgressRef.current = false;
             }
           } else {
-            console.log('[DEBUG] Stockfish returned no valid move, skipping move.');
             isAIMovingRef.current = false;
             apiCallInProgressRef.current = false;
           }
-        }).catch(error => {
-          console.error('[DEBUG] Stockfish error:', error);
+        }).catch(() => {
           setStatus('AI error. Please try again.');
           isAIMovingRef.current = false;
           apiCallInProgressRef.current = false;
@@ -1200,15 +1187,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       if (isPlayerWin) {
         setStatus(`Checkmate! You win!`);
         playSound('checkmate');
+        setShowVictory(true);
         triggerVictoryCelebration();
-        // Update leaderboard for player win
         void updateScore('win');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
         setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
         playSound('checkmate');
-        // Update leaderboard for player loss
+        setShowDefeat(true);
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
@@ -1509,22 +1496,40 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const renderDifficultySelection = () => (
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
-        <div className="difficulty-selection-panel">
-                  <h3>Ready to Play</h3>
-                  <button 
-            className={`difficulty-btn${difficulty === 'play' ? ' selected' : ''}`}
-            onClick={() => { setDifficulty('play'); startGame(); }}
+        <div className="difficulty-selection-panel" style={{background:'#fff',borderRadius:12,padding:'32px 24px',boxShadow:'0 4px 32px rgba(0,0,0,0.12)',textAlign:'center'}}>
+          <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#0a2a7a',marginBottom:16}}>Start a New Game</h2>
+          <p style={{fontSize:'1.1rem',color:'#333',marginBottom:24}}>Challenge the LawbBot AI to a chess match.<br/>Good luck, have fun!</p>
+          <div style={{display:'flex',justifyContent:'center',gap:16,marginBottom:24}}>
+            <button
+              className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
+              style={{background:difficulty==='easy'?'#44c0ff':'#eee',color:difficulty==='easy'?'#fff':'#333',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:8,border:'none',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 2px 8px #44c0ff44':'none'}}
+              onClick={()=>setDifficulty('easy')}
+            >Easy</button>
+            <button
+              className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
+              style={{background:difficulty==='hard'?'#0a2a7a':'#eee',color:difficulty==='hard'?'#fff':'#333',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:8,border:'none',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 2px 8px #0a2a7a44':'none'}}
+              onClick={()=>setDifficulty('hard')}
+            >Hard</button>
+          </div>
+          <button 
+            className={`difficulty-btn start-btn`}
+            onClick={() => { startGame(); }}
             style={{ 
-              background: 'linear-gradient(45deg, #ff0000, #ff6600)',
+              background: 'linear-gradient(90deg, #0a2a7a 0%, #44c0ff 100%)',
               color: 'white',
               fontWeight: 'bold',
-              textShadow: '0 0 10px rgba(255,255,255,0.8)',
-              fontSize: '1.2em',
-              padding: '15px 30px'
+              fontSize: '1.3em',
+              padding: '18px 48px',
+              borderRadius: 8,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+              border: 'none',
+              cursor: 'pointer',
+              letterSpacing: 1,
+              marginBottom: 8
             }}
-                  >
-            PLAY
-                  </button>
+          >
+            <span role="img" aria-label="chess">♟️</span> Start Game
+          </button>
         </div>
       </div>
     </div>
@@ -1596,7 +1601,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Play sound effects and create particle effects
     if (isCapture) {
       playSound('capture');
-      createParticleEffect(to.row, to.col, capturedPiece);
     } else {
       playSound('move');
     }
@@ -1619,70 +1623,39 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Add epic sound effects and visual enhancements
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [particleEffects, setParticleEffects] = useState(true);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
-  const [epicMode, setEpicMode] = useState(false);
 
   // Sound effects
   const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory') => {
     if (!soundEnabled) return;
-    
-    const audio = new Audio();
+    let src = '';
     switch (soundType) {
       case 'move':
-        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        src = '/images/move.mp3';
         break;
       case 'capture':
-        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        src = '/images/capture.mp3';
         break;
       case 'check':
-        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        src = '/images/play.mp3';
         break;
       case 'checkmate':
-        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        src = '/images/victory.mp3';
         break;
       case 'victory':
-        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        src = '/images/victory.mp3';
         break;
+      default:
+        src = '/images/move.mp3';
     }
-    audio.play().catch(() => {}); // Ignore audio errors
-  };
-
-  // Particle effect for captures
-  const createParticleEffect = (row: number, col: number, piece: string) => {
-    if (!particleEffects) return;
-    
-    const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
-    if (!square) return;
-    
-    const rect = square.getBoundingClientRect();
-    const colors = getPieceColor(piece) === 'red' ? ['#ff4444', '#ff6666', '#ff8888'] : ['#4444ff', '#6666ff', '#8888ff'];
-    
-    for (let i = 0; i < 8; i++) {
-      const particle = document.createElement('div');
-      particle.style.cssText = `
-        position: absolute;
-        width: 4px;
-        height: 4px;
-        background: ${colors[Math.floor(Math.random() * colors.length)]};
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 1000;
-        left: ${rect.left + rect.width / 2}px;
-        top: ${rect.top + rect.height / 2}px;
-        animation: particle-explosion 0.8s ease-out forwards;
-      `;
-      
-      document.body.appendChild(particle);
-      setTimeout(() => particle.remove(), 800);
-    }
+    const audio = new Audio(src);
+    audio.play().catch(() => {});
   };
 
   // Victory celebration
   const triggerVictoryCelebration = () => {
     if (!victoryCelebration) return;
     
-    setEpicMode(true);
     playSound('victory');
     
     // Create confetti effect
@@ -1704,11 +1677,31 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }, i * 100);
     }
     
-    setTimeout(() => setEpicMode(false), 5000);
+    setTimeout(() => setVictoryCelebration(false), 5000);
+  };
+
+  // Add state for victory/defeat animation
+  const [showVictory, setShowVictory] = useState(false);
+  const [showDefeat, setShowDefeat] = useState(false);
+
+  // Helper to clear victory/defeat overlays
+  const clearCelebration = () => {
+    setShowVictory(false);
+    setShowDefeat(false);
+  };
+
+  const handleNewGame = () => {
+    clearCelebration();
+    resetGame();
+  };
+
+  const handleBackToMenu = () => {
+    clearCelebration();
+    setShowGame(false);
   };
 
   return (
-    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}${epicMode ? ' epic-mode' : ''}`}>
+    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
       {/* Always show header at the top */}
       {!fullscreen && (
         <div className="chess-header">
@@ -1798,7 +1791,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   Mode: Play
                 </span>
               )}
-                              {difficulty === 'play' && (
+                              {difficulty === 'easy' && (
+                <span className={`stockfish-status ${stockfishStatus}`}>
+                  LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
+                </span>
+              )}
+              {difficulty === 'hard' && (
                 <span className={`stockfish-status ${stockfishStatus}`}>
                   LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
                 </span>
@@ -1853,8 +1851,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </div>
               <div className="game-controls">
                 <button onClick={() => setShowGalleryModal(true)}>Chess Piece Info</button>
-                <button onClick={resetGame}>New Game</button>
-                <button onClick={resetGame}>Back to Menu</button>
+                <button onClick={handleNewGame}>New Game</button>
+                <button onClick={handleBackToMenu}>Back to Menu</button>
               </div>
               
               {/* Epic Controls */}
@@ -1871,27 +1869,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <div className="epic-toggle">
                   <input 
                     type="checkbox" 
-                    id="particle-toggle" 
-                    checked={particleEffects} 
-                    onChange={(e) => setParticleEffects(e.target.checked)}
-                  />
-                  <label htmlFor="particle-toggle">✨ Particle Effects</label>
-                </div>
-                <div className="epic-toggle">
-                  <input 
-                    type="checkbox" 
                     id="victory-toggle" 
                     checked={victoryCelebration} 
                     onChange={(e) => setVictoryCelebration(e.target.checked)}
                   />
                   <label htmlFor="victory-toggle">🎉 Victory Celebration</label>
                 </div>
-                <button 
-                  className="epic-button" 
-                  onClick={() => setEpicMode(!epicMode)}
-                >
-                  {epicMode ? '🚀 Epic Mode ON' : '⚡ Enable Epic Mode'}
-                </button>
               </div>
             </div>
           ) : showDifficulty ? (
@@ -1918,9 +1901,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   
                   <p><strong>Wallet Connection:</strong> Connect your wallet to track your progress and compete on the leaderboard. Your wallet address serves as your username.</p>
                   
-                  <p><strong>Points System:</strong> Win points by defeating the AI - Play (10pts). Draws earn 1 point.</p>
-                  
-                  <p><strong>AI Difficulty:</strong> Play against a strong chess AI.</p>
+                  <p><strong>Points System:</strong> Win points by defeating the AI. 1 win = 10pts. 1 draw = 1 point.</p>
                 </div>
               </div>
             </div>
@@ -1983,6 +1964,27 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       {renderPromotionDialog()}
       {showLeaderboardUpdated && (
         <div className="leaderboard-updated-msg">Leaderboard updated!</div>
+      )}
+      {showVictory && (
+        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.7)'}}>
+          {/* Balloons animation */}
+          <div className="balloons-container" style={{position:'absolute',width:'100vw',height:'100vh',pointerEvents:'none'}}>
+            {[...Array(12)].map((_,i)=>(
+              <div key={i} className="balloon" style={{position:'absolute',left:`${8+i*7}%`,bottom:'-120px',animation:`balloon-float 4s ${i*0.3}s forwards`}}>
+                <svg width="60" height="100"><ellipse cx="30" cy="60" rx="25" ry="35" fill={`hsl(${i*30},80%,60%)`} /><rect x="27" y="95" width="6" height="20" fill="#888" /></svg>
+              </div>
+            ))}
+          </div>
+          <img src="/images/victory.gif" alt="Victory!" style={{width:'320px',height:'auto',zIndex:2}} />
+        </div>
+      )}
+      {showDefeat && (
+        <>
+          <div className="blood-overlay" />
+          <div className="defeat-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
+            <img src="/images/loser.gif" alt="Defeat" style={{width:'320px',height:'auto',zIndex:2}} />
+          </div>
+        </>
       )}
     </div>
   );
