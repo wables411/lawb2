@@ -168,6 +168,9 @@ const STOCK_STICKERS = [
   '/images/sticker5.png',
 ];
 
+// Update canvas size constants
+const CANVAS_SIZE = 500;
+
 function MemeGenerator() {
   const classes = useStyles();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -456,24 +459,26 @@ function MemeGenerator() {
     }
   };
 
-  // Improved addSticker: use functional setStickers, prevent duplicates
+  // Improved addSticker: use functional setStickers, prevent duplicates, and set placingStickerId
   const addSticker = (src: string) => {
+    const newSticker = {
+      id: uuidv4(),
+      src,
+      x: 80,
+      y: 80,
+      scale: 1,
+      rotation: 0,
+    };
     setStickers(prev => {
       if (prev.length >= 2) return prev;
       // Prevent adding the same sticker twice in rapid succession
       if (prev.some(s => s.src === src && !s.id.startsWith('upload-'))) return prev;
       return [
         ...prev,
-        {
-          id: uuidv4(),
-          src,
-          x: 80 + prev.length * 40,
-          y: 80 + prev.length * 40,
-          scale: 1,
-          rotation: 0,
-        },
+        newSticker,
       ];
     });
+    setPlacingStickerId(newSticker.id as string);
   };
   // Upload sticker handler
   const handleStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -491,8 +496,8 @@ function MemeGenerator() {
       let newY = s.y + dy / 1.2;
       const halfW = 40 * s.scale;
       const halfH = 40 * s.scale;
-      newX = Math.max(halfW, Math.min(320 - halfW, newX));
-      newY = Math.max(halfH, Math.min(320 - halfH, newY));
+      newX = Math.max(halfW, Math.min(CANVAS_SIZE - halfW, newX));
+      newY = Math.max(halfH, Math.min(CANVAS_SIZE - halfH, newY));
       return { ...s, x: newX, y: newY };
     }));
   };
@@ -603,11 +608,11 @@ function MemeGenerator() {
       </div>
 
       <div className={classes.memeArea}>
-        <canvas ref={canvasRef} width={320} height={320} className={classes.canvas} />
+        <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} className={classes.canvas} />
       </div>
 
       {/* Overlay stickers for manipulation */}
-      <div style={{ position: 'absolute', left: 0, top: 0, width: 320, height: 320, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, width: CANVAS_SIZE, height: CANVAS_SIZE, pointerEvents: 'none' }}>
         {stickers.map(sticker => (
           placingStickerId === sticker.id ? (
             <div
