@@ -1981,8 +1981,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       {showDefeat && (
         <>
           <div className="blood-overlay" />
-          <div className="defeat-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
+          <div className="defeat-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)',pointerEvents:'none'}}>
             <img src="/images/loser.gif" alt="Defeat" style={{width:'320px',height:'auto',zIndex:2}} />
+            <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24,pointerEvents:'none'}}>
+              <button style={{pointerEvents:'auto',zIndex:3000}} onClick={handleNewGame}>New Game</button>
+              <button style={{pointerEvents:'auto',zIndex:3000}} onClick={handleBackToMenu}>Back to Menu</button>
+            </div>
           </div>
         </>
       )}

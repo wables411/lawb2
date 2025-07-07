@@ -2925,3 +2925,14 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     opacity: 0.98;
   }
 }
+
+.blood-overlay {
+  pointer-events: none;
+}
+.defeat-overlay {
+  pointer-events: none;
+}
+.defeat-overlay button, .victory-overlay button {
+  pointer-events: auto;
+  z-index: 3000;
+}
