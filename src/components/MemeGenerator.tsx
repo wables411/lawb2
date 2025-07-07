@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { createUseStyles } from 'react-jss';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs } from '../mint';
+import { v4 as uuidv4 } from 'uuid';
 
 const useStyles = createUseStyles({
   container: {
@@ -149,6 +150,24 @@ const NFT_COLLECTIONS = [
   { id: 'nexus', name: 'Nexus', api: 'opensea-solana', slug: 'lawbnexus', chain: 'solana' },
 ];
 
+// Sticker type
+interface Sticker {
+  id: string;
+  src: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+}
+
+const STOCK_STICKERS = [
+  '/images/sticker1.png',
+  '/images/sticker2.png',
+  '/images/sticker3.png',
+  '/images/sticker4.png',
+  '/images/sticker5.png',
+];
+
 function MemeGenerator() {
   const classes = useStyles();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -165,6 +184,10 @@ function MemeGenerator() {
   const [grain, setGrain] = useState(false);
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [loadingNft, setLoadingNft] = useState(false);
+  // Sticker state
+  const [stickers, setStickers] = useState<Sticker[]>([]);
+  const [activeStickerId, setActiveStickerId] = useState<string | null>(null);
+  const stickerInputRef = useRef<HTMLInputElement>(null);
 
   // drawText and applyEffectsSafely moved inside drawMeme
   const drawMeme = useCallback(() => {
@@ -301,7 +324,11 @@ function MemeGenerator() {
       // Apply effects after drawing everything
       applyEffectsSafely(canvas);
     }
-  }, [nftImage, topText, topFontSize, bottomText, bottomFontSize, deepFry, pixelate, grain]);
+    // After drawing text, draw stickers
+    if (ctx) {
+      drawStickers(ctx);
+    }
+  }, [nftImage, topText, topFontSize, bottomText, bottomFontSize, deepFry, pixelate, grain, stickers]);
 
   // Effect functions
   const applyDeepFry = (canvas: HTMLCanvasElement) => {
@@ -463,6 +490,59 @@ function MemeGenerator() {
     }
   };
 
+  // Add sticker (stock or uploaded)
+  const addSticker = (src: string) => {
+    if (stickers.length >= 2) return;
+    setStickers([
+      ...stickers,
+      {
+        id: uuidv4(),
+        src,
+        x: 80 + stickers.length * 40,
+        y: 80 + stickers.length * 40,
+        scale: 1,
+        rotation: 0,
+      },
+    ]);
+  };
+  // Upload sticker handler
+  const handleStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      addSticker(url);
+    }
+  };
+  // Drag, rotate, resize logic
+  const handleStickerDrag = (id: string, dx: number, dy: number) => {
+    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s));
+  };
+  const handleStickerRotate = (id: string, angle: number) => {
+    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, rotation: s.rotation + angle } : s));
+  };
+  const handleStickerResize = (id: string, scaleDelta: number) => {
+    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.2, s.scale * scaleDelta) } : s));
+  };
+  // Remove sticker
+  const removeSticker = (id: string) => {
+    setStickers(stickers => stickers.filter(s => s.id !== id));
+  };
+
+  // Draw stickers on export
+  const drawStickers = (ctx: CanvasRenderingContext2D) => {
+    stickers.forEach(sticker => {
+      const img = new window.Image();
+      img.src = sticker.src;
+      // Draw with transforms
+      ctx.save();
+      ctx.translate(sticker.x, sticker.y);
+      ctx.rotate((sticker.rotation * Math.PI) / 180);
+      ctx.scale(sticker.scale, sticker.scale);
+      ctx.drawImage(img, -40, -40, 80, 80); // 80x80 default sticker size
+      ctx.restore();
+    });
+  };
+
   return (
     <div className={classes.container}>
       <div className={classes.header}>
@@ -523,6 +603,18 @@ function MemeGenerator() {
             <button className={classes.effectButton} style={{ background: grain ? '#00ffff' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
           </div>
         </div>
+        <div className={classes.section}>
+          <div className={classes.sectionTitle}>Stickers</div>
+          <div className={classes.row}>
+            {STOCK_STICKERS.map((src, i) => (
+              <img key={src} src={src} alt={`sticker${i+1}`} style={{ width: 32, height: 32, cursor: 'pointer', border: '1px solid #888', marginRight: 4 }} onClick={() => addSticker(src)} />
+            ))}
+            <label className={classes.button} style={{ marginBottom: 0 }}>
+              Upload Sticker
+              <input type="file" accept="image/*" style={{ display: 'none' }} ref={stickerInputRef} onChange={handleStickerUpload} />
+            </label>
+          </div>
+        </div>
         <div className={classes.actions}>
           <button className={classes.button} onClick={handleSave}>Save Image</button>
           <button className={classes.button} onClick={handleRestart}>Restart</button>
@@ -531,6 +623,74 @@ function MemeGenerator() {
 
       <div className={classes.memeArea}>
         <canvas ref={canvasRef} width={320} height={320} className={classes.canvas} />
+      </div>
+
+      {/* Overlay stickers for manipulation */}
+      <div style={{ position: 'absolute', left: 0, top: 0, width: 320, height: 320, pointerEvents: 'none' }}>
+        {stickers.map(sticker => (
+          <div
+            key={sticker.id}
+            style={{
+              position: 'absolute',
+              left: sticker.x,
+              top: sticker.y,
+              width: 80 * sticker.scale,
+              height: 80 * sticker.scale,
+              transform: `rotate(${sticker.rotation}deg)`,
+              cursor: activeStickerId === sticker.id ? 'move' : 'pointer',
+              pointerEvents: 'auto',
+              zIndex: 10,
+            }}
+            onMouseDown={e => {
+              setActiveStickerId(sticker.id);
+              e.stopPropagation();
+            }}
+            onMouseUp={() => setActiveStickerId(null)}
+            onMouseMove={e => {
+              if (activeStickerId === sticker.id && e.buttons === 1) {
+                handleStickerDrag(sticker.id, e.movementX, e.movementY);
+              }
+            }}
+          >
+            <img src={sticker.src} alt="sticker" style={{ width: '100%', height: '100%', userSelect: 'none', pointerEvents: 'none' }} draggable={false} />
+            {/* Rotate handle */}
+            <div style={{ position: 'absolute', right: -12, top: '40%', width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'grab', zIndex: 11 }}
+              onMouseDown={e => {
+                e.stopPropagation();
+                const startY = e.clientY;
+                const onMove = (moveEvent: MouseEvent) => {
+                  const delta = moveEvent.clientY - startY;
+                  handleStickerRotate(sticker.id, delta);
+                };
+                const onUp = () => {
+                  window.removeEventListener('mousemove', onMove);
+                  window.removeEventListener('mouseup', onUp);
+                };
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onUp);
+              }}
+            />
+            {/* Resize handle */}
+            <div style={{ position: 'absolute', bottom: -12, right: -12, width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'nwse-resize', zIndex: 11 }}
+              onMouseDown={e => {
+                e.stopPropagation();
+                const startX = e.clientX;
+                const onMove = (moveEvent: MouseEvent) => {
+                  const delta = (moveEvent.clientX - startX) / 80;
+                  handleStickerResize(sticker.id, 1 + delta);
+                };
+                const onUp = () => {
+                  window.removeEventListener('mousemove', onMove);
+                  window.removeEventListener('mouseup', onUp);
+                };
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onUp);
+              }}
+            />
+            {/* Remove sticker button */}
+            <button style={{ position: 'absolute', top: -12, left: -12, width: 16, height: 16, background: '#f00', color: '#fff', border: 'none', borderRadius: '50%', fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => removeSticker(sticker.id)}>×</button>
+          </div>
+        ))}
       </div>
     </div>
   );
