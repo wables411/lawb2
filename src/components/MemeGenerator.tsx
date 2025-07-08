@@ -224,6 +224,7 @@ function MemeGenerator() {
       ctx.textAlign = 'center';
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 3;
+      ctx.fillStyle = 'white'; // Add white fill color
       
       const wrapText = (text: string, maxWidth: number) => {
         const words = text.toUpperCase().split(' '); // Convert to uppercase
