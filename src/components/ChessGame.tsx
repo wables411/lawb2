@@ -1300,7 +1300,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Game control functions
   const resetGame = () => {
-    playStartSound();
     setBoard(JSON.parse(JSON.stringify(initialBoard)));
     setCurrentPlayer('blue');
     setSelectedPiece(null);
@@ -1317,15 +1316,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       redRooksMove: { left: false, right: false },
       lastPawnDoubleMove: null
     });
-    // Select a new random chessboard for the next game
     setSelectedChessboard(selectRandomChessboard());
-    // Cancel any AI move in progress
     if (isAIMovingRef.current) isAIMovingRef.current = false;
   };
 
   // Update startAIGame to show difficulty selection instead of starting the game immediately
   const startAIGame = () => {
-    playStartSound();
     setShowDifficulty(true);
   };
 
@@ -1335,11 +1331,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
 
   const startGame = () => {
+    playStartSound();
     console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
     setShowGame(true);
     setShowDifficulty(false);
     setStatus(`Game started! Your turn`);
-    // Select a random chessboard for this game
     const newChessboard = selectRandomChessboard();
     setSelectedChessboard(newChessboard);
     console.log('[DEBUG] Game started with chessboard:', newChessboard);
