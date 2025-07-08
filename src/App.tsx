@@ -240,7 +240,7 @@ function App() {
           Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
-        <blockquote className="twitter-tweet" data-media-max-width="560" data-dnt="true" data-theme="light">
+        <blockquote className="twitter-tweet" data-media-max-width="560">
           <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
         </blockquote>
         <script async src="https://platform.twitter.com/widgets.js"></script>
