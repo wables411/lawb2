@@ -222,51 +222,47 @@ function MemeGenerator() {
     // Draw text
     const drawText = (ctx: CanvasRenderingContext2D) => {
       ctx.textAlign = 'center';
-      // Function to wrap text
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 3;
+      
       const wrapText = (text: string, maxWidth: number) => {
-        const words = text.split(' ');
+        const words = text.toUpperCase().split(' '); // Convert to uppercase
         const lines: string[] = [];
-        let currentLine = '';
-        for (let i = 0; i < words.length; i++) {
-          const testLine = currentLine ? currentLine + ' ' + words[i] : words[i];
-          const width = ctx.measureText(testLine).width;
-          if (width <= maxWidth) {
-            currentLine = testLine;
+        let currentLine = words[0];
+        
+        for (let i = 1; i < words.length; i++) {
+          const word = words[i];
+          const width = ctx.measureText(currentLine + ' ' + word).width;
+          if (width < maxWidth) {
+            currentLine += ' ' + word;
           } else {
-            if (currentLine) lines.push(currentLine);
-            currentLine = words[i];
+            lines.push(currentLine);
+            currentLine = word;
           }
         }
-        if (currentLine) lines.push(currentLine);
+        lines.push(currentLine);
         return lines;
       };
-      // Draw top text
+      
+      // Top text
       if (topText) {
-        ctx.font = `bold ${topFontSize}px Impact`;
-        const maxWidth = canvas.width * 0.9;
-        const lines = wrapText(topText, maxWidth);
+        ctx.font = `${topFontSize}px Impact`;
+        const lines = wrapText(topText, CANVAS_SIZE - 20);
         lines.forEach((line, index) => {
-          const y = topFontSize + 10 + (index * topFontSize * 1.2);
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 4;
-          ctx.strokeText(line, canvas.width / 2, y);
-          ctx.fillStyle = '#fff';
-          ctx.fillText(line, canvas.width / 2, y);
+          const y = topFontSize + (index * topFontSize * 1.2);
+          ctx.strokeText(line, CANVAS_SIZE / 2, y);
+          ctx.fillText(line, CANVAS_SIZE / 2, y);
         });
       }
-      // Draw bottom text
+      
+      // Bottom text
       if (bottomText) {
-        ctx.font = `bold ${bottomFontSize}px Impact`;
-        const maxWidth = canvas.width * 0.9;
-        const lines = wrapText(bottomText, maxWidth);
-        const bottomMargin = 12;
-        lines.forEach((line, index) => {
-          const y = canvas.height - bottomMargin - ((lines.length - 1 - index) * bottomFontSize * 1.2);
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 4;
-          ctx.strokeText(line, canvas.width / 2, y);
-          ctx.fillStyle = '#fff';
-          ctx.fillText(line, canvas.width / 2, y);
+        ctx.font = `${bottomFontSize}px Impact`;
+        const lines = wrapText(bottomText, CANVAS_SIZE - 20);
+        lines.reverse().forEach((line, index) => {
+          const y = CANVAS_SIZE - (bottomFontSize * 1.2 * (index + 1));
+          ctx.strokeText(line, CANVAS_SIZE / 2, y);
+          ctx.fillText(line, CANVAS_SIZE / 2, y);
         });
       }
     };
