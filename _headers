@@ -23,9 +23,10 @@
   Cross-Origin-Opener-Policy:
   Cross-Origin-Embedder-Policy:
 
+# Allow Twitter embeds and other iframes on main site
 /*
-  X-Frame-Options: DENY
+  X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp 
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Embedder-Policy: 
