@@ -1,0 +1,384 @@
+.chess-multiplayer-lobby {
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.chess-multiplayer-lobby h2 {
+  margin: 0 0 20px 0;
+  font-size: 24px;
+  text-align: center;
+  color: #00ff00;
+}
+
+.status-bar {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.lobby-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.open-games h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #00ff00;
+}
+
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.game-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.game-item:hover {
+  background: rgba(0, 255, 0, 0.1);
+  border-color: #00ff00;
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-id {
+  font-weight: bold;
+  font-size: 16px;
+  color: #00ff00;
+}
+
+.wager {
+  font-size: 14px;
+  color: #00ff00;
+}
+
+.title {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.join-btn {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.join-btn:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+}
+
+.join-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions {
+  text-align: center;
+}
+
+.create-btn {
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.create-btn:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.create-form h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #00ff00;
+  text-align: center;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"] {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #00ff00;
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+}
+
+.form-group input::placeholder {
+  color: #666;
+}
+
+.form-group input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.create-confirm-btn {
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.create-confirm-btn:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+}
+
+.create-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: rgba(255, 0, 0, 0.1);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wallet-notice {
+  text-align: center;
+  padding: 20px;
+  background: rgba(255, 255, 0, 0.1);
+  border: 1px solid #ffff00;
+  border-radius: 4px;
+  color: #ffff00;
+  font-size: 14px;
+  margin-top: 20px;
+}
+
+/* Waiting for opponent screen */
+.chess-multiplayer-waiting {
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 30px;
+  max-width: 500px;
+  margin: 0 auto;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.chess-multiplayer-waiting h2 {
+  margin: 0 0 20px 0;
+  font-size: 24px;
+  color: #00ff00;
+}
+
+.game-code {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.game-code strong {
+  font-size: 24px;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+}
+
+.game-info {
+  margin: 20px 0;
+  text-align: left;
+}
+
+.game-info p {
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+/* Active game screen */
+.chess-multiplayer-game {
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 20px;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #00ff00;
+  padding-bottom: 10px;
+}
+
+.game-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #00ff00;
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.leave-btn {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid #ff0000;
+  color: #ff0000;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.leave-btn:hover {
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.game-board {
+  text-align: center;
+  padding: 40px;
+  background: rgba(0, 255, 0, 0.05);
+  border-radius: 4px;
+}
+
+/* Scrollbar styling */
+.games-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.games-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.games-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 0, 0.3);
+  border-radius: 4px;
+}
+
+.games-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 0, 0.5);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .chess-multiplayer-lobby,
+  .chess-multiplayer-waiting,
+  .chess-multiplayer-game {
+    margin: 10px;
+    padding: 15px;
+  }
+  
+  .game-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+} 

@@ -2,6 +2,25 @@ import { createAppKit } from '@reown/appkit/react';
 import { mainnet } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 
+// Sanko testnet configuration
+export const sankoTestnet = {
+  id: 1992,
+  name: 'Sanko Testnet',
+  network: 'sanko-testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'tDMT',
+    symbol: 'tDMT',
+  },
+  rpcUrls: {
+    public: { http: ['https://testnet-rpc.sanko.com'] },
+    default: { http: ['https://testnet-rpc.sanko.com'] },
+  },
+  blockExplorers: {
+    default: { name: 'SankoScan', url: 'https://testnet.sankoscan.io' },
+  },
+} as const;
+
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
 const metadata = {

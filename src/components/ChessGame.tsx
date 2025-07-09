@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { createClient } from '@supabase/supabase-js';
+import ChessMultiplayer from './ChessMultiplayer';
 import './ChessGame.css';
 
 // Supabase configuration
@@ -303,7 +304,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const { address: walletAddress } = useAccount();
   
   // Game state
-  const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.AI);
+  const [gameMode, setGameMode] = useState<'ai' | 'online'>(GameMode.AI);
   const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)));
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
@@ -1085,7 +1086,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
-    if (!isAIMovingRef.current && gameMode === GameMode.AI && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
+    if (!isAIMovingRef.current && gameMode === 'ai' && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
       isAIMovingRef.current = true;
       if (difficulty === 'easy') {
         // Easy: random move
@@ -1333,6 +1334,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const startGame = () => {
     playStartSound();
     console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
+    
+    if (gameMode === 'online') {
+      // For multiplayer, we'll show the multiplayer component instead
+      setShowGame(false);
+      setShowDifficulty(false);
+      return;
+    }
+    
     setShowGame(true);
     setShowDifficulty(false);
     setStatus(`Game started! Your turn`);
@@ -1703,6 +1712,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     audio.play().catch(() => {});
   };
 
+  // Workaround for TypeScript JSX type error
+  const isOnline = gameMode === 'online';
+
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
       {/* Always show header at the top */}
@@ -1788,7 +1800,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                   Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
               </span>
-              <span className="wager-label">Wager:</span> <span>{gameMode === GameMode.AI ? 'NA' : `${wager} ETH`}</span>
+              <span className="wager-label">Wager:</span> <span>{gameMode === 'ai' ? 'NA' : `${wager} ETH`}</span>
               {showGame && !showDifficulty && (
                                   <span className="mode-play">
                   Mode: {difficulty === 'easy' ? 'Easy' : 'Hard'}
@@ -1882,17 +1894,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </div>
           ) : showDifficulty ? (
             renderDifficultySelection()
+          ) : gameMode === 'online' ? (
+            <ChessMultiplayer />
           ) : (
             <div className="game-mode-panel">
               <h3 className="game-mode-title">Select Game Mode</h3>
               <button 
-                className={`mode-btn ${gameMode === GameMode.AI ? 'selected' : ''}`}
-                onClick={() => setGameMode(GameMode.AI)}
+                className={`mode-btn ${gameMode === 'ai' ? 'selected' : ''}`}
+                onClick={() => setGameMode('ai')}
               >
                 VS THE HOUSE
               </button>
-              <div className="pvp-under-construction">
-                <button className="mode-btn" disabled>PVP UNDER CONSTRUCTION</button>
+              <div className="pvp-section">
+                <button 
+                  className={`mode-btn ${isOnline ? 'selected' : ''}`}
+                  onClick={() => setGameMode('online')}
+                >
+                  PvP
+                </button>
                 <img src="/images/chessboard4.png" alt="Chessboard" style={{ display: 'block', margin: '16px auto 0 auto', width: '180px', maxWidth: '90%' }} />
               </div>
               <button className="start-btn continue-btn" onClick={() => setShowDifficulty(true)}>Continue</button>
