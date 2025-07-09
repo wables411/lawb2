@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, RealtimeChannel } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
-import { sankoTestnet } from '../appkit';
-import { useSwitchChain } from 'wagmi';
 
 // Contract configuration
 const CHESS_CONTRACT_ADDRESS = '0x3112AF5728520F52FD1C6710dD7bD52285a68e47';
@@ -13,6 +11,24 @@ const supabaseUrl = 'https://roxwocgknkiqnsgiojgz.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3NjMxMTIsImV4cCI6MjA0NjMzOTExMn0.NbLMZom-gk7XYGdV4MtXYcgR8R1s8xthrIQ0hpQfx9Y';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Chess piece images
+const pieceImages: { [key: string]: string } = {
+  // Red pieces (uppercase)
+  'R': '/images/redrook.png',
+  'N': '/images/redknight.png',
+  'B': '/images/redbishop.png',
+  'Q': '/images/redqueen.png',
+  'K': '/images/redking.png',
+  'P': '/images/redpawn.png',
+  // Blue pieces (lowercase)
+  'r': '/images/bluerook.png',
+  'n': '/images/blueknight.png',
+  'b': '/images/bluebishop.png',
+  'q': '/images/bluequeen.png',
+  'k': '/images/blueking.png',
+  'p': '/images/bluepawn.png'
+};
 
 // Initial board state
 const initialBoard = [
@@ -32,7 +48,7 @@ interface GameData {
   red_player_id: string | null;
   board: {
     positions: (string | null)[][];
-    piece_state: any;
+    piece_state: Record<string, unknown>;
   };
   current_player: string;
   game_state: 'waiting' | 'active' | 'completed';
@@ -42,6 +58,15 @@ interface GameData {
   chain: string;
   created_at: string;
   updated_at: string;
+  last_move?: {
+    piece: string;
+    from_row: number;
+    from_col: number;
+    end_row: number;
+    end_col: number;
+    promotion?: string;
+    captured_piece?: string | null;
+  };
 }
 
 interface OpenGame {
@@ -54,7 +79,6 @@ interface OpenGame {
 
 const ChessMultiplayer: React.FC = () => {
   const { address: walletAddress } = useAccount();
-  const { switchChain } = useSwitchChain();
   
   // State
   const [gameId, setGameId] = useState<string | null>(null);
@@ -68,15 +92,21 @@ const ChessMultiplayer: React.FC = () => {
   const [wagerAmount, setWagerAmount] = useState('0.1');
   const [gameTitle, setGameTitle] = useState('');
   const [isPublic, setIsPublic] = useState(true);
-  const [showGameCode, setShowGameCode] = useState(false);
   const [gameCode, setGameCode] = useState('');
   const [hasCreatedGame, setHasCreatedGame] = useState(false);
+  const [isProcessingMove, setIsProcessingMove] = useState(false);
+  const [forceSyncLoading, setForceSyncLoading] = useState(false);
+  const [board, setBoard] = useState<(string | null)[][]>(initialBoard);
+  const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
+  const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
+  const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // Refs
-  const subscriptionRef = useRef<any>(null);
+  const subscriptionRef = useRef<RealtimeChannel | null>(null);
   const lastCheckTimeRef = useRef(0);
   const lastQueriedGameIdRef = useRef<string | null>(null);
-  const expiryIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const expiryIntervalRef = useRef<number | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   
   // Network management
   const ensureSankoNetwork = useCallback(async () => {
@@ -86,16 +116,16 @@ const ChessMultiplayer: React.FC = () => {
         return false;
       }
       
-      const { chainId } = await (window.ethereum as any).request({ method: 'eth_chainId' });
+      const { chainId } = await (window.ethereum as unknown as ethers.Eip1193Provider).request({ method: 'eth_chainId' });
       if (chainId !== '0x7c8') {
         try {
-          await (window.ethereum as any).request({
+          await (window.ethereum as unknown as ethers.Eip1193Provider).request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: '0x7c8' }]
           });
-        } catch (error: any) {
-          if (error.code === 4902) {
-            await (window.ethereum as any).request({
+        } catch (error: unknown) {
+          if (typeof error === 'object' && error && 'code' in error && (error as { code: number }).code === 4902) {
+            await (window.ethereum as unknown as ethers.Eip1193Provider).request({
               method: 'wallet_addEthereumChain',
               params: [{
                 chainId: '0x7c8',
@@ -123,7 +153,7 @@ const ChessMultiplayer: React.FC = () => {
     try {
       if (!window.ethereum) return null;
       
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
       
       const contract = new ethers.Contract(CHESS_CONTRACT_ADDRESS, [
@@ -144,7 +174,67 @@ const ChessMultiplayer: React.FC = () => {
     }
   }, []);
 
-  // Check player game state
+  // Start game expiry checking (from original multiplayer.js)
+  const startGameExpiryCheck = useCallback(() => {
+    if (expiryIntervalRef.current) {
+      window.clearInterval(expiryIntervalRef.current);
+    }
+    
+    expiryIntervalRef.current = window.setInterval(async () => {
+      try {
+        const expiryThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        const { data, error } = await supabase
+          .from('chess_games')
+          .select('game_id, blue_player_id')
+          .eq('game_state', 'waiting')
+          .is('red_player_id', null)
+          .lte('created_at', expiryThreshold)
+          .eq('chain', 'sanko');
+        
+        if (error) {
+          console.error('Supabase expiry query error:', error.message);
+          return;
+        }
+
+        for (const game of data || []) {
+          const contract = await connectToContract();
+          if (contract) {
+            const inviteCodeBytes = ethers.zeroPadValue(ethers.hexlify('0x' + game.game_id.toLowerCase()), 6);
+            await contract.cancelGame(inviteCodeBytes);
+            await supabase
+              .from('chess_games')
+              .update({ game_state: 'cancelled', updated_at: new Date().toISOString() })
+              .eq('game_id', game.game_id);
+          }
+        }
+        await fetchMultiplayerGames();
+      } catch (error) {
+        console.error('Error checking game expiry:', error);
+      }
+    }, 60 * 1000);
+  }, [connectToContract]);
+
+  // Force sync functionality (from original multiplayer.js)
+  const forceMultiplayerSync = useCallback(async () => {
+    setForceSyncLoading(true);
+    try {
+      if (!walletAddress) {
+        setStatus('Please connect your wallet to resync');
+        return;
+      }
+      
+      console.log('Attempting to resync game state');
+      await checkPlayerGameState();
+      setStatus('Game state resynced successfully');
+    } catch (error) {
+      console.error('forceMultiplayerSync failed:', error);
+      setStatus('Resync failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setForceSyncLoading(false);
+    }
+  }, [walletAddress]);
+
+  // Check player game state with enhanced retry logic
   const checkPlayerGameState = useCallback(async (maxRetries = 5, baseDelay = 1000) => {
     if (!walletAddress) {
       setStatus('Please connect your wallet');
@@ -163,20 +253,20 @@ const ChessMultiplayer: React.FC = () => {
         const contract = await connectToContract();
         
         if (contract) {
-          const chainId = await (window.ethereum as any).request({ method: 'eth_chainId' });
+          const chainId = await (window.ethereum as unknown as ethers.Eip1193Provider).request({ method: 'eth_chainId' });
           if (chainId !== '0x7c8') {
             setStatus('Please switch to Sanko Testnet');
             return false;
           }
           
-          const gameId = await contract.playerToGame(walletAddress);
+          const gameId: string = await contract.playerToGame(walletAddress) as string;
           if (gameId !== '0x000000000000' && gameId !== '') {
             gameIdStr = ethers.hexlify(gameId).slice(2).toUpperCase();
           }
         }
 
         if (!gameIdStr) {
-          const { data, error } = await supabase
+          const { data, error }: { data: Array<{ game_id: string }> | null, error: { message: string } | null } = await supabase
             .from('chess_games')
             .select('game_id')
             .eq('chain', 'sanko')
@@ -196,7 +286,7 @@ const ChessMultiplayer: React.FC = () => {
         }
         lastQueriedGameIdRef.current = gameIdStr;
 
-        const { data: gameData, error } = await supabase
+        const { data: gameData, error: gameError }: { data: GameData | null, error: { message: string } | null } = await supabase
           .from('chess_games')
           .select('*')
           .eq('game_id', gameIdStr)
@@ -204,14 +294,14 @@ const ChessMultiplayer: React.FC = () => {
           .or(`blue_player_id.eq.${walletAddress},red_player_id.eq.${walletAddress}`)
           .single();
         
-        if (error) throw new Error(`Supabase query error: ${error.message}`);
+        if (gameError) throw new Error(`Supabase query error: ${gameError.message}`);
 
-        if (gameData.game_state === 'active' || gameData.game_state === 'waiting') {
-          setCurrentGameState(gameData);
+        if (gameData && (gameData.game_state === 'active' || gameData.game_state === 'waiting')) {
+          setCurrentGameState(gameData as GameData);
           setPlayerColor(walletAddress === gameData.blue_player_id ? 'blue' : 'red');
           setGameId(gameIdStr);
           setIsWaitingForOpponent(gameData.game_state === 'waiting');
-          setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+          setStatus(isMyTurn(gameData as GameData) ? 'Your turn' : "Opponent's turn");
           if (gameIdStr) {
             await subscribeToGame(gameIdStr);
           }
@@ -220,12 +310,14 @@ const ChessMultiplayer: React.FC = () => {
           resetGameState();
           return false;
         }
-      } catch (error: any) {
-        console.error(`checkPlayerGameState attempt ${attempt} failed:`, error.message);
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt - 1)));
-        } else {
-          setStatus('Failed to load game. Please reconnect wallet.');
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error(`checkPlayerGameState attempt ${attempt} failed:`, error.message);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => window.setTimeout(resolve, baseDelay * Math.pow(2, attempt - 1)));
+          } else {
+            setStatus('Failed to load game. Please reconnect wallet.');
+          }
         }
       }
       attempt++;
@@ -233,9 +325,15 @@ const ChessMultiplayer: React.FC = () => {
     return false;
   }, [walletAddress, connectToContract]);
 
-  // Generate unique invite code
+  // Generate unique invite code with better UUID generation
   const generateUniqueInviteCode = useCallback(async () => {
-    const uuid = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const uuid = (1e7 + -1e3 + -4e3 + -8e3 + -1e11)
+      .toString()
+      .replace(/[018]/g, (c: string) =>
+        (parseInt(c) ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> parseInt(c) / 4).toString(16)
+      )
+      .slice(0, 6)
+      .toUpperCase();
     
     const { data } = await supabase
       .from('chess_games')
@@ -247,7 +345,7 @@ const ChessMultiplayer: React.FC = () => {
     return uuid;
   }, []);
 
-  // Create multiplayer game
+  // Create multiplayer game with enhanced error handling
   const createMultiplayerGame = useCallback(async () => {
     if (hasCreatedGame) return;
     setHasCreatedGame(true);
@@ -320,10 +418,9 @@ const ChessMultiplayer: React.FC = () => {
 
       setGameId(inviteCode);
       setPlayerColor('blue');
-      setCurrentGameState(supabaseData);
+      setCurrentGameState(supabaseData as GameData);
       setIsWaitingForOpponent(true);
       setGameCode(inviteCode);
-      setShowGameCode(true);
       setShowCreateForm(false);
       setStatus('Waiting for opponent...');
 
@@ -332,53 +429,64 @@ const ChessMultiplayer: React.FC = () => {
       
       alert(`Game created with wager ${wagerAmount} tDMT`);
       return inviteCode;
-    } catch (error: any) {
-      console.error('Create game failed:', error.message);
-      setHasCreatedGame(false);
-      setIsWaitingForOpponent(false);
-      setStatus(`Failed to create game: ${error.message}`);
-      alert(`Failed to create game: ${error.message}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Create game failed:', error.message);
+        setHasCreatedGame(false);
+        setIsWaitingForOpponent(false);
+        setStatus(`Failed to create game: ${error.message}`);
+        alert(`Failed to create game: ${error.message}`);
+      }
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [walletAddress, wagerAmount, gameTitle, isPublic, hasCreatedGame, ensureSankoNetwork, connectToContract, generateUniqueInviteCode]);
 
-  // Join game by code
-  const joinGameByCode = useCallback(async (gameId: string) => {
+  // Join game by code with retry logic
+  const joinGameByCode = useCallback(async (gameId: string, maxRetries = 3, retryDelay = 2000) => {
     setIsLoading(true);
     setStatus('Joining game...');
 
-    try {
-      if (!walletAddress) throw new Error('Wallet not connected');
-      if (!await ensureSankoNetwork()) return;
+    let attempt = 1;
+    while (attempt <= maxRetries) {
+      try {
+        if (!walletAddress) throw new Error('Wallet not connected');
+        if (!await ensureSankoNetwork()) return;
 
-      const contract = await connectToContract();
-      if (!contract) throw new Error('Failed to connect to contract');
+        const contract = await connectToContract();
+        if (!contract) throw new Error('Failed to connect to contract');
 
-      const { data: gameData, error } = await supabase
-        .from('chess_games')
-        .select('bet_amount')
-        .eq('game_id', gameId)
-        .single();
+        const { data: gameData, error } = await supabase
+          .from('chess_games')
+          .select('bet_amount')
+          .eq('game_id', gameId)
+          .single();
 
-      if (error) throw new Error(`Failed to fetch game: ${error.message}`);
+        if (error) throw new Error(`Failed to fetch game: ${error.message}`);
 
-      const wagerAmount = ethers.parseEther(gameData.bet_amount.toString());
-      const inviteCode = ethers.zeroPadValue(ethers.hexlify('0x' + gameId.toLowerCase()), 6);
-      
-      await contract.joinGame(inviteCode, { value: wagerAmount });
-      await checkPlayerGameState();
-      
-      setStatus('Joined game successfully!');
-      return true;
-    } catch (error: any) {
-      console.error('Join game failed:', error.message);
-      setStatus(`Failed to join game: ${error.message}`);
-      return false;
-    } finally {
-      setIsLoading(false);
+        const wagerAmountStr = typeof gameData.bet_amount === 'string' ? gameData.bet_amount : String(gameData.bet_amount);
+        const wagerAmount = ethers.parseEther(wagerAmountStr);
+        const inviteCode = ethers.zeroPadValue(ethers.hexlify('0x' + gameId.toLowerCase()), 6);
+        
+        await contract.joinGame(inviteCode, { value: wagerAmount });
+        await checkPlayerGameState();
+        
+        setStatus('Joined game successfully!');
+        return true;
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error(`Join attempt ${attempt} failed:`, error.message);
+          if (attempt === maxRetries) {
+            setStatus(`Failed to join game: ${error.message}`);
+            return false;
+          }
+          await new Promise(resolve => window.setTimeout(resolve, retryDelay));
+        }
+      }
+      attempt++;
     }
+    return false;
   }, [walletAddress, ensureSankoNetwork, connectToContract, checkPlayerGameState]);
 
   // Fetch multiplayer games
@@ -462,7 +570,6 @@ const ChessMultiplayer: React.FC = () => {
     setPlayerColor(null);
     setCurrentGameState(null);
     setIsWaitingForOpponent(false);
-    setShowGameCode(false);
     setGameCode('');
     setHasCreatedGame(false);
     setShowCreateForm(false);
@@ -489,6 +596,119 @@ const ChessMultiplayer: React.FC = () => {
     }
   }, []);
 
+  // Chess board rendering functions
+  const getPieceColor = (piece: string | null): 'blue' | 'red' => {
+    if (!piece) return 'blue';
+    return piece >= 'a' && piece <= 'z' ? 'blue' : 'red';
+  };
+
+  const renderSquare = (row: number, col: number) => {
+    const piece = board[row][col];
+    const isSelected = selectedPiece?.row === row && selectedPiece?.col === col;
+    const isLegalMove = legalMoves.some(move => move.row === row && move.col === col);
+    const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
+                                   lastMove.to.row === row && lastMove.to.col === col);
+
+    return (
+      <div
+        key={`${row}-${col}`}
+        className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
+        onClick={() => handleSquareClick(row, col)}
+      >
+        {piece && (
+          <div
+            className="piece"
+            style={{
+              backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center'
+            }}
+          />
+        )}
+        {isLegalMove && <div className="legal-move-indicator" />}
+      </div>
+    );
+  };
+
+  const handleSquareClick = (row: number, col: number) => {
+    if (!currentGameState || isWaitingForOpponent || isProcessingMove) return;
+    
+    const piece = board[row][col];
+    const isMyTurnNow = isMyTurn(currentGameState);
+    
+    if (!isMyTurnNow) return;
+
+    if (selectedPiece) {
+      // Try to make a move
+      if (selectedPiece.row === row && selectedPiece.col === col) {
+        // Clicked on same piece, deselect
+        setSelectedPiece(null);
+        setLegalMoves([]);
+      } else {
+        // Try to move to this square
+        makeMove(selectedPiece.row, selectedPiece.col, row, col);
+        setSelectedPiece(null);
+        setLegalMoves([]);
+      }
+    } else if (piece && getPieceColor(piece) === playerColor) {
+      // Select piece and show legal moves
+      setSelectedPiece({ row, col });
+      // For now, just show all squares as legal (simplified)
+      const moves: { row: number; col: number }[] = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (r !== row || c !== col) {
+            moves.push({ row: r, col: c });
+          }
+        }
+      }
+      setLegalMoves(moves);
+    }
+  };
+
+  const makeMove = async (startRow: number, startCol: number, endRow: number, endCol: number) => {
+    if (!currentGameState || !gameId || isProcessingMove) return;
+    
+    setIsProcessingMove(true);
+    try {
+      // Update board locally first
+      const newBoard = board.map(row => [...row]);
+      const piece = newBoard[startRow][startCol];
+      newBoard[endRow][endCol] = piece;
+      newBoard[startRow][startCol] = null;
+      
+      setBoard(newBoard);
+      setLastMove({ from: { row: startRow, col: startCol }, to: { row: endRow, col: endCol } });
+      
+      // Update game state in Supabase
+      const { error } = await supabase
+        .from('chess_games')
+        .update({
+          board: { positions: newBoard, piece_state: {} },
+          current_player: currentGameState.current_player === 'blue' ? 'red' : 'blue',
+          last_move: {
+            piece,
+            from_row: startRow,
+            from_col: startCol,
+            end_row: endRow,
+            end_col: endCol
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('game_id', gameId);
+      
+      if (error) throw error;
+      
+    } catch (error) {
+      console.error('Move failed:', error);
+      // Revert board state on error
+      setBoard(board);
+    } finally {
+      setIsProcessingMove(false);
+    }
+  };
+
   // Load data on mount
   useEffect(() => {
     if (walletAddress) {
@@ -496,6 +716,13 @@ const ChessMultiplayer: React.FC = () => {
       fetchMultiplayerGames();
     }
   }, [walletAddress, checkPlayerGameState, fetchMultiplayerGames]);
+
+  // Sync board state from game data
+  useEffect(() => {
+    if (currentGameState?.board?.positions) {
+      setBoard(currentGameState.board.positions);
+    }
+  }, [currentGameState?.board?.positions]);
 
   // Subscribe to lobby updates
   useEffect(() => {
@@ -515,6 +742,16 @@ const ChessMultiplayer: React.FC = () => {
     };
   }, [fetchMultiplayerGames]);
 
+  // Start game expiry checking on mount
+  useEffect(() => {
+    startGameExpiryCheck();
+    return () => {
+      if (expiryIntervalRef.current) {
+        window.clearInterval(expiryIntervalRef.current);
+      }
+    };
+  }, [startGameExpiryCheck]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -522,145 +759,257 @@ const ChessMultiplayer: React.FC = () => {
         supabase.removeChannel(subscriptionRef.current);
       }
       if (expiryIntervalRef.current) {
-        clearInterval(expiryIntervalRef.current);
+        window.clearInterval(expiryIntervalRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
       }
     };
   }, []);
 
+  // Active game view - should integrate with existing chessboard
   if (currentGameState && !isWaitingForOpponent) {
     return (
-      <div className="chess-multiplayer-game">
-        <div className="game-header">
-          <h2>Multiplayer Game - {gameId}</h2>
-          <div className="game-info">
-            <span>You are: {playerColor}</span>
-            <span>Current: {currentGameState.current_player}</span>
-            <span>Status: {status}</span>
+      <div className="game-mode-panel">
+        <h3 className="game-mode-title">Multiplayer Game</h3>
+        <div className="game-info">
+          <div className="game-info-bar">
+            <span className={currentGameState.current_player === 'blue' ? 'current-blue' : 'current-red'}>
+              Current: {currentGameState.current_player === 'blue' ? 'Blue' : 'Red'}
+            </span>
+            <span className="wager-label">Wager:</span> <span>{formatWager(currentGameState.bet_amount)}</span>
+            <span className="mode-play">Mode: PvP</span>
+            <span>Game ID: {gameId}</span>
           </div>
-          <button onClick={leaveGame} className="leave-btn">Leave Game</button>
         </div>
-        <div className="game-board">
-          {/* Chess board will be rendered here */}
-          <p>Game board implementation needed</p>
+        <div className="chess-main-area">
+          <div className="chessboard-container">
+            <div className="chessboard">
+              {Array.from({ length: 8 }, (_, row) => (
+                <div key={row} className="board-row">
+                  {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="game-controls">
+            <button onClick={leaveGame}>Leave Game</button>
+            <button onClick={forceMultiplayerSync} disabled={forceSyncLoading}>
+              {forceSyncLoading ? 'Syncing...' : 'Force Sync'}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Waiting for opponent view
   if (isWaitingForOpponent) {
     return (
-      <div className="chess-multiplayer-waiting">
-        <h2>Waiting for Opponent</h2>
-        <div className="game-code">
-          <p>Game Code: <strong>{gameCode}</strong></p>
-          <p>Share this code with your opponent</p>
-        </div>
+      <div className="game-mode-panel">
+        <h3 className="game-mode-title">Waiting for Opponent</h3>
         <div className="game-info">
-          <p>Wager: {formatWager(currentGameState?.bet_amount || '0')}</p>
-          <p>Status: {status}</p>
+          <div className="game-info-bar">
+            <span className="wager-label">Wager:</span> <span>{formatWager(currentGameState?.bet_amount || '0')}</span>
+            <span>Status: {status}</span>
+          </div>
         </div>
-        <button onClick={leaveGame} className="cancel-btn">Cancel Game</button>
+        <div className="chess-main-area">
+          <div className="chessboard-container">
+            <div className="chessboard">
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                color: '#666',
+                fontSize: '16px',
+                textAlign: 'center',
+                padding: '20px'
+              }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+                  Game Code: {gameCode}
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  Share this code with your opponent
+                </div>
+                <div style={{ fontSize: '14px' }}>
+                  Waiting for opponent to join...
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="game-controls">
+            <button onClick={leaveGame}>Cancel Game</button>
+            <button onClick={forceMultiplayerSync} disabled={forceSyncLoading}>
+              {forceSyncLoading ? 'Syncing...' : 'Force Sync'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Main lobby view - using existing CSS structure
   return (
-    <div className="chess-multiplayer-lobby">
-      <h2>🏁 Multiplayer Chess</h2>
+    <div className="game-mode-panel">
+      <h3 className="game-mode-title">🏁 Multiplayer Chess</h3>
       
-      <div className="status-bar">
-        <span>{status}</span>
+      <div className="game-info">
+        <div className="game-info-bar">
+          <span>{status}</span>
+        </div>
       </div>
 
       {!showCreateForm ? (
-        <div className="lobby-content">
-          <div className="open-games">
-            <h3>Open Games ({openGames.length})</h3>
-            {openGames.length === 0 ? (
-              <p>No open games available</p>
-            ) : (
-              <div className="games-list">
-                {openGames.map((game) => (
-                  <div key={game.game_id} className="game-item">
-                    <div className="game-info">
-                      <span className="game-id">#{game.game_id}</span>
-                      <span className="wager">{formatWager(game.bet_amount)}</span>
-                      {game.game_title && <span className="title">{game.game_title}</span>}
-                    </div>
-                    <button
-                      onClick={() => joinGameByCode(game.game_id)}
-                      disabled={isLoading || !walletAddress}
-                      className="join-btn"
-                    >
-                      {isLoading ? 'Joining...' : 'Join'}
-                    </button>
+        <div className="chess-main-area">
+          <div className="chessboard-container">
+            <div className="chessboard">
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                padding: '20px'
+              }}>
+                <h4 style={{ margin: '0 0 20px 0', fontSize: '18px', textAlign: 'center' }}>
+                  Open Games ({openGames.length})
+                </h4>
+                {openGames.length === 0 ? (
+                  <p style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>No open games available</p>
+                ) : (
+                  <div style={{ 
+                    maxHeight: '300px', 
+                    overflowY: 'auto', 
+                    width: '100%',
+                    maxWidth: '400px'
+                  }}>
+                    {openGames.map((game) => (
+                      <div key={game.game_id} style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '12px', 
+                        background: 'rgba(0,0,0,0.05)', 
+                        border: '1px solid rgba(0,0,0,0.1)', 
+                        borderRadius: '4px', 
+                        marginBottom: '8px' 
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>#{game.game_id}</div>
+                          <div style={{ fontSize: '12px' }}>{formatWager(game.bet_amount)}</div>
+                          {game.game_title && <div style={{ fontSize: '11px', fontStyle: 'italic' }}>{game.game_title}</div>}
+                        </div>
+                        <button
+                          onClick={() => joinGameByCode(game.game_id)}
+                          disabled={isLoading || !walletAddress}
+                          className="mode-btn"
+                          style={{ fontSize: '12px', padding: '6px 12px' }}
+                        >
+                          {isLoading ? 'Joining...' : 'Join'}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
+            </div>
           </div>
-
-          <div className="actions">
+          <div className="game-controls">
             <button
               onClick={() => setShowCreateForm(true)}
               disabled={isLoading || !walletAddress}
-              className="create-btn"
+              className="mode-btn"
             >
               Create New Game
+            </button>
+            <button onClick={forceMultiplayerSync} disabled={forceSyncLoading}>
+              {forceSyncLoading ? 'Syncing...' : 'Force Sync'}
             </button>
           </div>
         </div>
       ) : (
-        <div className="create-form">
-          <h3>Create New Game</h3>
-          
-          <div className="form-group">
-            <label>Wager Amount (tDMT):</label>
-            <input
-              type="number"
-              min="0.1"
-              max="1000"
-              step="0.1"
-              value={wagerAmount}
-              onChange={(e) => setWagerAmount(e.target.value)}
-              placeholder="0.1"
-            />
-          </div>
+        <div className="chess-main-area">
+          <div className="chessboard-container">
+            <div className="chessboard">
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                padding: '20px'
+              }}>
+                <h4 style={{ margin: '0 0 20px 0', fontSize: '18px', textAlign: 'center' }}>Create New Game</h4>
+                
+                <div style={{ width: '100%', maxWidth: '300px' }}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Wager Amount (tDMT):</label>
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="1000"
+                      step="0.1"
+                      value={wagerAmount}
+                      onChange={(e) => setWagerAmount(e.target.value)}
+                      placeholder="0.1"
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid rgba(0,0,0,0.2)',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
 
-          <div className="form-group">
-            <label>Game Title (optional):</label>
-            <input
-              type="text"
-              value={gameTitle}
-              onChange={(e) => setGameTitle(e.target.value)}
-              placeholder="Enter game title..."
-              maxLength={50}
-            />
-          </div>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Game Title (optional):</label>
+                    <input
+                      type="text"
+                      value={gameTitle}
+                      onChange={(e) => setGameTitle(e.target.value)}
+                      placeholder="Enter game title..."
+                      maxLength={50}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid rgba(0,0,0,0.2)',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
 
-          <div className="form-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-              />
-              Public Game
-            </label>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ fontSize: '14px' }}>
+                      <input
+                        type="checkbox"
+                        checked={isPublic}
+                        onChange={(e) => setIsPublic(e.target.checked)}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Public Game
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className="form-actions">
+          <div className="game-controls">
             <button
               onClick={createMultiplayerGame}
               disabled={isLoading || !walletAddress}
-              className="create-confirm-btn"
+              className="mode-btn"
             >
               {isLoading ? 'Creating...' : 'Create Game'}
             </button>
             <button
               onClick={() => setShowCreateForm(false)}
               disabled={isLoading}
-              className="cancel-btn"
+              className="mode-btn"
             >
               Cancel
             </button>
@@ -669,7 +1018,15 @@ const ChessMultiplayer: React.FC = () => {
       )}
 
       {!walletAddress && (
-        <div className="wallet-notice">
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '20px', 
+          background: 'rgba(255,255,0,0.1)', 
+          border: '1px solid rgba(255,255,0,0.3)', 
+          borderRadius: '4px', 
+          marginTop: '20px',
+          fontSize: '14px'
+        }}>
           Please connect your wallet to play multiplayer chess
         </div>
       )}
