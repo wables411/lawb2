@@ -39,8 +39,8 @@ const initialBoard = [
 
 interface GameData {
   game_id: string;
-  blue_player_id: string;
-  red_player_id: string | null;
+  blue_player: string;
+  red_player: string | null;
   board: {
     positions: (string | null)[][];
     piece_state: Record<string, unknown>;
@@ -66,7 +66,7 @@ interface GameData {
 
 interface OpenGame {
   game_id: string;
-  blue_player_id: string;
+  blue_player: string;
   bet_amount: string;
   game_title?: string;
   created_at: string;
@@ -185,9 +185,9 @@ const ChessMultiplayer: React.FC = () => {
         }
         const { data, error } = await supabase
           .from('chess_games')
-          .select('game_id, blue_player_id')
+          .select('game_id, blue_player')
           .eq('game_state', 'waiting')
-          .is('red_player_id', null)
+          .is('red_player', null)
           .lte('created_at', expiryThreshold)
           .eq('chain', 'sanko');
         
@@ -271,7 +271,7 @@ const ChessMultiplayer: React.FC = () => {
             .select('game_id')
             .eq('chain', 'sanko')
             .eq('game_state', 'active')
-            .or(`blue_player_id.eq.${walletAddress},red_player_id.eq.${walletAddress}`);
+            .or(`blue_player.eq.${walletAddress},red_player.eq.${walletAddress}`);
           
           if (error) throw new Error(`Supabase error: ${error.message}`);
           if (!data?.length) {
@@ -291,14 +291,14 @@ const ChessMultiplayer: React.FC = () => {
           .select('*')
           .eq('game_id', gameIdStr)
           .eq('chain', 'sanko')
-          .or(`blue_player_id.eq.${walletAddress},red_player_id.eq.${walletAddress}`)
+          .or(`blue_player.eq.${walletAddress},red_player.eq.${walletAddress}`)
           .single();
         
         if (gameError) throw new Error(`Supabase query error: ${gameError.message}`);
 
         if (gameData && (gameData.game_state === 'active' || gameData.game_state === 'waiting')) {
           setCurrentGameState(gameData as GameData);
-          setPlayerColor(walletAddress === gameData.blue_player_id ? 'blue' : 'red');
+          setPlayerColor(walletAddress === gameData.blue_player ? 'blue' : 'red');
           setGameId(gameIdStr);
           setIsWaitingForOpponent(gameData.game_state === 'waiting');
           setStatus(isMyTurn(gameData as GameData) ? 'Your turn' : "Opponent's turn");
@@ -395,8 +395,8 @@ const ChessMultiplayer: React.FC = () => {
         .from('chess_games')
         .insert({
           game_id: inviteCode,
-          blue_player_id: walletAddress,
-          red_player_id: null,
+          blue_player: walletAddress,
+          red_player: null,
           board: { positions: JSON.parse(JSON.stringify(initialBoard)), piece_state: {} },
           current_player: 'blue',
           game_state: 'waiting',
