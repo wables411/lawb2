@@ -313,7 +313,7 @@ const ChessMultiplayer: React.FC = () => {
         const { data: gameData, error: gameError }: { data: GameData | null, error: { message: string } | null } = await supabase
           .from('chess_games')
           .select('*')
-          .eq('game_id', gameIdStr)
+          .eq('game_id', gameIdStr.toLowerCase())
           .eq('chain', 'sanko')
           .or(`blue_player.eq.${walletAddress},red_player.eq.${walletAddress}`)
           .single();
@@ -362,7 +362,7 @@ const ChessMultiplayer: React.FC = () => {
     const { data } = await supabase
       .from('chess_games')
       .select('game_id')
-      .eq('game_id', uuid)
+      .eq('game_id', uuid.toLowerCase())
       .single();
     
     if (data) return generateUniqueInviteCode();
@@ -410,7 +410,7 @@ const ChessMultiplayer: React.FC = () => {
       const { data: existingGames } = await supabase
         .from('chess_games')
         .select('game_id')
-        .eq('game_id', inviteCode)
+        .eq('game_id', inviteCode.toLowerCase())
         .eq('game_state', 'waiting');
       if (existingGames?.length) throw new Error('Invite code already exists');
 
@@ -418,7 +418,7 @@ const ChessMultiplayer: React.FC = () => {
       const { data: supabaseData, error } = await supabase
         .from('chess_games')
         .insert({
-          game_id: inviteCode,
+          game_id: inviteCode.toLowerCase(),
           blue_player: walletAddress,
           red_player: null,
           board: { positions: JSON.parse(JSON.stringify(initialBoard)), piece_state: {} },
@@ -484,7 +484,7 @@ const ChessMultiplayer: React.FC = () => {
         const { data: gameData, error } = await supabase
           .from('chess_games')
           .select('bet_amount')
-          .eq('game_id', gameId)
+          .eq('game_id', gameId.toLowerCase())
           .single();
 
         if (error) throw new Error(`Failed to fetch game: ${error.message}`);
@@ -581,7 +581,7 @@ const ChessMultiplayer: React.FC = () => {
       await supabase
         .from('chess_games')
         .delete()
-        .eq('game_id', inviteCode)
+        .eq('game_id', inviteCode.toLowerCase())
         .eq('game_state', 'waiting');
     } catch (error) {
       console.error(`Failed to delete stale game ${inviteCode}:`, error);
