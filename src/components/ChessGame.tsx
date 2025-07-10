@@ -1,20 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { supabase } from '../supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 import ChessMultiplayer from './ChessMultiplayer';
 import './ChessGame.css';
-
-// Supabase configuration
-const supabaseUrl = 'https://roxwocgknkiqnsgiojgz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3NjMxMTIsImV4cCI6MjA0NjMzOTExMn0.NbLMZom-gk7XYGdV4MtXYcgR8R1s8xthrIQ0hpQfx9Y';
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Service role client for leaderboard updates (bypasses RLS)
-const supabaseService = createClient(
-  supabaseUrl, 
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMDc2MzExMiwiZXhwIjoyMDQ2MzM5MTEyfQ.US6YTQfWVWNAfmEopBpD580jsaevKv_Ev7dGFeqFptA'
-);
 
 // Game modes
 const GameMode = {
@@ -299,6 +288,11 @@ const useLichessAPI = () => {
 
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
+
+const supabaseService = createClient(
+  'https://roxwocgknkiqnsgiojgz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMDc2MzExMiwiZXhwIjoyMDQ2MzM5MTEyfQ.US6YTQfWVWNAfmEopBpD580jsaevKv_Ev7dGFeqFptA'
+);
 
 export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false }) => {
   const { address: walletAddress } = useAccount();
