@@ -182,7 +182,12 @@ const ChessMultiplayer: React.FC = () => {
     
     expiryIntervalRef.current = window.setInterval(async () => {
       try {
-        const expiryThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        let expiryThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        // Defensive: If expiryThreshold is in the future, fallback to now
+        if (new Date(expiryThreshold).getTime() > Date.now()) {
+          console.warn('[Supabase] expiryThreshold was in the future, falling back to now:', expiryThreshold);
+          expiryThreshold = new Date().toISOString();
+        }
         const { data, error } = await supabase
           .from('chess_games')
           .select('game_id, blue_player_id')
