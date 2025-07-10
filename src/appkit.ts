@@ -31,14 +31,14 @@ const metadata = {
 };
 
 export const wagmiAdapter = new WagmiAdapter({
-  networks: [mainnet],
+  networks: [mainnet, sankoTestnet], // Add Sanko Testnet
   projectId,
   ssr: false
 });
 
 createAppKit({
   adapters: [wagmiAdapter],
-  networks: [mainnet],
+  networks: [mainnet, sankoTestnet], // Add Sanko Testnet
   projectId,
   metadata,
   features: {
