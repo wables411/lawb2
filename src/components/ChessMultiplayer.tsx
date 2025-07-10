@@ -152,14 +152,38 @@ const ChessMultiplayer: React.FC = () => {
       const signer = await provider.getSigner();
       
       const contract = new ethers.Contract(CHESS_CONTRACT_ADDRESS, [
-        'function playerToGame(address) view returns (bytes6)',
-        'function createGame(bytes6) payable',
-        'function joinGame(bytes6) payable',
-        'function endGame(bytes6, address)',
-        'function cancelGame(bytes6)',
-        'function games(bytes6) view returns (address, address, bool, address, bytes6, uint256)',
-        'function MIN_WAGER() view returns (uint256)',
-        'function MAX_WAGER() view returns (uint256)'
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"target","type":"address"}],"name":"AddressEmptyCode","type":"error"},
+        {"inputs":[{"internalType":"address","name":"implementation","type":"address"}],"name":"ERC1967InvalidImplementation","type":"error"},
+        {"inputs":[],"name":"ERC1967NonPayable","type":"error"},
+        {"inputs":[],"name":"FailedCall","type":"error"},
+        {"inputs":[],"name":"InvalidInitialization","type":"error"},
+        {"inputs":[],"name":"NotInitializing","type":"error"},
+        {"inputs":[],"name":"ReentrancyGuardReentrantCall","type":"error"},
+        {"inputs":[],"name":"UUPSUnauthorizedCallContext","type":"error"},
+        {"inputs":[{"internalType":"bytes32","name":"slot","type":"bytes32"}],"name":"UUPSUnsupportedProxiableUUID","type":"error"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"player1","type":"address"}],"name":"GameCancelled","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"player1","type":"address"},{"indexed":false,"internalType":"uint256","name":"wagerAmount","type":"uint256"}],"name":"GameCreated","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"winner","type":"address"},{"indexed":false,"internalType":"uint256","name":"houseFee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"payoutOrRefund","type":"uint256"}],"name":"GameEnded","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"player2","type":"address"}],"name":"GameJoined","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint64","name":"version","type":"uint64"}],"name":"Initialized","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"implementation","type":"address"}],"name":"Upgraded","type":"event"},
+        {"inputs":[],"name":"MAX_WAGER","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"MIN_WAGER","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"UPGRADE_INTERFACE_VERSION","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"}],"name":"cancelGame","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"}],"name":"createGame","outputs":[],"stateMutability":"payable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"internalType":"address","name":"winner","type":"address"}],"name":"endGame","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"","type":"bytes6"}],"name":"games","outputs":[{"internalType":"address","name":"player1","type":"address"},{"internalType":"address","name":"player2","type":"address"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"address","name":"winner","type":"address"},{"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"internalType":"uint256","name":"wagerAmount","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"house","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"}],"name":"joinGame","outputs":[],"stateMutability":"payable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"leaderboard","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"playerToGame","outputs":[{"internalType":"bytes6","name":"","type":"bytes6"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"proxiableUUID","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"player","type":"address"}],"name":"resetPlayerGame","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"newImplementation","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeToAndCall","outputs":[],"stateMutability":"payable","type":"function"},
+        {"inputs":[{"internalType":"address payable","name":"recipient","type":"address"}],"name":"withdrawFunds","outputs":[],"stateMutability":"nonpayable","type":"function"}
       ], signer);
       
       return contract;
@@ -751,6 +775,86 @@ const ChessMultiplayer: React.FC = () => {
       }
     };
   }, [startGameExpiryCheck]);
+
+  // Add contract event listeners for real-time UX
+  useEffect(() => {
+    let contract: ethers.Contract | null = null;
+    let isMounted = true;
+
+    async function setupListeners() {
+      if (!window.ethereum) return;
+      const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      contract = new ethers.Contract(CHESS_CONTRACT_ADDRESS, [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"target","type":"address"}],"name":"AddressEmptyCode","type":"error"},
+        {"inputs":[{"internalType":"address","name":"implementation","type":"address"}],"name":"ERC1967InvalidImplementation","type":"error"},
+        {"inputs":[],"name":"ERC1967NonPayable","type":"error"},
+        {"inputs":[],"name":"FailedCall","type":"error"},
+        {"inputs":[],"name":"InvalidInitialization","type":"error"},
+        {"inputs":[],"name":"NotInitializing","type":"error"},
+        {"inputs":[],"name":"ReentrancyGuardReentrantCall","type":"error"},
+        {"inputs":[],"name":"UUPSUnauthorizedCallContext","type":"error"},
+        {"inputs":[{"internalType":"bytes32","name":"slot","type":"bytes32"}],"name":"UUPSUnsupportedProxiableUUID","type":"error"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"player1","type":"address"}],"name":"GameCancelled","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"player1","type":"address"},{"indexed":false,"internalType":"uint256","name":"wagerAmount","type":"uint256"}],"name":"GameCreated","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"winner","type":"address"},{"indexed":false,"internalType":"uint256","name":"houseFee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"payoutOrRefund","type":"uint256"}],"name":"GameEnded","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"indexed":false,"internalType":"address","name":"player2","type":"address"}],"name":"GameJoined","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint64","name":"version","type":"uint64"}],"name":"Initialized","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"implementation","type":"address"}],"name":"Upgraded","type":"event"},
+        {"inputs":[],"name":"MAX_WAGER","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"MIN_WAGER","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"UPGRADE_INTERFACE_VERSION","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"}],"name":"cancelGame","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"}],"name":"createGame","outputs":[],"stateMutability":"payable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"internalType":"address","name":"winner","type":"address"}],"name":"endGame","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"","type":"bytes6"}],"name":"games","outputs":[{"internalType":"address","name":"player1","type":"address"},{"internalType":"address","name":"player2","type":"address"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"address","name":"winner","type":"address"},{"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"internalType":"uint256","name":"wagerAmount","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"house","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"}],"name":"joinGame","outputs":[],"stateMutability":"payable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"leaderboard","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"playerToGame","outputs":[{"internalType":"bytes6","name":"","type":"bytes6"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"proxiableUUID","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"player","type":"address"}],"name":"resetPlayerGame","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"newImplementation","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeToAndCall","outputs":[],"stateMutability":"payable","type":"function"},
+        {"inputs":[{"internalType":"address payable","name":"recipient","type":"address"}],"name":"withdrawFunds","outputs":[],"stateMutability":"nonpayable","type":"function"}
+      ], signer);
+
+      // Event: GameCreated
+      contract.on('GameCreated', async () => {
+        if (!isMounted) return;
+        await fetchMultiplayerGames();
+      });
+      // Event: GameJoined
+      contract.on('GameJoined', async () => {
+        if (!isMounted) return;
+        await fetchMultiplayerGames();
+        await checkPlayerGameState();
+      });
+      // Event: GameEnded
+      contract.on('GameEnded', async () => {
+        if (!isMounted) return;
+        await fetchMultiplayerGames();
+        await checkPlayerGameState();
+      });
+      // Event: GameCancelled
+      contract.on('GameCancelled', async () => {
+        if (!isMounted) return;
+        await fetchMultiplayerGames();
+        await checkPlayerGameState();
+      });
+    }
+    setupListeners();
+    return () => {
+      isMounted = false;
+      if (contract) {
+        contract.removeAllListeners('GameCreated');
+        contract.removeAllListeners('GameJoined');
+        contract.removeAllListeners('GameEnded');
+        contract.removeAllListeners('GameCancelled');
+      }
+    };
+  }, [fetchMultiplayerGames, checkPlayerGameState]);
 
   // Cleanup on unmount
   useEffect(() => {
