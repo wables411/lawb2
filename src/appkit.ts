@@ -6,18 +6,18 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 export const sankoTestnet = {
   id: 1992,
   name: 'Sanko Testnet',
-  network: 'sanko-testnet',
+  network: 'sanko',
   nativeCurrency: {
     decimals: 18,
     name: 'tDMT',
     symbol: 'tDMT',
   },
   rpcUrls: {
-    public: { http: ['https://testnet-rpc.sanko.com'] },
-    default: { http: ['https://testnet-rpc.sanko.com'] },
+    public: { http: ['https://sanko-arb-sepolia.rpc.caldera.xyz/http'] },
+    default: { http: ['https://sanko-arb-sepolia.rpc.caldera.xyz/http'] },
   },
   blockExplorers: {
-    default: { name: 'SankoScan', url: 'https://testnet.sankoscan.io' },
+    default: { name: 'SankoScan', url: 'https://sanko-scan.caldera.xyz' },
   },
 } as const;
 
