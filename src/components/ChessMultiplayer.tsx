@@ -316,9 +316,10 @@ const ChessMultiplayer: React.FC = () => {
           .eq('game_id', gameIdStr.toLowerCase())
           .eq('chain', 'sanko')
           .or(`blue_player.eq.${walletAddress},red_player.eq.${walletAddress}`)
-          .single();
+          .maybeSingle();
         
         if (gameError) throw new Error(`Supabase query error: ${gameError.message}`);
+        if (!gameData) { resetGameState(); return false; }
 
         if (gameData && (gameData.game_state === 'active' || gameData.game_state === 'waiting')) {
           setCurrentGameState(gameData as GameData);
