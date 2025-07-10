@@ -104,25 +104,25 @@ const useStockfish = () => {
             const Stockfish = (window as { Stockfish?: () => Promise<unknown> }).Stockfish;
             if (Stockfish) {
               Stockfish().then((sf: unknown) => {
-                console.log('[DEBUG] LawbBot initialized successfully');
+              console.log('[DEBUG] LawbBot initialized successfully');
                 if (sf instanceof Worker) {
-                  stockfishRef.current = sf;
-                  setStockfishReady(true);
-                  isInitializingRef.current = false;
-                  // Configure Stockfish for better performance
-                  sf.postMessage('setoption name Threads value 4');
-                  sf.postMessage('setoption name Hash value 128');
-                  sf.postMessage('setoption name MultiPV value 1');
+              stockfishRef.current = sf;
+              setStockfishReady(true);
+              isInitializingRef.current = false;
+              // Configure Stockfish for better performance
+              sf.postMessage('setoption name Threads value 4');
+              sf.postMessage('setoption name Hash value 128');
+              sf.postMessage('setoption name MultiPV value 1');
                 } else {
                   console.error('[DEBUG] LawbBot: Stockfish is not a Worker instance');
                   setStockfishReady(false);
                   isInitializingRef.current = false;
                 }
-              }).catch((error: any) => {
-                console.error('[DEBUG] LawbBot initialization failed:', error);
-                setStockfishReady(false);
-                isInitializingRef.current = false;
-              });
+            }).catch((error: any) => {
+              console.error('[DEBUG] LawbBot initialization failed:', error);
+              setStockfishReady(false);
+              isInitializingRef.current = false;
+            });
             } else {
               console.error('[DEBUG] LawbBot: Stockfish is not defined as a function');
               setStockfishReady(false);
