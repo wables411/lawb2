@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { supabase } from '../supabaseClient';
-import { createClient } from '@supabase/supabase-js';
 import ChessMultiplayer from './ChessMultiplayer';
 import './ChessGame.css';
 
@@ -81,7 +80,7 @@ type Difficulty = 'easy' | 'hard';
 // Stockfish integration for chess AI
 const useStockfish = () => {
   const [stockfishReady, setStockfishReady] = useState(false);
-  const stockfishRef = useRef<any>(null);
+  const stockfishRef = useRef<Worker | null>(null);
   const isInitializingRef = useRef(false);
 
   useEffect(() => {
@@ -101,23 +100,34 @@ const useStockfish = () => {
           console.log('[DEBUG] LawbBot script loaded, initializing...');
           
           // Initialize Stockfish directly
-          if (typeof window !== 'undefined' && (window as any).Stockfish) {
-            const Stockfish = (window as any).Stockfish;
-            Stockfish().then((sf: any) => {
-              console.log('[DEBUG] LawbBot initialized successfully');
-              stockfishRef.current = sf;
-              setStockfishReady(true);
-              isInitializingRef.current = false;
-              
-              // Configure Stockfish for better performance
-              sf.postMessage('setoption name Threads value 4');
-              sf.postMessage('setoption name Hash value 128');
-              sf.postMessage('setoption name MultiPV value 1');
-            }).catch((error: any) => {
-              console.error('[DEBUG] LawbBot initialization failed:', error);
+          if (typeof window !== 'undefined' && typeof (window as any).Stockfish === 'function') {
+            const Stockfish = (window as { Stockfish?: () => Promise<unknown> }).Stockfish;
+            if (Stockfish) {
+              Stockfish().then((sf: unknown) => {
+                console.log('[DEBUG] LawbBot initialized successfully');
+                if (sf instanceof Worker) {
+                  stockfishRef.current = sf;
+                  setStockfishReady(true);
+                  isInitializingRef.current = false;
+                  // Configure Stockfish for better performance
+                  sf.postMessage('setoption name Threads value 4');
+                  sf.postMessage('setoption name Hash value 128');
+                  sf.postMessage('setoption name MultiPV value 1');
+                } else {
+                  console.error('[DEBUG] LawbBot: Stockfish is not a Worker instance');
+                  setStockfishReady(false);
+                  isInitializingRef.current = false;
+                }
+              }).catch((error: any) => {
+                console.error('[DEBUG] LawbBot initialization failed:', error);
+                setStockfishReady(false);
+                isInitializingRef.current = false;
+              });
+            } else {
+              console.error('[DEBUG] LawbBot: Stockfish is not defined as a function');
               setStockfishReady(false);
               isInitializingRef.current = false;
-            });
+            }
           } else {
             console.error('[DEBUG] LawbBot not found in window object');
             setStockfishReady(false);
@@ -165,22 +175,22 @@ const useStockfish = () => {
       let bestMove: string | null = null;
       let isResolved = false;
 
-      const messageHandler = (message: string) => {
-        console.log('[DEBUG] Stockfish message:', message);
+      const messageHandler = (event: MessageEvent) => {
+        const message = event.data;
         if (typeof message === 'string' && message.startsWith('bestmove ')) {
           const parts = message.split(' ');
           bestMove = parts[1] || null;
           console.log('[DEBUG] Stockfish bestmove found:', bestMove);
           if (!isResolved) {
             isResolved = true;
-            stockfishRef.current?.removeMessageListener(messageHandler);
+            stockfishRef.current?.removeEventListener('message', messageHandler);
             resolve(bestMove);
           }
         }
       };
 
       try {
-        stockfishRef.current.addMessageListener(messageHandler);
+        stockfishRef.current.addEventListener('message', messageHandler);
 
         // Set up Stockfish with higher depth
         stockfishRef.current.postMessage('uci');
@@ -197,7 +207,7 @@ const useStockfish = () => {
           if (!isResolved) {
             isResolved = true;
             try {
-              stockfishRef.current?.removeMessageListener(messageHandler);
+              stockfishRef.current?.removeEventListener('message', messageHandler);
             } catch (e) {
               console.warn('[DEBUG] Error removing message listener:', e);
             }
@@ -288,11 +298,6 @@ const useLichessAPI = () => {
 
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
-
-const supabaseService = createClient(
-  'https://roxwocgknkiqnsgiojgz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJveHdvY2drbmtpcW5zZ2lvamd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMDc2MzExMiwiZXhwIjoyMDQ2MzM5MTEyfQ.US6YTQfWVWNAfmEopBpD580jsaevKv_Ev7dGFeqFptA'
-);
 
 export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false }) => {
   const { address: walletAddress } = useAccount();
@@ -518,7 +523,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       const normalizedAddress = walletAddress.toLowerCase();
       
       // Use service role client to bypass RLS
-      const { data: existingRecord } = await supabaseService
+      const { data: existingRecord } = await supabase
         .from('leaderboard')
         .select('*')
         .eq('username', normalizedAddress)
@@ -573,7 +578,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
       if (existingRecord) {
         // Update existing record
-        const { error } = await supabaseService
+        const { error } = await supabase
           .from('leaderboard')
           .update({
             wins: newWins,
@@ -591,7 +596,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         }
       } else {
         // Insert new record
-        const { error } = await supabaseService
+        const { error } = await supabase
           .from('leaderboard')
           .insert({
             username: normalizedAddress,
