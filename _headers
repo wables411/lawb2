@@ -23,7 +23,4 @@
 
 # Allow Twitter embeds and other iframes on main site
 /*
-  X-Frame-Options: SAMEORIGIN
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Cross-Origin-Opener-Policy: same-origin-allow-popups 
+  X-Frame-Options: SAMEORIGIN 
