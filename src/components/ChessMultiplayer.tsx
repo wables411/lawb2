@@ -544,11 +544,8 @@ const ChessMultiplayer: React.FC = () => {
     try {
       console.log('[DEBUG] Setting up game subscription for:', gameId);
       
-      // Create a unique channel name
-      const channelName = `chess_game_${gameId}_${Date.now()}`;
-      
       subscriptionRef.current = supabase
-        .channel(channelName)
+        .channel(`chess_game_${gameId}`)
         .on(
           'postgres_changes',
           { 
@@ -1112,11 +1109,8 @@ const ChessMultiplayer: React.FC = () => {
       try {
         console.log('[DEBUG] Setting up lobby subscription');
         
-        // Create a unique channel name for lobby
-        const channelName = `chess_lobby_${Date.now()}`;
-        
         const channel = supabase
-          .channel(channelName)
+          .channel('chess_lobby')
           .on(
             'postgres_changes',
             { 
