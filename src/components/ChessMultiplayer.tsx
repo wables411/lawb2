@@ -634,6 +634,10 @@ const ChessMultiplayer: React.FC = () => {
 
   // Subscribe to game updates with better error handling
   const subscribeToGame = useCallback(async (gameId: string) => {
+    // TEMPORARY: Disable WebSocket attempts due to connection issues
+    console.log('[DEBUG] WebSocket disabled - using polling only');
+    return;
+    
     if (subscriptionRef.current) {
       supabase.removeChannel(subscriptionRef.current);
     }
@@ -1583,6 +1587,10 @@ const ChessMultiplayer: React.FC = () => {
 
   // Subscribe to lobby updates with better error handling
   useEffect(() => {
+    // TEMPORARY: Disable WebSocket attempts due to connection issues
+    console.log('[DEBUG] WebSocket lobby subscription disabled - using polling only');
+    return;
+    
     let retryCount = 0;
     const maxRetries = 2; // Reduced from 5 to 2
     

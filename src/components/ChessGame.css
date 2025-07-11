@@ -1394,20 +1394,39 @@
 
 /* Capture Animation */
 .capture-animation {
-  animation: captureExplosion 0.5s ease-out;
+  animation: captureExplosion 0.8s ease-out;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.capture-animation::before {
+  content: '💥';
+  font-size: 2em;
+  animation: captureExplosion 0.8s ease-out;
 }
 
 @keyframes captureExplosion {
   0% {
-    transform: scale(0.5);
+    transform: scale(0.3);
     opacity: 0;
   }
-  50% {
-    transform: scale(1.2);
+  25% {
+    transform: scale(1.5);
     opacity: 1;
+  }
+  50% {
+    transform: scale(1.8);
+    opacity: 0.8;
+  }
+  75% {
+    transform: scale(1.2);
+    opacity: 0.6;
   }
   100% {
     transform: scale(1);

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Supabase WebSocket Connection Test</h1>
+    <div id="status" class="status">Testing...</div>
+    <button onclick="testWebSocket()">Test WebSocket</button>
+    <button onclick="testFetch()">Test REST API</button>
+    <div id="logs" class="log"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function setStatus(message, type = 'warning') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        // Test WebSocket connectivity
+        function testWebSocket() {
+            log('🔌 Testing WebSocket connectivity...');
+            setStatus('Testing WebSocket...', 'warning');
+            
+            const wsUrl = 'wss://lahldngklxwirmtbnjyk.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhaGxkbmdrbHh3aXJtdGJuanlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxODQ3NzQsImV4cCI6MjA2Nzc2MDc3NH0.maTZBPLJ-0m86_XItwbDwP48y0Q3gaFy9vbrIsCc7-c&vsn=1.0.0';
+            
+            try {
+                const ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function() {
+                    log('✅ WebSocket connection opened successfully!');
+                    setStatus('✅ WebSocket connection successful', 'success');
+                    
+                    // Send a test message
+                    ws.send(JSON.stringify({
+                        event: 'phx_join',
+                        topic: 'test',
+                        payload: {}
+                    }));
+                };
+                
+                ws.onmessage = function(event) {
+                    log('📨 Received message: ' + event.data);
+                };
+                
+                ws.onerror = function(error) {
+                    log('❌ WebSocket error: ' + error);
+                    setStatus('❌ WebSocket connection failed', 'error');
+                };
+                
+                ws.onclose = function(event) {
+                    log('🔌 WebSocket connection closed: ' + event.code + ' - ' + event.reason);
+                    setStatus('🔌 WebSocket connection closed', 'error');
+                };
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        log('⏰ WebSocket connection timeout');
+                        setStatus('⏰ WebSocket connection timeout', 'error');
+                        ws.close();
+                    }
+                }, 10000);
+                
+            } catch (error) {
+                log('❌ WebSocket creation failed: ' + error);
+                setStatus('❌ WebSocket creation failed', 'error');
+            }
+        }
+        
+        // Test REST API connectivity
+        async function testFetch() {
+            log('🌐 Testing REST API connectivity...');
+            setStatus('Testing REST API...', 'warning');
+            
+            try {
+                const response = await fetch('https://lahldngklxwirmtbnjyk.supabase.co/rest/v1/chess_games?select=count&limit=1', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhaGxkbmdrbHh3aXJtdGJuanlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxODQ3NzQsImV4cCI6MjA2Nzc2MDc3NH0.maTZBPLJ-0m86_XItwbDwP48y0Q3gaFy9vbrIsCc7-c',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhaGxkbmdrbHh3aXJtdGJuanlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxODQ3NzQsImV4cCI6MjA2Nzc2MDc3NH0.maTZBPLJ-0m86_XItwbDwP48y0Q3gaFy9vbrIsCc7-c'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ REST API connection successful: ' + JSON.stringify(data));
+                    setStatus('✅ REST API connection successful', 'success');
+                } else {
+                    log('❌ REST API error: ' + response.status + ' ' + response.statusText);
+                    setStatus('❌ REST API connection failed', 'error');
+                }
+            } catch (error) {
+                log('❌ REST API request failed: ' + error);
+                setStatus('❌ REST API request failed', 'error');
+            }
+        }
+        
+        // Run tests when page loads
+        window.onload = function() {
+            log('🚀 WebSocket test page loaded');
+            log('Click "Test WebSocket" to test real-time connections');
+            log('Click "Test REST API" to test database connectivity');
+        };
+    </script>
+</body>
+</html> 
