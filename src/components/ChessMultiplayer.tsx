@@ -183,7 +183,7 @@ const ChessMultiplayer: React.FC = () => {
           break;
       }
       audio.volume = 0.3;
-      audio.play().catch(e => console.log('Audio play failed:', e));
+      audio.play().catch((e: unknown) => console.log('Audio play failed:', e));
     } catch (error) {
       console.log('Sound effect failed:', error);
     }
