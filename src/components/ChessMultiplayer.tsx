@@ -72,6 +72,14 @@ interface OpenGame {
   created_at: string;
 }
 
+// Add at the top, after imports
+const ENDGAME_STATUS = {
+  NONE: 'none',
+  PENDING: 'pending',
+  SUCCESS: 'success',
+  ERROR: 'error',
+};
+
 const ChessMultiplayer: React.FC = () => {
   const { address: walletAddress } = useAccount();
   
@@ -160,6 +168,8 @@ const ChessMultiplayer: React.FC = () => {
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [networkStatus, setNetworkStatus] = useState<'checking' | 'correct' | 'wrong' | 'error'>('checking');
+  const [endGameStatus, setEndGameStatus] = useState<'none' | 'pending' | 'success' | 'error'>(() => ENDGAME_STATUS.NONE as 'none');
+  const [endGameError, setEndGameError] = useState<string | null>(null);
   
   // Sound effects
   const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'promotion') => {
@@ -1493,9 +1503,13 @@ const ChessMultiplayer: React.FC = () => {
         setGameEndState('checkmate');
         setWinner(playerColor);
         playSound('checkmate');
+        // Automate contract payout and Supabase update
+        handleGameEnd('checkmate', playerColor);
       } else if (gameEndResult === 'stalemate') {
         setGameEndState('stalemate');
         playSound('move');
+        // Automate contract payout and Supabase update (draw)
+        handleGameEnd('stalemate', null);
       } else {
         // Check if opponent is in check
         if (isKingInCheck(newBoard, nextPlayer)) {
@@ -1876,6 +1890,48 @@ const ChessMultiplayer: React.FC = () => {
       setIsLoading(false);
     }
   }, [walletAddress, ensureSankoNetwork, connectToContract, cleanupStaleGame]);
+
+  // Helper to automate contract payout and Supabase update
+  const handleGameEnd = useCallback(async (result: 'checkmate' | 'stalemate', winnerColor: 'blue' | 'red' | null) => {
+    if (!gameId || !currentGameState || endGameStatus !== ENDGAME_STATUS.NONE) return;
+    setEndGameStatus('pending');
+    setEndGameError(null);
+    try {
+      // Prepare contract
+      const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      // Use the ABI already in the file
+      const contract = new ethers.Contract(CHESS_CONTRACT_ADDRESS, [
+        {"inputs":[{"internalType":"bytes6","name":"inviteCode","type":"bytes6"},{"internalType":"address","name":"winner","type":"address"}],"name":"endGame","outputs":[],"stateMutability":"nonpayable","type":"function"}
+      ], signer);
+      // Convert invite code to bytes6
+      const inviteCodeBytes = ethers.zeroPadValue(ethers.hexlify('0x' + gameId.toLowerCase()), 6);
+      // Determine winner address
+      let winnerAddress = '0x0000000000000000000000000000000000000000';
+      if (result === 'checkmate' && winnerColor) {
+        winnerAddress = winnerColor === 'blue' ? currentGameState.blue_player : currentGameState.red_player;
+      }
+      // Call contract
+      const tx = await contract.endGame(inviteCodeBytes, winnerAddress);
+      await tx.wait();
+      // Update Supabase
+      const { error } = await supabase
+        .from('chess_games')
+        .update({
+          game_state: 'finished',
+          winner: winnerAddress,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('game_id', gameId.toLowerCase());
+      if (error) throw new Error(error.message);
+      setEndGameStatus('success');
+      setStatus('Game ended. Winner paid out!');
+    } catch (err: any) {
+      setEndGameStatus('error');
+      setEndGameError((err && typeof err.message === 'string') ? err.message : 'Unknown error ending game');
+      setStatus('Error ending game: ' + ((err && typeof err.message === 'string') ? err.message : 'Unknown error'));
+    }
+  }, [gameId, currentGameState, endGameStatus]);
 
   // Active game view - should integrate with existing chessboard
   if (currentGameState && !isWaitingForOpponent) {
