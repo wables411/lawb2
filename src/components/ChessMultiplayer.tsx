@@ -77,6 +77,61 @@ const ChessMultiplayer: React.FC = () => {
   
   // State
   const [gameId, setGameId] = useState<string | null>(null);
+  
+  // Test Supabase real-time connection
+  const testRealtimeConnection = () => {
+    console.log('[DEBUG] Testing Supabase real-time connection...');
+    
+    // First test basic network connectivity
+    console.log('[DEBUG] Testing basic network connectivity...');
+    fetch('https://httpbin.org/get')
+      .then(response => {
+        console.log('[DEBUG] Basic network connectivity: OK');
+        console.log('[DEBUG] Response status:', response.status);
+      })
+      .catch(error => {
+        console.error('[DEBUG] Basic network connectivity failed:', error);
+      });
+    
+    // Test Supabase REST API connectivity
+    console.log('[DEBUG] Testing Supabase REST API...');
+    void supabase.from('chess_games').select('count').limit(1)
+      .then(({ error }) => {
+        if (error) {
+          console.error('[DEBUG] Supabase REST API failed:', error);
+        } else {
+          console.log('[DEBUG] Supabase REST API: OK');
+        }
+      });
+    
+    try {
+      // Test real-time connection
+      const testChannel = supabase
+        .channel('test-connection')
+        .on('presence', { event: 'sync' }, () => {
+          console.log('[DEBUG] Test channel presence sync successful');
+        })
+        .on('presence', { event: 'join' }, () => {
+          console.log('[DEBUG] Test channel presence join successful');
+        })
+        .subscribe((status) => {
+          console.log('[DEBUG] Test channel subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('[DEBUG] Test connection successful!');
+            // Clean up test channel
+            window.setTimeout(() => {
+              void supabase.removeChannel(testChannel);
+            }, 1000);
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('[DEBUG] Test connection failed with CHANNEL_ERROR');
+          } else if (status === 'CLOSED') {
+            console.error('[DEBUG] Test connection closed');
+          }
+        });
+    } catch (error) {
+      console.error('[DEBUG] Test connection error:', error);
+    }
+  };
   const [playerColor, setPlayerColor] = useState<'blue' | 'red' | null>(null);
   const [currentGameState, setCurrentGameState] = useState<GameData | null>(null);
   const [isWaitingForOpponent, setIsWaitingForOpponent] = useState(false);
@@ -144,6 +199,11 @@ const ChessMultiplayer: React.FC = () => {
       };
     }
   }, [checkNetworkStatus]);
+
+  // Test real-time connection on component mount
+  useEffect(() => {
+    testRealtimeConnection();
+  }, []);
   
   // Network management
   const ensureSankoNetwork = useCallback(async () => {
@@ -1404,6 +1464,12 @@ const ChessMultiplayer: React.FC = () => {
             <div>Subscription: {subscriptionRef.current ? 'Active' : 'Inactive'}</div>
             <div>Polling: Active (2s interval)</div>
             <div>Mode: {subscriptionRef.current ? 'Real-time + Polling' : 'Polling Only'}</div>
+            <button 
+              onClick={testRealtimeConnection}
+              style={{ fontSize: '10px', padding: '2px 5px', marginTop: '5px' }}
+            >
+              Test Connection
+            </button>
           </div>
         </div>
         <div className="chess-main-area">
