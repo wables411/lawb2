@@ -1116,7 +1116,7 @@ const ChessMultiplayer: React.FC = () => {
       
       if (error) throw error;
       
-      // Update local game state immediately
+      // Update local game state immediately (without updated_at to allow polling to detect changes)
       const updatedGameState: GameData = {
         ...currentGameState,
         board: { positions: newBoard, piece_state: {} },
@@ -1127,14 +1127,19 @@ const ChessMultiplayer: React.FC = () => {
           from_col: startCol,
           end_row: endRow,
           end_col: endCol
-        },
-        updated_at: new Date().toISOString()
+        }
+        // Don't set updated_at here - let polling detect the database change
       };
       
       setCurrentGameState(updatedGameState);
       setStatus(isMyTurn(updatedGameState) ? 'Your turn' : "Opponent's turn");
       
       console.log('[DEBUG] Move completed successfully');
+      
+      // Add a small delay to ensure database update propagates before polling checks
+      setTimeout(() => {
+        console.log('[DEBUG] Move delay completed - polling should now detect changes');
+      }, 500);
       
     } catch (error) {
       console.error('Move failed:', error);
