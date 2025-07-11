@@ -81,7 +81,8 @@ const ChessMultiplayer: React.FC<{ fullscreen?: boolean }> = ({ fullscreen = fal
   // Subscribe to game state
   useEffect(() => {
     if (!gameId) return;
-    const channel = (supabase
+    // @ts-ignore: Supabase Realtime v2 type mismatch, this works at runtime
+    const channel = supabase
       .channel(`chess_game_${gameId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chess_games', filter: `game_id=eq.${gameId}` }, (payload: { new: { board: string; move_history?: string[]; game_state: string; blue_player?: string; red_player?: string } }) => {
         const boardObj = JSON.parse(payload.new.board);
@@ -90,7 +91,7 @@ const ChessMultiplayer: React.FC<{ fullscreen?: boolean }> = ({ fullscreen = fal
         setMoveHistory(Array.isArray(payload.new.move_history) ? payload.new.move_history : []);
         setLobbyPhase(payload.new.game_state === 'active' ? 'active' : 'waiting');
         setOpponent(payload.new.blue_player && payload.new.red_player ? (playerColor === 'blue' ? payload.new.red_player : payload.new.blue_player) : null);
-      }) as unknown as any)
+      })
       .subscribe();
     gameChannel.current = channel;
     return () => {
