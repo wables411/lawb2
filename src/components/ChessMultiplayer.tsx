@@ -597,26 +597,17 @@ const ChessMultiplayer: React.FC = () => {
         .subscribe((status) => {
           console.log(`[DEBUG] Game subscription status: ${status}`);
           if (status === 'CHANNEL_ERROR') {
-            console.error('[DEBUG] Game subscription failed, retrying in 3 seconds...');
-            setTimeout(() => {
-              console.log('[DEBUG] Retrying game subscription...');
-              void subscribeToGame(gameId);
-            }, 3000);
+            console.error('[DEBUG] Game subscription failed, falling back to polling only');
+            // Don't retry - just rely on polling fallback
           } else if (status === 'SUBSCRIBED') {
             console.log('[DEBUG] Game subscription successful');
           } else if (status === 'TIMED_OUT') {
-            console.error('[DEBUG] Game subscription timed out, retrying...');
-            setTimeout(() => {
-              void subscribeToGame(gameId);
-            }, 2000);
+            console.error('[DEBUG] Game subscription timed out, falling back to polling only');
           }
         });
     } catch (error) {
       console.error('[DEBUG] Failed to subscribe to game:', error);
-      // Retry after a delay
-      setTimeout(() => {
-        void subscribeToGame(gameId);
-      }, 5000);
+      console.log('[DEBUG] Falling back to polling only for game updates');
     }
   }, [checkPlayerGameState]);
 
@@ -1115,7 +1106,7 @@ const ChessMultiplayer: React.FC = () => {
   // Subscribe to lobby updates with better error handling
   useEffect(() => {
     let retryCount = 0;
-    const maxRetries = 5;
+    const maxRetries = 2; // Reduced from 5 to 2
     
     const setupLobbySubscription = () => {
       try {
@@ -1142,11 +1133,11 @@ const ChessMultiplayer: React.FC = () => {
             console.log(`[DEBUG] Lobby subscription status: ${status}`);
             if (status === 'CHANNEL_ERROR' && retryCount < maxRetries) {
               retryCount++;
-              console.log(`[DEBUG] Lobby subscription failed, retry ${retryCount}/${maxRetries} in 3 seconds`);
+              console.log(`[DEBUG] Lobby subscription failed, retry ${retryCount}/${maxRetries} in 5 seconds`);
               setTimeout(() => {
                 console.log('[DEBUG] Retrying lobby subscription...');
                 setupLobbySubscription();
-              }, 3000);
+              }, 5000);
             } else if (status === 'SUBSCRIBED') {
               console.log('[DEBUG] Lobby subscription successful');
               retryCount = 0; // Reset retry count on success
@@ -1155,6 +1146,8 @@ const ChessMultiplayer: React.FC = () => {
               setTimeout(() => {
                 setupLobbySubscription();
               }, 2000);
+            } else if (status === 'CHANNEL_ERROR' && retryCount >= maxRetries) {
+              console.log('[DEBUG] Lobby subscription failed permanently, falling back to polling only');
             }
           });
 
@@ -1272,7 +1265,7 @@ const ChessMultiplayer: React.FC = () => {
       
       pollInterval = window.setInterval(async () => {
         try {
-          // Poll for game updates every 3 seconds as fallback
+          // Poll for game updates every 2 seconds as fallback
           const { data: gameData, error } = await supabase
             .from('chess_games')
             .select('*')
@@ -1286,26 +1279,33 @@ const ChessMultiplayer: React.FC = () => {
             // Only update if the game data is newer
             if (lastUpdate > currentUpdate) {
               console.log('[DEBUG] Polling fallback: Game update detected');
+              console.log('[DEBUG] Old update:', new Date(currentUpdate).toLocaleTimeString());
+              console.log('[DEBUG] New update:', new Date(lastUpdate).toLocaleTimeString());
+              
               setCurrentGameState(gameData);
               setIsWaitingForOpponent(gameData.game_state === 'waiting');
               setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
               
               if (gameData.board?.positions) {
+                console.log('[DEBUG] Polling fallback: Updating board');
                 setBoard(gameData.board.positions);
               }
               
               if (gameData.last_move) {
+                console.log('[DEBUG] Polling fallback: Updating last move');
                 setLastMove({
                   from: { row: gameData.last_move.from_row, col: gameData.last_move.from_col },
                   to: { row: gameData.last_move.end_row, col: gameData.last_move.end_col }
                 });
               }
             }
+          } else if (error) {
+            console.error('[DEBUG] Polling fallback error:', error);
           }
         } catch (error) {
           console.error('[DEBUG] Polling fallback error:', error);
         }
-      }, 3000);
+      }, 2000); // Reduced from 3 seconds to 2 seconds
     }
     
     return () => {
@@ -1408,6 +1408,8 @@ const ChessMultiplayer: React.FC = () => {
             <div>Player: {playerColor} | Turn: {isMyTurn(currentGameState) ? 'Yes' : 'No'}</div>
             <div>Last Update: {currentGameState.updated_at ? new Date(currentGameState.updated_at).toLocaleTimeString() : 'N/A'}</div>
             <div>Subscription: {subscriptionRef.current ? 'Active' : 'Inactive'}</div>
+            <div>Polling: Active (2s interval)</div>
+            <div>Mode: {subscriptionRef.current ? 'Real-time + Polling' : 'Polling Only'}</div>
           </div>
         </div>
         <div className="chess-main-area">
@@ -1424,6 +1426,32 @@ const ChessMultiplayer: React.FC = () => {
             <button onClick={leaveGame}>Leave Game</button>
             <button onClick={forceMultiplayerSync} disabled={forceSyncLoading}>
               {forceSyncLoading ? 'Syncing...' : 'Force Sync'}
+            </button>
+            <button 
+              onClick={async () => {
+                console.log('[DEBUG] Manual refresh triggered');
+                if (gameId) {
+                  const { data: gameData, error } = await supabase
+                    .from('chess_games')
+                    .select('*')
+                    .eq('game_id', gameId.toLowerCase())
+                    .single();
+                  
+                  if (!error && gameData) {
+                    console.log('[DEBUG] Manual refresh: Game data updated');
+                    setCurrentGameState(gameData);
+                    setIsWaitingForOpponent(gameData.game_state === 'waiting');
+                    setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+                    
+                    if (gameData.board?.positions) {
+                      setBoard(gameData.board.positions);
+                    }
+                  }
+                }
+              }}
+              style={{ fontSize: '12px', padding: '5px 10px' }}
+            >
+              Manual Refresh
             </button>
           </div>
         </div>
@@ -1472,6 +1500,32 @@ const ChessMultiplayer: React.FC = () => {
             <button onClick={leaveGame}>Cancel Game</button>
             <button onClick={forceMultiplayerSync} disabled={forceSyncLoading}>
               {forceSyncLoading ? 'Syncing...' : 'Force Sync'}
+            </button>
+            <button 
+              onClick={async () => {
+                console.log('[DEBUG] Manual refresh triggered');
+                if (gameId) {
+                  const { data: gameData, error } = await supabase
+                    .from('chess_games')
+                    .select('*')
+                    .eq('game_id', gameId.toLowerCase())
+                    .single();
+                  
+                  if (!error && gameData) {
+                    console.log('[DEBUG] Manual refresh: Game data updated');
+                    setCurrentGameState(gameData);
+                    setIsWaitingForOpponent(gameData.game_state === 'waiting');
+                    setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+                    
+                    if (gameData.board?.positions) {
+                      setBoard(gameData.board.positions);
+                    }
+                  }
+                }
+              }}
+              style={{ fontSize: '12px', padding: '5px 10px' }}
+            >
+              Manual Refresh
             </button>
           </div>
         </div>
@@ -1555,6 +1609,32 @@ const ChessMultiplayer: React.FC = () => {
             </button>
             <button onClick={forceMultiplayerSync} disabled={forceSyncLoading}>
               {forceSyncLoading ? 'Syncing...' : 'Force Sync'}
+            </button>
+            <button 
+              onClick={async () => {
+                console.log('[DEBUG] Manual refresh triggered');
+                if (gameId) {
+                  const { data: gameData, error } = await supabase
+                    .from('chess_games')
+                    .select('*')
+                    .eq('game_id', gameId.toLowerCase())
+                    .single();
+                  
+                  if (!error && gameData) {
+                    console.log('[DEBUG] Manual refresh: Game data updated');
+                    setCurrentGameState(gameData);
+                    setIsWaitingForOpponent(gameData.game_state === 'waiting');
+                    setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+                    
+                    if (gameData.board?.positions) {
+                      setBoard(gameData.board.positions);
+                    }
+                  }
+                }
+              }}
+              style={{ fontSize: '12px', padding: '5px 10px' }}
+            >
+              Manual Refresh
             </button>
           </div>
         </div>
@@ -1640,6 +1720,32 @@ const ChessMultiplayer: React.FC = () => {
               className="mode-btn"
             >
               Cancel
+            </button>
+            <button 
+              onClick={async () => {
+                console.log('[DEBUG] Manual refresh triggered');
+                if (gameId) {
+                  const { data: gameData, error } = await supabase
+                    .from('chess_games')
+                    .select('*')
+                    .eq('game_id', gameId.toLowerCase())
+                    .single();
+                  
+                  if (!error && gameData) {
+                    console.log('[DEBUG] Manual refresh: Game data updated');
+                    setCurrentGameState(gameData);
+                    setIsWaitingForOpponent(gameData.game_state === 'waiting');
+                    setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+                    
+                    if (gameData.board?.positions) {
+                      setBoard(gameData.board.positions);
+                    }
+                  }
+                }
+              }}
+              style={{ fontSize: '12px', padding: '5px 10px' }}
+            >
+              Manual Refresh
             </button>
           </div>
         </div>
