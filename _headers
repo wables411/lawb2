@@ -1,1 +1,10 @@
-# No headers - allow all connections
+# Security headers for WebSocket connections
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  
+  # Allow WebSocket connections - more permissive
+  Cross-Origin-Embedder-Policy: unsafe-none
+  Cross-Origin-Opener-Policy: unsafe-none
+  Cross-Origin-Resource-Policy: cross-origin
