@@ -327,9 +327,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('Game update received:', payload);
         
         if (payload.new) {
-          const boardObj = JSON.parse(payload.new.board);
-          const newBoard = Array.isArray(boardObj.positions) ? boardObj.positions as (string | null)[][] : initialBoard;
-          setBoard(newBoard);
+        const boardObj = JSON.parse(payload.new.board);
+        const newBoard = Array.isArray(boardObj.positions) ? boardObj.positions as (string | null)[][] : initialBoard;
+        setBoard(newBoard);
           setCurrentPlayer(payload.new.current_player || 'blue');
           
           if (payload.new.game_state === 'active') {
@@ -801,8 +801,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus('Game resumed');
 
       // Parse board state
-      const boardObj = JSON.parse(data.board);
-      const newBoard = Array.isArray(boardObj.positions) ? boardObj.positions as (string | null)[][] : initialBoard;
+      console.log('[DEBUG] Resuming game with board data:', data.board, 'Type:', typeof data.board);
+      
+      let boardObj;
+      try {
+        // Try to parse as JSON string first
+        boardObj = typeof data.board === 'string' ? JSON.parse(data.board) : data.board;
+        console.log('[DEBUG] Parsed board object:', boardObj);
+      } catch (e) {
+        // If parsing fails, use the data as-is
+        console.log('[DEBUG] JSON parse failed, using data as-is:', e);
+        boardObj = data.board;
+      }
+      
+      const newBoard = Array.isArray(boardObj?.positions) ? boardObj.positions as (string | null)[][] : 
+                      Array.isArray(boardObj) ? boardObj as (string | null)[][] : 
+                      initialBoard;
+      console.log('[DEBUG] Final board state:', newBoard);
       setBoard(newBoard);
       setCurrentPlayer(data.current_player || 'blue');
 
@@ -878,8 +893,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!promotionDialog.show) return null;
     
     const promotionPieces = playerColor === 'red' ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
-    
-    return (
+
+  return (
       <div className="promotion-dialog">
         <div className="promotion-content">
           <h3>Choose promotion piece</h3>
