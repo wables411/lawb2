@@ -146,11 +146,48 @@ const ChessMultiplayer: React.FC = () => {
   const [hasCreatedGame, setHasCreatedGame] = useState(false);
   const [isProcessingMove, setIsProcessingMove] = useState(false);
   const [forceSyncLoading, setForceSyncLoading] = useState(false);
+  const [showPromotion, setShowPromotion] = useState(false);
+  const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  const [gameEndState, setGameEndState] = useState<'checkmate' | 'stalemate' | null>(null);
+  const [winner, setWinner] = useState<'blue' | 'red' | null>(null);
   const [board, setBoard] = useState<(string | null)[][]>(initialBoard);
+  const [castlingRights, setCastlingRights] = useState({
+    blue: { kingside: true, queenside: true },
+    red: { kingside: true, queenside: true }
+  });
+  const [enPassantTarget, setEnPassantTarget] = useState<{ row: number; col: number } | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [networkStatus, setNetworkStatus] = useState<'checking' | 'correct' | 'wrong' | 'error'>('checking');
+  
+  // Sound effects
+  const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'promotion') => {
+    try {
+      const audio = new (window as any).Audio();
+      switch (soundType) {
+        case 'move':
+          audio.src = '/images/move.mp3';
+          break;
+        case 'capture':
+          audio.src = '/images/capture.mp3';
+          break;
+        case 'check':
+          audio.src = '/images/check.mp3';
+          break;
+        case 'checkmate':
+          audio.src = '/images/victory.mp3';
+          break;
+        case 'promotion':
+          audio.src = '/images/upgrade.mp3';
+          break;
+      }
+      audio.volume = 0.3;
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    } catch (error) {
+      console.log('Sound effect failed:', error);
+    }
+  };
   
   // Refs
   const subscriptionRef = useRef<RealtimeChannel | null>(null);
@@ -846,6 +883,11 @@ const ChessMultiplayer: React.FC = () => {
       return targetPiece !== null && getPieceColor(targetPiece) !== color;
     }
     
+    // En passant
+    if (canEnPassant(startRow, startCol, endRow, endCol, color, boardState)) {
+      return true;
+    }
+    
     return false;
   };
 
@@ -870,10 +912,80 @@ const ChessMultiplayer: React.FC = () => {
            isValidBishopMove(startRow, startCol, endRow, endCol, boardState);
   };
 
-  const isValidKingMove = (startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+  const isValidKingMove = (startRow: number, startCol: number, endRow: number, endCol: number, playerColor: 'blue' | 'red', boardState: (string | null)[][], checkCastling = true): boolean => {
     const rowDiff = Math.abs(startRow - endRow);
     const colDiff = Math.abs(startCol - endCol);
-    return rowDiff <= 1 && colDiff <= 1;
+    
+    // Normal king move
+    if (rowDiff <= 1 && colDiff <= 1) {
+      return true;
+    }
+    
+    // Castling
+    if (checkCastling && rowDiff === 0 && colDiff === 2) {
+      return canCastle(startRow, startCol, endRow, endCol, playerColor, boardState);
+    }
+    
+    return false;
+  };
+
+  const canCastle = (startRow: number, startCol: number, endRow: number, endCol: number, playerColor: 'blue' | 'red', boardState: (string | null)[][]): boolean => {
+    // Check if king is in check
+    if (isKingInCheck(boardState, playerColor)) return false;
+    
+    // Determine castling direction
+    const isKingside = endCol > startCol;
+    const rights = castlingRights[playerColor];
+    
+    if (isKingside && !rights.kingside) return false;
+    if (!isKingside && !rights.queenside) return false;
+    
+    // Check if king and rook are in correct positions
+    const kingCol = startCol;
+    const rookCol = isKingside ? 7 : 0;
+    const kingPiece = playerColor === 'blue' ? 'k' : 'K';
+    const rookPiece = playerColor === 'blue' ? 'r' : 'R';
+    
+    if (boardState[startRow][kingCol] !== kingPiece || boardState[startRow][rookCol] !== rookPiece) {
+      return false;
+    }
+    
+    // Check if squares between king and rook are empty
+    const startColCheck = Math.min(kingCol, rookCol) + 1;
+    const endColCheck = Math.max(kingCol, rookCol);
+    
+    for (let col = startColCheck; col < endColCheck; col++) {
+      if (boardState[startRow][col] !== null) return false;
+    }
+    
+    // Check if king would pass through check
+    const kingPassCol = isKingside ? kingCol + 1 : kingCol - 1;
+    const tempBoard = boardState.map(r => [...r]);
+    tempBoard[startRow][kingPassCol] = kingPiece;
+    tempBoard[startRow][kingCol] = null;
+    
+    if (isKingInCheck(tempBoard, playerColor)) return false;
+    
+    return true;
+  };
+
+  const canEnPassant = (startRow: number, startCol: number, endRow: number, endCol: number, playerColor: 'blue' | 'red', boardState: (string | null)[][]): boolean => {
+    if (!enPassantTarget) return false;
+    
+    const direction = playerColor === 'blue' ? -1 : 1;
+    const isPawn = boardState[startRow][startCol]?.toLowerCase() === 'p';
+    
+    if (!isPawn) return false;
+    
+    // Check if moving to en passant target square
+    if (endRow === enPassantTarget.row && endCol === enPassantTarget.col) {
+      // Check if moving diagonally forward
+      if (endRow === startRow + direction && Math.abs(endCol - startCol) === 1) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   const isPathClear = (startRow: number, startCol: number, endRow: number, endCol: number, boardState: (string | null)[][]): boolean => {
@@ -916,7 +1028,7 @@ const ChessMultiplayer: React.FC = () => {
         isValid = isValidQueenMove(startRow, startCol, endRow, endCol, boardState);
         break;
       case 'k':
-        isValid = isValidKingMove(startRow, startCol, endRow, endCol);
+        isValid = isValidKingMove(startRow, startCol, endRow, endCol, playerColor, boardState);
         break;
     }
     
@@ -1012,18 +1124,125 @@ const ChessMultiplayer: React.FC = () => {
     return piece >= 'a' && piece <= 'z' ? 'blue' : 'red';
   };
 
+  // Game end detection functions
+  const isKingInCheck = (board: (string | null)[][], player: 'blue' | 'red'): boolean => {
+    // Find the king
+    const kingPiece = player === 'blue' ? 'k' : 'K';
+    let kingRow = -1, kingCol = -1;
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        if (board[row][col] === kingPiece) {
+          kingRow = row;
+          kingCol = col;
+          break;
+        }
+      }
+      if (kingRow !== -1) break;
+    }
+    
+    if (kingRow === -1) return false;
+    
+    // Check if any opponent piece can attack the king
+    const opponentColor = player === 'blue' ? 'red' : 'blue';
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece && getPieceColor(piece) === opponentColor) {
+          if (canPieceMove(piece, row, col, kingRow, kingCol, false, getPieceColor(piece), board, true)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  const isCheckmate = (player: 'blue' | 'red', boardState = board): boolean => {
+    if (!isKingInCheck(boardState, player)) return false;
+    
+    // Check if any move can get out of check
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = boardState[row][col];
+        if (piece && getPieceColor(piece) === player) {
+          for (let endRow = 0; endRow < 8; endRow++) {
+            for (let endCol = 0; endCol < 8; endCol++) {
+              if (canPieceMove(piece, row, col, endRow, endCol, false, player, boardState, true)) {
+                // Try the move and see if it gets out of check
+                const newBoard = boardState.map(r => [...r]);
+                newBoard[endRow][endCol] = piece;
+                newBoard[row][col] = null;
+                
+                if (!isKingInCheck(newBoard, player)) {
+                  return false; // Found a move that gets out of check
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return true; // No moves can get out of check
+  };
+
+  const isStalemate = (player: 'blue' | 'red', boardState = board): boolean => {
+    if (isKingInCheck(boardState, player)) return false;
+    
+    // Check if any legal moves exist
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = boardState[row][col];
+        if (piece && getPieceColor(piece) === player) {
+          for (let endRow = 0; endRow < 8; endRow++) {
+            for (let endCol = 0; endCol < 8; endCol++) {
+              if (canPieceMove(piece, row, col, endRow, endCol, true, player, boardState, true)) {
+                return false; // Found a legal move
+              }
+            }
+          }
+        }
+      }
+    }
+    return true; // No legal moves exist
+  };
+
+  const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
+    if (isCheckmate(playerToMove, boardState)) {
+      const winner = playerToMove === 'blue' ? 'red' : 'blue';
+      console.log(`[DEBUG] Checkmate! ${winner} wins!`);
+      return 'checkmate';
+    }
+    
+    if (isStalemate(playerToMove, boardState)) {
+      console.log('[DEBUG] Stalemate! Game is a draw.');
+      return 'stalemate';
+    }
+    
+    return null;
+  };
+
   const renderSquare = (row: number, col: number) => {
     const piece = board[row][col];
     const isSelected = selectedPiece?.row === row && selectedPiece?.col === col;
     const isLegalMove = legalMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
                                    lastMove.to.row === row && lastMove.to.col === col);
+    
+    // Check if king is in check
+    const isKingInCheckSquare = piece && piece.toLowerCase() === 'k' && 
+      ((piece === 'k' && isKingInCheck(board, 'blue')) || 
+       (piece === 'K' && isKingInCheck(board, 'red')));
 
     return (
       <div
         key={`${row}-${col}`}
-        className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
+        className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''} ${isKingInCheckSquare ? 'check' : ''}`}
         onClick={() => handleSquareClick(row, col)}
+        style={{
+          position: 'relative',
+          backgroundColor: isKingInCheckSquare ? 'rgba(255, 0, 0, 0.3)' : undefined
+        }}
       >
         {piece && (
           <div
@@ -1037,6 +1256,22 @@ const ChessMultiplayer: React.FC = () => {
           />
         )}
         {isLegalMove && <div className="legal-move-indicator" />}
+        {isKingInCheckSquare && (
+          <div 
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '20px',
+              height: '20px',
+              backgroundColor: 'red',
+              borderRadius: '50%',
+              opacity: 0.7,
+              zIndex: 10
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -1070,6 +1305,89 @@ const ChessMultiplayer: React.FC = () => {
     }
   };
 
+  const handlePromotion = async (promotionPiece: string) => {
+    if (!promotionMove || !currentGameState || !gameId) return;
+    
+    setIsProcessingMove(true);
+    try {
+      // Update board locally first
+      const newBoard = board.map(row => [...row]);
+      const piece = newBoard[promotionMove.from.row][promotionMove.from.col];
+      
+      if (!piece) {
+        console.error('[DEBUG] No piece at promotion position');
+        return;
+      }
+      
+      // Place the promoted piece
+      const promotedPiece = playerColor === 'blue' ? promotionPiece : promotionPiece.toUpperCase();
+      newBoard[promotionMove.to.row][promotionMove.to.col] = promotedPiece;
+      newBoard[promotionMove.from.row][promotionMove.from.col] = null;
+      
+      setBoard(newBoard);
+      setLastMove({ from: promotionMove.from, to: promotionMove.to });
+      
+      // Update game state in Supabase
+      console.log('[DEBUG] Updating database with promotion:', promotionPiece);
+      
+      const { error, data } = await supabase
+        .from('chess_games')
+        .update({
+          board: { positions: newBoard, piece_state: {} },
+          current_player: playerColor === 'blue' ? 'red' : 'blue',
+          last_move: {
+            piece,
+            from_row: promotionMove.from.row,
+            from_col: promotionMove.from.col,
+            end_row: promotionMove.to.row,
+            end_col: promotionMove.to.col,
+            promotion: promotionPiece
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('game_id', gameId.toLowerCase())
+        .select();
+      
+      console.log('[DEBUG] Promotion database update result:', { error, data });
+      
+      if (error) {
+        console.error('[DEBUG] Promotion database update failed:', error);
+        throw error;
+      }
+      
+      console.log('[DEBUG] Promotion database update successful, rows affected:', data?.length);
+      
+      // Update local game state
+      const updatedGameState: GameData = {
+        ...currentGameState,
+        board: { positions: newBoard, piece_state: {} },
+        current_player: playerColor === 'blue' ? 'red' : 'blue',
+        last_move: {
+          piece,
+          from_row: promotionMove.from.row,
+          from_col: promotionMove.from.col,
+          end_row: promotionMove.to.row,
+          end_col: promotionMove.to.col,
+          promotion: promotionPiece
+        }
+      };
+      
+      setCurrentGameState(updatedGameState);
+      setStatus(isMyTurn(updatedGameState) ? 'Your turn' : "Opponent's turn");
+      
+      console.log('[DEBUG] Promotion completed successfully');
+      
+    } catch (error) {
+      console.error('Promotion failed:', error);
+      // Revert board state on error
+      setBoard(board);
+    } finally {
+      setIsProcessingMove(false);
+      setShowPromotion(false);
+      setPromotionMove(null);
+    }
+  };
+
   const makeMove = async (startRow: number, startCol: number, endRow: number, endCol: number) => {
     if (!currentGameState || !gameId || isProcessingMove) return;
     
@@ -1091,11 +1409,97 @@ const ChessMultiplayer: React.FC = () => {
         return;
       }
       
+      // Handle special moves
+      let capturedPiece: string | null = null;
+      let isEnPassant = false;
+      let isCastling = false;
+      let newEnPassantTarget: { row: number; col: number } | null = null;
+      
+      // Check for capture
+      if (newBoard[endRow][endCol]) {
+        capturedPiece = newBoard[endRow][endCol];
+        playSound('capture');
+      }
+      
+      // Check for en passant
+      if (playerColor && canEnPassant(startRow, startCol, endRow, endCol, playerColor, board)) {
+        isEnPassant = true;
+        capturedPiece = board[endRow][startCol]; // Capture the pawn that was passed
+        newBoard[endRow][startCol] = null; // Remove the captured pawn
+        playSound('capture');
+      }
+      
+      // Check for castling
+      const isKing = piece.toLowerCase() === 'k';
+      const isCastlingMove = isKing && Math.abs(endCol - startCol) === 2;
+      
+      if (isCastlingMove) {
+        isCastling = true;
+        // Move the rook
+        const isKingside = endCol > startCol;
+        const rookCol = isKingside ? 7 : 0;
+        const newRookCol = isKingside ? endCol - 1 : endCol + 1;
+        const rookPiece = playerColor === 'blue' ? 'r' : 'R';
+        
+        newBoard[endRow][newRookCol] = rookPiece;
+        newBoard[endRow][rookCol] = null;
+        playSound('move');
+      }
+      
+      // Update board
       newBoard[endRow][endCol] = piece;
       newBoard[startRow][startCol] = null;
       
+      // Set en passant target for next move (if pawn moved 2 squares)
+      const isPawn = piece.toLowerCase() === 'p';
+      const isDoublePawnMove = isPawn && Math.abs(endRow - startRow) === 2;
+      if (isDoublePawnMove) {
+        newEnPassantTarget = { row: (startRow + endRow) / 2, col: startCol };
+      }
+      
+      // Update castling rights
+      const newCastlingRights = { ...castlingRights };
+      if (isKing && playerColor) {
+        newCastlingRights[playerColor] = { kingside: false, queenside: false };
+      } else if (piece.toLowerCase() === 'r' && playerColor) {
+        if (startCol === 0) newCastlingRights[playerColor].queenside = false;
+        if (startCol === 7) newCastlingRights[playerColor].kingside = false;
+      }
+      
+      // Check for pawn promotion
+      const isPromotionRow = (piece === 'P' && endRow === 0) || (piece === 'p' && endRow === 7);
+      
+      if (isPawn && isPromotionRow) {
+        setPromotionMove({ from: { row: startRow, col: startCol }, to: { row: endRow, col: endCol } });
+        setShowPromotion(true);
+        setIsProcessingMove(false);
+        return;
+      }
+      
       setBoard(newBoard);
       setLastMove({ from: { row: startRow, col: startCol }, to: { row: endRow, col: endCol } });
+      setCastlingRights(newCastlingRights);
+      setEnPassantTarget(newEnPassantTarget);
+      
+      // Check for game end
+      const nextPlayer = playerColor === 'blue' ? 'red' : 'blue';
+      const gameEndResult = checkGameEnd(newBoard, nextPlayer);
+      
+      if (gameEndResult === 'checkmate') {
+        setGameEndState('checkmate');
+        setWinner(playerColor);
+        playSound('checkmate');
+      } else if (gameEndResult === 'stalemate') {
+        setGameEndState('stalemate');
+        playSound('move');
+      } else {
+        // Check if opponent is in check
+        if (isKingInCheck(newBoard, nextPlayer)) {
+          playSound('check');
+        } else {
+          playSound('move');
+        }
+      }
       
       // Update game state in Supabase
       console.log('[DEBUG] Updating database with game_id:', gameId);
@@ -1928,6 +2332,152 @@ const ChessMultiplayer: React.FC = () => {
           >
             {isLoading ? 'Cancelling...' : 'Cancel Existing Game'}
           </button>
+        </div>
+      )}
+
+      {/* Game End Dialog */}
+      {gameEndState && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '8px',
+            textAlign: 'center',
+            minWidth: '350px'
+          }}>
+            <h2 style={{ 
+              margin: '0 0 20px 0', 
+              color: gameEndState === 'checkmate' ? '#d32f2f' : '#1976d2',
+              fontSize: '24px'
+            }}>
+              {gameEndState === 'checkmate' ? '🎉 Checkmate!' : '🤝 Stalemate!'}
+            </h2>
+            
+            {gameEndState === 'checkmate' && winner && (
+              <p style={{ fontSize: '18px', marginBottom: '20px' }}>
+                <strong style={{ color: winner === 'blue' ? '#1976d2' : '#d32f2f' }}>
+                  {winner === playerColor ? 'You win!' : 'Opponent wins!'}
+                </strong>
+              </p>
+            )}
+            
+            {gameEndState === 'stalemate' && (
+              <p style={{ fontSize: '18px', marginBottom: '20px' }}>
+                The game is a draw!
+              </p>
+            )}
+            
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  setGameEndState(null);
+                  setWinner(null);
+                  // Reset game state or navigate back to lobby
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                New Game
+              </button>
+              <button
+                onClick={() => {
+                  setGameEndState(null);
+                  setWinner(null);
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Promotion Dialog */}
+      {showPromotion && promotionMove && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            textAlign: 'center',
+            minWidth: '300px'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0' }}>Choose promotion piece:</h3>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '10px',
+              marginBottom: '20px'
+            }}>
+              {['q', 'r', 'b', 'n'].map((piece) => (
+                <button
+                  key={piece}
+                  onClick={() => handlePromotion(piece)}
+                  style={{
+                    width: '50px',
+                    height: '50px',
+                    border: '2px solid #ccc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    backgroundColor: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#007bff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#ccc';
+                  }}
+                >
+                  <img
+                    src={pieceImages[playerColor === 'blue' ? piece : piece.toUpperCase()]}
+                    alt={piece}
+                    style={{ width: '40px', height: '40px' }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
