@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>Supabase WebSocket Connection Test</h1>
+    <div id="status">Testing...</div>
+    <div id="logs"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += '<div>' + message + '</div>';
+        }
+        
+        // Test basic WebSocket connectivity
+        function testWebSocket() {
+            log('Testing WebSocket connectivity...');
+            
+            const wsUrl = 'wss://lahldngklxwirmtbnjyk.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhaGxkbmdrbHh3aXJtdGJuanlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxODQ3NzQsImV4cCI6MjA2Nzc2MDc3NH0.maTZBPLJ-0m86_XItwbDwP48y0Q3gaFy9vbrIsCc7-c&vsn=1.0.0';
+            
+            try {
+                const ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function() {
+                    log('✅ WebSocket connection opened successfully!');
+                    statusDiv.innerHTML = '✅ WebSocket connection successful';
+                    statusDiv.style.color = 'green';
+                    
+                    // Send a test message
+                    ws.send(JSON.stringify({
+                        event: 'phx_join',
+                        topic: 'test',
+                        payload: {}
+                    }));
+                };
+                
+                ws.onmessage = function(event) {
+                    log('📨 Received message: ' + event.data);
+                };
+                
+                ws.onerror = function(error) {
+                    log('❌ WebSocket error: ' + error);
+                    statusDiv.innerHTML = '❌ WebSocket connection failed';
+                    statusDiv.style.color = 'red';
+                };
+                
+                ws.onclose = function(event) {
+                    log('🔌 WebSocket connection closed: ' + event.code + ' - ' + event.reason);
+                    statusDiv.innerHTML = '🔌 WebSocket connection closed';
+                    statusDiv.style.color = 'orange';
+                };
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        log('⏰ WebSocket connection timeout');
+                        statusDiv.innerHTML = '⏰ WebSocket connection timeout';
+                        statusDiv.style.color = 'red';
+                        ws.close();
+                    }
+                }, 10000);
+                
+            } catch (error) {
+                log('❌ WebSocket creation failed: ' + error);
+                statusDiv.innerHTML = '❌ WebSocket creation failed';
+                statusDiv.style.color = 'red';
+            }
+        }
+        
+        // Run test when page loads
+        window.onload = testWebSocket;
+    </script>
+</body>
+</html> 
