@@ -95,7 +95,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
 
   useEffect(() => {
     if (isOpen && walletAddress) {
-      loadEligibleLists();
+      void loadEligibleLists();
     }
   }, [isOpen, walletAddress]);
 
@@ -268,7 +268,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                 ))}
               </div>
               <button
-                onClick={handleMint}
+                onClick={() => void handleMint()}
                 disabled={minting}
                 style={{
                   background: '#c0c0c0',

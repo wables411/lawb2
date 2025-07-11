@@ -280,25 +280,7 @@ const ChessMultiplayer: React.FC = () => {
     }, 60 * 1000);
   }, [connectToContract]);
 
-  // Force sync functionality (from original multiplayer.js)
-  const forceMultiplayerSync = useCallback(async () => {
-    setForceSyncLoading(true);
-    try {
-      if (!walletAddress) {
-        setStatus('Please connect your wallet to resync');
-        return;
-      }
-      
-      console.log('Attempting to resync game state');
-      await checkPlayerGameState();
-      setStatus('Game state resynced successfully');
-    } catch (error) {
-      console.error('forceMultiplayerSync failed:', error);
-      setStatus('Resync failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setForceSyncLoading(false);
-    }
-  }, [walletAddress]);
+
 
   // Check player game state with enhanced retry logic
   const checkPlayerGameState = useCallback(async (maxRetries = 5, baseDelay = 1000) => {
@@ -531,67 +513,6 @@ const ChessMultiplayer: React.FC = () => {
     }
   }, [walletAddress, wagerAmount, gameTitle, isPublic, hasCreatedGame, ensureSankoNetwork, connectToContract, generateUniqueInviteCode]);
 
-  // Join game by code with retry logic
-  const joinGameByCode = useCallback(async (gameId: string, maxRetries = 3, retryDelay = 2000) => {
-    setIsLoading(true);
-    setStatus('Joining game...');
-
-    let attempt = 1;
-    while (attempt <= maxRetries) {
-      try {
-        if (!walletAddress) throw new Error('Wallet not connected');
-        if (!await ensureSankoNetwork()) return;
-
-        const contract = await connectToContract();
-        if (!contract) throw new Error('Failed to connect to contract');
-
-        const { data: gameData, error } = await supabase
-          .from('chess_games')
-          .select('bet_amount')
-          .eq('game_id', gameId.toLowerCase())
-          .single();
-
-        if (error) throw new Error(`Failed to fetch game: ${error.message}`);
-
-        const wagerAmountStr = typeof gameData.bet_amount === 'string' ? gameData.bet_amount : String(gameData.bet_amount);
-        const wagerAmount = ethers.parseEther(wagerAmountStr);
-        const inviteCode = ethers.zeroPadValue(ethers.hexlify('0x' + gameId.toLowerCase()), 6);
-        
-        await contract.joinGame(inviteCode, { value: wagerAmount });
-        
-        // Update Supabase to mark game as active and set red_player
-        const { error: updateError } = await supabase
-          .from('chess_games')
-          .update({
-            game_state: 'active',
-            red_player: walletAddress,
-            updated_at: new Date().toISOString()
-          })
-          .eq('game_id', gameId.toLowerCase());
-        
-        if (updateError) {
-          console.error('Failed to update game state in Supabase:', updateError);
-        }
-        
-        await checkPlayerGameState();
-        
-        setStatus('Joined game successfully!');
-        return true;
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error(`Join attempt ${attempt} failed:`, error.message);
-          if (attempt === maxRetries) {
-            setStatus(`Failed to join game: ${error.message}`);
-            return false;
-          }
-          await new Promise(resolve => window.setTimeout(resolve, retryDelay));
-        }
-      }
-      attempt++;
-    }
-    return false;
-  }, [walletAddress, ensureSankoNetwork, connectToContract, checkPlayerGameState]);
-
   // Fetch multiplayer games
   const fetchMultiplayerGames = useCallback(async () => {
     try {
@@ -622,11 +543,20 @@ const ChessMultiplayer: React.FC = () => {
 
     try {
       console.log('[DEBUG] Setting up game subscription for:', gameId);
+      
+      // Create a unique channel name
+      const channelName = `chess_game_${gameId}_${Date.now()}`;
+      
       subscriptionRef.current = supabase
-        .channel(`chess_game_${gameId}`)
+        .channel(channelName)
         .on(
           'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'chess_games', filter: `game_id=eq.${gameId.toLowerCase()}` },
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'chess_games', 
+            filter: `game_id=eq.${gameId.toLowerCase()}` 
+          },
           (payload) => {
             console.log('[DEBUG] Game update received:', payload);
             const newGame = payload.new as GameData;
@@ -640,20 +570,151 @@ const ChessMultiplayer: React.FC = () => {
                 console.log('[DEBUG] Updating board with:', newGame.board.positions);
                 setBoard(newGame.board.positions);
               }
+              // Update last move if available
+              if (newGame.last_move) {
+                setLastMove({
+                  from: { row: newGame.last_move.from_row, col: newGame.last_move.from_col },
+                  to: { row: newGame.last_move.end_row, col: newGame.last_move.end_col }
+                });
+              }
             }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'chess_games', 
+            filter: `game_id=eq.${gameId.toLowerCase()}` 
+          },
+          (payload) => {
+            console.log('[DEBUG] Game created:', payload);
+            // Refresh game state when game is created
+            void checkPlayerGameState();
           }
         )
         .subscribe((status) => {
           console.log(`[DEBUG] Game subscription status: ${status}`);
           if (status === 'CHANNEL_ERROR') {
-            console.error('[DEBUG] Game subscription failed, retrying...');
-            setTimeout(() => subscribeToGame(gameId), 2000);
+            console.error('[DEBUG] Game subscription failed, retrying in 3 seconds...');
+            setTimeout(() => {
+              console.log('[DEBUG] Retrying game subscription...');
+              void subscribeToGame(gameId);
+            }, 3000);
+          } else if (status === 'SUBSCRIBED') {
+            console.log('[DEBUG] Game subscription successful');
+          } else if (status === 'TIMED_OUT') {
+            console.error('[DEBUG] Game subscription timed out, retrying...');
+            setTimeout(() => {
+              void subscribeToGame(gameId);
+            }, 2000);
           }
         });
     } catch (error) {
       console.error('[DEBUG] Failed to subscribe to game:', error);
+      // Retry after a delay
+      setTimeout(() => {
+        void subscribeToGame(gameId);
+      }, 5000);
     }
-  }, []);
+  }, [checkPlayerGameState]);
+
+  // Join game by code
+  const joinGameByCode = useCallback(async (inviteCode: string) => {
+    if (!walletAddress) {
+      setStatus('Please connect your wallet');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatus('Joining game...');
+
+    try {
+      if (!await ensureSankoNetwork()) return;
+
+      const contract = await connectToContract();
+      if (!contract) {
+        setStatus('Failed to connect to contract');
+        return;
+      }
+
+      // Check if game exists in Supabase
+      const { data: gameData, error: gameError } = await supabase
+        .from('chess_games')
+        .select('*')
+        .eq('game_id', inviteCode.toLowerCase())
+        .eq('game_state', 'waiting')
+        .single();
+
+      if (gameError || !gameData) {
+        setStatus('Game not found or already started');
+        return;
+      }
+
+      // Join the game on contract
+      const inviteCodeBytes = ethers.zeroPadValue(ethers.hexlify('0x' + inviteCode.toLowerCase()), 6);
+      const wagerInWei = ethers.parseEther(gameData.bet_amount);
+      
+      const tx = await contract.joinGame(inviteCodeBytes, { value: wagerInWei });
+      await tx.wait();
+
+      // Update game state in Supabase
+      const { error: updateError } = await supabase
+        .from('chess_games')
+        .update({
+          red_player: walletAddress,
+          game_state: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('game_id', inviteCode.toLowerCase());
+
+      if (updateError) throw updateError;
+
+      // Set up game subscription immediately
+      await subscribeToGame(inviteCode);
+      
+      setStatus('Successfully joined game!');
+      setGameCode(inviteCode);
+      
+      // Refresh game state
+      await checkPlayerGameState();
+      
+    } catch (error) {
+      console.error('Failed to join game:', error);
+      setStatus(`Failed to join game: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [walletAddress, ensureSankoNetwork, connectToContract, subscribeToGame, checkPlayerGameState]);
+
+  // Force sync functionality (from original multiplayer.js)
+  const forceMultiplayerSync = useCallback(async () => {
+    setForceSyncLoading(true);
+    try {
+      if (!walletAddress) {
+        setStatus('Please connect your wallet to resync');
+        return;
+      }
+      
+      console.log('Attempting to resync game state');
+      await fetchMultiplayerGames();
+      await checkPlayerGameState();
+      
+      // If we have a current game, ensure subscription is active
+      if (gameId && currentGameState) {
+        console.log('[DEBUG] Force sync: Ensuring game subscription for:', gameId);
+        await subscribeToGame(gameId);
+      }
+      
+      setStatus('Game state resynced successfully');
+    } catch (error) {
+      console.error('forceMultiplayerSync failed:', error);
+      setStatus('Resync failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setForceSyncLoading(false);
+    }
+  }, [walletAddress, fetchMultiplayerGames, checkPlayerGameState, gameId, currentGameState, subscribeToGame]);
 
   // Leave game
   const leaveGame = useCallback(async () => {
@@ -964,11 +1025,24 @@ const ChessMultiplayer: React.FC = () => {
   const makeMove = async (startRow: number, startCol: number, endRow: number, endCol: number) => {
     if (!currentGameState || !gameId || isProcessingMove) return;
     
+    // Check if it's the player's turn
+    if (!isMyTurn(currentGameState)) {
+      console.log('[DEBUG] Not your turn');
+      return;
+    }
+    
     setIsProcessingMove(true);
     try {
       // Update board locally first
       const newBoard = board.map(row => [...row]);
       const piece = newBoard[startRow][startCol];
+      
+      // Ensure piece exists
+      if (!piece) {
+        console.error('[DEBUG] No piece at selected position');
+        return;
+      }
+      
       newBoard[endRow][endCol] = piece;
       newBoard[startRow][startCol] = null;
       
@@ -993,6 +1067,26 @@ const ChessMultiplayer: React.FC = () => {
         .eq('game_id', gameId);
       
       if (error) throw error;
+      
+      // Update local game state immediately
+      const updatedGameState: GameData = {
+        ...currentGameState,
+        board: { positions: newBoard, piece_state: {} },
+        current_player: playerColor === 'blue' ? 'red' : 'blue',
+        last_move: {
+          piece,
+          from_row: startRow,
+          from_col: startCol,
+          end_row: endRow,
+          end_col: endCol
+        },
+        updated_at: new Date().toISOString()
+      };
+      
+      setCurrentGameState(updatedGameState);
+      setStatus(isMyTurn(updatedGameState) ? 'Your turn' : "Opponent's turn");
+      
+      console.log('[DEBUG] Move completed successfully');
       
     } catch (error) {
       console.error('Move failed:', error);
@@ -1021,27 +1115,46 @@ const ChessMultiplayer: React.FC = () => {
   // Subscribe to lobby updates with better error handling
   useEffect(() => {
     let retryCount = 0;
-    const maxRetries = 3;
+    const maxRetries = 5;
     
     const setupLobbySubscription = () => {
       try {
         console.log('[DEBUG] Setting up lobby subscription');
+        
+        // Create a unique channel name for lobby
+        const channelName = `chess_lobby_${Date.now()}`;
+        
         const channel = supabase
-          .channel('chess_games_changes')
+          .channel(channelName)
           .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'chess_games' },
+            { 
+              event: '*', 
+              schema: 'public', 
+              table: 'chess_games' 
+            },
             () => {
               console.log('[DEBUG] Lobby update received');
-              fetchMultiplayerGames();
+              void fetchMultiplayerGames();
             }
           )
           .subscribe((status) => {
             console.log(`[DEBUG] Lobby subscription status: ${status}`);
             if (status === 'CHANNEL_ERROR' && retryCount < maxRetries) {
               retryCount++;
-              console.log(`[DEBUG] Lobby subscription failed, retry ${retryCount}/${maxRetries}`);
-              setTimeout(setupLobbySubscription, 2000);
+              console.log(`[DEBUG] Lobby subscription failed, retry ${retryCount}/${maxRetries} in 3 seconds`);
+              setTimeout(() => {
+                console.log('[DEBUG] Retrying lobby subscription...');
+                setupLobbySubscription();
+              }, 3000);
+            } else if (status === 'SUBSCRIBED') {
+              console.log('[DEBUG] Lobby subscription successful');
+              retryCount = 0; // Reset retry count on success
+            } else if (status === 'TIMED_OUT') {
+              console.error('[DEBUG] Lobby subscription timed out, retrying...');
+              setTimeout(() => {
+                setupLobbySubscription();
+              }, 2000);
             }
           });
 
@@ -1149,6 +1262,60 @@ const ChessMultiplayer: React.FC = () => {
     };
   }, [fetchMultiplayerGames, checkPlayerGameState]);
 
+  // Add polling fallback for when real-time fails
+  useEffect(() => {
+    let pollInterval: number | null = null;
+    
+    // Only start polling if we have a game and real-time might be failing
+    if (gameId && currentGameState) {
+      console.log('[DEBUG] Setting up polling fallback for game:', gameId);
+      
+      pollInterval = window.setInterval(async () => {
+        try {
+          // Poll for game updates every 3 seconds as fallback
+          const { data: gameData, error } = await supabase
+            .from('chess_games')
+            .select('*')
+            .eq('game_id', gameId.toLowerCase())
+            .single();
+          
+          if (!error && gameData) {
+            const lastUpdate = new Date(gameData.updated_at).getTime();
+            const currentUpdate = new Date(currentGameState.updated_at).getTime();
+            
+            // Only update if the game data is newer
+            if (lastUpdate > currentUpdate) {
+              console.log('[DEBUG] Polling fallback: Game update detected');
+              setCurrentGameState(gameData);
+              setIsWaitingForOpponent(gameData.game_state === 'waiting');
+              setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+              
+              if (gameData.board?.positions) {
+                setBoard(gameData.board.positions);
+              }
+              
+              if (gameData.last_move) {
+                setLastMove({
+                  from: { row: gameData.last_move.from_row, col: gameData.last_move.from_col },
+                  to: { row: gameData.last_move.end_row, col: gameData.last_move.end_col }
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[DEBUG] Polling fallback error:', error);
+        }
+      }, 3000);
+    }
+    
+    return () => {
+      if (pollInterval) {
+        console.log('[DEBUG] Cleaning up polling fallback');
+        window.clearInterval(pollInterval);
+      }
+    };
+  }, [gameId, currentGameState, isMyTurn]);
+
   // Cleanup on unmount
   useEffect(() => {
           return () => {
@@ -1227,6 +1394,20 @@ const ChessMultiplayer: React.FC = () => {
             <span className="wager-label">Wager:</span> <span>{formatWager(currentGameState.bet_amount)}</span>
             <span className="mode-play">Mode: PvP</span>
             <span>Game ID: {gameId}</span>
+          </div>
+          {/* Debug panel for troubleshooting */}
+          <div style={{ 
+            fontSize: '10px', 
+            color: '#666', 
+            padding: '5px', 
+            background: '#f0f0f0', 
+            borderTop: '1px solid #ccc',
+            fontFamily: 'monospace'
+          }}>
+            <div>Status: {status}</div>
+            <div>Player: {playerColor} | Turn: {isMyTurn(currentGameState) ? 'Yes' : 'No'}</div>
+            <div>Last Update: {currentGameState.updated_at ? new Date(currentGameState.updated_at).toLocaleTimeString() : 'N/A'}</div>
+            <div>Subscription: {subscriptionRef.current ? 'Active' : 'Inactive'}</div>
           </div>
         </div>
         <div className="chess-main-area">
