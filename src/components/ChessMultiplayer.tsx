@@ -1116,7 +1116,7 @@ const ChessMultiplayer: React.FC = () => {
           },
           updated_at: new Date().toISOString()
         })
-        .eq('game_id', gameId)
+        .eq('game_id', gameId.toLowerCase())
         .select();
       
       console.log('[DEBUG] Database update result:', { error, data });
