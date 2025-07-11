@@ -849,7 +849,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const isSelected = selectedSquare?.row === row && selectedSquare?.col === col;
     const isValidMove = validMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && ((lastMove.from.row === row && lastMove.from.col === col) || (lastMove.to.row === row && lastMove.to.col === col));
-    const isInCheck = piece && piece.toUpperCase() === 'K' && isKingInCheck(getPieceColor(piece), board);
+    const isInCheck = piece && piece.toUpperCase() === 'K' && isKingInCheck(board, getPieceColor(piece));
     
     return (
       <div

@@ -1894,7 +1894,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           ) : showDifficulty ? (
             renderDifficultySelection()
           ) : gameMode === 'online' ? (
-            <ChessMultiplayer />
+            <ChessMultiplayer onClose={onClose} onMinimize={onMinimize} fullscreen={fullscreen} />
           ) : (
             <div className="game-mode-panel">
               <h3 className="game-mode-title">Select Game Mode</h3>

@@ -31,7 +31,7 @@ const ChessPage: React.FC = () => {
         {gameMode === 'singleplayer' ? (
           <ChessGame onClose={() => {}} />
         ) : (
-          <ChessMultiplayer />
+          <ChessMultiplayer onClose={() => {}} onMinimize={() => {}} fullscreen={false} />
         )}
             </div>
     </div>
