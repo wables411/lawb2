@@ -648,8 +648,8 @@ const ChessMultiplayer: React.FC = () => {
     console.log('[DEBUG] WebSocket disabled - using polling only');
     return;
     
-    if (subscriptionRef.current) {
-      supabase.removeChannel(subscriptionRef.current);
+    if (subscriptionRef.current !== null) {
+      supabase.removeChannel(subscriptionRef.current!);
     }
 
     try {
@@ -856,9 +856,8 @@ const ChessMultiplayer: React.FC = () => {
     setShowCreateForm(false);
     setStatus('Ready to play');
     
-    if (subscriptionRef.current) {
-      supabase.removeChannel(subscriptionRef.current);
-      subscriptionRef.current = null;
+    if (subscriptionRef.current !== null) {
+      supabase.removeChannel(subscriptionRef.current!);
     }
   }, []);
 
@@ -1829,8 +1828,8 @@ const ChessMultiplayer: React.FC = () => {
   // Cleanup on unmount
   useEffect(() => {
           return () => {
-        if (subscriptionRef.current) {
-          supabase.removeChannel(subscriptionRef.current);
+        if (subscriptionRef.current !== null) {
+          supabase.removeChannel(subscriptionRef.current!);
         }
       if (expiryIntervalRef.current) {
         window.clearInterval(expiryIntervalRef.current);
@@ -1928,8 +1927,9 @@ const ChessMultiplayer: React.FC = () => {
       setStatus('Game ended. Winner paid out!');
     } catch (err: any) {
       setEndGameStatus('error');
-      setEndGameError((err && typeof err.message === 'string') ? err.message : 'Unknown error ending game');
-      setStatus('Error ending game: ' + ((err && typeof err.message === 'string') ? err.message : 'Unknown error'));
+      const errorMsg = (err && typeof err.message === 'string') ? err.message : 'Unknown error ending game';
+      setEndGameError(errorMsg);
+      setStatus('Error ending game: ' + errorMsg);
     }
   }, [gameId, currentGameState, endGameStatus]);
 
