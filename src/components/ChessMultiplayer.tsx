@@ -621,6 +621,7 @@ const ChessMultiplayer: React.FC = () => {
     }
 
     try {
+      console.log('[DEBUG] Setting up game subscription for:', gameId);
       subscriptionRef.current = supabase
         .channel(`chess_game_${gameId}`)
         .on(
@@ -1024,12 +1025,14 @@ const ChessMultiplayer: React.FC = () => {
     
     const setupLobbySubscription = () => {
       try {
+        console.log('[DEBUG] Setting up lobby subscription');
         const channel = supabase
           .channel('chess_games_changes')
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'chess_games' },
             () => {
+              console.log('[DEBUG] Lobby update received');
               fetchMultiplayerGames();
             }
           )
@@ -1043,6 +1046,7 @@ const ChessMultiplayer: React.FC = () => {
           });
 
         return () => {
+          console.log('[DEBUG] Cleaning up lobby subscription');
           supabase.removeChannel(channel);
         };
       } catch (error) {
@@ -1147,10 +1151,10 @@ const ChessMultiplayer: React.FC = () => {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
+          return () => {
+        if (subscriptionRef.current) {
+          supabase.removeChannel(subscriptionRef.current);
+        }
       if (expiryIntervalRef.current) {
         window.clearInterval(expiryIntervalRef.current);
       }
