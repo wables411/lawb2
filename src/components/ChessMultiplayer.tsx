@@ -1098,7 +1098,11 @@ const ChessMultiplayer: React.FC = () => {
       setLastMove({ from: { row: startRow, col: startCol }, to: { row: endRow, col: endCol } });
       
       // Update game state in Supabase
-      const { error } = await supabase
+      console.log('[DEBUG] Updating database with game_id:', gameId);
+      console.log('[DEBUG] New board state:', newBoard);
+      console.log('[DEBUG] New current_player:', playerColor === 'blue' ? 'red' : 'blue');
+      
+      const { error, data } = await supabase
         .from('chess_games')
         .update({
           board: { positions: newBoard, piece_state: {} },
@@ -1112,9 +1116,17 @@ const ChessMultiplayer: React.FC = () => {
           },
           updated_at: new Date().toISOString()
         })
-        .eq('game_id', gameId);
+        .eq('game_id', gameId)
+        .select();
       
-      if (error) throw error;
+      console.log('[DEBUG] Database update result:', { error, data });
+      
+      if (error) {
+        console.error('[DEBUG] Database update failed:', error);
+        throw error;
+      }
+      
+      console.log('[DEBUG] Database update successful, rows affected:', data?.length);
       
       // Update local game state immediately (without updated_at to allow polling to detect changes)
       const updatedGameState: GameData = {
