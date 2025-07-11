@@ -81,10 +81,10 @@ const ChessMultiplayer: React.FC<{ fullscreen?: boolean }> = ({ fullscreen = fal
   // Subscribe to game state
   useEffect(() => {
     if (!gameId) return;
-    // @ts-ignore: Supabase Realtime v2 type mismatch, this works at runtime
-    const channel = supabase
+    // @ts-expect-error: Supabase Realtime v2 type mismatch, works at runtime
+    const channel = (supabase as any)
       .channel(`chess_game_${gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chess_games', filter: `game_id=eq.${gameId}` }, (payload: { new: { board: string; move_history?: string[]; game_state: string; blue_player?: string; red_player?: string } }) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chess_games', filter: `game_id=eq.${gameId}` }, (payload: any) => {
         const boardObj = JSON.parse(payload.new.board);
         const newBoard = Array.isArray(boardObj.positions) ? boardObj.positions as (string | null)[][] : initialBoard;
         setBoard(newBoard);
