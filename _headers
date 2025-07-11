@@ -1,0 +1,28 @@
+/*.wasm
+  Content-Type: application/wasm
+  Cache-Control: public, max-age=31536000
+
+/*.js
+  Cache-Control: public, max-age=31536000
+
+/*.css
+  Cache-Control: public, max-age=31536000
+
+/*.png
+  Cache-Control: public, max-age=31536000
+
+/*.jpg
+  Cache-Control: public, max-age=31536000
+
+/*.gif
+  Cache-Control: public, max-age=31536000
+
+# Allow iframes and embeds on $lawb page
+/lawb
+  X-Frame-Options: SAMEORIGIN
+
+# Allow Twitter embeds and other iframes on main site
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin 
