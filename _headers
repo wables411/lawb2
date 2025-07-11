@@ -1,1 +1,5 @@
-# No headers - allow all connections 
+/*
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: cross-origin
+*/ 
