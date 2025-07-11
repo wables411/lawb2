@@ -19,19 +19,10 @@
 
 # Allow iframes and embeds on $lawb page
 /lawb
-  X-Frame-Options:
-  Cross-Origin-Opener-Policy:
-  Cross-Origin-Embedder-Policy:
+  X-Frame-Options: SAMEORIGIN
 
 # Allow Twitter embeds and other iframes on main site
 /*
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Cross-Origin-Opener-Policy: same-origin-allow-popups
-  Cross-Origin-Embedder-Policy: require-corp
-
-# Enable SharedArrayBuffer for Stockfish chess engine
-/*.wasm
-  Cross-Origin-Opener-Policy: same-origin-allow-popups
-  Cross-Origin-Embedder-Policy: require-corp 
+  Referrer-Policy: strict-origin-when-cross-origin 
