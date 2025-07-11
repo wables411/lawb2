@@ -1333,10 +1333,15 @@ const ChessMultiplayer: React.FC = () => {
             console.log('[DEBUG] New game data updated_at:', gameData.updated_at);
             
             // Always update if we have valid game data
+            // Use a more robust comparison that also checks for board changes
             const shouldUpdate = !currentGameState || 
-              new Date(gameData.updated_at).getTime() > new Date(currentGameState.updated_at).getTime();
+              new Date(gameData.updated_at).getTime() > new Date(currentGameState.updated_at).getTime() ||
+              JSON.stringify(gameData.board?.positions) !== JSON.stringify(currentGameState.board?.positions) ||
+              gameData.current_player !== currentGameState.current_player;
             
             console.log('[DEBUG] Should update:', shouldUpdate);
+            console.log('[DEBUG] Board changed:', currentGameState ? JSON.stringify(gameData.board?.positions) !== JSON.stringify(currentGameState.board?.positions) : 'N/A');
+            console.log('[DEBUG] Player changed:', currentGameState ? gameData.current_player !== currentGameState.current_player : 'N/A');
             
             if (shouldUpdate) {
               console.log('[DEBUG] Polling fallback: Game update detected');
