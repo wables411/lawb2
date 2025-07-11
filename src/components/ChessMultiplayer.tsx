@@ -1313,8 +1313,8 @@ const ChessMultiplayer: React.FC = () => {
   useEffect(() => {
     let pollInterval: number | null = null;
     
-    // Only start polling if we have a game and real-time might be failing
-    if (gameId && currentGameState) {
+    // Start polling if we have a game ID (regardless of currentGameState)
+    if (gameId) {
       console.log('[DEBUG] Setting up polling fallback for game:', gameId);
       
       pollInterval = window.setInterval(async () => {
@@ -1327,14 +1327,13 @@ const ChessMultiplayer: React.FC = () => {
             .single();
           
           if (!error && gameData) {
-            const lastUpdate = new Date(gameData.updated_at).getTime();
-            const currentUpdate = new Date(currentGameState.updated_at).getTime();
+            // Always update if we have valid game data
+            const shouldUpdate = !currentGameState || 
+              new Date(gameData.updated_at).getTime() > new Date(currentGameState.updated_at).getTime();
             
-            // Only update if the game data is newer
-            if (lastUpdate > currentUpdate) {
+            if (shouldUpdate) {
               console.log('[DEBUG] Polling fallback: Game update detected');
-              console.log('[DEBUG] Old update:', new Date(currentUpdate).toLocaleTimeString());
-              console.log('[DEBUG] New update:', new Date(lastUpdate).toLocaleTimeString());
+              console.log('[DEBUG] Game data:', gameData);
               
               setCurrentGameState(gameData);
               setIsWaitingForOpponent(gameData.game_state === 'waiting');
@@ -1359,7 +1358,7 @@ const ChessMultiplayer: React.FC = () => {
         } catch (error) {
           console.error('[DEBUG] Polling fallback error:', error);
         }
-      }, 2000); // Reduced from 3 seconds to 2 seconds
+      }, 2000); // Poll every 2 seconds
     }
     
     return () => {
@@ -1368,7 +1367,7 @@ const ChessMultiplayer: React.FC = () => {
         window.clearInterval(pollInterval);
       }
     };
-  }, [gameId, currentGameState, isMyTurn]);
+  }, [gameId]); // Only depend on gameId, not currentGameState
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1469,6 +1468,32 @@ const ChessMultiplayer: React.FC = () => {
               style={{ fontSize: '10px', padding: '2px 5px', marginTop: '5px' }}
             >
               Test Connection
+            </button>
+            <button 
+              onClick={async () => {
+                console.log('[DEBUG] Manual refresh triggered');
+                if (gameId) {
+                  const { data: gameData, error } = await supabase
+                    .from('chess_games')
+                    .select('*')
+                    .eq('game_id', gameId.toLowerCase())
+                    .single();
+                  
+                  if (!error && gameData) {
+                    console.log('[DEBUG] Manual refresh: Game data updated');
+                    setCurrentGameState(gameData);
+                    setIsWaitingForOpponent(gameData.game_state === 'waiting');
+                    setStatus(isMyTurn(gameData) ? 'Your turn' : "Opponent's turn");
+                    
+                    if (gameData.board?.positions) {
+                      setBoard(gameData.board.positions);
+                    }
+                  }
+                }
+              }}
+              style={{ fontSize: '10px', padding: '2px 5px', marginTop: '5px' }}
+            >
+              Manual Refresh
             </button>
           </div>
         </div>
