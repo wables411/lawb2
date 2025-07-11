@@ -1319,6 +1319,7 @@ const ChessMultiplayer: React.FC = () => {
       
       pollInterval = window.setInterval(async () => {
         try {
+          console.log('[DEBUG] Polling fallback: Checking for updates...');
           // Poll for game updates every 2 seconds as fallback
           const { data: gameData, error } = await supabase
             .from('chess_games')
@@ -1327,9 +1328,15 @@ const ChessMultiplayer: React.FC = () => {
             .single();
           
           if (!error && gameData) {
+            console.log('[DEBUG] Polling fallback: Got game data, checking for updates');
+            console.log('[DEBUG] Current game state updated_at:', currentGameState?.updated_at);
+            console.log('[DEBUG] New game data updated_at:', gameData.updated_at);
+            
             // Always update if we have valid game data
             const shouldUpdate = !currentGameState || 
               new Date(gameData.updated_at).getTime() > new Date(currentGameState.updated_at).getTime();
+            
+            console.log('[DEBUG] Should update:', shouldUpdate);
             
             if (shouldUpdate) {
               console.log('[DEBUG] Polling fallback: Game update detected');
@@ -1351,6 +1358,8 @@ const ChessMultiplayer: React.FC = () => {
                   to: { row: gameData.last_move.end_row, col: gameData.last_move.end_col }
                 });
               }
+            } else {
+              console.log('[DEBUG] Polling fallback: No update needed');
             }
           } else if (error) {
             console.error('[DEBUG] Polling fallback error:', error);
