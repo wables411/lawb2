@@ -95,6 +95,7 @@ const ChessMultiplayer: React.FC = () => {
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  const [networkStatus, setNetworkStatus] = useState<'checking' | 'correct' | 'wrong' | 'error'>('checking');
   
   // Refs
   const subscriptionRef = useRef<RealtimeChannel | null>(null);
@@ -102,6 +103,47 @@ const ChessMultiplayer: React.FC = () => {
   const lastQueriedGameIdRef = useRef<string | null>(null);
   const expiryIntervalRef = useRef<number | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+
+  // Check network status
+  const checkNetworkStatus = useCallback(async () => {
+    try {
+      if (!window.ethereum) {
+        setNetworkStatus('error');
+        return false;
+      }
+      
+      const chainId = await (window.ethereum as unknown as ethers.Eip1193Provider).request({ method: 'eth_chainId' });
+      if (chainId === '0x7c8') {
+        setNetworkStatus('correct');
+        return true;
+      } else {
+        setNetworkStatus('wrong');
+        return false;
+      }
+    } catch (error) {
+      console.error('Network check failed:', error);
+      setNetworkStatus('error');
+      return false;
+    }
+  }, []);
+
+  // Monitor network changes
+  useEffect(() => {
+    if (window.ethereum) {
+      const handleChainChanged = () => {
+        void checkNetworkStatus();
+      };
+
+      (window.ethereum as any).on('chainChanged', handleChainChanged);
+      void checkNetworkStatus();
+
+      return () => {
+        if (window.ethereum) {
+          (window.ethereum as any).removeListener('chainChanged', handleChainChanged);
+        }
+      };
+    }
+  }, [checkNetworkStatus]);
   
   // Network management
   const ensureSankoNetwork = useCallback(async () => {
@@ -370,7 +412,7 @@ const ChessMultiplayer: React.FC = () => {
     return uuid;
   }, []);
 
-  // Create multiplayer game with enhanced error handling
+  // Create multiplayer game with enhanced error handling and better game cleanup
   const createMultiplayerGame = useCallback(async () => {
     if (hasCreatedGame) return;
     setHasCreatedGame(true);
@@ -390,16 +432,37 @@ const ChessMultiplayer: React.FC = () => {
         throw new Error(`Wager must be between ${minWager} and ${maxWager} tDMT`);
       }
 
-      // Check for existing game
-      let existingGame = await contract.playerToGame(walletAddress);
+      // Check for existing game - this is the key fix
+      const existingGame = await contract.playerToGame(walletAddress);
       if (existingGame !== '0x000000000000' && existingGame !== '') {
-        await leaveGame();
-        existingGame = await contract.playerToGame(walletAddress);
-        if (existingGame !== '0x000000000000' && existingGame !== '') {
-          const gameIdStr = ethers.hexlify(existingGame).slice(2).toUpperCase();
-          const inviteCodeBytes = ethers.zeroPadValue(ethers.hexlify('0x' + gameIdStr.toLowerCase()), 6);
-          await contract.cancelGame(inviteCodeBytes);
-          await cleanupStaleGame(gameIdStr);
+        console.log('[DEBUG] Found existing game, checking if it can be cancelled...');
+        
+        // Check if the game has a player2 (is already started)
+        const gameIdStr = ethers.hexlify(existingGame).slice(2).toUpperCase();
+        const gameData = await contract.games(existingGame);
+        
+        if (gameData.player2 !== '0x0000000000000000000000000000000000000000') {
+          // Game already has player2 - can't cancel, must end it first
+          throw new Error('You are already in an active game. Please finish that game first.');
+        } else {
+          // Game is waiting for player2 - can cancel
+          try {
+            const inviteCodeBytes = ethers.zeroPadValue(ethers.hexlify('0x' + gameIdStr.toLowerCase()), 6);
+            await contract.cancelGame(inviteCodeBytes);
+            await cleanupStaleGame(gameIdStr);
+            
+            // Wait a bit for the transaction to be processed
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Verify cancellation
+            const newExistingGame = await contract.playerToGame(walletAddress);
+            if (newExistingGame !== '0x000000000000' && newExistingGame !== '') {
+              throw new Error('Failed to cancel existing game. Please try again.');
+            }
+          } catch (cleanupError) {
+            console.error('[DEBUG] Cleanup failed:', cleanupError);
+            throw new Error('Please cancel your existing game first or contact support');
+          }
         }
       }
 
@@ -495,6 +558,21 @@ const ChessMultiplayer: React.FC = () => {
         const inviteCode = ethers.zeroPadValue(ethers.hexlify('0x' + gameId.toLowerCase()), 6);
         
         await contract.joinGame(inviteCode, { value: wagerAmount });
+        
+        // Update Supabase to mark game as active and set red_player
+        const { error: updateError } = await supabase
+          .from('chess_games')
+          .update({
+            game_state: 'active',
+            red_player: walletAddress,
+            updated_at: new Date().toISOString()
+          })
+          .eq('game_id', gameId.toLowerCase());
+        
+        if (updateError) {
+          console.error('Failed to update game state in Supabase:', updateError);
+        }
+        
         await checkPlayerGameState();
         
         setStatus('Joined game successfully!');
@@ -536,27 +614,44 @@ const ChessMultiplayer: React.FC = () => {
     }
   }, []);
 
-  // Subscribe to game updates
+  // Subscribe to game updates with better error handling
   const subscribeToGame = useCallback(async (gameId: string) => {
     if (subscriptionRef.current) {
       supabase.removeChannel(subscriptionRef.current);
     }
 
-    subscriptionRef.current = supabase
-      .channel(`chess_game_${gameId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'chess_games', filter: `game_id=eq.${gameId}` },
-        (payload) => {
-          const newGame = payload.new as GameData;
-          if (newGame) {
-            setCurrentGameState(newGame);
-            setIsWaitingForOpponent(newGame.game_state === 'waiting');
-            setStatus(isMyTurn(newGame) ? 'Your turn' : "Opponent's turn");
+    try {
+      subscriptionRef.current = supabase
+        .channel(`chess_game_${gameId}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'chess_games', filter: `game_id=eq.${gameId.toLowerCase()}` },
+          (payload) => {
+            console.log('[DEBUG] Game update received:', payload);
+            const newGame = payload.new as GameData;
+            if (newGame) {
+              console.log('[DEBUG] Updating game state with:', newGame);
+              setCurrentGameState(newGame);
+              setIsWaitingForOpponent(newGame.game_state === 'waiting');
+              setStatus(isMyTurn(newGame) ? 'Your turn' : "Opponent's turn");
+              // Update board state from the new game data
+              if (newGame.board?.positions) {
+                console.log('[DEBUG] Updating board with:', newGame.board.positions);
+                setBoard(newGame.board.positions);
+              }
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe((status) => {
+          console.log(`[DEBUG] Game subscription status: ${status}`);
+          if (status === 'CHANNEL_ERROR') {
+            console.error('[DEBUG] Game subscription failed, retrying...');
+            setTimeout(() => subscribeToGame(gameId), 2000);
+          }
+        });
+    } catch (error) {
+      console.error('[DEBUG] Failed to subscribe to game:', error);
+    }
   }, []);
 
   // Leave game
@@ -611,6 +706,186 @@ const ChessMultiplayer: React.FC = () => {
     if (!walletAddress || !playerColor) return false;
     return gameData.current_player.toLowerCase() === playerColor;
   }, [walletAddress, playerColor]);
+
+  // Chess validation functions (copied from ChessGame.tsx)
+  const isWithinBoard = (row: number, col: number): boolean => {
+    return row >= 0 && row < 8 && col >= 0 && col < 8;
+  };
+
+  const isValidPawnMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, boardState: (string | null)[][]): boolean => {
+    const direction = color === 'blue' ? -1 : 1;
+    const startingRow = color === 'blue' ? 6 : 1;
+    
+    if (!isWithinBoard(endRow, endCol)) return false;
+    if (color === 'blue' && endRow >= startRow) return false;
+    if (color === 'red' && endRow <= startRow) return false;
+    
+    // Forward move (1 square)
+    if (startCol === endCol && endRow === startRow + direction) {
+      return boardState[endRow][endCol] === null;
+    }
+    
+    // Initial 2-square move
+    if (startCol === endCol && startRow === startingRow && endRow === startRow + 2 * direction) {
+      return boardState[startRow + direction][startCol] === null && boardState[endRow][endCol] === null;
+    }
+    
+    // Capture move (diagonal)
+    if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
+      const targetPiece = boardState[endRow][endCol];
+      return targetPiece !== null && getPieceColor(targetPiece) !== color;
+    }
+    
+    return false;
+  };
+
+  const isValidRookMove = (startRow: number, startCol: number, endRow: number, endCol: number, boardState: (string | null)[][]): boolean => {
+    if (startRow !== endRow && startCol !== endCol) return false;
+    return isPathClear(startRow, startCol, endRow, endCol, boardState);
+  };
+
+  const isValidKnightMove = (startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+    const rowDiff = Math.abs(startRow - endRow);
+    const colDiff = Math.abs(startCol - endCol);
+    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+  };
+
+  const isValidBishopMove = (startRow: number, startCol: number, endRow: number, endCol: number, boardState: (string | null)[][]): boolean => {
+    if (Math.abs(startRow - endRow) !== Math.abs(startCol - endCol)) return false;
+    return isPathClear(startRow, startCol, endRow, endCol, boardState);
+  };
+
+  const isValidQueenMove = (startRow: number, startCol: number, endRow: number, endCol: number, boardState: (string | null)[][]): boolean => {
+    return isValidRookMove(startRow, startCol, endRow, endCol, boardState) || 
+           isValidBishopMove(startRow, startCol, endRow, endCol, boardState);
+  };
+
+  const isValidKingMove = (startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+    const rowDiff = Math.abs(startRow - endRow);
+    const colDiff = Math.abs(startCol - endCol);
+    return rowDiff <= 1 && colDiff <= 1;
+  };
+
+  const isPathClear = (startRow: number, startCol: number, endRow: number, endCol: number, boardState: (string | null)[][]): boolean => {
+    const rowStep = startRow === endRow ? 0 : (endRow - startRow) / Math.abs(endRow - startRow);
+    const colStep = startCol === endCol ? 0 : (endCol - startCol) / Math.abs(endCol - startCol);
+    
+    let currentRow = startRow + rowStep;
+    let currentCol = startCol + colStep;
+    
+    while (currentRow !== endRow || currentCol !== endCol) {
+      if (boardState[currentRow][currentCol] !== null) return false;
+      currentRow += rowStep;
+      currentCol += colStep;
+    }
+    
+    return true;
+  };
+
+  const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board, silent = false): boolean => {
+    if (!isWithinBoard(endRow, endCol)) return false;
+    const targetPiece = boardState[endRow][endCol];
+    if (targetPiece && getPieceColor(targetPiece) === playerColor) return false;
+    
+    const pieceType = piece.toLowerCase();
+    let isValid = false;
+    switch (pieceType) {
+      case 'p':
+        isValid = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'r':
+        isValid = isValidRookMove(startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'n':
+        isValid = isValidKnightMove(startRow, startCol, endRow, endCol);
+        break;
+      case 'b':
+        isValid = isValidBishopMove(startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'q':
+        isValid = isValidQueenMove(startRow, startCol, endRow, endCol, boardState);
+        break;
+      case 'k':
+        isValid = isValidKingMove(startRow, startCol, endRow, endCol);
+        break;
+    }
+    
+    if (!isValid) return false;
+    return true;
+  };
+
+  // Get legal moves for a piece (copied from ChessGame.tsx)
+  const getLegalMoves = useCallback((from: { row: number; col: number }): { row: number; col: number }[] => {
+    const moves: { row: number; col: number }[] = [];
+    const piece = board[from.row][from.col];
+    
+    if (!piece || getPieceColor(piece) !== playerColor) return moves;
+    
+    const pieceType = piece.toLowerCase();
+    
+    // Optimize move generation based on piece type
+    if (pieceType === 'p') {
+      // For pawns, only check relevant squares
+      const direction = playerColor === 'blue' ? -1 : 1;
+      const startingRow = playerColor === 'blue' ? 6 : 1;
+      
+      // Forward moves
+      const forwardRow = from.row + direction;
+      if (forwardRow >= 0 && forwardRow < 8) {
+        if (canPieceMove(piece, from.row, from.col, forwardRow, from.col, true, playerColor, board, true)) {
+          moves.push({ row: forwardRow, col: from.col });
+        }
+      }
+      
+      // Double move from starting position
+      if (from.row === startingRow) {
+        const doubleRow = from.row + 2 * direction;
+        if (doubleRow >= 0 && doubleRow < 8) {
+          if (canPieceMove(piece, from.row, from.col, doubleRow, from.col, true, playerColor, board, true)) {
+            moves.push({ row: doubleRow, col: from.col });
+          }
+        }
+      }
+      
+      // Diagonal captures
+      for (const colOffset of [-1, 1]) {
+        const captureCol = from.col + colOffset;
+        const captureRow = from.row + direction;
+        if (captureCol >= 0 && captureCol < 8 && captureRow >= 0 && captureRow < 8) {
+          if (canPieceMove(piece, from.row, from.col, captureRow, captureCol, true, playerColor, board, true)) {
+            moves.push({ row: captureRow, col: captureCol });
+          }
+        }
+      }
+    } else if (pieceType === 'n') {
+      // For knights, only check L-shaped moves
+      const knightMoves = [
+        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+        [1, -2], [1, 2], [2, -1], [2, 1]
+      ];
+      
+      for (const [rowOffset, colOffset] of knightMoves) {
+        const newRow = from.row + rowOffset;
+        const newCol = from.col + colOffset;
+        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+          if (canPieceMove(piece, from.row, from.col, newRow, newCol, true, playerColor, board, true)) {
+            moves.push({ row: newRow, col: newCol });
+          }
+        }
+      }
+    } else {
+      // For other pieces (rook, bishop, queen, king), check all squares but use silent mode
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          if (canPieceMove(piece, from.row, from.col, row, col, true, playerColor, board, true)) {
+            moves.push({ row, col });
+          }
+        }
+      }
+    }
+    
+    return moves;
+  }, [board, playerColor]);
 
   // Format wager amount
   const formatWager = useCallback((wagerWei: string) => {
@@ -679,15 +954,8 @@ const ChessMultiplayer: React.FC = () => {
     } else if (piece && getPieceColor(piece) === playerColor) {
       // Select piece and show legal moves
       setSelectedPiece({ row, col });
-      // For now, just show all squares as legal (simplified)
-      const moves: { row: number; col: number }[] = [];
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          if (r !== row || c !== col) {
-            moves.push({ row: r, col: c });
-          }
-        }
-      }
+      // Calculate actual legal moves
+      const moves = getLegalMoves({ row, col });
       setLegalMoves(moves);
     }
   };
@@ -711,7 +979,7 @@ const ChessMultiplayer: React.FC = () => {
         .from('chess_games')
         .update({
           board: { positions: newBoard, piece_state: {} },
-          current_player: currentGameState.current_player === 'blue' ? 'red' : 'blue',
+          current_player: playerColor === 'blue' ? 'red' : 'blue',
           last_move: {
             piece,
             from_row: startRow,
@@ -749,22 +1017,42 @@ const ChessMultiplayer: React.FC = () => {
     }
   }, [currentGameState?.board?.positions]);
 
-  // Subscribe to lobby updates
+  // Subscribe to lobby updates with better error handling
   useEffect(() => {
-    const channel = supabase
-      .channel('chess_games_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'chess_games' },
-        () => {
-          fetchMultiplayerGames();
-        }
-      )
-      .subscribe();
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const setupLobbySubscription = () => {
+      try {
+        const channel = supabase
+          .channel('chess_games_changes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'chess_games' },
+            () => {
+              fetchMultiplayerGames();
+            }
+          )
+          .subscribe((status) => {
+            console.log(`[DEBUG] Lobby subscription status: ${status}`);
+            if (status === 'CHANNEL_ERROR' && retryCount < maxRetries) {
+              retryCount++;
+              console.log(`[DEBUG] Lobby subscription failed, retry ${retryCount}/${maxRetries}`);
+              setTimeout(setupLobbySubscription, 2000);
+            }
+          });
 
-    return () => {
-      supabase.removeChannel(channel);
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } catch (error) {
+        console.error('[DEBUG] Failed to setup lobby subscription:', error);
+        return () => {};
+      }
     };
+
+    const cleanup = setupLobbySubscription();
+    return cleanup;
   }, [fetchMultiplayerGames]);
 
   // Start game expiry checking on mount
@@ -871,6 +1159,56 @@ const ChessMultiplayer: React.FC = () => {
       }
     };
   }, []);
+
+  // Force cancel existing game
+  const forceCancelExistingGame = useCallback(async () => {
+    if (!walletAddress) {
+      setStatus('Please connect your wallet');
+      return false;
+    }
+
+    setIsLoading(true);
+    setStatus('Cancelling existing game...');
+
+    try {
+      if (!await ensureSankoNetwork()) return false;
+
+      const contract = await connectToContract();
+      if (!contract) {
+        setStatus('Failed to connect to contract');
+        return false;
+      }
+
+      const existingGame = await contract.playerToGame(walletAddress);
+      if (existingGame === '0x000000000000' || existingGame === '') {
+        setStatus('No existing game found');
+        return true;
+      }
+
+      // Check if the game can be cancelled (no player2)
+      const gameData = await contract.games(existingGame);
+      if (gameData.player2 !== '0x0000000000000000000000000000000000000000') {
+        setStatus('Cannot cancel: Game already has an opponent. You must finish the game.');
+        return false;
+      }
+
+      const gameIdStr = ethers.hexlify(existingGame).slice(2).toUpperCase();
+      const inviteCodeBytes = ethers.zeroPadValue(ethers.hexlify('0x' + gameIdStr.toLowerCase()), 6);
+      
+      await contract.cancelGame(inviteCodeBytes);
+      await cleanupStaleGame(gameIdStr);
+      
+      setStatus('Existing game cancelled successfully');
+      setHasCreatedGame(false);
+      return true;
+    } catch (error) {
+      console.error('Failed to cancel existing game:', error);
+      setStatus(`Failed to cancel game: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [walletAddress, ensureSankoNetwork, connectToContract, cleanupStaleGame]);
 
   // Active game view - should integrate with existing chessboard
   if (currentGameState && !isWaitingForOpponent) {
@@ -1133,6 +1471,56 @@ const ChessMultiplayer: React.FC = () => {
           fontSize: '14px'
         }}>
           Please connect your wallet to play multiplayer chess
+        </div>
+      )}
+
+      {walletAddress && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '20px', 
+          background: 'rgba(255,255,0,0.1)', 
+          border: '1px solid rgba(255,255,0,0.3)', 
+          borderRadius: '4px', 
+          marginTop: '20px',
+          fontSize: '14px'
+        }}>
+          <div style={{ marginBottom: '10px' }}>
+            <strong>Network Status:</strong>
+            <span style={{ 
+              marginLeft: '10px', 
+              color: networkStatus === 'correct' ? 'green' : networkStatus === 'wrong' ? 'red' : 'orange',
+              fontWeight: 'bold'
+            }}>
+              {networkStatus === 'checking' && 'Checking...'}
+              {networkStatus === 'correct' && '✓ Sanko Testnet'}
+              {networkStatus === 'wrong' && '✗ Wrong Network'}
+              {networkStatus === 'error' && '✗ Network Error'}
+            </span>
+          </div>
+          <div style={{ marginBottom: '10px', fontSize: '12px' }}>
+            • Make sure you're on Sanko Testnet (Chain ID: 1992)
+          </div>
+          <div style={{ marginBottom: '10px', fontSize: '12px' }}>
+            • If you get "Game already started" error, it means you're in an active game
+          </div>
+          <div style={{ marginBottom: '10px', fontSize: '12px' }}>
+            • You can only cancel games that are waiting for an opponent
+          </div>
+          <button 
+            onClick={forceCancelExistingGame}
+            disabled={isLoading}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#ff4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            {isLoading ? 'Cancelling...' : 'Cancel Existing Game'}
+          </button>
         </div>
       )}
     </div>
