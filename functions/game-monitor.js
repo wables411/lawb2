@@ -65,6 +65,50 @@ exports.handler = async (event, context) => {
     // Initialize Supabase client with service role key for admin access
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check for specific game if query parameter is provided
+    const queryParams = event.queryStringParameters || {};
+    if (queryParams.game_id) {
+      const { data: game, error } = await supabase
+        .from('chess_games')
+        .select('*')
+        .eq('game_id', queryParams.game_id)
+        .single();
+
+      if (error) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ error: 'Database error', details: error.message })
+        };
+      }
+
+      if (!game) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Game not found' })
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          message: 'Game details',
+          game: {
+            game_id: game.game_id,
+            game_state: game.game_state,
+            winner: game.winner,
+            blue_player: game.blue_player,
+            red_player: game.red_player,
+            payout_processed: game.payout_processed,
+            payout_tx_hash: game.payout_tx_hash,
+            payout_processed_at: game.payout_processed_at
+          }
+        })
+      };
+    }
+
     // Provider for Sanko network
     const provider = new ethers.JsonRpcProvider(sankoRpcUrl);
 
