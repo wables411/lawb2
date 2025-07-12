@@ -150,7 +150,9 @@ exports.handler = async (event, context) => {
         console.log(`Processing payout for game ${game.game_id}, winner: ${game.winner}`);
 
         // Convert gameId to bytes6 format for contract
-        const bytes6InviteCode = game.game_id.padEnd(6, '0').slice(0, 6);
+        // The game_id is already 12 characters, we need to convert it to bytes6
+        // For bytes6, we need exactly 6 bytes (12 hex characters)
+        const bytes6InviteCode = '0x' + game.game_id.slice(0, 12);
         
         // Determine winner address
         const winnerAddress = game.winner === 'blue' ? game.blue_player : game.red_player;
