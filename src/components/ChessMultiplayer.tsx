@@ -107,6 +107,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Smart contract integration
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
   const [contractWinner, setContractWinner] = useState<string>('');
+  const [isResolvingGame, setIsResolvingGame] = useState(false); // Prevent duplicate resolution
   
   // Contract write hook for endGame function
   const { writeContract, isPending: isEndingGame, data: hash } = useWriteContract();
@@ -546,11 +547,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board, silent = false): boolean => {
     if (!piece) return false;
     
-    const pieceColor = getPieceColor(piece);
     const targetPiece = boardState[endRow][endCol];
     
     // Can't capture own piece
-    if (targetPiece && getPieceColor(targetPiece) === pieceColor) {
+    if (targetPiece && getPieceColor(targetPiece) === playerColor) {
       return false;
     }
     
@@ -558,7 +558,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     switch (piece.toUpperCase()) {
       case 'P': // Pawn
-        isValidMove = isValidPawnMove(pieceColor, startRow, startCol, endRow, endCol, boardState);
+        isValidMove = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
         break;
       case 'R': // Rook
         isValidMove = isValidRookMove(startRow, startCol, endRow, endCol, boardState) && 
@@ -576,14 +576,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                      isPathClear(startRow, startCol, endRow, endCol, boardState);
         break;
       case 'K': // King
-        isValidMove = isValidKingMove(pieceColor, startRow, startCol, endRow, endCol);
+        isValidMove = isValidKingMove(playerColor, startRow, startCol, endRow, endCol);
         break;
     }
     
     if (!isValidMove) return false;
     
     // Check if move would expose king to check
-    if (checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, pieceColor, boardState)) {
+    if (checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState)) {
       return false;
     }
     
@@ -885,14 +885,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const currentPlayerColor = data.current_player || 'blue';
       console.log('[DEBUG] Checking game state for player:', currentPlayerColor);
       
-      // Only process game resolution if the game is still active
-      if (data.game_state === 'active') {
+      // Only process game resolution if the game is still active and not already being resolved
+      if (data.game_state === 'active' && !isResolvingGame) {
         if (isCheckmate(currentPlayerColor, newBoard)) {
           console.log('[DEBUG] Checkmate detected for', currentPlayerColor);
           const winner = currentPlayerColor === 'blue' ? 'red' : 'blue';
           setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
           setGameMode(GameMode.FINISHED);
           
+          // Set resolving flag to prevent duplicate calls
+          setIsResolvingGame(true);
+
           // Update game state in database - only do this once
           const { error: updateError } = await supabase
             .from('chess_games')
@@ -901,7 +904,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               winner: winner,
               game_result: `${winner}_win`
             })
-            .match({ game_id: gameId, game_state: 'active' }); // Only update if still active
+            .eq('game_id', gameId)
+            .eq('game_state', 'active'); // Only update if still active
               
           if (updateError) {
             console.error('Error updating game state:', updateError);
@@ -952,7 +956,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               game_state: 'finished',
               game_result: 'draw'
             })
-            .match({ game_id: gameId, game_state: 'active' }); // Only update if still active
+            .eq('game_id', gameId)
+            .eq('game_state', 'active'); // Only update if still active
               
           if (updateError) {
             console.error('Error updating game state:', updateError);
