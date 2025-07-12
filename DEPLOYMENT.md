@@ -1,52 +1,73 @@
-# Stockfish API Deployment Guide
+# Chess App Deployment Guide
 
-## Deploy to Railway (Recommended)
+## Backend Payout Service Setup
 
-1. **Go to [Railway.app](https://railway.app/) and create an account**
+### 1. Environment Variables Required
 
-2. **Create a new project**
-   - Click "New Project"
-   - Select "Deploy from GitHub repo"
-   - Connect your GitHub account and select this repository
+Add these environment variables to your Netlify deployment:
 
-3. **Deploy**
-   - Railway will automatically detect the Dockerfile and deploy
-   - The API will be available at: `https://your-app-name.up.railway.app`
-
-4. **Get your API URL**
-   - In Railway dashboard, go to your project
-   - Copy the generated URL (e.g., `https://your-app-name.up.railway.app`)
-
-## Update Frontend
-
-Once deployed, update your frontend's World-Class AI endpoint to:
-```
-https://your-app-name.up.railway.app/move
-```
-
-## Test the API
-
-Test your deployed API:
 ```bash
-curl -X POST https://your-app-name.up.railway.app/move \
-  -H "Content-Type: application/json" \
-  -d '{"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w", "movetime": 1000}'
+# Supabase Configuration
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# House Wallet Configuration  
+HOUSE_WALLET_PRIVATE_KEY=your_house_wallet_private_key
+SANKO_RPC_URL=https://sanko-rpc.example.com
+
+# Optional: Custom RPC URL for Sanko network
+SANKO_RPC_URL=https://your-sanko-rpc-endpoint
 ```
 
-## Alternative Platforms
+### 2. Database Schema Updates
 
-### Render
-1. Go to [render.com](https://render.com)
-2. Create a new Web Service
-3. Connect your GitHub repo
-4. Set build command: `docker build -t stockfish-api .`
-5. Set start command: `docker run -p 3001:3001 stockfish-api`
+Run this SQL in your Supabase SQL editor:
 
-### Fly.io
-1. Install flyctl: `curl -L https://fly.io/install.sh | sh`
-2. Run: `fly launch`
-3. Deploy: `fly deploy`
+```sql
+-- Add payout tracking columns to chess_games table
+ALTER TABLE chess_games 
+ADD COLUMN IF NOT EXISTS payout_processed BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS payout_tx_hash TEXT,
+ADD COLUMN IF NOT EXISTS payout_processed_at TIMESTAMP WITH TIME ZONE;
 
-## Result
+-- Create index for efficient payout processing queries
+CREATE INDEX IF NOT EXISTS idx_chess_games_payout_status 
+ON chess_games(game_state, payout_processed) 
+WHERE game_state = 'finished' AND payout_processed = FALSE;
+```
 
-Your World-Class AI will now use the real Stockfish engine and be truly unbeatable by any human player. 
+### 3. House Wallet Setup
+
+1. Create a dedicated house wallet for payouts
+2. Fund it with enough SANKO tokens for gas fees and payouts
+3. Store the private key securely in Netlify environment variables
+4. Ensure the wallet has permission to call the chess contract
+
+### 4. How It Works
+
+- The `game-monitor` function runs every 5 minutes
+- It checks for finished games that haven't been paid out
+- Automatically calls the smart contract using the house wallet
+- Updates the database to mark payouts as processed
+- Players no longer need to confirm transactions
+
+### 5. Manual Override (House Admin)
+
+House wallet can still manually resolve games using the admin interface in the multiplayer component.
+
+## Benefits of This Approach
+
+✅ **Immediate relief** - No more player transaction prompts  
+✅ **Automatic payouts** - Games resolve automatically  
+✅ **No contract changes** - Uses existing smart contract  
+✅ **Audit trail** - All payouts tracked in database  
+✅ **Fallback options** - Manual resolution still available  
+
+## Future Migration to Modified Contract
+
+For long-term decentralization, consider modifying the smart contract to:
+- Allow house wallet to trigger payouts without player confirmation
+- Implement automatic payout logic directly in the contract
+- Remove dependency on backend service
+
+This would provide true decentralization but requires contract redeployment. 

@@ -31,3 +31,18 @@ GRANT ALL ON chess_games TO authenticated;
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual 
 FROM pg_policies 
 WHERE tablename = 'chess_games'; 
+
+-- Add payout tracking columns to chess_games table
+ALTER TABLE chess_games 
+ADD COLUMN IF NOT EXISTS payout_processed BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS payout_tx_hash TEXT,
+ADD COLUMN IF NOT EXISTS payout_processed_at TIMESTAMP WITH TIME ZONE;
+
+-- Create index for efficient payout processing queries
+CREATE INDEX IF NOT EXISTS idx_chess_games_payout_status 
+ON chess_games(game_state, payout_processed) 
+WHERE game_state = 'finished' AND payout_processed = FALSE;
+
+-- Grant necessary permissions
+GRANT SELECT, UPDATE ON chess_games TO authenticated;
+GRANT SELECT, UPDATE ON chess_games TO service_role; 

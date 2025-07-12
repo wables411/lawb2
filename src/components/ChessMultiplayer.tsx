@@ -115,10 +115,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     hash,
   });
 
-  // Call smart contract to end game and trigger payout
+  // Note: Contract payouts are now handled by backend service
+  // This function is kept for house wallet manual resolution only
   const callEndGame = async (inviteCode: string, winner: string, bluePlayer: string, redPlayer: string) => {
     try {
-      console.log('[CONTRACT] Calling endGame with:', { inviteCode, winner, bluePlayer, redPlayer });
+      console.log('[CONTRACT] Manual payout call with:', { inviteCode, winner, bluePlayer, redPlayer });
       
       // Convert gameId to bytes6 format for contract
       const bytes6InviteCode = inviteCode.padEnd(6, '0').slice(0, 6);
@@ -129,7 +130,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
 
-      // Call the contract
+      // Call the contract (only for house wallet manual resolution)
       writeContract({
         address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
@@ -921,9 +922,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             await loadLeaderboard();
             triggerVictoryCelebration();
             
-            // Note: Contract payout should be handled by house wallet, not players
-            console.log('[INFO] Game resolved in database. Contract payout should be handled by house wallet.');
-            alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed by house wallet.`);
+            // Note: Contract payout is now handled automatically by backend service
+            console.log('[INFO] Game resolved in database. Payout will be processed automatically by backend service.');
+            alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed automatically.`);
           }
           return;
         }
@@ -1011,8 +1012,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     try {
       console.log('[HOUSE] Resolving game:', gameId, 'Winner:', winner);
       
+      // Get game data first
+      const { data: gameData, error } = await supabase
+        .from('chess_games')
+        .select('blue_player, red_player')
+        .eq('game_id', gameId)
+        .single();
+      
+      if (error || !gameData) {
+        console.error('[HOUSE] Error fetching game data:', error);
+        alert('Failed to fetch game data. Please try again.');
+        return;
+      }
+      
       // Call contract as house wallet
-      await callEndGame(gameId, winner, data.blue_player, data.red_player);
+      await callEndGame(gameId, winner, gameData.blue_player, gameData.red_player);
       
       // Update database
       await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');

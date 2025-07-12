@@ -1,6 +1,6 @@
 [build]
   publish = "dist"
-  functions = "netlify/functions"
+  functions = "functions"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -16,4 +16,13 @@
   status = 200
 
 [functions]
-  node_bundler = "esbuild" 
+  directory = "functions"
+
+# Scheduled function to process payouts every 5 minutes
+[[functions]]
+  function = "api/game-monitor"
+  schedule = "*/5 * * * *"
+
+[dev]
+  framework = "vite"
+  targetPort = 5173 
