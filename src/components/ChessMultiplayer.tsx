@@ -901,11 +901,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               winner: winner,
               game_result: `${winner}_win`
             })
-            .eq('game_id', gameId)
-            .eq('game_state', 'active'); // Only update if still active
+            .match({ game_id: gameId, game_state: 'active' }); // Only update if still active
               
           if (updateError) {
             console.error('Error updating game state:', updateError);
+            // Still try to call the contract even if database update fails
+            console.log('[CONTRACT] Database update failed, but attempting contract payout for winner:', winner);
+            try {
+              await callEndGame(gameId, winner, data.blue_player, data.red_player);
+              console.log('[CONTRACT] Contract call initiated successfully');
+            } catch (contractError) {
+              console.error('[CONTRACT] Error calling contract:', contractError);
+              // Show manual resolution option
+              if (confirm('Contract call failed. Would you like to manually resolve the game?')) {
+                await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
+              }
+            }
           } else {
             console.log('[DEBUG] Game state updated successfully');
             // Update scores
@@ -915,7 +926,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             
             // Call smart contract to trigger payout
             console.log('[CONTRACT] Triggering payout for winner:', winner);
-            await callEndGame(gameId, winner, data.blue_player, data.red_player);
+            try {
+              await callEndGame(gameId, winner, data.blue_player, data.red_player);
+              console.log('[CONTRACT] Contract call initiated successfully');
+            } catch (contractError) {
+              console.error('[CONTRACT] Error calling contract:', contractError);
+              // Show manual resolution option
+              if (confirm('Contract call failed. Would you like to manually resolve the game?')) {
+                await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
+              }
+            }
           }
           return;
         }
@@ -932,8 +952,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               game_state: 'finished',
               game_result: 'draw'
             })
-            .eq('game_id', gameId)
-            .eq('game_state', 'active'); // Only update if still active
+            .match({ game_id: gameId, game_state: 'active' }); // Only update if still active
               
           if (updateError) {
             console.error('Error updating game state:', updateError);
