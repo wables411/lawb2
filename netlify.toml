@@ -18,11 +18,6 @@
 [functions]
   directory = "functions"
 
-# Scheduled function to process payouts every 5 minutes
-[[functions]]
-  function = "api/game-monitor"
-  schedule = "*/5 * * * *"
-
 [dev]
   framework = "vite"
   targetPort = 5173 

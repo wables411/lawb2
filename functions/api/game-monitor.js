@@ -163,4 +163,9 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ error: 'Internal server error' })
     };
   }
-}; 
+};
+
+// Note: To set up automatic execution every 5 minutes, you can:
+// 1. Use a cron job service like cron-job.org to call this endpoint
+// 2. Set up a webhook that calls: https://your-site.netlify.app/.netlify/functions/api/game-monitor
+// 3. Or use Netlify's background functions (requires Netlify Pro) 
