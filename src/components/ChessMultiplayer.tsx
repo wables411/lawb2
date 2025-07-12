@@ -1,7 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useContractWrite, usePrepareContractWrite } from 'wagmi';
 import { supabase } from '../supabaseClient';
 import './ChessMultiplayer.css';
+
+// Smart contract ABI for the endGame function
+const CHESS_CONTRACT_ABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "bytes6",
+        "name": "inviteCode",
+        "type": "bytes6"
+      },
+      {
+        "internalType": "address",
+        "name": "winner",
+        "type": "address"
+      }
+    ],
+    "name": "endGame",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+] as const;
+
+const CHESS_CONTRACT_ADDRESS = '0x3112AF5728520F52FD1C6710dD7bD52285a68e47';
 
 // Game modes
 const GameMode = {
@@ -79,6 +103,47 @@ const pieceGallery = [
 
 export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false }) => {
   const { address, isConnected } = useAccount();
+  
+  // Smart contract integration
+  const [contractInviteCode, setContractInviteCode] = useState<string>('');
+  const [contractWinner, setContractWinner] = useState<string>('');
+  
+  // Prepare contract write for endGame function
+  const { config: endGameConfig } = usePrepareContractWrite({
+    address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+    abi: CHESS_CONTRACT_ABI,
+    functionName: 'endGame',
+    args: [contractInviteCode as `0x${string}`, contractWinner as `0x${string}`],
+    enabled: !!contractInviteCode && !!contractWinner,
+  });
+
+  const { write: endGame, isLoading: isEndingGame } = useContractWrite(endGameConfig);
+
+  // Call smart contract to end game and trigger payout
+  const callEndGame = async (inviteCode: string, winner: string, bluePlayer: string, redPlayer: string) => {
+    try {
+      console.log('[CONTRACT] Calling endGame with:', { inviteCode, winner, bluePlayer, redPlayer });
+      
+      // Convert gameId to bytes6 format for contract
+      const bytes6InviteCode = inviteCode.padEnd(6, '0').slice(0, 6);
+      const winnerAddress = winner === 'blue' ? bluePlayer : redPlayer;
+      
+      if (!winnerAddress) {
+        console.error('[CONTRACT] No winner address found');
+        return;
+      }
+
+      setContractInviteCode(bytes6InviteCode);
+      setContractWinner(winnerAddress);
+      
+      // The write function will be called automatically when the config is ready
+      if (endGame) {
+        endGame();
+      }
+    } catch (error) {
+      console.error('[CONTRACT] Error calling endGame:', error);
+    }
+  };
   
   // Game state
   const [board, setBoard] = useState<(string | null)[][]>(initialBoard);
@@ -825,54 +890,75 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const currentPlayerColor = data.current_player || 'blue';
       console.log('[DEBUG] Checking game state for player:', currentPlayerColor);
       
-      if (isCheckmate(currentPlayerColor, newBoard)) {
-        console.log('[DEBUG] Checkmate detected for', currentPlayerColor);
-        const winner = currentPlayerColor === 'blue' ? 'red' : 'blue';
-        setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
-        setGameMode(GameMode.FINISHED);
-        
-        // Update game state in database
-        const { error: updateError } = await supabase
-          .from('chess_games')
-          .update({ 
-            game_state: 'finished',
-            winner: winner,
-            game_result: `${winner}_win`
-          })
-          .eq('game_id', gameId);
+      // Only process game resolution if the game is still active
+      if (data.game_state === 'active') {
+        if (isCheckmate(currentPlayerColor, newBoard)) {
+          console.log('[DEBUG] Checkmate detected for', currentPlayerColor);
+          const winner = currentPlayerColor === 'blue' ? 'red' : 'blue';
+          setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
+          setGameMode(GameMode.FINISHED);
           
-        if (updateError) {
-          console.error('Error updating game state:', updateError);
+          // Update game state in database - only do this once
+          const { error: updateError } = await supabase
+            .from('chess_games')
+            .update({ 
+              game_state: 'finished',
+              winner: winner,
+              game_result: `${winner}_win`
+            })
+            .eq('game_id', gameId)
+            .eq('game_state', 'active'); // Only update if still active
+              
+          if (updateError) {
+            console.error('Error updating game state:', updateError);
+          } else {
+            console.log('[DEBUG] Game state updated successfully');
+            // Update scores
+            await updateScore(winner === playerColor ? 'win' : 'loss');
+            await loadLeaderboard();
+            triggerVictoryCelebration();
+            
+            // Call smart contract to trigger payout
+            console.log('[CONTRACT] Triggering payout for winner:', winner);
+            await callEndGame(gameId, winner, data.blue_player, data.red_player);
+          }
+          return;
         }
         
-        // Update scores
-        await updateScore(winner === playerColor ? 'win' : 'loss');
-        await loadLeaderboard();
-        triggerVictoryCelebration();
-        return;
-      }
-      
-      if (isStalemate(currentPlayerColor, newBoard)) {
-        console.log('[DEBUG] Stalemate detected');
-        setGameStatus('Game ended in stalemate');
-        setGameMode(GameMode.FINISHED);
-        
-        // Update game state in database
-        const { error: updateError } = await supabase
-          .from('chess_games')
-          .update({ 
-            game_state: 'finished',
-            game_result: 'draw'
-          })
-          .eq('game_id', gameId);
+        if (isStalemate(currentPlayerColor, newBoard)) {
+          console.log('[DEBUG] Stalemate detected');
+          setGameStatus('Game ended in stalemate');
+          setGameMode(GameMode.FINISHED);
           
-        if (updateError) {
-          console.error('Error updating game state:', updateError);
+          // Update game state in database - only do this once
+          const { error: updateError } = await supabase
+            .from('chess_games')
+            .update({ 
+              game_state: 'finished',
+              game_result: 'draw'
+            })
+            .eq('game_id', gameId)
+            .eq('game_state', 'active'); // Only update if still active
+              
+          if (updateError) {
+            console.error('Error updating game state:', updateError);
+          } else {
+            console.log('[DEBUG] Game state updated successfully');
+            // Update scores
+            await updateScore('draw');
+            await loadLeaderboard();
+          }
+          return;
         }
-        
-        // Update scores
-        await updateScore('draw');
-        await loadLeaderboard();
+      } else if (data.game_state === 'finished') {
+        // Game is already finished, just show the result
+        console.log('[DEBUG] Game already finished, showing result');
+        setGameMode(GameMode.FINISHED);
+        if (data.winner) {
+          setGameStatus(`${data.winner === 'red' ? 'Red' : 'Blue'} wins!`);
+        } else if (data.game_result === 'draw') {
+          setGameStatus('Game ended in draw');
+        }
         return;
       }
 
