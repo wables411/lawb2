@@ -26,3 +26,6 @@ dist-ssr
 # Ignore environment variables file
 .env
 original_chess/
+
+# Local Netlify folder
+.netlify

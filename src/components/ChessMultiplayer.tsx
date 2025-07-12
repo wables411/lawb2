@@ -108,12 +108,70 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
   const [contractWinner, setContractWinner] = useState<string>('');
   const [isResolvingGame, setIsResolvingGame] = useState(false); // Prevent duplicate resolution
+  const [canClaimWinnings, setCanClaimWinnings] = useState(false);
+  const [isClaimingWinnings, setIsClaimingWinnings] = useState(false);
   
   // Contract write hook for endGame function
   const { writeContract, isPending: isEndingGame, data: hash } = useWriteContract();
   const { isLoading: isWaitingForReceipt } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Claim winnings function for winners
+  const claimWinnings = async () => {
+    if (!address || !gameId || !playerColor) {
+      console.error('[CLAIM] Missing required data for claiming winnings');
+      return;
+    }
+
+    try {
+      setIsClaimingWinnings(true);
+      console.log('[CLAIM] Claiming winnings for game:', gameId, 'Player:', playerColor);
+      
+      // Get game data to determine winner
+      const { data: gameData, error } = await supabase
+        .from('chess_games')
+        .select('blue_player, red_player, winner')
+        .eq('game_id', gameId)
+        .single();
+      
+      if (error || !gameData) {
+        console.error('[CLAIM] Error fetching game data:', error);
+        alert('Failed to fetch game data. Please try again.');
+        return;
+      }
+
+      // Verify this player is the winner
+      const winnerAddress = gameData.winner === 'blue' ? gameData.blue_player : gameData.red_player;
+      if (winnerAddress !== address) {
+        console.error('[CLAIM] Player is not the winner');
+        alert('Only the winner can claim winnings.');
+        return;
+      }
+
+      // Convert gameId to bytes6 format for contract
+      const bytes6InviteCode = '0x' + gameId.slice(0, 12);
+      
+      console.log('[CLAIM] Calling contract with:', {
+        inviteCode: bytes6InviteCode,
+        winner: winnerAddress
+      });
+
+      // Call the contract
+      writeContract({
+        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        abi: CHESS_CONTRACT_ABI,
+        functionName: 'endGame',
+        args: [bytes6InviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+      });
+
+    } catch (error) {
+      console.error('[CLAIM] Error claiming winnings:', error);
+      alert('Failed to claim winnings. Please try again.');
+    } finally {
+      setIsClaimingWinnings(false);
+    }
+  };
 
   // Note: Contract payouts are now handled by backend service
   // This function is kept for house wallet manual resolution only
@@ -925,7 +983,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 await updateScore(winner === playerColor ? 'win' : 'loss');
                 await loadLeaderboard();
                 triggerVictoryCelebration();
-                alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed automatically.`);
+                
+                // Enable claiming winnings for the winner
+                if (winner === playerColor) {
+                  setCanClaimWinnings(true);
+                  setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins! Click "Claim Winnings" to receive your payout.`);
+                } else {
+                  setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins!`);
+                }
               } else {
                 // Show manual resolution option
                 console.log('[INFO] Database update failed. Manual resolution required.');
@@ -940,9 +1005,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               await loadLeaderboard();
               triggerVictoryCelebration();
               
-              // Note: Contract payout is now handled automatically by backend service
-              console.log('[INFO] Game resolved in database. Payout will be processed automatically by backend service.');
-              alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed automatically.`);
+              // Enable claiming winnings for the winner
+              if (winner === playerColor) {
+                setCanClaimWinnings(true);
+                setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins! Click "Claim Winnings" to receive your payout.`);
+              } else {
+                setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins!`);
+              }
             }
           } catch (error) {
             console.error('Error in game resolution:', error);
@@ -1001,7 +1070,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] Game already finished, showing result');
         setGameMode(GameMode.FINISHED);
         if (data.winner) {
-          setGameStatus(`${data.winner === 'red' ? 'Red' : 'Blue'} wins!`);
+          // Check if current player is the winner
+          const winnerAddress = data.winner === 'blue' ? data.blue_player : data.red_player;
+          if (winnerAddress === address) {
+            setCanClaimWinnings(true);
+            setGameStatus(`${data.winner === 'red' ? 'Red' : 'Blue'} wins! Click "Claim Winnings" to receive your payout.`);
+          } else {
+            setGameStatus(`${data.winner === 'red' ? 'Red' : 'Blue'} wins!`);
+          }
         } else if (data.game_result === 'draw') {
           setGameStatus('Game ended in draw');
         }
@@ -1327,6 +1403,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             <button onClick={() => setShowPieceGallery(!showPieceGallery)}>
               {showPieceGallery ? 'Hide' : 'Show'} Piece Gallery
             </button>
+            {canClaimWinnings && (
+              <button 
+                className="claim-winnings-btn"
+                onClick={claimWinnings}
+                disabled={isClaimingWinnings || isEndingGame || isWaitingForReceipt}
+              >
+                {isClaimingWinnings || isEndingGame || isWaitingForReceipt 
+                  ? 'Claiming...' 
+                  : 'Claim Winnings'}
+              </button>
+            )}
           </div>
         </div>
         
