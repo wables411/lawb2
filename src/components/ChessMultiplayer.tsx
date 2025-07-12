@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useAccount, useContractWrite, usePrepareContractWrite } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { supabase } from '../supabaseClient';
 import './ChessMultiplayer.css';
 
@@ -108,16 +108,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
   const [contractWinner, setContractWinner] = useState<string>('');
   
-  // Prepare contract write for endGame function
-  const { config: endGameConfig } = usePrepareContractWrite({
-    address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
-    abi: CHESS_CONTRACT_ABI,
-    functionName: 'endGame',
-    args: [contractInviteCode as `0x${string}`, contractWinner as `0x${string}`],
-    enabled: !!contractInviteCode && !!contractWinner,
+  // Contract write hook for endGame function
+  const { writeContract, isPending: isEndingGame, data: hash } = useWriteContract();
+  const { isLoading: isWaitingForReceipt } = useWaitForTransactionReceipt({
+    hash,
   });
-
-  const { write: endGame, isLoading: isEndingGame } = useContractWrite(endGameConfig);
 
   // Call smart contract to end game and trigger payout
   const callEndGame = async (inviteCode: string, winner: string, bluePlayer: string, redPlayer: string) => {
@@ -133,13 +128,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
 
-      setContractInviteCode(bytes6InviteCode);
-      setContractWinner(winnerAddress);
-      
-      // The write function will be called automatically when the config is ready
-      if (endGame) {
-        endGame();
-      }
+      // Call the contract
+      writeContract({
+        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        abi: CHESS_CONTRACT_ABI,
+        functionName: 'endGame',
+        args: [bytes6InviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+      });
     } catch (error) {
       console.error('[CONTRACT] Error calling endGame:', error);
     }
