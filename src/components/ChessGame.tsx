@@ -93,56 +93,32 @@ const useStockfish = () => {
     
     const loadStockfish = () => {
       try {
-        // Try to load Stockfish directly without worker first
-        const script = document.createElement('script');
-        script.src = '/stockfish.js';
-        script.onload = () => {
-          console.log('[DEBUG] LawbBot script loaded, initializing...');
-          
-          // Initialize Stockfish directly
-          if (typeof window !== 'undefined' && typeof (window as any).Stockfish === 'function') {
-            const Stockfish = (window as { Stockfish?: () => Promise<unknown> }).Stockfish;
-            if (Stockfish) {
-              Stockfish().then((sf: unknown) => {
-              console.log('[DEBUG] LawbBot initialized successfully');
-                if (sf instanceof Worker) {
-              stockfishRef.current = sf;
-              setStockfishReady(true);
-              isInitializingRef.current = false;
-              // Configure Stockfish for better performance
-              sf.postMessage('setoption name Threads value 4');
-              sf.postMessage('setoption name Hash value 128');
-              sf.postMessage('setoption name MultiPV value 1');
-                } else {
-                  console.error('[DEBUG] LawbBot: Stockfish is not a Worker instance');
-                  setStockfishReady(false);
-                  isInitializingRef.current = false;
-                }
-            }).catch((error: any) => {
-              console.error('[DEBUG] LawbBot initialization failed:', error);
-              setStockfishReady(false);
-              isInitializingRef.current = false;
-            });
-            } else {
-              console.error('[DEBUG] LawbBot: Stockfish is not defined as a function');
-              setStockfishReady(false);
-              isInitializingRef.current = false;
-            }
-          } else {
-            console.error('[DEBUG] LawbBot not found in window object');
-            setStockfishReady(false);
-            isInitializingRef.current = false;
-          }
+        // Create Worker directly from the Worker file
+        const worker = new Worker('/stockfish.worker.js');
+        
+        worker.onmessage = (event) => {
+          console.log('[DEBUG] Stockfish worker message:', event.data);
         };
-        script.onerror = (error) => {
-          console.error('[DEBUG] Failed to load LawbBot script:', error);
+        
+        worker.onerror = (error) => {
+          console.error('[DEBUG] Stockfish worker error:', error);
           setStockfishReady(false);
           isInitializingRef.current = false;
         };
-        document.head.appendChild(script);
+        
+        // Worker is ready immediately after creation
+        console.log('[DEBUG] LawbBot initialized successfully');
+        stockfishRef.current = worker;
+        setStockfishReady(true);
+        isInitializingRef.current = false;
+        
+        // Configure Stockfish for better performance
+        worker.postMessage('setoption name Threads value 4');
+        worker.postMessage('setoption name Hash value 128');
+        worker.postMessage('setoption name MultiPV value 1');
         
       } catch (error) {
-        console.error('[DEBUG] Failed to create LawbBot script:', error);
+        console.error('[DEBUG] Failed to create Stockfish worker:', error);
         setStockfishReady(false);
         isInitializingRef.current = false;
       }
@@ -1112,6 +1088,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           if (response.ok) return response.json();
           throw new Error('API call failed');
         }).then(data => {
+          console.log('[DEBUG] Stockfish API response:', data);
           const move = data.bestmove || data.move;
           if (move && move !== '(none)' && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
@@ -1120,25 +1097,48 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toRowStockfish = parseInt(move[3]);
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
+            console.log('[DEBUG] Parsed move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               const piece = board[fromRow][fromCol];
+              console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) });
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
+                console.log('[DEBUG] Executing Stockfish move:', moveObj);
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
+                console.warn('[DEBUG] Invalid Stockfish move, falling back to random');
+                const fallbackMove = getRandomAIMove(board);
+                if (fallbackMove) {
+                  makeMove(fallbackMove.from, fallbackMove.to, true);
+                }
                 isAIMovingRef.current = false;
                 apiCallInProgressRef.current = false;
               }
             } else {
+              console.warn('[DEBUG] Invalid move coordinates, falling back to random');
+              const fallbackMove = getRandomAIMove(board);
+              if (fallbackMove) {
+                makeMove(fallbackMove.from, fallbackMove.to, true);
+              }
               isAIMovingRef.current = false;
               apiCallInProgressRef.current = false;
             }
           } else {
+            console.warn('[DEBUG] Invalid move format from API, falling back to random');
+            const fallbackMove = getRandomAIMove(board);
+            if (fallbackMove) {
+              makeMove(fallbackMove.from, fallbackMove.to, true);
+            }
             isAIMovingRef.current = false;
             apiCallInProgressRef.current = false;
           }
-        }).catch(() => {
-          setStatus('AI error. Please try again.');
+        }).catch((error) => {
+          console.error('[DEBUG] Stockfish API error:', error);
+          setStatus('AI error. Falling back to random moves.');
+          const fallbackMove = getRandomAIMove(board);
+          if (fallbackMove) {
+            makeMove(fallbackMove.from, fallbackMove.to, true);
+          }
           isAIMovingRef.current = false;
           apiCallInProgressRef.current = false;
         });
