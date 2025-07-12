@@ -123,7 +123,7 @@ exports.handler = async (event, context) => {
       .from('chess_games')
       .select('*')
       .eq('game_state', 'finished')
-      .is('payout_processed', null)
+      .or('payout_processed.is.null,payout_processed.eq.false')
       .not('winner', 'is', null);
 
     if (error) {
