@@ -897,34 +897,58 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           // Set resolving flag to prevent duplicate calls
           setIsResolvingGame(true);
 
-          // Update game state in database - only do this once
-          const { error: updateError } = await supabase
-            .from('chess_games')
-            .update({ 
-              game_state: 'finished',
-              winner: winner,
-              game_result: `${winner}_win`
-            })
-            .eq('game_id', gameId)
-            .eq('game_state', 'active'); // Only update if still active
+          try {
+            // Update game state in database - only do this once
+            const { error: updateError } = await supabase
+              .from('chess_games')
+              .update({ 
+                game_state: 'finished',
+                winner: winner,
+                game_result: `${winner}_win`,
+                updated_at: new Date().toISOString()
+              })
+              .eq('game_id', gameId)
+              .eq('game_state', 'active'); // Only update if still active
+                
+            if (updateError) {
+              console.error('Error updating game state:', updateError);
               
-          if (updateError) {
-            console.error('Error updating game state:', updateError);
-            // Show manual resolution option since automatic contract call is problematic
-            console.log('[INFO] Database update failed. Manual resolution required.');
-            if (confirm('Game resolution failed. Would you like to manually resolve the game?')) {
-              await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
+              // Check if the game was already updated by the other player
+              const { data: currentGameState } = await supabase
+                .from('chess_games')
+                .select('game_state, winner')
+                .eq('game_id', gameId)
+                .single();
+              
+              if (currentGameState?.game_state === 'finished') {
+                console.log('[INFO] Game was already finished by other player');
+                // Game was already resolved by the other player, just update scores
+                await updateScore(winner === playerColor ? 'win' : 'loss');
+                await loadLeaderboard();
+                triggerVictoryCelebration();
+                alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed automatically.`);
+              } else {
+                // Show manual resolution option
+                console.log('[INFO] Database update failed. Manual resolution required.');
+                if (confirm('Game resolution failed. Would you like to manually resolve the game?')) {
+                  await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
+                }
+              }
+            } else {
+              console.log('[DEBUG] Game state updated successfully');
+              // Update scores
+              await updateScore(winner === playerColor ? 'win' : 'loss');
+              await loadLeaderboard();
+              triggerVictoryCelebration();
+              
+              // Note: Contract payout is now handled automatically by backend service
+              console.log('[INFO] Game resolved in database. Payout will be processed automatically by backend service.');
+              alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed automatically.`);
             }
-          } else {
-            console.log('[DEBUG] Game state updated successfully');
-            // Update scores
-            await updateScore(winner === playerColor ? 'win' : 'loss');
-            await loadLeaderboard();
-            triggerVictoryCelebration();
-            
-            // Note: Contract payout is now handled automatically by backend service
-            console.log('[INFO] Game resolved in database. Payout will be processed automatically by backend service.');
-            alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed automatically.`);
+          } catch (error) {
+            console.error('Error in game resolution:', error);
+            // Reset resolving flag on error
+            setIsResolvingGame(false);
           }
           return;
         }
@@ -934,23 +958,42 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setGameStatus('Game ended in stalemate');
           setGameMode(GameMode.FINISHED);
           
-          // Update game state in database - only do this once
-          const { error: updateError } = await supabase
-            .from('chess_games')
-            .update({ 
-              game_state: 'finished',
-              game_result: 'draw'
-            })
-            .eq('game_id', gameId)
-            .eq('game_state', 'active'); // Only update if still active
+          try {
+            // Update game state in database - only do this once
+            const { error: updateError } = await supabase
+              .from('chess_games')
+              .update({ 
+                game_state: 'finished',
+                game_result: 'draw',
+                updated_at: new Date().toISOString()
+              })
+              .eq('game_id', gameId)
+              .eq('game_state', 'active'); // Only update if still active
+                
+            if (updateError) {
+              console.error('Error updating game state:', updateError);
               
-          if (updateError) {
-            console.error('Error updating game state:', updateError);
-          } else {
-            console.log('[DEBUG] Game state updated successfully');
-            // Update scores
-            await updateScore('draw');
-            await loadLeaderboard();
+              // Check if the game was already updated by the other player
+              const { data: currentGameState } = await supabase
+                .from('chess_games')
+                .select('game_state')
+                .eq('game_id', gameId)
+                .single();
+              
+              if (currentGameState?.game_state === 'finished') {
+                console.log('[INFO] Game was already finished by other player');
+                // Game was already resolved by the other player, just update scores
+                await updateScore('draw');
+                await loadLeaderboard();
+              }
+            } else {
+              console.log('[DEBUG] Game state updated successfully');
+              // Update scores
+              await updateScore('draw');
+              await loadLeaderboard();
+            }
+          } catch (error) {
+            console.error('Error in stalemate resolution:', error);
           }
           return;
         }
