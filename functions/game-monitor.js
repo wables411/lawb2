@@ -1,12 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { ethers } = require('ethers');
 
-// Initialize Supabase client with service role key for admin access
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 // Smart contract ABI for the endGame function
 const CHESS_CONTRACT_ABI = [
   {
@@ -31,18 +25,6 @@ const CHESS_CONTRACT_ABI = [
 
 const CHESS_CONTRACT_ADDRESS = '0x3112AF5728520F52FD1C6710dD7bD52285a68e47';
 
-// House wallet private key (should be stored securely)
-const HOUSE_WALLET_PRIVATE_KEY = process.env.HOUSE_WALLET_PRIVATE_KEY;
-
-// Provider for Sanko network
-const provider = new ethers.JsonRpcProvider(process.env.SANKO_RPC_URL || 'https://sanko-rpc.example.com');
-
-// House wallet instance
-const houseWallet = new ethers.Wallet(HOUSE_WALLET_PRIVATE_KEY, provider);
-
-// Contract instance
-const chessContract = new ethers.Contract(CHESS_CONTRACT_ADDRESS, CHESS_CONTRACT_ABI, houseWallet);
-
 exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
@@ -61,6 +43,37 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // Validate environment variables
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const houseWalletPrivateKey = process.env.HOUSE_WALLET_PRIVATE_KEY;
+    const sankoRpcUrl = process.env.SANKO_RPC_URL;
+
+    if (!supabaseUrl) {
+      throw new Error('SUPABASE_URL environment variable is required');
+    }
+    if (!supabaseServiceKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+    }
+    if (!houseWalletPrivateKey) {
+      throw new Error('HOUSE_WALLET_PRIVATE_KEY environment variable is required');
+    }
+    if (!sankoRpcUrl) {
+      throw new Error('SANKO_RPC_URL environment variable is required');
+    }
+
+    // Initialize Supabase client with service role key for admin access
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Provider for Sanko network
+    const provider = new ethers.JsonRpcProvider(sankoRpcUrl);
+
+    // House wallet instance
+    const houseWallet = new ethers.Wallet(houseWalletPrivateKey, provider);
+
+    // Contract instance
+    const chessContract = new ethers.Contract(CHESS_CONTRACT_ADDRESS, CHESS_CONTRACT_ABI, houseWallet);
+
     // Check for finished games that haven't been paid out
     const { data: finishedGames, error } = await supabase
       .from('chess_games')
@@ -160,12 +173,15 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        details: error.message 
+      })
     };
   }
 };
 
 // Note: To set up automatic execution every 5 minutes, you can:
 // 1. Use a cron job service like cron-job.org to call this endpoint
-// 2. Set up a webhook that calls: https://your-site.netlify.app/.netlify/functions/api/game-monitor
+// 2. Set up a webhook that calls: https://your-site.netlify.app/.netlify/functions/game-monitor
 // 3. Or use Netlify's background functions (requires Netlify Pro) 
