@@ -197,11 +197,36 @@ exports.handler = async (event, context) => {
 
       } catch (gameError) {
         console.error(`Error processing game ${game.game_id}:`, gameError);
-        results.push({
-          game_id: game.game_id,
-          status: 'error',
-          error: gameError.message
-        });
+        
+        // If the error is a contract revert, the game might already be ended
+        // Mark it as processed to avoid retrying
+        if (gameError.message.includes('transaction execution reverted')) {
+          const { error: updateError } = await supabase
+            .from('chess_games')
+            .update({
+              payout_processed: true,
+              payout_tx_hash: null,
+              payout_processed_at: new Date().toISOString(),
+              payout_error: 'Contract revert - game may already be ended'
+            })
+            .eq('game_id', game.game_id);
+
+          if (updateError) {
+            console.error(`Error updating payout status for game ${game.game_id}:`, updateError);
+          }
+
+          results.push({
+            game_id: game.game_id,
+            status: 'processed_with_error',
+            error: 'Contract revert - game may already be ended'
+          });
+        } else {
+          results.push({
+            game_id: game.game_id,
+            status: 'error',
+            error: gameError.message
+          });
+        }
       }
     }
 
