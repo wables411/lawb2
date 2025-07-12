@@ -821,6 +821,61 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setBoard(newBoard);
       setCurrentPlayer(data.current_player || 'blue');
 
+      // Check for checkmate/stalemate after resuming
+      const currentPlayerColor = data.current_player || 'blue';
+      console.log('[DEBUG] Checking game state for player:', currentPlayerColor);
+      
+      if (isCheckmate(currentPlayerColor, newBoard)) {
+        console.log('[DEBUG] Checkmate detected for', currentPlayerColor);
+        const winner = currentPlayerColor === 'blue' ? 'red' : 'blue';
+        setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
+        setGameMode(GameMode.FINISHED);
+        
+        // Update game state in database
+        const { error: updateError } = await supabase
+          .from('chess_games')
+          .update({ 
+            game_state: 'finished',
+            winner: winner,
+            game_result: `${winner}_win`
+          })
+          .eq('game_id', gameId);
+          
+        if (updateError) {
+          console.error('Error updating game state:', updateError);
+        }
+        
+        // Update scores
+        await updateScore(winner === playerColor ? 'win' : 'loss');
+        await loadLeaderboard();
+        triggerVictoryCelebration();
+        return;
+      }
+      
+      if (isStalemate(currentPlayerColor, newBoard)) {
+        console.log('[DEBUG] Stalemate detected');
+        setGameStatus('Game ended in stalemate');
+        setGameMode(GameMode.FINISHED);
+        
+        // Update game state in database
+        const { error: updateError } = await supabase
+          .from('chess_games')
+          .update({ 
+            game_state: 'finished',
+            game_result: 'draw'
+          })
+          .eq('game_id', gameId);
+          
+        if (updateError) {
+          console.error('Error updating game state:', updateError);
+        }
+        
+        // Update scores
+        await updateScore('draw');
+        await loadLeaderboard();
+        return;
+      }
+
       // Subscribe to game updates
       subscribeToGame(gameId);
     } catch (error) {
