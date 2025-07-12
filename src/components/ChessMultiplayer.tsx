@@ -909,17 +909,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               
           if (updateError) {
             console.error('Error updating game state:', updateError);
-            // Still try to call the contract even if database update fails
-            console.log('[CONTRACT] Database update failed, but attempting contract payout for winner:', winner);
-            try {
-              await callEndGame(gameId, winner, data.blue_player, data.red_player);
-              console.log('[CONTRACT] Contract call initiated successfully');
-            } catch (contractError) {
-              console.error('[CONTRACT] Error calling contract:', contractError);
-              // Show manual resolution option
-              if (confirm('Contract call failed. Would you like to manually resolve the game?')) {
-                await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
-              }
+            // Show manual resolution option since automatic contract call is problematic
+            console.log('[INFO] Database update failed. Manual resolution required.');
+            if (confirm('Game resolution failed. Would you like to manually resolve the game?')) {
+              await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
             }
           } else {
             console.log('[DEBUG] Game state updated successfully');
@@ -928,18 +921,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             await loadLeaderboard();
             triggerVictoryCelebration();
             
-            // Call smart contract to trigger payout
-            console.log('[CONTRACT] Triggering payout for winner:', winner);
-            try {
-              await callEndGame(gameId, winner, data.blue_player, data.red_player);
-              console.log('[CONTRACT] Contract call initiated successfully');
-            } catch (contractError) {
-              console.error('[CONTRACT] Error calling contract:', contractError);
-              // Show manual resolution option
-              if (confirm('Contract call failed. Would you like to manually resolve the game?')) {
-                await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
-              }
-            }
+            // Note: Contract payout should be handled by house wallet, not players
+            console.log('[INFO] Game resolved in database. Contract payout should be handled by house wallet.');
+            alert(`${winner === 'red' ? 'Red' : 'Blue'} wins! Payout will be processed by house wallet.`);
           }
           return;
         }
@@ -1015,6 +999,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
     } catch (error) {
       console.error('Error checking stuck games:', error);
+    }
+  };
+
+  // House admin functions
+  const isHouseWallet = address === '0xF8A323e916921b0a82Ebcb562a3441e46525822E'; // Replace with actual house wallet address
+  
+  const houseResolveGame = async (gameId: string, winner: string) => {
+    if (!isHouseWallet) return;
+    
+    try {
+      console.log('[HOUSE] Resolving game:', gameId, 'Winner:', winner);
+      
+      // Call contract as house wallet
+      await callEndGame(gameId, winner, data.blue_player, data.red_player);
+      
+      // Update database
+      await forceResolveGame(gameId, winner === 'blue' ? 'blue_win' : 'red_win');
+      
+      alert('Game resolved by house wallet. Payout processed.');
+    } catch (error) {
+      console.error('[HOUSE] Error resolving game:', error);
+      alert('Failed to resolve game. Please try again.');
     }
   };
 
