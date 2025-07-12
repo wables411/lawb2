@@ -904,7 +904,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               .update({ 
                 game_state: 'finished',
                 winner: winner,
-                game_result: `${winner}_win`,
                 updated_at: new Date().toISOString()
               })
               .eq('game_id', gameId)

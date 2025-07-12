@@ -18,7 +18,6 @@ async function resolveStuckGame() {
       .update({
         game_state: 'finished',
         winner: 'red',
-        game_result: 'red_win',
         updated_at: new Date().toISOString()
       })
       .eq('game_id', gameId)
