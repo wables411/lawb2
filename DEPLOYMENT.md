@@ -1,73 +1,70 @@
-# Chess App Deployment Guide
+# WebSocket Server Deployment Guide
 
-## Backend Payout Service Setup
+## Deploy to Railway (Free)
 
-### 1. Environment Variables Required
+### Step 1: Create Railway Account
+1. Go to [Railway.app](https://railway.app/)
+2. Sign up with GitHub
+3. Get $5 free credit/month
 
-Add these environment variables to your Netlify deployment:
+### Step 2: Deploy Your Server
+1. **Connect your GitHub repo** to Railway
+2. **Create new service** from GitHub repo
+3. **Set environment variables**:
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   PORT=8080
+   ```
+4. **Deploy** - Railway will automatically run `node simple-websocket-server.js`
 
+### Step 3: Get Your WebSocket URL
+- Railway will give you a URL like: `https://your-app.railway.app`
+- Your WebSocket URL will be: `wss://your-app.railway.app`
+
+## Alternative: Deploy to Render (Free)
+
+### Step 1: Create Render Account
+1. Go to [Render.com](https://render.com/)
+2. Sign up with GitHub
+3. Free tier: 750 hours/month
+
+### Step 2: Deploy
+1. **New Web Service** from GitHub repo
+2. **Build Command**: `npm install`
+3. **Start Command**: `node simple-websocket-server.js`
+4. **Environment Variables**:
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+## Alternative: Deploy to Heroku (Free)
+
+### Step 1: Create Heroku Account
+1. Go to [Heroku.com](https://heroku.com/)
+2. Sign up (free tier available)
+
+### Step 2: Deploy
+1. **Install Heroku CLI**
+2. **Login**: `heroku login`
+3. **Create app**: `heroku create your-app-name`
+4. **Set environment variables**:
+   ```bash
+   heroku config:set SUPABASE_URL=your_supabase_url
+   heroku config:set SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+5. **Deploy**: `git push heroku main`
+
+## Test Your Deployment
+
+Once deployed, test with:
 ```bash
-# Supabase Configuration
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# House Wallet Configuration  
-HOUSE_WALLET_PRIVATE_KEY=your_house_wallet_private_key
-SANKO_RPC_URL=https://sanko-rpc.example.com
-
-# Optional: Custom RPC URL for Sanko network
-SANKO_RPC_URL=https://your-sanko-rpc-endpoint
+curl https://your-app-url.railway.app
 ```
 
-### 2. Database Schema Updates
+Should return: "WebSocket server is running"
 
-Run this SQL in your Supabase SQL editor:
+## Update Your Frontend
 
-```sql
--- Add payout tracking columns to chess_games table
-ALTER TABLE chess_games 
-ADD COLUMN IF NOT EXISTS payout_processed BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS payout_tx_hash TEXT,
-ADD COLUMN IF NOT EXISTS payout_processed_at TIMESTAMP WITH TIME ZONE;
-
--- Create index for efficient payout processing queries
-CREATE INDEX IF NOT EXISTS idx_chess_games_payout_status 
-ON chess_games(game_state, payout_processed) 
-WHERE game_state = 'finished' AND payout_processed = FALSE;
-```
-
-### 3. House Wallet Setup
-
-1. Create a dedicated house wallet for payouts
-2. Fund it with enough SANKO tokens for gas fees and payouts
-3. Store the private key securely in Netlify environment variables
-4. Ensure the wallet has permission to call the chess contract
-
-### 4. How It Works
-
-- The `game-monitor` function runs every 5 minutes
-- It checks for finished games that haven't been paid out
-- Automatically calls the smart contract using the house wallet
-- Updates the database to mark payouts as processed
-- Players no longer need to confirm transactions
-
-### 5. Manual Override (House Admin)
-
-House wallet can still manually resolve games using the admin interface in the multiplayer component.
-
-## Benefits of This Approach
-
-✅ **Immediate relief** - No more player transaction prompts  
-✅ **Automatic payouts** - Games resolve automatically  
-✅ **No contract changes** - Uses existing smart contract  
-✅ **Audit trail** - All payouts tracked in database  
-✅ **Fallback options** - Manual resolution still available  
-
-## Future Migration to Modified Contract
-
-For long-term decentralization, consider modifying the smart contract to:
-- Allow house wallet to trigger payouts without player confirmation
-- Implement automatic payout logic directly in the contract
-- Remove dependency on backend service
-
-This would provide true decentralization but requires contract redeployment. 
+After deployment, update your frontend to use the WebSocket server instead of Supabase real-time. 

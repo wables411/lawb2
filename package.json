@@ -1,53 +1,43 @@
 {
   "name": "lawb2",
   "version": "1.0.0",
-  "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "description": "",
+  "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && cp _headers dist/",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "start": "node simple-websocket-server.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@reown/appkit": "^1.2.2",
-    "@reown/appkit-adapter-wagmi": "1.7.10",
+    "@reown/appkit-adapter-wagmi": "^1.7.13",
     "@supabase/supabase-js": "^2.50.5",
-    "@tanstack/react-query": "5.81.0",
-    "chess.js": "^1.4.0",
-    "cors": "^2.8.5",
-    "ethers": "^6.15.0",
-    "express": "^5.1.0",
-    "jss-preset-default": "^10.10.0",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "firebase": "^10.12.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-draggable": "^4.4.5",
+    "react-draggable": "^4.5.0",
     "react-jss": "^10.10.0",
-    "react-router-dom": "^6.30.1",
-    "react-tweet": "^3.2.1",
-    "stockfish": "^16.0.0",
-    "stockfish.wasm": "^0.10.0",
-    "viem": "^2.17.4",
-    "wagmi": "^2.10.10"
+    "react-router-dom": "^6.28.0",
+    "react-tweet": "^3.2.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "wagmi": "^2.7.7",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
     "@types/uuid": "^10.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "eslint": "^8.55.0",
-    "eslint-plugin-react": "^7.0.0",
+    "@types/ws": "^8.5.12",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
+    "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.5",
-    "typescript": "^5.2.2",
-    "vite": "^5.0.8",
-    "wrangler": "^3.22.1"
-  },
-  "resolutions": {
-    "@reown/appkit": "1.7.10",
-    "viem": "2.31.4"
+    "eslint-plugin-react-refresh": "^0.4.6"
   }
 }

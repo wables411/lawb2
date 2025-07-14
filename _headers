@@ -6,7 +6,7 @@
   
   # Required for SharedArrayBuffer (Stockfish WASM)
   Cross-Origin-Embedder-Policy: require-corp
-  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
   
   # Allow WebSocket connections
   Cross-Origin-Resource-Policy: cross-origin

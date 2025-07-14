@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-import { supabase } from '../supabaseClient';
+import { 
+  updateLeaderboardEntry, 
+  getTopLeaderboardEntries,
+  formatAddress as formatLeaderboardAddress,
+  type LeaderboardEntry 
+} from '../firebaseLeaderboard';
 import ChessMultiplayer from './ChessMultiplayer';
 import './ChessGame.css';
 
@@ -10,17 +15,7 @@ const GameMode = {
   ONLINE: 'online'
 } as const;
 
-// Leaderboard data type
-interface LeaderboardEntry {
-  username: string;
-  chain_type: string;
-  wins: number;
-  losses: number;
-  draws: number;
-  total_games: number;
-  points: number;
-  updated_at: string;
-}
+// LeaderboardEntry interface is now imported from firebaseLeaderboard
 
 // Chess piece images
 const pieceImages: { [key: string]: string } = {
@@ -112,10 +107,8 @@ const useStockfish = () => {
         setStockfishReady(true);
         isInitializingRef.current = false;
         
-        // Configure Stockfish for better performance
-        worker.postMessage('setoption name Threads value 4');
-        worker.postMessage('setoption name Hash value 128');
-        worker.postMessage('setoption name MultiPV value 1');
+        // Configure Stockfish for better performance - these will be sent when needed
+        console.log('[DEBUG] Stockfish worker ready for commands');
         
       } catch (error) {
         console.error('[DEBUG] Failed to create Stockfish worker:', error);
@@ -362,6 +355,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for random chessboard selection
   const [selectedChessboard, setSelectedChessboard] = useState<string>('/images/chessboard1.png');
 
+  // Add sound and celebration state
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [victoryCelebration, setVictoryCelebration] = useState(false);
+
   // Function to randomly select a chessboard
   const selectRandomChessboard = () => {
     const chessboards = [
@@ -462,31 +459,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     void loadLeaderboard();
   }, []);
 
-  // Load leaderboard data
+  // Load leaderboard data from Firebase
   const loadLeaderboard = async (): Promise<void> => {
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        window.setTimeout(() => reject(new Error('Database timeout')), 10000)
-      );
-      const dataPromise = supabase
-        .from('leaderboard')
-        .select('*')
-        .order('points', { ascending: false });
-      type SupabaseLeaderboardResponse = {
-        data: LeaderboardEntry[] | null;
-        error: unknown;
-      };
-      const resp = await Promise.race([dataPromise, timeoutPromise]) as SupabaseLeaderboardResponse;
-      if (resp.error) throw resp.error;
-      if (resp.data) setLeaderboardData(resp.data);
-      console.log('Leaderboard data loaded:', resp.data);
-    } catch (err) {
-        setStatus('Failed to load leaderboard');
-      console.error('Leaderboard error:', err);
+      const data = await getTopLeaderboardEntries(20);
+      setLeaderboardData(data);
+      console.log('Leaderboard data loaded:', data);
+    } catch (error) {
+      setStatus('Failed to load leaderboard');
+      console.error('Leaderboard error:', error);
     }
   };
 
-  // Update score
+  // Update score using Firebase
   const updateScore = async (gameResult: 'win' | 'loss' | 'draw') => {
     console.log('[DEBUG] updateScore called with:', gameResult);
     if (!walletAddress) {
@@ -495,106 +480,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
 
     try {
-      // Normalize wallet address to lowercase for consistent database queries
-      const normalizedAddress = walletAddress.toLowerCase();
+      console.log('[DEBUG] Updating score for address:', formatLeaderboardAddress(walletAddress));
       
-      // Use service role client to bypass RLS
-      const { data: existingRecord } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .eq('username', normalizedAddress)
-        .maybeSingle();
-
-      console.log('[DEBUG] Existing record:', existingRecord);
-
-      // Simplified integer conversion with fallbacks
-      const currentWins = existingRecord?.wins ? Number(existingRecord.wins) : 0;
-      const currentLosses = existingRecord?.losses ? Number(existingRecord.losses) : 0;
-      const currentDraws = existingRecord?.draws ? Number(existingRecord.draws) : 0;
-      const currentTotalGames = existingRecord?.total_games ? Number(existingRecord.total_games) : 0;
-      const currentPoints = existingRecord?.points ? Number(existingRecord.points) : 0;
-
-      console.log('[DEBUG] Score calculation:', {
-        currentWins,
-        currentLosses,
-        currentDraws,
-        currentTotalGames,
-        currentPoints,
-        gameResult
-      });
-
-      // Calculate new values
-      const newWins = currentWins + (gameResult === 'win' ? 1 : 0);
-      const newLosses = currentLosses + (gameResult === 'loss' ? 1 : 0);
-      const newDraws = currentDraws + (gameResult === 'draw' ? 1 : 0);
-      const newTotalGames = currentTotalGames + 1;
+      // Update leaderboard entry using Firebase
+      const success = await updateLeaderboardEntry(walletAddress, gameResult);
       
-      // Calculate points based on difficulty and result
-      let pointsToAdd = 0;
-      if (gameResult === 'win') {
-        switch (difficulty) {
-                case 'easy': pointsToAdd = 10; break;
-          default: pointsToAdd = 1;
-        }
-      } else if (gameResult === 'draw') {
-        pointsToAdd = 1; // 1 point for draw regardless of difficulty
-      }
-      // Loss = 0 points
-      
-      const newPoints = currentPoints + pointsToAdd;
-
-      console.log('[DEBUG] New values:', {
-        newWins,
-        newLosses,
-        newDraws,
-        newTotalGames,
-        newPoints,
-        pointsToAdd
-      });
-
-      if (existingRecord) {
-        // Update existing record
-        const { error } = await supabase
-          .from('leaderboard')
-          .update({
-            wins: newWins,
-            losses: newLosses,
-            draws: newDraws,
-            total_games: newTotalGames,
-            points: newPoints,
-            updated_at: new Date().toISOString()
-          })
-          .eq('username', normalizedAddress);
-
-        if (error) {
-          console.error('[DEBUG] Error updating leaderboard:', error);
-          return;
-        }
+      if (success) {
+        console.log('[DEBUG] Successfully updated score for:', formatLeaderboardAddress(walletAddress));
+        // Reload leaderboard after score update
+        await loadLeaderboard();
       } else {
-        // Insert new record
-        const { error } = await supabase
-          .from('leaderboard')
-          .insert({
-            username: normalizedAddress,
-            chain_type: 'ethereum',
-            wins: newWins,
-            losses: newLosses,
-            draws: newDraws,
-            total_games: newTotalGames,
-            points: newPoints,
-            updated_at: new Date().toISOString()
-          });
-
-        if (error) {
-          console.error('[DEBUG] Error inserting leaderboard record:', error);
-          return;
-        }
+        console.error('[DEBUG] Failed to update score');
       }
-
-      console.log('[DEBUG] Leaderboard updated successfully');
-      
-      // Reload leaderboard data
-      await loadLeaderboard();
       
     } catch (error) {
       console.error('[DEBUG] Error in updateScore:', error);
@@ -1349,67 +1246,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     console.log('[DEBUG] Game started with chessboard:', newChessboard);
   };
 
-  const createGame = async () => {
-    if (!walletAddress) return;
-    
-    try {
-      const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const { error } = await supabase
-        .from('chess_games')
-        .insert({
-          game_id: gameId,
-          blue_player: walletAddress,
-          board: JSON.stringify({ positions: board, piece_state: pieceState }),
-          current_player: 'blue',
-          game_state: 'waiting',
-          bet_amount: wager,
-          chain: 'evm',
-          is_public: true
-        });
-      
-      if (error) throw error;
-      
-      setStatus(`Game created! Share code: ${gameId}`);
-    } catch (error) {
-      console.error('Error creating game:', error);
-      setStatus('Failed to create game');
-    }
-  };
-
-  const joinGame = async () => {
-    if (!walletAddress || !inviteCode) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('chess_games')
-        .select('*')
-        .eq('game_id', inviteCode)
-        .eq('game_state', 'waiting')
-        .single();
-      
-      if (error || !data) {
-        setStatus('Game not found or already full');
-      return;
-    }
-
-      const { error: updateError } = await supabase
-        .from('chess_games')
-        .update({
-          red_player: walletAddress,
-          game_state: 'active',
-          updated_at: new Date().toISOString()
-        })
-        .eq('game_id', inviteCode);
-      
-      if (updateError) throw updateError;
-      
-      setStatus('Joined game! Waiting for opponent...');
-      startGame();
-    } catch (error) {
-      console.error('Error joining game:', error);
-      setStatus('Failed to join game');
-    }
-  };
+  // Multiplayer functionality moved to ChessMultiplayer component
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -1627,8 +1464,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
 
   // Add epic sound effects and visual enhancements
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [victoryCelebration, setVictoryCelebration] = useState(false);
 
   // Sound effects
   const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory') => {

@@ -25,7 +25,42 @@ dist-ssr
 
 # Ignore environment variables file
 .env
+.env.local
+.env.development
+.env.production
+.env.staging
 original_chess/
 
 # Local Netlify folder
 .netlify
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Security and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
