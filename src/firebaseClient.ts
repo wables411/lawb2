@@ -1,9 +1,5 @@
-import { getApp, getApps } from 'firebase/app';
-import { getDatabase, ref, set, get, onValue, off } from 'firebase/database';
-
-// Get the already initialized Firebase app
-const app = getApps().length > 0 ? getApp() : null;
-const database = app ? getDatabase(app) : null;
+import { database } from './firebaseApp';
+import { ref, set, get, onValue, off } from 'firebase/database';
 
 // Chess game operations
 export const firebaseChess = {
