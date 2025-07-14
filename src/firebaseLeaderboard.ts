@@ -1,7 +1,7 @@
 import { getApp, getApps } from "firebase/app";
 import { getDatabase, ref, set, update, get, query, orderByChild, limitToLast, equalTo } from "firebase/database";
 
-// Get the already initialized Firebase app or initialize if needed
+// Get the already initialized Firebase app
 const app = getApps().length > 0 ? getApp() : null;
 const db = app ? getDatabase(app) : null;
 

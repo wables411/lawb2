@@ -1,7 +1,7 @@
 import { getApp, getApps } from 'firebase/app';
 import { getDatabase, ref, set, get, onValue, off } from 'firebase/database';
 
-// Get the already initialized Firebase app or initialize if needed
+// Get the already initialized Firebase app
 const app = getApps().length > 0 ? getApp() : null;
 const database = app ? getDatabase(app) : null;
 
@@ -37,6 +37,7 @@ export const firebaseChess = {
         ...gameData,
         updated_at: new Date().toISOString()
       });
+      console.log('[FIREBASE] Game updated successfully');
     } catch (error) {
       console.error('[FIREBASE] Error updating game:', error);
     }
@@ -48,6 +49,8 @@ export const firebaseChess = {
       const db = getDatabaseOrThrow();
       const gameRef = ref(db, `chess_games/${gameId}`);
       
+      console.log('[FIREBASE] Setting up Firebase real-time subscription for game:', gameId);
+      
       const unsubscribe = onValue(gameRef, (snapshot) => {
         if (snapshot.exists()) {
           const gameData = snapshot.val();
@@ -56,6 +59,7 @@ export const firebaseChess = {
         }
       });
 
+      console.log('[FIREBASE] Firebase subscription setup complete for game:', gameId);
       return unsubscribe;
     } catch (error) {
       console.error('[FIREBASE] Error subscribing to game:', error);
@@ -73,6 +77,7 @@ export const firebaseChess = {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
+      console.log('[FIREBASE] Game created successfully:', gameData.game_id);
     } catch (error) {
       console.error('[FIREBASE] Error creating game:', error);
     }

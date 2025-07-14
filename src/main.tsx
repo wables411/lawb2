@@ -12,7 +12,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ChessPage from './components/ChessPage'; // to be created
 
 // Initialize Firebase early to prevent initialization errors
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
+import { getDatabase } from 'firebase/database';
 
 // Firebase configuration with fallbacks for production
 const firebaseConfig = {
@@ -25,12 +26,22 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:724477138097:web:7dc15f79db3bda5c763e90"
 };
 
-// Initialize Firebase
-try {
-  initializeApp(firebaseConfig);
-  console.log('[FIREBASE] Firebase initialized successfully');
-} catch (error) {
-  console.warn('[FIREBASE] Firebase initialization warning:', error);
+// Initialize Firebase only if not already initialized
+let app;
+if (getApps().length === 0) {
+  try {
+    app = initializeApp(firebaseConfig);
+    console.log('[FIREBASE] Firebase initialized successfully');
+    
+    // Test database connection
+    const database = getDatabase(app);
+    console.log('[FIREBASE] Database connection established');
+  } catch (error) {
+    console.error('[FIREBASE] Firebase initialization error:', error);
+  }
+} else {
+  app = getApps()[0];
+  console.log('[FIREBASE] Firebase already initialized');
 }
 
 const queryClient = new QueryClient();
