@@ -210,10 +210,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setIsClaimingWinnings(true);
       console.log('[CLAIM] Claiming winnings for game:', gameId, 'Player:', playerColor);
       
-      // Get game data to determine winner
+      // Get game data to determine winner and invite_code
       const { data: gameData, error } = await supabase
         .from('chess_games')
-        .select('blue_player, red_player, winner')
+        .select('blue_player, red_player, winner, invite_code')
         .eq('game_id', gameId)
         .single();
       
@@ -231,8 +231,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
 
-      // Convert gameId to bytes6 format for contract
-      const bytes6InviteCode = '0x' + gameId.slice(0, 12);
+      // Use the real invite code from the game data
+      const bytes6InviteCode = gameData.invite_code;
+      if (!bytes6InviteCode || typeof bytes6InviteCode !== 'string' || !bytes6InviteCode.startsWith('0x') || bytes6InviteCode.length !== 14) {
+        alert('Invalid invite code for contract claim.');
+        return;
+      }
       
       console.log('[CLAIM] Calling contract with:', {
         inviteCode: bytes6InviteCode,
