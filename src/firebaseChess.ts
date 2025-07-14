@@ -204,4 +204,25 @@ export const firebaseChess = {
   }
 };
 
+// Utility to find a game by invite code
+export const findGameByInviteCode = async (inviteCode: string) => {
+  try {
+    const db = getDatabaseOrThrow();
+    const gamesRef = ref(db, 'chess_games');
+    const snapshot = await get(gamesRef);
+    if (!snapshot.exists()) return null;
+    const games = snapshot.val();
+    // Find the first game where invite_code matches
+    for (const key in games) {
+      if (games[key].invite_code === inviteCode) {
+        return { ...games[key], game_id: key };
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('[FIREBASE] Error finding game by invite code:', error);
+    return null;
+  }
+};
+
 export default firebaseChess; 
