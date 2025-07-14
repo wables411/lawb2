@@ -1,7 +1,17 @@
+import { getApp, getApps } from "firebase/app";
 import { getDatabase, ref, set, update, get, query, orderByChild, limitToLast, equalTo } from "firebase/database";
 
-// Get the database instance
-const db = getDatabase();
+// Get the already initialized Firebase app or initialize if needed
+const app = getApps().length > 0 ? getApp() : null;
+const db = app ? getDatabase(app) : null;
+
+// Helper function to check if database is available
+const getDatabaseOrThrow = () => {
+  if (!db) {
+    throw new Error('[FIREBASE] Database not initialized');
+  }
+  return db;
+};
 
 export interface LeaderboardEntry {
   username: string; // wallet address
@@ -29,7 +39,8 @@ export const getUserLeaderboardEntry = async (walletAddress: string): Promise<Le
       return null;
     }
 
-    const entryRef = ref(db, `leaderboard/${walletAddress}`);
+    const database = getDatabaseOrThrow();
+    const entryRef = ref(database, `leaderboard/${walletAddress}`);
     const snapshot = await get(entryRef);
     
     if (snapshot.exists()) {
@@ -55,7 +66,8 @@ export const updateLeaderboardEntry = async (
     }
 
     const now = new Date().toISOString();
-    const entryRef = ref(db, `leaderboard/${walletAddress}`);
+    const database = getDatabaseOrThrow();
+    const entryRef = ref(database, `leaderboard/${walletAddress}`);
     
     // Get existing entry
     const snapshot = await get(entryRef);
@@ -124,7 +136,8 @@ export const updateBothPlayersScores = async (
 // Get top leaderboard entries (ordered by points descending)
 export const getTopLeaderboardEntries = async (limit: number = 20): Promise<LeaderboardEntry[]> => {
   try {
-    const leaderboardRef = ref(db, 'leaderboard');
+    const database = getDatabaseOrThrow();
+    const leaderboardRef = ref(database, 'leaderboard');
     const snapshot = await get(leaderboardRef);
     
     if (!snapshot.exists()) {
@@ -189,7 +202,8 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
     if (!walletAddress) return false;
 
     const now = new Date().toISOString();
-    const entryRef = ref(db, `leaderboard/${walletAddress}`);
+    const database = getDatabaseOrThrow();
+    const entryRef = ref(database, `leaderboard/${walletAddress}`);
     
     const resetEntry: LeaderboardEntry = {
       username: walletAddress,
