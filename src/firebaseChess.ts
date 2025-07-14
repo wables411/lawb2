@@ -1,5 +1,5 @@
 import { database } from './firebaseApp';
-import { ref, set, get, onValue, off } from 'firebase/database';
+import { ref, set, get, onValue, off, remove } from 'firebase/database';
 
 // Helper function to check if database is available
 const getDatabaseOrThrow = () => {
@@ -11,11 +11,11 @@ const getDatabaseOrThrow = () => {
 
 // Chess game operations with Firebase
 export const firebaseChess = {
-  // Get game state
-  async getGame(gameId: string) {
+  // Get game state by inviteCode
+  async getGame(inviteCode: string) {
     try {
       const db = getDatabaseOrThrow();
-      const gameRef = ref(db, `chess_games/${gameId}`);
+      const gameRef = ref(db, `chess_games/${inviteCode}`);
       const snapshot = await get(gameRef);
       return snapshot.exists() ? snapshot.val() : null;
     } catch (error) {
@@ -24,11 +24,11 @@ export const firebaseChess = {
     }
   },
 
-  // Update game state
-  async updateGame(gameId: string, gameData: any) {
+  // Update game state by inviteCode
+  async updateGame(inviteCode: string, gameData: any) {
     try {
       const db = getDatabaseOrThrow();
-      const gameRef = ref(db, `chess_games/${gameId}`);
+      const gameRef = ref(db, `chess_games/${inviteCode}`);
       await set(gameRef, {
         ...gameData,
         updated_at: new Date().toISOString()
@@ -40,12 +40,12 @@ export const firebaseChess = {
   },
 
   // Subscribe to game updates (real-time that actually works)
-  subscribeToGame(gameId: string, callback: (gameData: any) => void) {
+  subscribeToGame(inviteCode: string, callback: (gameData: any) => void) {
     try {
       const db = getDatabaseOrThrow();
-      const gameRef = ref(db, `chess_games/${gameId}`);
+      const gameRef = ref(db, `chess_games/${inviteCode}`);
       
-      console.log('[FIREBASE] Setting up Firebase real-time subscription for game:', gameId);
+      console.log('[FIREBASE] Setting up Firebase real-time subscription for game:', inviteCode);
       
       const unsubscribe = onValue(gameRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -55,7 +55,7 @@ export const firebaseChess = {
         }
       });
 
-      console.log('[FIREBASE] Firebase subscription setup complete for game:', gameId);
+      console.log('[FIREBASE] Firebase subscription setup complete for game:', inviteCode);
       return unsubscribe;
     } catch (error) {
       console.error('[FIREBASE] Error subscribing to game:', error);
@@ -63,17 +63,18 @@ export const firebaseChess = {
     }
   },
 
-  // Create new game
+  // Create new game by inviteCode
   async createGame(gameData: any) {
     try {
       const db = getDatabaseOrThrow();
-      const gameRef = ref(db, `chess_games/${gameData.game_id}`);
+      const inviteCode = gameData.invite_code;
+      const gameRef = ref(db, `chess_games/${inviteCode}`);
       await set(gameRef, {
         ...gameData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
-      console.log('[FIREBASE] Game created successfully:', gameData.game_id);
+      console.log('[FIREBASE] Game created successfully:', inviteCode);
     } catch (error) {
       console.error('[FIREBASE] Error creating game:', error);
     }
@@ -85,9 +86,7 @@ export const firebaseChess = {
       const db = getDatabaseOrThrow();
       const gamesRef = ref(db, 'chess_games');
       const snapshot = await get(gamesRef);
-      
       if (!snapshot.exists()) return [];
-      
       const games = snapshot.val();
       return Object.values(games).filter((game: any) => 
         game.game_state === 'waiting' || game.game_state === 'active'
@@ -126,12 +125,13 @@ export const firebaseChess = {
     }
   },
 
-  // Delete a game
-  async deleteGame(gameId: string) {
+  // Delete a game by inviteCode
+  async deleteGame(inviteCode: string) {
     try {
       const db = getDatabaseOrThrow();
-      const gameRef = ref(db, `chess_games/${gameId}`);
-      await set(gameRef, null);
+      const gameRef = ref(db, `chess_games/${inviteCode}`);
+      await remove(gameRef);
+      console.log('[FIREBASE] Game deleted:', inviteCode);
     } catch (error) {
       console.error('[FIREBASE] Error deleting game:', error);
     }
@@ -204,23 +204,24 @@ export const firebaseChess = {
   }
 };
 
-// Utility to find a game by invite code
-export const findGameByInviteCode = async (inviteCode: string) => {
+// Utility to find a game by player address using contract mapping
+// (This should be called from the frontend using ethers/web3 to get inviteCode, then use getGame)
+export const findGameByPlayer = async (playerAddress: string) => {
   try {
     const db = getDatabaseOrThrow();
     const gamesRef = ref(db, 'chess_games');
     const snapshot = await get(gamesRef);
     if (!snapshot.exists()) return null;
     const games = snapshot.val();
-    // Find the first game where invite_code matches
+    // Find the first game where a player is involved
     for (const key in games) {
-      if (games[key].invite_code === inviteCode) {
-        return { ...games[key], game_id: key };
+      if (games[key].red_player === playerAddress || games[key].white_player === playerAddress) {
+        return { ...games[key], invite_code: key };
       }
     }
     return null;
   } catch (error) {
-    console.error('[FIREBASE] Error finding game by invite code:', error);
+    console.error('[FIREBASE] Error finding game by player:', error);
     return null;
   }
 };
