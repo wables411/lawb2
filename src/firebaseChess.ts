@@ -144,7 +144,6 @@ export const firebaseChess = {
           isPublic: game.is_public,
           redPlayer: game.red_player,
           isWaiting,
-          isPublic,
           noRedPlayer,
           passes: isWaiting && isPublic && noRedPlayer
         });
