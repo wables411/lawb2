@@ -435,6 +435,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [openGames, setOpenGames] = useState<any[]>([]);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [pendingGameData, setPendingGameData] = useState<any>(null);
+  const [pendingJoinGameData, setPendingJoinGameData] = useState<any>(null);
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
   
@@ -470,26 +471,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle transaction receipt for game joining
   useEffect(() => {
-    if (joinGameHash && !isWaitingForJoinReceipt && inviteCode && playerColor === 'red') {
+    if (joinGameHash && !isWaitingForJoinReceipt && pendingJoinGameData) {
       console.log('[CONTRACT] Join transaction confirmed:', joinGameHash);
       
       // Update database to mark game as active
       firebaseChess
-        .updateGame(inviteCode, {
-          red_player: address,
+        .updateGame(pendingJoinGameData.inviteCode, {
+          ...pendingJoinGameData.gameData,
+          red_player: pendingJoinGameData.address,
           game_state: 'active'
         })
         .then(() => {
           setGameMode(GameMode.ACTIVE);
           setGameStatus('Game started!');
-          subscribeToGame(inviteCode);
+          subscribeToGame(pendingJoinGameData.inviteCode);
+          
+          // Clear pending data
+          setPendingJoinGameData(null);
         })
         .catch((error) => {
           console.error('Error updating game in database:', error);
           setGameStatus('Joined game on contract but failed to update database');
+          setPendingJoinGameData(null);
         });
     }
-  }, [joinGameHash, isWaitingForJoinReceipt, inviteCode, playerColor, address]);
+  }, [joinGameHash, isWaitingForJoinReceipt, pendingJoinGameData]);
 
   // Handle transaction receipt for claim winnings
   useEffect(() => {
@@ -560,32 +566,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle transaction rejection for game joining
   useEffect(() => {
-    if (isJoiningGameContract === false && inviteCode && playerColor === 'red' && !joinGameHash) {
+    if (isJoiningGameContract === false && pendingJoinGameData && !joinGameHash) {
       // Transaction was rejected or failed
       console.log('[CONTRACT] Join game transaction rejected or failed');
       setGameStatus('Transaction was rejected. Please try again.');
       
-      // FIX: Only reset state if we're actually in a joining state, not if we're already in an active game
-      // Check if we have contract data indicating we're already in the game
-      if (contractGameData && contractGameData.length >= 2) {
-        const [player1, player2] = contractGameData;
-        const isAlreadyInGame = player1 === address || player2 === address;
-        
-        if (isAlreadyInGame) {
-          console.log('[CONTRACT] Player is already in game, not resetting state');
-          // Don't reset state - player is already in the game
-          return;
-        }
-      }
-      
-      // Only reset if we're actually trying to join a new game
-      console.log('[CONTRACT] Resetting state due to join transaction failure');
+      // Reset state
       setInviteCode('');
       setPlayerColor(null);
       setWager(0);
       setOpponent(null);
+      setPendingJoinGameData(null);
     }
-  }, [isJoiningGameContract, inviteCode, playerColor, joinGameHash, contractGameData, address]);
+  }, [isJoiningGameContract, pendingJoinGameData, joinGameHash]);
 
   // Check player game state when contract data changes
   useEffect(() => {
@@ -994,13 +987,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         args: [inviteCode as `0x${string}`],
         value: BigInt(Math.floor(wagerAmount * 1e18)),
       });
-      // --- FIX: Update Firebase with red_player and game_state: 'active' ---
-      await firebaseChess.updateGame(inviteCode, {
-        ...gameData,
-        red_player: address,
-        game_state: 'active',
-      });
-      // ---------------------------------------------------------------
+      // Store game data for after transaction confirmation
+      setPendingJoinGameData({ inviteCode, gameData, address });
     } catch (error) {
       setGameStatus('Failed to join game. Please try again.');
       setInviteCode('');
