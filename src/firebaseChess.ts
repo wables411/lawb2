@@ -26,6 +26,10 @@ export const firebaseChess = {
 
   // Update game state by inviteCode
   async updateGame(inviteCode: string, gameData: any) {
+    if (!inviteCode) {
+      console.error('[FIREBASE] Tried to update game with undefined inviteCode!', gameData);
+      throw new Error('inviteCode is required for updateGame');
+    }
     try {
       const db = getDatabaseOrThrow();
       const gameRef = ref(db, `chess_games/${inviteCode}`);
@@ -65,9 +69,13 @@ export const firebaseChess = {
 
   // Create new game by inviteCode
   async createGame(gameData: any) {
+    const inviteCode = gameData.invite_code;
+    if (!inviteCode) {
+      console.error('[FIREBASE] Tried to create game with undefined inviteCode!', gameData);
+      throw new Error('inviteCode is required for createGame');
+    }
     try {
       const db = getDatabaseOrThrow();
-      const inviteCode = gameData.invite_code;
       const gameRef = ref(db, `chess_games/${inviteCode}`);
       await set(gameRef, {
         ...gameData,
@@ -134,20 +142,6 @@ export const firebaseChess = {
       console.log('[FIREBASE] Game deleted:', inviteCode);
     } catch (error) {
       console.error('[FIREBASE] Error deleting game:', error);
-    }
-  },
-
-  // Migrate existing game from Supabase to Firebase
-  async migrateGame(supabaseGame: any) {
-    try {
-      const db = getDatabaseOrThrow();
-      const gameRef = ref(db, `chess_games/${supabaseGame.game_id}`);
-      await set(gameRef, {
-        ...supabaseGame,
-        migrated_at: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('[FIREBASE] Error migrating game:', error);
     }
   },
 
