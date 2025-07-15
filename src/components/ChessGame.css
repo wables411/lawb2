@@ -139,52 +139,82 @@
   border: 1px solid #ccc;
 }
 
-/* --- Modal & Gallery --- */
+/* --- Enhanced Modal & Gallery --- */
 .piece-gallery-panel, .gallery-modal {
   max-height: 80vh;
   overflow-y: auto;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   background: #f0f0f0;
-  padding: 8px 0;
+  padding: 12px 8px;
 }
+
 .piece-gallery {
-  padding: 4px 0;
+  padding: 8px 0;
   margin: 0 auto;
-  max-width: 320px;
+  max-width: 100%;
 }
+
+.piece-gallery h3 {
+  font-size: 14px;
+  font-weight: bold;
+  color: #000080;
+  margin: 0 0 12px 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .piece-gallery-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 0 4px;
 }
+
 .piece-gallery-item {
   background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  padding: 8px 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 12px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
+
+.piece-gallery-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  border-color: #000080;
+}
+
 .piece-gallery-img {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
+
 .piece-gallery-name {
   font-weight: bold;
   color: #000080;
-  margin-bottom: 1px;
+  margin-bottom: 4px;
   text-align: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
 .piece-gallery-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: #666;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.3;
+  margin: 0;
 }
 
 /* --- Responsive Tweaks --- */
@@ -3172,4 +3202,415 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .victory-overlay button {
   pointer-events: auto;
   z-index: 3000;
+}
+
+/* --- Streamlined UI Components --- */
+
+/* Compact Leaderboard */
+.leaderboard-compact {
+  flex: 1 1 0;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 4px;
+  margin: 0 0 8px 0;
+  display: flex;
+  flex-direction: column;
+  color: #c00 !important;
+  padding: 4px 0;
+  min-height: 0;
+}
+
+.leaderboard-compact h3 {
+  font-size: 12px;
+  font-weight: bold;
+  color: #000080;
+  margin: 0 0 4px 0;
+  text-align: center;
+}
+
+.leaderboard-table-compact {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.leaderboard-table-compact table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.leaderboard-table-compact th, .leaderboard-table-compact td {
+  padding: 1px 2px;
+  text-align: center;
+  border: 1px solid #ccc;
+}
+
+.leaderboard-table-compact th:nth-child(1), .leaderboard-table-compact td:nth-child(1) { 
+  min-width: 24px; 
+  max-width: 28px; 
+}
+.leaderboard-table-compact th:nth-child(2), .leaderboard-table-compact td:nth-child(2) { 
+  min-width: 60px; 
+  max-width: 80px; 
+}
+.leaderboard-table-compact th:nth-child(3), .leaderboard-table-compact td:nth-child(3) { 
+  min-width: 24px; 
+  max-width: 28px; 
+}
+
+/* Compact Move History */
+.move-history-compact {
+  flex: 1 1 0;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 4px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  color: #c00 !important;
+  padding: 4px 0;
+  min-height: 0;
+}
+
+.move-history-compact .move-history-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: #000080;
+  margin: 0 0 4px 0;
+  text-align: center;
+}
+
+.move-history-list-compact {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 10px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.move-history-list-compact li {
+  padding: 1px 4px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+/* Compact Game Info */
+.game-info-compact {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f0f0f0;
+  border-bottom: 1px solid #bbb;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  min-height: 24px;
+  box-sizing: border-box;
+  margin: 0 0 2px 0;
+}
+
+.game-info-compact span {
+  margin: 0 4px;
+}
+
+/* Compact Game Controls */
+.game-controls-compact {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 8px;
+  background: #f0f0f0;
+  border-top: 1px solid #bbb;
+}
+
+.game-controls-compact button {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
+  cursor: pointer;
+  border-radius: 0;
+  min-width: 60px;
+}
+
+.game-controls-compact button:hover {
+  background: #d0d0d0;
+}
+
+.game-controls-compact button:active {
+  border: 2px inset #fff;
+  background: #a0a0a0;
+}
+
+/* Streamlined Mode Selection */
+.game-mode-panel-streamlined {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  margin: 20px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.mode-selection-compact {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.mode-btn-compact {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+  cursor: pointer;
+  border-radius: 0;
+  min-width: 80px;
+  text-align: center;
+}
+
+.mode-btn-compact:hover {
+  background: #d0d0d0;
+}
+
+.mode-btn-compact:active {
+  border: 2px inset #fff;
+  background: #a0a0a0;
+}
+
+.mode-btn-compact.selected {
+  background: #000080;
+  color: #fff;
+  border: 2px inset #fff;
+}
+
+.start-btn-compact {
+  background: #008000;
+  border: 2px outset #fff;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 0;
+  margin-bottom: 20px;
+}
+
+.start-btn-compact:hover {
+  background: #006000;
+}
+
+.start-btn-compact:active {
+  border: 2px inset #fff;
+  background: #004000;
+}
+
+/* PvP Info */
+.pvp-info {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.pvp-info p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Compact Help Section */
+.help-section-compact {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 16px;
+  max-width: 100%;
+}
+
+.help-section-compact h4 {
+  font-size: 14px;
+  font-weight: bold;
+  color: #000080;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.help-content {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.help-content p {
+  margin: 6px 0;
+  color: #333;
+}
+
+.help-content strong {
+  color: #000080;
+  font-weight: bold;
+}
+
+/* Dark Mode Support */
+.chess-dark-mode .leaderboard-compact,
+.chess-dark-mode .move-history-compact {
+  background: #2d3748;
+  color: #e2e8f0 !important;
+}
+
+.chess-dark-mode .leaderboard-compact h3,
+.chess-dark-mode .move-history-compact .move-history-title {
+  color: #90cdf4;
+}
+
+.chess-dark-mode .leaderboard-table-compact th,
+.chess-dark-mode .leaderboard-table-compact td {
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.chess-dark-mode .game-info-compact {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.chess-dark-mode .game-controls-compact {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+.chess-dark-mode .game-controls-compact button {
+  background: #4a5568;
+  border-color: #718096;
+  color: #e2e8f0;
+}
+
+.chess-dark-mode .game-controls-compact button:hover {
+  background: #718096;
+}
+
+.chess-dark-mode .game-mode-panel-streamlined {
+  background: #2d3748;
+}
+
+.chess-dark-mode .mode-btn-compact {
+  background: #4a5568;
+  border-color: #718096;
+  color: #e2e8f0;
+}
+
+.chess-dark-mode .mode-btn-compact:hover {
+  background: #718096;
+}
+
+.chess-dark-mode .mode-btn-compact.selected {
+  background: #3182ce;
+  color: #fff;
+}
+
+.chess-dark-mode .start-btn-compact {
+  background: #38a169;
+}
+
+.chess-dark-mode .start-btn-compact:hover {
+  background: #2f855a;
+}
+
+.chess-dark-mode .pvp-info {
+  background: #4a5568;
+  border-color: #718096;
+}
+
+.chess-dark-mode .pvp-info p {
+  color: #e2e8f0;
+}
+
+.chess-dark-mode .help-section-compact {
+  background: #4a5568;
+  border-color: #718096;
+}
+
+.chess-dark-mode .help-section-compact h4 {
+  color: #90cdf4;
+}
+
+.chess-dark-mode .help-content p {
+  color: #e2e8f0;
+}
+
+.chess-dark-mode .help-content strong {
+  color: #90cdf4;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+  .mode-selection-compact {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .mode-btn-compact {
+    min-width: 120px;
+  }
+  
+  .game-controls-compact {
+    flex-wrap: wrap;
+  }
+  
+  .game-controls-compact button {
+    min-width: 50px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .leaderboard-compact h3,
+  .move-history-compact .move-history-title {
+    font-size: 11px;
+  }
+  
+  .leaderboard-table-compact table {
+    font-size: 9px;
+  }
+  
+  .game-info-compact {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+  
+  .help-content {
+    font-size: 10px;
+  }
+  
+  .piece-gallery-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .piece-gallery-img {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .piece-gallery-name {
+    font-size: 11px;
+  }
+  
+  .piece-gallery-desc {
+    font-size: 9px;
+  }
 }

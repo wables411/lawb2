@@ -1551,131 +1551,107 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
-      {/* Always show header at the top */}
+      {/* Streamlined Header */}
       {!fullscreen && (
         <div className="chess-header">
           <h2>Lawb Chess</h2>
           <div className="chess-controls">
-            {onMinimize && <button onClick={onMinimize}>_</button>}
-            <button onClick={onClose}>×</button>
             <button
               className="dark-mode-toggle"
               onClick={toggleDarkMode}
               title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              style={{ marginLeft: 12 }}
             >
               {darkMode ? '☀️' : '🌙'}
             </button>
+            {onMinimize && <button onClick={onMinimize}>_</button>}
+            <button onClick={onClose}>×</button>
           </div>
         </div>
       )}
+      
       <div className="game-stable-layout">
-        {/* Left Sidebar */}
+        {/* Left Sidebar - Compact Leaderboard */}
         <div className="left-sidebar">
-          {/* Only show Move History and status when a game is active */}
-          {showGame && (
-            <>
-              <div className="move-history-status">{status}</div>
-              <div className="move-history">
-                <div className="move-history-title">Move History</div>
-                <ul className="move-history-list">
-                  {moveHistory.slice().reverse().map((move, idx) => (
-                    <li key={moveHistory.length - 1 - idx}>{move}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
-          {/* Only show leaderboard in left sidebar when no game is active */}
-          {!showGame && (
-          <div className="leaderboard">
+          <div className="leaderboard-compact">
             <h3>Leaderboard</h3>
-            <div className="leaderboard-table">
+            <div className="leaderboard-table-compact">
               <table>
                 <thead>
                   <tr>
                     <th>Rank</th>
                     <th>Player</th>
-                    <th>W</th>
-                    <th>L</th>
-                    <th>D</th>
-                    <th>Points</th>
+                    <th>Pts</th>
                   </tr>
                 </thead>
                 <tbody>
-                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 10).map((entry, index: number) => {
-                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                    const typedEntry = entry as LeaderboardEntry;
-                    return (
-                      <tr key={typedEntry.username}>
-                        <td>{index + 1}</td>
-                        <td>{formatAddress(typedEntry.username)}</td>
-                        <td>{typedEntry.wins}</td>
-                        <td>{typedEntry.losses}</td>
-                        <td>{typedEntry.draws}</td>
-                        <td>{typedEntry.points}</td>
-                      </tr>
-                    );
-                      }
-                      return null;
+                  {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
+                    if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                      const typedEntry = entry as LeaderboardEntry;
+                      return (
+                        <tr key={typedEntry.username}>
+                          <td>{index + 1}</td>
+                          <td>{formatAddress(typedEntry.username)}</td>
+                          <td>{typedEntry.points}</td>
+                        </tr>
+                      );
+                    }
+                    return null;
                   })}
                 </tbody>
               </table>
             </div>
-                </div>
-              )}
           </div>
+          
+          {/* Move History when game is active */}
+          {showGame && (
+            <div className="move-history-compact">
+              <div className="move-history-title">Moves</div>
+              <ul className="move-history-list-compact">
+                {moveHistory.slice().reverse().map((move, idx) => (
+                  <li key={moveHistory.length - 1 - idx}>{move}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
-        {/* Center Area */}
+        {/* Center Area - Always Show Chess Board */}
         <div className="center-area">
-                  <div className="game-info">
-            <div className="game-info-bar">
+          {/* Game Info Bar - Compact */}
+          {showGame && (
+            <div className="game-info-compact">
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
-                  Current: {currentPlayer === 'blue' ? 'Blue' : 'Red'}
+                {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
-              <span className="wager-label">Wager:</span> <span>{gameMode === 'ai' ? 'NA' : `${wager} ETH`}</span>
-              {showGame && !showDifficulty && (
-                                  <span className="mode-play">
-                  Mode: {difficulty === 'easy' ? 'Easy' : 'Hard'}
+              {gameMode === GameMode.AI && (
+                <span className="mode-play">
+                  {difficulty === 'easy' ? 'Easy' : 'Hard'} AI
                 </span>
               )}
-                              {difficulty === 'easy' && (
-                <span className={`stockfish-status ${stockfishStatus}`}>
-                  LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
+              {isOnline && (
+                <span className="wager-display">
+                  Wager: {wager} ETH
                 </span>
               )}
-              {difficulty === 'hard' && (
-                <span className={`stockfish-status ${stockfishStatus}`}>
-                  LawbBot: {stockfishStatus === 'loading' ? 'Loading...' : stockfishStatus === 'ready' ? 'Ready' : 'Failed'}
-                </span>
-              )}
-              {showOpeningSuggestions && openingSuggestions.length > 0 && (
-                <div className="opening-suggestions">
-                  <span className="opening-label">Opening:</span>
-                  {openingSuggestions.map((move, index) => (
-                    <span key={index} className="opening-move">
-                      {move.san} ({Math.round(move.white + move.draws + move.black)} games)
-                    </span>
-                  ))}
-                </div>
-              )}
-                </div>
-                </div>
+            </div>
+          )}
+          
+          {/* Main Game Area */}
           {showGame ? (
             <div className="chess-main-area">
               <div className="chessboard-container">
-                  <div 
-                    className="chessboard"
-                    style={{
-                      backgroundImage: `url(${selectedChessboard})`
-                    }}
-                  >
+                <div 
+                  className="chessboard"
+                  style={{
+                    backgroundImage: `url(${selectedChessboard})`
+                  }}
+                >
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="board-row">
                       {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                              </div>
-                    ))}
+                    </div>
+                  ))}
                   {/* Capture Animation Overlay */}
                   {captureAnimation && captureAnimation.show && (
                     <div 
@@ -1694,119 +1670,72 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                         alt="capture" 
                         style={{ width: '100%', height: '100%' }}
                       />
-                  </div>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className="game-controls">
-                <button onClick={() => setShowGalleryModal(true)}>Chess Piece Info</button>
-                <button onClick={handleNewGame}>New Game</button>
-                <button onClick={handleBackToMenu}>Back to Menu</button>
-              </div>
               
-              {/* Epic Controls */}
-              <div className="epic-controls">
-                <div className="epic-toggle">
-                  <input 
-                    type="checkbox" 
-                    id="sound-toggle" 
-                    checked={soundEnabled} 
-                    onChange={(e) => setSoundEnabled(e.target.checked)}
-                  />
-                  <label htmlFor="sound-toggle">🎵 Sound Effects</label>
-                </div>
-                <div className="epic-toggle">
-                  <input 
-                    type="checkbox" 
-                    id="victory-toggle" 
-                    checked={victoryCelebration} 
-                    onChange={(e) => setVictoryCelebration(e.target.checked)}
-                  />
-                  <label htmlFor="victory-toggle">🎉 Victory Celebration</label>
-                </div>
+              {/* Compact Game Controls */}
+              <div className="game-controls-compact">
+                <button onClick={handleNewGame}>New Game</button>
+                <button onClick={handleBackToMenu}>Menu</button>
+                <button onClick={() => setShowGalleryModal(true)}>Pieces</button>
               </div>
             </div>
           ) : showDifficulty ? (
             renderDifficultySelection()
-          ) : gameMode === 'online' ? (
+          ) : isOnline ? (
             <ChessMultiplayer onClose={onClose} onMinimize={onMinimize} fullscreen={fullscreen} />
           ) : (
-            <div className="game-mode-panel">
-              <h3 className="game-mode-title">Select Game Mode</h3>
-              <button 
-                className={`mode-btn ${gameMode === 'ai' ? 'selected' : ''}`}
-                onClick={() => setGameMode('ai')}
-              >
-                VS THE HOUSE
-              </button>
-              <div className="pvp-section">
+            <div className="game-mode-panel-streamlined">
+              <div className="mode-selection-compact">
                 <button 
-                  className={`mode-btn ${isOnline ? 'selected' : ''}`}
+                  className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
+                  onClick={() => setGameMode('ai')}
+                >
+                  VS AI
+                </button>
+                <button 
+                  className={`mode-btn-compact ${isOnline ? 'selected' : ''}`}
                   onClick={() => setGameMode('online')}
                 >
                   PvP
                 </button>
-                <img src="/images/chessboard4.png" alt="Chessboard" style={{ display: 'block', margin: '16px auto 0 auto', width: '180px', maxWidth: '90%' }} />
               </div>
-              <button className="start-btn continue-btn" onClick={() => setShowDifficulty(true)}>Continue</button>
               
-              <div className="how-to-section">
+                             {gameMode === GameMode.AI && (
+                 <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
+                   Start Game
+                 </button>
+               )}
+               
+               {isOnline && (
+                <div className="pvp-info">
+                  <p>Challenge other players with ETH wagers</p>
+                  <p>Create or join games instantly</p>
+                </div>
+              )}
+              
+              {/* Updated Help Section */}
+              <div className="help-section-compact">
                 <h4>How to Play</h4>
-                <div className="how-to-content">
-                  <p><strong>Chess Basics:</strong> Move pieces to capture your opponent's king. Each piece moves differently - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
+                <div className="help-content">
+                  <p><strong>Chess:</strong> Capture your opponent's king. Each piece moves uniquely - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
                   
-                  <p><strong>Wallet Connection:</strong> Connect your wallet to track your progress and compete on the leaderboard. Your wallet address serves as your username.</p>
+                  <p><strong>Multiplayer:</strong> Connect your wallet to play PvP games with ETH wagers. Win games to claim your opponent's wager and climb the leaderboard.</p>
                   
-                  <p><strong>Points System:</strong> Win points by defeating the AI. 1 win = 10pts. 1 draw = 1 point.</p>
+                  <p><strong>AI Mode:</strong> Practice against our LawbBot AI. Choose Easy or Hard difficulty. Wins earn points on the leaderboard.</p>
                 </div>
               </div>
             </div>
           )}
-            </div>
+        </div>
             
-        {/* Right Sidebar */}
-              <div className="right-sidebar">
-          {showGame ? (
-              <div className="leaderboard">
-                <h3>Leaderboard</h3>
-                  <div className="leaderboard-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Player</th>
-                          <th>W</th>
-                          <th>L</th>
-                          <th>D</th>
-                      <th>Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 10).map((entry, index: number) => {
-                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                          const typedEntry = entry as LeaderboardEntry;
-                          return (
-                            <tr key={typedEntry.username}>
-                        <td>{index + 1}</td>
-                              <td>{formatAddress(typedEntry.username)}</td>
-                              <td>{typedEntry.wins}</td>
-                              <td>{typedEntry.losses}</td>
-                              <td>{typedEntry.draws}</td>
-                              <td>{typedEntry.points}</td>
-                      </tr>
-                          );
-                      }
-                      return null;
-                        })}
-                  </tbody>
-                </table>
-              </div>
-                </div>
-          ) : (
-            <div className="piece-gallery-panel">
-              {renderPieceGallery(false)}
-              </div>
-          )}
+        {/* Right Sidebar - Piece Gallery */}
+        <div className="right-sidebar">
+          <div className="piece-gallery-panel">
+            {renderPieceGallery(true)}
+          </div>
         </div>
       </div>
       {showGalleryModal && (

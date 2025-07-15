@@ -2252,34 +2252,58 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const renderGameBoard = () => (
     <div className="chess-game">
       <div className="chess-header">
-        <h2>Multiplayer Chess</h2>
+        <h2>♔ Multiplayer Chess</h2>
         <div className="chess-controls">
-          <button onClick={toggleDarkMode}>🌙</button>
-          {onMinimize && <button onClick={onMinimize}>_</button>}
-          <button onClick={onClose}>×</button>
+          <button 
+            onClick={toggleDarkMode}
+            className="theme-toggle-btn"
+            title="Toggle Dark Mode"
+          >
+            🌙
+          </button>
+          {onMinimize && (
+            <button 
+              onClick={onMinimize}
+              className="minimize-btn"
+              title="Minimize"
+            >
+              _
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            className="close-btn"
+            title="Close"
+          >
+            ×
+          </button>
         </div>
       </div>
       
       <div className="game-info">
-        <span className="status">{gameStatus}</span>
-        <span className="current-player">Current: {currentPlayer === 'red' ? 'Red' : 'Blue'}</span>
-        <span className="wager-display">Wager: {wager} tDMT</span>
-        {opponent && <span>Opponent: {formatAddress(opponent)}</span>}
+        <div className="game-status-section">
+          <span className={`status ${gameStatus.includes('Check') ? 'check-status' : ''}`}>
+            {gameStatus}
+          </span>
+          <span className={`current-player ${currentPlayer === 'red' ? 'red-turn' : 'blue-turn'}`}>
+            Current: {currentPlayer === 'red' ? '♔ Red' : '♔ Blue'}
+          </span>
+        </div>
+        <div className="game-details-section">
+          <span className="wager-display">💰 {wager} tDMT</span>
+          {opponent && (
+            <span className="opponent-info">
+              vs {formatAddress(opponent)}
+            </span>
+          )}
+        </div>
         {gameMode === GameMode.FINISHED && (
           <button 
             onClick={claimWinnings}
             disabled={isClaimingWinnings}
-            style={{
-              background: 'rgba(255, 215, 0, 0.2)',
-              border: '2px solid gold',
-              color: 'gold',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              marginLeft: '10px'
-            }}
+            className="claim-winnings-btn"
           >
-            {isClaimingWinnings ? 'Claiming...' : 'Claim Winnings'}
+            {isClaimingWinnings ? '⏳ Claiming...' : '🏆 Claim Winnings'}
           </button>
         )}
       </div>
@@ -2326,39 +2350,47 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           </div>
           
           <div className="game-controls">
-            <button onClick={() => setShowPieceGallery(!showPieceGallery)}>
-              {showPieceGallery ? 'Hide' : 'Show'} Piece Gallery
-            </button>
-            
-            {gameStatus.includes('corrupted') && (
+            <div className="control-section">
               <button 
-                className="reset-game-btn"
-                onClick={resetGameData}
-                style={{ backgroundColor: '#ff6b6b', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}
+                onClick={() => setShowPieceGallery(!showPieceGallery)}
+                className="gallery-toggle-btn"
               >
-                🔄 Reset Game
+                {showPieceGallery ? '📚 Hide Gallery' : '📚 Show Gallery'}
               </button>
-            )}
+              
+              {gameStatus.includes('corrupted') && (
+                <button 
+                  className="reset-game-btn"
+                  onClick={resetGameData}
+                >
+                  🔄 Reset Game
+                </button>
+              )}
+            </div>
             
-            <div className="sound-controls">
-              <label>
-                <input
-                  type="checkbox"
-                  id="sound-toggle"
-                  checked={soundEnabled}
-                  onChange={(e) => setSoundEnabled(e.target.checked)}
-                />
-                🎵 Sound Effects
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  id="victory-toggle"
-                  checked={victoryCelebration}
-                  onChange={(e) => setVictoryCelebration(e.target.checked)}
-                />
-                🎉 Victory Celebration
-              </label>
+            <div className="settings-section">
+              <div className="sound-controls">
+                <label className="control-label">
+                  <input
+                    type="checkbox"
+                    id="sound-toggle"
+                    checked={soundEnabled}
+                    onChange={(e) => setSoundEnabled(e.target.checked)}
+                    className="control-checkbox"
+                  />
+                  <span className="control-text">🎵 Sound Effects</span>
+                </label>
+                <label className="control-label">
+                  <input
+                    type="checkbox"
+                    id="victory-toggle"
+                    checked={victoryCelebration}
+                    onChange={(e) => setVictoryCelebration(e.target.checked)}
+                    className="control-checkbox"
+                  />
+                  <span className="control-text">🎉 Victory Celebration</span>
+                </label>
+              </div>
             </div>
             
             {canClaimWinnings && (
@@ -2368,8 +2400,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 disabled={isClaimingWinnings || isEndingGame || isWaitingForEndReceipt}
               >
                 {isClaimingWinnings || isEndingGame || isWaitingForEndReceipt 
-                  ? 'Claiming...' 
-                  : 'Claim Winnings'}
+                  ? '⏳ Claiming...' 
+                  : '🏆 Claim Winnings'}
               </button>
             )}
           </div>

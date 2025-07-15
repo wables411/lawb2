@@ -9,31 +9,13 @@ const ChessPage: React.FC = () => {
 
   return (
     <div className="chess-page">
-      <div className="chess-header">
-        <h1>♔ Chess</h1>
-        <div className="mode-toggle">
-          <button
-            className={`mode-btn ${gameMode === 'singleplayer' ? 'active' : ''}`}
-            onClick={() => setGameMode('singleplayer')}
-          >
-            Single Player
-          </button>
-          <button
-            className={`mode-btn ${gameMode === 'multiplayer' ? 'active' : ''}`}
-            onClick={() => setGameMode('multiplayer')}
-          >
-            Multiplayer
-          </button>
-        </div>
-      </div>
-
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
           <ChessGame onClose={() => {}} />
         ) : (
           <ChessMultiplayer onClose={() => {}} onMinimize={() => {}} fullscreen={false} />
         )}
-            </div>
+      </div>
     </div>
   );
 };
