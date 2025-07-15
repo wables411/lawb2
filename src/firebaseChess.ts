@@ -77,14 +77,27 @@ export const firebaseChess = {
     try {
       const db = getDatabaseOrThrow();
       const gameRef = ref(db, `chess_games/${inviteCode}`);
+      
+      console.log('[FIREBASE] Creating game with data:', gameData);
+      
       await set(gameRef, {
         ...gameData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
+      
       console.log('[FIREBASE] Game created successfully:', inviteCode);
+      
+      // Verify the game was created by reading it back
+      const verificationSnapshot = await get(gameRef);
+      if (verificationSnapshot.exists()) {
+        console.log('[FIREBASE] Game verification successful:', verificationSnapshot.val());
+      } else {
+        console.error('[FIREBASE] Game creation verification failed - game not found after creation');
+      }
     } catch (error) {
       console.error('[FIREBASE] Error creating game:', error);
+      throw error; // Re-throw to allow proper error handling
     }
   },
 
@@ -112,20 +125,39 @@ export const firebaseChess = {
       const gamesRef = ref(db, 'chess_games');
       const snapshot = await get(gamesRef);
       
-      if (!snapshot.exists()) return [];
+      if (!snapshot.exists()) {
+        console.log('[FIREBASE] No games found in database');
+        return [];
+      }
       
       const games = snapshot.val();
-      const openGames = Object.values(games).filter((game: any) => 
-        game.game_state === 'waiting' && 
-        game.is_public && 
-        !game.red_player
-      );
+      console.log('[FIREBASE] All games in database:', games);
+      
+      const openGames = Object.values(games).filter((game: any) => {
+        const isWaiting = game.game_state === 'waiting';
+        const isPublic = game.is_public;
+        const noRedPlayer = !game.red_player;
+        
+        console.log('[FIREBASE] Game filter check:', {
+          inviteCode: game.invite_code,
+          gameState: game.game_state,
+          isPublic: game.is_public,
+          redPlayer: game.red_player,
+          isWaiting,
+          isPublic,
+          noRedPlayer,
+          passes: isWaiting && isPublic && noRedPlayer
+        });
+        
+        return isWaiting && isPublic && noRedPlayer;
+      });
       
       // Sort by creation date (newest first)
       openGames.sort((a: any, b: any) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
+      console.log('[FIREBASE] Open games found:', openGames.length, openGames);
       return openGames;
     } catch (error) {
       console.error('[FIREBASE] Error getting open games:', error);

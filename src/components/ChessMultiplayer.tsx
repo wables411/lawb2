@@ -530,6 +530,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         // Subscribe to game updates
         subscribeToGame(pendingGameData.invite_code);
         
+        // Refresh lobby to show the new game
+        setTimeout(() => {
+          loadOpenGames();
+        }, 1000);
+        
         // Clear pending data
         setPendingGameData(null);
         setIsCreatingGame(false);
@@ -2194,6 +2199,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               }}
             >
               Check for Active Games
+            </button>
+            <button 
+              onClick={loadOpenGames}
+              style={{ 
+                marginTop: '10px',
+                background: 'rgba(0, 123, 255, 0.1)',
+                border: '2px solid #007bff',
+                color: '#007bff',
+                padding: '12px 24px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontFamily: 'Courier New, monospace',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              🔄 Refresh Lobby
             </button>
           </div>
             
