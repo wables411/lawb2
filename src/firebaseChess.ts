@@ -136,7 +136,7 @@ export const firebaseChess = {
       const openGames = Object.values(games).filter((game: any) => {
         const isWaiting = game.game_state === 'waiting';
         const isPublic = game.is_public;
-        const noRedPlayer = !game.red_player;
+        const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
         
         console.log('[FIREBASE] Game filter check:', {
           inviteCode: game.invite_code,
