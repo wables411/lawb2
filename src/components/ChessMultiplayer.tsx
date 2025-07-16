@@ -2912,8 +2912,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug panel component for diagnosing Player 2 issues
   const renderDebugPanel = () => {
-    // Show debug panel always for now to fix the pending join data issue
-    // if (process.env.NODE_ENV !== 'development') return null;
+    // Only show debug panel in development mode
+    if (process.env.NODE_ENV !== 'development') return null;
     
     return (
       <div style={{
