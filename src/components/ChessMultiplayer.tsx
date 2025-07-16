@@ -1161,8 +1161,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] - Current playerColor state:', playerColor);
         console.log('[DEBUG] - Contract game data available:', !!contractGameData);
         
-        // Use contract data as fallback if available
-        if (contractGameData && Array.isArray(contractGameData) && currentAddress) {
+        // Use contract data as fallback if available and we don't have a valid playerColor
+        if (!playerColor && contractGameData && Array.isArray(contractGameData) && currentAddress) {
           const [player1, player2] = contractGameData;
           if (player1 && player2) {
             const playerColorFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? 'blue' : 'red';
@@ -1173,7 +1173,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setOpponent(opponentFromContract);
           }
         } else if (playerColor) {
-          // If we have a valid playerColor, preserve it
+          // If we have a valid playerColor, preserve it and don't change it
           console.log('[DEBUG] Preserving existing valid playerColor:', playerColor);
         } else {
           // No valid data available, set to null
@@ -1793,17 +1793,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       piece,
       pieceUpperCase: piece.toUpperCase(),
       playerColor,
+      currentPlayer,
       toRow: to.row,
       isPawn: piece.toUpperCase() === 'P',
-      redPromotion: playerColor === 'red' && to.row === 0,
-      bluePromotion: playerColor === 'blue' && to.row === 7,
+      redPromotion: currentPlayer === 'red' && to.row === 0,
+      bluePromotion: currentPlayer === 'blue' && to.row === 7,
       showPromotion,
       promotionMove,
-      shouldShowPromotion: piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 0) || (playerColor === 'blue' && to.row === 7))
+      shouldShowPromotion: piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7))
     });
     
     // Check for pawn promotion
-    if (piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 0) || (playerColor === 'blue' && to.row === 7))) {
+    if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7))) {
       console.log('[PROMOTION] Showing promotion dialog for piece:', piece, 'at position:', to);
       console.log('[PROMOTION] Setting promotion state - before: showPromotion:', showPromotion, 'promotionMove:', promotionMove);
       setPromotionMove({ from, to });
@@ -2274,6 +2275,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       showPromotion, 
       promotionMove, 
       playerColor,
+      currentPlayer,
       showPromotionType: typeof showPromotion,
       promotionMoveType: typeof promotionMove,
       playerColorType: typeof playerColor
@@ -2286,8 +2288,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return null;
     }
     
-    const promotionPieces = playerColor === 'red' ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
-    console.log('[PROMOTION] Promotion pieces for', playerColor, ':', promotionPieces);
+    // Use currentPlayer instead of playerColor for determining promotion pieces
+    const promotionPieces = currentPlayer === 'red' ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
+    console.log('[PROMOTION] Promotion pieces for', currentPlayer, ':', promotionPieces);
 
     return (
       <div className="promotion-dialog" style={{
