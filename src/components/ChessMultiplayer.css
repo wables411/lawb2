@@ -50,18 +50,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-width: 0;
   min-height: 0;
   height: 100%;
   padding: 8px;
+  overflow: hidden;
 }
 
 .chessboard-container {
   width: 100%;
   height: 100%;
-  max-width: 80vh;
-  max-height: 80vh;
+  max-width: 70vh;
+  max-height: 70vh;
   min-width: 400px;
   min-height: 400px;
   display: flex;
@@ -70,6 +71,7 @@
   margin: 0;
   flex: 1 1 0;
   position: relative;
+  overflow: hidden;
 }
 
 .chessboard {
@@ -299,7 +301,7 @@
 }
 
 /* --- Modern Modal & Gallery --- */
-.piece-gallery-panel, .gallery-modal, .chess-multiplayer-lobby, .chess-multiplayer-waiting {
+.piece-gallery-panel {
   max-height: 85vh;
   overflow-y: auto;
   border-radius: 16px;
@@ -315,6 +317,17 @@
   z-index: 1000;
   min-width: 300px;
   max-width: 90vw;
+}
+
+.gallery-modal, .chess-multiplayer-lobby, .chess-multiplayer-waiting {
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .piece-gallery {

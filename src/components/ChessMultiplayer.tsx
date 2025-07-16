@@ -1171,17 +1171,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Debug wager setting
       console.log('[WAGER DEBUG] bet_amount from Firebase:', gameData.bet_amount);
       console.log('[WAGER DEBUG] bet_amount type:', typeof gameData.bet_amount);
+      console.log('[WAGER DEBUG] Full gameData:', gameData);
       console.log('[WAGER DEBUG] parsed value:', gameData.bet_amount ? parseFloat(gameData.bet_amount) : 'null');
       console.log('[WAGER DEBUG] converted to TDMT:', gameData.bet_amount ? parseFloat(gameData.bet_amount) / 1e18 : 'null');
       
+      // Try to get wager from contract data if Firebase doesn't have it
+      let wagerValue = 0;
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
-        const wagerValue = parseFloat(gameData.bet_amount) / 1e18;
-        console.log('[WAGER DEBUG] Setting wager to:', wagerValue);
-        setWager(wagerValue);
+        wagerValue = parseFloat(gameData.bet_amount) / 1e18;
+        console.log('[WAGER DEBUG] Setting wager from Firebase:', wagerValue);
+      } else if (contractGameData && Array.isArray(contractGameData) && contractGameData[5]) {
+        // Get wager from contract data (index 5 is wager amount in wei)
+        wagerValue = parseFloat(contractGameData[5].toString()) / 1e18;
+        console.log('[WAGER DEBUG] Setting wager from contract data:', wagerValue);
       } else {
-        console.log('[WAGER DEBUG] Setting wager to 0 (no valid bet_amount)');
-        setWager(0);
+        console.log('[WAGER DEBUG] Setting wager to 0 (no valid bet_amount found)');
       }
+      setWager(wagerValue);
       if (gameData.board) setBoard(reconstructBoard(gameData.board));
       if (gameData.current_player) setCurrentPlayer(gameData.current_player);
       if (gameData.game_state === 'active') {
@@ -1260,6 +1266,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       firebaseChess.updateGame(confirmedInviteCode, {
         red_player: playerAddress,
         blue_player: gameData.blue_player, // Preserve the blue player
+        bet_amount: gameData.bet_amount, // Preserve the bet amount
         game_state: 'active',
         last_move: null, // Reset last move for new game
         board: {
