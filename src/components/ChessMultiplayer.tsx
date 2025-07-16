@@ -2080,8 +2080,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         newBoard[from.row][7] = null;
         newBoard[from.row][5] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
       } else if (to.col === 2) { // Queenside
+        // Save the queen if it exists at d1/d8 before moving the rook
+        const queenPiece = newBoard[from.row][3];
         newBoard[from.row][0] = null;
         newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
+        // If there was a queen at d1/d8, move it to a safe position (e1/e8)
+        if (queenPiece && queenPiece.toLowerCase() === 'q') {
+          newBoard[from.row][4] = queenPiece;
+        }
       }
     }
     
