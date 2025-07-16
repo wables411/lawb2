@@ -1163,18 +1163,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] Blue comparison:', `${currentAddress.toLowerCase()} === ${gameData.blue_player.toLowerCase()}`);
         console.log('[DEBUG] Red comparison:', `${currentAddress.toLowerCase()} === ${gameData.red_player.toLowerCase()}`);
         
-        if (blueMatch) {
+        if (blueMatch && playerColor !== 'blue') {
           console.log('[DEBUG] Setting player color to BLUE');
           setPlayerColor('blue');
           setOpponent(gameData.red_player);
-        } else if (redMatch) {
+        } else if (redMatch && playerColor !== 'red') {
           console.log('[DEBUG] Setting player color to RED');
           setPlayerColor('red');
           setOpponent(gameData.blue_player);
-        } else {
+        } else if (!blueMatch && !redMatch && playerColor !== null) {
           console.log('[DEBUG] No address match found - setting playerColor to null');
           setPlayerColor(null);
           setOpponent(null);
+        } else {
+          console.log('[DEBUG] Player color already correctly set to:', playerColor);
         }
       } else {
         // Missing player data or red player is still zero address
