@@ -474,6 +474,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (joinGameHash && !isWaitingForJoinReceipt && pendingJoinGameData) {
       console.log('[CONTRACT] Join transaction confirmed:', joinGameHash);
       
+      // Ensure playerColor is set correctly for the joining player
+      if (address === pendingJoinGameData.address) {
+        console.log('[CONTRACT] Setting playerColor to red for confirmed join transaction');
+        setPlayerColor('red');
+        setOpponent(pendingJoinGameData.gameData.blue_player);
+      }
+      
       // Update database to mark game as active
       firebaseChess
         .updateGame(pendingJoinGameData.inviteCode, {
@@ -495,7 +502,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setPendingJoinGameData(null);
         });
     }
-  }, [joinGameHash, isWaitingForJoinReceipt, pendingJoinGameData]);
+  }, [joinGameHash, isWaitingForJoinReceipt, pendingJoinGameData, address]);
 
   // Handle transaction receipt for claim winnings
   useEffect(() => {
@@ -981,6 +988,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setPlayerColor('red');
       setWager(wagerAmount);
       setOpponent(gameData.blue_player);
+      
+      console.log('[JOIN] Setting up join game with data:', {
+        inviteCode,
+        playerColor: 'red',
+        wagerAmount,
+        opponent: gameData.blue_player,
+        address
+      });
+      
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       writeJoinGame({
         address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
@@ -992,6 +1008,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Store game data for after transaction confirmation
       setPendingJoinGameData({ inviteCode, gameData, address });
     } catch (error) {
+      console.error('[JOIN] Error joining game:', error);
       setGameStatus('Failed to join game. Please try again.');
       setInviteCode('');
       setPlayerColor(null);
@@ -1035,16 +1052,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[DEBUG] Blue player type:', typeof gameData?.blue_player);
       console.log('[DEBUG] Red player type:', typeof gameData?.red_player);
       console.log('[DEBUG] Current address type:', typeof currentAddress);
+      console.log('[DEBUG] Current playerColor state:', playerColor);
+      console.log('[DEBUG] Pending join game data:', !!pendingJoinGameData);
       
       if (!gameData) {
         console.log('[DEBUG] No game data received');
         return;
       }
       
-      // FIX: Only update playerColor if we have valid player data
-      // This prevents the subscription from overwriting correct playerColor with null
-      if (currentAddress && gameData.blue_player && gameData.red_player) {
-        console.log('[DEBUG] All required data present, comparing addresses...');
+      // FIX: Enhanced logic to handle pending join transactions
+      // If we have pending join data, preserve the playerColor that was set during join
+      if (pendingJoinGameData && currentAddress === pendingJoinGameData.address) {
+        console.log('[DEBUG] Pending join transaction detected - preserving playerColor:', playerColor);
+        // Don't change playerColor, but update other data
+        if (gameData.blue_player && gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
+          setOpponent(gameData.blue_player === currentAddress ? gameData.red_player : gameData.blue_player);
+        }
+      } else if (currentAddress && gameData.blue_player && gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
+        // Both players are set and red player is not zero address
+        console.log('[DEBUG] Both players present, comparing addresses...');
         
         const blueMatch = currentAddress.toLowerCase() === gameData.blue_player.toLowerCase();
         const redMatch = currentAddress.toLowerCase() === gameData.red_player.toLowerCase();
@@ -1068,19 +1094,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setOpponent(null);
         }
       } else {
-        console.log('[DEBUG] Missing player data in Firebase - preserving existing playerColor');
+        // Missing player data or red player is still zero address
+        console.log('[DEBUG] Missing player data or red player is zero address - preserving existing playerColor');
         console.log('[DEBUG] - currentAddress:', !!currentAddress);
         console.log('[DEBUG] - blue_player:', !!gameData.blue_player);
-        console.log('[DEBUG] - red_player:', !!gameData.red_player);
+        console.log('[DEBUG] - red_player:', gameData?.red_player);
         console.log('[DEBUG] - Current playerColor state:', playerColor);
-        // FIX: Don't reset playerColor if we don't have player data
-        // This preserves the playerColor set during initial game loading
-        if (!gameData.blue_player || !gameData.red_player) {
-          console.log('[DEBUG] Preserving existing playerColor:', playerColor);
-          // Only update opponent if we have the data
-          if (gameData.blue_player && gameData.red_player) {
-            setOpponent(gameData.blue_player === currentAddress ? gameData.red_player : gameData.blue_player);
-          }
+        
+        // Only update opponent if we have both players and red player is not zero
+        if (gameData.blue_player && gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
+          setOpponent(gameData.blue_player === currentAddress ? gameData.red_player : gameData.blue_player);
         }
       }
       
