@@ -666,7 +666,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Found game in Firebase:', firebaseGame);
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
-            setWager(parseFloat(firebaseGame.bet_amount));
+            setWager(parseFloat(firebaseGame.bet_amount) / 1e18);
             setOpponent(opponent);
             if (firebaseGame.game_state === 'waiting') {
               setGameMode(GameMode.WAITING);
@@ -718,7 +718,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Successfully synced game to Firebase:', gameData);
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
-            setWager(parseFloat(gameData.bet_amount));
+            setWager(parseFloat(gameData.bet_amount) / 1e18);
             setOpponent(opponent);
             if (isActive) {
               setGameMode(GameMode.ACTIVE);
@@ -759,7 +759,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] - red_player === address:', game.red_player === address);
         setInviteCode(game.invite_code);
         setPlayerColor(game.blue_player === address ? 'blue' : 'red');
-        setWager(parseFloat(game.bet_amount));
+        setWager(parseFloat(game.bet_amount) / 1e18);
         setOpponent(game.blue_player === address ? game.red_player : game.blue_player);
         if (game.game_state === 'waiting') {
           setGameMode(GameMode.WAITING);
@@ -951,7 +951,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const gameData = {
         invite_code: newInviteCode,
         game_title: `Chess Game ${newInviteCode.slice(-6)}`,
-        bet_amount: gameWager.toString(), // Store in TDMT units, not wei
+        bet_amount: (gameWager * 1e18).toString(), // Store in wei format
         blue_player: address,
         game_state: 'waiting',
         board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
@@ -988,16 +988,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameStatus('Game not found or already full');
         return;
       }
-      const wagerAmount = parseFloat(gameData.bet_amount);
+      const wagerAmountWei = parseFloat(gameData.bet_amount);
+      const wagerAmountTDMT = wagerAmountWei / 1e18;
       setInviteCode(inviteCode);
       setPlayerColor('red');
-      setWager(wagerAmount);
+      setWager(wagerAmountTDMT);
       setOpponent(gameData.blue_player);
       
       console.log('[JOIN] Setting up join game with data:', {
         inviteCode,
         playerColor: 'red',
-        wagerAmount,
+        wagerAmountTDMT,
         opponent: gameData.blue_player,
         address
       });
@@ -1033,9 +1034,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[JOIN] Contract call parameters - contractAddress:', CHESS_CONTRACT_ADDRESS);
       console.log('[JOIN] Contract call parameters - functionName: joinGame');
       console.log('[JOIN] Contract call parameters - args:', [inviteCode]);
-      // The wager amount from Firebase is in TDMT units, need to convert to wei
-      const wagerValue = BigInt(Math.floor(wagerAmount * 1e18));
-      console.log('[JOIN] Contract call parameters - wagerAmount from Firebase (TDMT):', wagerAmount);
+      // The wager amount from Firebase is already in wei format (as a string)
+      const wagerValue = BigInt(wagerAmountWei);
+      console.log('[JOIN] Contract call parameters - wagerAmount from Firebase (wei):', wagerAmountWei);
       console.log('[JOIN] Contract call parameters - wagerValue (wei):', wagerValue);
       console.log('[JOIN] Contract call parameters - value as hex:', '0x' + wagerValue.toString(16));
       console.log('[JOIN] Contract call parameters - value in wei:', wagerValue.toString());
@@ -1168,7 +1169,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('=== [DEBUG] END FIREBASE SUBSCRIPTION CALLBACK ===');
       
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
-        setWager(parseFloat(gameData.bet_amount));
+        setWager(parseFloat(gameData.bet_amount) / 1e18);
       } else {
         setWager(0);
       }
@@ -2086,7 +2087,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return;
     }
     setPlayerColor(address === gameData.blue_player ? 'blue' : 'red');
-    setWager(parseFloat(gameData.bet_amount));
+    setWager(parseFloat(gameData.bet_amount) / 1e18);
     setOpponent(address === gameData.blue_player ? gameData.red_player : gameData.blue_player);
     setGameMode(GameMode.ACTIVE);
     setGameStatus('Game resumed');
