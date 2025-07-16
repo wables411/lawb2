@@ -448,6 +448,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     document.body.classList.add('chess-dark-mode');
   }, []);
   const [showPieceGallery, setShowPieceGallery] = useState(false);
+  const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
@@ -2576,10 +2577,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       <h3>Chess Pieces</h3>
       <div className="piece-gallery-grid">
         {pieceGallery.map(piece => (
-          <div key={piece.key} className="piece-gallery-item">
+          <div key={piece.key} className="piece-gallery-item" onClick={() => {
+            // Toggle description - if already selected, deselect; otherwise select
+            setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key);
+          }}>
             <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
             <div className="piece-gallery-name">{piece.name}</div>
-            <div className="piece-gallery-desc">{piece.desc}</div>
+            {selectedGalleryPiece === piece.key && (
+              <div className="piece-gallery-desc">{piece.desc}</div>
+            )}
           </div>
         ))}
       </div>

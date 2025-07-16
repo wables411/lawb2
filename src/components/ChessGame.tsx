@@ -1315,17 +1315,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       <h3>Lawbstation Chess Pieces</h3>
       <div className="piece-gallery-grid">
         {pieceGallery.map(piece => (
-          <div key={piece.key} className="piece-gallery-item" onClick={() => setSelectedGalleryPiece(piece.key)}>
+          <div key={piece.key} className="piece-gallery-item" onClick={() => {
+            // Toggle description - if already selected, deselect; otherwise select
+            setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key);
+          }}>
             <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
             <div className="piece-gallery-name">{piece.name}</div>
             {selectedGalleryPiece === piece.key && (
               <div className="piece-gallery-desc">{piece.desc}</div>
             )}
-            </div>
+          </div>
         ))}
-              </div>
+      </div>
       <div className="piece-gallery-tip">{tipText}</div>
-                </div>
+    </div>
   );
 
   const renderDifficultySelection = () => (
@@ -1670,7 +1673,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <div className="game-controls-compact">
                 <button onClick={handleNewGame}>New Game</button>
                 <button onClick={handleBackToMenu}>Menu</button>
-                <button onClick={() => setShowGalleryModal(true)}>Pieces</button>
               </div>
             </div>
           ) : showDifficulty ? (
