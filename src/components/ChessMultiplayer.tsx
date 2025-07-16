@@ -471,6 +471,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle transaction receipt for game joining
   useEffect(() => {
+    console.log('[JOIN RECEIPT DEBUG] - joinGameHash:', joinGameHash);
+    console.log('[JOIN RECEIPT DEBUG] - isWaitingForJoinReceipt:', isWaitingForJoinReceipt);
+    console.log('[JOIN RECEIPT DEBUG] - pendingJoinGameData:', pendingJoinGameData);
+    console.log('[JOIN RECEIPT DEBUG] - condition:', joinGameHash && !isWaitingForJoinReceipt && pendingJoinGameData);
+    
     if (joinGameHash && !isWaitingForJoinReceipt && pendingJoinGameData) {
       console.log('[CONTRACT] Join transaction confirmed:', joinGameHash);
       
@@ -489,11 +494,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           game_state: 'active'
         })
         .then(() => {
+          console.log('[CONTRACT] Firebase updated successfully after join confirmation');
           setGameMode(GameMode.ACTIVE);
           setGameStatus('Game started!');
           subscribeToGame(pendingJoinGameData.inviteCode);
           
           // Clear pending data
+          console.log('[CONTRACT] Clearing pending join data');
           setPendingJoinGameData(null);
         })
         .catch((error) => {
@@ -2355,6 +2362,74 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
 
+  // Sync missing games from contract to Firebase
+  const syncMissingGames = async () => {
+    if (!address) return;
+    
+    try {
+      console.log('[SYNC] Checking for missing games for player:', address);
+      
+      // Get player's current game from contract
+      const playerGameInviteCode = await getPlayerInviteCodeFromContract(address);
+      console.log('[SYNC] Player game invite code from contract:', playerGameInviteCode);
+      
+      if (playerGameInviteCode && playerGameInviteCode !== '0x000000000000') {
+        // Check if this game exists in Firebase
+        const firebaseGame = await firebaseChess.getGame(playerGameInviteCode);
+        
+        if (!firebaseGame) {
+          console.log('[SYNC] Game exists in contract but not in Firebase, syncing...');
+          
+          // Get game data from contract
+          if (typeof window !== 'undefined' && window.ethereum) {
+            const provider = new BrowserProvider(window.ethereum as any);
+            const contract = new Contract(
+              CHESS_CONTRACT_ADDRESS,
+              CHESS_CONTRACT_ABI,
+              provider
+            );
+            
+            const gameData = await contract.games(playerGameInviteCode);
+            console.log('[SYNC] Contract game data:', gameData);
+            
+            const [player1, player2, isActive, winner, inviteCode, wagerAmount] = gameData;
+            
+            // Create Firebase game data
+            const firebaseGameData = {
+              invite_code: playerGameInviteCode,
+              game_title: `Game ${playerGameInviteCode.slice(-6)}`,
+              bet_amount: wagerAmount ? wagerAmount.toString() : '0',
+              blue_player: player1,
+              red_player: player2,
+              game_state: isActive ? 'active' : 'waiting',
+              board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
+              current_player: 'blue',
+              chain: 'sanko',
+              contract_address: CHESS_CONTRACT_ADDRESS,
+              is_public: true,
+              created_at: new Date().toISOString()
+            };
+            
+            console.log('[SYNC] Creating Firebase game data:', firebaseGameData);
+            await firebaseChess.createGame(firebaseGameData);
+            console.log('[SYNC] Successfully synced game to Firebase');
+            
+            // Refresh lobby
+            setTimeout(() => {
+              loadOpenGames();
+            }, 1000);
+          }
+        } else {
+          console.log('[SYNC] Game already exists in Firebase');
+        }
+      } else {
+        console.log('[SYNC] No active game found in contract');
+      }
+    } catch (error) {
+      console.error('[SYNC] Error syncing missing games:', error);
+    }
+  };
+
   // Render square
   const renderSquare = (row: number, col: number) => {
     // Safety check for board structure
@@ -2923,6 +2998,38 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }}
         >
           Manual Fix Current Game
+        </button>
+        <button 
+          onClick={syncMissingGames}
+          style={{
+            marginTop: '5px',
+            padding: '5px 10px',
+            background: '#17a2b8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          Sync Missing Games
+        </button>
+        <button 
+          onClick={() => {
+            console.log('[MANUAL CLEAR] Clearing pending join data manually');
+            setPendingJoinGameData(null);
+            console.log('[MANUAL CLEAR] Pending join data cleared');
+          }}
+          style={{
+            marginTop: '5px',
+            padding: '5px 10px',
+            background: '#6f42c1',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          Clear Pending Join Data
         </button>
       </div>
     );
