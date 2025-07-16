@@ -1154,11 +1154,32 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       } else {
         // Missing player data or red player is still zero address
-        console.log('[DEBUG] Missing player data or red player is zero address - preserving existing playerColor');
+        console.log('[DEBUG] Missing player data or red player is zero address - using contract data as fallback');
         console.log('[DEBUG] - currentAddress:', !!currentAddress);
         console.log('[DEBUG] - blue_player:', !!gameData.blue_player);
         console.log('[DEBUG] - red_player:', gameData?.red_player);
         console.log('[DEBUG] - Current playerColor state:', playerColor);
+        console.log('[DEBUG] - Contract game data available:', !!contractGameData);
+        
+        // Use contract data as fallback if available
+        if (contractGameData && Array.isArray(contractGameData) && currentAddress) {
+          const [player1, player2] = contractGameData;
+          if (player1 && player2) {
+            const playerColorFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? 'blue' : 'red';
+            const opponentFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? player2 : player1;
+            
+            console.log('[DEBUG] Setting playerColor from contract fallback:', playerColorFromContract);
+            setPlayerColor(playerColorFromContract as 'blue' | 'red');
+            setOpponent(opponentFromContract);
+          }
+        } else if (playerColor) {
+          // If we have a valid playerColor, preserve it
+          console.log('[DEBUG] Preserving existing valid playerColor:', playerColor);
+        } else {
+          // No valid data available, set to null
+          console.log('[DEBUG] No valid data available, setting playerColor to null');
+          setPlayerColor(null);
+        }
         
         // Only update opponent if we have both players and red player is not zero
         if (gameData.blue_player && gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
@@ -1777,14 +1798,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       redPromotion: playerColor === 'red' && to.row === 0,
       bluePromotion: playerColor === 'blue' && to.row === 7,
       showPromotion,
-      promotionMove
+      promotionMove,
+      shouldShowPromotion: piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 0) || (playerColor === 'blue' && to.row === 7))
     });
     
     // Check for pawn promotion
     if (piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 0) || (playerColor === 'blue' && to.row === 7))) {
       console.log('[PROMOTION] Showing promotion dialog for piece:', piece, 'at position:', to);
+      console.log('[PROMOTION] Setting promotion state - before: showPromotion:', showPromotion, 'promotionMove:', promotionMove);
       setPromotionMove({ from, to });
       setShowPromotion(true);
+      console.log('[PROMOTION] Promotion state set - should show dialog on next render');
       return;
     }
     
@@ -2246,10 +2270,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Render promotion dialog
   const renderPromotionDialog = () => {
-    console.log('[PROMOTION] Rendering promotion dialog:', { showPromotion, promotionMove, playerColor });
+    console.log('[PROMOTION] Rendering promotion dialog:', { 
+      showPromotion, 
+      promotionMove, 
+      playerColor,
+      showPromotionType: typeof showPromotion,
+      promotionMoveType: typeof promotionMove,
+      playerColorType: typeof playerColor
+    });
     
     if (!showPromotion || !promotionMove) {
       console.log('[PROMOTION] Not showing dialog - conditions not met');
+      console.log('[PROMOTION] - showPromotion:', showPromotion);
+      console.log('[PROMOTION] - promotionMove:', promotionMove);
       return null;
     }
     
