@@ -526,6 +526,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle transaction receipt for game creation
   useEffect(() => {
+    console.log('[CREATE DEBUG] Transaction receipt handler - createGameHash:', createGameHash);
+    console.log('[CREATE DEBUG] Transaction receipt handler - isWaitingForCreateReceipt:', isWaitingForCreateReceipt);
+    console.log('[CREATE DEBUG] Transaction receipt handler - pendingGameData:', pendingGameData);
+    console.log('[CREATE DEBUG] Transaction receipt handler - inviteCode:', inviteCode);
+    console.log('[CREATE DEBUG] Transaction receipt handler - condition:', createGameHash && !isWaitingForCreateReceipt && pendingGameData && !inviteCode);
+    
     if (createGameHash && !isWaitingForCreateReceipt && pendingGameData && !inviteCode) {
       console.log('[CONTRACT] Create game transaction confirmed:', createGameHash);
       
@@ -562,6 +568,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle transaction rejection for game creation
   useEffect(() => {
+    console.log('[CREATE REJECTION DEBUG] - isCreatingGameContract:', isCreatingGameContract);
+    console.log('[CREATE REJECTION DEBUG] - pendingGameData:', pendingGameData);
+    console.log('[CREATE REJECTION DEBUG] - createGameHash:', createGameHash);
+    console.log('[CREATE REJECTION DEBUG] - condition:', isCreatingGameContract === false && pendingGameData && !createGameHash);
+    
     if (isCreatingGameContract === false && pendingGameData && !createGameHash) {
       // Transaction was rejected or failed
       console.log('[CONTRACT] Create game transaction rejected or failed');
@@ -944,9 +955,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Create game
   const createGame = async () => {
     if (!address || gameWager <= 0) return;
+    console.log('[CREATE] Starting game creation - address:', address, 'wager:', gameWager);
     setIsCreatingGame(true);
     try {
       const newInviteCode = generateBytes6InviteCode();
+      console.log('[CREATE] Generated invite code:', newInviteCode);
       setInviteCode(newInviteCode);
       const gameData = {
         invite_code: newInviteCode,
@@ -961,6 +974,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         is_public: true,
         created_at: new Date().toISOString()
       };
+      console.log('[CREATE] Game data prepared:', gameData);
+      console.log('[CREATE] Calling contract with args:', [newInviteCode, BigInt(Math.floor(gameWager * 1e18))]);
+      
       // Call contract to create game
       writeCreateGame({
         address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
@@ -969,10 +985,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         args: [newInviteCode as `0x${string}`],
         value: BigInt(Math.floor(gameWager * 1e18)),
       });
+      console.log('[CREATE] Contract call initiated, setting pending data');
       setPendingGameData(gameData);
       setGameStatus('Creating game... Please confirm transaction in your wallet.');
     } catch (error) {
-      console.error('Error creating game:', error);
+      console.error('[CREATE] Error creating game:', error);
       setGameStatus('Failed to create game. Please try again.');
     } finally {
       setIsCreatingGame(false);
