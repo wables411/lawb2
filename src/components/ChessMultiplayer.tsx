@@ -2891,8 +2891,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug panel component for diagnosing Player 2 issues
   const renderDebugPanel = () => {
-    // Always show debug panel for now to help with troubleshooting
-    // if (process.env.NODE_ENV !== 'development') return null;
+    // Only show debug panel in development mode
+    if (process.env.NODE_ENV !== 'development') return null;
     
     return (
       <div style={{
@@ -3076,7 +3076,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   return (
     <>
       {mainContent}
-      {renderDebugPanel()}
     </>
   );
 
