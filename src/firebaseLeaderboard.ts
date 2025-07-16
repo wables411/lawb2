@@ -1,5 +1,5 @@
 import { database } from './firebaseApp';
-import { ref, set, update, get, query, orderByChild, limitToLast, equalTo } from "firebase/database";
+import { ref, set, update, get, query, orderByChild, limitToLast, equalTo, remove } from "firebase/database";
 
 // Helper function to check if database is available
 const getDatabaseOrThrow = () => {
@@ -60,6 +60,12 @@ export const updateLeaderboardEntry = async (
       console.error('[LEADERBOARD] No wallet address provided');
       return false;
     }
+    
+    // Prevent zero addresses from being recorded in leaderboard
+    if (walletAddress === '0x0000000000000000000000000000000000000000') {
+      console.warn('[LEADERBOARD] Skipping leaderboard update for zero address');
+      return false;
+    }
 
     const now = new Date().toISOString();
     const database = getDatabaseOrThrow();
@@ -104,6 +110,16 @@ export const updateBothPlayersScores = async (
   try {
     if (!bluePlayerAddress || !redPlayerAddress) {
       console.error('[LEADERBOARD] Missing player addresses');
+      return false;
+    }
+    
+    // Prevent zero addresses from being recorded in leaderboard
+    if (bluePlayerAddress === '0x0000000000000000000000000000000000000000' || 
+        redPlayerAddress === '0x0000000000000000000000000000000000000000') {
+      console.warn('[LEADERBOARD] Skipping leaderboard update - one or both players have zero addresses:', {
+        bluePlayer: bluePlayerAddress,
+        redPlayer: redPlayerAddress
+      });
       return false;
     }
 
@@ -218,6 +234,21 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
     return true;
   } catch (error) {
     console.error('[LEADERBOARD] Error resetting user leaderboard:', error);
+    return false;
+  }
+};
+
+// Remove zero address entry from leaderboard
+export const removeZeroAddressEntry = async (): Promise<boolean> => {
+  try {
+    const database = getDatabaseOrThrow();
+    const zeroAddressRef = ref(database, 'leaderboard/0x0000000000000000000000000000000000000000');
+    
+    await remove(zeroAddressRef);
+    console.log('[LEADERBOARD] Removed zero address entry from leaderboard');
+    return true;
+  } catch (error) {
+    console.error('[LEADERBOARD] Error removing zero address entry:', error);
     return false;
   }
 }; 
