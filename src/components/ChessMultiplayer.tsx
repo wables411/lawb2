@@ -2246,33 +2246,51 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[FIX] Contract data for fixing:');
         console.log('[FIX] - Contract player1 (blue):', player1);
         console.log('[FIX] - Contract player2 (red):', player2);
+        console.log('[FIX] - Contract isActive:', isActive);
         console.log('[FIX] - Firebase blue_player:', gameData.blue_player);
         console.log('[FIX] - Firebase red_player:', gameData.red_player);
+        console.log('[FIX] - Firebase game_state:', gameData.game_state);
         
         let needsUpdate = false;
         const updateData: any = {};
         
-        // If Firebase is missing blue_player, add it from contract
-        if (!gameData.blue_player && player1) {
-          console.log('[FIX] Adding missing blue_player to Firebase:', player1);
-          updateData.blue_player = player1;
-          needsUpdate = true;
-        }
-        
-        // If Firebase is missing red_player, add it from contract
-        if (!gameData.red_player && player2 && player2 !== '0x0000000000000000000000000000000000000000') {
-          console.log('[FIX] Adding missing red_player to Firebase:', player2);
+        // Check if we need to fix the red player (most common issue)
+        if (player2 && player2 !== '0x0000000000000000000000000000000000000000' && 
+            (!gameData.red_player || gameData.red_player === '0x0000000000000000000000000000000000000000')) {
+          console.log('[FIX] Fixing red player address in Firebase');
           updateData.red_player = player2;
           needsUpdate = true;
         }
         
-        // If we need to update, do it
+        // Check if we need to fix the blue player
+        if (player1 && player1 !== '0x0000000000000000000000000000000000000000' && 
+            (!gameData.blue_player || gameData.blue_player === '0x0000000000000000000000000000000000000000')) {
+          console.log('[FIX] Fixing blue player address in Firebase');
+          updateData.blue_player = player1;
+          needsUpdate = true;
+        }
+        
+        // If both players are set in contract but game is still waiting, activate it
+        if (player1 && player2 && 
+            player1 !== '0x0000000000000000000000000000000000000000' && 
+            player2 !== '0x0000000000000000000000000000000000000000' &&
+            (gameData.game_state === 'waiting' || !gameData.game_state)) {
+          console.log('[FIX] Activating game in Firebase');
+          updateData.game_state = 'active';
+          updateData.current_player = 'blue';
+          needsUpdate = true;
+        }
+        
+        // If contract shows game is active but Firebase doesn't, sync the state
+        if (isActive && gameData.game_state !== 'active') {
+          console.log('[FIX] Syncing game state to active');
+          updateData.game_state = 'active';
+          needsUpdate = true;
+        }
+        
         if (needsUpdate) {
-          console.log('[FIX] Updating Firebase with missing player data:', updateData);
-          await firebaseChess.updateGame(inviteCode, {
-            ...gameData,
-            ...updateData
-          });
+          console.log('[FIX] Updating Firebase with:', updateData);
+          await firebaseChess.updateGame(inviteCode, updateData);
           console.log('[FIX] Firebase updated successfully');
         } else {
           console.log('[FIX] No missing player data to fix');
