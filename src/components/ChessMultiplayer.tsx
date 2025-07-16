@@ -1166,6 +1166,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           // If we have a valid playerColor, preserve it and don't change it
           console.log('[DEBUG] Preserving existing valid playerColor:', playerColor);
           // Don't call setPlayerColor at all to prevent re-renders
+          return; // Exit early to prevent any further processing
         } else if (contractGameData && Array.isArray(contractGameData) && currentAddress) {
           // Use contract data as fallback only if we don't have a valid playerColor
           const [player1, player2] = contractGameData;
@@ -1819,12 +1820,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[PROMOTION DEBUG] Player color:', playerColor);
     console.log('[PROMOTION DEBUG] Promotion condition check:');
     console.log('[PROMOTION DEBUG] - piece.toUpperCase() === P:', piece.toUpperCase() === 'P');
-    console.log('[PROMOTION DEBUG] - currentPlayer === red && to.row === 0:', currentPlayer === 'red' && to.row === 0);
-    console.log('[PROMOTION DEBUG] - currentPlayer === blue && to.row === 7:', currentPlayer === 'blue' && to.row === 7);
-    console.log('[PROMOTION DEBUG] - Full condition:', piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7)));
+    console.log('[PROMOTION DEBUG] - currentPlayer === red && to.row === 7:', currentPlayer === 'red' && to.row === 7);
+    console.log('[PROMOTION DEBUG] - currentPlayer === blue && to.row === 0:', currentPlayer === 'blue' && to.row === 0);
+    console.log('[PROMOTION DEBUG] - Full condition:', piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 7) || (currentPlayer === 'blue' && to.row === 0)));
     
     // Check for pawn promotion - show dialog for user choice
-    if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7))) {
+    // FIX: Blue pawns promote when reaching row 0 (top), red pawns promote when reaching row 7 (bottom)
+    if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 7) || (currentPlayer === 'blue' && to.row === 0))) {
       console.log('[PROMOTION] Showing promotion dialog for piece:', piece, 'at position:', to);
       setPromotionMove({ from, to });
       setShowPromotion(true);
@@ -2770,7 +2772,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug panel component for diagnosing Player 2 issues
   const renderDebugPanel = () => {
-    if (process.env.NODE_ENV !== 'development') return null;
+    // Always show debug panel for now to help with troubleshooting
+    // if (process.env.NODE_ENV !== 'development') return null;
     
     return (
       <div style={{
