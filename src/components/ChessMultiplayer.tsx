@@ -576,13 +576,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (isJoiningGameContract === false && pendingJoinGameData && !joinGameHash) {
       // Transaction was rejected or failed
       console.log('[CONTRACT] Join game transaction rejected or failed');
-      console.log('[CONTRACT] Rejection details:', {
-        isJoiningGameContract,
-        pendingJoinGameData,
-        joinGameHash,
-        address,
-        playerGameInviteCode
-      });
+      console.log('[CONTRACT] Rejection details - isJoiningGameContract:', isJoiningGameContract);
+      console.log('[CONTRACT] Rejection details - pendingJoinGameData:', pendingJoinGameData);
+      console.log('[CONTRACT] Rejection details - joinGameHash:', joinGameHash);
+      console.log('[CONTRACT] Rejection details - address:', address);
+      console.log('[CONTRACT] Rejection details - playerGameInviteCode:', playerGameInviteCode);
       setGameStatus('Transaction was rejected. Please try again.');
       
       // Reset state and go back to lobby
@@ -1023,29 +1021,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         try {
           const chainId = await (window.ethereum as any).request({ method: 'eth_chainId' });
           const accounts = await (window.ethereum as any).request({ method: 'eth_accounts' });
-          console.log('[JOIN] Wallet state check:', {
-            chainId,
-            connectedAccounts: accounts,
-            currentAddress: address,
-            isConnected
-          });
+          console.log('[JOIN] Wallet state check - chainId:', chainId);
+          console.log('[JOIN] Wallet state check - connectedAccounts:', accounts);
+          console.log('[JOIN] Wallet state check - currentAddress:', address);
+          console.log('[JOIN] Wallet state check - isConnected:', isConnected);
         } catch (error) {
           console.error('[JOIN] Error checking wallet state:', error);
         }
       }
       
-      console.log('[JOIN] Contract call parameters:', {
-        contractAddress: CHESS_CONTRACT_ADDRESS,
-        functionName: 'joinGame',
-        args: [inviteCode],
-        value: BigInt(Math.floor(wagerAmount * 1e18)),
-        valueInEth: wagerAmount
-      });
+      console.log('[JOIN] Contract call parameters - contractAddress:', CHESS_CONTRACT_ADDRESS);
+      console.log('[JOIN] Contract call parameters - functionName: joinGame');
+      console.log('[JOIN] Contract call parameters - args:', [inviteCode]);
+      console.log('[JOIN] Contract call parameters - value:', BigInt(Math.floor(wagerAmount * 1e18)));
+      console.log('[JOIN] Contract call parameters - valueInEth:', wagerAmount);
       
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       
       // Add a small delay to ensure wallet is ready
       setTimeout(() => {
+        console.log('[JOIN] About to call writeJoinGame...');
         writeJoinGame({
           address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
           abi: CHESS_CONTRACT_ABI,
@@ -1053,8 +1048,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           args: [inviteCode as `0x${string}`],
           value: BigInt(Math.floor(wagerAmount * 1e18)),
         });
+        console.log('[JOIN] writeJoinGame called, setting pending data...');
         // Store game data for after transaction confirmation
         setPendingJoinGameData({ inviteCode, gameData, address });
+        console.log('[JOIN] Pending data set');
       }, 500);
     } catch (error) {
       console.error('[JOIN] Error joining game:', error);
