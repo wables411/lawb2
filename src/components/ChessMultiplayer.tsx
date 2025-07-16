@@ -1880,8 +1880,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     let movedPiece = piece;
     
     // Handle pawn promotion
-    if (piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 0) || (playerColor === 'blue' && to.row === 7))) {
+    console.log('[PROMOTION DEBUG] executeMoveAfterAnimation - checking promotion:');
+    console.log('[PROMOTION DEBUG] - piece:', piece, 'isPawn:', piece.toUpperCase() === 'P');
+    console.log('[PROMOTION DEBUG] - playerColor:', playerColor, 'to.row:', to.row);
+    console.log('[PROMOTION DEBUG] - promotion condition:', piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 7) || (playerColor === 'blue' && to.row === 0)));
+    console.log('[PROMOTION DEBUG] - promotionPiece:', promotionPiece);
+    
+    if (piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 7) || (playerColor === 'blue' && to.row === 0))) {
       movedPiece = playerColor === 'red' ? promotionPiece.toUpperCase() : promotionPiece.toLowerCase();
+      console.log('[PROMOTION DEBUG] - Promoting pawn to:', movedPiece);
     }
     
     // Handle special moves (castling, en passant)
