@@ -1161,8 +1161,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] - Current playerColor state:', playerColor);
         console.log('[DEBUG] - Contract game data available:', !!contractGameData);
         
-        // Use contract data as fallback if available and we don't have a valid playerColor
-        if (!playerColor && contractGameData && Array.isArray(contractGameData) && currentAddress) {
+        // FIX: Don't reset playerColor if we already have a valid one to prevent race conditions
+        if (playerColor) {
+          // If we have a valid playerColor, preserve it and don't change it
+          console.log('[DEBUG] Preserving existing valid playerColor:', playerColor);
+        } else if (contractGameData && Array.isArray(contractGameData) && currentAddress) {
+          // Use contract data as fallback only if we don't have a valid playerColor
           const [player1, player2] = contractGameData;
           if (player1 && player2) {
             const playerColorFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? 'blue' : 'red';
@@ -1172,9 +1176,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setPlayerColor(playerColorFromContract as 'blue' | 'red');
             setOpponent(opponentFromContract);
           }
-        } else if (playerColor) {
-          // If we have a valid playerColor, preserve it and don't change it
-          console.log('[DEBUG] Preserving existing valid playerColor:', playerColor);
         } else {
           // No valid data available, set to null
           console.log('[DEBUG] No valid data available, setting playerColor to null');
@@ -1269,6 +1270,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (!inviteCode && inviteCodeContract) {
         console.log('[FALLBACK] Setting missing inviteCode:', inviteCodeContract);
         setInviteCode(inviteCodeContract);
+      }
+      
+      // Auto-fix missing player data in Firebase if we detect it
+      if (inviteCode) {
+        firebaseChess.getGame(inviteCode).then(gameData => {
+          if (gameData && (!gameData.blue_player || !gameData.red_player)) {
+            console.log('[AUTO-FIX] Detected missing player data, attempting to fix...');
+            fixMissingPlayerData();
+          }
+        }).catch(error => {
+          console.error('[AUTO-FIX] Error checking game data for auto-fix:', error);
+        });
       }
     }
   }, [contractGameData, playerColor, address, inviteCode]);
@@ -1784,10 +1797,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Make move
   const makeMove = async (from: { row: number; col: number }, to: { row: number; col: number }) => {
-    if (!playerColor || currentPlayer !== playerColor) return;
+    console.log('[PROMOTION DEBUG] makeMove called with:', { from, to, playerColor, currentPlayer });
+    if (!playerColor || currentPlayer !== playerColor) {
+      console.log('[PROMOTION DEBUG] Early return - playerColor:', playerColor, 'currentPlayer:', currentPlayer);
+      return;
+    }
     
     const piece = board[from.row][from.col];
-    if (!piece) return;
+    if (!piece) {
+      console.log('[PROMOTION DEBUG] No piece at position:', from);
+      return;
+    }
+    
+    console.log('[PROMOTION DEBUG] Piece:', piece, 'isPawn:', piece.toUpperCase() === 'P');
+    console.log('[PROMOTION DEBUG] Current player:', currentPlayer, 'to.row:', to.row);
+    console.log('[PROMOTION DEBUG] Promotion condition:', piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7)));
     
     // Check for pawn promotion - show dialog for user choice
     if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7))) {
@@ -2184,6 +2208,70 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus('Error handling game state. Please reload the page.');
     }
   };
+
+  // Fix missing player data in Firebase
+  const fixMissingPlayerData = async () => {
+    console.log('[FIX] Attempting to fix missing player data...');
+    if (!inviteCode || !address) {
+      console.log('[FIX] Missing inviteCode or address');
+      return;
+    }
+    
+    try {
+      // Get current game data
+      const gameData = await firebaseChess.getGame(inviteCode);
+      if (!gameData) {
+        console.log('[FIX] No game data found');
+        return;
+      }
+      
+      console.log('[FIX] Current game data:', gameData);
+      
+      // Check if we have contract data to fix missing player data
+      if (contractGameData && Array.isArray(contractGameData)) {
+        const [player1, player2, isActive, winner, inviteCodeContract, wagerAmount] = contractGameData;
+        
+        console.log('[FIX] Contract data for fixing:');
+        console.log('[FIX] - Contract player1 (blue):', player1);
+        console.log('[FIX] - Contract player2 (red):', player2);
+        console.log('[FIX] - Firebase blue_player:', gameData.blue_player);
+        console.log('[FIX] - Firebase red_player:', gameData.red_player);
+        
+        let needsUpdate = false;
+        const updateData: any = {};
+        
+        // If Firebase is missing blue_player, add it from contract
+        if (!gameData.blue_player && player1) {
+          console.log('[FIX] Adding missing blue_player to Firebase:', player1);
+          updateData.blue_player = player1;
+          needsUpdate = true;
+        }
+        
+        // If Firebase is missing red_player, add it from contract
+        if (!gameData.red_player && player2 && player2 !== '0x0000000000000000000000000000000000000000') {
+          console.log('[FIX] Adding missing red_player to Firebase:', player2);
+          updateData.red_player = player2;
+          needsUpdate = true;
+        }
+        
+        // If we need to update, do it
+        if (needsUpdate) {
+          console.log('[FIX] Updating Firebase with missing player data:', updateData);
+          await firebaseChess.updateGame(inviteCode, {
+            ...gameData,
+            ...updateData
+          });
+          console.log('[FIX] Firebase updated successfully');
+        } else {
+          console.log('[FIX] No missing player data to fix');
+        }
+      } else {
+        console.log('[FIX] No contract data available for fixing');
+      }
+    } catch (error) {
+      console.error('[FIX] Error fixing missing player data:', error);
+    }
+  };
   
   const houseResolveGame = async (winner: string) => {
     if (!isHouseWallet) return;
@@ -2255,7 +2343,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Render promotion dialog
   const renderPromotionDialog = () => {
-    if (!showPromotion || !promotionMove) return null;
+    console.log('[PROMOTION DEBUG] renderPromotionDialog called - showPromotion:', showPromotion, 'promotionMove:', promotionMove);
+    if (!showPromotion || !promotionMove) {
+      console.log('[PROMOTION DEBUG] Not rendering dialog - showPromotion:', showPromotion, 'promotionMove:', promotionMove);
+      return null;
+    }
     
     const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
     
@@ -2741,6 +2833,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }}
         >
           Fix Game State
+        </button>
+        <button 
+          onClick={fixMissingPlayerData}
+          style={{
+            marginTop: '5px',
+            padding: '5px 10px',
+            background: '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          Fix Player Data
         </button>
       </div>
     );
