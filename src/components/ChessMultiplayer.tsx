@@ -2655,7 +2655,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <div key={game.invite_code} className="game-item">
                     <div className="game-info">
                       <div className="game-id">{game.game_title || 'Untitled Game'}</div>
-                      <div className="wager">Wager: {parseFloat(game.bet_amount)} tDMT</div>
+                      <div className="wager">Wager: {(parseFloat(game.bet_amount) / 1e18).toFixed(2)} tDMT</div>
                       <div className="title">Created by: {formatAddress(game.blue_player)}</div>
                     </div>
                     <button 
