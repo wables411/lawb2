@@ -1161,10 +1161,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] - Current playerColor state:', playerColor);
         console.log('[DEBUG] - Contract game data available:', !!contractGameData);
         
-        // FIX: Don't reset playerColor if we already have a valid one to prevent race conditions
-        if (playerColor) {
+        // FIX: More aggressive preservation of playerColor to prevent race conditions
+        if (playerColor && (playerColor === 'blue' || playerColor === 'red')) {
           // If we have a valid playerColor, preserve it and don't change it
           console.log('[DEBUG] Preserving existing valid playerColor:', playerColor);
+          // Don't call setPlayerColor at all to prevent re-renders
         } else if (contractGameData && Array.isArray(contractGameData) && currentAddress) {
           // Use contract data as fallback only if we don't have a valid playerColor
           const [player1, player2] = contractGameData;
@@ -1177,9 +1178,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setOpponent(opponentFromContract);
           }
         } else {
-          // No valid data available, set to null
-          console.log('[DEBUG] No valid data available, setting playerColor to null');
-          setPlayerColor(null);
+          // No valid data available, but don't set to null if we have a valid playerColor from elsewhere
+          console.log('[DEBUG] No valid data available, but preserving existing playerColor if valid');
+          // Only set to null if we really don't have any valid playerColor
+          if (!playerColor || (playerColor !== 'blue' && playerColor !== 'red')) {
+            console.log('[DEBUG] Setting playerColor to null');
+            setPlayerColor(null);
+          }
         }
         
         // Only update opponent if we have both players and red player is not zero
@@ -1811,7 +1816,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     console.log('[PROMOTION DEBUG] Piece:', piece, 'isPawn:', piece.toUpperCase() === 'P');
     console.log('[PROMOTION DEBUG] Current player:', currentPlayer, 'to.row:', to.row);
-    console.log('[PROMOTION DEBUG] Promotion condition:', piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7)));
+    console.log('[PROMOTION DEBUG] Player color:', playerColor);
+    console.log('[PROMOTION DEBUG] Promotion condition check:');
+    console.log('[PROMOTION DEBUG] - piece.toUpperCase() === P:', piece.toUpperCase() === 'P');
+    console.log('[PROMOTION DEBUG] - currentPlayer === red && to.row === 0:', currentPlayer === 'red' && to.row === 0);
+    console.log('[PROMOTION DEBUG] - currentPlayer === blue && to.row === 7:', currentPlayer === 'blue' && to.row === 7);
+    console.log('[PROMOTION DEBUG] - Full condition:', piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7)));
     
     // Check for pawn promotion - show dialog for user choice
     if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7))) {
@@ -2847,6 +2857,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }}
         >
           Fix Player Data
+        </button>
+        <button 
+          onClick={() => {
+            console.log('[MANUAL FIX] Manually triggering fix for current game...');
+            if (inviteCode) {
+              fixMissingPlayerData();
+            } else {
+              console.log('[MANUAL FIX] No inviteCode available');
+            }
+          }}
+          style={{
+            marginTop: '5px',
+            padding: '5px 10px',
+            background: '#ffc107',
+            color: 'black',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          Manual Fix Current Game
         </button>
       </div>
     );
