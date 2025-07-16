@@ -1168,9 +1168,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       console.log('=== [DEBUG] END FIREBASE SUBSCRIPTION CALLBACK ===');
       
+      // Debug wager setting
+      console.log('[WAGER DEBUG] bet_amount from Firebase:', gameData.bet_amount);
+      console.log('[WAGER DEBUG] bet_amount type:', typeof gameData.bet_amount);
+      console.log('[WAGER DEBUG] parsed value:', gameData.bet_amount ? parseFloat(gameData.bet_amount) : 'null');
+      console.log('[WAGER DEBUG] converted to TDMT:', gameData.bet_amount ? parseFloat(gameData.bet_amount) / 1e18 : 'null');
+      
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
-        setWager(parseFloat(gameData.bet_amount) / 1e18);
+        const wagerValue = parseFloat(gameData.bet_amount) / 1e18;
+        console.log('[WAGER DEBUG] Setting wager to:', wagerValue);
+        setWager(wagerValue);
       } else {
+        console.log('[WAGER DEBUG] Setting wager to 0 (no valid bet_amount)');
         setWager(0);
       }
       if (gameData.board) setBoard(reconstructBoard(gameData.board));
@@ -1250,6 +1259,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Update the game in Firebase to reflect the confirmed join
       firebaseChess.updateGame(confirmedInviteCode, {
         red_player: playerAddress,
+        blue_player: gameData.blue_player, // Preserve the blue player
         game_state: 'active',
         last_move: null, // Reset last move for new game
         board: {
@@ -2731,8 +2741,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     loadLeaderboard();
     loadOpenGames();
     checkStuckGames(); // Check for stuck games on load
-    // Set up polling for open games
-    const interval = setInterval(loadOpenGames, 5000);
+    // Set up polling for open games - reduced frequency to prevent excessive calls
+    const interval = setInterval(loadOpenGames, 30000); // Changed from 5s to 30s
     return () => {
       clearInterval(interval);
       if (gameChannel.current) {
