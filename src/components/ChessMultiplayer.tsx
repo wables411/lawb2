@@ -173,7 +173,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   
   // Contract write hooks for different operations
   const { writeContract: writeCreateGame, isPending: isCreatingGameContract, data: createGameHash } = useWriteContract();
-  const { writeContract: writeJoinGame, isPending: isJoiningGameContract, data: joinGameHash } = useWriteContract();
+  const { writeContract: writeJoinGame, isPending: isJoiningGameContract, data: joinGameHash, error: joinGameError } = useWriteContract();
   const { writeContract: writeEndGame, isPending: isEndingGame, data: endGameHash } = useWriteContract();
   
   // Public client for contract reads
@@ -184,7 +184,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     hash: createGameHash,
   });
   
-  const { isLoading: isWaitingForJoinReceipt } = useWaitForTransactionReceipt({
+  const { isLoading: isWaitingForJoinReceipt, data: joinReceipt } = useWaitForTransactionReceipt({
     hash: joinGameHash,
   });
   
@@ -951,7 +951,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const gameData = {
         invite_code: newInviteCode,
         game_title: `Chess Game ${newInviteCode.slice(-6)}`,
-        bet_amount: gameWager.toString(),
+        bet_amount: gameWager.toString(), // Store in TDMT units, not wei
         blue_player: address,
         game_state: 'waiting',
         board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
@@ -1033,25 +1033,37 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[JOIN] Contract call parameters - contractAddress:', CHESS_CONTRACT_ADDRESS);
       console.log('[JOIN] Contract call parameters - functionName: joinGame');
       console.log('[JOIN] Contract call parameters - args:', [inviteCode]);
-      console.log('[JOIN] Contract call parameters - value:', BigInt(Math.floor(wagerAmount * 1e18)));
-      console.log('[JOIN] Contract call parameters - valueInEth:', wagerAmount);
+      // The wager amount from Firebase is in TDMT units, need to convert to wei
+      const wagerValue = BigInt(Math.floor(wagerAmount * 1e18));
+      console.log('[JOIN] Contract call parameters - wagerAmount from Firebase (TDMT):', wagerAmount);
+      console.log('[JOIN] Contract call parameters - wagerValue (wei):', wagerValue);
+      console.log('[JOIN] Contract call parameters - value as hex:', '0x' + wagerValue.toString(16));
+      console.log('[JOIN] Contract call parameters - value in wei:', wagerValue.toString());
       
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       
       // Add a small delay to ensure wallet is ready
       setTimeout(() => {
         console.log('[JOIN] About to call writeJoinGame...');
+        console.log('[JOIN] Final contract call parameters:');
+        console.log('[JOIN] - address:', CHESS_CONTRACT_ADDRESS);
+        console.log('[JOIN] - functionName: joinGame');
+        console.log('[JOIN] - args:', [inviteCode]);
+        console.log('[JOIN] - value:', wagerValue);
+        console.log('[JOIN] - value as BigInt:', wagerValue.toString());
+        
         writeJoinGame({
           address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
           abi: CHESS_CONTRACT_ABI,
           functionName: 'joinGame',
           args: [inviteCode as `0x${string}`],
-          value: BigInt(Math.floor(wagerAmount * 1e18)),
+          value: wagerValue,
         });
         console.log('[JOIN] writeJoinGame called, setting pending data...');
         // Store game data for after transaction confirmation
         setPendingJoinGameData({ inviteCode, gameData, address });
         console.log('[JOIN] Pending data set');
+        console.log('[JOIN] Transaction initiated - waiting for user confirmation in MetaMask...');
       }, 500);
     } catch (error) {
       console.error('[JOIN] Error joining game:', error);
@@ -1223,6 +1235,54 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
     }
   }, [contractGameData, playerColor, address, inviteCode]);
+
+  // Handle join transaction receipt
+  useEffect(() => {
+    if (joinReceipt && pendingJoinGameData) {
+      console.log('[RECEIPT] Join transaction confirmed!');
+      console.log('[RECEIPT] Transaction hash:', joinReceipt.transactionHash);
+      console.log('[RECEIPT] Pending data:', pendingJoinGameData);
+      
+      // Update Firebase with the confirmed transaction
+      const { inviteCode: confirmedInviteCode, gameData, address: playerAddress } = pendingJoinGameData;
+      
+      // Update the game in Firebase to reflect the confirmed join
+      firebaseChess.updateGame(confirmedInviteCode, {
+        red_player: playerAddress,
+        game_state: 'active',
+        last_move: null, // Reset last move for new game
+        board: {
+          positions: flattenBoard(initialBoard),
+          rows: 8,
+          cols: 8
+        },
+        current_player: 'blue' // Blue always starts
+      }).then(() => {
+        console.log('[RECEIPT] Firebase updated successfully after join confirmation');
+        setGameStatus('Game started! You are the red player.');
+        setGameMode(GameMode.ACTIVE);
+        
+        // Clear pending data
+        setPendingJoinGameData(null);
+      }).catch((error) => {
+        console.error('[RECEIPT] Error updating Firebase after join confirmation:', error);
+        setGameStatus('Game joined but failed to update game state. Please refresh.');
+      });
+    }
+  }, [joinReceipt, pendingJoinGameData]);
+
+  // Handle join transaction errors
+  useEffect(() => {
+    if (joinGameError) {
+      console.error('[ERROR] Join transaction failed:', joinGameError);
+      setGameStatus(`Failed to join game: ${joinGameError.message || 'Transaction rejected'}`);
+      setInviteCode('');
+      setPlayerColor(null);
+      setWager(0);
+      setOpponent(null);
+      setPendingJoinGameData(null);
+    }
+  }, [joinGameError]);
 
   // Helper function to convert board to flat structure for Firebase
   const flattenBoard = (board: (string | null)[][]): { [key: string]: string | null } => {
