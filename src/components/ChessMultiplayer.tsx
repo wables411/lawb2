@@ -216,20 +216,50 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Remove all game_id state and replace with inviteCode
   const [inviteCode, setInviteCode] = useState<string>('');
+  
+  // Debug function to track invite code changes
+  const debugSetInviteCode = (newValue: string, source: string) => {
+    console.log(`[INVITE_DEBUG] Setting inviteCode to "${newValue}" from ${source}`);
+    if (inviteCode && !newValue) {
+      console.warn(`[INVITE_DEBUG] WARNING: Clearing inviteCode from "${inviteCode}" to "${newValue}" from ${source}`);
+    }
+    setInviteCode(newValue);
+  };
 
   // Claim winnings function for winners
   const claimWinnings = async () => {
-    if (!address || !inviteCode || !playerColor) {
+    if (!address || !playerColor) {
       console.error('[CLAIM] Missing required data for claiming winnings');
+      return;
+    }
+    
+    // If inviteCode is missing from state, try to get it from contract
+    let currentInviteCode = inviteCode;
+    if (!currentInviteCode && address) {
+      console.log('[CLAIM] Invite code missing from state, trying to get from contract...');
+      try {
+        const playerInviteCode = await getPlayerInviteCodeFromContract(address);
+        if (playerInviteCode && playerInviteCode !== '0x000000000000') {
+          currentInviteCode = playerInviteCode;
+          console.log('[CLAIM] Retrieved invite code from contract:', currentInviteCode);
+        }
+      } catch (error) {
+        console.error('[CLAIM] Error getting invite code from contract:', error);
+      }
+    }
+    
+    if (!currentInviteCode) {
+      console.error('[CLAIM] Could not determine invite code for claiming winnings');
+      alert('Could not determine game invite code. Please try refreshing the page.');
       return;
     }
 
     try {
       setIsClaimingWinnings(true);
-      console.log('[CLAIM] Claiming winnings for game:', inviteCode, 'Player:', playerColor, 'Address:', address);
+      console.log('[CLAIM] Claiming winnings for game:', currentInviteCode, 'Player:', playerColor, 'Address:', address);
       
       // Get game data to determine winner and invite_code
-      const gameData = await firebaseChess.getGame(inviteCode);
+      const gameData = await firebaseChess.getGame(currentInviteCode);
       if (!gameData) {
         console.error('[CLAIM] Error fetching game data:', 'Game data not found');
         alert('Failed to fetch game data. Please try again.');
@@ -337,12 +367,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       console.log('[CLAIM] ✅ Winner verification passed! Proceeding with contract call...');
       
-      // Use the real invite code from the game data or contract data
-      let bytes6InviteCode = gameData.invite_code;
+      // Use the current inviteCode (from state or contract fallback)
+      let bytes6InviteCode = currentInviteCode;
       
-      // If Firebase data is missing invite_code, use contract data
+      // If we still don't have an invite code, try to get it from contract data as fallback
       if (!bytes6InviteCode && contractGameData) {
-        console.log('[CLAIM] Using invite code from contract data');
+        console.log('[CLAIM] Using invite code from contract data as fallback');
         let player1, player2, isActive, winner, inviteCodeContract, wagerAmount;
         if (Array.isArray(contractGameData)) {
           [player1, player2, isActive, winner, inviteCodeContract, wagerAmount] = contractGameData;
@@ -638,7 +668,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus('Transaction was rejected. Please try again.');
       
       // Reset state and go back to lobby
-      setInviteCode('');
+      debugSetInviteCode('', 'join transaction rejection');
       setPlayerColor(null);
       setWager(0);
       setOpponent(null);
@@ -1121,7 +1151,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     } catch (error) {
       console.error('[JOIN] Error joining game:', error);
       setGameStatus('Failed to join game. Please try again.');
-      setInviteCode('');
+      debugSetInviteCode('', 'join game error');
       setPlayerColor(null);
       setWager(0);
       setOpponent(null);
@@ -1210,6 +1240,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           console.log('[DEBUG] No address match found - setting playerColor to null');
           setPlayerColor(null);
           setOpponent(null);
+          // Don't clear inviteCode here - preserve it for claiming winnings
         } else {
           console.log('[DEBUG] Player color already correctly set to:', playerColor);
         }
@@ -1401,7 +1432,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (joinGameError) {
       console.error('[ERROR] Join transaction failed:', joinGameError);
       setGameStatus(`Failed to join game: ${joinGameError.message || 'Transaction rejected'}`);
-      setInviteCode('');
+      debugSetInviteCode('', 'join game error effect');
       setPlayerColor(null);
       setWager(0);
       setOpponent(null);
