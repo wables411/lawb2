@@ -4,6 +4,7 @@ import {
   updateLeaderboardEntry, 
   getTopLeaderboardEntries,
   formatAddress as formatLeaderboardAddress,
+  removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
 import ChessMultiplayer from './ChessMultiplayer';
@@ -455,6 +456,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Load leaderboard data from Firebase
   const loadLeaderboard = async (): Promise<void> => {
     try {
+      // First, try to remove any zero address entry
+      await removeZeroAddressEntry();
+      
       const data = await getTopLeaderboardEntries(20);
       setLeaderboardData(data);
       console.log('Leaderboard data loaded:', data);
