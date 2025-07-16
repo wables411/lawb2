@@ -587,6 +587,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[PENDING DEBUG] pendingGameData changed:', pendingGameData);
   }, [pendingGameData]);
 
+  // Monitor pendingJoinGameData changes
+  useEffect(() => {
+    console.log('[PENDING DEBUG] pendingJoinGameData changed:', pendingJoinGameData);
+  }, [pendingJoinGameData]);
+
   // Handle transaction rejection for game creation
   useEffect(() => {
     console.log('[CREATE REJECTION DEBUG] - isCreatingGameContract:', isCreatingGameContract);
@@ -2907,8 +2912,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug panel component for diagnosing Player 2 issues
   const renderDebugPanel = () => {
-    // Only show debug panel in development mode
-    if (process.env.NODE_ENV !== 'development') return null;
+    // Show debug panel always for now to fix the pending join data issue
+    // if (process.env.NODE_ENV !== 'development') return null;
     
     return (
       <div style={{
@@ -3092,6 +3097,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   return (
     <>
       {mainContent}
+      {renderDebugPanel()}
     </>
   );
 
