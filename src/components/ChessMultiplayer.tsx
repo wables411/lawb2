@@ -439,8 +439,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
   
-  // UI state
-  const [darkMode, setDarkMode] = useState(false);
+  // UI state - always use dark mode for chess
+  const [darkMode] = useState(true);
+  
+  // Always apply dark mode classes
+  useEffect(() => {
+    document.documentElement.classList.add('chess-dark-mode');
+    document.body.classList.add('chess-dark-mode');
+  }, []);
   const [showPieceGallery, setShowPieceGallery] = useState(false);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
@@ -844,17 +850,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
 
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (!darkMode) {
-      document.documentElement.classList.add('chess-dark-mode');
-      document.body.classList.add('chess-dark-mode');
-    } else {
-      document.documentElement.classList.remove('chess-dark-mode');
-      document.body.classList.remove('chess-dark-mode');
-    }
-  };
+
 
   // Load leaderboard from Firebase
   const loadLeaderboard = async (): Promise<void> => {
@@ -2734,13 +2730,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       <div className="chess-header">
         <h2>♔ Multiplayer Chess</h2>
         <div className="chess-controls">
-          <button 
-            onClick={toggleDarkMode}
-            className="theme-toggle-btn"
-            title="Toggle Dark Mode"
-          >
-            🌙
-          </button>
           {onMinimize && (
             <button 
               onClick={onMinimize}

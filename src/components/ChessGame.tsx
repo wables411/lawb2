@@ -322,21 +322,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for leaderboard updated message
   const [showLeaderboardUpdated, setShowLeaderboardUpdated] = useState(false);
 
-  // Add dark mode state
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem('lawb_chess_dark_mode') === 'true';
-    }
-    return false;
-  });
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem('lawb_chess_dark_mode', String(!prev));
-      }
-      return !prev;
-    });
-  };
+  // Always use dark mode for chess
+  const [darkMode] = useState(true);
+  
+  // Always apply dark mode classes
+  useEffect(() => {
+    document.documentElement.classList.add('chess-dark-mode');
+    document.body.classList.add('chess-dark-mode');
+  }, []);
 
   // Add Stockfish integration
   const { stockfishReady, getStockfishMove, getCloudflareStockfishMove } = useStockfish();
@@ -1561,18 +1554,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       {!fullscreen && (
         <div className="chess-header">
           <h2>Lawb Chess</h2>
-          <div className="chess-controls">
-            <button
-              className="dark-mode-toggle"
-              onClick={toggleDarkMode}
-              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            {onMinimize && <button onClick={onMinimize}>_</button>}
-            <button onClick={onClose}>×</button>
-          </div>
+                  <div className="chess-controls">
+          {onMinimize && <button onClick={onMinimize}>_</button>}
+          <button onClick={onClose}>×</button>
+        </div>
         </div>
       )}
       
