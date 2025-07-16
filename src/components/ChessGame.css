@@ -519,6 +519,18 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+
+/* Fix piece gallery scrolling */
+.piece-gallery {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  max-height: 100%;
+  height: 100%;
 }
 
 /* Leaderboard */
