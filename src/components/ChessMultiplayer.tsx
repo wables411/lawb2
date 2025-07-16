@@ -571,11 +571,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CONTRACT] Join game transaction rejected or failed');
       setGameStatus('Transaction was rejected. Please try again.');
       
-      // Reset state
+      // Reset state and go back to lobby
       setInviteCode('');
       setPlayerColor(null);
       setWager(0);
       setOpponent(null);
+      setGameMode(GameMode.LOBBY);
+      setGameStatus('');
       setPendingJoinGameData(null);
     }
   }, [isJoiningGameContract, pendingJoinGameData, joinGameHash]);
@@ -1626,7 +1628,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       toRow: to.row,
       isPawn: piece.toUpperCase() === 'P',
       redPromotion: playerColor === 'red' && to.row === 0,
-      bluePromotion: playerColor === 'blue' && to.row === 7
+      bluePromotion: playerColor === 'blue' && to.row === 7,
+      showPromotion,
+      promotionMove
     });
     
     // Check for pawn promotion
@@ -1688,7 +1692,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       movedPiece = playerColor === 'red' ? promotionPiece.toUpperCase() : promotionPiece.toLowerCase();
     }
     
-    // Handle special moves (castling, en passant, pawn promotion)
+    // Handle special moves (castling, en passant)
     handleSpecialMoves(newBoard, from, to, piece);
     
     newBoard[to.row][to.col] = movedPiece;
@@ -1801,12 +1805,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle special moves (castling, en passant, pawn promotion)
   const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
-    // Handle pawn promotion
-    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      const promotedPiece = getPieceColor(piece) === 'blue' ? 'q' : 'Q';
-      newBoard[to.row][to.col] = promotedPiece;
-    }
-    
     // Handle castling
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
       if (to.col === 6) { // Kingside
@@ -1982,6 +1980,54 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // House admin functions
   const isHouseWallet = address === '0xF8A323e916921b0a82Ebcb562a3441e46525822E'; // Replace with actual house wallet address
+  
+  // Function to handle game state inconsistency
+  const handleGameStateInconsistency = async () => {
+    if (!inviteCode) return;
+    
+    try {
+      console.log('[INCONSISTENCY] Handling game state inconsistency for:', inviteCode);
+      
+      // Check if the game exists in Firebase but not in contract
+      const firebaseGame = await firebaseChess.getGame(inviteCode);
+      if (!firebaseGame) {
+        console.log('[INCONSISTENCY] Game not found in Firebase, resetting state');
+        setGameMode(GameMode.LOBBY);
+        setInviteCode('');
+        setPlayerColor(null);
+        setWager(0);
+        setOpponent(null);
+        setGameStatus('');
+        return;
+      }
+      
+      // If game is active in Firebase but player 2 never confirmed transaction
+      if (firebaseGame.game_state === 'active' && firebaseGame.red_player && firebaseGame.red_player !== '0x0000000000000000000000000000000000000000') {
+        // Check if the current player is the red player
+        if (address === firebaseGame.red_player) {
+          console.log('[INCONSISTENCY] Player 2 found in Firebase but transaction not confirmed');
+          setGameStatus('Game state inconsistent. Please try joining again or contact support.');
+          
+          // Reset the game state in Firebase to allow re-joining
+          await firebaseChess.updateGame(inviteCode, {
+            red_player: '0x0000000000000000000000000000000000000000',
+            game_state: 'waiting'
+          });
+          
+          // Reset local state
+          setGameMode(GameMode.LOBBY);
+          setInviteCode('');
+          setPlayerColor(null);
+          setWager(0);
+          setOpponent(null);
+          setGameStatus('Game reset. You can now try joining again.');
+        }
+      }
+    } catch (error) {
+      console.error('[INCONSISTENCY] Error handling game state inconsistency:', error);
+      setGameStatus('Error handling game state. Please reload the page.');
+    }
+  };
   
   const houseResolveGame = async (winner: string) => {
     if (!isHouseWallet) return;
@@ -2531,6 +2577,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }}
         >
           Log State
+        </button>
+        <button 
+          onClick={handleGameStateInconsistency}
+          style={{
+            marginTop: '5px',
+            padding: '5px 10px',
+            background: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          Fix Game State
         </button>
       </div>
     );
