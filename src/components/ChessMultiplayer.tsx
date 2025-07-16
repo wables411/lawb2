@@ -1789,6 +1789,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const piece = board[from.row][from.col];
     if (!piece) return;
     
+    // Check for pawn promotion - show dialog for user choice
+    if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 0) || (currentPlayer === 'blue' && to.row === 7))) {
+      console.log('[PROMOTION] Showing promotion dialog for piece:', piece, 'at position:', to);
+      setPromotionMove({ from, to });
+      setShowPromotion(true);
+      return;
+    }
+    
     await executeMove(from, to);
   };
 
@@ -1953,12 +1961,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle special moves (castling, en passant, pawn promotion)
   const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
-    // Handle pawn promotion - automatically promote to queen like in single-player
-    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      const promotedPiece = getPieceColor(piece) === 'blue' ? 'q' : 'Q';
-      newBoard[to.row][to.col] = promotedPiece;
-    }
-    
     // Handle castling
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
       if (to.col === 6) { // Kingside
@@ -2251,7 +2253,53 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     );
   };
 
-  // Promotion dialog removed - using automatic promotion like single-player
+  // Render promotion dialog
+  const renderPromotionDialog = () => {
+    if (!showPromotion || !promotionMove) return null;
+    
+    const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
+    
+    return (
+      <div className="promotion-dialog" style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: 'rgba(0, 0, 0, 0.9)',
+        border: '2px solid gold',
+        borderRadius: '8px',
+        padding: '20px',
+        zIndex: 1000
+      }}>
+        <div className="promotion-content">
+          <h3 style={{ color: 'white', marginBottom: '15px' }}>Choose promotion piece:</h3>
+          <div className="promotion-pieces" style={{ display: 'flex', gap: '10px' }}>
+            {pieces.map(piece => (
+              <div
+                key={piece}
+                className="promotion-piece"
+                onClick={() => {
+                  console.log('[PROMOTION] Selected piece:', piece);
+                  executeMove(promotionMove.from, promotionMove.to, piece);
+                  setShowPromotion(false);
+                  setPromotionMove(null);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  padding: '10px',
+                  border: '2px solid white',
+                  borderRadius: '4px',
+                  background: 'rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <img src={pieceImages[piece]} alt={piece} style={{ width: '40px', height: '40px' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Render piece gallery
   const renderPieceGallery = () => (
@@ -2604,6 +2652,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           {renderPieceGallery()}
         </div>
       )}
+      
+      {renderPromotionDialog()}
       
       {victoryCelebration && (
         <div className="victory-celebration">
