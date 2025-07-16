@@ -587,9 +587,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[PENDING DEBUG] pendingGameData changed:', pendingGameData);
   }, [pendingGameData]);
 
-  // Monitor pendingJoinGameData changes
+  // Monitor pendingJoinGameData changes and auto-clear if needed
   useEffect(() => {
     console.log('[PENDING DEBUG] pendingJoinGameData changed:', pendingJoinGameData);
+    
+    // Auto-clear pending join data if it's been stuck for too long
+    if (pendingJoinGameData) {
+      const timeoutId = setTimeout(() => {
+        console.log('[AUTO-CLEAR] Pending join data has been stuck for too long, clearing automatically');
+        setPendingJoinGameData(null);
+      }, 30000); // 30 seconds timeout
+      
+      return () => clearTimeout(timeoutId);
+    }
   }, [pendingJoinGameData]);
 
   // Handle transaction rejection for game creation
@@ -1168,6 +1178,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // If we have pending join data, preserve the playerColor that was set during join
       if (pendingJoinGameData && currentAddress === pendingJoinGameData.address) {
         console.log('[DEBUG] Pending join transaction detected - preserving playerColor:', playerColor);
+        
+        // Auto-clear pending join data if game is active
+        if (gameData.game_state === 'active') {
+          console.log('[AUTO-CLEAR] Game is active, clearing pending join data');
+          setPendingJoinGameData(null);
+        }
+        
         // Don't change playerColor, but update other data
         if (gameData.blue_player && gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
           setOpponent(gameData.blue_player === currentAddress ? gameData.red_player : gameData.blue_player);
@@ -1331,6 +1348,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (gameData && (!gameData.blue_player || !gameData.red_player)) {
             console.log('[AUTO-FIX] Detected missing player data, attempting to fix...');
             fixMissingPlayerData();
+          }
+          
+          // Clear pending join data if game is confirmed active
+          if (gameData && gameData.game_state === 'active' && pendingJoinGameData) {
+            console.log('[AUTO-CLEAR] Game is confirmed active, clearing pending join data');
+            setPendingJoinGameData(null);
           }
         }).catch(error => {
           console.error('[AUTO-FIX] Error checking game data for auto-fix:', error);
