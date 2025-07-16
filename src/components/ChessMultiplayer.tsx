@@ -234,6 +234,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
     setWager(newValue);
   };
+  
+  // Tab state for left sidebar
+  const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard'>('moves');
 
   // Claim winnings function for winners
   const claimWinnings = async () => {
@@ -2813,26 +2816,83 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           )}
         </div>
         {gameMode === GameMode.FINISHED && (
-          <button 
-            onClick={claimWinnings}
-            disabled={isClaimingWinnings}
-            className="claim-winnings-btn"
-          >
-            {isClaimingWinnings ? '⏳ Claiming...' : '🏆 Claim Winnings'}
-          </button>
+          <div className="game-finished-actions">
+            <button 
+              onClick={claimWinnings}
+              disabled={isClaimingWinnings}
+              className="claim-winnings-btn"
+            >
+              {isClaimingWinnings ? '⏳ Claiming...' : '🏆 Claim Winnings'}
+            </button>
+            <button 
+              onClick={() => window.location.href = '/chess'}
+              className="back-to-chess-btn"
+            >
+              🏠 Back to Chess Home
+            </button>
+          </div>
         )}
       </div>
       
       <div className="game-stable-layout">
         <div className="left-sidebar">
-          <div className="move-history">
-            <h4>Move History</h4>
-            <div className="moves">
-              {moveHistory.slice().reverse().map((move, idx) => (
-                <div key={moveHistory.length - 1 - idx} className="move">{move}</div>
-              ))}
-            </div>
+          <div className="sidebar-tabs">
+            <button 
+              className={`tab-button ${leftSidebarTab === 'moves' ? 'active' : ''}`}
+              onClick={() => setLeftSidebarTab('moves')}
+            >
+              📝 Moves
+            </button>
+            <button 
+              className={`tab-button ${leftSidebarTab === 'leaderboard' ? 'active' : ''}`}
+              onClick={() => setLeftSidebarTab('leaderboard')}
+            >
+              🏆 Leaderboard
+            </button>
           </div>
+          
+          {leftSidebarTab === 'moves' && (
+            <div className="move-history">
+              <h4>Move History</h4>
+              <div className="moves">
+                {moveHistory.slice().reverse().map((move, idx) => (
+                  <div key={moveHistory.length - 1 - idx} className="move">{move}</div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {leftSidebarTab === 'leaderboard' && (
+            <div className="leaderboard">
+              <h4>Leaderboard</h4>
+              <div className="leaderboard-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Player</th>
+                      <th>W</th>
+                      <th>L</th>
+                      <th>D</th>
+                      <th>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((entry, index) => (
+                      <tr key={entry.username}>
+                        <td>{index + 1}</td>
+                        <td>{entry.username}</td>
+                        <td>{entry.wins}</td>
+                        <td>{entry.losses}</td>
+                        <td>{entry.draws}</td>
+                        <td>{entry.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="center-area">
@@ -2866,12 +2926,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           <div className="game-controls">
             <div className="control-section">
-              <button 
-                onClick={() => setShowPieceGallery(!showPieceGallery)}
-                className="gallery-toggle-btn"
-              >
-                {showPieceGallery ? '📚 Hide Gallery' : '📚 Show Gallery'}
-              </button>
               
               {gameStatus.includes('corrupted') && (
                 <button 
@@ -2923,35 +2977,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         </div>
         
         <div className="right-sidebar">
-          <div className="leaderboard">
-            <h3>Leaderboard</h3>
-            <div className="leaderboard-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Player</th>
-                    <th>W</th>
-                    <th>L</th>
-                    <th>D</th>
-                    <th>Pts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((entry, index) => (
-                    <tr key={entry.username}>
-                      <td>{index + 1}</td>
-                      <td>{entry.username}</td>
-                      <td>{entry.wins}</td>
-                      <td>{entry.losses}</td>
-                      <td>{entry.draws}</td>
-                      <td>{entry.points}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Right sidebar is now empty - content moved to left sidebar tabs */}
         </div>
       </div>
       
