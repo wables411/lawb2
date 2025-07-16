@@ -538,6 +538,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[CREATE DEBUG] Transaction receipt handler - pendingGameData:', pendingGameData);
     console.log('[CREATE DEBUG] Transaction receipt handler - inviteCode:', inviteCode);
     console.log('[CREATE DEBUG] Transaction receipt handler - condition:', createGameHash && !isWaitingForCreateReceipt && pendingGameData && !inviteCode);
+    console.log('[CREATE DEBUG] Transaction receipt handler - individual conditions:');
+    console.log('[CREATE DEBUG] - createGameHash exists:', !!createGameHash);
+    console.log('[CREATE DEBUG] - not waiting for receipt:', !isWaitingForCreateReceipt);
+    console.log('[CREATE DEBUG] - pendingGameData exists:', !!pendingGameData);
+    console.log('[CREATE DEBUG] - no inviteCode set:', !inviteCode);
     
     if (createGameHash && !isWaitingForCreateReceipt && pendingGameData && !inviteCode) {
       console.log('[CONTRACT] Create game transaction confirmed:', createGameHash);
@@ -570,8 +575,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setPendingGameData(null);
         setIsCreatingGame(false);
       });
+    } else if (createGameHash && !isWaitingForCreateReceipt) {
+      console.log('[CREATE DEBUG] Transaction confirmed but conditions not met for Firebase update:');
+      console.log('[CREATE DEBUG] - pendingGameData missing:', !pendingGameData);
+      console.log('[CREATE DEBUG] - inviteCode already set:', !!inviteCode);
     }
   }, [createGameHash, isWaitingForCreateReceipt, pendingGameData, gameWager]);
+
+  // Monitor pendingGameData changes
+  useEffect(() => {
+    console.log('[PENDING DEBUG] pendingGameData changed:', pendingGameData);
+  }, [pendingGameData]);
 
   // Handle transaction rejection for game creation
   useEffect(() => {
@@ -967,7 +981,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     try {
       const newInviteCode = generateBytes6InviteCode();
       console.log('[CREATE] Generated invite code:', newInviteCode);
-      setInviteCode(newInviteCode);
+      // Don't set inviteCode here - wait for Firebase update to complete
       const gameData = {
         invite_code: newInviteCode,
         game_title: `Chess Game ${newInviteCode.slice(-6)}`,
@@ -993,8 +1007,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         value: BigInt(Math.floor(gameWager * 1e18)),
       });
       console.log('[CREATE] Contract call initiated, setting pending data');
+      console.log('[CREATE] Pending game data being set:', gameData);
       setPendingGameData(gameData);
       setGameStatus('Creating game... Please confirm transaction in your wallet.');
+      // Don't set inviteCode here - wait for Firebase update to complete
     } catch (error) {
       console.error('[CREATE] Error creating game:', error);
       setGameStatus('Failed to create game. Please try again.');
