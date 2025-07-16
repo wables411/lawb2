@@ -225,6 +225,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
     setInviteCode(newValue);
   };
+  
+  // Debug function to track wager changes
+  const debugSetWager = (newValue: number, source: string) => {
+    console.log(`[WAGER_DEBUG] Setting wager to ${newValue} TDMT from ${source}`);
+    if (wager !== newValue) {
+      console.log(`[WAGER_DEBUG] Wager changed from ${wager} to ${newValue} TDMT`);
+    }
+    setWager(newValue);
+  };
 
   // Claim winnings function for winners
   const claimWinnings = async () => {
@@ -591,7 +600,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         // Update UI
         setInviteCode(pendingGameData.invite_code);
         setPlayerColor('blue');
-        setWager(gameWager);
+        debugSetWager(gameWager, 'create game success');
         setGameMode(GameMode.WAITING);
         setGameStatus('Waiting for opponent to join...');
         
@@ -670,7 +679,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Reset state and go back to lobby
       debugSetInviteCode('', 'join transaction rejection');
       setPlayerColor(null);
-      setWager(0);
+      debugSetWager(0, 'join transaction rejection');
       setOpponent(null);
       setGameMode(GameMode.LOBBY);
       setGameStatus('');
@@ -750,7 +759,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Found game in Firebase:', firebaseGame);
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
-            setWager(parseFloat(firebaseGame.bet_amount) / 1e18);
+            debugSetWager(parseFloat(firebaseGame.bet_amount) / 1e18, 'checkPlayerGameState Firebase');
             setOpponent(opponent);
             if (firebaseGame.game_state === 'waiting') {
               setGameMode(GameMode.WAITING);
@@ -802,7 +811,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Successfully synced game to Firebase:', gameData);
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
-            setWager(parseFloat(gameData.bet_amount) / 1e18);
+            debugSetWager(parseFloat(gameData.bet_amount) / 1e18, 'checkPlayerGameState sync');
             setOpponent(opponent);
             if (isActive) {
               setGameMode(GameMode.ACTIVE);
@@ -843,7 +852,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[DEBUG] - red_player === address:', game.red_player === address);
         setInviteCode(game.invite_code);
         setPlayerColor(game.blue_player === address ? 'blue' : 'red');
-        setWager(parseFloat(game.bet_amount) / 1e18);
+        debugSetWager(parseFloat(game.bet_amount) / 1e18, 'checkPlayerGameState fallback');
         setOpponent(game.blue_player === address ? game.red_player : game.blue_player);
         if (game.game_state === 'waiting') {
           setGameMode(GameMode.WAITING);
@@ -1074,7 +1083,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const wagerAmountTDMT = wagerAmountWei / 1e18;
       setInviteCode(inviteCode);
       setPlayerColor('red');
-      setWager(wagerAmountTDMT);
+      debugSetWager(wagerAmountTDMT, 'joinGame');
       setOpponent(gameData.blue_player);
       
       console.log('[JOIN] Setting up join game with data:', {
@@ -1153,7 +1162,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus('Failed to join game. Please try again.');
       debugSetInviteCode('', 'join game error');
       setPlayerColor(null);
-      setWager(0);
+      debugSetWager(0, 'join game error');
       setOpponent(null);
     }
   };
@@ -1307,7 +1316,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } else {
         console.log('[WAGER DEBUG] Setting wager to 0 (no valid bet_amount found)');
       }
-      setWager(wagerValue);
+      debugSetWager(wagerValue, 'Firebase subscription');
       if (gameData.board) setBoard(reconstructBoard(gameData.board));
       if (gameData.current_player) setCurrentPlayer(gameData.current_player);
       if (gameData.game_state === 'active') {
@@ -1434,7 +1443,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus(`Failed to join game: ${joinGameError.message || 'Transaction rejected'}`);
       debugSetInviteCode('', 'join game error effect');
       setPlayerColor(null);
-      setWager(0);
+      debugSetWager(0, 'join game error effect');
       setOpponent(null);
       setPendingJoinGameData(null);
     }
@@ -2260,7 +2269,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return;
     }
     setPlayerColor(address === gameData.blue_player ? 'blue' : 'red');
-    setWager(parseFloat(gameData.bet_amount) / 1e18);
+    debugSetWager(parseFloat(gameData.bet_amount) / 1e18, 'resumeGame');
     setOpponent(address === gameData.blue_player ? gameData.red_player : gameData.blue_player);
     setGameMode(GameMode.ACTIVE);
     setGameStatus('Game resumed');
@@ -2298,7 +2307,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameMode(GameMode.LOBBY);
         setInviteCode('');
         setPlayerColor(null);
-        setWager(0);
+        debugSetWager(0, 'handleGameStateInconsistency');
         setOpponent(null);
         setGameStatus('');
         return;
@@ -2321,7 +2330,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setGameMode(GameMode.LOBBY);
           setInviteCode('');
           setPlayerColor(null);
-          setWager(0);
+          debugSetWager(0, 'handleGameStateInconsistency reset');
           setOpponent(null);
           setGameStatus('Game reset. You can now try joining again.');
         }
