@@ -1810,6 +1810,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       <p><strong>Chess:</strong> Capture your opponent's king. Each piece moves uniquely - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
                       <p><strong>Multiplayer:</strong> Connect your wallet to play PvP games with ETH wagers. Win games to claim your opponent's wager and climb the leaderboard.</p>
                       <p><strong>AI Mode:</strong> Practice against our LawbBot AI. Choose Easy or Hard difficulty. Wins earn points on the leaderboard.</p>
+                      <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>
+                        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>Network Setup (if not connected):</p>
+                        <p style={{ margin: '2px 0' }}><strong>Network Name:</strong> Sanko Testnet</p>
+                        <p style={{ margin: '2px 0' }}><strong>RPC URL:</strong> https://sanko-arb-sepolia.rpc.caldera.xyz/http</p>
+                        <p style={{ margin: '2px 0' }}><strong>Chain ID:</strong> 1992</p>
+                        <p style={{ margin: '2px 0' }}><strong>Currency Symbol:</strong> tDMT</p>
+                      </div>
                     </div>
                   </div>
                 </div>
