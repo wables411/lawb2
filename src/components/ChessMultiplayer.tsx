@@ -2760,33 +2760,32 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               Create New Game
             </button>
             <button 
-              className="resume-btn"
-              onClick={checkStuckGames}
-              style={{ 
-                marginTop: '10px',
-                background: 'rgba(0, 255, 0, 0.1)',
-                border: '2px solid #00ff00',
-                color: '#00ff00',
-                padding: '12px 24px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontFamily: 'Courier New, monospace',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Check for Active Games
-            </button>
-            <button 
               onClick={loadOpenGames}
               style={{ 
                 marginTop: '10px',
                 background: 'rgba(0, 123, 255, 0.1)',
                 border: '2px solid #007bff',
                 color: '#007bff',
+                padding: '8px 16px',
+                borderRadius: '0px',
+                cursor: 'pointer',
+                fontFamily: 'Courier New, monospace',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              🔄 Refresh Lobby
+            </button>
+            <button 
+              onClick={() => window.location.href = '/chess'}
+              style={{ 
+                marginTop: '10px',
+                background: 'rgba(255, 193, 7, 0.1)',
+                border: '2px solid #ffc107',
+                color: '#ffc107',
                 padding: '12px 24px',
-                borderRadius: '6px',
+                borderRadius: '0px',
                 cursor: 'pointer',
                 fontFamily: 'Courier New, monospace',
                 fontSize: '16px',
@@ -2794,7 +2793,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 transition: 'all 0.3s ease'
               }}
             >
-              🔄 Refresh Lobby
+              🏠 Back to Chess Home
             </button>
           </div>
             
