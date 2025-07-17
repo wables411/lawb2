@@ -2108,6 +2108,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const triggerVictoryCelebration = () => {
     setVictoryCelebration(true);
     playSound('victory');
+    
+    // Create confetti effect
+    for (let i = 0; i < 50; i++) {
+      setTimeout(() => {
+        const confetti = document.createElement('div');
+        confetti.style.cssText = `
+          position: fixed;
+          width: 10px;
+          height: 10px;
+          background: ${['#ff4444', '#4444ff', '#ffff44', '#ff44ff'][Math.floor(Math.random() * 5)]};
+          left: ${Math.random() * window.innerWidth}px;
+          top: -10px;
+          z-index: 9999;
+          animation: confetti-fall 3s linear forwards;
+        `;
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 300);
+      }, i * 100);
+    }
+    
     if (celebrationTimeout.current) {
       clearTimeout(celebrationTimeout.current);
     }
@@ -2994,10 +3014,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       {renderPromotionDialog()}
       
       {victoryCelebration && (
-        <div className="victory-celebration">
-          <div className="victory-content">
-            <h2>🎉 Victory! 🎉</h2>
-            <p>Congratulations on your win!</p>
+        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
+          <div className="balloons-container">{/* ...balloons code... */}</div>
+          <img src="/images/victory.gif" alt="Victory" style={{width:'320px',height:'auto',zIndex:2}} />
+          <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24}}>
+            <button onClick={() => setGameMode(GameMode.LOBBY)}>Back to Lobby</button>
+            <button onClick={() => window.location.reload()}>New Game</button>
           </div>
         </div>
       )}
