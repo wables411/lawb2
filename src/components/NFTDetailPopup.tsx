@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import Draggable from 'react-draggable';
 import { createUseStyles } from 'react-jss';
+import { CORSImage, getImageUrl } from './CORSImage';
 
 const useStyles = createUseStyles({
   popup: {
@@ -96,7 +97,7 @@ const NFTDetailPopup: React.FC<NFTDetailPopupProps> = ({ nft, onClose }) => {
           <button className={classes.titleBarButton} onClick={onClose}>X</button>
         </div>
         <div className={classes.content}>
-          <img src={nft.image_url} alt={nft.name} className={classes.detailImage} />
+          <CORSImage src={getImageUrl(nft)} alt={nft.name} style={{ width: '100%', height: 'auto', marginBottom: '10px' }} />
           <h3>Traits</h3>
           <ul className={classes.detailTraits}>
             {traits.length > 0 ? (
