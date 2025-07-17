@@ -2055,10 +2055,36 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }, 2000); // Small delay to ensure UI updates first
       }
     } else if (isStalemate(nextPlayer, newBoard)) {
+      // Stalemate = loss for the player who gets stalemated
+      // nextPlayer is the one who has no legal moves, so they lose
+      const winner = currentPlayer; // Player who made the move that caused stalemate
       gameState = 'finished';
-      setGameStatus('Game ended in stalemate');
-      console.log('[SCORE] Updating scores for draw');
-      await updateScore('draw');
+      setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by stalemate!`);
+      playSound('checkmate');
+      
+      // Update scores for both players
+      console.log('[SCORE] Updating scores - Stalemate winner:', winner, 'Loser:', nextPlayer);
+      console.log('[SCORE] Contract game data:', contractGameData);
+      console.log('[SCORE] Player game invite code:', playerGameInviteCode);
+      
+      if (contractGameData && contractGameData.length >= 2) {
+        console.log('[SCORE] Using contract data for both players update');
+        await updateBothPlayersScoresLocal(winner, contractGameData[0], contractGameData[1]);
+      } else {
+        console.log('[SCORE] Contract data not available, falling back to single player update');
+        // Fallback to single player update if contract data not available
+        await updateScore(winner === playerColor ? 'win' : 'loss');
+        // Reload leaderboard after single player update
+        await loadLeaderboard();
+      }
+      
+      // Trigger contract payout for the winner
+      if (winner === playerColor) {
+        console.log('[CONTRACT] Triggering automatic payout for stalemate winner:', winner);
+        setTimeout(() => {
+          claimWinnings();
+        }, 2000); // Small delay to ensure UI updates first
+      }
     }
     
     // Update database
