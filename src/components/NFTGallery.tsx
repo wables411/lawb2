@@ -5,6 +5,63 @@ import { createUseStyles } from 'react-jss';
 import NFTDetailPopup from './NFTDetailPopup';
 import { useAppKit } from '@reown/appkit/react';
 
+// CORS-friendly image component
+const CORSImage: React.FC<{ src: string; alt: string; style: React.CSSProperties }> = ({ src, alt, style }) => {
+  const [imageSrc, setImageSrc] = useState(src);
+  const [showFallback, setShowFallback] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Reset when src changes
+  useEffect(() => {
+    setImageSrc(src);
+    setShowFallback(false);
+    setRetryCount(0);
+  }, [src]);
+
+  const handleError = () => {
+    if (retryCount === 0) {
+      // First retry: try without crossOrigin
+      setImageSrc(src);
+      setRetryCount(1);
+    } else if (retryCount === 1) {
+      // Second retry: try with a different proxy
+      setImageSrc(`https://images.weserv.nl/?url=${encodeURIComponent(src)}`);
+      setRetryCount(2);
+    } else {
+      // Final fallback
+      setShowFallback(true);
+    }
+  };
+
+  if (showFallback) {
+    return (
+      <div 
+        style={{ 
+          ...style,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          color: '#666',
+          backgroundColor: '#f0f0f0'
+        }}
+      >
+        Image not available
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={imageSrc}
+      alt={alt}
+      style={style}
+      crossOrigin={retryCount === 0 ? "anonymous" : undefined}
+      onError={handleError}
+    />
+  );
+};
+
 const useStyles = createUseStyles({
   popup: {
     position: 'absolute',
@@ -328,6 +385,20 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
     }
     return 'N/A';
   };
+
+  const getImageUrl = (nft: NFT) => {
+    // Try different image sources in order of preference
+    const imageSources = [
+      nft.image_url,
+      nft.image,
+      nft.image_url_shrunk,
+      nft.old_image_url
+    ].filter(Boolean);
+    
+    return imageSources[0] || '';
+  };
+
+
   
   const handleMinimize = () => {
     if (onMinimize) {
@@ -493,8 +564,8 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
                     {nfts.map(nft => (
                       <div key={nft.id} style={{ border: '1px solid #808080', padding: '10px', backgroundColor: '#ffffff', borderRadius: '4px', cursor: 'pointer' }} onClick={() => { void handleNftClick(nft); }}>
-                        <img 
-                          src={nft.image_url || nft.image || nft.image_url_shrunk} 
+                        <CORSImage 
+                          src={getImageUrl(nft)} 
                           alt={`NFT #${nft.token_id}`}
                           style={{ 
                             width: '100%', 
@@ -504,31 +575,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                             border: '1px solid #ccc',
                             backgroundColor: '#f0f0f0'
                           }}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const nextElement = target.nextElementSibling as HTMLElement;
-                            if (nextElement) {
-                              nextElement.style.display = 'flex';
-                            }
-                          }}
                         />
-                        <div 
-                          style={{ 
-                            width: '100%', 
-                            height: '150px', 
-                            marginBottom: '10px', 
-                            border: '1px solid #ccc',
-                            backgroundColor: '#f0f0f0',
-                            display: 'none',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '12px',
-                            color: '#666'
-                          }}
-                        >
-                          Image not available
-                        </div>
                         <div style={{ fontSize: '12px', marginBottom: '5px', color: '#000' }}><strong>#{nft.token_id}</strong></div>
                         <div style={{ fontSize: '11px', marginBottom: '5px', color: '#000' }}>Owner: {getOwnerInfo(nft)}</div>
                         <div style={{ fontSize: '11px', color: '#666' }}>Minted: {formatDate(nft.created_at)}</div>
