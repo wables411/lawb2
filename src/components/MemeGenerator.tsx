@@ -147,6 +147,7 @@ const NFT_COLLECTIONS = [
   { id: 'lawbstarz', name: 'Lawbstarz', api: 'opensea', slug: 'lawbstarz', chain: 'ethereum' },
   { id: 'pixelawbs', name: 'Pixelawbsters', api: 'scatter', slug: 'pixelawbs' },
   { id: 'halloween', name: 'Halloween Lawbsters', api: 'opensea', slug: 'a-lawbster-halloween', chain: 'base' },
+  // Solana collections - using Helius API
   { id: 'lawbstation', name: 'Lawbstation', api: 'opensea-solana', slug: 'lawbstation', chain: 'solana' },
   { id: 'nexus', name: 'Nexus', api: 'opensea-solana', slug: 'lawbnexus', chain: 'solana' },
 ];
@@ -429,10 +430,16 @@ function MemeGenerator() {
         nfts = resp.data;
         console.log('OpenSea response:', resp);
       } else if (collection.api === 'opensea-solana') {
-        console.log('Using OpenSea Solana API for:', collection.slug);
+        console.log('Using Helius API for Solana collection:', collection.slug);
         const resp = await getOpenSeaSolanaNFTs(collection.slug, 50);
         nfts = resp.data;
-        console.log('OpenSea Solana response:', resp);
+        console.log('Helius Solana response:', resp);
+        
+        // If no NFTs found, show helpful message
+        if (!nfts || nfts.length === 0) {
+          alert('No NFTs found in this Solana collection. Try uploading your own image or use other collections.');
+          return;
+        }
       } else {
         console.log('Using Scatter API for:', collection.slug);
         const resp = await getCollectionNFTs(collection.slug, 1, 50);

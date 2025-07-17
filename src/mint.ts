@@ -241,39 +241,83 @@ export async function getOpenSeaSingleNFT(chain: string, contractAddress: string
   } catch (error) { console.error('Error getting single OpenSea NFT:', error); throw error; }
 }
 
-// Function to fetch Solana NFTs from OpenSea with owner data
+// Function to fetch Solana NFTs using Helius DAS API
 export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: number = 50): Promise<NFTResponse> {
-  const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-  const url = `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?chain=solana&limit=${pageSize}&include_orders=true`;
-
+  const HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=f2330fce-2a97-416b-ada9-ce0ba94ddadc";
+  
   try {
-    const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
-    if (!response.ok) {
-      throw new Error(`Failed to get OpenSea Solana NFTs: ${response.statusText}`);
-    }
-
-    const data = await response.json() as OpenSeaApiResponse;
-    console.log('Solana collection response:', data);
-    console.log('Sample NFT from response:', data.nfts[0]);
-    console.log('Sample NFT owners:', data.nfts[0]?.owners);
-    console.log('Sample NFT full structure:', JSON.stringify(data.nfts[0], null, 2));
+    console.log('Using Helius DAS API for Solana collection:', collectionSlug);
     
-    const transformedNfts: NFT[] = data.nfts.map((nft): NFT => ({
-      id: nft.identifier,
-      address: nft.contract,
-      token_id: parseInt(nft.identifier, 10),
-      attributes: JSON.stringify(nft.traits || []),
-      name: nft.name || `#${nft.identifier}`,
-      image_url: nft.image_url,
-      owner_of: nft.owners?.[0]?.address || '',
+    // Use collection mint addresses to fetch all NFTs in the collection
+    const collectionMints = {
+      'lawbstation': '9CU9LUX7UWkBEG4oP8YrgDUkNJKNHLt2wGdVfX6NY4EY',
+      'lawbnexus': 'AfXkPjcfTWHz9WDjvXxZBkHSWQ1H7xsg7jT2fFLkAAi'
+    };
+    
+    const collectionMint = collectionMints[collectionSlug as keyof typeof collectionMints];
+    
+    if (!collectionMint) {
+      console.log('No collection mint found for collection:', collectionSlug);
+      return {
+        page: 1,
+        pageSize: pageSize,
+        totalCount: 0,
+        totalPages: 1,
+        data: []
+      };
+    }
+    
+    // Use Helius DAS API to get NFTs by collection
+    const response = await fetch(HELIUS_RPC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'my-id',
+        method: 'getAssetsByGroup',
+        params: {
+          groupKey: 'collection',
+          groupValue: collectionMint,
+          page: 1,
+          limit: pageSize
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      console.log('Helius DAS API response status:', response.status);
+      console.log('Helius DAS API response text:', await response.text());
+      throw new Error(`Helius DAS API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Helius DAS API response:', data);
+    
+    if (data.error) {
+      throw new Error(`Helius DAS API error: ${data.error.message}`);
+    }
+    
+    const nfts = data.result?.items || [];
+    
+    // Transform the NFTs to our standard format
+    const transformedNfts: NFT[] = nfts.map((nft: any): NFT => ({
+      id: nft.id || nft.mint || 'unknown',
+      address: nft.mint || '',
+      token_id: parseInt(nft.content?.metadata?.name?.replace(/\D/g, '') || '0', 10),
+      attributes: JSON.stringify(nft.content?.metadata?.attributes || []),
+      name: nft.content?.metadata?.name || nft.content?.files?.[0]?.name || `#${nft.mint?.slice(0, 8)}`,
+      image_url: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+      owner_of: '',
       block_minted: 0,
       contract_type: 'SOL',
-      description: nft.description || '',
-      image: nft.image_url,
-      image_url_shrunk: nft.image_url,
-      animation_url: nft.animation_url,
+      description: nft.content?.metadata?.description || '',
+      image: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+      image_url_shrunk: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+      animation_url: nft.content?.metadata?.animation_url || '',
       metadata: '',
-      chain_id: 1399811149, // Solana chain ID
+      chain_id: 1399811149,
       old_image_url: '',
       old_token_uri: '',
       token_uri: '',
@@ -281,9 +325,103 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
       transaction_index: 0,
       collection_id: collectionSlug,
       num_items: 1,
-      created_at: nft.updated_at || new Date().toISOString(),
-      updated_at: nft.updated_at || new Date().toISOString(),
-      owners: nft.owners?.map((o) => ({ owner_of: o.address, quantity: o.quantity })) || []
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      owners: []
+    }));
+    
+    return {
+      page: 1,
+      pageSize: pageSize,
+      totalCount: transformedNfts.length,
+      totalPages: 1,
+      data: transformedNfts
+    };
+    
+  } catch (error) {
+    console.error('Error getting Solana NFTs from Helius:', error);
+    throw error;
+  }
+}
+
+// Function to fetch Solana NFTs by owner using Helius DAS API
+export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
+  const HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=f2330fce-2a97-416b-ada9-ce0ba94ddadc";
+  
+  try {
+    console.log('Using Helius DAS API for Solana owner:', ownerAddress);
+    
+    // Use Helius DAS API to get NFTs by owner
+    const response = await fetch(HELIUS_RPC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'my-id',
+        method: 'getAssetsByOwner',
+        params: {
+          ownerAddress: ownerAddress,
+          page: 1,
+          limit: pageSize
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      console.log('Helius DAS API response status:', response.status);
+      console.log('Helius DAS API response text:', await response.text());
+      throw new Error(`Helius DAS API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Helius DAS API owner response:', data);
+    
+    if (data.error) {
+      throw new Error(`Helius DAS API error: ${data.error.message}`);
+    }
+    
+    const nfts = data.result?.items || [];
+    
+    // Filter to only include lawbstation and lawbnexus collections
+    const mintAuthorities = {
+      'lawbstation': '6cz67ciatfhDaxyWw3rdC9rZHXAxQvYnq5qkqmnG3G1Q',
+      'lawbnexus': '35pjVXpTg2PCdBZ1zdUckNfnAxULJQBRSjWLXREo6692'
+    };
+    
+    const filteredNfts = nfts.filter((nft: any) => {
+      // Check if NFT belongs to our collections by mint authority
+      const mintAuthority = nft.mintAuthority || nft.authority;
+      return mintAuthority && Object.values(mintAuthorities).includes(mintAuthority);
+    }).slice(0, pageSize);
+    
+    const transformedNfts: NFT[] = filteredNfts.map((nft: any): NFT => ({
+      id: nft.id || nft.mint || 'unknown',
+      address: nft.mint || '',
+      token_id: parseInt(nft.content?.metadata?.name?.replace(/\D/g, '') || '0', 10),
+      attributes: JSON.stringify(nft.content?.metadata?.attributes || []),
+      name: nft.content?.metadata?.name || nft.content?.files?.[0]?.name || `#${nft.mint?.slice(0, 8)}`,
+      image_url: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+      owner_of: ownerAddress,
+      block_minted: 0,
+      contract_type: 'SOL',
+      description: nft.content?.metadata?.description || '',
+      image: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+      image_url_shrunk: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+      animation_url: nft.content?.metadata?.animation_url || '',
+      metadata: '',
+      chain_id: 1399811149,
+      old_image_url: '',
+      old_token_uri: '',
+      token_uri: '',
+      log_index: 0,
+      transaction_index: 0,
+      collection_id: nft.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || '',
+      num_items: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      owners: [{ owner_of: ownerAddress, quantity: 1 }]
     }));
 
     return {
@@ -295,91 +433,7 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
     };
 
   } catch (error) {
-    console.error('Error getting OpenSea Solana NFTs:', error);
+    console.error('Error getting Solana NFTs by owner from Helius:', error);
     throw error;
   }
-}
-
-// Function to fetch Solana NFTs from OpenSea by owner
-export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
-  const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-  
-  // Try different OpenSea endpoints for Solana
-  const endpoints = [
-    `https://api.opensea.io/api/v2/chain/solana/account/${ownerAddress}/nfts?limit=${pageSize}`,
-    `https://api.opensea.io/api/v2/chain/solana/account/${ownerAddress}/nfts?limit=${pageSize}&include_orders=false`,
-    `https://api.opensea.io/api/v2/chain/solana/account/${ownerAddress}/nfts?limit=${pageSize}&include_orders=false&include_metadata=true`
-  ];
-
-  for (const url of endpoints) {
-    console.log('Trying OpenSea endpoint:', url);
-
-    try {
-      const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error response:', errorText);
-        continue; // Try next endpoint
-      }
-
-      const data = await response.json() as OpenSeaApiResponse;
-      console.log('Raw API response:', data);
-      console.log('Number of NFTs returned:', data.nfts?.length || 0);
-      
-      if (data.nfts && data.nfts.length > 0) {
-        const transformedNfts: NFT[] = data.nfts.map((nft): NFT => ({
-          id: nft.identifier,
-          address: nft.contract,
-          token_id: parseInt(nft.identifier, 10),
-          attributes: JSON.stringify(nft.traits || []),
-          name: nft.name || `#${nft.identifier}`,
-          image_url: nft.image_url,
-          owner_of: ownerAddress,
-          block_minted: 0,
-          contract_type: 'SOL',
-          description: nft.description || '',
-          image: nft.image_url,
-          image_url_shrunk: nft.image_url,
-          animation_url: nft.animation_url,
-          metadata: '',
-          chain_id: 1399811149,
-          old_image_url: '',
-          old_token_uri: '',
-          token_uri: '',
-          log_index: 0,
-          transaction_index: 0,
-          collection_id: '',
-          num_items: 1,
-          created_at: nft.updated_at || new Date().toISOString(),
-          updated_at: nft.updated_at || new Date().toISOString(),
-          owners: [{ owner_of: ownerAddress, quantity: 1 }]
-        }));
-
-        console.log('Transformed NFTs:', transformedNfts.length);
-
-        return {
-          page: 1,
-          pageSize: pageSize,
-          totalCount: transformedNfts.length,
-          totalPages: 1,
-          data: transformedNfts
-        };
-      }
-    } catch (error) {
-      console.error('Error with endpoint:', url, error);
-      continue; // Try next endpoint
-    }
-  }
-
-  // If all endpoints fail, return empty result
-  console.log('All OpenSea endpoints failed, returning empty result');
-  return {
-    page: 1,
-    pageSize: pageSize,
-    totalCount: 0,
-    totalPages: 1,
-    data: []
-  };
 }
