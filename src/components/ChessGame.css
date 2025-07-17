@@ -13,6 +13,14 @@
   padding: 0;
 }
 
+/* Animated background when game is active */
+.chess-game.game-active {
+  background-image: url('/assets/background.gif') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
 .game-content, .game-stable-layout {
   flex: 1 1 0;
   display: flex;
@@ -42,6 +50,13 @@
   min-height: 0;
   height: 100%;
   overflow-y: auto;
+}
+
+/* Transparent backgrounds when game is active */
+.chess-game.game-active .left-sidebar,
+.chess-game.game-active .right-sidebar {
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .center-area {
@@ -161,24 +176,43 @@
   margin: 0 0 2px 0;
 }
 
+/* Transparent game info when game is active */
+.chess-game.game-active .game-info-compact {
+  background: rgba(240, 240, 240, 0.9);
+  backdrop-filter: blur(5px);
+}
+
+.chess-game.game-active .game-controls-compact {
+  background: rgba(240, 240, 240, 0.9);
+  backdrop-filter: blur(5px);
+}
+
+/* Transparent leaderboard and move history when game is active */
+.chess-game.game-active .leaderboard-compact,
+.chess-game.game-active .move-history-compact {
+  background: transparent;
+  backdrop-filter: none;
+  border: 1px solid #00ff00;
+}
+
 /* --- Move History & Leaderboard --- */
 .move-history, .leaderboard {
   flex: 1 1 0;
   overflow-y: auto;
-  background: #fff;
+  background: transparent;
   border-radius: 4px;
   margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #c00 !important;
+  color: #00ff00 !important;
   padding: 2px 0;
   min-height: 0;
 }
 .move-history h4, .leaderboard h3 {
   font-size: 13px;
   font-weight: bold;
-  color: #000080;
+  color: #00ff00;
   margin: 0 0 4px 0;
   text-align: center;
 }
@@ -866,22 +900,32 @@
 }
 
 .game-info-bar span, .game-info-bar div {
-  color: #0f0 !important;
-  /* Default to green for terminal style, will be overridden by dark/light mode classes */
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
+  /* Default to console green with glow for terminal style, will be overridden by dark/light mode classes */
 }
 
 .game-info-bar .mode-novice {
-  color: #008000;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
 }
 .game-info-bar .mode-intermediate {
-  color: #ff8c00;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
 }
 .game-info-bar .mode-master {
-  color: #ff6600;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
 }
 
 .game-info-bar .mode-grand-master {
-  color: #ff0000;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
+}
+
+.game-info-bar .mode-play {
+  color: #000000 !important;
+  text-shadow: none;
 }
 
 .game-info-bar .current-blue {
@@ -934,6 +978,27 @@ html.chess-dark-mode, body.chess-dark-mode {
   background: #000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;
+}
+
+/* Override dark mode background when game is active to show animated background */
+.chess-dark-mode.chess-game.game-active .game-stable-layout {
+  background: transparent !important;
+}
+
+/* Override all dark mode backgrounds when game is active */
+.chess-dark-mode.chess-game.game-active .left-sidebar,
+.chess-dark-mode.chess-game.game-active .right-sidebar,
+.chess-dark-mode.chess-game.game-active .center-area,
+.chess-dark-mode.chess-game.game-active .chessboard-container,
+.chess-dark-mode.chess-game.game-active .piece-gallery-panel,
+.chess-dark-mode.chess-game.game-active .piece-gallery,
+.chess-dark-mode.chess-game.game-active .move-history,
+.chess-dark-mode.chess-game.game-active .gallery-item,
+.chess-dark-mode.chess-game.game-active .leaderboard,
+.chess-dark-mode.chess-game.game-active .leaderboard-table,
+.chess-dark-mode.chess-game.game-active .game-info,
+.chess-dark-mode.chess-game.game-active .game-content {
+  background: transparent !important;
 }
 .chess-dark-mode .move-history,
 .chess-dark-mode .leaderboard,
@@ -990,17 +1055,24 @@ html.chess-dark-mode, body.chess-dark-mode {
   text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
 }
 .chess-dark-mode .mode-intermediate {
-  color: #ff8c00 !important;
-  text-shadow: 0 0 6px #ff8c00, 0 0 2px #ff8c00;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
 }
 .chess-dark-mode .mode-master {
-  color: #ff6600;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
   font-weight: bold;
 }
 
 .chess-dark-mode .mode-grand-master {
-  color: #800080;
+  color: #00ff00 !important;
+  text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
   font-weight: bold;
+}
+
+.chess-dark-mode .mode-play {
+  color: #000000 !important;
+  text-shadow: none;
 }
 .chess-dark-mode .leaderboard-table th, .chess-dark-mode .leaderboard-table td {
   color: #00ff00 !important;
@@ -1154,6 +1226,18 @@ html.chess-dark-mode, body.chess-dark-mode {
   color: #00ff00 !important;
   border-color: #00ff00 !important;
 }
+
+/* Override for active game - make containers transparent */
+.chess-dark-mode.chess-game.game-active .left-sidebar,
+.chess-dark-mode.chess-game.game-active .right-sidebar,
+.chess-dark-mode.chess-game.game-active .move-history,
+.chess-dark-mode.chess-game.game-active .leaderboard,
+.chess-dark-mode.chess-game.game-active .leaderboard-compact,
+.chess-dark-mode.chess-game.game-active .move-history-compact {
+  background: transparent !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
 .chess-dark-mode .leaderboard-table th,
 .chess-dark-mode .leaderboard-table td {
   background: #111 !important;
@@ -1163,6 +1247,17 @@ html.chess-dark-mode, body.chess-dark-mode {
 body.chess-dark-mode, html.chess-dark-mode {
   background: #111 !important;
   background-image: none !important;
+}
+
+/* Override body/html dark mode background when game is active */
+.chess-dark-mode.chess-game.game-active,
+.chess-dark-mode.chess-game.game-active body,
+.chess-dark-mode.chess-game.game-active html {
+  background: transparent !important;
+  background-image: url('/assets/background.gif') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
 body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
@@ -1738,13 +1833,14 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .leaderboard-compact {
   flex: 1 1 0;
   overflow-y: auto;
-  background: #fff;
+  background: transparent;
+  border: 1px solid #00ff00;
   border-radius: 4px;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   display: flex;
   flex-direction: column;
-  color: #c00 !important;
-  padding: 4px 0;
+  color: #00ff00 !important;
+  padding: 2px 0;
   min-height: 0;
 }
 
@@ -1790,20 +1886,21 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .move-history-compact {
   flex: 1 1 0;
   overflow-y: auto;
-  background: #fff;
+  background: transparent;
+  border: 1px solid #00ff00;
   border-radius: 4px;
   margin: 0;
   display: flex;
   flex-direction: column;
-  color: #c00 !important;
-  padding: 4px 0;
+  color: #00ff00 !important;
+  padding: 2px 0;
   min-height: 0;
 }
 
 .move-history-compact .move-history-title {
   font-size: 12px;
   font-weight: bold;
-  color: #000080;
+  color: #00ff00;
   margin: 0 0 4px 0;
   text-align: center;
 }
@@ -1829,14 +1926,14 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f0f0f0;
+  background: transparent;
   border-bottom: 1px solid #bbb;
-  padding: 4px 8px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: bold;
-  min-height: 24px;
+  min-height: 20px;
   box-sizing: border-box;
-  margin: 0 0 2px 0;
+  margin: 0 0 1px 0;
 }
 
 .game-info-compact span {
@@ -1995,13 +2092,13 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 /* Dark Mode Support */
 .chess-dark-mode .leaderboard-compact,
 .chess-dark-mode .move-history-compact {
-  background: #2d3748;
-  color: #e2e8f0 !important;
+  background: transparent;
+  color: #00ff00 !important;
 }
 
 .chess-dark-mode .leaderboard-compact h3,
 .chess-dark-mode .move-history-compact .move-history-title {
-  color: #90cdf4;
+  color: #00ff00;
 }
 
 .chess-dark-mode .leaderboard-table-compact th,
@@ -2011,7 +2108,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .chess-dark-mode .game-info-compact {
-  background: #2d3748;
+  background: transparent;
   border-color: #4a5568;
   color: #e2e8f0;
 }

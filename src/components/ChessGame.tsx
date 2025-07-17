@@ -354,7 +354,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [isUpdatingBoard, setIsUpdatingBoard] = useState(false);
 
   // Add state for random chessboard selection
-  const [selectedChessboard, setSelectedChessboard] = useState<string>('/images/chessboard1.png');
+  const [selectedChessboard, setSelectedChessboard] = useState<string>(() => {
+    const chessboards = [
+      '/images/chessboard1.png',
+      '/images/chessboard2.png',
+      '/images/chessboard3.png',
+      '/images/chessboard4.png',
+      '/images/chessboard5.png',
+      '/images/chessboard6.png'
+    ];
+    const randomIndex = Math.floor(Math.random() * chessboards.length);
+    const selected = chessboards[randomIndex];
+    console.log('[DEBUG] Initial random chessboard selected:', selected, '(index:', randomIndex, ')');
+    return selected;
+  });
 
   // Add sound and celebration state
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1256,7 +1269,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       redRooksMove: { left: false, right: false },
       lastPawnDoubleMove: null
     });
-    setSelectedChessboard(selectRandomChessboard());
+    // Don't select chessboard here - let startGame() handle it
     if (isAIMovingRef.current) isAIMovingRef.current = false;
   };
 
@@ -1362,7 +1375,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => (
     <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-      <h3>Lawbstation Chess Pieces</h3>
+      <h3 style={{color: '#32CD32'}}>Lawbstation Chess Pieces</h3>
       <div className="piece-gallery-grid">
         {pieceGallery.map(piece => (
           <div key={piece.key} className="piece-gallery-item" onClick={() => {
@@ -1384,18 +1397,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const renderDifficultySelection = () => (
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
-        <div className="difficulty-selection-panel" style={{background:'#fff',borderRadius:12,padding:'32px 24px',boxShadow:'0 4px 32px rgba(0,0,0,0.12)',textAlign:'center'}}>
-          <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#0a2a7a',marginBottom:16}}>Start a New Game</h2>
-          <p style={{fontSize:'1.1rem',color:'#333',marginBottom:24}}>Challenge the LawbBot AI to a chess match.<br/>Good luck, have fun!</p>
+        <div className="difficulty-selection-panel" style={{background:'transparent',borderRadius:0,padding:'32px 24px',boxShadow:'none',textAlign:'center'}}>
+          <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#00ff00',marginBottom:16,textShadow:'0 0 6px #00ff00, 0 0 2px #00ff00'}}>Select Difficulty</h2>
+          <p style={{fontSize:'1.1rem',color:'#00ff00',marginBottom:24,textShadow:'0 0 6px #00ff00, 0 0 2px #00ff00'}}>Compete against the computer to climb the leaderboard.</p>
           <div style={{display:'flex',justifyContent:'center',gap:16,marginBottom:24}}>
             <button
               className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
-              style={{background:difficulty==='easy'?'#44c0ff':'#eee',color:difficulty==='easy'?'#fff':'#333',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:8,border:'none',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 2px 8px #44c0ff44':'none'}}
+              style={{background:difficulty==='easy'?'#00ff00':'transparent',color:difficulty==='easy'?'#000':'#00ff00',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #00ff00',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 0 6px #00ff00, 0 0 2px #00ff00':'none'}}
               onClick={()=>setDifficulty('easy')}
             >Easy</button>
             <button
               className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
-              style={{background:difficulty==='hard'?'#0a2a7a':'#eee',color:difficulty==='hard'?'#fff':'#333',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:8,border:'none',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 2px 8px #0a2a7a44':'none'}}
+              style={{background:difficulty==='hard'?'#00ff00':'transparent',color:difficulty==='hard'?'#000':'#00ff00',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #00ff00',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #00ff00, 0 0 2px #00ff00':'none'}}
               onClick={()=>setDifficulty('hard')}
             >Hard</button>
           </div>
@@ -1403,14 +1416,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             className={`difficulty-btn start-btn`}
             onClick={() => { startGame(); }}
             style={{ 
-              background: 'linear-gradient(90deg, #0a2a7a 0%, #44c0ff 100%)',
-              color: 'white',
+              background: 'transparent',
+              color: '#00ff00',
               fontWeight: 'bold',
               fontSize: '1.3em',
               padding: '18px 48px',
-              borderRadius: 8,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-              border: 'none',
+              borderRadius: 0,
+              boxShadow: '0 0 6px #00ff00, 0 0 2px #00ff00',
+              border: '1px solid #00ff00',
               cursor: 'pointer',
               letterSpacing: 1,
               marginBottom: 8
@@ -1635,7 +1648,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
 
   return (
-    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
+    <div 
+      className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}${showGame ? ' game-active' : ''}`}
+    >
       {/* Streamlined Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS TESTNET BETA 3000</h2>
@@ -1710,7 +1725,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   )}
                   {isOnline && (
                     <span className="wager-display">
-                      Wager: {wager} ETH
+                      Wager: {wager} tDMT
                     </span>
                   )}
                 </div>
@@ -1778,6 +1793,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <ChessMultiplayer onClose={onClose} onMinimize={onMinimize} fullscreen={fullscreen} />
               ) : (
                 <div className="game-mode-panel-streamlined">
+                  {/* Lawbstation Game Image */}
+                  <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                    <img 
+                      src="/assets/lawbstationgame.png" 
+                      alt="Lawbstation Chess" 
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        borderRadius: '0px',
+                        boxShadow: 'none'
+                      }}
+                    />
+                  </div>
                   <div className="mode-selection-compact">
                     <button 
                       className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
@@ -1799,7 +1827,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   )}
                   {isOnline && (
                     <div className="pvp-info">
-                      <p>Challenge other players with ETH wagers</p>
+                      <p>Challenge other players with tDMT wagers</p>
                       <p>Create or join games instantly</p>
                     </div>
                   )}
@@ -1808,16 +1836,42 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     <h4>How to Play</h4>
                     <div className="help-content">
                       <p><strong>Chess:</strong> Capture your opponent's king. Each piece moves uniquely - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
-                      <p><strong>Multiplayer:</strong> Connect your wallet to play PvP games with ETH wagers. Win games to claim your opponent's wager and climb the leaderboard.</p>
-                      <p><strong>AI Mode:</strong> Practice against our LawbBot AI. Choose Easy or Hard difficulty. Wins earn points on the leaderboard.</p>
-                      <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>
-                        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>Network Setup (if not connected):</p>
-                        <p style={{ margin: '2px 0' }}><strong>Network Name:</strong> Sanko Testnet</p>
-                        <p style={{ margin: '2px 0' }}><strong>RPC URL:</strong> https://sanko-arb-sepolia.rpc.caldera.xyz/http</p>
-                        <p style={{ margin: '2px 0' }}><strong>Chain ID:</strong> 1992</p>
-                        <p style={{ margin: '2px 0' }}><strong>Currency Symbol:</strong> tDMT</p>
+                      <p><strong>Single Player:</strong> Practice against the computer. Select Easy or Hard difficulty.</p>
+                      <p><strong>Multiplayer:</strong> Wage tDMT and play PvP chess. Winner claims the pot minus 5% house fee. Player 1 = Blue, Player 2 = Red. Game starts once Player 2 matches wage set by Player 1. Player 1 opens. endGame triggers upon checkmate or stalemate.</p>
+                      <p><strong>Leaderboard:</strong> All points tracked to the connected wallet. Points system: Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+                      <p><strong>Lawb Chess Testnet Contract:</strong> <a href="https://testnet.sankoscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x3112AF5728520F52FD1C6710dD7bD52285a68e47</a></p>
+                      <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Testnet</p>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://sanko-arb-sepolia.rpc.caldera.xyz/http</p>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1992</p>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> tDMT</p>
                       </div>
                     </div>
+                  </div>
+                  {/* Chessboards GIF */}
+                  <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
+                    <img 
+                      src="/images/chessboards.gif" 
+                      alt="Chessboards Animation" 
+                      style={{
+                        maxWidth: '100%',
+                        width: '300px',
+                        height: 'auto',
+                        borderRadius: '0px',
+                        boxShadow: 'none'
+                      }}
+                    />
+                  </div>
+                  {/* Sidebar Toggle Buttons for Home Page */}
+                  <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
+                    <button
+                      className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('leaderboard')}
+                    >Leaderboard</button>
+                    <button
+                      className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('gallery')}
+                    >Gallery</button>
                   </div>
                 </div>
               )}
