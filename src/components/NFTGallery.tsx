@@ -308,10 +308,25 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
   const getOwnerInfo = (nft: NFT) => {
-    if (currentCollection.api === 'opensea-solana' && (!nft.owners || nft.owners.length === 0)) {
+    // For Solana NFTs, check both owners array and owner_of field
+    if (currentCollection.api === 'opensea-solana') {
+      if (nft.owner_of && nft.owner_of.length > 0) {
+        return `${nft.owner_of.substring(0, 6)}...${nft.owner_of.substring(-4)}`;
+      }
+      if (nft.owners && nft.owners.length > 0) {
+        return `${nft.owners[0].owner_of.substring(0, 6)}...${nft.owners[0].owner_of.substring(-4)}`;
+      }
       return 'Owner data unavailable';
     }
-    return nft.owners.length > 0 ? `${nft.owners[0].owner_of.substring(0, 6)}...` : 'N/A';
+    
+    // For other collections
+    if (nft.owner_of && nft.owner_of.length > 0) {
+      return `${nft.owner_of.substring(0, 6)}...${nft.owner_of.substring(-4)}`;
+    }
+    if (nft.owners && nft.owners.length > 0) {
+      return `${nft.owners[0].owner_of.substring(0, 6)}...${nft.owners[0].owner_of.substring(-4)}`;
+    }
+    return 'N/A';
   };
   
   const handleMinimize = () => {
@@ -478,7 +493,42 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
                     {nfts.map(nft => (
                       <div key={nft.id} style={{ border: '1px solid #808080', padding: '10px', backgroundColor: '#ffffff', borderRadius: '4px', cursor: 'pointer' }} onClick={() => { void handleNftClick(nft); }}>
-                        <div style={{ width: '100%', height: '150px', backgroundImage: `url(${nft.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center', marginBottom: '10px', border: '1px solid #ccc' }} />
+                        <img 
+                          src={nft.image_url || nft.image || nft.image_url_shrunk} 
+                          alt={`NFT #${nft.token_id}`}
+                          style={{ 
+                            width: '100%', 
+                            height: '150px', 
+                            objectFit: 'cover', 
+                            marginBottom: '10px', 
+                            border: '1px solid #ccc',
+                            backgroundColor: '#f0f0f0'
+                          }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const nextElement = target.nextElementSibling as HTMLElement;
+                            if (nextElement) {
+                              nextElement.style.display = 'flex';
+                            }
+                          }}
+                        />
+                        <div 
+                          style={{ 
+                            width: '100%', 
+                            height: '150px', 
+                            marginBottom: '10px', 
+                            border: '1px solid #ccc',
+                            backgroundColor: '#f0f0f0',
+                            display: 'none',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            color: '#666'
+                          }}
+                        >
+                          Image not available
+                        </div>
                         <div style={{ fontSize: '12px', marginBottom: '5px', color: '#000' }}><strong>#{nft.token_id}</strong></div>
                         <div style={{ fontSize: '11px', marginBottom: '5px', color: '#000' }}>Owner: {getOwnerInfo(nft)}</div>
                         <div style={{ fontSize: '11px', color: '#666' }}>Minted: {formatDate(nft.created_at)}</div>
