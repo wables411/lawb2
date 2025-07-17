@@ -1176,3 +1176,10 @@
     font-size: 16px;
   }
 } 
+
+/* Force chess-header to be red, square, and white text in all cases */
+.chess-header {
+  background: #c00 !important;
+  color: #fff !important;
+  border-radius: 0 !important;
+} 

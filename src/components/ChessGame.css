@@ -931,9 +931,16 @@
   }
   
   .chess-header {
-    height: 32px;
-    font-size: 14px;
-    padding: 4px 8px;
+    background: #c00 !important;
+    color: #fff !important;
+    border-radius: 0 !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid #900;
+    margin: 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
   
   .chess-content {
@@ -1091,6 +1098,9 @@
 
 @media (max-width: 480px) {
   .chess-header {
+    background: #c00 !important;
+    color: #fff !important;
+    border-radius: 0 !important;
     font-size: 13px;
     height: 32px;
     padding: 2px 4px;
@@ -1361,6 +1371,9 @@
   }
 
   .chess-header {
+    background: #c00 !important;
+    color: #fff !important;
+    border-radius: 0 !important;
     padding: 4px 8px;
     font-size: 12px;
     height: 28px;
@@ -3635,4 +3648,20 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   .piece-gallery-desc {
     font-size: 9px;
   }
+}
+
+/* Ensure left sidebar gallery is scrollable */
+.left-sidebar {
+  overflow-y: auto;
+}
+
+.left-sidebar .piece-gallery {
+  flex: 1 1 0;
+  overflow-y: auto;
+  max-height: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }

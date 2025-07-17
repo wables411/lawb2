@@ -1082,6 +1082,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setStatus(`Checkmate! You win!`);
         playSound('checkmate');
         setShowVictory(true);
+        setVictoryCelebration(true);
         triggerVictoryCelebration();
         void updateScore('win');
         setShowLeaderboardUpdated(true);
@@ -1089,6 +1090,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       } else {
         setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
         playSound('checkmate');
+        playSound('loser');
         setShowDefeat(true);
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
@@ -1472,7 +1474,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add epic sound effects and visual enhancements
 
   // Sound effects
-  const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory') => {
+  const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory' | 'loser' | 'upgrade') => {
     if (!soundEnabled) return;
     let src = '';
     switch (soundType) {
@@ -1491,6 +1493,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       case 'victory':
         src = '/images/victory.mp3';
         break;
+      case 'loser':
+        src = '/images/loser.mp3';
+        break;
+      case 'upgrade':
+        src = '/images/upgrade.mp3';
+        break;
       default:
         src = '/images/move.mp3';
     }
@@ -1500,10 +1508,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Victory celebration
   const triggerVictoryCelebration = () => {
-    if (!victoryCelebration) return;
-    
     playSound('victory');
-    
     // Create confetti effect
     for (let i = 0; i < 50; i++) {
       setTimeout(() => {
@@ -1522,7 +1527,28 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setTimeout(() => confetti.remove(), 3000);
       }, i * 100);
     }
-    
+    // Create balloon effect
+    for (let i = 0; i < 15; i++) {
+      setTimeout(() => {
+        const balloon = document.createElement('div');
+        const colors = ['#ff4444', '#4444ff', '#ffff44', '#ff44ff', '#ff8844'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        balloon.style.cssText = `
+          position: fixed;
+          width: 60px;
+          height: 80px;
+          background: ${color};
+          border-radius: 50% 50% 50% 50% /60% 40% 60% 40%;
+          left: ${Math.random() * window.innerWidth}px;
+          bottom: -80px;
+          z-index: 9998;
+          animation: balloon-float 6s ease-out forwards;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(balloon);
+        setTimeout(() => balloon.remove(), 6000);
+      }, i * 200);
+    }
     setTimeout(() => setVictoryCelebration(false), 5000);
   };
 
@@ -1555,54 +1581,60 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Workaround for TypeScript JSX type error
   const isOnline = gameMode === 'online';
 
+  // Add state for sidebar view toggle
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('leaderboard');
+
+  // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
+  const handlePromotion = (promotionPiece: string) => {
+    playSound('upgrade');
+    // ... existing promotion logic ...
+  };
+
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}`}>
-      {/* Streamlined Header */}
-      {!fullscreen && (
-        <div className="chess-header">
-          <h2>Lawb Chess</h2>
-                  <div className="chess-controls">
+      {/* Streamlined Header - always show */}
+      <div className="chess-header">
+        <h2>LAWB CHESS TESTNET BETA 3000</h2>
+        <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
           <button onClick={onClose}>×</button>
         </div>
-        </div>
-      )}
-      
+      </div>
       <div className="game-stable-layout">
-        {/* Left Sidebar - Compact Leaderboard */}
+        {/* Left Sidebar - Toggleable Views */}
         <div className="left-sidebar">
-          <div className="leaderboard-compact">
-            <h3>Leaderboard</h3>
-            <div className="leaderboard-table-compact">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Player</th>
-                    <th>Pts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
-                    if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                      const typedEntry = entry as LeaderboardEntry;
-                      return (
-                        <tr key={typedEntry.username}>
-                          <td>{index + 1}</td>
-                          <td>{formatAddress(typedEntry.username)}</td>
-                          <td>{typedEntry.points}</td>
-                        </tr>
-                      );
-                    }
-                    return null;
-                  })}
-                </tbody>
-              </table>
+          {sidebarView === 'leaderboard' && (
+            <div className="leaderboard-compact">
+              <h3>Leaderboard</h3>
+              <div className="leaderboard-table-compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
+                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                        const typedEntry = entry as LeaderboardEntry;
+                        return (
+                          <tr key={typedEntry.username}>
+                            <td>{index + 1}</td>
+                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td>{typedEntry.points}</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-          
-          {/* Move History when game is active */}
-          {showGame && (
+          )}
+          {sidebarView === 'moves' && showGame && (
             <div className="move-history-compact">
               <div className="move-history-title">Moves</div>
               <ul className="move-history-list-compact">
@@ -1612,8 +1644,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </ul>
             </div>
           )}
+          {sidebarView === 'gallery' && (
+            <div className="piece-gallery-compact">
+              {renderPieceGallery(true, 'Click pieces to learn more')}
+            </div>
+          )}
         </div>
-
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area">
           {/* Game Info Bar - Compact */}
@@ -1634,7 +1670,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
             </div>
           )}
-          
           {/* Main Game Area */}
           {showGame ? (
             <div className="chess-main-area">
@@ -1672,9 +1707,22 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   )}
                 </div>
               </div>
-              
               {/* Compact Game Controls */}
               <div className="game-controls-compact">
+                <div className="sidebar-toggle-group">
+                  <button
+                    className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                    onClick={() => setSidebarView('leaderboard')}
+                  >Leaderboard</button>
+                  <button
+                    className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                    onClick={() => setSidebarView('moves')}
+                  >Moves</button>
+                  <button
+                    className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                    onClick={() => setSidebarView('gallery')}
+                  >Gallery</button>
+                </div>
                 <button onClick={handleNewGame}>New Game</button>
                 <button onClick={handleBackToMenu}>Menu</button>
               </div>
@@ -1699,90 +1747,64 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   PvP
                 </button>
               </div>
-              
-                             {gameMode === GameMode.AI && (
-                 <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
-                   Start Game
-                 </button>
-               )}
-               
-               {isOnline && (
+              {gameMode === GameMode.AI && (
+                <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
+                  Start Game
+                </button>
+              )}
+              {isOnline && (
                 <div className="pvp-info">
                   <p>Challenge other players with ETH wagers</p>
                   <p>Create or join games instantly</p>
                 </div>
               )}
-              
               {/* Updated Help Section */}
               <div className="help-section-compact">
                 <h4>How to Play</h4>
                 <div className="help-content">
                   <p><strong>Chess:</strong> Capture your opponent's king. Each piece moves uniquely - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
-                  
                   <p><strong>Multiplayer:</strong> Connect your wallet to play PvP games with ETH wagers. Win games to claim your opponent's wager and climb the leaderboard.</p>
-                  
                   <p><strong>AI Mode:</strong> Practice against our LawbBot AI. Choose Easy or Hard difficulty. Wins earn points on the leaderboard.</p>
                 </div>
               </div>
             </div>
           )}
         </div>
-            
-        {/* Right Sidebar - Piece Gallery */}
-        <div className="right-sidebar">
-          <div className="piece-gallery-panel">
-            {renderPieceGallery(true)}
-          </div>
-        </div>
       </div>
-      {showGalleryModal && (
-        <div className="gallery-modal-overlay" onClick={() => setShowGalleryModal(false)}>
-          <div className="gallery-modal" onClick={e => e.stopPropagation()}>
-            <button className="close-modal-btn" onClick={() => setShowGalleryModal(false)}>×</button>
-            {renderPieceGallery(false)}
-          </div>
+      {/* Gallery Modal */}
+      {showGalleryModal && renderPieceGallery(true)}
+      {/* Promotion Dialog */}
+      {showPromotion && renderPromotionDialog()}
+      {/* Leaderboard Updated Message */}
+      {showLeaderboardUpdated && (
+        <div className="leaderboard-updated-msg">
+          Leaderboard updated!
         </div>
       )}
-      {renderPromotionDialog()}
-      {showLeaderboardUpdated && (
-        <div className="leaderboard-updated-msg">Leaderboard updated!</div>
-      )}
-      {showVictory && victoryCelebration && (
-        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
-          <div className="balloons-container">{/* ...balloons code... */}</div>
-          <img src="/images/victory.gif" alt="Victory" style={{width:'320px',height:'auto',zIndex:2}} />
-          <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24}}>
-            <button onClick={handleNewGame}>New Game</button>
-            <button onClick={handleBackToMenu}>Back to Menu</button>
+      {/* Victory/Defeat Overlays */}
+      {showVictory && (
+        <div className="victory-overlay">
+          <div className="balloons-container" />
+          <div className="victory-modal">
+            <div className="victory-content">
+              <img src="/images/victory.gif" alt="Victory" style={{ width: 120, marginBottom: 16 }} />
+              <div>Victory!</div>
+              <button onClick={handleNewGame}>New Game</button>
+            </div>
           </div>
         </div>
       )}
       {showDefeat && (
-        <>
-          <div className="blood-overlay">
-            {[0, 1, 2, 3, 4, 5].map(i => (
-              <div
-                key={i}
-                className="blood-drip"
-                style={{
-                  left: `${10 + i * 14}%`,
-                  animationDelay: `${0.5 + i * 0.3}s`,
-                  background: `linear-gradient(to bottom, #a80000 0%, #d10000 80%, #5a0000 100%)`,
-                  width: `${14 + Math.random() * 10}px`,
-                  height: `${50 + Math.random() * 30}px`,
-                  opacity: 0.85 + Math.random() * 0.1
-                }}
-              />
-            ))}
-          </div>
-          <div className="defeat-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)',pointerEvents:'none'}}>
-            <img src="/images/loser.gif" alt="Defeat" style={{width:'320px',height:'auto',zIndex:2}} />
-            <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24,pointerEvents:'none'}}>
-              <button style={{pointerEvents:'auto',zIndex:3000}} onClick={handleNewGame}>New Game</button>
-              <button style={{pointerEvents:'auto',zIndex:3000}} onClick={handleBackToMenu}>Back to Menu</button>
+        <div className="defeat-overlay">
+          <div className="blood-overlay" />
+          <div className="victory-modal">
+            <div className="victory-content">
+              <img src="/images/loser.gif" alt="Defeat" style={{ width: 120, marginBottom: 16 }} />
+              <div>Defeat!</div>
+              <button onClick={handleNewGame}>Try Again</button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

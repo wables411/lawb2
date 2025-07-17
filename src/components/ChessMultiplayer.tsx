@@ -2194,10 +2194,36 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Play sound
-  const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory') => {
+  const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory' | 'loser' | 'upgrade') => {
     if (!soundEnabled) return;
+    let src = '';
+    switch (soundType) {
+      case 'move':
+        src = '/images/move.mp3';
+        break;
+      case 'capture':
+        src = '/images/capture.mp3';
+        break;
+      case 'check':
+        src = '/images/play.mp3';
+        break;
+      case 'checkmate':
+        src = '/images/victory.mp3';
+        break;
+      case 'victory':
+        src = '/images/victory.mp3';
+        break;
+      case 'loser':
+        src = '/images/loser.mp3';
+        break;
+      case 'upgrade':
+        src = '/images/upgrade.mp3';
+        break;
+      default:
+        src = '/images/move.mp3';
+    }
     try {
-      const audio = new Audio(`/images/${soundType}.mp3`);
+      const audio = new Audio(src);
       audio.volume = 0.3;
       audio.play().catch(e => console.warn('Audio play failed:', e));
     } catch (error) {
