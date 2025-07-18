@@ -7,6 +7,8 @@ import Popup from './components/Popup';
 import MintPopup from './components/MintPopup';
 import NFTGallery from './components/NFTGallery';
 import MemeGenerator from './components/MemeGenerator';
+
+
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +37,8 @@ function App() {
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+
+
   const [showChessLoading, setShowChessLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -81,6 +85,7 @@ function App() {
       setShowNFTGallery(true);
     } else if (action === 'meme-generator') {
       setShowMemeGenerator(true);
+
     } else if (action === 'chess') {
       if (!isConnected) {
         void open().then(() => {
@@ -122,6 +127,7 @@ function App() {
       setShowNFTGallery(true);
     } else if (popupId === 'meme-generator-popup') {
       setShowMemeGenerator(true);
+
     } else {
       setActivePopup(popupId);
     }
@@ -150,6 +156,8 @@ function App() {
     setShowMemeGenerator(false);
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
   };
+
+
 
   const walletButton = (
     <div 
@@ -345,7 +353,7 @@ function App() {
         <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
         <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
         <p style={{marginBottom: '10px'}}>
-          if you wish to bridge your $lawb token from solana to arbitrum to sanko, a wormhole is available via <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>https://portalbridge.com/</a>
+          if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>https://portalbridge.com/</a>
         </p>
         <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
         <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
@@ -388,6 +396,9 @@ function App() {
       <Popup id="meme-generator-popup" isOpen={showMemeGenerator} onClose={closeMemeGenerator} onMinimize={minimizeMemeGenerator}>
         <MemeGenerator />
       </Popup>
+
+
+
     </div>
   );
 }

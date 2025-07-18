@@ -327,7 +327,7 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
         <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
         <p style={{marginBottom: '10px'}}>
-          if you wish to bridge your $lawb token from solana to arbitrum to sanko, a wormhole is available via <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{color: '#ff0000', textDecoration: 'underline'}}>https://portalbridge.com/</a>
+          if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{color: '#ff0000', textDecoration: 'underline'}}>https://portalbridge.com/</a>
         </p>
         <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
         <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>

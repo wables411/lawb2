@@ -1,6 +1,8 @@
 import { createAppKit } from '@reown/appkit/react';
-import { mainnet } from '@reown/appkit/networks';
+import { mainnet, arbitrum } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
+import { SolanaAdapter } from '@reown/appkit-adapter-solana/react';
+import { solana, solanaTestnet, solanaDevnet } from '@reown/appkit/networks';
 
 // Sanko testnet configuration
 export const sankoTestnet = {
@@ -30,15 +32,18 @@ const metadata = {
   icons: ['/assets/favicon.ico']
 };
 
+// Set up Solana Adapter
+const solanaWeb3JsAdapter = new SolanaAdapter();
+
 export const wagmiAdapter = new WagmiAdapter({
-  networks: [mainnet, sankoTestnet], // Add Sanko Testnet
+  networks: [mainnet, arbitrum, sankoTestnet], // Add Arbitrum mainnet
   projectId,
   ssr: false
 });
 
 createAppKit({
-  adapters: [wagmiAdapter],
-  networks: [mainnet, sankoTestnet], // Add Sanko Testnet
+  adapters: [wagmiAdapter, solanaWeb3JsAdapter],
+  networks: [mainnet, arbitrum, sankoTestnet, solana, solanaTestnet, solanaDevnet], // Add Arbitrum mainnet
   projectId,
   metadata,
   features: {

@@ -31,6 +31,8 @@ const ICONS: DesktopIcon[] = [
   { id: 'gallery', image: '/assets/lawbstarz.gif', label: 'NFT Gallery', action: 'nft-gallery', row: 0, col: 2 },
   { id: 'meme-generator', image: '/assets/meme.gif', label: 'Meme Generator', action: 'meme-generator', row: 0, col: 4 },
   { id: 'chess', image: '/assets/chess.svg', label: 'Chess', action: 'chess', row: 0, col: 5 },
+
+  
   // Row 2
   { id: 'purity', image: '/assets/purityfinance.png', label: 'Purity', action: 'popup', popupId: 'purity-popup', row: 1, col: 0 },
   { id: 'lawbshop', image: '/assets/lawbshop.png', label: 'Lawb.Shop', action: 'url', url: 'https://store.fun/lawbshop', row: 1, col: 1 },
