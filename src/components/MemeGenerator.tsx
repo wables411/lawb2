@@ -261,8 +261,8 @@ function MemeGenerator() {
       if (bottomText) {
         ctx.font = `${bottomFontSize}px Impact`;
         const lines = wrapText(bottomText, CANVAS_SIZE - 20);
-        lines.reverse().forEach((line, index) => {
-          const y = CANVAS_SIZE - (bottomFontSize * 1.2 * (index + 1));
+        lines.forEach((line, index) => {
+          const y = CANVAS_SIZE - (lines.length - index) * bottomFontSize * 1.2 + bottomFontSize; // Position from bottom edge
           ctx.strokeText(line, CANVAS_SIZE / 2, y);
           ctx.fillText(line, CANVAS_SIZE / 2, y);
         });
