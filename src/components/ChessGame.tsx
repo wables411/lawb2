@@ -1835,10 +1835,46 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <div className="help-section-compact">
                     <h4>How to Play</h4>
                     <div className="help-content">
-                      <p><strong>Chess:</strong> Capture your opponent's king. Each piece moves uniquely - pawns forward, knights in L-shapes, bishops diagonally, rooks horizontally/vertically, queens in all directions, kings one square at a time.</p>
-                      <p><strong>Single Player:</strong> Practice against the computer. Select Easy or Hard difficulty.</p>
-                      <p><strong>Multiplayer:</strong> Wage tDMT and play PvP chess. Winner claims the pot minus 5% house fee. Player 1 = Blue, Player 2 = Red. Game starts once Player 2 matches wage set by Player 1. Player 1 opens. endGame triggers upon checkmate or stalemate.</p>
-                      <p><strong>Leaderboard:</strong> All points tracked to the connected wallet. Points system: Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+                      <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
+                      
+                      <p><strong>Game Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
+                      
+                      <p><strong>Piece Movements:</strong></p>
+                      <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                        <li><strong>Pawn:</strong> Moves forward one square (or two on first move), captures diagonally</li>
+                        <li><strong>Knight:</strong> Moves in L-shape: 2 squares in one direction, then 1 square perpendicular</li>
+                        <li><strong>Bishop:</strong> Moves any number of squares diagonally</li>
+                        <li><strong>Rook:</strong> Moves any number of squares horizontally or vertically</li>
+                        <li><strong>Queen:</strong> Moves any number of squares in any one direction</li>
+                        <li><strong>King:</strong> Moves one square in any direction</li>
+                      </ul>
+                      
+                      <p><strong>Special Rules:</strong></p>
+                      <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                        <li><strong>Check:</strong> When your king is under attack - you must move to escape</li>
+                        <li><strong>Checkmate:</strong> When your king is under attack with no legal moves to escape. endGame.</li>
+                        <li><strong>Stalemate:</strong> When you have no legal moves but your king is not in check (draw). endGame.</li>
+                        <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of chess board, Player chooses which chess piece to swap pawn out for.</li>
+                      </ul>
+                      
+                      <p><strong>Game Modes:</strong></p>
+                      <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                        <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
+                        <li><strong>Multiplayer:</strong> wage tDMT and challenge other players on Sanko testnet. Winner takes the pot minus 5% house fee.</li>
+                      </ul>
+                      
+                      <p><strong>Multiplayer Flow:</strong></p>
+                      <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                        <li>Connect your wallet to Sanko testnet</li>
+                        <li>Create a game and set your wager amount in tDMT</li>
+                        <li>Share your invite code with an opponent</li>
+                        <li>Opponent joins and matches your wager</li>
+                        <li>Game begins automatically - Blue (Player 1) moves first</li>
+                        <li>Winner claims the pot minus 5% house fee</li>
+                      </ol>
+                      
+                      <p><strong>Leaderboard:</strong> All games are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+                      
                       <p><strong>Lawb Chess Testnet Contract:</strong> <a href="https://testnet.sankoscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x3112AF5728520F52FD1C6710dD7bD52285a68e47</a></p>
                       <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
                         <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Testnet</p>
