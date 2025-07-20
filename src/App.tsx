@@ -93,7 +93,6 @@ function App() {
           const checkConnection = () => {
             if (window.ethereum && window.ethereum.selectedAddress) {
               setShowChessLoading(true);
-              navigate('/chess');
             } else {
               setTimeout(checkConnection, 200);
             }
@@ -102,7 +101,6 @@ function App() {
         });
       } else {
         setShowChessLoading(true);
-        navigate('/chess');
       }
     }
   };
