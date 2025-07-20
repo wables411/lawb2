@@ -181,8 +181,8 @@ function MemeGenerator() {
   // State for text
   const [topText, setTopText] = useState('');
   const [bottomText, setBottomText] = useState('');
-  const [topFontSize, setTopFontSize] = useState(36);
-  const [bottomFontSize, setBottomFontSize] = useState(36);
+  const [topFontSize, setTopFontSize] = useState(50);
+  const [bottomFontSize, setBottomFontSize] = useState(50);
   // State for effects
   const [deepFry, setDeepFry] = useState(false);
   const [pixelate, setPixelate] = useState(false);
@@ -455,8 +455,8 @@ function MemeGenerator() {
     setNftImage(null);
     setTopText('');
     setBottomText('');
-    setTopFontSize(36);
-    setBottomFontSize(36);
+    setTopFontSize(50);
+    setBottomFontSize(50);
     setDeepFry(false);
     setPixelate(false);
     setGrain(false);
@@ -680,15 +680,6 @@ function MemeGenerator() {
           onContextMenu={handleCanvasContextMenu}
           style={{ touchAction: 'none' }}
         />
-        <div style={{ 
-          textAlign: 'center', 
-          fontSize: '10px', 
-          color: '#666', 
-          marginTop: '4px',
-          fontFamily: 'monospace'
-        }}>
-          💡 Long press to save/share
-        </div>
       </div>
 
       {/* Overlay stickers for manipulation */}
