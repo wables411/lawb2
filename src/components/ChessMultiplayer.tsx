@@ -66,6 +66,19 @@ const CHESS_CONTRACT_ABI = [
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes6",
+        "name": "inviteCode",
+        "type": "bytes6"
+      }
+    ],
+    "name": "cancelGame",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ] as const;
 
@@ -176,6 +189,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { writeContract: writeCreateGame, isPending: isCreatingGameContract, data: createGameHash } = useWriteContract();
   const { writeContract: writeJoinGame, isPending: isJoiningGameContract, data: joinGameHash, error: joinGameError } = useWriteContract();
   const { writeContract: writeEndGame, isPending: isEndingGame, data: endGameHash } = useWriteContract();
+  const { writeContract: writeCancelGame, isPending: isCancellingGame, data: cancelGameHash } = useWriteContract();
   
   // Public client for contract reads
   const publicClient = usePublicClient();
@@ -192,6 +206,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { isLoading: isWaitingForEndReceipt } = useWaitForTransactionReceipt({
     hash: endGameHash,
   });
+  
+  const { isLoading: isWaitingForCancelReceipt } = useWaitForTransactionReceipt({
+    hash: cancelGameHash,
+  });
+
+  // Handle successful refund
+  useEffect(() => {
+    if (cancelGameHash && !isWaitingForCancelReceipt) {
+      console.log('[REFUND] Transaction completed successfully');
+      setGameStatus('Game refunded successfully! Your wager has been returned.');
+      
+      // Reset game state
+      setGameMode(GameMode.LOBBY);
+      setInviteCode('');
+      setPlayerColor(null);
+      debugSetWager(0, 'refund completed');
+      setOpponent(null);
+      
+      // Refresh open games list
+      loadOpenGames();
+    }
+  }, [cancelGameHash, isWaitingForCancelReceipt]);
 
   // Contract read hook for checking player's game state
   const { data: playerGameInviteCode } = useReadContract({
@@ -240,6 +276,43 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard'>('moves');
 
   // Claim winnings function for winners
+  const refundGame = async () => {
+    if (!inviteCode || !address) {
+      alert('No game to refund or wallet not connected');
+      return;
+    }
+    
+    try {
+      console.log('[REFUND] Attempting to refund game:', inviteCode);
+      
+      // Check if this player is the game creator
+      const gameData = await firebaseChess.getGame(inviteCode);
+      if (!gameData || gameData.blue_player !== address) {
+        alert('Only the game creator can refund the game');
+        return;
+      }
+      
+      // Check if opponent has already joined
+      if (gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
+        alert('Cannot refund game after opponent has joined');
+        return;
+      }
+      
+      // Call contract to cancel game
+      await writeCancelGame({
+        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        abi: CHESS_CONTRACT_ABI,
+        functionName: 'cancelGame',
+        args: [inviteCode as `0x${string}`]
+      });
+      
+      console.log('[REFUND] Cancel game transaction submitted');
+    } catch (error) {
+      console.error('[REFUND] Error refunding game:', error);
+      alert('Failed to refund game. Please try again.');
+    }
+  };
+
   const claimWinnings = async () => {
     if (!address || !playerColor) {
       console.error('[CLAIM] Missing required data for claiming winnings');
@@ -2854,6 +2927,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       <div className="game-info">
         <p>Wager: {wager} tDMT</p>
         <p>Share this invite code with your opponent</p>
+      </div>
+      <div className="waiting-actions">
+        <button 
+          onClick={refundGame}
+          disabled={isCancellingGame || isWaitingForCancelReceipt}
+          className="refund-game-btn"
+        >
+          {isCancellingGame || isWaitingForCancelReceipt ? '⏳ Refunding...' : '💰 Refund Game'}
+        </button>
+        <p className="refund-note">
+          You can refund your wager anytime before an opponent joins
+        </p>
       </div>
     </div>
   );
