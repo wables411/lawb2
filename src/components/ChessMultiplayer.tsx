@@ -2797,7 +2797,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Render lobby
   const renderLobby = () => (
     <div className="chess-multiplayer-lobby">
-      <h2>Multiplayer Chess Lobby</h2>
+      <h2>PvP Chess Lawby</h2>
       
       {!isConnected ? (
         <div className="wallet-notice">
