@@ -2028,7 +2028,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       gameState = 'finished';
       winner = currentPlayer;
       setGameStatus(`${currentPlayer === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
-      playSound('checkmate');
+      if (currentPlayer === playerColor) {
+        playSound('victory');
+      } else {
+        playSound('loser');
+      }
       triggerVictoryCelebration();
       
       // Update scores for both players
@@ -2060,7 +2064,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const winner = currentPlayer; // Player who made the move that caused stalemate
       gameState = 'finished';
       setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by stalemate!`);
-      playSound('checkmate');
+      if (winner === playerColor) {
+        playSound('victory');
+      } else {
+        playSound('loser');
+      }
       
       // Update scores for both players
       console.log('[SCORE] Updating scores - Stalemate winner:', winner, 'Loser:', nextPlayer);
@@ -2133,7 +2141,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Victory celebration
   const triggerVictoryCelebration = () => {
     setVictoryCelebration(true);
-    playSound('victory');
+    // Victory celebration visual effects only - sound is handled separately
     
     // Create confetti effect
     for (let i = 0; i < 50; i++) {

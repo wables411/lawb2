@@ -1119,7 +1119,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       
       if (isPlayerWin) {
         setStatus(`Checkmate! You win!`);
-        playSound('checkmate');
+        playSound('victory');
         setShowVictory(true);
         setVictoryCelebration(true);
         triggerVictoryCelebration();
@@ -1128,7 +1128,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
         setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
-        playSound('checkmate');
         playSound('loser');
         setShowDefeat(true);
         void updateScore('loss');
@@ -1150,7 +1149,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       
       if (isPlayerWin) {
         setStatus(`Stalemate! You win!`);
-        playSound('checkmate');
+        playSound('victory');
         setShowVictory(true);
         setVictoryCelebration(true);
         triggerVictoryCelebration();
@@ -1159,7 +1158,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
         setStatus(`Stalemate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
-        playSound('checkmate');
         playSound('loser');
         setShowDefeat(true);
         void updateScore('loss');
