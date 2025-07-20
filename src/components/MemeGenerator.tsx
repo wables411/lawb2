@@ -388,6 +388,62 @@ function MemeGenerator() {
     }
   }, [drawMemeToCanvas]);
 
+  // Mobile long press handlers
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressDelay = 500; // 500ms for long press
+
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    // Start long press timer
+    longPressTimerRef.current = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Show mobile context menu
+      if (navigator.share) {
+        // Use native sharing if available
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'meme.png', { type: 'image/png' });
+            navigator.share({
+              title: 'Lawb Meme',
+              text: 'Check out this meme I made!',
+              files: [file]
+            }).catch(() => {
+              // Fallback to download if sharing fails
+              handleSave();
+            });
+          }
+        });
+      } else {
+        // Fallback to download
+        handleSave();
+      }
+    }, longPressDelay);
+  };
+
+  const handleCanvasTouchEnd = () => {
+    // Clear the timer if touch ends before long press
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleCanvasTouchMove = () => {
+    // Clear the timer if finger moves (prevents accidental long press)
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  // Prevent context menu on right click for desktop
+  const handleCanvasContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+  };
+
   // Handlers
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -613,7 +669,26 @@ function MemeGenerator() {
       </div>
 
       <div className={classes.memeArea}>
-        <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} className={classes.canvas} />
+        <canvas 
+          ref={canvasRef} 
+          width={CANVAS_SIZE} 
+          height={CANVAS_SIZE} 
+          className={classes.canvas}
+          onTouchStart={handleCanvasTouchStart}
+          onTouchEnd={handleCanvasTouchEnd}
+          onTouchMove={handleCanvasTouchMove}
+          onContextMenu={handleCanvasContextMenu}
+          style={{ touchAction: 'none' }}
+        />
+        <div style={{ 
+          textAlign: 'center', 
+          fontSize: '10px', 
+          color: '#666', 
+          marginTop: '4px',
+          fontFamily: 'monospace'
+        }}>
+          💡 Long press to save/share
+        </div>
       </div>
 
       {/* Overlay stickers for manipulation */}
