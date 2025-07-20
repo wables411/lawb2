@@ -204,7 +204,13 @@ function App() {
           justifyContent: 'center',
           zIndex: 9999,
         }}>
-          <img src="/images/blueknight.png" alt="Booting Chess..." style={{ width: 120, height: 120, marginBottom: 32 }} />
+          <video 
+            src="/images/loadingchess.mp4" 
+            style={{ width: 120, height: 120, marginBottom: 32 }}
+            autoPlay
+            muted
+            onEnded={() => setShowChessLoading(false)}
+          />
           <div style={{ color: '#fff', fontSize: 28, fontFamily: 'monospace', letterSpacing: 2 }}>LOADING LAWB CHESS...</div>
         </div>
       )}
