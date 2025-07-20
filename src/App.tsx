@@ -93,10 +93,7 @@ function App() {
           const checkConnection = () => {
             if (window.ethereum && window.ethereum.selectedAddress) {
               setShowChessLoading(true);
-              setTimeout(() => {
-                setShowChessLoading(false);
-                navigate('/chess');
-              }, 1500);
+              navigate('/chess');
             } else {
               setTimeout(checkConnection, 200);
             }
@@ -105,10 +102,7 @@ function App() {
         });
       } else {
         setShowChessLoading(true);
-        setTimeout(() => {
-          setShowChessLoading(false);
-          navigate('/chess');
-        }, 1500);
+        navigate('/chess');
       }
     }
   };
@@ -209,7 +203,10 @@ function App() {
             style={{ width: 120, height: 120, marginBottom: 32 }}
             autoPlay
             muted
-            onEnded={() => setShowChessLoading(false)}
+            onEnded={() => {
+              setShowChessLoading(false);
+              navigate('/chess');
+            }}
           />
           <div style={{ color: '#fff', fontSize: 28, fontFamily: 'monospace', letterSpacing: 2 }}>LOADING LAWB CHESS...</div>
         </div>
