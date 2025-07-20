@@ -2629,6 +2629,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         key={`${row}-${col}`}
         className={`square ${isSelected ? 'selected' : ''} ${isValidMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''} ${isInCheck ? 'square-in-check' : ''}`}
         onClick={() => handleSquareClick(row, col)}
+        onTouchStart={(e) => handleTouchStart(row, col, e)}
+        onTouchMove={handleTouchMove}
       >
         {piece && (
           <div
@@ -3268,6 +3270,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return renderLobby();
     }
   })();
+  
+  // Mobile touch handling for better piece selection
+  const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
+    // Prevent default to avoid double-tap zoom on mobile
+    event.preventDefault();
+    handleSquareClick(row, col);
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    // Prevent scrolling when touching the chessboard
+    event.preventDefault();
+  };
   
   return (
     <>

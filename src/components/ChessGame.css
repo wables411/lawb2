@@ -2441,3 +2441,159 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   box-shadow: 0 0 20px rgba(0,0,0,0.3);
   aspect-ratio: 1 / 1 !important;
 }
+
+/* --- Mobile Touch Optimizations --- */
+@media (max-width: 768px) {
+  /* Larger touch targets for mobile */
+  .square {
+    min-height: 50px;
+    min-width: 50px;
+    touch-action: manipulation;
+  }
+  
+  .piece {
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  
+  /* Larger buttons for mobile */
+  .game-controls-compact button,
+  .mode-btn-compact,
+  .start-btn-compact,
+  .sidebar-toggle-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    touch-action: manipulation;
+  }
+  
+  /* Better touch feedback */
+  .square:active,
+  .piece:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Mobile-optimized sidebar */
+  .left-sidebar {
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile-friendly game info */
+  .game-info-compact {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+  
+  .game-info-compact span {
+    font-size: 14px;
+    margin: 0 4px;
+  }
+  
+  /* Mobile-optimized leaderboard */
+  .leaderboard-table-compact th,
+  .leaderboard-table-compact td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  /* Mobile-friendly help section */
+  .help-content {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  .help-content ul,
+  .help-content ol {
+    padding-left: 20px;
+  }
+  
+  .help-content li {
+    margin-bottom: 4px;
+  }
+}
+
+/* --- Enhanced Mobile Responsiveness --- */
+@media (max-width: 600px) {
+  .chessboard-container,
+  .chessboard {
+    max-width: 95vw;
+    max-height: 95vw;
+    min-width: 280px;
+    min-height: 280px;
+  }
+  
+  .game-stable-layout {
+    padding: 8px;
+    gap: 8px;
+  }
+  
+  .center-area {
+    min-width: 0;
+    width: 100%;
+  }
+  
+  /* Mobile-optimized controls layout */
+  .game-controls-compact {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .sidebar-toggle-group {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  /* Better mobile spacing */
+  .game-mode-panel-streamlined {
+    padding: 16px 12px;
+  }
+  
+  .mode-selection-compact {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+}
+
+/* --- Touch-friendly piece selection --- */
+@media (hover: none) and (pointer: coarse) {
+  .square:hover {
+    /* Disable hover effects on touch devices */
+  }
+  
+  .square.selected {
+    background-color: #4CAF50 !important;
+    box-shadow: inset 0 0 0 3px #2E7D32;
+  }
+  
+  .square.legal-move {
+    background-color: #FFC107 !important;
+    box-shadow: inset 0 0 0 2px #FF8F00;
+  }
+  
+  .square.last-move {
+    background-color: #2196F3 !important;
+    box-shadow: inset 0 0 0 2px #1976D2;
+  }
+}
+
+/* --- Mobile-specific dark mode improvements --- */
+@media (max-width: 768px) {
+  .chess-dark-mode .game-controls-compact button {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #fff;
+  }
+  
+  .chess-dark-mode .game-controls-compact button:hover {
+    background: #3a3a3a;
+  }
+  
+  .chess-dark-mode .game-controls-compact button:active {
+    background: #1a1a1a;
+  }
+}

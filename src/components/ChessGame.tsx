@@ -1319,6 +1319,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         key={`${row}-${col}`}
         className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
         onClick={() => handleSquareClick(row, col)}
+        onTouchStart={(e) => handleTouchStart(row, col, e)}
+        onTouchMove={handleTouchMove}
       >
         {piece && (
           <div
@@ -1643,6 +1645,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const handlePromotion = (promotionPiece: string) => {
     playSound('upgrade');
     // ... existing promotion logic ...
+  };
+
+  // Mobile touch handling for better piece selection
+  const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
+    // Prevent default to avoid double-tap zoom on mobile
+    event.preventDefault();
+    handleSquareClick(row, col);
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    // Prevent scrolling when touching the chessboard
+    event.preventDefault();
   };
 
   return (
