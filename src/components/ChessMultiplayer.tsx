@@ -11,78 +11,18 @@ import {
 import { firebaseChess } from '../firebaseChess';
 import './ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
+import { TokenSelector } from './TokenSelector';
+import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
+import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol } from '../config/tokens';
+import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 
-// Smart contract ABI for chess functions
-const CHESS_CONTRACT_ABI = [
-  {
-    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
-    "name": "playerToGame",
-    "outputs": [{"internalType": "bytes6", "name": "", "type": "bytes6"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "bytes6", "name": "", "type": "bytes6"}],
-    "name": "games",
-    "outputs": [
-      {"internalType": "address", "name": "player1", "type": "address"},
-      {"internalType": "address", "name": "player2", "type": "address"},
-      {"internalType": "bool", "name": "isActive", "type": "bool"},
-      {"internalType": "address", "name": "winner", "type": "address"},
-      {"internalType": "bytes6", "name": "inviteCode", "type": "bytes6"},
-      {"internalType": "uint256", "name": "wagerAmount", "type": "uint256"}
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "bytes6", "name": "", "type": "bytes6"}],
-    "name": "createGame",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "bytes6", "name": "", "type": "bytes6"}],
-    "name": "joinGame",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes6",
-        "name": "inviteCode",
-        "type": "bytes6"
-      },
-      {
-        "internalType": "address",
-        "name": "winner",
-        "type": "address"
-      }
-    ],
-    "name": "endGame",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes6",
-        "name": "inviteCode",
-        "type": "bytes6"
-      }
-    ],
-    "name": "cancelGame",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+// Get contract address based on current network
+const getContractAddress = (chainId: number) => {
+  if (chainId === NETWORKS.testnet.chainId) {
+    return CONTRACT_ADDRESSES.testnet.chess;
   }
-] as const;
-
-const CHESS_CONTRACT_ADDRESS = '0x3112AF5728520F52FD1C6710dD7bD52285a68e47';
+  return CONTRACT_ADDRESSES.mainnet.chess;
+};
 
 // Game modes
 const GameMode = {
@@ -155,14 +95,14 @@ function generateBytes6InviteCode() {
   return '0x' + Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function getPlayerInviteCodeFromContract(address: string): Promise<string | null> {
+async function getPlayerInviteCodeFromContract(address: string, contractAddress: string): Promise<string | null> {
   try {
     if (typeof window === 'undefined' || !window.ethereum) {
       throw new Error('No Ethereum provider found. Please connect your wallet.');
     }
     const provider = new BrowserProvider(window.ethereum as any);
     const contract = new Contract(
-      CHESS_CONTRACT_ADDRESS,
+      contractAddress,
       CHESS_CONTRACT_ABI,
       provider
     );
@@ -175,7 +115,8 @@ async function getPlayerInviteCodeFromContract(address: string): Promise<string 
 }
 
 export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false }) => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
+  const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
   
   // Smart contract integration
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
@@ -231,7 +172,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Contract read hook for checking player's game state
   const { data: playerGameInviteCode } = useReadContract({
-    address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+    address: chessContractAddress as `0x${string}`,
     abi: CHESS_CONTRACT_ABI,
     functionName: 'playerToGame',
     args: address ? [address] : undefined,
@@ -242,7 +183,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Contract read hook for getting game details
   const { data: contractGameData } = useReadContract({
-    address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+    address: chessContractAddress as `0x${string}`,
     abi: CHESS_CONTRACT_ABI,
     functionName: 'games',
     args: playerGameInviteCode ? [playerGameInviteCode] : undefined,
@@ -275,6 +216,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Tab state for left sidebar
   const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard'>('moves');
 
+
+
   // Claim winnings function for winners
   const refundGame = async () => {
     if (!inviteCode || !address) {
@@ -300,7 +243,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Call contract to cancel game
       await writeCancelGame({
-        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'cancelGame',
         args: [inviteCode as `0x${string}`]
@@ -324,7 +267,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!currentInviteCode && address) {
       console.log('[CLAIM] Invite code missing from state, trying to get from contract...');
       try {
-        const playerInviteCode = await getPlayerInviteCodeFromContract(address);
+        const playerInviteCode = await getPlayerInviteCodeFromContract(address, chessContractAddress);
         if (playerInviteCode && playerInviteCode !== '0x000000000000') {
           currentInviteCode = playerInviteCode;
           console.log('[CLAIM] Retrieved invite code from contract:', currentInviteCode);
@@ -485,7 +428,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
       // Call the contract
       writeEndGame({
-        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'endGame',
         args: [bytes6InviteCode as `0x${string}`, winnerAddress as `0x${string}`],
@@ -525,7 +468,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
       // Call the contract (only for house wallet manual resolution)
       writeEndGame({
-        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'endGame',
         args: [bytes6InviteCode as `0x${string}`, winnerAddress as `0x${string}`],
@@ -554,9 +497,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [pendingJoinGameData, setPendingJoinGameData] = useState<any>(null);
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
+  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('DMT');
   
   // UI state - always use dark mode for chess
   const [darkMode] = useState(true);
+  
+  // Timeout system (60 minutes = 3600000 ms)
+  const [timeoutTimer, setTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
+  const [timeoutCountdown, setTimeoutCountdown] = useState<number>(0);
+  const [lastMoveTime, setLastMoveTime] = useState<number>(Date.now());
+  const GAME_TIMEOUT_MS = 3600000; // 60 minutes
   
   // Always apply dark mode classes
   useEffect(() => {
@@ -570,6 +520,53 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
+
+  // Timeout management functions
+  const startTimeoutTimer = useCallback(() => {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+    }
+    
+    const timer = setTimeout(() => {
+      console.log('[TIMEOUT] 60-minute timeout reached, ending game');
+      handleTimeout();
+    }, GAME_TIMEOUT_MS);
+    
+    setTimeoutTimer(timer);
+    setLastMoveTime(Date.now());
+  }, [timeoutTimer]);
+
+  const stopTimeoutTimer = useCallback(() => {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+      setTimeoutTimer(null);
+    }
+  }, [timeoutTimer]);
+
+  const handleTimeout = async () => {
+    if (!inviteCode || !playerColor) return;
+    
+    console.log('[TIMEOUT] Handling timeout for game:', inviteCode);
+    
+    // Determine winner based on who was waiting
+    const winner = currentPlayer === 'blue' ? 'red' : 'blue';
+    const winnerAddress = winner === 'blue' ? contractGameData?.[0] : contractGameData?.[1];
+    
+    if (winnerAddress) {
+      console.log('[TIMEOUT] Ending game with winner:', winnerAddress);
+      
+      // Call contract to end game
+      writeEndGame({
+        address: chessContractAddress as `0x${string}`,
+        abi: CHESS_CONTRACT_ABI,
+        functionName: 'endGame',
+        args: [inviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+      });
+      
+      setGameStatus(`Game ended due to timeout. ${winner === 'red' ? 'Red' : 'Blue'} wins!`);
+      setGameMode(GameMode.FINISHED);
+    }
+  };
   
   // Piece state tracking for castling and en passant
   const [pieceState, setPieceState] = useState({
@@ -782,10 +779,42 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setHasLoadedGame(false);
   }, [address]);
 
+  // Start timeout timer when game becomes active
+  useEffect(() => {
+    if (gameMode === GameMode.ACTIVE && playerColor) {
+      console.log('[TIMEOUT] Starting timeout timer for active game');
+      startTimeoutTimer();
+    } else {
+      stopTimeoutTimer();
+    }
+  }, [gameMode, playerColor, startTimeoutTimer, stopTimeoutTimer]);
+
+  // Reset timeout timer after each move
+  useEffect(() => {
+    if (gameMode === GameMode.ACTIVE && moveHistory.length > 0) {
+      console.log('[TIMEOUT] Move made, resetting timeout timer');
+      startTimeoutTimer();
+    }
+  }, [moveHistory, gameMode, startTimeoutTimer]);
+
+  // Update countdown timer
+  useEffect(() => {
+    if (gameMode === GameMode.ACTIVE && timeoutTimer) {
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - lastMoveTime;
+        const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
+        setTimeoutCountdown(Math.ceil(remaining / 1000));
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [gameMode, timeoutTimer, lastMoveTime]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopFallback();
+      stopTimeoutTimer();
       // Clean up Firebase subscription
       if (gameChannel.current) {
         // Just call the unsubscribe function
@@ -795,7 +824,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         clearTimeout(celebrationTimeout.current);
       }
     };
-  }, []);
+  }, [stopTimeoutTimer]);
 
   // Check if player has an active game and load it
   const checkPlayerGameState = async () => {
@@ -881,7 +910,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
               current_player: 'blue',
               chain: 'sanko',
-              contract_address: CHESS_CONTRACT_ADDRESS,
+              contract_address: chessContractAddress,
               is_public: true
             };
             await firebaseChess.createGame(gameData);
@@ -1084,7 +1113,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
         // Check if game exists in smart contract
         const contractGame = await publicClient.readContract({
-          address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+          address: chessContractAddress as `0x${string}`,
           abi: CHESS_CONTRACT_ABI,
           functionName: 'games',
           args: [bytes6InviteCode as `0x${string}`],
@@ -1104,7 +1133,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
 
-  // Create game
+  // Create game with token support
   const createGame = async () => {
     if (!address || gameWager <= 0) return;
     console.log('[CREATE] Starting game creation - address:', address, 'wager:', gameWager);
@@ -1112,36 +1141,39 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     try {
       const newInviteCode = generateBytes6InviteCode();
       console.log('[CREATE] Generated invite code:', newInviteCode);
-      // Don't set inviteCode here - wait for Firebase update to complete
-      const gameData = {
-        invite_code: newInviteCode,
-        game_title: `Chess Game ${newInviteCode.slice(-6)}`,
-        bet_amount: (gameWager * 1e18).toString(), // Store in wei format
-        blue_player: address,
-        game_state: 'waiting',
-        board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
-        current_player: 'blue',
-        chain: 'sanko',
-        contract_address: CHESS_CONTRACT_ADDRESS,
-        is_public: true,
-        created_at: new Date().toISOString()
-      };
-      console.log('[CREATE] Game data prepared:', gameData);
-      console.log('[CREATE] Calling contract with args:', [newInviteCode, BigInt(Math.floor(gameWager * 1e18))]);
       
-      // Call contract to create game
+      // Use selected token
+      const tokenAddress = SUPPORTED_TOKENS[selectedToken].address;
+      const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
+      
+              const gameData = {
+          invite_code: newInviteCode,
+          game_title: `Chess Game ${newInviteCode.slice(-6)}`,
+          bet_amount: wagerAmountWei.toString(),
+          bet_token: selectedToken,
+          blue_player: address,
+          game_state: 'waiting',
+          board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
+          current_player: 'blue',
+          chain: 'sanko',
+          contract_address: chessContractAddress,
+          is_public: true,
+          created_at: new Date().toISOString()
+        };
+      console.log('[CREATE] Game data prepared:', gameData);
+      console.log('[CREATE] Calling contract with args:', [newInviteCode, tokenAddress, wagerAmountWei]);
+      
+      // Call contract to create game with token parameters
       writeCreateGame({
-        address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+        address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'createGame',
-        args: [newInviteCode as `0x${string}`],
-        value: BigInt(Math.floor(gameWager * 1e18)),
+        args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
       });
       console.log('[CREATE] Contract call initiated, setting pending data');
       console.log('[CREATE] Pending game data being set:', gameData);
       setPendingGameData(gameData);
       setGameStatus('Creating game... Please confirm transaction in your wallet.');
-      // Don't set inviteCode here - wait for Firebase update to complete
     } catch (error) {
       console.error('[CREATE] Error creating game:', error);
       setGameStatus('Failed to create game. Please try again.');
@@ -1202,15 +1234,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      console.log('[JOIN] Contract call parameters - contractAddress:', CHESS_CONTRACT_ADDRESS);
+      console.log('[JOIN] Contract call parameters - contractAddress:', chessContractAddress);
       console.log('[JOIN] Contract call parameters - functionName: joinGame');
       console.log('[JOIN] Contract call parameters - args:', [inviteCode]);
-      // The wager amount from Firebase is already in wei format (as a string)
-      const wagerValue = BigInt(wagerAmountWei);
-      console.log('[JOIN] Contract call parameters - wagerAmount from Firebase (wei):', wagerAmountWei);
-      console.log('[JOIN] Contract call parameters - wagerValue (wei):', wagerValue);
-      console.log('[JOIN] Contract call parameters - value as hex:', '0x' + wagerValue.toString(16));
-      console.log('[JOIN] Contract call parameters - value in wei:', wagerValue.toString());
       
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       
@@ -1218,18 +1244,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setTimeout(() => {
         console.log('[JOIN] About to call writeJoinGame...');
         console.log('[JOIN] Final contract call parameters:');
-        console.log('[JOIN] - address:', CHESS_CONTRACT_ADDRESS);
+        console.log('[JOIN] - address:', chessContractAddress);
         console.log('[JOIN] - functionName: joinGame');
         console.log('[JOIN] - args:', [inviteCode]);
-        console.log('[JOIN] - value:', wagerValue);
-        console.log('[JOIN] - value as BigInt:', wagerValue.toString());
         
         writeJoinGame({
-          address: CHESS_CONTRACT_ADDRESS as `0x${string}`,
+          address: chessContractAddress as `0x${string}`,
           abi: CHESS_CONTRACT_ABI,
           functionName: 'joinGame',
           args: [inviteCode as `0x${string}`],
-          value: wagerValue,
         });
         console.log('[JOIN] writeJoinGame called, setting pending data...');
         // Store game data for after transaction confirmation
@@ -2417,7 +2440,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const resumeGame = async () => {
     if (!address) return;
     // Use contract to get inviteCode
-    const playerInviteCode = await getPlayerInviteCodeFromContract(address);
+            const playerInviteCode = await getPlayerInviteCodeFromContract(address, chessContractAddress);
     if (!playerInviteCode || playerInviteCode === '0x000000000000') {
       setGameStatus('No active game found');
       return;
@@ -2619,7 +2642,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[SYNC] Checking for missing games for player:', address);
       
       // Get player's current game from contract
-      const playerGameInviteCode = await getPlayerInviteCodeFromContract(address);
+      const playerGameInviteCode = await getPlayerInviteCodeFromContract(address, chessContractAddress);
       console.log('[SYNC] Player game invite code from contract:', playerGameInviteCode);
       
       if (playerGameInviteCode && playerGameInviteCode !== '0x000000000000') {
@@ -2633,7 +2656,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (typeof window !== 'undefined' && window.ethereum) {
             const provider = new BrowserProvider(window.ethereum as any);
             const contract = new Contract(
-              CHESS_CONTRACT_ADDRESS,
+              chessContractAddress,
               CHESS_CONTRACT_ABI,
               provider
             );
@@ -2654,7 +2677,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
               current_player: 'blue',
               chain: 'sanko',
-              contract_address: CHESS_CONTRACT_ADDRESS,
+              contract_address: chessContractAddress,
               is_public: true,
               created_at: new Date().toISOString()
             };
@@ -2817,7 +2840,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <div key={game.invite_code} className="game-item">
                     <div className="game-info">
                       <div className="game-id">{game.game_title || 'Untitled Game'}</div>
-                      <div className="wager">Wager: {(parseFloat(game.bet_amount) / 1e18).toFixed(2)} tDMT</div>
+                      <div className="wager">
+                        Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
+                      </div>
                       <div className="title">Created by: {formatAddress(game.blue_player)}</div>
                     </div>
                     <button 
@@ -2883,17 +2908,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             {isCreatingGame && (
               <div className="create-form">
                 <h3>Create New Game</h3>
-                <div className="form-group">
-                  <label>Wager (tDMT):</label>
-                  <input
-                    type="number"
-                    value={gameWager}
-                    onChange={(e) => setGameWager(Number(e.target.value))}
-                    placeholder="0.1"
-                    min="0"
-                    step="0.1"
-                  />
-                </div>
+                <TokenSelector
+                  selectedToken={selectedToken}
+                  onTokenSelect={setSelectedToken}
+                  wagerAmount={gameWager}
+                  onWagerChange={setGameWager}
+                  disabled={isCreatingGame}
+                />
                 <div className="form-actions">
                   <button 
                     className="create-confirm-btn"
@@ -2925,7 +2946,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         Invite Code: <strong>{inviteCode}</strong>
       </div>
       <div className="game-info">
-        <p>Wager: {wager} tDMT</p>
+        <p>Wager: {wager} {selectedToken}</p>
         <p>Share this invite code with your opponent</p>
       </div>
       <div className="waiting-actions">
@@ -2978,10 +2999,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           </span>
         </div>
         <div className="game-details-section">
-          <span className="wager-display">💰 {wager} tDMT</span>
+          <span className="wager-display">💰 {wager} {selectedToken}</span>
           {opponent && (
             <span className="opponent-info">
               vs {formatAddress(opponent)}
+            </span>
+          )}
+          {gameMode === GameMode.ACTIVE && timeoutCountdown > 0 && (
+            <span 
+              className="timeout-countdown"
+              style={{ 
+                color: timeoutCountdown < 300 ? '#ff0000' : '#00ff00',
+                fontWeight: 'bold',
+                textShadow: '0 0 6px currentColor'
+              }}
+            >
+              ⏰ {Math.floor(timeoutCountdown / 60)}:{(timeoutCountdown % 60).toString().padStart(2, '0')}
             </span>
           )}
         </div>

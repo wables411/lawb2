@@ -23,6 +23,25 @@ export const sankoTestnet = {
   },
 } as const;
 
+// Sanko mainnet configuration
+export const sankoMainnet = {
+  id: 1996,
+  name: 'Sanko Mainnet',
+  network: 'sanko',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'DMT',
+    symbol: 'DMT',
+  },
+  rpcUrls: {
+    public: { http: ['https://mainnet.sanko.xyz'] },
+    default: { http: ['https://mainnet.sanko.xyz'] },
+  },
+  blockExplorers: {
+    default: { name: 'SankoScan', url: 'https://explorer.sanko.xyz' },
+  },
+} as const;
+
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
 const metadata = {
@@ -36,14 +55,13 @@ const metadata = {
 const solanaWeb3JsAdapter = new SolanaAdapter();
 
 export const wagmiAdapter = new WagmiAdapter({
-  networks: [mainnet, arbitrum, sankoTestnet], // Add Arbitrum mainnet
+  networks: [mainnet, arbitrum, sankoTestnet, sankoMainnet], // Add both Sanko networks
   projectId,
   ssr: false
 });
 
-createAppKit({
-  adapters: [wagmiAdapter, solanaWeb3JsAdapter],
-  networks: [mainnet, arbitrum, sankoTestnet, solana, solanaTestnet, solanaDevnet], // Add Arbitrum mainnet
+export const appkit = createAppKit({
+  networks: [mainnet, arbitrum, sankoTestnet, sankoMainnet, solana, solanaTestnet, solanaDevnet],
   projectId,
   metadata,
   features: {
