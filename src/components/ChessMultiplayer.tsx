@@ -493,6 +493,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [wager, setWager] = useState<number>(0);
   const [openGames, setOpenGames] = useState<any[]>([]);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
+  const [isGameCreationInProgress, setIsGameCreationInProgress] = useState(false);
   const [pendingGameData, setPendingGameData] = useState<any>(null);
   const [pendingJoinGameData, setPendingJoinGameData] = useState<any>(null);
   const [gameTitle, setGameTitle] = useState('');
@@ -689,11 +690,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         // Clear pending data
         setPendingGameData(null);
         setIsCreatingGame(false);
+        setIsGameCreationInProgress(false);
       }).catch((error) => {
         console.error('[FIREBASE] Error creating game after transaction:', error);
         setGameStatus('Transaction confirmed but failed to create game in database');
         setPendingGameData(null);
         setIsCreatingGame(false);
+        setIsGameCreationInProgress(false);
       });
     } else if (createGameHash && !isWaitingForCreateReceipt) {
       console.log('[CREATE DEBUG] Transaction confirmed but conditions not met for Firebase update:');
@@ -735,6 +738,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus('Transaction was rejected. Please try again.');
       setPendingGameData(null);
       setIsCreatingGame(false);
+      setIsGameCreationInProgress(false);
     }
   }, [isCreatingGameContract, pendingGameData, createGameHash]);
 
@@ -1137,7 +1141,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const createGame = async () => {
     if (!address || gameWager <= 0) return;
     console.log('[CREATE] Starting game creation - address:', address, 'wager:', gameWager);
-    setIsCreatingGame(true);
+    setIsGameCreationInProgress(true);
     try {
       const newInviteCode = generateBytes6InviteCode();
       console.log('[CREATE] Generated invite code:', newInviteCode);
@@ -1178,7 +1182,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.error('[CREATE] Error creating game:', error);
       setGameStatus('Failed to create game. Please try again.');
     } finally {
-      setIsCreatingGame(false);
+      setIsGameCreationInProgress(false);
     }
   };
 
@@ -2863,7 +2867,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             <button 
               className="create-btn"
               onClick={() => setIsCreatingGame(true)}
-              disabled={isCreatingGame}
+              disabled={isCreatingGame || isGameCreationInProgress}
             >
               Create New Game
             </button>
@@ -2913,19 +2917,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   onTokenSelect={setSelectedToken}
                   wagerAmount={gameWager}
                   onWagerChange={setGameWager}
-                  disabled={isCreatingGame}
+                  disabled={isGameCreationInProgress}
                 />
                 <div className="form-actions">
                   <button 
                     className="create-confirm-btn"
                     onClick={createGame}
-                    disabled={gameWager <= 0}
+                    disabled={gameWager <= 0 || isGameCreationInProgress}
                   >
-                    Create Game
+                    {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
                   </button>
                   <button 
                     className="cancel-btn"
-                    onClick={() => setIsCreatingGame(false)}
+                    onClick={() => {
+                      setIsCreatingGame(false);
+                      setIsGameCreationInProgress(false);
+                    }}
                   >
                     Cancel
                   </button>
