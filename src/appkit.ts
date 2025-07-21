@@ -39,7 +39,9 @@ export const appKit = createAppKit({
     arbitrum,
     solana,
     solanaTestnet,
-    solanaDevnet
+    solanaDevnet,
+    sankoTestnet,
+    sankoMainnet
   ],
   features: {
     analytics: true,
