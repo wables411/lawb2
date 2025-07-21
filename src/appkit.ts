@@ -1,46 +1,6 @@
 import { createAppKit } from '@reown/appkit/react';
-import { mainnet, arbitrum } from '@reown/appkit/networks';
+import { mainnet, arbitrum, solana, solanaTestnet, solanaDevnet } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { SolanaAdapter } from '@reown/appkit-adapter-solana/react';
-import { solana, solanaTestnet, solanaDevnet } from '@reown/appkit/networks';
-
-// Sanko testnet configuration
-export const sankoTestnet = {
-  id: 1992,
-  name: 'Sanko Testnet',
-  network: 'sanko',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'tDMT',
-    symbol: 'tDMT',
-  },
-  rpcUrls: {
-    public: { http: ['https://sanko-arb-sepolia.rpc.caldera.xyz/http'] },
-    default: { http: ['https://sanko-arb-sepolia.rpc.caldera.xyz/http'] },
-  },
-  blockExplorers: {
-    default: { name: 'SankoScan', url: 'https://sanko-scan.caldera.xyz' },
-  },
-} as const;
-
-// Sanko mainnet configuration
-export const sankoMainnet = {
-  id: 1996,
-  name: 'Sanko Mainnet',
-  network: 'sanko',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'DMT',
-    symbol: 'DMT',
-  },
-  rpcUrls: {
-    public: { http: ['https://mainnet.sanko.xyz'] },
-    default: { http: ['https://mainnet.sanko.xyz'] },
-  },
-  blockExplorers: {
-    default: { name: 'SankoScan', url: 'https://explorer.sanko.xyz' },
-  },
-} as const;
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
@@ -51,20 +11,34 @@ const metadata = {
   icons: ['/assets/favicon.ico']
 };
 
-// Set up Solana Adapter
-const solanaWeb3JsAdapter = new SolanaAdapter();
-
-export const wagmiAdapter = new WagmiAdapter({
-  networks: [mainnet, arbitrum, sankoTestnet, sankoMainnet], // Add both Sanko networks
+// Create wagmi adapter - it will use the wagmi config from main.tsx
+const wagmiAdapter = new WagmiAdapter({
   projectId,
-  ssr: false
+  networks: [
+    mainnet,
+    arbitrum,
+    solana,
+    solanaTestnet,
+    solanaDevnet
+  ],
+  pendingTransactionsFilter: {
+    enable: true,
+    pollingInterval: 1000
+  }
 });
 
-export const appkit = createAppKit({
-  networks: [mainnet, arbitrum, sankoTestnet, sankoMainnet, solana, solanaTestnet, solanaDevnet],
+export const appKit = createAppKit({
   projectId,
   metadata,
+  adapters: [wagmiAdapter],
+  networks: [
+    mainnet,
+    arbitrum,
+    solana,
+    solanaTestnet,
+    solanaDevnet
+  ],
   features: {
-    analytics: false
-  }
+    analytics: true,
+  },
 }); 

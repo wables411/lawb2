@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
@@ -28,10 +27,8 @@ const useStyles = createUseStyles({
 function App() {
   const classes = useStyles();
   const { open } = useAppKit();
-  const { address, isConnected } = useAccount();
-  const { isPending } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { data: ens } = useEnsName({ address });
+  const [address, setAddress] = useState<string | undefined>();
+  const [isConnected, setIsConnected] = useState(false);
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
@@ -73,7 +70,8 @@ function App() {
       if (!isConnected) {
         void open();
       } else {
-        disconnect();
+        setIsConnected(false);
+        setAddress(undefined);
       }
     } else if (action === 'mint') {
       if (!address) {
@@ -157,7 +155,8 @@ function App() {
         if (!isConnected) {
           void open();
         } else {
-          disconnect();
+          setIsConnected(false);
+        setAddress(undefined);
         }
       }} 
       style={{ 
@@ -176,7 +175,7 @@ function App() {
         marginRight: '8px',
         border: '1px solid black'
       }}></span>
-      {isPending ? 'Connecting...' : isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
+              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Disconnected'}
     </div>
   );
 
@@ -218,7 +217,7 @@ function App() {
         connectionStatus={{
           connected: isConnected,
           address: address,
-          ens: ens || undefined
+          ens: undefined
         }}
       />
 

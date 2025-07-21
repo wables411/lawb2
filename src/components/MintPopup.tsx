@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Draggable from 'react-draggable';
 import { getEligibleInviteLists, mintNFT } from '../mint';
-import { useWalletClient } from 'wagmi';
 import { createUseStyles } from 'react-jss';
 
 const useStyles = createUseStyles({
@@ -91,7 +90,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const [minting, setMinting] = useState(false);
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
-  const { data: walletClient } = useWalletClient();
+  const [walletClient, setWalletClient] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen && walletAddress) {
