@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getEligibleInviteLists, mintNFT } from '../mint';
-import { useWalletClient } from 'wagmi';
+import { useWalletClient, useChainId, useSwitchChain } from 'wagmi';
+import { mainnet } from 'wagmi/chains';
 import MobilePopup98 from './MobilePopup98';
 
 interface InviteList {
@@ -24,6 +25,8 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const { data: walletClient } = useWalletClient();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   useEffect(() => {
     if (isOpen && walletAddress) {
@@ -35,6 +38,14 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
   const loadEligibleLists = async () => {
     setLoading(true);
     setError(null);
+    
+    // Check if user is on Ethereum mainnet
+    if (chainId !== mainnet.id) {
+      setError(`Please switch to Ethereum mainnet to mint Pixelawbs. Current network: ${chainId}`);
+      setLoading(false);
+      return;
+    }
+    
     try {
       const lists = await getEligibleInviteLists(walletAddress);
       setInviteLists(lists);
@@ -69,6 +80,12 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
 
     if (!walletClient) {
       setError('Wallet not connected');
+      return;
+    }
+
+    // Check if user is on Ethereum mainnet
+    if (chainId !== mainnet.id) {
+      setError('Please switch to Ethereum mainnet to mint Pixelawbs');
       return;
     }
 
@@ -124,7 +141,29 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
 
   return (
     <MobilePopup98 isOpen={isOpen} onClose={onClose} title="Mint Pixelawbs">
-      {error && <div style={errorStyle}>{error}</div>}
+      {error && (
+        <div style={errorStyle}>
+          {error}
+          {chainId !== mainnet.id && (
+            <div style={{ marginTop: '10px' }}>
+              <button 
+                onClick={() => switchChain({ chainId: mainnet.id })}
+                style={{
+                  backgroundColor: '#008000',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Switch to Ethereum
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {loading ? (
         <div>Loading eligible invite lists...</div>
       ) : inviteLists.length === 0 ? (

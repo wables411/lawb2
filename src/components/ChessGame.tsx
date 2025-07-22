@@ -8,7 +8,7 @@ import {
   removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
-import { ChessMultiplayer } from './ChessMultiplayerUpdated';
+import { ChessMultiplayer } from './ChessMultiplayer';
 import './ChessGame.css';
 
 // Game modes

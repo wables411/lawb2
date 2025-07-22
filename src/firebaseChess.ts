@@ -1,5 +1,5 @@
 import { database } from './firebaseApp';
-import { ref, set, get, onValue, off, remove } from 'firebase/database';
+import { ref, set, get, onValue, off, remove, update } from 'firebase/database';
 
 // Helper function to check if database is available
 const getDatabaseOrThrow = () => {
@@ -33,7 +33,7 @@ export const firebaseChess = {
     try {
       const db = getDatabaseOrThrow();
       const gameRef = ref(db, `chess_games/${inviteCode}`);
-      await set(gameRef, {
+      await update(gameRef, {
         ...gameData,
         updated_at: new Date().toISOString()
       });
@@ -49,17 +49,12 @@ export const firebaseChess = {
       const db = getDatabaseOrThrow();
       const gameRef = ref(db, `chess_games/${inviteCode}`);
       
-      console.log('[FIREBASE] Setting up Firebase real-time subscription for game:', inviteCode);
-      
       const unsubscribe = onValue(gameRef, (snapshot) => {
         if (snapshot.exists()) {
           const gameData = snapshot.val();
-          console.log('[FIREBASE] Game update received:', gameData);
           callback(gameData);
         }
       });
-
-      console.log('[FIREBASE] Firebase subscription setup complete for game:', inviteCode);
       return unsubscribe;
     } catch (error) {
       console.error('[FIREBASE] Error subscribing to game:', error);
@@ -101,6 +96,56 @@ export const firebaseChess = {
     }
   },
 
+  // Manually create game from transaction data
+  async createGameFromTransaction(inviteCode: string, bluePlayer: string, wagerToken: string, wagerAmount: string) {
+    try {
+      const db = getDatabaseOrThrow();
+      const gameRef = ref(db, `chess_games/${inviteCode}`);
+      
+      // Convert token address to symbol
+      let tokenSymbol = 'DMT';
+      if (wagerToken === '0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F') {
+        tokenSymbol = 'LAWB';
+      } else if (wagerToken === '0x6F5e2d3b8c5C5c5F9bcB4adCF40b13308e688D4D') {
+        tokenSymbol = 'GOLD';
+      } else if (wagerToken === '0xeA240b96A9621e67159c59941B9d588eb290ef09') {
+        tokenSymbol = 'MOSS';
+      }
+      
+      const gameData = {
+        invite_code: inviteCode,
+        game_title: `Chess Game ${inviteCode.slice(-6)}`,
+        bet_amount: wagerAmount,
+        bet_token: tokenSymbol,
+        blue_player: bluePlayer,
+        red_player: '0x0000000000000000000000000000000000000000',
+        game_state: 'waiting',
+        board: { 
+          positions: {
+            '0,0': 'R', '0,1': 'N', '0,2': 'B', '0,3': 'Q', '0,4': 'K', '0,5': 'B', '0,6': 'N', '0,7': 'R',
+            '1,0': 'P', '1,1': 'P', '1,2': 'P', '1,3': 'P', '1,4': 'P', '1,5': 'P', '1,6': 'P', '1,7': 'P',
+            '6,0': 'p', '6,1': 'p', '6,2': 'p', '6,3': 'p', '6,4': 'p', '6,5': 'p', '6,6': 'p', '6,7': 'p',
+            '7,0': 'r', '7,1': 'n', '7,2': 'b', '7,3': 'q', '7,4': 'k', '7,5': 'b', '7,6': 'n', '7,7': 'r'
+          }, 
+          rows: 8, 
+          cols: 8 
+        },
+        current_player: 'blue',
+        chain: 'sanko',
+        contract_address: '0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56',
+        is_public: true,
+        created_at: new Date().toISOString()
+      };
+      
+      await set(gameRef, gameData);
+      console.log('[FIREBASE] Game created from transaction:', inviteCode, 'with token:', tokenSymbol);
+      return gameData;
+    } catch (error) {
+      console.error('[FIREBASE] Error creating game from transaction:', error);
+      throw error;
+    }
+  },
+
   // Get all active games
   async getActiveGames() {
     try {
@@ -132,23 +177,43 @@ export const firebaseChess = {
       
       const games = snapshot.val();
       console.log('[FIREBASE] All games in database:', games);
+      console.log('[FIREBASE] Number of total games:', Object.keys(games || {}).length);
+      if (games) {
+        Object.keys(games).forEach(key => {
+          const game = games[key];
+          console.log('[FIREBASE] Game details:', {
+            inviteCode: game.invite_code,
+            gameState: game.game_state,
+            isPublic: game.is_public,
+            redPlayer: game.red_player,
+            bluePlayer: game.blue_player,
+            createdAt: game.created_at
+          });
+        });
+      }
       
       const openGames = Object.values(games).filter((game: any) => {
-        const isWaiting = game.game_state === 'waiting';
-        const isPublic = game.is_public;
+        // More lenient filtering - accept games that are waiting OR don't have a red player
+        const isWaiting = game.game_state === 'waiting' || game.game_state === 'active';
+        const isPublic = game.is_public !== false; // Default to true if not set
         const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
+        
+        // Additional check: if game_state is undefined, treat as waiting
+        const hasValidState = game.game_state === 'waiting' || game.game_state === 'active' || game.game_state === undefined;
         
         console.log('[FIREBASE] Game filter check:', {
           inviteCode: game.invite_code,
           gameState: game.game_state,
-          isPublic: game.is_public,
+          originalIsPublic: game.is_public,
           redPlayer: game.red_player,
           isWaiting,
+          isPublic,
           noRedPlayer,
-          passes: isWaiting && isPublic && noRedPlayer
+          hasValidState,
+          passes: hasValidState && isPublic && noRedPlayer
         });
         
-        return isWaiting && isPublic && noRedPlayer;
+        return hasValidState && isPublic && noRedPlayer;
       });
       
       // Sort by creation date (newest first)

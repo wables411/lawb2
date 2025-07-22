@@ -10,6 +10,8 @@ import MemeGenerator from './components/MemeGenerator';
 
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
+import { useAccount, useChainId } from 'wagmi';
+import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 
 const useStyles = createUseStyles({
@@ -27,8 +29,8 @@ const useStyles = createUseStyles({
 function App() {
   const classes = useStyles();
   const { open } = useAppKit();
-  const [address, setAddress] = useState<string | undefined>();
-  const [isConnected, setIsConnected] = useState(false);
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
@@ -38,6 +40,19 @@ function App() {
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Add timeout for chess loading
+  useEffect(() => {
+    if (showChessLoading) {
+      const timeout = setTimeout(() => {
+        console.log('[CHESS] Loading timeout reached, navigating directly');
+        setShowChessLoading(false);
+        navigate('/chess');
+      }, 5000); // 5 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [showChessLoading, navigate]);
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -70,12 +85,16 @@ function App() {
       if (!isConnected) {
         void open();
       } else {
-        setIsConnected(false);
-        setAddress(undefined);
+        // Disconnect is handled by the wallet provider
+        console.log('Wallet disconnect requested');
       }
     } else if (action === 'mint') {
       if (!address) {
         alert('Please connect your wallet first!');
+        return;
+      }
+      if (chainId !== mainnet.id) {
+        alert('Please switch to Ethereum mainnet to mint Pixelawbs. Current network: ' + chainId);
         return;
       }
       setShowMintPopup(true);
@@ -85,21 +104,8 @@ function App() {
       setShowMemeGenerator(true);
 
     } else if (action === 'chess') {
-      if (!isConnected) {
-        void open().then(() => {
-          // Wait for connection, then navigate
-          const checkConnection = () => {
-            if (window.ethereum && window.ethereum.selectedAddress) {
-              setShowChessLoading(true);
-            } else {
-              setTimeout(checkConnection, 200);
-            }
-          };
-          checkConnection();
-        });
-      } else {
-        setShowChessLoading(true);
-      }
+      console.log('[CHESS] Chess icon clicked, isConnected:', isConnected);
+      setShowChessLoading(true);
     }
   };
 
@@ -155,8 +161,8 @@ function App() {
         if (!isConnected) {
           void open();
         } else {
-          setIsConnected(false);
-        setAddress(undefined);
+          // Disconnect is handled by the wallet provider
+          console.log('Wallet disconnect requested');
         }
       }} 
       style={{ 
@@ -201,6 +207,11 @@ function App() {
             autoPlay
             muted
             onEnded={() => {
+              setShowChessLoading(false);
+              navigate('/chess');
+            }}
+            onError={() => {
+              console.log('[CHESS] Video failed to load, navigating directly');
               setShowChessLoading(false);
               navigate('/chess');
             }}

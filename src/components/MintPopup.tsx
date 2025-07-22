@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Draggable from 'react-draggable';
 import { getEligibleInviteLists, mintNFT } from '../mint';
 import { createUseStyles } from 'react-jss';
+import { useChainId, useSwitchChain } from 'wagmi';
+import { mainnet } from 'wagmi/chains';
 
 const useStyles = createUseStyles({
   popup: {
@@ -91,6 +93,8 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [walletClient, setWalletClient] = useState<any>(null);
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   useEffect(() => {
     if (isOpen && walletAddress) {
@@ -101,6 +105,14 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const loadEligibleLists = async () => {
     setLoading(true);
     setError(null);
+    
+    // Check if user is on Ethereum mainnet
+    if (chainId !== mainnet.id) {
+      setError(`Please switch to Ethereum mainnet to mint Pixelawbs. Current network: ${chainId}`);
+      setLoading(false);
+      return;
+    }
+    
     try {
       const lists = await getEligibleInviteLists(walletAddress);
       setInviteLists(lists);
@@ -136,6 +148,12 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
 
     if (!walletClient) {
       setError('Wallet not connected');
+      return;
+    }
+
+    // Check if user is on Ethereum mainnet
+    if (chainId !== mainnet.id) {
+      setError('Please switch to Ethereum mainnet to mint Pixelawbs');
       return;
     }
 
@@ -221,6 +239,24 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
               color: '#cc0000'
             }}>
               {error}
+              {chainId !== mainnet.id && (
+                <div style={{ marginTop: '10px' }}>
+                  <button 
+                    onClick={() => switchChain({ chainId: mainnet.id })}
+                    style={{
+                      backgroundColor: '#008000',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Switch to Ethereum
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
