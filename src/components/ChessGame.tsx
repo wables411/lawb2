@@ -8,7 +8,7 @@ import {
   removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
-import ChessMultiplayer from './ChessMultiplayer';
+import { ChessMultiplayer } from './ChessMultiplayerUpdated';
 import './ChessGame.css';
 
 // Game modes
@@ -17,8 +17,8 @@ const GameMode = {
   ONLINE: 'online'
 } as const;
 
-// Sanko testnet chain ID
-const SANKO_CHAIN_ID = 1992;
+// Sanko mainnet chain ID
+const SANKO_CHAIN_ID = 1996;
 
 // LeaderboardEntry interface is now imported from firebaseLeaderboard
 
@@ -382,7 +382,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // Trigger Reown appkit popup
       void open();
     } else if (chainId !== SANKO_CHAIN_ID) {
-      setStatus('Switch to Sanko Testnet to play');
+      setStatus('Switch to Sanko Mainnet to play');
       setShowGame(false);
       setShowDifficulty(false);
       // Trigger Reown appkit popup to switch network
@@ -392,13 +392,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   }, [isConnected, walletAddress, chainId, open]);
 
-  // Handle switching to Sanko testnet
+  // Handle switching to Sanko mainnet
   const handleSwitchToSanko = async () => {
     try {
       await switchChain({ chainId: SANKO_CHAIN_ID });
     } catch (error) {
-      console.error('Failed to switch to Sanko testnet:', error);
-      setStatus('Failed to switch network. Please switch manually to Sanko Testnet.');
+      console.error('Failed to switch to Sanko mainnet:', error);
+      setStatus('Failed to switch network. Please switch manually to Sanko Mainnet.');
     }
   };
 
@@ -1665,7 +1665,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     >
       {/* Streamlined Header - always show */}
       <div className="chess-header">
-        <h2>LAWB CHESS TESTNET BETA 3000</h2>
+                        <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
           <button onClick={onClose}>×</button>
@@ -1872,13 +1872,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       <p><strong>Game Modes:</strong></p>
                       <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                         <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
-                        <li><strong>Multiplayer:</strong> wage tDMT and challenge other players on Sanko testnet. Winner takes the pot minus 5% house fee.</li>
+                        <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
                       </ul>
                       
                       <p><strong>Multiplayer Flow:</strong></p>
                       <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                        <li>Connect your wallet to Sanko testnet</li>
-                        <li>Create a game and set your wager amount in tDMT</li>
+                        <li>Connect your wallet to Sanko mainnet</li>
+                                                  <li>Create a game and set your wager amount in DMT</li>
                         <li>Share your invite code with an opponent</li>
                         <li>Opponent joins and matches your wager</li>
                         <li>Game begins automatically - Blue (Player 1) moves first</li>
@@ -1887,12 +1887,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       
                       <p><strong>Leaderboard:</strong> All games are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
                       
-                      <p><strong>Lawb Chess Testnet Contract:</strong> <a href="https://testnet.sankoscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x3112AF5728520F52FD1C6710dD7bD52285a68e47</a></p>
+                      <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
                       <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Testnet</p>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://sanko-arb-sepolia.rpc.caldera.xyz/http</p>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1992</p>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> tDMT</p>
+                                                  <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
+                          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
+                          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
+                          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
                       </div>
                     </div>
                   </div>

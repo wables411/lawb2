@@ -13,7 +13,7 @@ The upgrade involves:
 
 The following tokens are supported on mainnet:
 - **$DMT**: `0x754cDAd6f5821077d6915004Be2cE05f93d176f8`
-- **$GOLD**: `0x754cDAd6f5821077d6915004Be2cE05f93d176f8`
+- **$GOLD**: `0x6F5e2d3b8c5C5c5F9bcB4adCF40b13308e688D4D`
 - **$LAWB**: `0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F`
 - **$MOSS**: `0xeA240b96A9621e67159c59941B9d588eb290ef09`
 

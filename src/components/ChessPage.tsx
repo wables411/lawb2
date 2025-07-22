@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChessGame } from './ChessGame';
-import ChessMultiplayer from './ChessMultiplayer';
+import { ChessMultiplayer } from './ChessMultiplayerUpdated';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
