@@ -500,6 +500,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [gameWager, setGameWager] = useState<number>(0);
   const [selectedToken, setSelectedToken] = useState<TokenSymbol>('DMT');
   
+  // Token balance for validation
+  const { balance } = useTokenBalance(selectedToken, address);
+  
   // UI state - always use dark mode for chess
   const [darkMode] = useState(true);
   
@@ -1140,6 +1143,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Create game with token support
   const createGame = async () => {
     if (!address || gameWager <= 0) return;
+    
+    // Check if user has sufficient balance
+    if (gameWager > balance) {
+      console.log('[CREATE] Insufficient balance:', { gameWager, balance, selectedToken });
+      setGameStatus(`Insufficient ${selectedToken} balance. You have ${balance.toFixed(2)} ${selectedToken} but need ${gameWager} ${selectedToken}.`);
+      return;
+    }
+    
     console.log('[CREATE] Starting game creation - address:', address, 'wager:', gameWager);
     setIsGameCreationInProgress(true);
     try {
@@ -2923,7 +2934,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <button 
                     className="create-confirm-btn"
                     onClick={createGame}
-                    disabled={gameWager <= 0 || isGameCreationInProgress}
+                    disabled={gameWager <= 0 || isGameCreationInProgress || gameWager > balance}
                   >
                     {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
                   </button>
