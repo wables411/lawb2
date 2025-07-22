@@ -1174,7 +1174,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   const createGame = async () => {
-    if (!address || gameWager <= 0) return;
+    console.log('[CREATE DEBUG] createGame called with:', { address, gameWager, selectedToken });
+    if (!address || gameWager <= 0) {
+      console.log('[CREATE DEBUG] Early return - address:', !!address, 'gameWager:', gameWager);
+      return;
+    }
     
     console.log('[CREATE] Starting game creation - address:', address, 'wager:', gameWager);
     setIsGameCreationInProgress(true);
@@ -1213,13 +1217,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CREATE] Calling contract with args:', [newInviteCode, tokenAddress, wagerAmountWei]);
       
       // Call contract to create game with token parameters
-      writeCreateGame({
+      const result = writeCreateGame({
         address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'createGame',
         args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
       });
-      console.log('[CREATE] Contract call initiated, setting pending data');
+      console.log('[CREATE] Contract call initiated, result:', result);
+      console.log('[CREATE] createGameHash after writeCreateGame:', createGameHash);
       console.log('[CREATE] Pending game data being set:', gameData);
       setPendingGameData(gameData);
       setGameStatus('Creating game... Please confirm transaction in your wallet.');
