@@ -321,10 +321,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Handle approval transaction receipt
   useEffect(() => {
     if (!isApproving && isApprovingToken) {
+      console.log('[APPROVAL] Transaction completed, checking allowance...');
       setIsApprovingToken(false);
       setApprovalError('');
+      
+      // Wait a moment for the allowance to update, then try to create game
+      setTimeout(() => {
+        if (gameMode === GameMode.LOBBY) {
+          console.log('[APPROVAL] Retrying game creation after approval');
+          createGame();
+        }
+      }, 2000);
     }
-  }, [isApproving, isApprovingToken]);
+  }, [isApproving, isApprovingToken, gameMode]);
 
   // Create game with token support
   const createGame = async () => {
