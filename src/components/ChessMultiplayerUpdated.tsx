@@ -230,6 +230,77 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setWager(newValue);
   };
 
+  // Handle transaction receipt for game creation
+  useEffect(() => {
+    console.log('[CREATE DEBUG] Transaction receipt handler - createGameHash:', createGameHash);
+    console.log('[CREATE DEBUG] Transaction receipt handler - isWaitingForCreateReceipt:', isWaitingForCreateReceipt);
+    console.log('[CREATE DEBUG] Transaction receipt handler - pendingGameData:', pendingGameData);
+    console.log('[CREATE DEBUG] Transaction receipt handler - inviteCode:', inviteCode);
+    console.log('[CREATE DEBUG] Transaction receipt handler - condition:', createGameHash && !isWaitingForCreateReceipt && pendingGameData && !inviteCode);
+    console.log('[CREATE DEBUG] Transaction receipt handler - individual conditions:');
+    console.log('[CREATE DEBUG] - createGameHash exists:', !!createGameHash);
+    console.log('[CREATE DEBUG] - not waiting for receipt:', !isWaitingForCreateReceipt);
+    console.log('[CREATE DEBUG] - pendingGameData exists:', !!pendingGameData);
+    console.log('[CREATE DEBUG] - no inviteCode set:', !inviteCode);
+    
+    if (createGameHash && !isWaitingForCreateReceipt && pendingGameData && !inviteCode) {
+      console.log('[CONTRACT] Create game transaction confirmed:', createGameHash);
+      
+      // Create the game in Firebase
+      firebaseChess.createGame(pendingGameData).then(() => {
+        console.log('[FIREBASE] Game created successfully after transaction confirmation');
+        
+        // Update UI
+        debugSetInviteCode(pendingGameData.invite_code, 'create game success');
+        setPlayerColor('blue');
+        debugSetWager(wagerAmount, 'create game success');
+        setGameMode(GameMode.WAITING);
+        setGameStatus('Waiting for opponent to join...');
+        
+        // Clear pending data
+        setPendingGameData(null);
+        setIsCreatingGame(false);
+      }).catch((error) => {
+        console.error('[FIREBASE] Error creating game after transaction:', error);
+        setGameStatus('Transaction confirmed but failed to create game in database');
+        setPendingGameData(null);
+        setIsCreatingGame(false);
+      });
+    } else if (createGameHash && !isWaitingForCreateReceipt) {
+      console.log('[CREATE DEBUG] Transaction confirmed but conditions not met for Firebase update:');
+      console.log('[CREATE DEBUG] - pendingGameData missing:', !pendingGameData);
+      console.log('[CREATE DEBUG] - inviteCode already set:', !!inviteCode);
+    }
+  }, [createGameHash, isWaitingForCreateReceipt, pendingGameData, wagerAmount, inviteCode]);
+
+  // Handle join game transaction receipt
+  useEffect(() => {
+    if (joinGameHash && !isWaitingForJoinReceipt && pendingJoinGameData) {
+      console.log('[JOIN RECEIPT] Transaction confirmed, updating game in Firebase');
+      const updateGameInFirebase = async () => {
+        try {
+          const gameData = await firebaseChess.getGame(pendingJoinGameData.invite_code);
+          if (gameData) {
+            const updatedGameData = {
+              ...gameData,
+              red_player: address,
+              game_state: 'active'
+            };
+            await firebaseChess.updateGame(pendingJoinGameData.invite_code, updatedGameData);
+            console.log('[JOIN RECEIPT] Game updated in Firebase successfully');
+            setPendingJoinGameData(null);
+            setGameMode(GameMode.ACTIVE);
+            setGameStatus('Game started! Your turn.');
+          }
+        } catch (error) {
+          console.error('[JOIN RECEIPT] Error updating game in Firebase:', error);
+          setGameStatus('Joined game on-chain but failed to update database. Please refresh.');
+        }
+      };
+      updateGameInFirebase();
+    }
+  }, [joinGameHash, isWaitingForJoinReceipt, pendingJoinGameData, address]);
+
   // Tab state for left sidebar
   const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard'>('moves');
 
