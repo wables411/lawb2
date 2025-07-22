@@ -132,6 +132,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { writeContract: writeEndGame, isPending: isEndingGame, data: endGameHash } = useWriteContract();
   const { writeContract: writeCancelGame, isPending: isCancellingGame, data: cancelGameHash } = useWriteContract();
   
+  // Token approval hooks
+  const { approve: approveToken, isPending: isApproving } = useApproveToken();
+  
   // Public client for contract reads
   const publicClient = usePublicClient();
   
@@ -502,6 +505,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   
   // Token balance for validation
   const { balance } = useTokenBalance(selectedToken, address);
+  
+  // Token allowance for current wager
+  const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
+  const { allowance } = useTokenAllowance(selectedToken, address, chessContractAddress);
   
   // UI state - always use dark mode for chess
   const [darkMode] = useState(true);
@@ -1141,19 +1148,40 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Create game with token support
+  // Check and approve token spending
+  const checkAndApproveToken = async () => {
+    if (!address) return false;
+    
+    try {
+      if (allowance < wagerAmountWei) {
+        console.log('[APPROVAL] Insufficient allowance, requesting approval');
+        approveToken(selectedToken, chessContractAddress, wagerAmountWei);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('[APPROVAL] Error checking approval:', error);
+      setGameStatus('Failed to check token approval. Please try again.');
+      return false;
+    }
+  };
+
   const createGame = async () => {
     if (!address || gameWager <= 0) return;
     
-    // Check if user has sufficient balance
-    if (gameWager > balance) {
-      console.log('[CREATE] Insufficient balance:', { gameWager, balance, selectedToken });
-      setGameStatus(`Insufficient ${selectedToken} balance. You have ${balance.toFixed(2)} ${selectedToken} but need ${gameWager} ${selectedToken}.`);
-      return;
-    }
-    
     console.log('[CREATE] Starting game creation - address:', address, 'wager:', gameWager);
     setIsGameCreationInProgress(true);
+    
     try {
+      // Check token approval first
+      const isApproved = await checkAndApproveToken();
+      if (!isApproved) {
+        setGameStatus('Please approve token spending first');
+        setIsGameCreationInProgress(false);
+        return;
+      }
+      
       const newInviteCode = generateBytes6InviteCode();
       console.log('[CREATE] Generated invite code:', newInviteCode);
       
@@ -1161,20 +1189,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const tokenAddress = SUPPORTED_TOKENS[selectedToken].address;
       const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
       
-              const gameData = {
-          invite_code: newInviteCode,
-          game_title: `Chess Game ${newInviteCode.slice(-6)}`,
-          bet_amount: wagerAmountWei.toString(),
-          bet_token: selectedToken,
-          blue_player: address,
-          game_state: 'waiting',
-          board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
-          current_player: 'blue',
-          chain: 'sanko',
-          contract_address: chessContractAddress,
-          is_public: true,
-          created_at: new Date().toISOString()
-        };
+      const gameData = {
+        invite_code: newInviteCode,
+        game_title: `Chess Game ${newInviteCode.slice(-6)}`,
+        bet_amount: wagerAmountWei.toString(),
+        bet_token: selectedToken,
+        blue_player: address,
+        game_state: 'waiting',
+        board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
+        current_player: 'blue',
+        chain: 'sanko',
+        contract_address: chessContractAddress,
+        is_public: true,
+        created_at: new Date().toISOString()
+      };
       console.log('[CREATE] Game data prepared:', gameData);
       console.log('[CREATE] Calling contract with args:', [newInviteCode, tokenAddress, wagerAmountWei]);
       
@@ -2934,7 +2962,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <button 
                     className="create-confirm-btn"
                     onClick={createGame}
-                    disabled={gameWager <= 0 || isGameCreationInProgress || gameWager > balance}
+                    disabled={gameWager <= 0 || isGameCreationInProgress}
                   >
                     {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
                   </button>
