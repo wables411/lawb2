@@ -3,30 +3,34 @@ export const SUPPORTED_TOKENS = {
   DMT: {
     symbol: 'DMT',
     name: 'DMT',
-    address: '0x754cDAd6f5821077d6915004Be2cE05f93d176f8',
+    address: '0x0000000000000000000000000000000000000000', // Native DMT (no contract)
     decimals: 18,
-    logo: '/images/dmt-logo.png' // Add logo if available
+    logo: '/images/dmt-logo.png', // Add logo if available
+    isNative: true // Flag to indicate this is native token
   },
   GOLD: {
     symbol: 'GOLD',
     name: 'GOLD',
     address: '0x6F5e2d3b8c5C5c5F9bcB4adCF40b13308e688D4D',
     decimals: 18,
-    logo: '/images/gold-logo.png'
+    logo: '/images/gold-logo.png',
+    isNative: false
   },
   LAWB: {
     symbol: 'LAWB',
     name: 'LAWB',
     address: '0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F',
-    decimals: 18,
-    logo: '/images/lawb-logo.png'
+    decimals: 6,
+    logo: '/images/lawb-logo.png',
+    isNative: false
   },
   MOSS: {
     symbol: 'MOSS',
     name: 'MOSS',
     address: '0xeA240b96A9621e67159c59941B9d588eb290ef09',
     decimals: 18,
-    logo: '/images/moss-logo.png'
+    logo: '/images/moss-logo.png',
+    isNative: false
   }
 } as const;
 

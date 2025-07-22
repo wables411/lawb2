@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, useBalance } from 'wagmi';
 import { SUPPORTED_TOKENS, type TokenSymbol, NETWORKS } from '../config/tokens';
 import { ERC20_ABI } from '../config/abis';
 
@@ -19,37 +19,66 @@ function areTokensAvailableOnNetwork(chainId: number): boolean {
 
 export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const chainId = useChainId();
-  const tokenAddress = getTokenAddress(tokenSymbol, chainId);
+  const token = SUPPORTED_TOKENS[tokenSymbol];
+  const isNative = token.isNative || false;
   
   // Check if we're on Sanko mainnet (tokens are only available on mainnet)
   const isOnSankoMainnet = chainId === NETWORKS.mainnet.chainId;
   const isOnSankoTestnet = chainId === NETWORKS.testnet.chainId;
   
-  const { data: balance, isLoading, error } = useReadContract({
-    address: tokenAddress as `0x${string}`,
+  const queryEnabled = !!address && isOnSankoMainnet;
+  
+  // For native tokens (like DMT), use useBalance hook
+  const { data: nativeBalance, isLoading: nativeLoading, error: nativeError } = useBalance({
+    address: address as `0x${string}`,
+    query: {
+      enabled: queryEnabled && isNative,
+    },
+  });
+  
+  // For ERC20 tokens, use useReadContract
+  const { data: erc20Balance, isLoading: erc20Loading, error: erc20Error } = useReadContract({
+    address: token.address as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: address ? [address as `0x${string}`] : undefined,
     query: {
-      enabled: !!address && isOnSankoMainnet,
+      enabled: queryEnabled && !isNative,
     },
+  });
+
+  // Use appropriate balance based on token type
+  const balance = isNative ? nativeBalance?.value : erc20Balance;
+  const isLoading = isNative ? nativeLoading : erc20Loading;
+  const error = isNative ? nativeError : erc20Error;
+
+  // Log when query is enabled/disabled
+  console.log(`[TOKEN BALANCE QUERY] ${tokenSymbol}:`, {
+    queryEnabled,
+    address: !!address,
+    isOnSankoMainnet,
+    isNative,
+    contractCall: queryEnabled ? (isNative ? 'native balance' : `balanceOf(${address})`) : 'DISABLED'
   });
 
   // Debug logging
   console.log(`[TOKEN BALANCE] ${tokenSymbol}:`, {
-    tokenAddress,
+    tokenAddress: token.address,
     userAddress: address,
     chainId,
     isOnSankoMainnet,
     isOnSankoTestnet,
+    isNative,
     balance: balance?.toString(),
-    balanceFormatted: balance ? Number(balance) / Math.pow(10, SUPPORTED_TOKENS[tokenSymbol].decimals) : 0,
+    balanceFormatted: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
     isLoading,
-    error: error?.message
+    error: error?.message,
+    errorDetails: error,
+    queryEnabled: !!address && isOnSankoMainnet
   });
 
   return {
-    balance: balance ? Number(balance) / Math.pow(10, SUPPORTED_TOKENS[tokenSymbol].decimals) : 0,
+    balance: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
     balanceWei: balance || BigInt(0),
     isLoading,
     error,
