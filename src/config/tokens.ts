@@ -1,4 +1,4 @@
-// Token configuration for Sanko mainnet
+// Token configuration for Sanko networks
 export const SUPPORTED_TOKENS = {
   DMT: {
     symbol: 'DMT',

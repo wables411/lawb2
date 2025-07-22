@@ -19,7 +19,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   disabled = false
 }) => {
   const { address } = useAccount();
-  const { balance, isOnSankoNetwork } = useTokenBalance(selectedToken, address);
+  const { balance, isOnSankoMainnet, isOnSankoTestnet } = useTokenBalance(selectedToken, address);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleTokenSelect = (token: TokenSymbol) => {
@@ -97,18 +97,28 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
           }}
         />
         <span style={{ color: '#666', fontSize: '12px' }}>
-          Balance: {isOnSankoNetwork ? `${balance.toFixed(2)} ${SUPPORTED_TOKENS[selectedToken].symbol}` : 'Connect to Sanko'}
+          Balance: {isOnSankoMainnet ? `${balance.toFixed(2)} ${SUPPORTED_TOKENS[selectedToken].symbol}` : 'Connect to Sanko Mainnet'}
         </span>
       </div>
 
-      {!isOnSankoNetwork && (
+      {isOnSankoTestnet && (
         <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '5px' }}>
-          ⚠️ Switch to Sanko network to see token balances
+          ⚠️ Switch to Sanko Mainnet - tokens are not available on testnet
         </div>
       )}
-      {wagerAmount > balance && isOnSankoNetwork && (
+      {!isOnSankoMainnet && !isOnSankoTestnet && (
+        <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '5px' }}>
+          ⚠️ Switch to Sanko Mainnet to see token balances
+        </div>
+      )}
+      {wagerAmount > balance && isOnSankoMainnet && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           Insufficient balance. You have {balance.toFixed(2)} {SUPPORTED_TOKENS[selectedToken].symbol}
+        </div>
+      )}
+      {balance === 0 && isOnSankoMainnet && (
+        <div style={{ color: '#ffa500', fontSize: '12px', marginTop: '5px' }}>
+          💡 You have 0 {SUPPORTED_TOKENS[selectedToken].symbol}. Get tokens from <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: '#ffa500'}}>Sanko Bridge</a>
         </div>
       )}
     </div>

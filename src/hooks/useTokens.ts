@@ -3,67 +3,99 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { SUPPORTED_TOKENS, type TokenSymbol, NETWORKS } from '../config/tokens';
 import { ERC20_ABI } from '../config/abis';
 
-export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
+// Helper function to get token address based on network
+function getTokenAddress(tokenSymbol: TokenSymbol, chainId: number): string {
   const token = SUPPORTED_TOKENS[tokenSymbol];
-  const chainId = useChainId();
   
-  // Check if we're on a supported Sanko network
-  const isOnSankoNetwork = chainId === NETWORKS.testnet.chainId || chainId === NETWORKS.mainnet.chainId;
+  // All tokens are only available on mainnet (chain ID 1996)
+  // Testnet (chain ID 1992) doesn't have these tokens
+  return token.address;
+}
+
+// Helper function to check if tokens are available on current network
+function areTokensAvailableOnNetwork(chainId: number): boolean {
+  return chainId === NETWORKS.mainnet.chainId;
+}
+
+export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
+  const chainId = useChainId();
+  const tokenAddress = getTokenAddress(tokenSymbol, chainId);
+  
+  // Check if we're on Sanko mainnet (tokens are only available on mainnet)
+  const isOnSankoMainnet = chainId === NETWORKS.mainnet.chainId;
+  const isOnSankoTestnet = chainId === NETWORKS.testnet.chainId;
   
   const { data: balance, isLoading, error } = useReadContract({
-    address: token.address as `0x${string}`,
+    address: tokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: address ? [address as `0x${string}`] : undefined,
     query: {
-      enabled: !!address && isOnSankoNetwork,
+      enabled: !!address && isOnSankoMainnet,
     },
   });
 
+  // Debug logging
+  console.log(`[TOKEN BALANCE] ${tokenSymbol}:`, {
+    tokenAddress,
+    userAddress: address,
+    chainId,
+    isOnSankoMainnet,
+    isOnSankoTestnet,
+    balance: balance?.toString(),
+    balanceFormatted: balance ? Number(balance) / Math.pow(10, SUPPORTED_TOKENS[tokenSymbol].decimals) : 0,
+    isLoading,
+    error: error?.message
+  });
+
   return {
-    balance: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
+    balance: balance ? Number(balance) / Math.pow(10, SUPPORTED_TOKENS[tokenSymbol].decimals) : 0,
     balanceWei: balance || BigInt(0),
     isLoading,
     error,
-    isOnSankoNetwork
+    isOnSankoMainnet,
+    isOnSankoTestnet
   };
 }
 
 export function useTokenAllowance(tokenSymbol: TokenSymbol, spenderAddress?: string, ownerAddress?: string) {
-  const token = SUPPORTED_TOKENS[tokenSymbol];
   const chainId = useChainId();
+  const tokenAddress = getTokenAddress(tokenSymbol, chainId);
   
-  // Check if we're on a supported Sanko network
-  const isOnSankoNetwork = chainId === NETWORKS.testnet.chainId || chainId === NETWORKS.mainnet.chainId;
+  // Check if we're on Sanko mainnet (tokens are only available on mainnet)
+  const isOnSankoMainnet = chainId === NETWORKS.mainnet.chainId;
+  const isOnSankoTestnet = chainId === NETWORKS.testnet.chainId;
   
   const { data: allowance, isLoading, error } = useReadContract({
-    address: token.address as `0x${string}`,
+    address: tokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: ownerAddress && spenderAddress ? [ownerAddress as `0x${string}`, spenderAddress as `0x${string}`] : undefined,
     query: {
-      enabled: !!ownerAddress && !!spenderAddress && isOnSankoNetwork,
+      enabled: !!ownerAddress && !!spenderAddress && isOnSankoMainnet,
     },
   });
 
   return {
     allowance: allowance || BigInt(0),
-    allowanceFormatted: allowance ? Number(allowance) / Math.pow(10, token.decimals) : 0,
+    allowanceFormatted: allowance ? Number(allowance) / Math.pow(10, SUPPORTED_TOKENS[tokenSymbol].decimals) : 0,
     isLoading,
     error,
-    isOnSankoNetwork
+    isOnSankoMainnet,
+    isOnSankoTestnet
   };
 }
 
 export function useApproveToken() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const chainId = useChainId();
 
   const approve = (tokenSymbol: TokenSymbol, spenderAddress: string, amount: bigint) => {
-    const token = SUPPORTED_TOKENS[tokenSymbol];
+    const tokenAddress = getTokenAddress(tokenSymbol, chainId);
     
     writeContract({
-      address: token.address as `0x${string}`,
+      address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [spenderAddress as `0x${string}`, amount],
