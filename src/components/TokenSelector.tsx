@@ -19,7 +19,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   disabled = false
 }) => {
   const { address } = useAccount();
-  const { balance } = useTokenBalance(selectedToken, address);
+  const { balance, isOnSankoNetwork } = useTokenBalance(selectedToken, address);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleTokenSelect = (token: TokenSymbol) => {
@@ -97,11 +97,16 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
           }}
         />
         <span style={{ color: '#666', fontSize: '12px' }}>
-          Balance: {balance.toFixed(2)} {SUPPORTED_TOKENS[selectedToken].symbol}
+          Balance: {isOnSankoNetwork ? `${balance.toFixed(2)} ${SUPPORTED_TOKENS[selectedToken].symbol}` : 'Connect to Sanko'}
         </span>
       </div>
 
-      {wagerAmount > balance && (
+      {!isOnSankoNetwork && (
+        <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '5px' }}>
+          ⚠️ Switch to Sanko network to see token balances
+        </div>
+      )}
+      {wagerAmount > balance && isOnSankoNetwork && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           Insufficient balance. You have {balance.toFixed(2)} {SUPPORTED_TOKENS[selectedToken].symbol}
         </div>

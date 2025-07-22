@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/tokens';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { SUPPORTED_TOKENS, type TokenSymbol, NETWORKS } from '../config/tokens';
 import { ERC20_ABI } from '../config/abis';
 
 export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const token = SUPPORTED_TOKENS[tokenSymbol];
+  const chainId = useChainId();
+  
+  // Check if we're on a supported Sanko network
+  const isOnSankoNetwork = chainId === NETWORKS.testnet.chainId || chainId === NETWORKS.mainnet.chainId;
   
   const { data: balance, isLoading, error } = useReadContract({
     address: token.address as `0x${string}`,
@@ -12,7 +16,7 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
     functionName: 'balanceOf',
     args: address ? [address as `0x${string}`] : undefined,
     query: {
-      enabled: !!address,
+      enabled: !!address && isOnSankoNetwork,
     },
   });
 
@@ -20,12 +24,17 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
     balance: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
     balanceWei: balance || BigInt(0),
     isLoading,
-    error
+    error,
+    isOnSankoNetwork
   };
 }
 
 export function useTokenAllowance(tokenSymbol: TokenSymbol, spenderAddress?: string, ownerAddress?: string) {
   const token = SUPPORTED_TOKENS[tokenSymbol];
+  const chainId = useChainId();
+  
+  // Check if we're on a supported Sanko network
+  const isOnSankoNetwork = chainId === NETWORKS.testnet.chainId || chainId === NETWORKS.mainnet.chainId;
   
   const { data: allowance, isLoading, error } = useReadContract({
     address: token.address as `0x${string}`,
@@ -33,7 +42,7 @@ export function useTokenAllowance(tokenSymbol: TokenSymbol, spenderAddress?: str
     functionName: 'allowance',
     args: ownerAddress && spenderAddress ? [ownerAddress as `0x${string}`, spenderAddress as `0x${string}`] : undefined,
     query: {
-      enabled: !!ownerAddress && !!spenderAddress,
+      enabled: !!ownerAddress && !!spenderAddress && isOnSankoNetwork,
     },
   });
 
@@ -41,7 +50,8 @@ export function useTokenAllowance(tokenSymbol: TokenSymbol, spenderAddress?: str
     allowance: allowance || BigInt(0),
     allowanceFormatted: allowance ? Number(allowance) / Math.pow(10, token.decimals) : 0,
     isLoading,
-    error
+    error,
+    isOnSankoNetwork
   };
 }
 
