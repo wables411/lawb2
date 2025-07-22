@@ -3,10 +3,10 @@ export const SUPPORTED_TOKENS = {
   DMT: {
     symbol: 'DMT',
     name: 'DMT',
-    address: '0x754cDAd6f5821077d6915004Be2cE05f93d176f8', // Wrapped DMT
+    address: '0x0000000000000000000000000000000000000000', // Native DMT (no contract)
     decimals: 18,
     logo: '/images/dmt-logo.png', // Add logo if available
-    isNative: false // Flag to indicate this is an ERC20 token
+    isNative: true // Flag to indicate this is native token
   },
   GOLD: {
     symbol: 'GOLD',

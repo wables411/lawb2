@@ -523,6 +523,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   useEffect(() => {
     document.documentElement.classList.add('chess-dark-mode');
     document.body.classList.add('chess-dark-mode');
+    
+    // Cleanup function to remove classes when component unmounts
+    return () => {
+      document.documentElement.classList.remove('chess-dark-mode');
+      document.body.classList.remove('chess-dark-mode');
+    };
   }, []);
   const [showPieceGallery, setShowPieceGallery] = useState(false);
   const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);

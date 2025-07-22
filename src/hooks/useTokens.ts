@@ -26,6 +26,16 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const isOnSankoMainnet = chainId === NETWORKS.mainnet.chainId;
   const isOnSankoTestnet = chainId === NETWORKS.testnet.chainId;
   
+  // Debug chain detection
+  console.log(`[CHAIN DEBUG] useTokenBalance for ${tokenSymbol}:`, {
+    chainId,
+    expectedMainnet: NETWORKS.mainnet.chainId,
+    expectedTestnet: NETWORKS.testnet.chainId,
+    isOnSankoMainnet,
+    isOnSankoTestnet,
+    address: !!address
+  });
+  
   const queryEnabled = !!address && isOnSankoMainnet;
   
   // For native tokens (like DMT), use useBalance hook

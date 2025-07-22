@@ -337,6 +337,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     document.documentElement.classList.add('chess-dark-mode');
     document.body.classList.add('chess-dark-mode');
+    
+    // Cleanup function to remove classes when component unmounts
+    return () => {
+      document.documentElement.classList.remove('chess-dark-mode');
+      document.body.classList.remove('chess-dark-mode');
+    };
   }, []);
 
   // Add Stockfish integration

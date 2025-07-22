@@ -8,9 +8,9 @@ import './index.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { config } from './wagmi';
-import './appkit.ts'; // This initializes the AppKit
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ChessPage from './components/ChessPage'; // to be created
+import './appkit.ts'; // This initializes the AppKit
 
 const queryClient = new QueryClient();
 
