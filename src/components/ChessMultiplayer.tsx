@@ -1104,8 +1104,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Game state from Firebase:', firebaseGame.game_state);
             return;
           } else {
-            // Game exists in contract but not in Firebase - sync it
-            console.log('[GAME_STATE] Game exists in contract but not in Firebase, syncing...');
+            // Game exists in contract but not in Firebase - DON'T sync it to avoid race conditions
+            console.log('[GAME_STATE] Game exists in contract but not in Firebase - waiting for transaction confirmation');
+            console.log('[GAME_STATE] This prevents ghost games from failed transactions');
+            return;
             const gameData = {
               invite_code: inviteCode,
               game_title: `Game ${inviteCode.slice(-6)}`,
