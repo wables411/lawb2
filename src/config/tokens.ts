@@ -3,10 +3,10 @@ export const SUPPORTED_TOKENS = {
   DMT: {
     symbol: 'DMT',
     name: 'DMT',
-    address: '0x0000000000000000000000000000000000000000', // Native DMT (no contract)
+    address: '0x0000000000000000000000000000000000000000', // Native DMT (zero address)
     decimals: 18,
     logo: '/images/dmt-logo.png', // Add logo if available
-    isNative: true // Flag to indicate this is native token
+    isNative: true // Native DMT
   },
   GOLD: {
     symbol: 'GOLD',

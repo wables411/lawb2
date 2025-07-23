@@ -296,7 +296,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
   
   // Tab state for left sidebar
-  const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard'>('moves');
+  const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard' | 'gallery'>('moves');
 
 
 
@@ -1338,6 +1338,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!address) return false;
     
     try {
+      // Check if this is a native token (like DMT)
+      const isNativeToken = SUPPORTED_TOKENS[selectedToken].isNative;
+      
+      if (isNativeToken) {
+        console.log('[APPROVAL] Native token detected, skipping approval');
+        return true;
+      }
+      
       if (allowance < wagerAmountWei) {
         console.log('[APPROVAL] Token approval needed, calling approveToken');
         
@@ -1412,6 +1420,49 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const tokenAddress = SUPPORTED_TOKENS[selectedToken].address;
       const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
       
+      // Validate wager amount against contract limits
+      if (publicClient) {
+        try {
+          const minWager = await publicClient.readContract({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'tokenMinWager',
+            args: [tokenAddress as `0x${string}`]
+          }) as bigint;
+          
+          const maxWager = await publicClient.readContract({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'tokenMaxWager',
+            args: [tokenAddress as `0x${string}`]
+          }) as bigint;
+          
+          console.log('[VALIDATION] Contract limits for', selectedToken, ':', {
+            minWager: minWager.toString(),
+            maxWager: maxWager.toString(),
+            userWager: wagerAmountWei.toString()
+          });
+          
+          if (wagerAmountWei < minWager) {
+            const minWagerFormatted = Number(minWager) / Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals);
+            setGameStatus(`Wager too low. Minimum for ${selectedToken}: ${minWagerFormatted}`);
+            setIsGameCreationInProgress(false);
+            return;
+          }
+          
+          if (wagerAmountWei > maxWager) {
+            const maxWagerFormatted = Number(maxWager) / Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals);
+            setGameStatus(`Wager too high. Maximum for ${selectedToken}: ${maxWagerFormatted}`);
+            setIsGameCreationInProgress(false);
+            return;
+          }
+          
+          console.log('[VALIDATION] Wager amount is within contract limits');
+        } catch (error) {
+          console.warn('[VALIDATION] Could not validate wager limits, proceeding anyway:', error);
+        }
+      }
+      
       const gameData = {
         invite_code: newInviteCode,
         game_title: `Chess Game ${newInviteCode.slice(-6)}`,
@@ -1430,7 +1481,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CREATE] Calling contract with args:', [newInviteCode, tokenAddress, wagerAmountWei]);
       
       // Estimate gas for createGame function
-      let gasLimit = 300000n; // Default gas limit
+      let gasLimit = 300000n;
       try {
         if (publicClient) {
           const estimatedGas = await publicClient.estimateContractGas({
@@ -2333,6 +2384,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const capturedPiece = board[to.row][to.col];
     const isCapture = capturedPiece !== null;
     
+    // Log the move details
+    console.log('[MOVE] Executing move:', {
+      from: { row: from.row, col: from.col, piece: piece },
+      to: { row: to.row, col: to.col, capturedPiece: capturedPiece },
+      player: currentPlayer,
+      isCapture: isCapture,
+      moveType: piece.toUpperCase() === 'K' ? 'king' : piece.toUpperCase() === 'R' ? 'rook' : 'other'
+    });
+    
     // Play sound effects
     if (isCapture) {
       playSound('capture');
@@ -2363,6 +2423,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const piece = board[from.row][from.col];
     if (!piece) return;
     
+    console.log('[MOVE_ANIMATION] Starting move execution:', {
+      from: { row: from.row, col: from.col, piece: piece },
+      to: { row: to.row, col: to.col },
+      currentBoard: board.map(row => [...row])
+    });
+    
     const newBoard = board.map(row => [...row]);
     let movedPiece = piece;
     
@@ -2372,7 +2438,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
     
     // Handle special moves (castling, en passant)
+    console.log('[MOVE_ANIMATION] Before special moves handling');
     handleSpecialMoves(newBoard, from, to, piece);
+    console.log('[MOVE_ANIMATION] After special moves handling');
     
     newBoard[to.row][to.col] = movedPiece;
     newBoard[from.row][from.col] = null;
@@ -2406,11 +2474,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       if (currentContractData && currentContractData.length >= 2) {
         await updateBothPlayersScoresLocal(currentPlayer, currentContractData[0], currentContractData[1]);
-      } else {
-        // Fallback to single player update if contract data not available
-        await updateScore(currentPlayer === playerColor ? 'win' : 'loss');
-        // Reload leaderboard after single player update
-        await loadLeaderboard();
+              } else {
+          // Fallback to single player update if contract data not available
+          await updateScore(currentPlayer === playerColor ? 'win' : 'loss');
+          // Reload leaderboard after single player update
+          await loadLeaderboard();
       }
       
       // Trigger contract payout for the winner
@@ -2436,11 +2504,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       if (currentContractData && currentContractData.length >= 2) {
         await updateBothPlayersScoresLocal(winner, currentContractData[0], currentContractData[1]);
-      } else {
-        // Fallback to single player update if contract data not available
-        await updateScore(winner === playerColor ? 'win' : 'loss');
-        // Reload leaderboard after single player update
-        await loadLeaderboard();
+              } else {
+          // Fallback to single player update if contract data not available
+          await updateScore(winner === playerColor ? 'win' : 'loss');
+          // Reload leaderboard after single player update
+          await loadLeaderboard();
       }
       
       // Trigger contract payout for the winner
@@ -2518,12 +2586,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Handle special moves (castling, en passant, pawn promotion)
   const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
+    console.log('[SPECIAL_MOVES] Checking for special moves:', {
+      piece: piece,
+      from: from,
+      to: to,
+      isKing: piece.toLowerCase() === 'k',
+      colDifference: Math.abs(from.col - to.col)
+    });
+    
     // Handle castling
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
+      console.log('[SPECIAL_MOVES] Castling detected!', {
+        fromCol: from.col,
+        toCol: to.col,
+        castlingType: to.col === 6 ? 'kingside' : 'queenside'
+      });
+      
       if (to.col === 6) { // Kingside
+        console.log('[SPECIAL_MOVES] Executing kingside castling');
         newBoard[from.row][7] = null;
         newBoard[from.row][5] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
       } else if (to.col === 2) { // Queenside
+        console.log('[SPECIAL_MOVES] Executing queenside castling');
         // Save the queen if it exists at d1/d8 before moving the rook
         const queenPiece = newBoard[from.row][3];
         newBoard[from.row][0] = null;
@@ -2533,6 +2617,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           newBoard[from.row][4] = queenPiece;
         }
       }
+    } else {
+      console.log('[SPECIAL_MOVES] No castling detected');
     }
     
     // Handle en passant
@@ -2670,14 +2756,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         updated_at: new Date().toISOString()
       });
       // Update scores if not refund
-      if (resolution !== 'refund') {
-        if (resolution === 'blue_win') {
-          await updateScore(address === '0xF8A323e916921b0a82Ebcb562a3441e46525822E' ? 'win' : 'loss');
-        } else if (resolution === 'red_win') {
-          await updateScore(address === '0x9CCa475416BC3448A539E30369792A090859De9d' ? 'win' : 'loss');
-        } else if (resolution === 'draw') {
-          await updateScore('draw');
-        }
+              if (resolution !== 'refund') {
+          if (resolution === 'blue_win') {
+            await updateScore(address === '0xF8A323e916921b0a82Ebcb562a3441e46525822E' ? 'win' : 'loss');
+          } else if (resolution === 'red_win') {
+            await updateScore(address === '0x9CCa475416BC3448A539E30369792A090859De9d' ? 'win' : 'loss');
+          } else if (resolution === 'draw') {
+            await updateScore('draw');
+          }
       }
       alert(`Game resolved: ${gameStatus}`);
       loadOpenGames(); // Refresh the games list
@@ -3320,6 +3406,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             >
               🏆 Leaderboard
             </button>
+            <button 
+              className={`tab-button ${leftSidebarTab === 'gallery' ? 'active' : ''}`}
+              onClick={() => setLeftSidebarTab('gallery')}
+            >
+              ♟️ Gallery
+            </button>
           </div>
           
           {leftSidebarTab === 'moves' && (
@@ -3364,6 +3456,44 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               </div>
             </div>
           )}
+          
+          {leftSidebarTab === 'gallery' && (
+            <div className="piece-gallery">
+              <h4>Chess Pieces</h4>
+              <div className="piece-gallery-grid">
+                <div className="piece-gallery-item">
+                  <img src="/images/blueking.png" alt="King" className="piece-gallery-img" />
+                  <div className="piece-gallery-name">King</div>
+                  <div className="piece-gallery-desc">Moves one square in any direction. Must be protected!</div>
+                </div>
+                <div className="piece-gallery-item">
+                  <img src="/images/bluequeen.png" alt="Queen" className="piece-gallery-img" />
+                  <div className="piece-gallery-name">Queen</div>
+                  <div className="piece-gallery-desc">Most powerful piece. Moves any number of squares in any direction.</div>
+                </div>
+                <div className="piece-gallery-item">
+                  <img src="/images/bluerook.png" alt="Rook" className="piece-gallery-img" />
+                  <div className="piece-gallery-name">Rook</div>
+                  <div className="piece-gallery-desc">Moves any number of squares horizontally or vertically.</div>
+                </div>
+                <div className="piece-gallery-item">
+                  <img src="/images/bluebishop.png" alt="Bishop" className="piece-gallery-img" />
+                  <div className="piece-gallery-name">Bishop</div>
+                  <div className="piece-gallery-desc">Moves any number of squares diagonally.</div>
+                </div>
+                <div className="piece-gallery-item">
+                  <img src="/images/blueknight.png" alt="Knight" className="piece-gallery-img" />
+                  <div className="piece-gallery-name">Knight</div>
+                  <div className="piece-gallery-desc">Moves in L-shape: 2 squares in one direction, then 1 square perpendicular.</div>
+                </div>
+                <div className="piece-gallery-item">
+                  <img src="/images/bluepawn.png" alt="Pawn" className="piece-gallery-img" />
+                  <div className="piece-gallery-name">Pawn</div>
+                  <div className="piece-gallery-desc">Moves forward one square, captures diagonally. Can move 2 squares on first move.</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="center-area">
@@ -3393,6 +3523,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 <div className="explosion-effect">💥</div>
               </div>
             )}
+          </div>
+          
+          {/* Sidebar Toggle Buttons */}
+          <div className="sidebar-toggle-group">
+            <button 
+              className={leftSidebarTab === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+              onClick={() => setLeftSidebarTab('moves')}
+            >
+              📝 Moves
+            </button>
+            <button 
+              className={leftSidebarTab === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+              onClick={() => setLeftSidebarTab('leaderboard')}
+            >
+              🏆 Leaderboard
+            </button>
+            <button 
+              className={leftSidebarTab === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+              onClick={() => setLeftSidebarTab('gallery')}
+            >
+              ♟️ Gallery
+            </button>
           </div>
           
           <div className="game-controls">
@@ -3501,6 +3653,70 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Debug panel component for diagnosing Player 2 issues
+  // Add a function to manually check for checkmate and provide resolution options
+  const checkCurrentGameState = async () => {
+    if (!inviteCode) {
+      alert('No active game found');
+      return;
+    }
+
+    try {
+      const gameData = await firebaseChess.getGame(inviteCode);
+      if (!gameData) {
+        alert('Game not found in database');
+        return;
+      }
+
+      const currentBoard = reconstructBoard(gameData.board);
+      const currentPlayerInGame = gameData.current_player || 'blue';
+      
+      console.log('[GAME STATE CHECK] Current board:', currentBoard);
+      console.log('[GAME STATE CHECK] Current player:', currentPlayerInGame);
+      
+      // Check if current player is in checkmate
+      const isCurrentPlayerInCheckmate = isCheckmate(currentPlayerInGame, currentBoard);
+      const isCurrentPlayerInCheck = isKingInCheck(currentBoard, currentPlayerInGame);
+      const isCurrentPlayerInStalemate = isStalemate(currentPlayerInGame, currentBoard);
+      
+      console.log('[GAME STATE CHECK] Current player in check:', isCurrentPlayerInCheck);
+      console.log('[GAME STATE CHECK] Current player in checkmate:', isCurrentPlayerInCheckmate);
+      console.log('[GAME STATE CHECK] Current player in stalemate:', isCurrentPlayerInStalemate);
+      
+      let message = `Game State Analysis:\n`;
+      message += `Current Player: ${currentPlayerInGame}\n`;
+      message += `In Check: ${isCurrentPlayerInCheck}\n`;
+      message += `In Checkmate: ${isCurrentPlayerInCheckmate}\n`;
+      message += `In Stalemate: ${isCurrentPlayerInStalemate}\n\n`;
+      
+      if (isCurrentPlayerInCheckmate) {
+        const winner = currentPlayerInGame === 'blue' ? 'red' : 'blue';
+        message += `${winner.toUpperCase()} should win by checkmate!\n`;
+        message += `Would you like to force resolve the game?`;
+        
+        if (confirm(message)) {
+          await forceResolveGame(winner === 'blue' ? 'blue_win' : 'red_win');
+        }
+      } else if (isCurrentPlayerInStalemate) {
+        const winner = currentPlayerInGame === 'blue' ? 'red' : 'blue';
+        message += `${winner.toUpperCase()} should win by stalemate!\n`;
+        message += `Would you like to force resolve the game?`;
+        
+        if (confirm(message)) {
+          await forceResolveGame(winner === 'blue' ? 'blue_win' : 'red_win');
+        }
+      } else {
+        message += `Game appears to be in a normal state.\n`;
+        message += `If you believe the game should be over, you can manually force resolve it.`;
+        alert(message);
+      }
+      
+    } catch (error) {
+      console.error('[GAME STATE CHECK] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert('Error checking game state: ' + errorMessage);
+    }
+  };
+
   const renderDebugPanel = () => {
     // Only show debug panel in development mode
     if (process.env.NODE_ENV !== 'development') return null;
@@ -3566,6 +3782,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }}
         >
           Log State
+        </button>
+        <button 
+          onClick={checkCurrentGameState}
+          style={{
+            marginTop: '5px',
+            padding: '5px 10px',
+            background: '#17a2b8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          Check Game State
         </button>
         <button 
           onClick={handleGameStateInconsistency}
