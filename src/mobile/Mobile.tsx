@@ -5,6 +5,7 @@ import { useAppKit } from '@reown/appkit/react';
 import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
+import MobileChess from './MobileChess';
 import MemeGenerator from '../components/MemeGenerator';
 
 const useStyles = createUseStyles({
@@ -242,6 +243,7 @@ const Mobile = () => {
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [showChess, setShowChess] = useState(false);
 
   const icons = [
     { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
@@ -255,6 +257,7 @@ const Mobile = () => {
         disconnect();
       }
     }, disabled: isPending },
+    { label: 'Chess', icon: '/assets/chess.svg', action: () => setShowChess(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
@@ -275,6 +278,10 @@ const Mobile = () => {
 
   if (activeView === 'gallery') {
     return <MobileNFTGallery onBack={() => setActiveView('main')} walletAddress={address || undefined} />;
+  }
+
+  if (showChess) {
+    return <MobileChess onBack={() => setShowChess(false)} />;
   }
 
   interface FolderPopupProps {
