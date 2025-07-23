@@ -1427,12 +1427,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CREATE] Game data prepared:', gameData);
       console.log('[CREATE] Calling contract with args:', [newInviteCode, tokenAddress, wagerAmountWei]);
       
-      // Call contract to create game with token parameters
+      // Estimate gas for createGame function
+      let gasLimit = 300000n; // Default gas limit
+      try {
+        if (publicClient) {
+          const estimatedGas = await publicClient.estimateContractGas({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'createGame',
+            args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
+            account: address as `0x${string}`,
+          });
+          gasLimit = estimatedGas;
+          console.log('[CREATE] Estimated gas:', estimatedGas.toString());
+        }
+      } catch (error) {
+        console.warn('[CREATE] Gas estimation failed, using default:', error);
+      }
+
+      // Call contract to create game with token parameters and proper gas estimation
       const result = writeCreateGame({
         address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'createGame',
         args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
+        gas: gasLimit,
       });
       console.log('[CREATE] Contract call initiated, result:', result);
       console.log('[CREATE] createGameHash after writeCreateGame:', createGameHash);
@@ -1526,12 +1545,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       
+      // Estimate gas for joinGame function
+      let gasLimit = 200000n; // Default gas limit for join
+      try {
+        if (publicClient) {
+          const estimatedGas = await publicClient.estimateContractGas({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'joinGame',
+            args: [inviteCode as `0x${string}`],
+            account: address as `0x${string}`,
+          });
+          gasLimit = estimatedGas;
+          console.log('[JOIN] Estimated gas:', estimatedGas.toString());
+        }
+      } catch (error) {
+        console.warn('[JOIN] Gas estimation failed, using default:', error);
+      }
+
       try {
         const result = writeJoinGame({
           address: chessContractAddress as `0x${string}`,
           abi: CHESS_CONTRACT_ABI,
           functionName: 'joinGame',
           args: [inviteCode as `0x${string}`],
+          gas: gasLimit,
         });
         
         // Store game data for after transaction confirmation
