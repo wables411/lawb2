@@ -615,6 +615,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState<string>('Waiting for opponent...');
   const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.LOBBY);
+  const [isLocalMoveInProgress, setIsLocalMoveInProgress] = useState(false);
   
   // Multiplayer state
   const [playerColor, setPlayerColor] = useState<'blue' | 'red' | null>(null);
@@ -1753,10 +1754,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      // ALWAYS update board and game state, regardless of playerColor logic
-      if (gameData.board) {
+      // Update board and game state, but respect local move in progress
+      if (gameData.board && !isLocalMoveInProgress) {
         const reconstructedBoard = reconstructBoard(gameData.board);
         setBoard(reconstructedBoard);
+      } else if (gameData.board && isLocalMoveInProgress) {
+        console.log('[FIREBASE] Skipping board update due to local move in progress');
       }
       
       if (gameData.current_player) {
@@ -2483,9 +2486,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const piece = board[from.row][from.col];
     if (!piece) return;
     
+    // Set flag to prevent Firebase subscription from overriding local board state
+    setIsLocalMoveInProgress(true);
+    
     console.log('[MOVE_ANIMATION] Starting move execution:', {
       from: { row: from.row, col: from.col, piece: piece },
-      to: { row: to.row, col: to.col },
+      to: { row: to.row, col: to.col, capturedPiece: board[to.row][to.col] },
       currentBoard: board.map(row => [...row])
     });
     
@@ -2497,11 +2503,32 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[MOVE_ANIMATION] After special moves handling');
     
     // Move the piece (promotion is handled in handleSpecialMoves, so we need to check if it was already moved)
-    // Only move the piece if the destination square is still empty (not already handled by special moves)
+    // For captures, the destination square will contain the captured piece, so we always move the attacking piece there
+    // For promotions, the piece is already moved by handleSpecialMoves
     if (newBoard[to.row][to.col] === null) {
+      // Destination is empty, move the piece there
       newBoard[to.row][to.col] = piece;
+    } else {
+      // Destination has a piece (capture or promotion already handled)
+      // For captures, we need to replace the captured piece with the attacking piece
+      // For promotions, the piece is already there
+      if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+        // This is a promotion, the piece is already handled by handleSpecialMoves
+        console.log('[MOVE_ANIMATION] Promotion already handled by special moves');
+      } else {
+        // This is a capture, replace the captured piece with the attacking piece
+        console.log('[MOVE_ANIMATION] Capturing piece, replacing captured piece with attacking piece');
+        newBoard[to.row][to.col] = piece;
+      }
     }
     newBoard[from.row][from.col] = null;
+    
+    console.log('[MOVE_ANIMATION] Move completed:', {
+      from: { row: from.row, col: from.col },
+      to: { row: to.row, col: to.col },
+      piece: piece,
+      finalBoardState: newBoard.map(row => [...row])
+    });
     
     // Update piece state
     updatePieceState(from, to, piece);
@@ -2616,6 +2643,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setLastMove({ from, to });
     setShowPromotion(false);
     setPromotionMove(null);
+    
+    // Reset the local move flag after a short delay to allow Firebase to sync
+    setTimeout(() => {
+      setIsLocalMoveInProgress(false);
+    }, 1000);
   };
 
   // Victory celebration

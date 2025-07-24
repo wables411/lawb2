@@ -10,7 +10,11 @@ import { WagmiProvider } from 'wagmi';
 import { config } from './wagmi';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ChessPage from './components/ChessPage'; // to be created
-import './appkit.ts'; // This initializes the AppKit
+import { appKit } from './appkit.ts'; // Import the appKit instance
+import { getAppKit } from '@reown/appkit/react'; // Import getAppKit
+
+// Set up the global AppKit instance
+getAppKit(appKit);
 
 const queryClient = new QueryClient();
 
