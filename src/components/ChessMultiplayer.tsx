@@ -496,34 +496,70 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      if (!bytes6InviteCode || typeof bytes6InviteCode !== 'string' || !bytes6InviteCode.startsWith('0x') || bytes6InviteCode.length !== 14) {
-        console.error('[CLAIM] Invalid invite code for contract claim:', bytes6InviteCode);
-        alert('Invalid invite code for contract claim.');
+      // Ensure the invite code is properly formatted as bytes6
+      if (!bytes6InviteCode || typeof bytes6InviteCode !== 'string') {
+        console.error('[CLAIM] Invalid invite code format:', bytes6InviteCode);
+        alert('Invalid invite code format.');
         return;
       }
+      
+      // Convert to proper bytes6 format if needed
+      let formattedInviteCode = bytes6InviteCode;
+      if (!bytes6InviteCode.startsWith('0x')) {
+        formattedInviteCode = '0x' + bytes6InviteCode;
+      }
+      
+      // Ensure it's exactly 6 bytes (14 characters including 0x)
+      if (formattedInviteCode.length !== 14) {
+        console.error('[CLAIM] Invalid invite code length for contract claim:', formattedInviteCode, 'length:', formattedInviteCode.length);
+        alert('Invalid invite code length for contract claim.');
+        return;
+      }
+      
+      console.log('[CLAIM] Formatted invite code:', formattedInviteCode);
+      console.log('[CLAIM] Original invite code:', bytes6InviteCode);
+      console.log('[CLAIM] Winner address:', winnerAddress);
       
       console.log('[CLAIM] Calling contract with:', {
         inviteCode: bytes6InviteCode,
         winner: winnerAddress,
         functionName: 'endGame',
-        inviteCodeSource: gameData.invite_code ? 'Firebase' : 'Contract'
+        inviteCodeSource: gameData.invite_code ? 'Firebase' : 'Contract',
+        inviteCodeLength: bytes6InviteCode.length,
+        inviteCodeValid: bytes6InviteCode.startsWith('0x') && bytes6InviteCode.length === 14,
+        winnerAddressValid: winnerAddress.startsWith('0x') && winnerAddress.length === 42
       });
 
       // Call the contract
-      writeEndGame({
-        address: chessContractAddress as `0x${string}`,
-        abi: CHESS_CONTRACT_ABI,
+      console.log('[CLAIM] About to call writeEndGame with:', {
+        address: chessContractAddress,
         functionName: 'endGame',
-        args: [bytes6InviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+        args: [formattedInviteCode, winnerAddress],
+        abiLength: CHESS_CONTRACT_ABI.length,
+        chainId: chainId,
+        isConnected: isConnected
       });
       
-      console.log('[CLAIM] Contract call initiated successfully');
-      
-      // Check for immediate errors
-      if (isEndingGame) {
-        console.log('[CLAIM] Contract call is pending...');
-      } else {
-        console.log('[CLAIM] Contract call status:', { isEndingGame, endGameHash });
+      try {
+        writeEndGame({
+          address: chessContractAddress as `0x${string}`,
+          abi: CHESS_CONTRACT_ABI,
+          functionName: 'endGame',
+          args: [formattedInviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+        });
+        
+        console.log('[CLAIM] Contract call initiated successfully');
+        
+        // Check for immediate errors
+        if (isEndingGame) {
+          console.log('[CLAIM] Contract call is pending...');
+        } else {
+          console.log('[CLAIM] Contract call status:', { isEndingGame, endGameHash });
+        }
+      } catch (error) {
+        console.error('[CLAIM] Error calling writeEndGame:', error);
+        alert('Failed to initiate contract call. Please try again.');
+        return;
       }
 
     } catch (error) {
@@ -540,8 +576,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     try {
       console.log('[CONTRACT] Manual payout call with:', { inviteCode, winner, bluePlayer, redPlayer });
       
-      // Convert gameId to bytes6 format for contract
-      const bytes6InviteCode = inviteCode.padEnd(6, '0').slice(0, 6);
+      // Ensure invite code is properly formatted as bytes6
+      let formattedInviteCode = inviteCode;
+      if (!inviteCode.startsWith('0x')) {
+        formattedInviteCode = '0x' + inviteCode;
+      }
+      
+      // Ensure it's exactly 6 bytes (14 characters including 0x)
+      if (formattedInviteCode.length !== 14) {
+        console.error('[CONTRACT] Invalid invite code length:', formattedInviteCode, 'length:', formattedInviteCode.length);
+        return;
+      }
+      
       const winnerAddress = winner === 'blue' ? bluePlayer : redPlayer;
       
       if (!winnerAddress) {
@@ -554,7 +600,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         address: chessContractAddress as `0x${string}`,
         abi: CHESS_CONTRACT_ABI,
         functionName: 'endGame',
-        args: [bytes6InviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+        args: [formattedInviteCode as `0x${string}`, winnerAddress as `0x${string}`],
       });
     } catch (error) {
       console.error('[CONTRACT] Error calling endGame:', error);
@@ -1983,6 +2029,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     return `${files[col]}${ranks[row]}`;
   };
 
+  const getMoveNotation = (from: { row: number; col: number }, to: { row: number; col: number }, piece: string, board: (string | null)[][]) => {
+    const fromSquare = coordsToAlgebraic(from.row, from.col);
+    const toSquare = coordsToAlgebraic(to.row, to.col);
+    return `${fromSquare}-${toSquare}`;
+  };
+
   const isKingInCheck = (board: (string | null)[][], player: 'blue' | 'red'): boolean => {
     // Find the king
     const kingPiece = player === 'red' ? 'K' : 'k';
@@ -2360,8 +2412,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return;
     }
     // Check for pawn promotion - show dialog for user choice
-    // FIX: Blue pawns promote when reaching row 0 (top), red pawns promote when reaching row 7 (bottom)
-    if (piece.toUpperCase() === 'P' && ((currentPlayer === 'red' && to.row === 7) || (currentPlayer === 'blue' && to.row === 0))) {
+    // Blue pawns promote when reaching row 0 (top), red pawns promote when reaching row 7 (bottom)
+    console.log('[PAWN_PROMOTION_CHECK]', {
+      piece: piece,
+      pieceLower: piece.toLowerCase(),
+      isPawn: piece.toLowerCase() === 'p',
+      pieceColor: getPieceColor(piece),
+      toRow: to.row,
+      bluePromotion: getPieceColor(piece) === 'blue' && to.row === 0,
+      redPromotion: getPieceColor(piece) === 'red' && to.row === 7,
+      shouldPromote: piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))
+    });
+    
+    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      console.log('[PAWN_PROMOTION] Triggering promotion dialog');
       setPromotionMove({ from, to });
       setShowPromotion(true);
       return;
@@ -2426,23 +2490,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     });
     
     const newBoard = board.map(row => [...row]);
-    let movedPiece = piece;
     
-    // Handle pawn promotion
-    if (piece.toUpperCase() === 'P' && ((playerColor === 'red' && to.row === 7) || (playerColor === 'blue' && to.row === 0))) {
-      movedPiece = playerColor === 'red' ? promotionPiece.toUpperCase() : promotionPiece.toLowerCase();
-    }
-    
-    // Handle special moves (castling, en passant)
+    // Handle special moves (castling, en passant, pawn promotion)
     console.log('[MOVE_ANIMATION] Before special moves handling');
-    handleSpecialMoves(newBoard, from, to, piece);
+    handleSpecialMoves(newBoard, from, to, piece, promotionPiece);
     console.log('[MOVE_ANIMATION] After special moves handling');
     
-    newBoard[to.row][to.col] = movedPiece;
+    // Move the piece (promotion is handled in handleSpecialMoves, so we need to check if it was already moved)
+    // Only move the piece if the destination square is still empty (not already handled by special moves)
+    if (newBoard[to.row][to.col] === null) {
+      newBoard[to.row][to.col] = piece;
+    }
     newBoard[from.row][from.col] = null;
     
     // Update piece state
     updatePieceState(from, to, piece);
+    
+    // Update move history
+    const moveNotation = getMoveNotation(from, to, piece, newBoard);
+    setMoveHistory(prev => {
+      const updated = [...prev, moveNotation];
+      console.log('[MOVE HISTORY UPDATED]', updated);
+      return updated;
+    });
     
     const nextPlayer = currentPlayer === 'blue' ? 'red' : 'blue';
     
@@ -2581,7 +2651,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Handle special moves (castling, en passant, pawn promotion)
-  const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
+  const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string, promotionPiece = 'q') => {
     console.log('[SPECIAL_MOVES] Checking for special moves:', {
       piece: piece,
       from: from,
@@ -2589,6 +2659,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       isKing: piece.toLowerCase() === 'k',
       colDifference: Math.abs(from.col - to.col)
     });
+    
+    // Handle pawn promotion
+    console.log('[SPECIAL_MOVES_PROMOTION_CHECK]', {
+      piece: piece,
+      isPawn: piece.toLowerCase() === 'p',
+      pieceColor: getPieceColor(piece),
+      toRow: to.row,
+      promotionPiece: promotionPiece,
+      shouldPromote: piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))
+    });
+    
+    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      const promotedPiece = getPieceColor(piece) === 'blue' ? promotionPiece.toLowerCase() : promotionPiece.toUpperCase();
+      console.log('[SPECIAL_MOVES_PROMOTION] Promoting pawn to:', promotedPiece);
+      newBoard[to.row][to.col] = promotedPiece;
+    }
     
     // Handle castling
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
@@ -2715,6 +2801,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       await firebaseChess.updateGame(inviteCode, resetData);
       console.log('[RESET] Successfully reset game data');
       setGameStatus('Game reset successfully. You can now make moves.');
+      
+      // Reset local state
+      setBoard(initialBoard);
+      setCurrentPlayer('blue');
+      setMoveHistory([]);
+      setLastMove(null);
       
     } catch (error) {
       console.error('[RESET] Error resetting game data:', error);
