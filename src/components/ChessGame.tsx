@@ -330,20 +330,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for leaderboard updated message
   const [showLeaderboardUpdated, setShowLeaderboardUpdated] = useState(false);
 
-  // Always use dark mode for chess
-  const [darkMode] = useState(true);
-  
-  // Always apply dark mode classes
-  useEffect(() => {
-    document.documentElement.classList.add('chess-dark-mode');
-    document.body.classList.add('chess-dark-mode');
-    
-    // Cleanup function to remove classes when component unmounts
-    return () => {
-      document.documentElement.classList.remove('chess-dark-mode');
-      document.body.classList.remove('chess-dark-mode');
-    };
-  }, []);
+
 
   // Add Stockfish integration
   const { stockfishReady, getStockfishMove, getCloudflareStockfishMove } = useStockfish();
@@ -1665,273 +1652,435 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     event.preventDefault();
   };
 
+  if (isOnline) {
+    return (
+      <ChessMultiplayer onClose={onClose} onMinimize={onMinimize} fullscreen={fullscreen} />
+    );
+  }
+
+  // Show home/mode selection UI if not in a game and not picking difficulty
+  if (!showGame && !showDifficulty) {
+    return (
+      <div className="chess-game">
+        <div className="chess-header">
+          <h2>LAWB CHESS MAINNET BETA 3000</h2>
+          <div className="chess-controls">
+            {onMinimize && <button onClick={onMinimize}>_</button>}
+            <button onClick={onClose}>×</button>
+          </div>
+        </div>
+        <div className="game-stable-layout">
+          <div className="left-sidebar">
+            {sidebarView === 'leaderboard' && (
+              <div className="leaderboard-compact">
+                <h3>Leaderboard</h3>
+                <div className="leaderboard-table-compact">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
+                        if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                          const typedEntry = entry as LeaderboardEntry;
+                          return (
+                            <tr key={typedEntry.username}>
+                              <td>{index + 1}</td>
+                              <td>{formatAddress(typedEntry.username)}</td>
+                              <td>{typedEntry.points}</td>
+                            </tr>
+                          );
+                        }
+                        return null;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {sidebarView === 'gallery' && (
+              <div className="piece-gallery-compact">
+                {renderPieceGallery(true, 'Click pieces to learn more')}
+              </div>
+            )}
+          </div>
+          <div className="center-area">
+            <div className="game-mode-panel-streamlined">
+              {/* Lawbstation Game Image */}
+              <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                <img 
+                  src="/assets/lawbstationgame.png" 
+                  alt="Lawbstation Chess" 
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    borderRadius: '0px',
+                    boxShadow: 'none'
+                  }}
+                />
+              </div>
+              <div className="mode-selection-compact">
+                <button 
+                  className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
+                  onClick={() => setGameMode('ai')}
+                >
+                  VS AI
+                </button>
+                <button 
+                  className={`mode-btn-compact ${isOnline ? 'selected' : ''}`}
+                  onClick={() => setGameMode('online')}
+                >
+                  PvP
+                </button>
+              </div>
+              {gameMode === GameMode.AI && (
+                <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
+                  Start Game
+                </button>
+              )}
+              {isOnline && (
+                <div className="pvp-info">
+                  <p>Challenge other players with tDMT wagers</p>
+                  <p>Create or join games instantly</p>
+                </div>
+              )}
+              {/* Updated Help Section */}
+              <div className="help-section-compact">
+                <h4>How to Play</h4>
+                <div className="help-content">
+                  <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
+                  <p><strong>Game Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
+                  <p><strong>Piece Movements:</strong></p>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li><strong>Pawn:</strong> Moves forward one square (or two on first move), captures diagonally</li>
+                    <li><strong>Knight:</strong> Moves in L-shape: 2 squares in one direction, then 1 square perpendicular</li>
+                    <li><strong>Bishop:</strong> Moves any number of squares diagonally</li>
+                    <li><strong>Rook:</strong> Moves any number of squares horizontally or vertically</li>
+                    <li><strong>Queen:</strong> Moves any number of squares in any one direction</li>
+                    <li><strong>King:</strong> Moves one square in any direction</li>
+                  </ul>
+                  <p><strong>Special Rules:</strong></p>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li><strong>Check:</strong> When your king is under attack - you must move to escape</li>
+                    <li><strong>Checkmate:</strong> When your king is under attack with no legal moves to escape. endGame.</li>
+                    <li><strong>Stalemate:</strong> When you have no legal moves but your king is not in check (draw). endGame.</li>
+                    <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of chess board, Player chooses which chess piece to swap pawn out for.</li>
+                  </ul>
+                  <p><strong>Game Modes:</strong></p>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
+                    <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
+                  </ul>
+                  <p><strong>Multiplayer Flow:</strong></p>
+                  <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li>Connect your wallet to Sanko mainnet</li>
+                    <li>Create a game and set your wager amount in DMT</li>
+                    <li>Share your invite code with an opponent</li>
+                    <li>Opponent joins and matches your wager</li>
+                    <li>Game begins automatically - Blue (Player 1) moves first</li>
+                    <li>Winner claims the pot minus 5% house fee</li>
+                  </ol>
+                  <p><strong>Leaderboard:</strong> All games are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+                  <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
+                  <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
+                  </div>
+                </div>
+              </div>
+              {/* Chessboards GIF */}
+              <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
+                <img 
+                  src="/images/chessboards.gif" 
+                  alt="Chessboards Animation" 
+                  style={{
+                    maxWidth: '100%',
+                    width: '300px',
+                    height: 'auto',
+                    borderRadius: '0px',
+                    boxShadow: 'none'
+                  }}
+                />
+              </div>
+              {/* Sidebar Toggle Buttons for Home Page */}
+              <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
+                <button
+                  className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('leaderboard')}
+                >Leaderboard</button>
+                <button
+                  className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('gallery')}
+                >Gallery</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Single player game UI
   return (
-    <div 
-      className={`chess-game${fullscreen ? ' fullscreen' : ''}${darkMode ? ' chess-dark-mode' : ''}${showGame ? ' game-active' : ''}`}
-    >
+    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''}`}>
       {/* Streamlined Header - always show */}
       <div className="chess-header">
-                        <h2>LAWB CHESS MAINNET BETA 3000</h2>
+        <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
           <button onClick={onClose}>×</button>
         </div>
       </div>
       <div className="game-stable-layout">
-          <>
-            {/* Left Sidebar - Toggleable Views */}
-            <div className="left-sidebar">
-              {sidebarView === 'leaderboard' && (
-                <div className="leaderboard-compact">
-                  <h3>Leaderboard</h3>
-                  <div className="leaderboard-table-compact">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Player</th>
-                          <th>Pts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
-                          if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                            const typedEntry = entry as LeaderboardEntry;
-                            return (
-                              <tr key={typedEntry.username}>
-                                <td>{index + 1}</td>
-                                <td>{formatAddress(typedEntry.username)}</td>
-                                <td>{typedEntry.points}</td>
-                              </tr>
-                            );
-                          }
-                          return null;
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-              {sidebarView === 'moves' && showGame && (
-                <div className="move-history-compact">
-                  <div className="move-history-title">Moves</div>
-                  <ul className="move-history-list-compact">
-                    {moveHistory.slice().reverse().map((move, idx) => (
-                      <li key={moveHistory.length - 1 - idx}>{move}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {sidebarView === 'gallery' && (
-                <div className="piece-gallery-compact">
-                  {renderPieceGallery(true, 'Click pieces to learn more')}
-                </div>
-              )}
+        {/* Left Sidebar - Toggleable Views */}
+        <div className="left-sidebar">
+          {sidebarView === 'leaderboard' && (
+            <div className="leaderboard-compact">
+              <h3>Leaderboard</h3>
+              <div className="leaderboard-table-compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
+                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                        const typedEntry = entry as LeaderboardEntry;
+                        return (
+                          <tr key={typedEntry.username}>
+                            <td>{index + 1}</td>
+                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td>{typedEntry.points}</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            {/* Center Area - Always Show Chess Board */}
-            <div className="center-area">
-              {/* Game Info Bar - Compact */}
-              {showGame && (
-                <div className="game-info-compact">
-                  <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
-                    {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
-                  </span>
-                  {gameMode === GameMode.AI && (
-                    <span className="mode-play">
-                      {difficulty === 'easy' ? 'Easy' : 'Hard'} AI
-                    </span>
-                  )}
-                  {isOnline && (
-                    <span className="wager-display">
-                      Wager: {wager} tDMT
-                    </span>
-                  )}
-                </div>
-              )}
-              {/* Main Game Area */}
-              {showGame ? (
-                <div className="chess-main-area">
-                  <div className="chessboard-container">
-                    <div 
-                      className="chessboard"
-                      style={{
-                        backgroundImage: `url(${selectedChessboard})`
-                      }}
-                    >
-                      {Array.from({ length: 8 }, (_, row) => (
-                        <div key={row} className="board-row">
-                          {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                        </div>
-                      ))}
-                      {/* Capture Animation Overlay */}
-                      {captureAnimation && captureAnimation.show && (
-                        <div 
-                          className="capture-animation"
-                          style={{
-                            position: 'absolute',
-                            top: `${captureAnimation.row * 12.5}%`,
-                            left: `${captureAnimation.col * 12.5}%`,
-                            width: '12.5%',
-                            height: '12.5%',
-                            zIndex: 10
-                          }}
-                        >
-                          <img 
-                            src="/images/capture.gif" 
-                            alt="capture" 
-                            style={{ width: '100%', height: '100%' }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {/* Compact Game Controls */}
-                  <div className="game-controls-compact">
-                    <div className="sidebar-toggle-group">
-                      <button
-                        className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                        onClick={() => setSidebarView('leaderboard')}
-                      >Leaderboard</button>
-                      <button
-                        className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                        onClick={() => setSidebarView('moves')}
-                      >Moves</button>
-                      <button
-                        className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                        onClick={() => setSidebarView('gallery')}
-                      >Gallery</button>
-                    </div>
-                    <button onClick={handleNewGame}>New Game</button>
-                    <button onClick={handleBackToMenu}>Menu</button>
-                  </div>
-                </div>
-              ) : showDifficulty ? (
-                renderDifficultySelection()
-              ) : isOnline ? (
-                <ChessMultiplayer onClose={onClose} onMinimize={onMinimize} fullscreen={fullscreen} />
-              ) : (
-                <div className="game-mode-panel-streamlined">
-                  {/* Lawbstation Game Image */}
-                  <div style={{textAlign: 'center', marginBottom: '20px'}}>
-                    <img 
-                      src="/assets/lawbstationgame.png" 
-                      alt="Lawbstation Chess" 
-                      style={{
-                        width: '100%',
-                        height: 'auto',
-                        borderRadius: '0px',
-                        boxShadow: 'none'
-                      }}
-                    />
-                  </div>
-                  <div className="mode-selection-compact">
-                    <button 
-                      className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
-                      onClick={() => setGameMode('ai')}
-                    >
-                      VS AI
-                    </button>
-                    <button 
-                      className={`mode-btn-compact ${isOnline ? 'selected' : ''}`}
-                      onClick={() => setGameMode('online')}
-                    >
-                      PvP
-                    </button>
-                  </div>
-                  {gameMode === GameMode.AI && (
-                    <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
-                      Start Game
-                    </button>
-                  )}
-                  {isOnline && (
-                    <div className="pvp-info">
-                      <p>Challenge other players with tDMT wagers</p>
-                      <p>Create or join games instantly</p>
-                    </div>
-                  )}
-                  {/* Updated Help Section */}
-                  <div className="help-section-compact">
-                    <h4>How to Play</h4>
-                    <div className="help-content">
-                      <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
-                      
-                      <p><strong>Game Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
-                      
-                      <p><strong>Piece Movements:</strong></p>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                        <li><strong>Pawn:</strong> Moves forward one square (or two on first move), captures diagonally</li>
-                        <li><strong>Knight:</strong> Moves in L-shape: 2 squares in one direction, then 1 square perpendicular</li>
-                        <li><strong>Bishop:</strong> Moves any number of squares diagonally</li>
-                        <li><strong>Rook:</strong> Moves any number of squares horizontally or vertically</li>
-                        <li><strong>Queen:</strong> Moves any number of squares in any one direction</li>
-                        <li><strong>King:</strong> Moves one square in any direction</li>
-                      </ul>
-                      
-                      <p><strong>Special Rules:</strong></p>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                        <li><strong>Check:</strong> When your king is under attack - you must move to escape</li>
-                        <li><strong>Checkmate:</strong> When your king is under attack with no legal moves to escape. endGame.</li>
-                        <li><strong>Stalemate:</strong> When you have no legal moves but your king is not in check (draw). endGame.</li>
-                        <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of chess board, Player chooses which chess piece to swap pawn out for.</li>
-                      </ul>
-                      
-                      <p><strong>Game Modes:</strong></p>
-                      <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                        <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
-                        <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
-                      </ul>
-                      
-                      <p><strong>Multiplayer Flow:</strong></p>
-                      <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                        <li>Connect your wallet to Sanko mainnet</li>
-                                                  <li>Create a game and set your wager amount in DMT</li>
-                        <li>Share your invite code with an opponent</li>
-                        <li>Opponent joins and matches your wager</li>
-                        <li>Game begins automatically - Blue (Player 1) moves first</li>
-                        <li>Winner claims the pot minus 5% house fee</li>
-                      </ol>
-                      
-                      <p><strong>Leaderboard:</strong> All games are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
-                      
-                      <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
-                      <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
-                                                  <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
-                          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
-                          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
-                          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Chessboards GIF */}
-                  <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
-                    <img 
-                      src="/images/chessboards.gif" 
-                      alt="Chessboards Animation" 
-                      style={{
-                        maxWidth: '100%',
-                        width: '300px',
-                        height: 'auto',
-                        borderRadius: '0px',
-                        boxShadow: 'none'
-                      }}
-                    />
-                  </div>
-                  {/* Sidebar Toggle Buttons for Home Page */}
-                  <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
-                    <button
-                      className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                      onClick={() => setSidebarView('leaderboard')}
-                    >Leaderboard</button>
-                    <button
-                      className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                      onClick={() => setSidebarView('gallery')}
-                    >Gallery</button>
-                  </div>
-                </div>
-              )}
+          )}
+          {sidebarView === 'moves' && showGame && (
+            <div className="move-history-compact">
+              <div className="move-history-title">Moves</div>
+              <ul className="move-history-list-compact">
+                {moveHistory.slice().reverse().map((move, idx) => (
+                  <li key={moveHistory.length - 1 - idx}>{move}</li>
+                ))}
+              </ul>
             </div>
-                      </>
+          )}
+          {sidebarView === 'gallery' && (
+            <div className="piece-gallery-compact">
+              {renderPieceGallery(true, 'Click pieces to learn more')}
+            </div>
+          )}
         </div>
+        {/* Center Area - Always Show Chess Board */}
+        <div className="center-area">
+          {/* Game Info Bar - Compact */}
+          {showGame && (
+            <div className="game-info-compact">
+              <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
+                {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
+              </span>
+              {gameMode === GameMode.AI && (
+                <span className="mode-play">
+                  {difficulty === 'easy' ? 'Easy' : 'Hard'} AI
+                </span>
+              )}
+              {isOnline && (
+                <span className="wager-display">
+                  Wager: {wager} tDMT
+                </span>
+              )}
+            </div>
+          )}
+          {/* Main Game Area */}
+          {showGame ? (
+            <div className="chess-main-area">
+              <div className="chessboard-container">
+                <div 
+                  className="chessboard"
+                  style={{
+                    backgroundImage: `url(${selectedChessboard})`
+                  }}
+                >
+                  {Array.from({ length: 8 }, (_, row) => (
+                    <div key={row} className="board-row">
+                      {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
+                    </div>
+                  ))}
+                  {/* Capture Animation Overlay */}
+                  {captureAnimation && captureAnimation.show && (
+                    <div 
+                      className="capture-animation"
+                      style={{
+                        position: 'absolute',
+                        top: `${captureAnimation.row * 12.5}%`,
+                        left: `${captureAnimation.col * 12.5}%`,
+                        width: '12.5%',
+                        height: '12.5%',
+                        zIndex: 10
+                      }}
+                    >
+                      <img 
+                        src="/images/capture.gif" 
+                        alt="capture" 
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Compact Game Controls */}
+              <div className="game-controls-compact">
+                <div className="sidebar-toggle-group">
+                  <button
+                    className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                    onClick={() => setSidebarView('leaderboard')}
+                  >Leaderboard</button>
+                  <button
+                    className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                    onClick={() => setSidebarView('moves')}
+                  >Moves</button>
+                  <button
+                    className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                    onClick={() => setSidebarView('gallery')}
+                  >Gallery</button>
+                </div>
+                <button onClick={handleNewGame}>New Game</button>
+                <button onClick={handleBackToMenu}>Menu</button>
+              </div>
+            </div>
+          ) : showDifficulty ? (
+            renderDifficultySelection()
+          ) : (
+            <div className="game-mode-panel-streamlined">
+              {/* Lawbstation Game Image */}
+              <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                <img 
+                  src="/assets/lawbstationgame.png" 
+                  alt="Lawbstation Chess" 
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    borderRadius: '0px',
+                    boxShadow: 'none'
+                  }}
+                />
+              </div>
+              <div className="mode-selection-compact">
+                <button 
+                  className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
+                  onClick={() => setGameMode('ai')}
+                >
+                  VS AI
+                </button>
+                <button 
+                  className={`mode-btn-compact ${isOnline ? 'selected' : ''}`}
+                  onClick={() => setGameMode('online')}
+                >
+                  PvP
+                </button>
+              </div>
+              {gameMode === GameMode.AI && (
+                <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
+                  Start Game
+                </button>
+              )}
+              {isOnline && (
+                <div className="pvp-info">
+                  <p>Challenge other players with tDMT wagers</p>
+                  <p>Create or join games instantly</p>
+                </div>
+              )}
+              {/* Updated Help Section */}
+              <div className="help-section-compact">
+                <h4>How to Play</h4>
+                <div className="help-content">
+                  <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
+                  <p><strong>Game Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
+                  <p><strong>Piece Movements:</strong></p>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li><strong>Pawn:</strong> Moves forward one square (or two on first move), captures diagonally</li>
+                    <li><strong>Knight:</strong> Moves in L-shape: 2 squares in one direction, then 1 square perpendicular</li>
+                    <li><strong>Bishop:</strong> Moves any number of squares diagonally</li>
+                    <li><strong>Rook:</strong> Moves any number of squares horizontally or vertically</li>
+                    <li><strong>Queen:</strong> Moves any number of squares in any one direction</li>
+                    <li><strong>King:</strong> Moves one square in any direction</li>
+                  </ul>
+                  <p><strong>Special Rules:</strong></p>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li><strong>Check:</strong> When your king is under attack - you must move to escape</li>
+                    <li><strong>Checkmate:</strong> When your king is under attack with no legal moves to escape. endGame.</li>
+                    <li><strong>Stalemate:</strong> When you have no legal moves but your king is not in check (draw). endGame.</li>
+                    <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of chess board, Player chooses which chess piece to swap pawn out for.</li>
+                  </ul>
+                  <p><strong>Game Modes:</strong></p>
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
+                    <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
+                  </ul>
+                  <p><strong>Multiplayer Flow:</strong></p>
+                  <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                    <li>Connect your wallet to Sanko mainnet</li>
+                    <li>Create a game and set your wager amount in DMT</li>
+                    <li>Share your invite code with an opponent</li>
+                    <li>Opponent joins and matches your wager</li>
+                    <li>Game begins automatically - Blue (Player 1) moves first</li>
+                    <li>Winner claims the pot minus 5% house fee</li>
+                  </ol>
+                  <p><strong>Leaderboard:</strong> All games are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+                  <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
+                  <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
+                  </div>
+                </div>
+              </div>
+              {/* Chessboards GIF */}
+              <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
+                <img 
+                  src="/images/chessboards.gif" 
+                  alt="Chessboards Animation" 
+                  style={{
+                    maxWidth: '100%',
+                    width: '300px',
+                    height: 'auto',
+                    borderRadius: '0px',
+                    boxShadow: 'none'
+                  }}
+                />
+              </div>
+              {/* Sidebar Toggle Buttons for Home Page */}
+              <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
+                <button
+                  className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('leaderboard')}
+                >Leaderboard</button>
+                <button
+                  className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('gallery')}
+                >Gallery</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       {/* Gallery Modal */}
       {showGalleryModal && renderPieceGallery(true)}
       {/* Promotion Dialog */}

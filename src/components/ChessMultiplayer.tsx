@@ -633,22 +633,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [lastMoveTime, setLastMoveTime] = useState<number>(Date.now());
   const GAME_TIMEOUT_MS = 3600000; // 60 minutes
   
-  // Always apply dark mode classes
-  useEffect(() => {
-    document.documentElement.classList.add('chess-dark-mode');
-    document.body.classList.add('chess-dark-mode');
-    
-    // Cleanup function to remove classes when component unmounts
-    return () => {
-      document.documentElement.classList.remove('chess-dark-mode');
-      document.body.classList.remove('chess-dark-mode');
-    };
-  }, []);
+
   const [showPieceGallery, setShowPieceGallery] = useState(false);
   const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
+  const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('moves'); // Default to moves
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
 
@@ -743,6 +735,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         .then(() => {
           console.log('[CONTRACT] Firebase updated successfully after join confirmation');
           setGameMode(GameMode.ACTIVE);
+          setShowGame(true); // Enable animated background
           setGameStatus('Game started!');
           setInviteCode(pendingJoinGameData.inviteCode); // Set inviteCode for Player 2
           subscribeToGame(pendingJoinGameData.inviteCode);
@@ -1079,6 +1072,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               console.log('[GAME_STATE] Setting game mode to WAITING');
             } else if (firebaseGame.game_state === 'active' || firebaseGame.game_state === 'test_update') {
               setGameMode(GameMode.ACTIVE);
+              setShowGame(true); // Enable animated background
               setGameStatus('Game in progress');
               console.log('[GAME_STATE] Setting game mode to ACTIVE (from state:', firebaseGame.game_state, ')');
               if (firebaseGame.board) {
@@ -1089,6 +1083,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             } else {
               console.log('[GAME_STATE] Unknown game state:', firebaseGame.game_state, '- treating as active');
               setGameMode(GameMode.ACTIVE);
+              setShowGame(true); // Enable animated background
               setGameStatus('Game in progress');
               if (firebaseGame.board) {
                 const boardData = firebaseGame.board;
@@ -1169,6 +1164,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setGameStatus('Waiting for opponent to join...');
         } else if (game.game_state === 'active' || game.game_state === 'test_update') {
           setGameMode(GameMode.ACTIVE);
+          setShowGame(true); // Enable animated background
           setGameStatus('Game in progress');
           if (game.board) {
             const boardData = game.board;
@@ -3162,689 +3158,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     </div>
   );
 
-  // Render lobby
-  const renderLobby = (): JSX.Element => {
-    
-    return (
-    <div className="chess-multiplayer-lobby">
-      <h2>PvP Chess Lawby</h2>
-      
-      {!isConnected ? (
-        <div className="wallet-notice">
-          Please connect your wallet to play multiplayer chess
-        </div>
-      ) : (
-        <>
-          <div className="status-bar">
-            Connected: {formatAddress(address!)}
-          </div>
-          
-          <div className="lobby-content">
-            <div className="open-games">
-              <h3>Open Games ({openGames.length})</h3>
-              <div className="games-list">
-                {openGames.map(game => {
-                  console.log('[RENDER LOBBY] Rendering game:', game);
-                  return (
-                  <div key={game.invite_code} className="game-item">
-                    <div className="game-info">
-                      <div className="game-id">{game.game_title || 'Untitled Game'}</div>
-                      <div className="wager">
-                        Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
-                      </div>
-                      <div className="title">Created by: {formatAddress(game.blue_player)}</div>
-                    </div>
-                    <button 
-                      className="join-btn"
-                      onClick={() => joinGame(game.invite_code)}
-                    >
-                      Join Game
-                    </button>
-                  </div>
-                  );
-                })}
-                {openGames.length === 0 && (
-                  <div className="no-games">No open games available</div>
-                )}
-              </div>
-            </div>
-            
-                      <div className="actions">
-            <button 
-              className="create-btn"
-              onClick={() => setIsCreatingGame(true)}
-              disabled={isCreatingGame || isGameCreationInProgress}
-            >
-              Create New Game
-            </button>
-            <button 
-              onClick={loadOpenGames}
-              style={{ 
-                marginTop: '10px',
-                background: 'rgba(0, 123, 255, 0.1)',
-                border: '2px solid #007bff',
-                color: '#007bff',
-                padding: '8px 16px',
-                borderRadius: '0px',
-                cursor: 'pointer',
-                fontFamily: 'Courier New, monospace',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              🔄 Refresh Lobby
-            </button>
-            <button 
-              onClick={() => window.location.href = '/chess'}
-              style={{ 
-                marginTop: '10px',
-                background: 'rgba(255, 193, 7, 0.1)',
-                border: '2px solid #ffc107',
-                color: '#ffc107',
-                padding: '12px 24px',
-                borderRadius: '0px',
-                cursor: 'pointer',
-                fontFamily: 'Courier New, monospace',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              🏠 Back to Chess Home
-            </button>
-          </div>
-            
-            {isCreatingGame && (
-              <div className="create-form">
-                <h3>Create New Game</h3>
-                <TokenSelector
-                  selectedToken={selectedToken}
-                  onTokenSelect={setSelectedToken}
-                  wagerAmount={gameWager}
-                  onWagerChange={setGameWager}
-                  disabled={isGameCreationInProgress}
-                />
-                <div className="form-actions">
-                  <button 
-                    className="create-confirm-btn"
-                    onClick={createGame}
-                    disabled={gameWager <= 0 || isGameCreationInProgress}
-                  >
-                    {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
-                  </button>
-                  <button 
-                    className="cancel-btn"
-                    onClick={() => {
-                      setIsCreatingGame(false);
-                      setIsGameCreationInProgress(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-    );
-  };
-
-  // Render waiting screen
-  const renderWaiting = () => (
-    <div className="chess-multiplayer-waiting">
-      <h2>Waiting for Opponent</h2>
-      <div className="game-code">
-        Invite Code: <strong>{inviteCode}</strong>
-      </div>
-      <div className="game-info">
-        <p>Wager: {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)} {selectedToken}</p>
-        <p>Share this invite code with your opponent</p>
-      </div>
-      <div className="waiting-actions">
-        <button 
-          onClick={refundGame}
-          disabled={isCancellingGame || isWaitingForCancelReceipt}
-          className="refund-game-btn"
-        >
-          {isCancellingGame || isWaitingForCancelReceipt ? '⏳ Refunding...' : '💰 Refund Game'}
-        </button>
-        <p className="refund-note">
-          You can refund your wager anytime before an opponent joins
-        </p>
-      </div>
-    </div>
-  );
-
-  // Render game board
-  const renderGameBoard = () => (
-    <div className="chess-game">
-      <div className="chess-header">
-        <h2>♔ Multiplayer Chess</h2>
-        <div className="chess-controls">
-          {onMinimize && (
-            <button 
-              onClick={onMinimize}
-              className="minimize-btn"
-              title="Minimize"
-            >
-              _
-            </button>
-          )}
-          <button 
-            onClick={onClose}
-            className="close-btn"
-            title="Close"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-      
-      <div className="game-info">
-        <div className="game-status-section">
-          <span className={`status ${gameStatus.includes('Check') ? 'check-status' : ''}`}>
-            {gameStatus}
-          </span>
-          <span className={`current-player ${currentPlayer === 'red' ? 'red-turn' : 'blue-turn'}`}>
-            Current: {currentPlayer === 'red' ? '♔ Red' : '♔ Blue'}
-          </span>
-        </div>
-        <div className="game-details-section">
-          <span className="wager-display">💰 {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)} {selectedToken}</span>
-          {opponent && (
-            <span className="opponent-info">
-              vs {formatAddress(opponent)}
-            </span>
-          )}
-          {gameMode === GameMode.ACTIVE && timeoutCountdown > 0 && (
-            <span 
-              className="timeout-countdown"
-              style={{ 
-                color: timeoutCountdown < 300 ? '#ff0000' : '#00ff00',
-                fontWeight: 'bold',
-                textShadow: '0 0 6px currentColor'
-              }}
-            >
-              ⏰ {Math.floor(timeoutCountdown / 60)}:{(timeoutCountdown % 60).toString().padStart(2, '0')}
-            </span>
-          )}
-        </div>
-        {gameMode === GameMode.FINISHED && (
-          <div className="game-finished-actions">
-            <button 
-              onClick={claimWinnings}
-              disabled={isClaimingWinnings}
-              className="claim-winnings-btn"
-            >
-              {isClaimingWinnings ? '⏳ Claiming...' : '🏆 Claim Winnings'}
-            </button>
-            <button 
-              onClick={() => window.location.href = '/chess'}
-              className="back-to-chess-btn"
-            >
-              🏠 Back to Chess Home
-            </button>
-          </div>
-        )}
-      </div>
-      
-      <div className="game-stable-layout">
-        <div className="left-sidebar">
-          <div className="sidebar-tabs">
-            <button 
-              className={`tab-button ${leftSidebarTab === 'moves' ? 'active' : ''}`}
-              onClick={() => setLeftSidebarTab('moves')}
-            >
-              📝 Moves
-            </button>
-            <button 
-              className={`tab-button ${leftSidebarTab === 'leaderboard' ? 'active' : ''}`}
-              onClick={() => setLeftSidebarTab('leaderboard')}
-            >
-              🏆 Leaderboard
-            </button>
-            <button 
-              className={`tab-button ${leftSidebarTab === 'gallery' ? 'active' : ''}`}
-              onClick={() => setLeftSidebarTab('gallery')}
-            >
-              ♟️ Gallery
-            </button>
-          </div>
-          
-          {leftSidebarTab === 'moves' && (
-            <div className="move-history">
-              <h4>Move History</h4>
-              <div className="moves">
-                {moveHistory.slice().reverse().map((move, idx) => (
-                  <div key={moveHistory.length - 1 - idx} className="move">{move}</div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {leftSidebarTab === 'leaderboard' && (
-            <div className="leaderboard">
-              <h4>Leaderboard</h4>
-              <div className="leaderboard-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Player</th>
-                      <th>W</th>
-                      <th>L</th>
-                      <th>D</th>
-                      <th>Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.map((entry, index) => (
-                      <tr key={entry.username}>
-                        <td>{index + 1}</td>
-                        <td>{entry.username}</td>
-                        <td>{entry.wins}</td>
-                        <td>{entry.losses}</td>
-                        <td>{entry.draws}</td>
-                        <td>{entry.points}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          
-          {leftSidebarTab === 'gallery' && (
-            <div className="piece-gallery">
-              <h4>Chess Pieces</h4>
-              <div className="piece-gallery-grid">
-                <div className="piece-gallery-item">
-                  <img src="/images/blueking.png" alt="King" className="piece-gallery-img" />
-                  <div className="piece-gallery-name">King</div>
-                  <div className="piece-gallery-desc">Moves one square in any direction. Must be protected!</div>
-                </div>
-                <div className="piece-gallery-item">
-                  <img src="/images/bluequeen.png" alt="Queen" className="piece-gallery-img" />
-                  <div className="piece-gallery-name">Queen</div>
-                  <div className="piece-gallery-desc">Most powerful piece. Moves any number of squares in any direction.</div>
-                </div>
-                <div className="piece-gallery-item">
-                  <img src="/images/bluerook.png" alt="Rook" className="piece-gallery-img" />
-                  <div className="piece-gallery-name">Rook</div>
-                  <div className="piece-gallery-desc">Moves any number of squares horizontally or vertically.</div>
-                </div>
-                <div className="piece-gallery-item">
-                  <img src="/images/bluebishop.png" alt="Bishop" className="piece-gallery-img" />
-                  <div className="piece-gallery-name">Bishop</div>
-                  <div className="piece-gallery-desc">Moves any number of squares diagonally.</div>
-                </div>
-                <div className="piece-gallery-item">
-                  <img src="/images/blueknight.png" alt="Knight" className="piece-gallery-img" />
-                  <div className="piece-gallery-name">Knight</div>
-                  <div className="piece-gallery-desc">Moves in L-shape: 2 squares in one direction, then 1 square perpendicular.</div>
-                </div>
-                <div className="piece-gallery-item">
-                  <img src="/images/bluepawn.png" alt="Pawn" className="piece-gallery-img" />
-                  <div className="piece-gallery-name">Pawn</div>
-                  <div className="piece-gallery-desc">Moves forward one square, captures diagonally. Can move 2 squares on first move.</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="center-area">
-          <div className="chessboard-container">
-            <div className="chessboard">
-              {Array.from({ length: 8 }, (_, row) => (
-                <div key={row} className="board-row">
-                  {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                </div>
-              ))}
-            </div>
-            
-            {/* Capture Animation Overlay */}
-            {captureAnimation && captureAnimation.show && (
-              <div
-                className="capture-animation"
-                style={{
-                  position: 'absolute',
-                  top: `${captureAnimation.row * 12.5}%`,
-                  left: `${captureAnimation.col * 12.5}%`,
-                  width: '12.5%',
-                  height: '12.5%',
-                  pointerEvents: 'none',
-                  zIndex: 1000
-                }}
-              >
-                <div className="explosion-effect">💥</div>
-              </div>
-            )}
-          </div>
-          
-          {/* Sidebar Toggle Buttons */}
-          <div className="sidebar-toggle-group">
-            <button 
-              className={leftSidebarTab === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-              onClick={() => setLeftSidebarTab('moves')}
-            >
-              📝 Moves
-            </button>
-            <button 
-              className={leftSidebarTab === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-              onClick={() => setLeftSidebarTab('leaderboard')}
-            >
-              🏆 Leaderboard
-            </button>
-            <button 
-              className={leftSidebarTab === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-              onClick={() => setLeftSidebarTab('gallery')}
-            >
-              ♟️ Gallery
-            </button>
-          </div>
-          
-          <div className="game-controls">
-            <div className="control-section">
-              
-              {gameStatus.includes('corrupted') && (
-                <button 
-                  className="reset-game-btn"
-                  onClick={resetGameData}
-                >
-                  🔄 Reset Game
-                </button>
-              )}
-            </div>
-            
-            <div className="settings-section">
-              <div className="sound-controls">
-                <label className="control-label">
-                  <input
-                    type="checkbox"
-                    id="sound-toggle"
-                    checked={soundEnabled}
-                    onChange={(e) => setSoundEnabled(e.target.checked)}
-                    className="control-checkbox"
-                  />
-                  <span className="control-text">🎵 Sound Effects</span>
-                </label>
-                <label className="control-label">
-                  <input
-                    type="checkbox"
-                    id="victory-toggle"
-                    checked={victoryCelebration}
-                    onChange={(e) => setVictoryCelebration(e.target.checked)}
-                    className="control-checkbox"
-                  />
-                  <span className="control-text">🎉 Victory Celebration</span>
-                </label>
-              </div>
-            </div>
-            
-            {canClaimWinnings && (
-              <button 
-                className="claim-winnings-btn"
-                onClick={claimWinnings}
-                disabled={isClaimingWinnings || isEndingGame || isWaitingForEndReceipt}
-              >
-                {isClaimingWinnings || isEndingGame || isWaitingForEndReceipt 
-                  ? '⏳ Claiming...' 
-                  : '🏆 Claim Winnings'}
-              </button>
-            )}
-          </div>
-        </div>
-        
-        <div className="right-sidebar">
-          {/* Right sidebar is now empty - content moved to left sidebar tabs */}
-        </div>
-      </div>
-      
-      {showPieceGallery && (
-        <div className="piece-gallery-panel">
-          {renderPieceGallery()}
-        </div>
-      )}
-      
-      {renderPromotionDialog()}
-      
-      {victoryCelebration && (
-        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
-          <div className="balloons-container">{/* ...balloons code... */}</div>
-          <img src="/images/victory.gif" alt="Victory" style={{width:'320px',height:'auto',zIndex:2}} />
-          <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24}}>
-            <button onClick={() => setGameMode(GameMode.LOBBY)}>Back to Lobby</button>
-            <button onClick={() => window.location.reload()}>New Game</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Manual fix function to force Firebase game state to active
-  const forceGameActive = async () => {
-    if (inviteCode && contractGameData && Array.isArray(contractGameData)) {
-      const [player1, player2] = contractGameData;
-      console.log('[FORCE ACTIVE] Setting game to active...');
-      console.log('[FORCE ACTIVE] Player1 (blue):', player1);
-      console.log('[FORCE ACTIVE] Player2 (red):', player2);
-      
-                    try {
-                await firebaseChess.updateGame(inviteCode, {
-                  blue_player: player1,
-                  red_player: player2,
-                  game_state: 'active',
-                  current_player: 'blue',
-                  board: {
-                    positions: flattenBoard(initialBoard),
-                    rows: 8,
-                    cols: 8
-                  }
-                });
-                console.log('[FORCE ACTIVE] Firebase updated successfully with board data');
-              } catch (error) {
-                console.error('[FORCE ACTIVE] Error updating Firebase:', error);
-              }
-    }
-  };
-
-  // Debug panel component for diagnosing Player 2 issues
-  // Add a function to manually check for checkmate and provide resolution options
-  const checkCurrentGameState = async () => {
-    if (!inviteCode) {
-      alert('No active game found');
-      return;
-    }
-
-    try {
-      const gameData = await firebaseChess.getGame(inviteCode);
-      if (!gameData) {
-        alert('Game not found in database');
-        return;
-      }
-
-      const currentBoard = reconstructBoard(gameData.board);
-      const currentPlayerInGame = gameData.current_player || 'blue';
-      
-      console.log('[GAME STATE CHECK] Current board:', currentBoard);
-      console.log('[GAME STATE CHECK] Current player:', currentPlayerInGame);
-      
-      // Check if current player is in checkmate
-      const isCurrentPlayerInCheckmate = isCheckmate(currentPlayerInGame, currentBoard);
-      const isCurrentPlayerInCheck = isKingInCheck(currentBoard, currentPlayerInGame);
-      const isCurrentPlayerInStalemate = isStalemate(currentPlayerInGame, currentBoard);
-      
-      console.log('[GAME STATE CHECK] Current player in check:', isCurrentPlayerInCheck);
-      console.log('[GAME STATE CHECK] Current player in checkmate:', isCurrentPlayerInCheckmate);
-      console.log('[GAME STATE CHECK] Current player in stalemate:', isCurrentPlayerInStalemate);
-      
-      let message = `Game State Analysis:\n`;
-      message += `Current Player: ${currentPlayerInGame}\n`;
-      message += `In Check: ${isCurrentPlayerInCheck}\n`;
-      message += `In Checkmate: ${isCurrentPlayerInCheckmate}\n`;
-      message += `In Stalemate: ${isCurrentPlayerInStalemate}\n\n`;
-      
-      if (isCurrentPlayerInCheckmate) {
-        const winner = currentPlayerInGame === 'blue' ? 'red' : 'blue';
-        message += `${winner.toUpperCase()} should win by checkmate!\n`;
-        message += `Would you like to force resolve the game?`;
-        
-        if (confirm(message)) {
-          await forceResolveGame(winner === 'blue' ? 'blue_win' : 'red_win');
-        }
-      } else if (isCurrentPlayerInStalemate) {
-        const winner = currentPlayerInGame === 'blue' ? 'red' : 'blue';
-        message += `${winner.toUpperCase()} should win by stalemate!\n`;
-        message += `Would you like to force resolve the game?`;
-        
-        if (confirm(message)) {
-          await forceResolveGame(winner === 'blue' ? 'blue_win' : 'red_win');
-        }
-      } else {
-        message += `Game appears to be in a normal state.\n`;
-        message += `If you believe the game should be over, you can manually force resolve it.`;
-        alert(message);
-      }
-      
-    } catch (error) {
-      console.error('[GAME STATE CHECK] Error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      alert('Error checking game state: ' + errorMessage);
-    }
-  };
-
-  const renderDebugPanel = () => {
-    // Only show debug panel in development mode
-    if (process.env.NODE_ENV !== 'development') return null;
-    
-    return (
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        background: 'rgba(0,0,0,0.8)',
-        color: 'white',
-        padding: '10px',
-        borderRadius: '5px',
-        fontSize: '12px',
-        maxWidth: '300px',
-        zIndex: 9999,
-        fontFamily: 'monospace'
-      }}>
-        <h4 style={{margin: '0 0 10px 0'}}>🔧 Debug Panel</h4>
-        <div><strong>Wallet Address:</strong> {address || 'Not connected'}</div>
-        <div><strong>Player Color:</strong> {playerColor || 'null'}</div>
-        <div><strong>Game Mode:</strong> {gameMode}</div>
-        <div><strong>Invite Code:</strong> {inviteCode || 'none'}</div>
-        <div><strong>Wager:</strong> {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)}</div>
-        <div><strong>Opponent:</strong> {opponent || 'none'}</div>
-        <div><strong>Current Player:</strong> {currentPlayer}</div>
-        <div><strong>Contract Invite Code:</strong> {playerGameInviteCode || 'none'}</div>
-        <div><strong>Contract Game Data:</strong> {contractGameData ? 'Available' : 'None'}</div>
-        <div><strong>Lobby Game Data:</strong> {lobbyGameContractData ? 'Available' : 'None'}</div>
-        <div><strong>Lobby Loading:</strong> {lobbyGameContractLoading ? 'Yes' : 'No'}</div>
-        <div><strong>Lobby Error:</strong> {lobbyGameContractError ? 'Yes' : 'No'}</div>
-        <div><strong>Is Joining From Lobby:</strong> {isJoiningFromLobby ? 'Yes' : 'No'}</div>
-        <div><strong>Has Loaded Game:</strong> {hasLoadedGame ? 'Yes' : 'No'}</div>
-        <button 
-          onClick={() => {
-            console.log('=== MANUAL DEBUG TRIGGER ===');
-            console.log('Current state:', {
-              address,
-              playerColor,
-              gameMode,
-              inviteCode,
-              wager,
-              opponent,
-              currentPlayer,
-              playerGameInviteCode,
-              contractGameData,
-              hasLoadedGame
-            });
-            if (inviteCode) {
-              firebaseChess.getGame(inviteCode).then(game => {
-                console.log('Current Firebase game data:', game);
-              });
-            }
-          }}
-          style={{
-            marginTop: '10px',
-            padding: '5px 10px',
-            background: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
-        >
-          Log State
-        </button>
-        <button 
-          onClick={checkCurrentGameState}
-          style={{
-            marginTop: '5px',
-            padding: '5px 10px',
-            background: '#17a2b8',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
-        >
-          Check Game State
-        </button>
-        <button 
-          onClick={handleGameStateInconsistency}
-          style={{
-            marginTop: '5px',
-            padding: '5px 10px',
-            background: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
-        >
-          Fix Game State
-        </button>
-
-        <button 
-          onClick={fixMissingPlayerData}
-          style={{
-            marginTop: '5px',
-            padding: '5px 10px',
-            background: '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
-        >
-          Fix Player Data
-        </button>
-        <button 
-          onClick={forceGameActive}
-          style={{
-            marginTop: '5px',
-            padding: '5px 10px',
-            background: '#ffc107',
-            color: 'black',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
-        >
-          Force Active
-        </button>
-
-      </div>
-    );
-  };
-
   // Load initial data
   useEffect(() => {
     loadLeaderboard();
@@ -3864,30 +3177,313 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     };
   }, []);
 
-  // Render based on game mode
-  
-  const mainContent = (() => {
-    switch (gameMode) {
-      case GameMode.LOBBY:
-        return renderLobby();
-      case GameMode.WAITING:
-        return renderWaiting();
-      case GameMode.ACTIVE:
-      case GameMode.FINISHED:
-        return renderGameBoard();
-      default:
-        return renderLobby();
-    }
-  })();
-  
+  // Main render - single container like ChessGame.tsx
   return (
-    <>
-      {mainContent}
-      {renderDebugPanel()}
-    </>
+    <div className={`chess-game${showGame ? ' game-active' : ''}`}>
+      {/* Header - always show */}
+      <div className="chess-header">
+        <h2>LAWB CHESS MAINNET BETA 3000</h2>
+        <div className="chess-controls">
+          {onMinimize && <button onClick={onMinimize}>_</button>}
+          <button onClick={onClose}>×</button>
+        </div>
+      </div>
+      
+      {/* Main Layout */}
+      <div className="game-stable-layout">
+        {/* Left Sidebar - Only show during active gameplay */}
+        {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame && (
+          <div className="left-sidebar">
+            {sidebarView === 'leaderboard' && (
+              <div className="leaderboard-compact">
+                <h3>Leaderboard</h3>
+                <div className="leaderboard-table-compact">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboard.slice(0, 8).map((entry, index) => (
+                        <tr key={entry.username}>
+                          <td>{index + 1}</td>
+                          <td>{formatAddress(entry.username)}</td>
+                          <td>{entry.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {sidebarView === 'moves' && (
+              <div className="move-history-compact">
+                <div className="move-history-title">Moves</div>
+                <ul className="move-history-list-compact">
+                  {moveHistory.slice().reverse().map((move, idx) => (
+                    <li key={moveHistory.length - 1 - idx}>{move}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {sidebarView === 'gallery' && (
+              <div className="piece-gallery-compact">
+                {renderPieceGallery()}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Center Area */}
+        <div className="center-area">
+          {/* Lobby Mode */}
+          {gameMode === GameMode.LOBBY && (
+            <div className="chess-multiplayer-lobby">
+              <h2>PvP Chess Lawby</h2>
+              
+              {!isConnected ? (
+                <div className="wallet-notice">
+                  Please connect your wallet to play multiplayer chess
+                </div>
+              ) : (
+                <>
+                  <div className="status-bar">
+                    Connected: {formatAddress(address!)}
+                  </div>
+                  
+                  <div className="lobby-content">
+                    <div className="open-games">
+                      <h3>Open Games ({openGames.length})</h3>
+                      <div className="games-list">
+                        {openGames.map(game => {
+                          console.log('[RENDER LOBBY] Rendering game:', game);
+                          return (
+                          <div key={game.invite_code} className="game-item">
+                            <div className="game-info">
+                              <div className="game-id">{game.game_title || 'Untitled Game'}</div>
+                              <div className="wager">
+                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
+                              </div>
+                              <div className="title">Created by: {formatAddress(game.blue_player)}</div>
+                            </div>
+                            <button 
+                              className="join-btn"
+                              onClick={() => joinGame(game.invite_code)}
+                            >
+                              Join Game
+                            </button>
+                          </div>
+                          );
+                        })}
+                        {openGames.length === 0 && (
+                          <div className="no-games">No open games available</div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="actions">
+                      <button 
+                        className="create-btn"
+                        onClick={() => setIsCreatingGame(true)}
+                        disabled={isCreatingGame || isGameCreationInProgress}
+                      >
+                        Create New Game
+                      </button>
+                      <button 
+                        onClick={loadOpenGames}
+                        style={{ 
+                          marginTop: '10px',
+                          background: 'rgba(0, 123, 255, 0.1)',
+                          border: '2px solid #007bff',
+                          color: '#007bff',
+                          padding: '8px 16px',
+                          borderRadius: '0px',
+                          cursor: 'pointer',
+                          fontFamily: 'Courier New, monospace',
+                          fontSize: '14px',
+                          fontWeight: 'bold',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        🔄 Refresh Lobby
+                      </button>
+                      <button 
+                        onClick={() => window.location.href = '/chess'}
+                        style={{ 
+                          marginTop: '10px',
+                          background: 'rgba(255, 193, 7, 0.1)',
+                          border: '2px solid #ffc107',
+                          color: '#ffc107',
+                          padding: '12px 24px',
+                          borderRadius: '0px',
+                          cursor: 'pointer',
+                          fontFamily: 'Courier New, monospace',
+                          fontSize: '16px',
+                          fontWeight: 'bold',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        🏠 Back to Chess Home
+                      </button>
+                    </div>
+                    
+                    {isCreatingGame && (
+                      <div className="create-form">
+                        <h3>Create New Game</h3>
+                        <TokenSelector
+                          selectedToken={selectedToken}
+                          onTokenSelect={setSelectedToken}
+                          wagerAmount={gameWager}
+                          onWagerChange={setGameWager}
+                          disabled={isGameCreationInProgress}
+                        />
+                        <div className="form-actions">
+                          <button 
+                            className="create-confirm-btn"
+                            onClick={createGame}
+                            disabled={gameWager <= 0 || isGameCreationInProgress}
+                          >
+                            {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
+                          </button>
+                          <button 
+                            className="cancel-btn"
+                            onClick={() => {
+                              setIsCreatingGame(false);
+                              setIsGameCreationInProgress(false);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* Waiting Mode */}
+          {gameMode === GameMode.WAITING && (
+            <div className="chess-multiplayer-waiting">
+              <h2>Waiting for Opponent</h2>
+              <div className="game-code">
+                Invite Code: <strong>{inviteCode}</strong>
+              </div>
+              <div className="game-info">
+                <p>Wager: {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)} {selectedToken}</p>
+                <p>Share this invite code with your opponent</p>
+              </div>
+              <div className="waiting-actions">
+                <button 
+                  onClick={refundGame}
+                  disabled={isCancellingGame || isWaitingForCancelReceipt}
+                  className="refund-game-btn"
+                >
+                  {isCancellingGame || isWaitingForCancelReceipt ? '⏳ Refunding...' : '💰 Refund Game'}
+                </button>
+                <p className="refund-note">
+                  You can refund your wager anytime before an opponent joins
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Active Game Mode */}
+          {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame && (
+            <>
+              <div className="game-info-compact">
+                <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
+                  {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
+                </span>
+                <span className="wager-display">
+                  Wager: {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)} {selectedToken}
+                </span>
+                {opponent && (
+                  <span className="opponent-info">
+                    vs {formatAddress(opponent)}
+                  </span>
+                )}
+              </div>
+              <div className="chess-main-area">
+                <div className="chessboard-container">
+                  <div className="chessboard">
+                    {Array.from({ length: 8 }, (_, row) => (
+                      <div key={row} className="board-row">
+                        {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
+                      </div>
+                    ))}
+                    
+                    {/* Capture Animation Overlay */}
+                    {captureAnimation && captureAnimation.show && (
+                      <div 
+                        className="capture-animation"
+                        style={{
+                          position: 'absolute',
+                          top: `${captureAnimation.row * 12.5}%`,
+                          left: `${captureAnimation.col * 12.5}%`,
+                          width: '12.5%',
+                          height: '12.5%',
+                          zIndex: 10
+                        }}
+                      >
+                        <img 
+                          src="/images/capture.gif" 
+                          alt="capture" 
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="game-controls-compact">
+                  <div className="sidebar-toggle-group">
+                    <button 
+                      className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('moves')}
+                    >
+                      Moves
+                    </button>
+                    <button 
+                      className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('leaderboard')}
+                    >
+                      Leaderboard
+                    </button>
+                    <button 
+                      className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('gallery')}
+                    >
+                      Gallery
+                    </button>
+                  </div>
+                  <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>New Game</button>
+                  <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>Menu</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      
+      {/* Modals and Overlays */}
+      {renderPromotionDialog()}
+      {victoryCelebration && (
+        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
+          <div className="balloons-container">{/* ...balloons code... */}</div>
+          <img src="/images/victory.gif" alt="Victory" style={{width:'320px',height:'auto',zIndex:2}} />
+          <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24}}>
+            <button onClick={() => setGameMode(GameMode.LOBBY)}>Back to Lobby</button>
+            <button onClick={() => window.location.reload()}>New Game</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
-
-
 };
 
 export default ChessMultiplayer; 

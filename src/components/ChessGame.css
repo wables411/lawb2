@@ -21,6 +21,14 @@
   background-repeat: no-repeat !important;
 }
 
+/* Always apply animated background to chess games */
+.chess-game {
+  background-image: url('/assets/background.gif') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
 .game-content, .game-stable-layout {
   flex: 1 1 0;
   display: flex;
@@ -57,6 +65,26 @@
 .chess-game.game-active .right-sidebar {
   background: transparent;
   backdrop-filter: none;
+}
+
+/* Always make sidebars transparent */
+.chess-game .left-sidebar,
+.chess-game .right-sidebar {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+/* Always make header transparent */
+.chess-game .chess-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+}
+
+.chess-game .chess-header h2 {
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+  font-weight: bold;
 }
 
 .center-area {
@@ -1000,12 +1028,7 @@ html.chess-dark-mode, body.chess-dark-mode {
 .chess-dark-mode.chess-game.game-active .game-content {
   background: transparent !important;
 }
-.chess-dark-mode .move-history,
-.chess-dark-mode .leaderboard,
-.chess-dark-mode .game-info-bar {
-  background: #111 !important;
-  color: #00ff00 !important;
-}
+
 .chess-dark-mode .chess98-header {
   border-bottom: 2px solid #00ff00 !important;
 }
@@ -1210,22 +1233,7 @@ html.chess-dark-mode, body.chess-dark-mode {
 }
 
 /* --- Comprehensive dark mode override for all chess containers --- */
-.chess-dark-mode .left-sidebar,
-.chess-dark-mode .right-sidebar,
-.chess-dark-mode .piece-gallery-panel,
-.chess-dark-mode .chessboard-container,
-.chess-dark-mode .piece-gallery,
-.chess-dark-mode .move-history,
-.chess-dark-mode .gallery-item,
-.chess-dark-mode .leaderboard,
-.chess-dark-mode .leaderboard-table,
-.chess-dark-mode .game-info,
-.chess-dark-mode .game-content,
-.chess-dark-mode .center-area {
-  background: #111 !important;
-  color: #00ff00 !important;
-  border-color: #00ff00 !important;
-}
+
 
 /* Override for active game - make containers transparent */
 .chess-dark-mode.chess-game.game-active .left-sidebar,
@@ -1244,10 +1252,7 @@ html.chess-dark-mode, body.chess-dark-mode {
   color: #00ff00 !important;
 }
 
-body.chess-dark-mode, html.chess-dark-mode {
-  background: #111 !important;
-  background-image: none !important;
-}
+
 
 /* Override body/html dark mode background when game is active */
 .chess-dark-mode.chess-game.game-active,
@@ -2563,6 +2568,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 @media (hover: none) and (pointer: coarse) {
   .square:hover {
     /* Disable hover effects on touch devices */
+    background-color: transparent;
   }
   
   .square.selected {
