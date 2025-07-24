@@ -1596,7 +1596,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Check token approval for the game's token
       const tokenAddress = SUPPORTED_TOKENS[gameData.bet_token as TokenSymbol]?.address;
-      if (tokenAddress && tokenAddress !== '0x0000000000000000000000000000000000000000' && publicClient) {
+      if (tokenAddress && tokenAddress !== ('0x0000000000000000000000000000000000000000' as typeof tokenAddress) && publicClient) {
         try {
           const allowance = await publicClient.readContract({
             address: tokenAddress as `0x${string}`,
