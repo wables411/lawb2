@@ -27,6 +27,15 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
     setShowDropdown(false);
   };
 
+  // Get display name for token with native indicator
+  const getTokenDisplayName = (tokenSymbol: TokenSymbol) => {
+    const token = SUPPORTED_TOKENS[tokenSymbol];
+    if (token.isNative) {
+      return `${token.symbol} (Native)`;
+    }
+    return token.symbol;
+  };
+
   return (
     <div style={{ marginBottom: '10px' }}>
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
@@ -41,11 +50,11 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
               border: '2px outset #fff',
               background: '#c0c0c0',
               cursor: disabled ? 'not-allowed' : 'pointer',
-              minWidth: '100px',
+              minWidth: '120px', // Increased width to accommodate longer names
               textAlign: 'left'
             }}
           >
-            {SUPPORTED_TOKENS[selectedToken].symbol}
+            {getTokenDisplayName(selectedToken)}
             <span style={{ float: 'right' }}>▼</span>
           </button>
           
@@ -57,7 +66,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
               background: '#fff',
               border: '2px outset #fff',
               zIndex: 10,
-              minWidth: '100px'
+              minWidth: '120px'
             }}>
               {Object.entries(SUPPORTED_TOKENS).map(([symbol, token]) => (
                 <div
@@ -66,12 +75,13 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
                   style={{
                     padding: '5px 10px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid #eee'
+                    borderBottom: '1px solid #eee',
+                    fontSize: '12px' // Smaller font to fit longer names
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
                 >
-                  {token.symbol}
+                  {getTokenDisplayName(symbol as TokenSymbol)}
                 </div>
               ))}
             </div>
@@ -98,6 +108,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
         />
         <span style={{ color: '#666', fontSize: '12px' }}>
           Balance: {isOnSankoMainnet ? `${balance.toFixed(2)} ${SUPPORTED_TOKENS[selectedToken].symbol}` : 'Connect to Sanko Mainnet'}
+          {SUPPORTED_TOKENS[selectedToken].isNative && <span style={{ color: '#FF6B35', fontWeight: 'bold' }}> (Native)</span>}
         </span>
       </div>
 
@@ -114,11 +125,14 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
       {wagerAmount > balance && isOnSankoMainnet && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           Insufficient balance. You have {balance.toFixed(2)} {SUPPORTED_TOKENS[selectedToken].symbol}
+          {SUPPORTED_TOKENS[selectedToken].isNative && <span> (Native)</span>}
         </div>
       )}
       {balance === 0 && isOnSankoMainnet && (
         <div style={{ color: '#ffa500', fontSize: '12px', marginTop: '5px' }}>
-          💡 You have 0 {SUPPORTED_TOKENS[selectedToken].symbol}. Get tokens from <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: '#ffa500'}}>Sanko Bridge</a>
+          💡 You have 0 {SUPPORTED_TOKENS[selectedToken].symbol}
+          {SUPPORTED_TOKENS[selectedToken].isNative && <span> (Native)</span>}
+          . Get tokens from <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: '#ffa500'}}>Sanko Bridge</a>
         </div>
       )}
     </div>

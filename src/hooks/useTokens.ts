@@ -27,20 +27,21 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const isOnSankoTestnet = chainId === NETWORKS.testnet.chainId;
   
   // Debug chain detection (only log once per component mount)
-  if (tokenSymbol === 'DMT') {
+  if (tokenSymbol === 'DMT' || tokenSymbol === 'NATIVE_DMT') {
     console.log(`[CHAIN DEBUG] useTokenBalance for ${tokenSymbol}:`, {
       chainId,
       expectedMainnet: NETWORKS.mainnet.chainId,
       expectedTestnet: NETWORKS.testnet.chainId,
       isOnSankoMainnet,
       isOnSankoTestnet,
-      address: !!address
+      address: !!address,
+      isNative
     });
   }
   
   const queryEnabled = !!address && isOnSankoMainnet;
   
-  // For native tokens (like DMT), use useBalance hook
+  // For native tokens (like native DMT), use useBalance hook
   const { data: nativeBalance, isLoading: nativeLoading, error: nativeError } = useBalance({
     address: address as `0x${string}`,
     query: {

@@ -282,7 +282,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   
   // Debug function to track wager changes
   // Helper function to convert wager amount from wei to token units
-  const convertWagerFromWei = (weiAmount: string | number, tokenSymbol: string = 'DMT'): number => {
+  const convertWagerFromWei = (weiAmount: string | number, tokenSymbol: string = 'NATIVE_DMT'): number => {
     const decimals = SUPPORTED_TOKENS[tokenSymbol as TokenSymbol]?.decimals || 18;
     return parseFloat(weiAmount.toString()) / Math.pow(10, decimals);
   };
@@ -629,7 +629,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [waitingForApproval, setWaitingForApproval] = useState<boolean>(false);
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
-  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('DMT');
+  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('NATIVE_DMT');
 
   // Debug logging for join transaction
   useEffect(() => {
@@ -1168,7 +1168,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Successfully synced game to Firebase:', gameData);
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
-            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'DMT'), 'checkPlayerGameState sync');
+            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'checkPlayerGameState sync');
             setOpponent(opponent);
             if (isActive) {
               setGameMode(GameMode.ACTIVE);
@@ -1542,13 +1542,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
 
       // Call contract to create game with token parameters and proper gas estimation
-      const result = writeCreateGame({
-        address: chessContractAddress as `0x${string}`,
-        abi: CHESS_CONTRACT_ABI,
-        functionName: 'createGame',
-        args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
-        gas: gasLimit,
-      });
+      let result;
+      if (SUPPORTED_TOKENS[selectedToken].isNative) {
+        // Native DMT transaction - include value
+        console.log('[CREATE] Native DMT transaction - adding value:', wagerAmountWei.toString());
+        result = writeCreateGame({
+          address: chessContractAddress as `0x${string}`,
+          abi: CHESS_CONTRACT_ABI,
+          functionName: 'createGame',
+          args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
+          gas: gasLimit,
+          value: wagerAmountWei as any, // Type assertion for native token support
+        });
+      } else {
+        // ERC-20 token transaction - no value
+        result = writeCreateGame({
+          address: chessContractAddress as `0x${string}`,
+          abi: CHESS_CONTRACT_ABI,
+          functionName: 'createGame',
+          args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
+          gas: gasLimit,
+        });
+      }
       console.log('[CREATE] Contract call initiated, result:', result);
       console.log('[CREATE] createGameHash after writeCreateGame:', createGameHash);
       console.log('[CREATE] Pending game data being set:', gameData);
@@ -1571,7 +1586,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameStatus('Game not found or already full');
         return;
       }
-      const wagerAmountTDMT = convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'DMT');
+      const wagerAmountTDMT = convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT');
       setInviteCode(inviteCode);
       setIsJoiningFromLobby(true);
       setPlayerColor('red');
@@ -1660,13 +1675,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
 
       try {
-        const result = writeJoinGame({
-          address: chessContractAddress as `0x${string}`,
-          abi: CHESS_CONTRACT_ABI,
-          functionName: 'joinGame',
-          args: [inviteCode as `0x${string}`],
-          gas: gasLimit,
-        });
+        // Check if this is a native DMT game
+        const gameTokenConfig = SUPPORTED_TOKENS[gameData.bet_token as TokenSymbol];
+        const isNativeGame = gameTokenConfig?.isNative;
+        
+        if (isNativeGame) {
+          // Native DMT transaction - include value
+          console.log('[JOIN] Native DMT game - adding value:', gameData.bet_amount);
+          const result = writeJoinGame({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'joinGame',
+            args: [inviteCode as `0x${string}`],
+            gas: gasLimit,
+            value: BigInt(gameData.bet_amount) as any, // Type assertion for native token support
+          });
+        } else {
+          // ERC-20 token transaction - no value
+          const result = writeJoinGame({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'joinGame',
+            args: [inviteCode as `0x${string}`],
+            gas: gasLimit,
+          });
+        }
         
         // Store game data for after transaction confirmation
         setPendingJoinGameData({ inviteCode, gameData, address });
@@ -1768,6 +1801,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       if (gameData.game_state === 'active') {
         setGameMode(GameMode.ACTIVE);
+        setShowGame(true); // Enable animated background and game board
         setGameStatus('Game in progress');
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
@@ -1779,7 +1813,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Try to get wager from contract data if Firebase doesn't have it
       let wagerValue = 0;
-      const tokenSymbol = gameData.bet_token || 'DMT';
+              const tokenSymbol = gameData.bet_token || 'NATIVE_DMT';
       
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
         wagerValue = convertWagerFromWei(gameData.bet_amount, tokenSymbol);
@@ -1915,6 +1949,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[RECEIPT] Firebase updated successfully after join confirmation');
         setGameStatus('Game started! You are the red player.');
         setGameMode(GameMode.ACTIVE);
+        setShowGame(true); // Enable animated background and game board
         
         // Clear pending data
         setPendingJoinGameData(null);
@@ -2908,7 +2943,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return;
     }
     setPlayerColor(address === gameData.blue_player ? 'blue' : 'red');
-            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'DMT'), 'resumeGame');
+            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'resumeGame');
     setOpponent(address === gameData.blue_player ? gameData.red_player : gameData.blue_player);
     setGameMode(GameMode.ACTIVE);
     setGameStatus('Game resumed');
