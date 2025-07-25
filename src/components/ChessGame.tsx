@@ -1772,8 +1772,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   </ul>
                   <p><strong>Game Modes:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
-                    <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
+                    <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
+                    <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
                   </ul>
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>

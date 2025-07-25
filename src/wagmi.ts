@@ -38,10 +38,10 @@ export const sankoMainnet = {
   },
   rpcUrls: {
     default: {
-      http: ['https://mainnet.sanko.xyz'],
+      http: ['https://mainnet.sanko.xyz', 'https://sanko-mainnet.calderachain.xyz/http'],
     },
     public: {
-      http: ['https://mainnet.sanko.xyz'],
+      http: ['https://mainnet.sanko.xyz', 'https://sanko-mainnet.calderachain.xyz/http'],
     },
   },
   blockExplorers: {

@@ -3400,64 +3400,51 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <div className="center-area">
           {/* Lobby Mode */}
           {gameMode === GameMode.LOBBY && (
-            <div className="chess-multiplayer-lobby">
-              <h2>PvP Chess Lawby</h2>
+            <div className="chess-multiplayer-lobby" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              textAlign: 'center',
+              padding: '20px',
+              marginTop: '20px'
+            }}>
+              <h2 style={{
+                color: '#ff0000',
+                fontFamily: 'Impact, Charcoal, sans-serif',
+                fontSize: '48px',
+                fontWeight: 'bold',
+                textShadow: '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
+                marginBottom: '10px',
+                textTransform: 'uppercase'
+              }}>PVP CHESS LAWBY</h2>
               
               {!isConnected ? (
-                <div className="wallet-notice">
+                <div className="wallet-notice" style={{ marginBottom: '20px', color: '#ff0000' }}>
                   Please connect your wallet to play multiplayer chess
                 </div>
               ) : (
                 <>
-                  <div className="status-bar">
+                  <div className="status-bar" style={{ marginBottom: '20px', color: '#ff0000' }}>
                     Connected: {formatAddress(address!)}
                   </div>
                   
-                  <div className="lobby-content">
-                    <div className="open-games">
-                      <h3>Open Games ({openGames.length})</h3>
-                      <div className="games-list">
-                        {openGames.map(game => {
-                          console.log('[RENDER LOBBY] Rendering game:', game);
-                          return (
-                          <div key={game.invite_code} className="game-item">
-                            <div className="game-info">
-                              <div className="game-id">{game.game_title || 'Untitled Game'}</div>
-                              <div className="wager">
-                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
-                              </div>
-                              <div className="title">Created by: {formatAddress(game.blue_player)}</div>
-                            </div>
-                            <button 
-                              className="join-btn"
-                              onClick={() => joinGame(game.invite_code)}
-                            >
-                              Join Game
-                            </button>
-                          </div>
-                          );
-                        })}
-                        {openGames.length === 0 && (
-                          <div className="no-games">No open games available</div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="actions">
+                  <div className="lobby-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                    <div className="actions" style={{ order: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                       <button 
                         className="create-btn"
                         onClick={() => setIsCreatingGame(true)}
                         disabled={isCreatingGame || isGameCreationInProgress}
+                        style={{ color: '#ff0000' }}
                       >
                         Create New Game
                       </button>
                       <button 
                         onClick={loadOpenGames}
                         style={{ 
-                          marginTop: '10px',
-                          background: 'rgba(0, 123, 255, 0.1)',
-                          border: '2px solid #007bff',
-                          color: '#007bff',
+                          background: 'rgba(255, 0, 0, 0.1)',
+                          border: '2px solid #ff0000',
+                          color: '#ff0000',
                           padding: '8px 16px',
                           borderRadius: '0px',
                           cursor: 'pointer',
@@ -3472,10 +3459,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       <button 
                         onClick={() => window.location.href = '/chess'}
                         style={{ 
-                          marginTop: '10px',
-                          background: 'rgba(255, 193, 7, 0.1)',
-                          border: '2px solid #ffc107',
-                          color: '#ffc107',
+                          background: 'rgba(255, 0, 0, 0.1)',
+                          border: '2px solid #ff0000',
+                          color: '#ff0000',
                           padding: '12px 24px',
                           borderRadius: '0px',
                           cursor: 'pointer',
@@ -3490,7 +3476,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     </div>
                     
                     {isCreatingGame && (
-                      <div className="create-form">
+                      <div className="create-form" style={{ order: 2, marginBottom: '20px' }}>
                         <h3>Create New Game</h3>
                         <TokenSelector
                           selectedToken={selectedToken}
@@ -3519,6 +3505,43 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         </div>
                       </div>
                     )}
+                    
+                    <div className="open-games" style={{ order: 3 }}>
+                      <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
+                      <div className="games-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {openGames.map(game => {
+                          console.log('[RENDER LOBBY] Rendering game:', game);
+                          return (
+                          <div key={game.invite_code} className="game-item" style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '15px',
+                            border: '2px solid #333',
+                            borderRadius: '5px'
+                          }}>
+                            <div className="game-info" style={{ textAlign: 'center' }}>
+                              <div className="game-id">{game.game_title || 'Untitled Game'}</div>
+                              <div className="wager">
+                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
+                              </div>
+                              <div className="title">Created by: {formatAddress(game.blue_player)}</div>
+                            </div>
+                            <button 
+                              className="join-btn"
+                              onClick={() => joinGame(game.invite_code)}
+                            >
+                              Join Game
+                            </button>
+                          </div>
+                          );
+                        })}
+                        {openGames.length === 0 && (
+                          <div className="no-games" style={{ color: '#ff0000' }}>No open games available</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
