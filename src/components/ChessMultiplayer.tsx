@@ -668,7 +668,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { balance } = useTokenBalance(selectedToken, address);
   
   // Token allowance for current wager
-  const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
+  const currentWagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
   const { allowance } = useTokenAllowance(selectedToken, address, chessContractAddress);
   
   // UI state - always use dark mode for chess
@@ -772,12 +772,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setOpponent(pendingJoinGameData.gameData.blue_player);
       }
       
-      // Update database to mark game as active
+      // Update database to mark game as active ONLY after join transaction is confirmed
       firebaseChess
         .updateGame(pendingJoinGameData.inviteCode, {
           ...pendingJoinGameData.gameData,
           red_player: pendingJoinGameData.address,
-          game_state: 'active'
+          game_state: 'active' // Now safe to mark as active since both transactions are confirmed
         })
         .then(() => {
           console.log('[CONTRACT] Firebase updated successfully after join confirmation');
@@ -851,7 +851,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               bet_token: contractGame[1] || '',
               blue_player: contractGame[0] || '',
               red_player: '0x0000000000000000000000000000000000000000',
-              game_state: 'waiting',
+              game_state: 'waiting_for_join', // Changed: Only mark as waiting for join, not active
               board: { 
                 positions: flattenBoard(initialBoard), 
                 rows: 8, 
@@ -907,8 +907,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       
       if (gameDataToSave) {
-        // Create the game in Firebase
-        firebaseChess.createGame(gameDataToSave).then(() => {
+        // Create the game in Firebase with waiting_for_join state
+        const gameDataWithWaitingState = {
+          ...gameDataToSave,
+          game_state: 'waiting_for_join' // Changed: Only mark as waiting for join, not active
+        };
+        
+        firebaseChess.createGame(gameDataWithWaitingState).then(() => {
           console.log('[FIREBASE] Game created successfully after transaction confirmation');
           
           // Update UI
@@ -1113,31 +1118,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setPlayerColor(playerColor as 'blue' | 'red');
             debugSetWager(convertWagerFromWei(firebaseGame.bet_amount, firebaseGame.bet_token || 'DMT'), 'checkPlayerGameState Firebase');
             setOpponent(opponent);
-            if (firebaseGame.game_state === 'waiting') {
-              setGameMode(GameMode.WAITING);
-              setGameStatus('Waiting for opponent to join...');
-              console.log('[GAME_STATE] Setting game mode to WAITING');
-            } else if (firebaseGame.game_state === 'active' || firebaseGame.game_state === 'test_update') {
-              setGameMode(GameMode.ACTIVE);
-              setShowGame(true); // Enable animated background
-              setGameStatus('Game in progress');
-              console.log('[GAME_STATE] Setting game mode to ACTIVE (from state:', firebaseGame.game_state, ')');
-              if (firebaseGame.board) {
-                const boardData = firebaseGame.board;
-                setBoard(reconstructBoard(boardData));
-                setCurrentPlayer(firebaseGame.current_player || 'blue');
-              }
-            } else {
-              console.log('[GAME_STATE] Unknown game state:', firebaseGame.game_state, '- treating as active');
-              setGameMode(GameMode.ACTIVE);
-              setShowGame(true); // Enable animated background
-              setGameStatus('Game in progress');
-              if (firebaseGame.board) {
-                const boardData = firebaseGame.board;
-                setBoard(reconstructBoard(boardData));
-                setCurrentPlayer(firebaseGame.current_player || 'blue');
-              }
-            }
+                    if (firebaseGame.game_state === 'waiting_for_join') {
+          setGameMode(GameMode.WAITING);
+          setGameStatus('Waiting for opponent to join...');
+          console.log('[GAME_STATE] Setting game mode to WAITING');
+        } else if (firebaseGame.game_state === 'active' || firebaseGame.game_state === 'test_update') {
+          setGameMode(GameMode.ACTIVE);
+          setShowGame(true); // Enable animated background
+          setGameStatus('Game in progress');
+          console.log('[GAME_STATE] Setting game mode to ACTIVE (from state:', firebaseGame.game_state, ')');
+          if (firebaseGame.board) {
+            const boardData = firebaseGame.board;
+            setBoard(reconstructBoard(boardData));
+            setCurrentPlayer(firebaseGame.current_player || 'blue');
+          }
+        } else {
+          console.log('[GAME_STATE] Unknown game state:', firebaseGame.game_state, '- treating as active');
+          setGameMode(GameMode.ACTIVE);
+          setShowGame(true); // Enable animated background
+          setGameStatus('Game in progress');
+          if (firebaseGame.board) {
+            const boardData = firebaseGame.board;
+            setBoard(reconstructBoard(boardData));
+            setCurrentPlayer(firebaseGame.current_player || 'blue');
+          }
+        }
             // Subscribe to game updates using the full inviteCode
             subscribeToGame(inviteCode);
             setHasLoadedGame(true);
@@ -1389,7 +1394,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return true;
       }
       
-      if (allowance < wagerAmountWei) {
+      if (allowance < currentWagerAmountWei) {
         console.log('[APPROVAL] Token approval needed, calling approveToken');
         
         // Call approveToken and wait for the result
@@ -1426,7 +1431,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           };
           
           // Start the approval process
-          approveToken(selectedToken, chessContractAddress, wagerAmountWei);
+          approveToken(selectedToken, chessContractAddress, currentWagerAmountWei);
           
           // Start checking for the result
           checkApprovalResult();
@@ -1450,6 +1455,56 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setIsGameCreationInProgress(true);
     
     try {
+      // Validate sufficient token balance before proceeding
+      const tokenConfig = SUPPORTED_TOKENS[selectedToken];
+      const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, tokenConfig.decimals)));
+      
+      // Check token balance
+      if (publicClient) {
+        try {
+          let balance: bigint;
+          if (tokenConfig.isNative) {
+            // Check native DMT balance
+            balance = await publicClient.getBalance({ address: address as `0x${string}` });
+          } else {
+            // Check ERC-20 token balance
+            balance = await publicClient.readContract({
+              address: tokenConfig.address as `0x${string}`,
+              abi: [
+                {
+                  "constant": true,
+                  "inputs": [{"name": "_owner", "type": "address"}],
+                  "name": "balanceOf",
+                  "outputs": [{"name": "balance", "type": "uint256"}],
+                  "type": "function"
+                }
+              ],
+              functionName: 'balanceOf',
+              args: [address as `0x${string}`]
+            }) as bigint;
+          }
+          
+          console.log('[CREATE] Token balance check:', {
+            token: selectedToken,
+            balance: balance.toString(),
+            required: wagerAmountWei.toString(),
+            sufficient: balance >= wagerAmountWei
+          });
+          
+          if (balance < wagerAmountWei) {
+            const balanceFormatted = Number(balance) / Math.pow(10, tokenConfig.decimals);
+            setGameStatus(`Insufficient ${selectedToken} balance. You have ${balanceFormatted.toFixed(6)} ${selectedToken}, need ${gameWager} ${selectedToken}.`);
+            setIsGameCreationInProgress(false);
+            return;
+          }
+        } catch (error) {
+          console.error('[CREATE] Error checking token balance:', error);
+          setGameStatus('Failed to check token balance. Please try again.');
+          setIsGameCreationInProgress(false);
+          return;
+        }
+      }
+      
       // Check token approval first
       const isApproved = await checkAndApproveToken();
       if (!isApproved) {
@@ -1461,7 +1516,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Use selected token
       const tokenAddress = SUPPORTED_TOKENS[selectedToken].address;
-      const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
+      // wagerAmountWei is already declared above, reuse it
       
       // Validate wager amount against contract limits
       if (publicClient) {
@@ -1512,7 +1567,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         bet_amount: wagerAmountWei.toString(),
         bet_token: selectedToken,
         blue_player: address,
-        game_state: 'waiting',
+        game_state: 'waiting_for_join', // Changed: Only mark as waiting for join, not active
         board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
         current_player: 'blue',
         chain: 'sanko',
@@ -1582,10 +1637,60 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!address) return;
     try {
       const gameData = await firebaseChess.getGame(inviteCode);
-      if (!gameData || gameData.game_state !== 'waiting') {
+      if (!gameData || gameData.game_state !== 'waiting_for_join') {
         setGameStatus('Game not found or already full');
         return;
       }
+      
+      // Validate sufficient token balance before proceeding
+      const tokenSymbol = gameData.bet_token as TokenSymbol;
+      const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+      const wagerAmountWei = BigInt(gameData.bet_amount);
+      
+      if (publicClient) {
+        try {
+          let balance: bigint;
+          if (tokenConfig.isNative) {
+            // Check native DMT balance
+            balance = await publicClient.getBalance({ address: address as `0x${string}` });
+          } else {
+            // Check ERC-20 token balance
+            balance = await publicClient.readContract({
+              address: tokenConfig.address as `0x${string}`,
+              abi: [
+                {
+                  "constant": true,
+                  "inputs": [{"name": "_owner", "type": "address"}],
+                  "name": "balanceOf",
+                  "outputs": [{"name": "balance", "type": "uint256"}],
+                  "type": "function"
+                }
+              ],
+              functionName: 'balanceOf',
+              args: [address as `0x${string}`]
+            }) as bigint;
+          }
+          
+          console.log('[JOIN] Token balance check:', {
+            token: tokenSymbol,
+            balance: balance.toString(),
+            required: wagerAmountWei.toString(),
+            sufficient: balance >= wagerAmountWei
+          });
+          
+          if (balance < wagerAmountWei) {
+            const balanceFormatted = Number(balance) / Math.pow(10, tokenConfig.decimals);
+            const wagerFormatted = Number(wagerAmountWei) / Math.pow(10, tokenConfig.decimals);
+            setGameStatus(`Insufficient ${tokenSymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenSymbol}, need ${wagerFormatted} ${tokenSymbol} to join this game.`);
+            return;
+          }
+        } catch (error) {
+          console.error('[JOIN] Error checking token balance:', error);
+          setGameStatus('Failed to check token balance. Please try again.');
+          return;
+        }
+      }
+      
       const wagerAmountTDMT = convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT');
       setInviteCode(inviteCode);
       setIsJoiningFromLobby(true);
@@ -1806,7 +1911,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
         setGameStatus('Game finished');
-      } else if (gameData.game_state === 'waiting') {
+      } else if (gameData.game_state === 'waiting_for_join') {
         setGameMode(GameMode.WAITING);
         setGameStatus('Waiting for opponent to join...');
       }

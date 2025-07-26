@@ -1778,7 +1778,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li>Connect your wallet to Sanko mainnet</li>
-                    <li>Create a game and set your wager amount in DMT</li>
+                    <li>Create a game and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
                     <li>Share your invite code with an opponent</li>
                     <li>Opponent joins and matches your wager</li>
                     <li>Game begins automatically - Blue (Player 1) moves first</li>

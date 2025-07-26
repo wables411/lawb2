@@ -157,7 +157,7 @@ export const firebaseChess = {
       if (!snapshot.exists()) return [];
       const games = snapshot.val();
       return Object.values(games).filter((game: any) => 
-        game.game_state === 'waiting' || game.game_state === 'active'
+        game.game_state === 'waiting_for_join' || game.game_state === 'active'
       );
     } catch (error) {
       console.error('[FIREBASE] Error getting active games:', error);
@@ -195,20 +195,20 @@ export const firebaseChess = {
       }
       
       const openGames = Object.values(games).filter((game: any) => {
-        // More lenient filtering - accept games that are waiting OR don't have a red player
-        const isWaiting = game.game_state === 'waiting' || game.game_state === 'active';
+        // Only show games that are waiting for join (not active yet)
+        const isWaitingForJoin = game.game_state === 'waiting_for_join';
         const isPublic = game.is_public !== false; // Default to true if not set
         const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
         
-        // Additional check: if game_state is undefined, treat as waiting
-        const hasValidState = game.game_state === 'waiting' || game.game_state === 'active' || game.game_state === undefined;
+        // Additional check: if game_state is undefined, treat as waiting_for_join
+        const hasValidState = game.game_state === 'waiting_for_join' || game.game_state === undefined;
         
         console.log('[FIREBASE] Game filter check:', {
           inviteCode: game.invite_code,
           gameState: game.game_state,
           originalIsPublic: game.is_public,
           redPlayer: game.red_player,
-          isWaiting,
+          isWaitingForJoin,
           isPublic,
           noRedPlayer,
           hasValidState,
