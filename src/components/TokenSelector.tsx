@@ -39,7 +39,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   return (
     <div style={{ marginBottom: '10px' }}>
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
-        <label style={{ fontWeight: 'bold', minWidth: '80px' }}>Token:</label>
+        <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000' }}>Token:</label>
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -48,7 +48,8 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
             style={{
               padding: '5px 10px',
               border: '2px outset #fff',
-              background: '#c0c0c0',
+              background: '#000000',
+              color: '#ff0000',
               cursor: disabled ? 'not-allowed' : 'pointer',
               minWidth: '120px', // Increased width to accommodate longer names
               textAlign: 'left'
@@ -63,7 +64,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
               position: 'absolute',
               top: '100%',
               left: 0,
-              background: '#fff',
+              background: '#000000',
               border: '2px outset #fff',
               zIndex: 10,
               minWidth: '120px'
@@ -75,11 +76,13 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
                   style={{
                     padding: '5px 10px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid #eee',
-                    fontSize: '12px' // Smaller font to fit longer names
+                    borderBottom: '1px solid #333',
+                    fontSize: '12px', // Smaller font to fit longer names
+                    color: '#ff0000',
+                    background: '#000000'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
                 >
                   {getTokenDisplayName(symbol as TokenSymbol)}
                 </div>
@@ -90,7 +93,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
       </div>
 
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
-        <label style={{ fontWeight: 'bold', minWidth: '80px' }}>Amount:</label>
+        <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000' }}>Amount:</label>
         <input
           type="number"
           value={wagerAmount}
@@ -102,23 +105,24 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
           style={{
             padding: '5px',
             border: '2px inset #fff',
-            background: '#fff',
+            background: '#000000',
+            color: '#ff0000',
             width: '100px'
           }}
         />
-        <span style={{ color: '#666', fontSize: '12px' }}>
+        <span style={{ color: '#ff0000', fontSize: '12px' }}>
           Balance: {isOnSankoMainnet ? `${balance.toFixed(2)} ${SUPPORTED_TOKENS[selectedToken].symbol}` : 'Connect to Sanko Mainnet'}
-          {SUPPORTED_TOKENS[selectedToken].isNative && <span style={{ color: '#FF6B35', fontWeight: 'bold' }}> (Native)</span>}
+          {SUPPORTED_TOKENS[selectedToken].isNative && <span style={{ color: '#ff0000', fontWeight: 'bold' }}> (Native)</span>}
         </span>
       </div>
 
       {isOnSankoTestnet && (
-        <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '5px' }}>
+        <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           ⚠️ Switch to Sanko Mainnet - tokens are not available on testnet
         </div>
       )}
       {!isOnSankoMainnet && !isOnSankoTestnet && (
-        <div style={{ color: '#ff6b35', fontSize: '12px', marginTop: '5px' }}>
+        <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           ⚠️ Switch to Sanko Mainnet to see token balances
         </div>
       )}
@@ -129,10 +133,10 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
         </div>
       )}
       {balance === 0 && isOnSankoMainnet && (
-        <div style={{ color: '#ffa500', fontSize: '12px', marginTop: '5px' }}>
+        <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           💡 You have 0 {SUPPORTED_TOKENS[selectedToken].symbol}
           {SUPPORTED_TOKENS[selectedToken].isNative && <span> (Native)</span>}
-          . Get tokens from <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: '#ffa500'}}>Sanko Bridge</a>
+          . Get tokens from <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: '#ff0000'}}>Sanko Bridge</a>
         </div>
       )}
     </div>

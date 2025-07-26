@@ -1059,4 +1059,90 @@ body, html {
   height: 100%;
   pointer-events: none;
   z-index: 1;
+}
+
+/* Waiting screen styles */
+.chess-multiplayer-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  padding: 20px;
+  margin-top: 20px;
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+}
+
+.chess-multiplayer-waiting h2 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+}
+
+.chess-multiplayer-waiting .game-code {
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+}
+
+.chess-multiplayer-waiting .game-info {
+  margin-bottom: 30px;
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+  background: transparent;
+  display: block !important;
+  justify-content: unset !important;
+  align-items: unset !important;
+  text-align: center;
+}
+
+.chess-multiplayer-waiting .game-info p {
+  font-size: 1.1rem;
+  margin: 5px 0;
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+  text-align: center;
+  background: transparent;
+  width: 100%;
+}
+
+.chess-multiplayer-waiting .waiting-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.chess-multiplayer-waiting .refund-game-btn {
+  background: #ff0000;
+  color: white;
+  border: 2px solid #ff0000;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
+}
+
+.chess-multiplayer-waiting .refund-game-btn:hover {
+  background: #cc0000;
+  box-shadow: 0 0 15px #ff0000, 0 0 25px #ff0000, 0 0 35px #ff0000;
+}
+
+.chess-multiplayer-waiting .refund-game-btn:disabled {
+  background: #666;
+  border-color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.chess-multiplayer-waiting .refund-note {
+  font-size: 0.9rem;
+  color: #ff0000;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+  margin: 0;
 } 

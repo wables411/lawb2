@@ -630,6 +630,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
   const [selectedToken, setSelectedToken] = useState<TokenSymbol>('NATIVE_DMT');
+  const [currentGameToken, setCurrentGameToken] = useState<TokenSymbol>('NATIVE_DMT');
 
   // Debug logging for join transaction
   useEffect(() => {
@@ -1174,6 +1175,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
             debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'checkPlayerGameState sync');
+            setCurrentGameToken(gameData.bet_token as TokenSymbol || 'NATIVE_DMT');
             setOpponent(opponent);
             if (isActive) {
               setGameMode(GameMode.ACTIVE);
@@ -1210,6 +1212,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setInviteCode(game.invite_code);
         setPlayerColor(game.blue_player === address ? 'blue' : 'red');
                     debugSetWager(convertWagerFromWei(game.bet_amount, game.bet_token || 'DMT'), 'checkPlayerGameState fallback');
+                    setCurrentGameToken(game.bet_token as TokenSymbol || 'DMT');
         setOpponent(game.blue_player === address ? game.red_player : game.blue_player);
         if (game.game_state === 'waiting') {
           setGameMode(GameMode.WAITING);
@@ -1930,6 +1933,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       debugSetWager(wagerValue, 'Firebase subscription');
+      setCurrentGameToken(tokenSymbol as TokenSymbol);
     });
     gameChannel.current = unsubscribe;
     return unsubscribe;
@@ -3582,7 +3586,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     
                     {isCreatingGame && (
                       <div className="create-form" style={{ order: 2, marginBottom: '20px' }}>
-                        <h3>Create New Game</h3>
+                        <h3 style={{ color: '#ff0000' }}>Create New Game</h3>
                         <TokenSelector
                           selectedToken={selectedToken}
                           onTokenSelect={setSelectedToken}
@@ -3590,11 +3594,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           onWagerChange={setGameWager}
                           disabled={isGameCreationInProgress}
                         />
-                        <div className="form-actions">
+                        <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
                           <button 
                             className="create-confirm-btn"
                             onClick={createGame}
                             disabled={gameWager <= 0 || isGameCreationInProgress}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#ff0000',
+                              color: '#000000',
+                              border: 'none',
+                              borderRadius: '0px',
+                              cursor: gameWager <= 0 || isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                              fontWeight: 'bold'
+                            }}
                           >
                             {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
                           </button>
@@ -3603,6 +3616,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             onClick={() => {
                               setIsCreatingGame(false);
                               setIsGameCreationInProgress(false);
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#ff0000',
+                              color: '#000000',
+                              border: 'none',
+                              borderRadius: '0px',
+                              cursor: 'pointer',
+                              fontWeight: 'bold'
                             }}
                           >
                             Cancel
@@ -3613,7 +3635,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     
                     <div className="open-games" style={{ order: 3 }}>
                       <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
-                      <div className="games-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div className="games-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         {openGames.map(game => {
                           console.log('[RENDER LOBBY] Rendering game:', game);
                           return (
@@ -3621,21 +3643,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             display: 'flex', 
                             flexDirection: 'column', 
                             alignItems: 'center',
-                            gap: '10px',
-                            padding: '15px',
-                            border: '2px solid #333',
-                            borderRadius: '5px'
+                            gap: '5px',
+                            padding: '8px',
+                            border: '1px solid #333',
+                            borderRadius: '3px',
+                            backgroundColor: '#000000'
                           }}>
-                            <div className="game-info" style={{ textAlign: 'center' }}>
-                              <div className="game-id">{game.game_title || 'Untitled Game'}</div>
-                              <div className="wager">
+                            <div className="game-details" style={{ textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px', color: '#ff0000' }}>
+                              <div className="game-id" style={{ fontWeight: 'bold', color: '#ff0000' }}>{game.game_title || 'Untitled Game'}</div>
+                              <div className="wager" style={{ color: '#ff0000' }}>
                                 Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
                               </div>
-                              <div className="title">Created by: {formatAddress(game.blue_player)}</div>
+                              <div className="creator" style={{ fontSize: '0.8rem', color: '#ff0000' }}>Created by: {formatAddress(game.blue_player)}</div>
                             </div>
                             <button 
                               className="join-btn"
                               onClick={() => joinGame(game.invite_code)}
+                              style={{
+                                padding: '4px 12px',
+                                fontSize: '0.8rem',
+                                backgroundColor: '#ff0000',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0px',
+                                cursor: 'pointer'
+                              }}
                             >
                               Join Game
                             </button>
@@ -3661,8 +3693,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 Invite Code: <strong>{inviteCode}</strong>
               </div>
               <div className="game-info">
-                <p>Wager: {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)} {selectedToken}</p>
-                <p>Share this invite code with your opponent</p>
+                <p>Wager: {wager.toFixed(6)} {currentGameToken}</p>
               </div>
               <div className="waiting-actions">
                 <button 
@@ -3687,7 +3718,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
                 </span>
                 <span className="wager-display">
-                  Wager: {wager.toFixed(SUPPORTED_TOKENS[selectedToken]?.decimals || 8)} {selectedToken}
+                  Wager: {wager.toFixed(6)} {currentGameToken}
                 </span>
                 {opponent && (
                   <span className="opponent-info">
