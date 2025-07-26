@@ -159,7 +159,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   useEffect(() => {
     if (cancelGameHash && !isWaitingForCancelReceipt) {
       console.log('[REFUND] Transaction completed successfully');
-      setGameStatus('Game refunded successfully! Your wager has been returned.');
+      setGameStatus('Match refunded successfully! Your wager has been returned.');
       
       // Update Firebase to mark game as cancelled
       const updateFirebaseAfterRefund = async () => {
@@ -303,7 +303,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Claim winnings function for winners
   const refundGame = async () => {
     if (!inviteCode || !address) {
-      alert('No game to refund or wallet not connected');
+      alert('No match to refund or wallet not connected');
       return;
     }
     
@@ -313,13 +313,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Check if this player is the game creator
       const gameData = await firebaseChess.getGame(inviteCode);
       if (!gameData || gameData.blue_player !== address) {
-        alert('Only the game creator can refund the game');
+        alert('Only the match creator can refund the match');
         return;
       }
       
       // Check if opponent has already joined
       if (gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
-        alert('Cannot refund game after opponent has joined');
+        alert('Cannot refund match after opponent has joined');
         return;
       }
       
@@ -334,7 +334,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[REFUND] Cancel game transaction submitted');
     } catch (error) {
       console.error('[REFUND] Error refunding game:', error);
-      alert('Failed to refund game. Please try again.');
+      alert('Failed to refund match. Please try again.');
     }
   };
 
@@ -361,7 +361,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     if (!currentInviteCode) {
       console.error('[CLAIM] Could not determine invite code for claiming winnings');
-      alert('Could not determine game invite code. Please try refreshing the page.');
+      alert('Could not determine match invite code. Please try refreshing the page.');
       return;
     }
 
@@ -880,7 +880,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               // Subscribe to game updates
               subscribeToGame(reconstructedGameData.invite_code);
               
-              // Refresh lobby to show the new game
+              // Refresh lobby to show the new match
               setTimeout(() => {
                 loadOpenGames();
               }, 1000);
@@ -927,7 +927,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           // Subscribe to game updates
           subscribeToGame(gameDataToSave.invite_code);
           
-          // Refresh lobby to show the new game
+          // Refresh lobby to show the new match
           setTimeout(() => {
             loadOpenGames();
           }, 1000);
@@ -2047,7 +2047,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         blue_player: gameData.blue_player, // Preserve the blue player
         bet_amount: gameData.bet_amount, // Preserve the bet amount
         game_state: 'active',
-        last_move: null, // Reset last move for new game
+        last_move: null, // Reset last move for new match
         board: {
           positions: flattenBoard(initialBoard),
           rows: 8,
@@ -3660,7 +3660,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         disabled={isCreatingGame || isGameCreationInProgress}
                         style={{ color: '#ff0000' }}
                       >
-                        Create New Game
+                        Create New Match
                       </button>
                       <button 
                         onClick={loadOpenGames}
@@ -3700,7 +3700,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     
                     {isCreatingGame && (
                       <div className="create-form" style={{ order: 2, marginBottom: '20px' }}>
-                        <h3 style={{ color: '#ff0000' }}>Create New Game</h3>
+                        <h3 style={{ color: '#ff0000' }}>Create New Match</h3>
+                        
+                        {/* Game Creation Flow Explanation */}
+                        <div style={{ 
+                          background: 'rgba(255, 0, 0, 0.1)', 
+                          border: '1px solid #ff0000', 
+                          padding: '12px', 
+                          marginBottom: '15px',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          lineHeight: '1.4',
+                          color: '#ff0000'
+                        }}>
+                          <strong>📋 Game Creation Flow:</strong><br/>
+                          1️⃣ <strong>Select Token</strong> - Choose DMT or other supported Sanko tokens<br/>
+                          2️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
+                          3️⃣ <strong>Click "Create Game"</strong> - This will trigger two transactions:<br/>
+                          &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your tokens<br/>
+                          &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
+                          <br/>
+                          <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
+                        </div>
+                        
                         <TokenSelector
                           selectedToken={selectedToken}
                           onTokenSelect={setSelectedToken}
@@ -3789,7 +3811,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           );
                         })}
                         {openGames.length === 0 && (
-                          <div className="no-games" style={{ color: '#ff0000' }}>No open games available</div>
+                          <div className="no-games" style={{ 
+                            color: '#ff0000', 
+                            textAlign: 'center', 
+                            padding: '20px',
+                            background: 'rgba(255, 0, 0, 0.05)',
+                            border: '1px solid rgba(255, 0, 0, 0.2)',
+                            borderRadius: '4px'
+                          }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>
+                              🦞♟ No Open Games Available
+                            </div>
+                            <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                              Be the first to create a match! Click "Create New Match" above to start.<br/>
+                              Other players will be able to match wage and join your game once it's created.
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -3893,7 +3930,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       Gallery
                     </button>
                   </div>
-                  <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>New Game</button>
+                  <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>New Match</button>
                   <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>Menu</button>
                 </div>
               </div>

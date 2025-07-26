@@ -39,6 +39,7 @@ function App() {
 
 
   const [showChessLoading, setShowChessLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
 
   // Add timeout for chess loading
@@ -48,11 +49,28 @@ function App() {
         console.log('[CHESS] Loading timeout reached, navigating directly');
         setShowChessLoading(false);
         navigate('/chess');
-      }, 5000); // 5 second timeout
+      }, 15000); // 15 second timeout
 
       return () => clearTimeout(timeout);
     }
   }, [showChessLoading, navigate]);
+
+  // Animated loading text effect
+  useEffect(() => {
+    if (showChessLoading) {
+      const fullText = 'Lawb Chess Loading';
+      let dots = '';
+      
+      const textInterval = setInterval(() => {
+        dots = dots.length >= 4 ? '' : dots + '.';
+        setLoadingText(fullText + dots);
+      }, 500);
+
+      return () => clearInterval(textInterval);
+    } else {
+      setLoadingText('');
+    }
+  }, [showChessLoading]);
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -195,28 +213,59 @@ function App() {
           width: '100vw',
           height: '100vh',
           background: '#000',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
           zIndex: 9999,
+          overflow: 'hidden',
         }}>
-          <video 
-            src="/images/loadingchess.mp4" 
-            style={{ width: 120, height: 120, marginBottom: 32 }}
+          {/* Single Video that fills entire screen */}
+          <video
+            src="/images/loadingchess.mp4"
+            style={{
+              width: '100vw',
+              height: '100vh',
+              objectFit: 'cover',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+            }}
             autoPlay
             muted
-            onEnded={() => {
-              setShowChessLoading(false);
-              navigate('/chess');
+            loop
+            playsInline
+            preload="auto"
+            onLoadStart={() => {
+              console.log('[CHESS] Video started loading');
             }}
-            onError={() => {
-              console.log('[CHESS] Video failed to load, navigating directly');
-              setShowChessLoading(false);
-              navigate('/chess');
+            onCanPlay={() => {
+              console.log('[CHESS] Video can play');
+            }}
+            onPlay={() => {
+              console.log('[CHESS] Video started playing');
+            }}
+            onError={(e) => {
+              console.log('[CHESS] Video failed to load:', e);
             }}
           />
-          <div style={{ color: '#fff', fontSize: 28, fontFamily: 'monospace', letterSpacing: 2 }}>LOADING LAWB CHESS...</div>
+
+          {/* Centered Loading Text */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10000,
+            textAlign: 'center',
+          }}>
+            <div style={{
+              color: '#ff0000',
+              fontSize: '32px',
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              textShadow: '0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000',
+              letterSpacing: '2px',
+            }}>
+              {loadingText}
+            </div>
+          </div>
         </div>
       )}
       <Desktop onIconClick={handleIconClick} />

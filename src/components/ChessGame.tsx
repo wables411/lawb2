@@ -381,7 +381,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // Trigger Reown appkit popup to switch network
       void open();
     } else {
-      setStatus('Select game mode');
+      setStatus('Select match mode');
     }
   }, [isConnected, walletAddress, chainId, open]);
 
@@ -1301,7 +1301,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setLegalMoves([]);
     setLastMove(null);
     setShowGame(false);
-    setStatus('Select game mode');
+    setStatus('Select match mode');
     setPieceState({
       blueKingMoved: false,
       redKingMoved: false,
@@ -1320,7 +1320,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const startMultiplayerGame = () => {
     setShowGame(true);
-    setStatus('Set wager and create/join game');
+    setStatus('Set wager and create/join match');
   };
 
   const startGame = () => {
@@ -1336,10 +1336,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     setShowGame(true);
     setShowDifficulty(false);
-    setStatus(`Game started! Your turn`);
+    setStatus(`Match started! Your turn`);
     const newChessboard = selectRandomChessboard();
     setSelectedChessboard(newChessboard);
-    console.log('[DEBUG] Game started with chessboard:', newChessboard);
+    console.log('[DEBUG] Match started with chessboard:', newChessboard);
   };
 
   // Multiplayer functionality moved to ChessMultiplayer component
@@ -1471,7 +1471,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               marginBottom: 8
             }}
           >
-            <span role="img" aria-label="chess">♟️</span> Start Game
+            <span role="img" aria-label="chess">♟️</span> Start Match
           </button>
 
         </div>
@@ -1673,7 +1673,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setShowGame(false);
   };
 
-  // Play start.mp3 when a new game starts
+  // Play start.mp3 when a new match starts
   const playStartSound = () => {
     const audio = new Audio('/images/start.mp3');
     audio.play().catch(() => {});
@@ -1790,13 +1790,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </div>
               {gameMode === GameMode.AI && (
                 <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
-                  Start Game
+                  Start Match
                 </button>
               )}
               {isOnline && (
                 <div className="pvp-info">
                   <p>Challenge other players with tDMT wagers</p>
-                  <p>Create or join games instantly</p>
+                  <p>Create or join matches instantly</p>
                 </div>
               )}
               {/* Updated Help Section */}
@@ -1804,7 +1804,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <h4>How to Play</h4>
                 <div className="help-content">
                   <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
-                  <p><strong>Game Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
+                  <p><strong>Match Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
                   <p><strong>Piece Movements:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li><strong>Pawn:</strong> Moves forward one square (or two on first move), captures diagonally</li>
@@ -1821,7 +1821,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     <li><strong>Stalemate:</strong> When you have no legal moves but your king is not in check (draw). endGame.</li>
                     <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of chess board, Player chooses which chess piece to swap pawn out for.</li>
                   </ul>
-                  <p><strong>Game Modes:</strong></p>
+                  <p><strong>Match Modes:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
                     <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
@@ -1829,13 +1829,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li>Connect your wallet to Sanko mainnet</li>
-                    <li>Create a game and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
+                    <li>Create a match and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
                     <li>Share your invite code with an opponent</li>
                     <li>Opponent joins and matches your wager</li>
-                    <li>Game begins automatically - Blue (Player 1) moves first</li>
+                    <li>Match begins automatically - Blue (Player 1) moves first</li>
                     <li>Winner claims the pot minus 5% house fee</li>
                   </ol>
-                  <p><strong>Leaderboard:</strong> All games are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+                  <p><strong>Leaderboard:</strong> All matches are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
                   <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
                   <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
                     <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
@@ -2011,7 +2011,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     onClick={() => setSidebarView('gallery')}
                   >Gallery</button>
                 </div>
-                <button onClick={handleNewGame}>New Game</button>
+                <button onClick={handleNewGame}>New Match</button>
                 <button onClick={handleBackToMenu}>Menu</button>
               </div>
             </div>
@@ -2150,7 +2150,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             <div className="victory-content">
               <img src="/images/victory.gif" alt="Victory" style={{ width: 120, marginBottom: 16 }} />
               <div>Victory!</div>
-              <button onClick={handleNewGame}>New Game</button>
+              <button onClick={handleNewGame}>New Match</button>
             </div>
           </div>
         </div>

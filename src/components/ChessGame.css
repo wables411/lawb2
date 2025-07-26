@@ -2631,3 +2631,106 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     background: #1a1a1a;
   }
 }
+
+/* --- Pawn Promotion Dialog Styles --- */
+.promotion-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid gold;
+  border-radius: 8px;
+  padding: 20px;
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.promotion-content {
+  text-align: center;
+}
+
+.promotion-content h3 {
+  color: white;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.promotion-pieces {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.promotion-piece {
+  cursor: pointer;
+  padding: 10px;
+  border: 2px solid white;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.promotion-piece:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: gold;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.promotion-piece:active {
+  transform: scale(0.95);
+}
+
+/* Dark mode support for promotion dialog */
+.chess-dark-mode .promotion-dialog {
+  background: rgba(20, 20, 20, 0.95);
+  border-color: #00ff00;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.chess-dark-mode .promotion-content h3 {
+  color: #00ff00;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.chess-dark-mode .promotion-piece {
+  border-color: #00ff00;
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.chess-dark-mode .promotion-piece:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+/* Mobile responsiveness for promotion dialog */
+@media (max-width: 600px) {
+  .promotion-dialog {
+    padding: 15px;
+    max-width: 90vw;
+  }
+  
+  .promotion-content h3 {
+    font-size: 1em;
+    margin-bottom: 10px;
+  }
+  
+  .promotion-pieces {
+    gap: 8px;
+  }
+  
+  .promotion-piece {
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+  }
+}
