@@ -2305,7 +2305,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
            isValidBishopMove(startRow, startCol, endRow, endCol, board);
   };
 
-  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+  const getOppositeColor = (color: 'blue' | 'red'): 'blue' | 'red' => {
+    return color === 'blue' ? 'red' : 'blue';
+  };
+
+  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, boardState = board): boolean => {
     const rowDiff = Math.abs(startRow - endRow);
     const colDiff = Math.abs(startCol - endCol);
     
@@ -2314,12 +2318,57 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Castling
     if (rowDiff === 0 && colDiff === 2) {
+      // Check if king is currently in check - castling is not allowed when king is in check
+      if (isKingInCheck(boardState, color)) {
+        return false;
+      }
+      
       if (color === 'blue' && !pieceState.blueKingMoved) {
-        if (endCol === 6 && !pieceState.blueRooksMove.right) return true; // Kingside
-        if (endCol === 2 && !pieceState.blueRooksMove.left) return true;  // Queenside
+        if (endCol === 6 && !pieceState.blueRooksMove.right) {
+          // Kingside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
+            // Check if king moves through check
+            const attackingColor = color === 'blue' ? 'red' : 'blue';
+            if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
+                !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
+        if (endCol === 2 && !pieceState.blueRooksMove.left) {
+          // Queenside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
+            // Check if king moves through check
+            const attackingColor = color === 'blue' ? 'red' : 'blue';
+            if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
+                !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
       } else if (color === 'red' && !pieceState.redKingMoved) {
-        if (endCol === 6 && !pieceState.redRooksMove.right) return true; // Kingside
-        if (endCol === 2 && !pieceState.redRooksMove.left) return true;  // Queenside
+        if (endCol === 6 && !pieceState.redRooksMove.right) {
+          // Kingside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
+                      // Check if king moves through check
+          const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+          if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
+              !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
+        if (endCol === 2 && !pieceState.redRooksMove.left) {
+          // Queenside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
+                      // Check if king moves through check
+          const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+          if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
+              !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
       }
     }
     
@@ -2380,7 +2429,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                      isPathClear(startRow, startCol, endRow, endCol, boardState);
         break;
       case 'K': // King
-        isValidMove = isValidKingMove(playerColor, startRow, startCol, endRow, endCol);
+        isValidMove = isValidKingMove(playerColor, startRow, startCol, endRow, endCol, boardState);
         break;
     }
     
@@ -2701,10 +2750,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus(`${currentPlayer === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
       if (currentPlayer === playerColor) {
         playSound('victory');
+        triggerVictoryCelebration();
       } else {
         playSound('loser');
+        triggerDefeatCelebration();
       }
-      triggerVictoryCelebration();
       
       // Update scores for both players
       const currentContractData = getCurrentContractGameData();
@@ -2732,8 +2782,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by stalemate!`);
       if (winner === playerColor) {
         playSound('victory');
+        triggerVictoryCelebration();
       } else {
         playSound('loser');
+        triggerDefeatCelebration();
       }
       
       // Update scores for both players
@@ -2794,10 +2846,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }, 1000);
   };
 
+  // Add state for victory/defeat animation
+  const [showVictory, setShowVictory] = useState(false);
+  const [showDefeat, setShowDefeat] = useState(false);
+
+  // Helper to clear victory/defeat overlays
+  const clearCelebration = () => {
+    setShowVictory(false);
+    setShowDefeat(false);
+    setVictoryCelebration(false);
+  };
+
   // Victory celebration
   const triggerVictoryCelebration = () => {
     setVictoryCelebration(true);
-    // Victory celebration visual effects only - sound is handled separately
+    setShowVictory(true);
     
     // Create confetti effect
     for (let i = 0; i < 50; i++) {
@@ -2814,8 +2877,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           animation: confetti-fall 3s linear forwards;
         `;
         document.body.appendChild(confetti);
-        setTimeout(() => confetti.remove(), 300);
+        setTimeout(() => confetti.remove(), 3000);
       }, i * 100);
+    }
+    
+    // Create balloon effect
+    for (let i = 0; i < 15; i++) {
+      setTimeout(() => {
+        const balloon = document.createElement('div');
+        const colors = ['#ff4444', '#4444ff', '#ffff44', '#ff44ff', '#ff8844'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        balloon.style.cssText = `
+          position: fixed;
+          width: 60px;
+          height: 80px;
+          background: ${color};
+          border-radius: 50% 50% 50% 50% /60% 40% 60% 40%;
+          left: ${Math.random() * window.innerWidth}px;
+          bottom: -80px;
+          z-index: 9998;
+          animation: balloon-float 6s ease-out forwards;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(balloon);
+        setTimeout(() => balloon.remove(), 6000);
+      }, i * 200);
     }
     
     if (celebrationTimeout.current) {
@@ -2824,6 +2910,33 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     celebrationTimeout.current = setTimeout(() => {
       setVictoryCelebration(false);
     }, 5000);
+  };
+
+  // Defeat celebration with blood effect
+  const triggerDefeatCelebration = () => {
+    setShowDefeat(true);
+    
+    // Create blood drip effect
+    for (let i = 0; i < 20; i++) {
+      setTimeout(() => {
+        const bloodDrip = document.createElement('div');
+        bloodDrip.className = 'blood-drip';
+        bloodDrip.style.cssText = `
+          position: fixed;
+          top: 0;
+          width: 18px;
+          height: 60px;
+          background: linear-gradient(to bottom, #a80000 0%, #d10000 80%, #5a0000 100%);
+          border-radius: 50% 50% 60% 60%/60% 60% 100% 100%;
+          opacity: 0.85;
+          z-index: 2000;
+          left: ${Math.random() * window.innerWidth}px;
+          animation: blood-drip-fall 2.8s linear forwards;
+        `;
+        document.body.appendChild(bloodDrip);
+        setTimeout(() => bloodDrip.remove(), 2800);
+      }, i * 150);
+    }
   };
 
   // Handle special moves (castling, en passant, pawn promotion)
@@ -2868,12 +2981,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[SPECIAL_MOVES] Executing queenside castling');
         // Save the queen if it exists at d1/d8 before moving the rook
         const queenPiece = newBoard[from.row][3];
-        newBoard[from.row][0] = null;
-        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
-        // If there was a queen at d1/d8, move it to a safe position (e1/e8)
+        // If there was a queen at d1/d8, move it to a safe position (e1/e8) FIRST
         if (queenPiece && queenPiece.toLowerCase() === 'q') {
           newBoard[from.row][4] = queenPiece;
         }
+        // Now move the rook
+        newBoard[from.row][0] = null;
+        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
       }
     } else {
       console.log('[SPECIAL_MOVES] No castling detected');
@@ -3790,13 +3904,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       {/* Modals and Overlays */}
       {renderPromotionDialog()}
-      {victoryCelebration && (
-        <div className="victory-overlay" style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.0)'}}>
-          <div className="balloons-container">{/* ...balloons code... */}</div>
-          <img src="/images/victory.gif" alt="Victory" style={{width:'320px',height:'auto',zIndex:2}} />
-          <div style={{position:'absolute',bottom:40,left:0,width:'100vw',display:'flex',justifyContent:'center',gap:24}}>
-            <button onClick={() => setGameMode(GameMode.LOBBY)}>Back to Lobby</button>
-            <button onClick={() => window.location.reload()}>New Game</button>
+      
+      {/* Victory/Defeat Overlays */}
+      {showVictory && (
+        <div className="victory-overlay">
+          <div className="balloons-container" />
+          <div className="victory-modal">
+            <div className="victory-content">
+              <img src="/images/victory.gif" alt="Victory" style={{ width: 120, marginBottom: 16 }} />
+              <div>Victory!</div>
+              <button onClick={() => { clearCelebration(); setGameMode(GameMode.LOBBY); setShowGame(false); }}>Back to Lobby</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDefeat && (
+        <div className="defeat-overlay">
+          <div className="blood-overlay" />
+          <div className="victory-modal">
+            <div className="victory-content">
+              <img src="/images/loser.gif" alt="Defeat" style={{ width: 120, marginBottom: 16 }} />
+              <div>Defeat!</div>
+              <button onClick={() => { clearCelebration(); setGameMode(GameMode.LOBBY); setShowGame(false); }}>Back to Lobby</button>
+            </div>
           </div>
         </div>
       )}

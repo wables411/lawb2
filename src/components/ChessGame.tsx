@@ -673,7 +673,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
            isValidBishopMove(startRow, startCol, endRow, endCol, board);
   };
 
-  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
+  const getOppositeColor = (color: 'blue' | 'red'): 'blue' | 'red' => {
+    return color === 'blue' ? 'red' : 'blue';
+  };
+
+  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, boardState = board): boolean => {
     const rowDiff = Math.abs(startRow - endRow);
     const colDiff = Math.abs(startCol - endCol);
     
@@ -682,12 +686,57 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     // Castling
     if (rowDiff === 0 && colDiff === 2) {
+      // Check if king is currently in check - castling is not allowed when king is in check
+      if (isKingInCheck(boardState, color)) {
+        return false;
+      }
+      
       if (color === 'blue' && !pieceState.blueKingMoved) {
-        if (endCol === 6 && !pieceState.blueRooksMove.right) return true; // Kingside
-        if (endCol === 2 && !pieceState.blueRooksMove.left) return true;  // Queenside
+        if (endCol === 6 && !pieceState.blueRooksMove.right) {
+          // Kingside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
+            // Check if king moves through check
+            const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+            if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
+                !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
+        if (endCol === 2 && !pieceState.blueRooksMove.left) {
+          // Queenside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
+            // Check if king moves through check
+            const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+            if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
+                !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
       } else if (color === 'red' && !pieceState.redKingMoved) {
-        if (endCol === 6 && !pieceState.redRooksMove.right) return true; // Kingside
-        if (endCol === 2 && !pieceState.redRooksMove.left) return true;  // Queenside
+        if (endCol === 6 && !pieceState.redRooksMove.right) {
+          // Kingside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
+            // Check if king moves through check
+            const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+            if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
+                !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
+        if (endCol === 2 && !pieceState.redRooksMove.left) {
+          // Queenside castling - check if path is clear and king doesn't move through check
+          if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
+            // Check if king moves through check
+            const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+            if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
+                !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
+              return true;
+            }
+          }
+        }
       }
     }
     
@@ -739,7 +788,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         isValid = isValidQueenMove(startRow, startCol, endRow, endCol, boardState);
         break;
       case 'k':
-        isValid = isValidKingMove(playerColor, startRow, startCol, endRow, endCol);
+        isValid = isValidKingMove(playerColor, startRow, startCol, endRow, endCol, boardState);
         break;
     }
     if (!isValid) {
@@ -1424,6 +1473,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           >
             <span role="img" aria-label="chess">♟️</span> Start Game
           </button>
+
         </div>
       </div>
     </div>
@@ -1445,12 +1495,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       } else if (to.col === 2) { // Queenside
         // Save the queen if it exists at d1/d8 before moving the rook
         const queenPiece = newBoard[from.row][3];
-        newBoard[from.row][0] = null;
-        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
-        // If there was a queen at d1/d8, move it to a safe position (e1/e8)
+        // If there was a queen at d1/d8, move it to a safe position (e1/e8) FIRST
         if (queenPiece && queenPiece.toLowerCase() === 'q') {
           newBoard[from.row][4] = queenPiece;
         }
+        // Now move the rook
+        newBoard[from.row][0] = null;
+        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
       }
     }
   };
@@ -2158,3 +2209,5 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
   fen += ' - - 0 1';
   return fen;
 }
+
+
