@@ -30,9 +30,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   // Get display name for token with native indicator
   const getTokenDisplayName = (tokenSymbol: TokenSymbol) => {
     const token = SUPPORTED_TOKENS[tokenSymbol];
-    if (token.isNative) {
-      return `${token.symbol} (Native)`;
-    }
+    // NATIVE_DMT shows as "DMT", DMT shows as "WDMT"
     return token.symbol;
   };
 

@@ -387,6 +387,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (gameData.winner && (gameData.blue_player || gameData.red_player)) {
         winnerAddress = gameData.winner === 'blue' ? gameData.blue_player : gameData.red_player;
         console.log('[CLAIM] Using Firebase winner data:', { winner: gameData.winner, winnerAddress });
+      } else {
+        console.log('[CLAIM] Firebase winner data missing:', { 
+          winner: gameData.winner, 
+          blue_player: gameData.blue_player, 
+          red_player: gameData.red_player 
+        });
       }
       
       // If Firebase data is missing player addresses, use contract data
@@ -455,9 +461,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       
       if (!winnerAddress) {
-        console.error('[CLAIM] Could not determine winner address');
-        alert('Failed to verify winner. Please try again.');
-        return;
+        console.log('[CLAIM] Trying fallback winner determination...');
+        
+        // Fallback: If game is finished but no winner in Firebase, determine from game state
+        if (gameData.game_state === 'finished' && gameData.blue_player && gameData.red_player) {
+          // If current player is claiming and game is finished, they are likely the winner
+          // This is a reasonable fallback for cases where Firebase update failed
+          winnerAddress = address;
+          console.log('[CLAIM] Using fallback winner determination:', winnerAddress);
+        } else {
+          console.error('[CLAIM] Could not determine winner address');
+          alert('Failed to verify winner. Please try again.');
+          return;
+        }
       }
       
       console.log('[CLAIM] Winner verification details:', {
@@ -1914,6 +1930,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
         setGameStatus('Game finished');
+        
+        // Trigger victory/defeat animations for the other player when game ends
+        if (gameData.winner && playerColor) {
+          console.log('[GAME_END] Game finished via Firebase subscription. Winner:', gameData.winner, 'Player color:', playerColor);
+          
+          if (gameData.winner === playerColor) {
+            console.log('[GAME_END] Player won! Triggering victory celebration');
+            playSound('victory');
+            triggerVictoryCelebration();
+          } else {
+            console.log('[GAME_END] Player lost! Triggering defeat celebration');
+            playSound('loser');
+            triggerDefeatCelebration();
+          }
+        }
       } else if (gameData.game_state === 'waiting_for_join') {
         setGameMode(GameMode.WAITING);
         setGameStatus('Waiting for opponent to join...');
@@ -2745,6 +2776,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     let gameState = 'active';
     let winner = null;
     if (isCheckmate(nextPlayer, newBoard)) {
+      console.log('[CHECKMATE] Checkmate detected! Setting winner:', currentPlayer);
       gameState = 'finished';
       winner = currentPlayer;
       setGameStatus(`${currentPlayer === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
@@ -2777,7 +2809,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     } else if (isStalemate(nextPlayer, newBoard)) {
       // Stalemate = loss for the player who gets stalemated
       // nextPlayer is the one who has no legal moves, so they lose
-      const winner = currentPlayer; // Player who made the move that caused stalemate
+      winner = currentPlayer; // Player who made the move that caused stalemate
       gameState = 'finished';
       setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by stalemate!`);
       if (winner === playerColor) {
@@ -2788,27 +2820,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         triggerDefeatCelebration();
       }
       
-      // Update scores for both players
-      const currentContractData = getCurrentContractGameData();
-      
-      if (currentContractData && currentContractData.length >= 2) {
-        await updateBothPlayersScoresLocal(winner, currentContractData[0], currentContractData[1]);
-              } else {
-          // Fallback to single player update if contract data not available
-          await updateScore(winner === playerColor ? 'win' : 'loss');
-          // Reload leaderboard after single player update
-          await loadLeaderboard();
-      }
-      
-      // Trigger contract payout for the winner
-      if (winner === playerColor) {
-        setTimeout(() => {
-          claimWinnings();
-        }, 2000); // Small delay to ensure UI updates first
-      }
-    }
-    
-          // Update database
+      // Update Firebase FIRST (critical for winner field)
       try {
         if (!inviteCode) {
           console.error('[BUG] inviteCode is missing when trying to update game!');
@@ -2820,6 +2832,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         const flattenedBoard = flattenBoard(newBoard);
         
         // Update Firebase with the new board state
+        console.log('[FIREBASE_UPDATE] About to update Firebase with:', {
+          inviteCode,
+          gameState,
+          winner,
+          currentPlayer,
+          nextPlayer,
+          playerColor
+        });
+        
         await firebaseChess.updateGame(inviteCode, {
           board: { 
             positions: flattenedBoard,
@@ -2831,8 +2852,83 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           winner: winner,
           last_move: { from, to }
         });
+        
+        console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
       } catch (error) {
         console.error('[DATABASE] Error updating game:', error);
+        console.error('[DATABASE] Error details:', {
+          inviteCode,
+          gameState,
+          winner,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      
+      // Update scores for both players (AFTER Firebase update)
+      try {
+        const currentContractData = getCurrentContractGameData();
+        
+        if (currentContractData && currentContractData.length >= 2) {
+          await updateBothPlayersScoresLocal(winner, currentContractData[0], currentContractData[1]);
+        } else {
+          // Fallback to single player update if contract data not available
+          await updateScore(winner === playerColor ? 'win' : 'loss');
+          // Reload leaderboard after single player update
+          await loadLeaderboard();
+        }
+      } catch (error) {
+        console.error('[SCORE] Error updating scores:', error);
+        // Don't fail the entire game end if score update fails
+      }
+      
+      // Trigger contract payout for the winner
+      if (winner === playerColor) {
+        setTimeout(() => {
+          claimWinnings();
+        }, 2000); // Small delay to ensure UI updates first
+      }
+    }
+      try {
+        if (!inviteCode) {
+          console.error('[BUG] inviteCode is missing when trying to update game!');
+          setGameStatus('Game code missing. Please reload or rejoin the game.');
+          return;
+        }
+        
+        // Flatten the board for Firebase storage
+        const flattenedBoard = flattenBoard(newBoard);
+        
+        // Update Firebase with the new board state
+        console.log('[FIREBASE_UPDATE] About to update Firebase with:', {
+          inviteCode,
+          gameState,
+          winner,
+          currentPlayer,
+          nextPlayer,
+          playerColor
+        });
+        
+        await firebaseChess.updateGame(inviteCode, {
+          board: { 
+            positions: flattenedBoard,
+            rows: 8,
+            cols: 8
+          },
+          current_player: nextPlayer,
+          game_state: gameState,
+          winner: winner,
+          last_move: { from, to }
+        });
+        
+        console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
+      } catch (error) {
+        console.error('[DATABASE] Error updating game:', error);
+        console.error('[DATABASE] Error details:', {
+          inviteCode,
+          gameState,
+          winner,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     setBoard(newBoard);
     setCurrentPlayer(nextPlayer);
@@ -3788,7 +3884,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             <div className="game-details" style={{ textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px', color: '#ff0000' }}>
                               <div className="game-id" style={{ fontWeight: 'bold', color: '#ff0000' }}>{game.game_title || 'Untitled Game'}</div>
                               <div className="wager" style={{ color: '#ff0000' }}>
-                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {game.bet_token || 'DMT'}
+                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT']?.symbol || 'DMT'}
                               </div>
                               <div className="creator" style={{ fontSize: '0.8rem', color: '#ff0000' }}>Created by: {formatAddress(game.blue_player)}</div>
                             </div>

@@ -10,7 +10,7 @@ export const SUPPORTED_TOKENS = {
     color: '#FF6B35' // DMT brand color
   },
   DMT: {
-    symbol: 'DMT',
+    symbol: 'WDMT',
     name: 'DMT Token',
     address: '0x754cDAd6f5821077d6915004Be2cE05f93d176f8', // Wrapped DMT
     decimals: 18,
