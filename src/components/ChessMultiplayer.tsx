@@ -3657,23 +3657,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
 
-  // Manual sync function for players to force game state check
-  const manualSyncGameState = async () => {
-    if (!address) return;
-    
-    console.log('[MANUAL_SYNC] Manual sync triggered by player');
-    setHasLoadedGame(false); // Reset the flag to force a fresh check
-    await checkPlayerGameState();
-  };
-  
-  // Emergency reset function for stuck flags
-  const emergencyReset = () => {
-    console.log('[EMERGENCY] Resetting all stuck flags');
-    setIsLocalMoveInProgress(false);
-    setHasLoadedGame(false);
-    setSelectedSquare(null);
-    setValidMoves([]);
-  };
+
 
   // Mobile touch handling for better piece selection
   const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
@@ -3955,41 +3939,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       >
                         🔄 Refresh Lobby
                       </button>
-                      <button 
-                        onClick={manualSyncGameState}
-                        style={{ 
-                          background: 'rgba(255, 0, 0, 0.1)',
-                          border: '2px solid #ff0000',
-                          color: '#ff0000',
-                          padding: '8px 16px',
-                          borderRadius: '0px',
-                          cursor: 'pointer',
-                          fontFamily: 'Courier New, monospace',
-                          fontSize: '14px',
-                          fontWeight: 'bold',
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
-                        🔗 Sync Game State
-                      </button>
-                      <button 
-                        onClick={emergencyReset}
-                        style={{ 
-                          background: 'rgba(255, 0, 0, 0.1)',
-                          border: '2px solid #ff0000',
-                          color: '#ff0000',
-                          padding: '8px 16px',
-                          borderRadius: '0px',
-                          cursor: 'pointer',
-                          fontFamily: 'Courier New, monospace',
-                          fontSize: '14px',
-                          fontWeight: 'bold',
-                          transition: 'all 0.3s ease',
-                          marginLeft: '10px'
-                        }}
-                      >
-                        🚨 Emergency Reset
-                      </button>
+
                       <button 
                         onClick={() => window.location.href = '/chess'}
                         style={{ 
