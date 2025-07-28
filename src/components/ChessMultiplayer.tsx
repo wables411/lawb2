@@ -631,7 +631,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState<string>('Waiting for opponent...');
   const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.LOBBY);
-  const [isLocalMoveInProgress, setIsLocalMoveInProgress] = useState(false);
+  // Removed isLocalMoveInProgress - using timestamp-based approach instead
   
   // Multiplayer state
   const [playerColor, setPlayerColor] = useState<'blue' | 'red' | null>(null);
@@ -1917,18 +1917,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      // CRITICAL FIX: Only update board if this is NOT a local move in progress
-      // This prevents the infinite recursion loop
-      if (gameData.board && !isLocalMoveInProgress) {
+      // BETTER FIX: Use move timestamp to avoid processing local moves
+      // If this is a recent move (within 1 second) and we're the current player, skip it
+      if (gameData.last_move && gameData.last_move.timestamp) {
+        const moveAge = Date.now() - gameData.last_move.timestamp;
+        if (moveAge < 1000 && currentPlayer === playerColor) {
+          console.log('[FIREBASE] Skipping recent local move (age:', moveAge, 'ms)');
+          return;
+        }
+      }
+      
+      // Process Firebase updates (opponent moves or initial state)
+      if (gameData.board) {
         const reconstructedBoard = reconstructBoard(gameData.board);
         setBoard(reconstructedBoard);
         console.log('[FIREBASE] Board updated from Firebase subscription');
-      } else if (gameData.board && isLocalMoveInProgress) {
-        console.log('[FIREBASE] Skipping board update due to local move in progress');
       }
       
-      // Only update current player if not in local move progress
-      if (gameData.current_player && !isLocalMoveInProgress) {
+      if (gameData.current_player) {
         setCurrentPlayer(gameData.current_player);
         console.log('[FIREBASE] Current player updated from Firebase subscription:', gameData.current_player);
       }
@@ -2721,7 +2727,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!piece) return;
     
     // CRITICAL FIX: Set flag to prevent Firebase subscription from overriding local board state
-    setIsLocalMoveInProgress(true);
+    // No longer need the flag - using timestamp-based approach instead
     console.log('[MOVE_ANIMATION] Local move in progress flag set');
     
     console.log('[MOVE_ANIMATION] Starting move execution:', {
@@ -2906,9 +2912,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           return;
         }
         
-        // CRITICAL FIX: Clear the local move flag BEFORE Firebase update to prevent race condition
-        setIsLocalMoveInProgress(false);
-        console.log('[MOVE_ANIMATION] Local move in progress flag cleared BEFORE Firebase update');
+        // BETTER FIX: Use a move timestamp to distinguish local vs remote moves
+        const moveTimestamp = Date.now();
+        console.log('[MOVE_ANIMATION] Generated move timestamp:', moveTimestamp);
         
         // Flatten the board for Firebase storage
         const flattenedBoard = flattenBoard(newBoard);
@@ -2932,7 +2938,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           current_player: nextPlayer,
           game_state: gameState,
           winner: winner,
-          last_move: { from, to }
+          last_move: { from, to, timestamp: moveTimestamp }
         });
         
         console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
