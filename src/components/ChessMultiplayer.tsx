@@ -1911,16 +1911,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      // Update board and game state, but respect local move in progress
+      // CRITICAL FIX: Only update board if this is NOT a local move in progress
+      // This prevents the infinite recursion loop
       if (gameData.board && !isLocalMoveInProgress) {
         const reconstructedBoard = reconstructBoard(gameData.board);
         setBoard(reconstructedBoard);
+        console.log('[FIREBASE] Board updated from Firebase subscription');
       } else if (gameData.board && isLocalMoveInProgress) {
         console.log('[FIREBASE] Skipping board update due to local move in progress');
       }
       
-      if (gameData.current_player) {
+      // Only update current player if not in local move progress
+      if (gameData.current_player && !isLocalMoveInProgress) {
         setCurrentPlayer(gameData.current_player);
+        console.log('[FIREBASE] Current player updated from Firebase subscription:', gameData.current_player);
       }
       
       if (gameData.game_state === 'active') {
@@ -1952,7 +1956,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Try to get wager from contract data if Firebase doesn't have it
       let wagerValue = 0;
-              const tokenSymbol = gameData.bet_token || 'NATIVE_DMT';
+      const tokenSymbol = gameData.bet_token || 'NATIVE_DMT';
       
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
         wagerValue = convertWagerFromWei(gameData.bet_amount, tokenSymbol);
@@ -2710,8 +2714,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const piece = board[from.row][from.col];
     if (!piece) return;
     
-    // Set flag to prevent Firebase subscription from overriding local board state
+    // CRITICAL FIX: Set flag to prevent Firebase subscription from overriding local board state
     setIsLocalMoveInProgress(true);
+    console.log('[MOVE_ANIMATION] Local move in progress flag set');
     
     console.log('[MOVE_ANIMATION] Starting move execution:', {
       from: { row: from.row, col: from.col, piece: piece },
@@ -2793,7 +2798,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       if (currentContractData && currentContractData.length >= 2) {
         await updateBothPlayersScoresLocal(currentPlayer, currentContractData[0], currentContractData[1]);
-              } else {
+      } else {
           // Fallback to single player update if contract data not available
           await updateScore(currentPlayer === playerColor ? 'win' : 'loss');
           // Reload leaderboard after single player update
@@ -2936,10 +2941,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setShowPromotion(false);
     setPromotionMove(null);
     
-    // Reset the local move flag after a short delay to allow Firebase to sync
+    // CRITICAL FIX: Reset the local move flag after a short delay to allow Firebase to sync
+    // Reduced from 1000ms to 100ms to prevent blocking opponent moves
     setTimeout(() => {
       setIsLocalMoveInProgress(false);
-    }, 1000);
+      console.log('[MOVE_ANIMATION] Local move in progress flag cleared');
+    }, 100);
   };
 
   // Add state for victory/defeat animation
