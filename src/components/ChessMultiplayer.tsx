@@ -2360,7 +2360,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     return color === 'blue' ? 'red' : 'blue';
   };
 
-  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, boardState = board): boolean => {
+  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, boardState = board, skipCheckValidation = false): boolean => {
     const rowDiff = Math.abs(startRow - endRow);
     const colDiff = Math.abs(startCol - endCol);
     
@@ -2369,31 +2369,42 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Castling
     if (rowDiff === 0 && colDiff === 2) {
-      // Check if king is currently in check - castling is not allowed when king is in check
-      if (isKingInCheck(boardState, color)) {
-        return false;
+      // Skip check validation if we're already in the middle of checking legal moves
+      if (!skipCheckValidation) {
+        // Check if king is currently in check - castling is not allowed when king is in check
+        if (isKingInCheck(boardState, color)) {
+          return false;
+        }
       }
       
       if (color === 'blue' && !pieceState.blueKingMoved) {
         if (endCol === 6 && !pieceState.blueRooksMove.right) {
           // Kingside castling - check if path is clear and king doesn't move through check
           if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
-            // Check if king moves through check
-            const attackingColor = color === 'blue' ? 'red' : 'blue';
-            if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
-                !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
-              return true;
+            // Check if king moves through check (only if not skipping validation)
+            if (!skipCheckValidation) {
+              const attackingColor = color === 'blue' ? 'red' : 'blue';
+              if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
+                  !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
+                return true;
+              }
+            } else {
+              return true; // Skip check validation for castling during legal move generation
             }
           }
         }
         if (endCol === 2 && !pieceState.blueRooksMove.left) {
           // Queenside castling - check if path is clear and king doesn't move through check
           if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
-            // Check if king moves through check
-            const attackingColor = color === 'blue' ? 'red' : 'blue';
-            if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
-                !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
-              return true;
+            // Check if king moves through check (only if not skipping validation)
+            if (!skipCheckValidation) {
+              const attackingColor = color === 'blue' ? 'red' : 'blue';
+              if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
+                  !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
+                return true;
+              }
+            } else {
+              return true; // Skip check validation for castling during legal move generation
             }
           }
         }
@@ -2401,22 +2412,30 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         if (endCol === 6 && !pieceState.redRooksMove.right) {
           // Kingside castling - check if path is clear and king doesn't move through check
           if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
-                      // Check if king moves through check
-          const attackingColor: 'blue' | 'red' = getOppositeColor(color);
-          if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
-              !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
-              return true;
+            // Check if king moves through check (only if not skipping validation)
+            if (!skipCheckValidation) {
+              const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+              if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
+                  !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
+                return true;
+              }
+            } else {
+              return true; // Skip check validation for castling during legal move generation
             }
           }
         }
         if (endCol === 2 && !pieceState.redRooksMove.left) {
           // Queenside castling - check if path is clear and king doesn't move through check
           if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
-                      // Check if king moves through check
-          const attackingColor: 'blue' | 'red' = getOppositeColor(color);
-          if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
-              !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
-              return true;
+            // Check if king moves through check (only if not skipping validation)
+            if (!skipCheckValidation) {
+              const attackingColor: 'blue' | 'red' = getOppositeColor(color);
+              if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
+                  !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
+                return true;
+              }
+            } else {
+              return true; // Skip check validation for castling during legal move generation
             }
           }
         }
@@ -2480,7 +2499,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                      isPathClear(startRow, startCol, endRow, endCol, boardState);
         break;
       case 'K': // King
-        isValidMove = isValidKingMove(playerColor, startRow, startCol, endRow, endCol, boardState);
+        isValidMove = isValidKingMove(playerColor, startRow, startCol, endRow, endCol, boardState, !checkForCheck);
         break;
     }
     
