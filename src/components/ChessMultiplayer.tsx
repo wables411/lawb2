@@ -702,6 +702,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('moves'); // Default to moves
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
+  const [gameJustFinished, setGameJustFinished] = useState(false);
 
   const handleTimeout = async () => {
     if (!inviteCode || !playerColor) return;
@@ -1368,20 +1369,37 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Load open games
+  // Debounced version of loadOpenGames to prevent excessive calls
+  const debouncedLoadOpenGamesRef = useRef<NodeJS.Timeout | null>(null);
+  
   const loadOpenGames = async () => {
-    try {
-      console.log('[LOBBY] Loading open games...');
-      const games = await firebaseChess.getOpenGames();
-      console.log('[LOBBY] Loaded open games:', games);
-      console.log('[LOBBY] Number of open games:', games.length);
-      
-      // Temporarily disable ghost game cleanup to fix lobby issue
-      // await cleanupGhostGames(games);
-      
-      setOpenGames(games);
-    } catch (error) {
-      console.error('[LOBBY] Error loading open games:', error);
+    // Clear any pending debounced call
+    if (debouncedLoadOpenGamesRef.current) {
+      clearTimeout(debouncedLoadOpenGamesRef.current);
     }
+    
+          // Debounce the actual loading
+      debouncedLoadOpenGamesRef.current = setTimeout(async () => {
+        // Don't load if game just finished to prevent excessive calls
+        if (gameJustFinished) {
+          console.log('[LOBBY] Skipping load - game just finished');
+          return;
+        }
+        
+        try {
+          console.log('[LOBBY] Loading open games...');
+          const games = await firebaseChess.getOpenGames();
+          console.log('[LOBBY] Loaded open games:', games);
+          console.log('[LOBBY] Number of open games:', games.length);
+          
+          // Temporarily disable ghost game cleanup to fix lobby issue
+          // await cleanupGhostGames(games);
+          
+          setOpenGames(games);
+        } catch (error) {
+          console.error('[LOBBY] Error loading open games:', error);
+        }
+      }, 1000); // 1 second debounce
   };
 
   // Clean up ghost games that exist in Firebase but not in the smart contract
@@ -1878,6 +1896,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (gameChannel.current) {
       gameChannel.current();
     }
+    
+    // Track previous board state to detect moves
+    let previousBoardState: string | null = null;
+    
     const unsubscribe = firebaseChess.subscribeToGame(inviteCode, (gameData) => {
       const currentAddress = addressRef.current;
       
@@ -1928,11 +1950,38 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-        // BULLETPROOF FIX: Completely disable Firebase subscription during local moves
-  if (isLocalMoveInProgress) {
-    console.log('[FIREBASE] Local move in progress, skipping ALL Firebase updates');
-    return;
-  }
+      // BULLETPROOF FIX: Completely disable Firebase subscription during local moves
+      if (isLocalMoveInProgress) {
+        console.log('[FIREBASE] Local move in progress, skipping ALL Firebase updates');
+        return;
+      }
+      
+      // Detect opponent moves and play sounds
+      if (gameData.board && gameData.last_move && playerColor) {
+        const currentBoardState = JSON.stringify(gameData.board);
+        
+        // Only process if this is a new board state (not initial load)
+        if (previousBoardState && previousBoardState !== currentBoardState) {
+          // This is an opponent move - play appropriate sounds
+          const lastMove = gameData.last_move;
+          if (lastMove.captured_piece) {
+            console.log('[SOUND] Playing capture sound for opponent move');
+            playSound('capture');
+          } else {
+            console.log('[SOUND] Playing move sound for opponent move');
+            playSound('move');
+          }
+          
+          // Check for check after opponent move
+          const reconstructedBoard = reconstructBoard(gameData.board);
+          if (isKingInCheck(reconstructedBoard, playerColor)) {
+            console.log('[SOUND] Playing check sound for opponent move');
+            playSound('check');
+          }
+        }
+        
+        previousBoardState = currentBoardState;
+      }
       
       // Process Firebase updates (opponent moves or initial state)
       if (gameData.board) {
@@ -1952,6 +2001,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
         setGameStatus('Game finished');
+        setGameJustFinished(true); // Prevent excessive lobby loading
+        
+        // Clear the flag after 30 seconds to allow normal lobby loading
+        setTimeout(() => {
+          setGameJustFinished(false);
+        }, 30000);
         
         // Trigger victory/defeat animations for the other player when game ends
         if (gameData.winner && playerColor) {
@@ -2828,18 +2883,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // Check for game end
     let gameState = 'active';
     let winner = null;
-    if (isCheckmate(nextPlayer, newBoard)) {
-      console.log('[CHECKMATE] Checkmate detected! Setting winner:', currentPlayer);
-      gameState = 'finished';
-      winner = currentPlayer;
-      setGameStatus(`${currentPlayer === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
-      if (currentPlayer === playerColor) {
-        playSound('victory');
-        triggerVictoryCelebration();
-      } else {
-        playSound('loser');
-        triggerDefeatCelebration();
-      }
+          if (isCheckmate(nextPlayer, newBoard)) {
+        console.log('[CHECKMATE] Checkmate detected! Setting winner:', currentPlayer);
+        gameState = 'finished';
+        winner = currentPlayer;
+        setGameStatus(`${currentPlayer === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
+        setGameJustFinished(true); // Prevent excessive lobby loading
+        
+        // Clear the flag after 30 seconds to allow normal lobby loading
+        setTimeout(() => {
+          setGameJustFinished(false);
+        }, 30000);
+        
+        if (currentPlayer === playerColor) {
+          playSound('victory');
+          triggerVictoryCelebration();
+        } else {
+          playSound('loser');
+          triggerDefeatCelebration();
+        }
       
       // Update scores for both players
       const currentContractData = getCurrentContractGameData();
@@ -2865,6 +2927,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       winner = currentPlayer; // Player who made the move that caused stalemate
       gameState = 'finished';
       setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by stalemate!`);
+      setGameJustFinished(true); // Prevent excessive lobby loading
+      
+      // Clear the flag after 30 seconds to allow normal lobby loading
+      setTimeout(() => {
+        setGameJustFinished(false);
+      }, 30000);
+      
       if (winner === playerColor) {
         playSound('victory');
         triggerVictoryCelebration();
@@ -3711,15 +3780,32 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     </div>
   );
 
-  // Load initial data
+  // Load initial data with optimized lobby loading
   useEffect(() => {
     loadLeaderboard();
     loadOpenGames();
     checkStuckGames(); // Check for stuck games on load
-    // Set up polling for open games - reduced frequency to prevent excessive calls
-    const interval = setInterval(loadOpenGames, 30000); // Changed from 5s to 30s
+    
+    // Set up polling for open games with debouncing and reduced frequency
+    let timeoutId: NodeJS.Timeout;
+    const debouncedLoadOpenGames = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        // Only load if we're in lobby mode and not in an active game
+        if (gameMode === GameMode.LOBBY && !inviteCode) {
+          loadOpenGames();
+        }
+      }, 2000); // 2 second debounce
+    };
+    
+    const interval = setInterval(debouncedLoadOpenGames, 60000); // Changed from 30s to 60s
+    
     return () => {
       clearInterval(interval);
+      clearTimeout(timeoutId);
+      if (debouncedLoadOpenGamesRef.current) {
+        clearTimeout(debouncedLoadOpenGamesRef.current);
+      }
       if (gameChannel.current) {
         // Just call the unsubscribe function
         gameChannel.current();
@@ -3728,7 +3814,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         clearTimeout(celebrationTimeout.current);
       }
     };
-  }, []);
+  }, [gameMode, inviteCode, gameJustFinished]);
 
   // Main render - single container like ChessGame.tsx
   return (
