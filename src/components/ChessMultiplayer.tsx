@@ -2581,7 +2581,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       for (let col = 0; col < 8; col++) {
         const piece = boardState[row][col];
         if (piece && getPieceColor(piece) === player) {
-          const legalMoves = getLegalMoves({ row, col }, boardState, player);
+          const legalMoves = getLegalMoves({ row, col }, boardState, player, true, 0);
           if (legalMoves.length > 0) {
             return false;
           }
@@ -2600,7 +2600,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       for (let col = 0; col < 8; col++) {
         const piece = boardState[row][col];
         if (piece && getPieceColor(piece) === player) {
-          const legalMoves = getLegalMoves({ row, col }, boardState, player);
+          const legalMoves = getLegalMoves({ row, col }, boardState, player, true, 0);
           if (legalMoves.length > 0) {
             return false;
           }
