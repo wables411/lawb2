@@ -1044,7 +1044,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
     }
-  }, [address, playerGameInviteCode, contractGameData, lobbyGameContractData, hasLoadedGame]);
+  }, [address, playerGameInviteCode, hasLoadedGame]); // Removed contractGameData and lobbyGameContractData to prevent infinite loops
 
   // Reset game loading flag when address changes
   useEffect(() => {
@@ -1101,6 +1101,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Check if player has an active game and load it
   const checkPlayerGameState = async () => {
     if (!address) return;
+    
+    // CRITICAL FIX: Prevent multiple Firebase subscriptions
+    if (gameChannel.current) {
+      console.log('[GAME_STATE] Firebase subscription already active, skipping checkPlayerGameState');
+      return;
+    }
     try {
       console.log('[GAME_STATE] Checking for active games for player:', address);
       const currentContractData = getCurrentContractGameData();
@@ -2900,6 +2906,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           return;
         }
         
+        // CRITICAL FIX: Clear the local move flag BEFORE Firebase update to prevent race condition
+        setIsLocalMoveInProgress(false);
+        console.log('[MOVE_ANIMATION] Local move in progress flag cleared BEFORE Firebase update');
+        
         // Flatten the board for Firebase storage
         const flattenedBoard = flattenBoard(newBoard);
         
@@ -2941,12 +2951,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setShowPromotion(false);
     setPromotionMove(null);
     
-    // CRITICAL FIX: Reset the local move flag after a short delay to allow Firebase to sync
-    // Reduced from 1000ms to 100ms to prevent blocking opponent moves
-    setTimeout(() => {
-      setIsLocalMoveInProgress(false);
-      console.log('[MOVE_ANIMATION] Local move in progress flag cleared');
-    }, 100);
+    // Flag is now cleared BEFORE Firebase update to prevent race condition
   };
 
   // Add state for victory/defeat animation
