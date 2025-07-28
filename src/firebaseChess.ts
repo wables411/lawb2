@@ -173,26 +173,11 @@ export const firebaseChess = {
       const snapshot = await get(gamesRef);
       
       if (!snapshot.exists()) {
-        console.log('[FIREBASE] No games found in database');
         return [];
       }
       
       const games = snapshot.val();
-      console.log('[FIREBASE] All games in database:', games);
-      console.log('[FIREBASE] Number of total games:', Object.keys(games || {}).length);
-      if (games) {
-        Object.keys(games).forEach(key => {
-          const game = games[key];
-          console.log('[FIREBASE] Game details:', {
-            inviteCode: game.invite_code,
-            gameState: game.game_state,
-            isPublic: game.is_public,
-            redPlayer: game.red_player,
-            bluePlayer: game.blue_player,
-            createdAt: game.created_at
-          });
-        });
-      }
+      const totalGames = Object.keys(games || {}).length;
       
       const openGames = Object.values(games).filter((game: any) => {
         // Only show games that are waiting for join (not active yet)
@@ -203,18 +188,6 @@ export const firebaseChess = {
         // Additional check: if game_state is undefined, treat as waiting_for_join
         const hasValidState = game.game_state === 'waiting_for_join' || game.game_state === undefined;
         
-        console.log('[FIREBASE] Game filter check:', {
-          inviteCode: game.invite_code,
-          gameState: game.game_state,
-          originalIsPublic: game.is_public,
-          redPlayer: game.red_player,
-          isWaitingForJoin,
-          isPublic,
-          noRedPlayer,
-          hasValidState,
-          passes: hasValidState && isPublic && noRedPlayer
-        });
-        
         return hasValidState && isPublic && noRedPlayer;
       });
       
@@ -223,7 +196,7 @@ export const firebaseChess = {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      console.log('[FIREBASE] Open games found:', openGames.length, openGames);
+      console.log('[FIREBASE] Found', openGames.length, 'open games out of', totalGames, 'total games');
       return openGames;
     } catch (error) {
       console.error('[FIREBASE] Error getting open games:', error);

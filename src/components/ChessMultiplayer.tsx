@@ -1049,8 +1049,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Watch for contract data changes and trigger game state check
   useEffect(() => {
     if (address && !hasLoadedGame && (contractGameData || lobbyGameContractData)) {
-      console.log('[CONTRACT_WATCH] Contract data changed, checking game state');
-      checkPlayerGameState();
+      // Only check if we haven't already loaded a game
+      const currentContractData = getCurrentContractGameData();
+      if (currentContractData && Array.isArray(currentContractData)) {
+        const [player1, player2] = currentContractData;
+        if (player1 && player2 && (player1 === address || player2 === address)) {
+          console.log('[CONTRACT_WATCH] Found active game in contract, checking game state');
+          checkPlayerGameState();
+        }
+      }
     }
   }, [contractGameData, lobbyGameContractData, address, hasLoadedGame]);
 
@@ -1596,6 +1603,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         bet_token: selectedToken,
         blue_player: address,
         game_state: 'waiting_for_join', // Changed: Only mark as waiting for join, not active
+        winner: null, // Initialize winner field
         board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
         current_player: 'blue',
         chain: 'sanko',
@@ -1920,25 +1928,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      // BULLETPROOF FIX: Completely disable Firebase subscription during local moves
-      if (isLocalMoveInProgress) {
-        console.log('[FIREBASE] Local move in progress, skipping ALL Firebase updates');
-        return;
-      }
+        // BULLETPROOF FIX: Completely disable Firebase subscription during local moves
+  if (isLocalMoveInProgress) {
+    console.log('[FIREBASE] Local move in progress, skipping ALL Firebase updates');
+    return;
+  }
       
       // Process Firebase updates (opponent moves or initial state)
       if (gameData.board) {
         const reconstructedBoard = reconstructBoard(gameData.board);
         setBoard(reconstructedBoard);
-        console.log('[FIREBASE] Board updated from Firebase subscription');
       }
       
       if (gameData.current_player) {
         setCurrentPlayer(gameData.current_player);
-        console.log('[FIREBASE] Current player updated from Firebase subscription:', gameData.current_player);
       }
       
       if (gameData.game_state === 'active') {
+        console.log('[FIREBASE_SUB] Setting game mode to ACTIVE and showGame to true');
         setGameMode(GameMode.ACTIVE);
         setShowGame(true); // Enable animated background and game board
         setGameStatus('Game in progress');
@@ -1988,10 +1995,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Simplified Firebase subscription - only set up once when inviteCode is available
   useEffect(() => {
     if (inviteCode) {
+      console.log('[FIREBASE_SUB] Setting up subscription for:', inviteCode);
       const unsubscribe = subscribeToGame(inviteCode);
       return () => {
+        console.log('[FIREBASE_SUB] Cleaning up subscription for:', inviteCode);
         if (unsubscribe && typeof unsubscribe === 'function') {
           unsubscribe();
+        }
+        if (gameChannel.current) {
+          gameChannel.current();
+          gameChannel.current = null;
         }
       };
     }
@@ -2033,31 +2046,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Auto-fix missing player data in Firebase if we detect it
       if (inviteCode) {
-        console.log('[AUTO-FIX] Checking Firebase data for inviteCode:', inviteCode);
         firebaseChess.getGame(inviteCode).then(gameData => {
-          console.log('[AUTO-FIX] Current Firebase data:', gameData);
-          console.log('[AUTO-FIX] Contract data:', currentContractData);
-          
           // Check if Firebase needs to be updated
           const needsUpdate = !gameData || 
                              !gameData.blue_player || 
                              gameData.red_player === '0x0000000000000000000000000000000000000000' ||
                              gameData.game_state !== 'active';
           
-          console.log('[AUTO-FIX] Needs update:', needsUpdate);
-          
           if (needsUpdate && currentContractData && Array.isArray(currentContractData)) {
-            console.log('[AUTO-FIX] Updating Firebase with correct data...');
             const [player1, player2] = currentContractData;
-            console.log('[AUTO-FIX] Updating Firebase with player1 (blue):', player1);
-            console.log('[AUTO-FIX] Updating Firebase with player2 (red):', player2);
             
             // Update Firebase with correct player data
             firebaseChess.updateGame(inviteCode, {
               blue_player: player1,
               red_player: player2,
               game_state: 'active',
-              current_player: 'blue'
+              current_player: 'blue',
+              winner: null // Initialize winner field
             }).then(() => {
               console.log('[AUTO-FIX] Firebase updated with correct player data');
             }).catch(error => {
@@ -2067,7 +2072,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           // Clear pending join data if game is confirmed active
           if (gameData && gameData.game_state === 'active' && pendingJoinGameData) {
-            console.log('[AUTO-CLEAR] Game is confirmed active, clearing pending join data');
             setPendingJoinGameData(null);
           }
         }).catch(error => {
@@ -2093,6 +2097,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         blue_player: gameData.blue_player, // Preserve the blue player
         bet_amount: gameData.bet_amount, // Preserve the bet amount
         game_state: 'active',
+        winner: null, // Initialize winner field
         last_move: null, // Reset last move for new match
         board: {
           positions: flattenBoard(initialBoard),
@@ -2491,7 +2496,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     return true;
   };
 
-  const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer): { row: number; col: number }[] => {
+  const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer, checkForCheck = true, depth = 0): { row: number; col: number }[] => {
+    // Prevent infinite recursion
+    if (depth > 10) {
+      console.warn('[RECURSION_GUARD] Maximum recursion depth reached in getLegalMoves');
+      return [];
+    }
     const moves: { row: number; col: number }[] = [];
     const piece = boardState[from.row][from.col];
     
@@ -2508,7 +2518,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Forward moves
       const forwardRow = from.row + direction;
       if (forwardRow >= 0 && forwardRow < 8) {
-        if (canPieceMove(piece, from.row, from.col, forwardRow, from.col, true, player, boardState, true)) {
+        if (canPieceMove(piece, from.row, from.col, forwardRow, from.col, checkForCheck, player, boardState, true)) {
           moves.push({ row: forwardRow, col: from.col });
         }
       }
@@ -2517,7 +2527,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (from.row === startingRow) {
         const doubleRow = from.row + 2 * direction;
         if (doubleRow >= 0 && doubleRow < 8) {
-          if (canPieceMove(piece, from.row, from.col, doubleRow, from.col, true, player, boardState, true)) {
+          if (canPieceMove(piece, from.row, from.col, doubleRow, from.col, checkForCheck, player, boardState, true)) {
             moves.push({ row: doubleRow, col: from.col });
           }
         }
@@ -2528,7 +2538,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         const captureCol = from.col + colOffset;
         const captureRow = from.row + direction;
         if (captureCol >= 0 && captureCol < 8 && captureRow >= 0 && captureRow < 8) {
-          if (canPieceMove(piece, from.row, from.col, captureRow, captureCol, true, player, boardState, true)) {
+          if (canPieceMove(piece, from.row, from.col, captureRow, captureCol, checkForCheck, player, boardState, true)) {
             moves.push({ row: captureRow, col: captureCol });
           }
         }
@@ -2544,7 +2554,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         const newRow = from.row + rowOffset;
         const newCol = from.col + colOffset;
         if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-          if (canPieceMove(piece, from.row, from.col, newRow, newCol, true, player, boardState, true)) {
+          if (canPieceMove(piece, from.row, from.col, newRow, newCol, checkForCheck, player, boardState, true)) {
             moves.push({ row: newRow, col: newCol });
           }
         }
@@ -2553,7 +2563,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // For other pieces (rook, bishop, queen, king), check all squares but use silent mode
       for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
-          if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState, true)) {
+          if (canPieceMove(piece, from.row, from.col, row, col, checkForCheck, player, boardState, true)) {
             moves.push({ row, col });
           }
         }
@@ -2625,7 +2635,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // If clicking on own piece, select it
     if (piece && pieceColor === playerColor) {
       setSelectedSquare({ row, col });
-      const moves = getLegalMoves({ row, col });
+      const moves = getLegalMoves({ row, col }, board, currentPlayer, true, 0);
       setValidMoves(moves);
       return;
     }
@@ -2728,6 +2738,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // CRITICAL FIX: Set flag to prevent Firebase subscription from overriding local board state
     setIsLocalMoveInProgress(true);
     console.log('[MOVE_ANIMATION] Local move in progress flag set');
+    
+    // SAFETY TIMEOUT: Reset flag after 10 seconds to prevent it from getting stuck
+    const safetyTimeout = setTimeout(() => {
+      if (isLocalMoveInProgress) {
+        console.warn('[SAFETY] Local move flag stuck for 10 seconds, resetting');
+        setIsLocalMoveInProgress(false);
+      }
+    }, 10000);
     
     console.log('[MOVE_ANIMATION] Starting move execution:', {
       from: { row: from.row, col: from.col, piece: piece },
@@ -3333,7 +3351,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           // Reset the game state in Firebase to allow re-joining
           await firebaseChess.updateGame(inviteCode, {
             red_player: '0x0000000000000000000000000000000000000000',
-            game_state: 'waiting'
+            game_state: 'waiting',
+            winner: null // Reset winner field
           });
           
           // Reset local state
@@ -3408,6 +3427,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           console.log('[FIX] Activating game in Firebase');
           updateData.game_state = 'active';
           updateData.current_player = 'blue';
+          updateData.winner = null; // Initialize winner field
           needsUpdate = true;
         }
         
@@ -3501,6 +3521,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               blue_player: player1,
               red_player: player2,
               game_state: isActive ? 'active' : 'waiting',
+              winner: null, // Initialize winner field
               board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
               current_player: 'blue',
               chain: 'sanko',
@@ -3536,6 +3557,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[MANUAL_SYNC] Manual sync triggered by player');
     setHasLoadedGame(false); // Reset the flag to force a fresh check
     await checkPlayerGameState();
+  };
+  
+  // Emergency reset function for stuck flags
+  const emergencyReset = () => {
+    console.log('[EMERGENCY] Resetting all stuck flags');
+    setIsLocalMoveInProgress(false);
+    setHasLoadedGame(false);
+    setSelectedSquare(null);
+    setValidMoves([]);
   };
 
   // Mobile touch handling for better piece selection
@@ -3817,6 +3847,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         }}
                       >
                         🔗 Sync Game State
+                      </button>
+                      <button 
+                        onClick={emergencyReset}
+                        style={{ 
+                          background: 'rgba(255, 0, 0, 0.1)',
+                          border: '2px solid #ff0000',
+                          color: '#ff0000',
+                          padding: '8px 16px',
+                          borderRadius: '0px',
+                          cursor: 'pointer',
+                          fontFamily: 'Courier New, monospace',
+                          fontSize: '14px',
+                          fontWeight: 'bold',
+                          transition: 'all 0.3s ease',
+                          marginLeft: '10px'
+                        }}
+                      >
+                        🚨 Emergency Reset
                       </button>
                       <button 
                         onClick={() => window.location.href = '/chess'}
