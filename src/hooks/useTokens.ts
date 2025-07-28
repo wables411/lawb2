@@ -68,30 +68,42 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const error = isNative ? nativeError : erc20Error;
 
   // Log when query is enabled/disabled (only when there's an error or significant change)
+  const lastLogRef = useRef<{error: any, address: string | undefined, queryEnabled: boolean} | null>(null);
+  const currentLogState = { error, address, queryEnabled };
+  
   if (error || (address && queryEnabled)) {
-    console.log(`[TOKEN BALANCE QUERY] ${tokenSymbol}:`, {
-      queryEnabled,
-      address: !!address,
-      isOnSankoMainnet,
-      isNative,
-      contractCall: queryEnabled ? (isNative ? 'native balance' : `balanceOf(${address})`) : 'DISABLED'
-    });
+    // Only log if the state has actually changed
+    if (!lastLogRef.current || 
+        lastLogRef.current.error !== error ||
+        lastLogRef.current.address !== address ||
+        lastLogRef.current.queryEnabled !== queryEnabled) {
+      
+      console.log(`[TOKEN BALANCE QUERY] ${tokenSymbol}:`, {
+        queryEnabled,
+        address: !!address,
+        isOnSankoMainnet,
+        isNative,
+        contractCall: queryEnabled ? (isNative ? 'native balance' : `balanceOf(${address})`) : 'DISABLED'
+      });
 
-    // Debug logging
-    console.log(`[TOKEN BALANCE] ${tokenSymbol}:`, {
-      tokenAddress: token.address,
-      userAddress: address,
-      chainId,
-      isOnSankoMainnet,
-      isOnSankoTestnet,
-      isNative,
-      balance: balance?.toString(),
-      balanceFormatted: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
-      isLoading,
-      error: error?.message,
-      errorDetails: error,
-      queryEnabled: !!address && isOnSankoMainnet
-    });
+      // Debug logging
+      console.log(`[TOKEN BALANCE] ${tokenSymbol}:`, {
+        tokenAddress: token.address,
+        userAddress: address,
+        chainId,
+        isOnSankoMainnet,
+        isOnSankoTestnet,
+        isNative,
+        balance: balance?.toString(),
+        balanceFormatted: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
+        isLoading,
+        error: error?.message,
+        errorDetails: error,
+        queryEnabled: !!address && isOnSankoMainnet
+      });
+      
+      lastLogRef.current = currentLogState;
+    }
   }
 
   return {

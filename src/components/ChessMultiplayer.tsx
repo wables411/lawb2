@@ -246,28 +246,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug logging for lobby contract data
   useEffect(() => {
-    console.log('[LOBBY_CONTRACT] lobbyGameContractData changed:', lobbyGameContractData);
-    console.log('[LOBBY_CONTRACT] lobbyGameContractError:', lobbyGameContractError);
-    console.log('[LOBBY_CONTRACT] lobbyGameContractLoading:', lobbyGameContractLoading);
-    console.log('[LOBBY_CONTRACT] isJoiningFromLobby:', isJoiningFromLobby);
-    console.log('[LOBBY_CONTRACT] inviteCode:', inviteCode);
-    console.log('[LOBBY_CONTRACT] Contract read enabled:', !!inviteCode && inviteCode !== '0x000000000000' && isJoiningFromLobby);
+    if (lobbyGameContractData || lobbyGameContractError) {
+      console.log('[LOBBY_CONTRACT] lobbyGameContractData changed:', lobbyGameContractData);
+      console.log('[LOBBY_CONTRACT] lobbyGameContractError:', lobbyGameContractError);
+      console.log('[LOBBY_CONTRACT] lobbyGameContractLoading:', lobbyGameContractLoading);
+      console.log('[LOBBY_CONTRACT] isJoiningFromLobby:', isJoiningFromLobby);
+      console.log('[LOBBY_CONTRACT] inviteCode:', inviteCode);
+      console.log('[LOBBY_CONTRACT] Contract read enabled:', !!inviteCode && inviteCode !== '0x000000000000' && isJoiningFromLobby);
+    }
   }, [lobbyGameContractData, lobbyGameContractError, lobbyGameContractLoading, isJoiningFromLobby, inviteCode]);
 
 
 
   // Helper function to get the appropriate contract data
   const getCurrentContractGameData = () => {
-    console.log('[HELPER] getCurrentContractGameData called');
-    console.log('[HELPER] isJoiningFromLobby:', isJoiningFromLobby);
-    console.log('[HELPER] lobbyGameContractData:', lobbyGameContractData);
-    console.log('[HELPER] contractGameData:', contractGameData);
-    
     if (isJoiningFromLobby && lobbyGameContractData) {
-      console.log('[HELPER] Returning lobbyGameContractData');
       return lobbyGameContractData;
     }
-    console.log('[HELPER] Returning contractGameData');
     return contractGameData;
   };
   
@@ -2072,7 +2067,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         });
       }
     }
-  }, [contractGameData, lobbyGameContractData, playerColor, address, inviteCode]);
+  }, [playerColor, address, inviteCode]); // Removed contractGameData and lobbyGameContractData to prevent infinite loops
 
   // Handle join transaction receipt
   useEffect(() => {
