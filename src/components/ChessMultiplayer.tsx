@@ -1956,32 +1956,51 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
-      // Detect opponent moves and play sounds
-      if (gameData.board && gameData.last_move && playerColor) {
-        const currentBoardState = JSON.stringify(gameData.board);
-        
-        // Only process if this is a new board state (not initial load)
-        if (previousBoardState && previousBoardState !== currentBoardState) {
-          // This is an opponent move - play appropriate sounds
-          const lastMove = gameData.last_move;
-          if (lastMove.captured_piece) {
-            console.log('[SOUND] Playing capture sound for opponent move');
-            playSound('capture');
-          } else {
-            console.log('[SOUND] Playing move sound for opponent move');
-            playSound('move');
+              // Detect opponent moves and play sounds
+        if (gameData.board && playerColor) {
+          const currentBoardState = JSON.stringify(gameData.board);
+          
+          // Debug logging for move detection
+          console.log('[OPPONENT_MOVE_DEBUG] Checking for opponent move:', {
+            hasBoard: !!gameData.board,
+            hasLastMove: !!gameData.last_move,
+            currentPlayer,
+            playerColor,
+            hasPreviousState: !!previousBoardState,
+            boardChanged: previousBoardState && previousBoardState !== currentBoardState
+          });
+          
+          // Only process if this is a new board state (not initial load)
+          if (previousBoardState && previousBoardState !== currentBoardState) {
+            console.log('[OPPONENT_MOVE] Board state changed, checking for opponent move');
+            
+            // Check if this is actually an opponent move (not our own move)
+            const isOpponentMove = currentPlayer !== playerColor;
+            console.log('[OPPONENT_MOVE_DEBUG] Move analysis:', {
+              currentPlayer,
+              playerColor,
+              isOpponentMove,
+              lastMove: gameData.last_move
+            });
+            
+            if (isOpponentMove) {
+              console.log('[OPPONENT_MOVE] Confirmed opponent move - current player:', currentPlayer, 'player color:', playerColor);
+              
+              // Play move sound (we can't determine capture without last_move, so default to move sound)
+              console.log('[SOUND] Playing move sound for opponent move');
+              playSound('move');
+              
+              // Check for check after opponent move
+              const reconstructedBoard = reconstructBoard(gameData.board);
+              if (isKingInCheck(reconstructedBoard, playerColor)) {
+                console.log('[SOUND] Playing check sound for opponent move');
+                playSound('check');
+              }
+            }
           }
           
-          // Check for check after opponent move
-          const reconstructedBoard = reconstructBoard(gameData.board);
-          if (isKingInCheck(reconstructedBoard, playerColor)) {
-            console.log('[SOUND] Playing check sound for opponent move');
-            playSound('check');
-          }
+          previousBoardState = currentBoardState;
         }
-        
-        previousBoardState = currentBoardState;
-      }
       
       // Process Firebase updates (opponent moves or initial state)
       if (gameData.board) {
