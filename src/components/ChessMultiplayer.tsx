@@ -1039,12 +1039,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
     }
-  }, [address, playerGameInviteCode, hasLoadedGame]); // Removed contractGameData and lobbyGameContractData to prevent infinite loops
+  }, [address, playerGameInviteCode, hasLoadedGame]); // Keep only essential dependencies to prevent infinite loops
 
   // Reset game loading flag when address changes
   useEffect(() => {
     setHasLoadedGame(false);
   }, [address]);
+
+  // Watch for contract data changes and trigger game state check
+  useEffect(() => {
+    if (address && !hasLoadedGame && (contractGameData || lobbyGameContractData)) {
+      console.log('[CONTRACT_WATCH] Contract data changed, checking game state');
+      checkPlayerGameState();
+    }
+  }, [contractGameData, lobbyGameContractData, address, hasLoadedGame]);
 
   // Start timeout timer when game becomes active
   useEffect(() => {
@@ -3521,6 +3529,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
 
+  // Manual sync function for players to force game state check
+  const manualSyncGameState = async () => {
+    if (!address) return;
+    
+    console.log('[MANUAL_SYNC] Manual sync triggered by player');
+    setHasLoadedGame(false); // Reset the flag to force a fresh check
+    await checkPlayerGameState();
+  };
+
   // Mobile touch handling for better piece selection
   const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
     // Prevent default to avoid double-tap zoom on mobile
@@ -3783,6 +3800,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         }}
                       >
                         🔄 Refresh Lobby
+                      </button>
+                      <button 
+                        onClick={manualSyncGameState}
+                        style={{ 
+                          background: 'rgba(255, 0, 0, 0.1)',
+                          border: '2px solid #ff0000',
+                          color: '#ff0000',
+                          padding: '8px 16px',
+                          borderRadius: '0px',
+                          cursor: 'pointer',
+                          fontFamily: 'Courier New, monospace',
+                          fontSize: '14px',
+                          fontWeight: 'bold',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        🔗 Sync Game State
                       </button>
                       <button 
                         onClick={() => window.location.href = '/chess'}
