@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, useBalance } from 'wagmi';
 import { SUPPORTED_TOKENS, type TokenSymbol, NETWORKS } from '../config/tokens';
 import { ERC20_ABI } from '../config/abis';
@@ -27,7 +27,8 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const isOnSankoTestnet = chainId === NETWORKS.testnet.chainId;
   
   // Debug chain detection (only log once per component mount)
-  if (tokenSymbol === 'DMT' || tokenSymbol === 'NATIVE_DMT') {
+  const hasLoggedRef = useRef(false);
+  if ((tokenSymbol === 'DMT' || tokenSymbol === 'NATIVE_DMT') && !hasLoggedRef.current) {
     console.log(`[CHAIN DEBUG] useTokenBalance for ${tokenSymbol}:`, {
       chainId,
       expectedMainnet: NETWORKS.mainnet.chainId,
@@ -37,6 +38,7 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
       address: !!address,
       isNative
     });
+    hasLoggedRef.current = true;
   }
   
   const queryEnabled = !!address && isOnSankoMainnet;
@@ -65,30 +67,32 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
   const isLoading = isNative ? nativeLoading : erc20Loading;
   const error = isNative ? nativeError : erc20Error;
 
-  // Log when query is enabled/disabled
-  console.log(`[TOKEN BALANCE QUERY] ${tokenSymbol}:`, {
-    queryEnabled,
-    address: !!address,
-    isOnSankoMainnet,
-    isNative,
-    contractCall: queryEnabled ? (isNative ? 'native balance' : `balanceOf(${address})`) : 'DISABLED'
-  });
+  // Log when query is enabled/disabled (only when there's an error or significant change)
+  if (error || (address && queryEnabled)) {
+    console.log(`[TOKEN BALANCE QUERY] ${tokenSymbol}:`, {
+      queryEnabled,
+      address: !!address,
+      isOnSankoMainnet,
+      isNative,
+      contractCall: queryEnabled ? (isNative ? 'native balance' : `balanceOf(${address})`) : 'DISABLED'
+    });
 
-  // Debug logging
-  console.log(`[TOKEN BALANCE] ${tokenSymbol}:`, {
-    tokenAddress: token.address,
-    userAddress: address,
-    chainId,
-    isOnSankoMainnet,
-    isOnSankoTestnet,
-    isNative,
-    balance: balance?.toString(),
-    balanceFormatted: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
-    isLoading,
-    error: error?.message,
-    errorDetails: error,
-    queryEnabled: !!address && isOnSankoMainnet
-  });
+    // Debug logging
+    console.log(`[TOKEN BALANCE] ${tokenSymbol}:`, {
+      tokenAddress: token.address,
+      userAddress: address,
+      chainId,
+      isOnSankoMainnet,
+      isOnSankoTestnet,
+      isNative,
+      balance: balance?.toString(),
+      balanceFormatted: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
+      isLoading,
+      error: error?.message,
+      errorDetails: error,
+      queryEnabled: !!address && isOnSankoMainnet
+    });
+  }
 
   return {
     balance: balance ? Number(balance) / Math.pow(10, token.decimals) : 0,
