@@ -101,10 +101,11 @@ function App() {
       void document.body.offsetWidth;
     } else if (action === 'wallet') {
       if (!isConnected) {
-        void open();
+        // Open wallet connection modal
+        void open({ view: 'Connect' });
       } else {
-        // Disconnect is handled by the wallet provider
-        console.log('Wallet disconnect requested');
+        // Open account management modal (chain selector/disconnect)
+        void open({ view: 'Account' });
       }
     } else if (action === 'mint') {
       if (!address) {
@@ -177,10 +178,11 @@ function App() {
     <div 
       onClick={() => {
         if (!isConnected) {
-          void open();
+          // Open wallet connection modal
+          void open({ view: 'Connect' });
         } else {
-          // Disconnect is handled by the wallet provider
-          console.log('Wallet disconnect requested');
+          // Automatically disconnect when connected
+          void open({ view: 'Account' });
         }
       }} 
       style={{ 

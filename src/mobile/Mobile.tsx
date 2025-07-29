@@ -250,9 +250,11 @@ const Mobile = () => {
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Wallet', icon: '/assets/wallet.png', action: () => {
       if (!isConnected) {
-        void open();
+        // Open wallet connection modal
+        void open({ view: 'Connect' });
       } else {
-        disconnect();
+        // Open account management modal (chain selector/disconnect)
+        void open({ view: 'Account' });
       }
     }, disabled: isPending },
   ];
@@ -481,7 +483,19 @@ const Mobile = () => {
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
         <button className={classes.menuButton} onClick={() => setMenuOpen(true)}>Menu</button>
-        <div className={classes.walletStatus}>
+        <div 
+          className={classes.walletStatus}
+          onClick={() => {
+            if (!isConnected) {
+              // Open wallet connection modal
+              void open({ view: 'Connect' });
+            } else {
+              // Open account management modal (chain selector/disconnect)
+              void open({ view: 'Account' });
+            }
+          }}
+          style={{ cursor: 'pointer' }}
+        >
           <span style={{
             height: '10px',
             width: '10px',
