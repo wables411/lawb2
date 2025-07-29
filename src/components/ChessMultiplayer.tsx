@@ -272,6 +272,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (inviteCode && !newValue) {
       console.warn(`[INVITE_DEBUG] WARNING: Clearing inviteCode from "${inviteCode}" to "${newValue}" from ${source}`);
     }
+    
+    // Reset board state tracking when starting a new game
+    if (newValue && newValue !== inviteCode) {
+      console.log('[OPPONENT_MOVE] New game detected, resetting board state tracking');
+      previousBoardStateRef.current = null;
+      isFirstBoardLoadRef.current = true;
+    }
+    
     setInviteCode(newValue);
   };
   
@@ -1894,6 +1902,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Update subscribeToGame to use addressRef.current
   // Track previous board state to detect moves - moved outside function to persist across subscription updates
   const previousBoardStateRef = useRef<string | null>(null);
+  const isFirstBoardLoadRef = useRef<boolean>(true);
   
   const subscribeToGame = (inviteCode: string) => {
     if (gameChannel.current) {
@@ -1970,10 +1979,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             boardChanged: previousBoardStateRef.current && previousBoardStateRef.current !== currentBoardState
           });
           
-          // Initialize previousBoardState on first load, then detect changes
-          if (!previousBoardStateRef.current) {
-            console.log('[OPPONENT_MOVE] Initializing previousBoardState with current board');
+          // Initialize previousBoardState only on the very first load, then detect changes
+          if (isFirstBoardLoadRef.current) {
+            console.log('[OPPONENT_MOVE] First board load - initializing previousBoardState with current board');
             previousBoardStateRef.current = currentBoardState;
+            isFirstBoardLoadRef.current = false;
           } else if (previousBoardStateRef.current !== currentBoardState) {
             console.log('[OPPONENT_MOVE] Board state changed, checking for opponent move');
             
