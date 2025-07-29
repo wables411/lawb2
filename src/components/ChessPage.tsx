@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import './ChessMultiplayer.css';
@@ -8,6 +8,7 @@ const ChessPage: React.FC = () => {
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [showLoading, setShowLoading] = useState(true);
   const [loadingText, setLoadingText] = useState('');
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Loading screen effect
   useEffect(() => {
@@ -49,6 +50,7 @@ const ChessPage: React.FC = () => {
       }}>
         {/* Loading Video that fills entire screen */}
         <video
+          ref={videoRef}
           src="/images/loadingchess.mp4"
           style={{
             width: '100vw',
@@ -60,7 +62,7 @@ const ChessPage: React.FC = () => {
           }}
           autoPlay
           muted
-          loop
+          loop={false}
           playsInline
           preload="auto"
           onLoadStart={() => {
@@ -71,6 +73,9 @@ const ChessPage: React.FC = () => {
           }}
           onPlay={() => {
             console.log('[CHESS] Video started playing');
+          }}
+          onEnded={() => {
+            console.log('[CHESS] Video ended');
           }}
           onError={(e) => {
             console.log('[CHESS] Video failed to load:', e);

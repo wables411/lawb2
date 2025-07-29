@@ -1892,13 +1892,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Update subscribeToGame to use addressRef.current
+  // Track previous board state to detect moves - moved outside function to persist across subscription updates
+  const previousBoardStateRef = useRef<string | null>(null);
+  
   const subscribeToGame = (inviteCode: string) => {
     if (gameChannel.current) {
       gameChannel.current();
     }
-    
-    // Track previous board state to detect moves
-    let previousBoardState: string | null = null;
     
     const unsubscribe = firebaseChess.subscribeToGame(inviteCode, (gameData) => {
       const currentAddress = addressRef.current;
@@ -1966,15 +1966,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             hasLastMove: !!gameData.last_move,
             currentPlayer,
             playerColor,
-            hasPreviousState: !!previousBoardState,
-            boardChanged: previousBoardState && previousBoardState !== currentBoardState
+            hasPreviousState: !!previousBoardStateRef.current,
+            boardChanged: previousBoardStateRef.current && previousBoardStateRef.current !== currentBoardState
           });
           
           // Initialize previousBoardState on first load, then detect changes
-          if (!previousBoardState) {
+          if (!previousBoardStateRef.current) {
             console.log('[OPPONENT_MOVE] Initializing previousBoardState with current board');
-            previousBoardState = currentBoardState;
-          } else if (previousBoardState !== currentBoardState) {
+            previousBoardStateRef.current = currentBoardState;
+          } else if (previousBoardStateRef.current !== currentBoardState) {
             console.log('[OPPONENT_MOVE] Board state changed, checking for opponent move');
             
             // Check if this is actually an opponent move (not our own move)
@@ -2002,7 +2002,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             }
             
             // Update previousBoardState after processing the change
-            previousBoardState = currentBoardState;
+            previousBoardStateRef.current = currentBoardState;
           }
         }
       
