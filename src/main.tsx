@@ -9,7 +9,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { config } from './wagmi';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import ChessPage from './components/ChessPage'; // to be created
+import { lazy, Suspense } from 'react';
+
+// Lazy load the chess page to reduce initial bundle size
+const ChessPage = lazy(() => import('./components/ChessPage'));
 import { appKit } from './appkit.ts'; // Import the appKit instance
 import { getAppKit } from '@reown/appkit/react'; // Import getAppKit
 
@@ -32,11 +35,19 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <Routes>
             {isChessSubdomain ? (
-              <Route path="/*" element={<ChessPage />} />
+              <Route path="/*" element={
+                <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                  <ChessPage />
+                </Suspense>
+              } />
             ) : (
               <>
                 <Route path="/" element={<Root />} />
-                <Route path="/chess" element={<ChessPage />} />
+                <Route path="/chess" element={
+                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                    <ChessPage />
+                  </Suspense>
+                } />
               </>
             )}
           </Routes>

@@ -44,6 +44,6 @@ export const appKit = createAppKit({
     sankoMainnet
   ],
   features: {
-    analytics: true,
+    analytics: false,
   },
 }); 

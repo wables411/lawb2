@@ -366,24 +366,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
 
-  // Check wallet connection and chain - trigger popup if not connected or wrong network
+  // Check wallet connection and chain - show status but don't force popup
   useEffect(() => {
     if (!isConnected || !walletAddress) {
       setStatus('Connect wallet to play');
       setShowGame(false);
       setShowDifficulty(false);
-      // Trigger Reown appkit popup
-      void open();
     } else if (chainId !== SANKO_CHAIN_ID) {
       setStatus('Switch to Sanko Mainnet to play');
       setShowGame(false);
       setShowDifficulty(false);
-      // Trigger Reown appkit popup to switch network
-      void open();
     } else {
       setStatus('Select match mode');
     }
-  }, [isConnected, walletAddress, chainId, open]);
+  }, [isConnected, walletAddress, chainId]);
 
   // Handle switching to Sanko mainnet
   const handleSwitchToSanko = async () => {
@@ -1774,6 +1770,44 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   }}
                 />
               </div>
+              {/* Status Display and Network Switching */}
+              <div style={{ 
+                textAlign: 'center', 
+                marginBottom: '20px',
+                padding: '10px',
+                backgroundColor: '#000000',
+                border: '2px outset #fff',
+                borderRadius: '4px'
+              }}>
+                <div style={{ 
+                  color: '#ff0000', 
+                  fontSize: '14px', 
+                  fontWeight: 'bold',
+                  marginBottom: '10px'
+                }}>
+                  {status}
+                </div>
+                {chainId !== SANKO_CHAIN_ID && isConnected && (
+                  <button 
+                    onClick={handleSwitchToSanko}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#ff0000',
+                      color: '#000000',
+                      border: '2px outset #fff',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#cc0000'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff0000'}
+                  >
+                    Switch to Sanko Mainnet
+                  </button>
+                )}
+              </div>
+              
               <div className="mode-selection-compact">
                 <button 
                   className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
