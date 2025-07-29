@@ -366,20 +366,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
 
-  // Check wallet connection and chain - show status but don't force popup
+  // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {
     if (!isConnected || !walletAddress) {
       setStatus('Connect wallet to play');
       setShowGame(false);
       setShowDifficulty(false);
+      // Trigger Reown appkit popup for wallet connection
+      void open();
     } else if (chainId !== SANKO_CHAIN_ID) {
       setStatus('Switch to Sanko Mainnet to play');
       setShowGame(false);
       setShowDifficulty(false);
+      // Don't auto-trigger popup for chain switching - let user do it manually
     } else {
       setStatus('Select match mode');
     }
-  }, [isConnected, walletAddress, chainId]);
+  }, [isConnected, walletAddress, chainId, open]);
 
   // Handle switching to Sanko mainnet
   const handleSwitchToSanko = async () => {
