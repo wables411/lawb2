@@ -306,7 +306,7 @@
 .piece-gallery h3 {
   font-size: 14px;
   font-weight: bold;
-  color: #000080;
+  color: #ff0000;
   margin: 0 0 12px 0;
   text-align: center;
   text-transform: uppercase;
@@ -336,7 +336,7 @@
 .piece-gallery-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  border-color: #000080;
+  border-color: #ff0000;
 }
 
 .piece-gallery-img {
@@ -349,7 +349,7 @@
 
 .piece-gallery-name {
   font-weight: bold;
-  color: #000080;
+  color: #ff0000;
   margin-bottom: 4px;
   text-align: center;
   font-size: 12px;
@@ -434,7 +434,7 @@
 
 /* Game Info Bar */
 .status {
-  color: #000080;
+  color: #ff0000;
 }
 
 .current-player {
@@ -513,7 +513,7 @@
 .move-history h4 {
   font-size: 13px;
   font-weight: bold;
-  color: #000080;
+  color: #ff0000;
   margin: 0 0 8px 0;
   text-align: center;
 }
@@ -646,7 +646,7 @@
 .piece-name {
   font-size: 10px;
   font-weight: bold;
-  color: #000080;
+  color: #ff0000;
   margin-bottom: 1px;
 }
 
@@ -742,7 +742,7 @@
 .leaderboard-table th:nth-child(6), .leaderboard-table td:nth-child(6) { min-width: 32px; max-width: 38px; }
 .leaderboard-table th {
   background: #c0c0c0;
-  color: #000080;
+  color: #ff0000;
   font-weight: bold;
   position: sticky;
   top: 0;
@@ -1403,7 +1403,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .how-to-section h4 {
-  color: #000080;
+  color: #ff0000;
   font-size: 16px;
   font-weight: bold;
   margin: 0 0 12px 0;
@@ -1422,7 +1422,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .how-to-content strong {
-  color: #000080;
+  color: #ff0000;
   font-weight: bold;
 }
 
@@ -1880,7 +1880,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .leaderboard-compact h3 {
   font-size: 12px;
   font-weight: bold;
-  color: #000080;
+  color: #ff0000;
   margin: 0 0 4px 0;
   text-align: center;
 }
@@ -2011,7 +2011,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: #f0f0f0;
+  background: #000000;
   border-radius: 8px;
   margin: 20px;
   max-width: 400px;
@@ -2025,52 +2025,58 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .mode-btn-compact {
-  background: #c0c0c0;
-  border: 2px outset #fff;
+  background: #000000;
+  border: 2px outset #c00000;
   padding: 12px 24px;
   font-size: 14px;
   font-weight: bold;
-  color: #000;
+  color: #ff0000;
   cursor: pointer;
   border-radius: 0;
   min-width: 80px;
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: background 0.2s;
 }
 
 .mode-btn-compact:hover {
-  background: #d0d0d0;
+  background: #1a1a1a;
 }
 
 .mode-btn-compact:active {
-  border: 2px inset #fff;
-  background: #a0a0a0;
+  border: 2px inset #c00000;
+  background: #333333;
 }
 
 .mode-btn-compact.selected {
-  background: #000080;
-  color: #fff;
-  border: 2px inset #fff;
+  background: #000000;
+  color: #ff0000;
+  border: 2px inset #c00000;
 }
 
 .start-btn-compact {
-  background: #008000;
-  border: 2px outset #fff;
+  background: #000000;
+  border: 2px outset #c00000;
   padding: 12px 32px;
   font-size: 16px;
   font-weight: bold;
-  color: #fff;
+  color: #ff0000;
   cursor: pointer;
   border-radius: 0;
   margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: background 0.2s;
 }
 
 .start-btn-compact:hover {
-  background: #006000;
+  background: #1a1a1a;
 }
 
 .start-btn-compact:active {
-  border: 2px inset #fff;
-  background: #004000;
+  border: 2px inset #c00000;
+  background: #333333;
 }
 
 /* PvP Info */
@@ -2078,7 +2084,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   text-align: center;
   margin-bottom: 20px;
   padding: 12px;
-  background: #fff;
+  background: #000000;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
@@ -2091,7 +2097,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 
 /* Compact Help Section */
 .help-section-compact {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid #ccc;
   border-radius: 4px;
   padding: 12px;
@@ -2102,7 +2108,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .help-section-compact h4 {
   font-size: 14px;
   font-weight: bold;
-  color: #000080;
+  color: #ff0000;
   margin: 0 0 8px 0;
   text-align: center;
 }
@@ -2118,7 +2124,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .help-content strong {
-  color: #000080;
+  color: #ff0000;
   font-weight: bold;
 }
 
@@ -2131,7 +2137,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 
 .chess-dark-mode .leaderboard-compact h3,
 .chess-dark-mode .move-history-compact .move-history-title {
-  color: #00ff00;
+  color: #ff0000;
 }
 
 .chess-dark-mode .leaderboard-table-compact th,

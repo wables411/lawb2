@@ -1010,9 +1010,9 @@ body, html {
 }
 
 .sidebar-toggle-btn.selected {
-  background: #000080;
+  background: #ff0000;
   color: white;
-  border: 2px inset #000080;
+  border: 2px inset #ff0000;
 }
 
 /* --- Current Player Colors --- */

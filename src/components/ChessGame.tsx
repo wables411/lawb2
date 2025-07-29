@@ -380,7 +380,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       setShowDifficulty(false);
       // Don't auto-trigger popup for chain switching - let user do it manually
     } else {
-      setStatus('Select match mode');
+      setStatus('Select chess mode');
     }
   }, [isConnected, walletAddress, chainId, open]);
 
@@ -1300,7 +1300,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setLegalMoves([]);
     setLastMove(null);
     setShowGame(false);
-    setStatus('Select match mode');
+    setStatus('Select chess mode');
     setPieceState({
       blueKingMoved: false,
       redKingMoved: false,
@@ -1416,7 +1416,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => (
     <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-      <h3 style={{color: '#32CD32'}}>Lawbstation Chess Pieces</h3>
+              <h3 style={{color: '#ff0000'}}>Lawbstation Chess Pieces</h3>
       <div className="piece-gallery-grid">
         {pieceGallery.map(piece => (
           <div key={piece.key} className="piece-gallery-item" onClick={() => {
@@ -1439,17 +1439,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
         <div className="difficulty-selection-panel" style={{background:'transparent',borderRadius:0,padding:'32px 24px',boxShadow:'none',textAlign:'center'}}>
-          <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#00ff00',marginBottom:16,textShadow:'0 0 6px #00ff00, 0 0 2px #00ff00'}}>Select Difficulty</h2>
-          <p style={{fontSize:'1.1rem',color:'#00ff00',marginBottom:24,textShadow:'0 0 6px #00ff00, 0 0 2px #00ff00'}}>Compete against the computer to climb the leaderboard.</p>
+          <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#ff0000',marginBottom:16,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Select Difficulty</h2>
+          <p style={{fontSize:'1.1rem',color:'#ff0000',marginBottom:24,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Compete against the computer to climb the leaderboard.</p>
           <div style={{display:'flex',justifyContent:'center',gap:16,marginBottom:24}}>
             <button
               className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
-              style={{background:difficulty==='easy'?'#00ff00':'transparent',color:difficulty==='easy'?'#000':'#00ff00',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #00ff00',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 0 6px #00ff00, 0 0 2px #00ff00':'none'}}
+              style={{background:difficulty==='easy'?'#ff0000':'transparent',color:difficulty==='easy'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
               onClick={()=>setDifficulty('easy')}
             >Easy</button>
             <button
               className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
-              style={{background:difficulty==='hard'?'#00ff00':'transparent',color:difficulty==='hard'?'#000':'#00ff00',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #00ff00',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #00ff00, 0 0 2px #00ff00':'none'}}
+              style={{background:difficulty==='hard'?'#ff0000':'transparent',color:difficulty==='hard'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
               onClick={()=>setDifficulty('hard')}
             >Hard</button>
           </div>
@@ -1458,13 +1458,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             onClick={() => { startGame(); }}
             style={{ 
               background: 'transparent',
-              color: '#00ff00',
+              color: '#ff0000',
               fontWeight: 'bold',
               fontSize: '1.3em',
               padding: '18px 48px',
               borderRadius: 0,
-              boxShadow: '0 0 6px #00ff00, 0 0 2px #00ff00',
-              border: '1px solid #00ff00',
+              boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
+              border: '1px solid #ff0000',
               cursor: 'pointer',
               letterSpacing: 1,
               marginBottom: 8
@@ -1472,6 +1472,39 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           >
             <span role="img" aria-label="chess">♟️</span> Start Match
           </button>
+
+          {/* Sidebar Toggle Buttons for Difficulty Selection */}
+          <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
+            <button
+              className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+              onClick={() => setSidebarView('leaderboard')}
+            >Leaderboard</button>
+            <button
+              className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+              onClick={() => setSidebarView('gallery')}
+            >Gallery</button>
+          </div>
+
+          {/* Back to Chess Button */}
+          <div style={{marginTop: '16px', justifyContent: 'center'}}>
+            <button
+              onClick={() => window.location.href = '/chess'}
+              style={{ 
+                background: 'transparent',
+                color: '#ff0000',
+                fontWeight: 'bold',
+                fontSize: '1.1em',
+                padding: '12px 24px',
+                borderRadius: 0,
+                boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
+                border: '1px solid #ff0000',
+                cursor: 'pointer',
+                letterSpacing: 1
+              }}
+            >
+              ← Back to Chess
+            </button>
+          </div>
 
         </div>
       </div>
@@ -1838,7 +1871,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {/* Updated Help Section */}
               <div className="help-section-compact">
-                <h4>How to Play</h4>
+                <h4>How to Play Lawb Chess Beta 3000 on Sanko</h4>
                 <div className="help-content">
                   <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
                   <p><strong>Match Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
@@ -1861,7 +1894,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p><strong>Match Modes:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
-                    <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
+                    <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
                   </ul>
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
@@ -2096,7 +2129,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {/* Updated Help Section */}
               <div className="help-section-compact">
-                <h4>How to Play</h4>
+                <h4>How to Play Lawb Chess Beta 3000 on Sanko</h4>
                 <div className="help-content">
                   <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
                   <p><strong>Game Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
@@ -2119,7 +2152,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p><strong>Game Modes:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li><strong>Single Player:</strong> Practice against the computer (Easy/Hard difficulty)</li>
-                    <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
+                    <li><strong>Multiplayer:</strong> wage DMT and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
                   </ul>
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
