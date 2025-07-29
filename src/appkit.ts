@@ -1,7 +1,7 @@
 import { createAppKit } from '@reown/appkit/react';
-import { mainnet, arbitrum, solana, solanaTestnet, solanaDevnet } from '@reown/appkit/networks';
+import { mainnet, arbitrum, solana } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { sankoTestnet, sankoMainnet } from './wagmi';
+import { sankoMainnet } from './wagmi';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
@@ -12,16 +12,13 @@ const metadata = {
   icons: ['/assets/favicon.ico']
 };
 
-// Create wagmi adapter with Sanko networks
+// Create wagmi adapter with main networks
 const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks: [
     mainnet,
     arbitrum,
     solana,
-    solanaTestnet,
-    solanaDevnet,
-    sankoTestnet,
     sankoMainnet
   ],
   pendingTransactionsFilter: {
@@ -38,9 +35,6 @@ export const appKit = createAppKit({
     mainnet,
     arbitrum,
     solana,
-    solanaTestnet,
-    solanaDevnet,
-    sankoTestnet,
     sankoMainnet
   ],
   features: {

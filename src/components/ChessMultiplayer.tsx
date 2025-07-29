@@ -1970,8 +1970,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             boardChanged: previousBoardState && previousBoardState !== currentBoardState
           });
           
-          // Only process if this is a new board state (not initial load)
-          if (previousBoardState && previousBoardState !== currentBoardState) {
+          // Initialize previousBoardState on first load, then detect changes
+          if (!previousBoardState) {
+            console.log('[OPPONENT_MOVE] Initializing previousBoardState with current board');
+            previousBoardState = currentBoardState;
+          } else if (previousBoardState !== currentBoardState) {
             console.log('[OPPONENT_MOVE] Board state changed, checking for opponent move');
             
             // Check if this is actually an opponent move (not our own move)
@@ -1997,9 +2000,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 playSound('check');
               }
             }
+            
+            // Update previousBoardState after processing the change
+            previousBoardState = currentBoardState;
           }
-          
-          previousBoardState = currentBoardState;
         }
       
       // Process Firebase updates (opponent moves or initial state)
