@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChessGame } from './ChessGame';
+import { ChessMultiplayer } from './ChessMultiplayer';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
-
-// Lazy load heavy chess components to reduce initial bundle size
-const ChessGame = lazy(() => import('./ChessGame').then(module => ({ default: module.ChessGame })));
-const ChessMultiplayer = lazy(() => import('./ChessMultiplayer').then(module => ({ default: module.ChessMultiplayer })));
 
 const ChessPage: React.FC = () => {
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
@@ -22,10 +20,10 @@ const ChessPage: React.FC = () => {
       setLoadingText(fullText + dots);
     }, 500);
 
-    // Hide loading screen after 3 seconds
+    // Hide loading screen after 7 seconds
     const loadingTimeout = setTimeout(() => {
       setShowLoading(false);
-    }, 3000);
+    }, 7000);
 
     return () => {
       clearInterval(textInterval);
@@ -64,7 +62,7 @@ const ChessPage: React.FC = () => {
           }}
           autoPlay
           muted
-          loop={false}
+          loop={true}
           playsInline
           preload="auto"
           onLoadStart={() => {
@@ -75,9 +73,6 @@ const ChessPage: React.FC = () => {
           }}
           onPlay={() => {
             console.log('[CHESS] Video started playing');
-          }}
-          onEnded={() => {
-            console.log('[CHESS] Video ended');
           }}
           onError={(e) => {
             console.log('[CHESS] Video failed to load:', e);
@@ -112,13 +107,9 @@ const ChessPage: React.FC = () => {
     <div className="chess-page">
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
-          <Suspense fallback={<div>Loading Chess Game...</div>}>
-            <ChessGame onClose={handleClose} />
-          </Suspense>
+          <ChessGame onClose={handleClose} />
         ) : (
-          <Suspense fallback={<div>Loading Chess Multiplayer...</div>}>
-            <ChessMultiplayer onClose={handleClose} onMinimize={() => {}} fullscreen={false} />
-          </Suspense>
+          <ChessMultiplayer onClose={handleClose} onMinimize={() => {}} fullscreen={false} />
         )}
       </div>
     </div>
