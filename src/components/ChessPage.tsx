@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChessGame } from './ChessGame';
-import { ChessMultiplayer } from './ChessMultiplayer';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
+
+// Lazy load heavy chess components to reduce initial bundle size
+const ChessGame = lazy(() => import('./ChessGame').then(module => ({ default: module.ChessGame })));
+const ChessMultiplayer = lazy(() => import('./ChessMultiplayer').then(module => ({ default: module.ChessMultiplayer })));
 
 const ChessPage: React.FC = () => {
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
@@ -110,9 +112,13 @@ const ChessPage: React.FC = () => {
     <div className="chess-page">
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
-          <ChessGame onClose={handleClose} />
+          <Suspense fallback={<div>Loading Chess Game...</div>}>
+            <ChessGame onClose={handleClose} />
+          </Suspense>
         ) : (
-          <ChessMultiplayer onClose={handleClose} onMinimize={() => {}} fullscreen={false} />
+          <Suspense fallback={<div>Loading Chess Multiplayer...</div>}>
+            <ChessMultiplayer onClose={handleClose} onMinimize={() => {}} fullscreen={false} />
+          </Suspense>
         )}
       </div>
     </div>

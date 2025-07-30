@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
 import Popup from './components/Popup';
-import MintPopup from './components/MintPopup';
-import NFTGallery from './components/NFTGallery';
-import MemeGenerator from './components/MemeGenerator';
-
-
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
 import { useAccount, useChainId } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
+
+// Lazy load heavy components to reduce initial bundle size
+const MintPopup = lazy(() => import('./components/MintPopup'));
+const NFTGallery = lazy(() => import('./components/NFTGallery'));
+const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 
 const useStyles = createUseStyles({
   body: {
@@ -441,23 +441,29 @@ function App() {
         </div>
       </Popup>
 
-      <MintPopup 
-        isOpen={showMintPopup} 
-        onClose={closeMintPopup} 
-        onMinimize={minimizeMintPopup}
-        walletAddress={address || ''} 
-      />
+      <Suspense fallback={<div>Loading MintPopup...</div>}>
+        <MintPopup 
+          isOpen={showMintPopup} 
+          onClose={closeMintPopup} 
+          onMinimize={minimizeMintPopup}
+          walletAddress={address || ''} 
+        />
+      </Suspense>
 
-      <NFTGallery 
-        isOpen={showNFTGallery} 
-        onClose={closeNFTGallery} 
-        onMinimize={minimizeNFTGallery}
-        walletAddress={address} 
-      />
+      <Suspense fallback={<div>Loading NFTGallery...</div>}>
+        <NFTGallery 
+          isOpen={showNFTGallery} 
+          onClose={closeNFTGallery} 
+          onMinimize={minimizeNFTGallery}
+          walletAddress={address} 
+        />
+      </Suspense>
 
-      <Popup id="meme-generator-popup" isOpen={showMemeGenerator} onClose={closeMemeGenerator} onMinimize={minimizeMemeGenerator}>
-        <MemeGenerator />
-      </Popup>
+      <Suspense fallback={<div>Loading MemeGenerator...</div>}>
+        <Popup id="meme-generator-popup" isOpen={showMemeGenerator} onClose={closeMemeGenerator} onMinimize={minimizeMemeGenerator}>
+          <MemeGenerator />
+        </Popup>
+      </Suspense>
 
 
 
