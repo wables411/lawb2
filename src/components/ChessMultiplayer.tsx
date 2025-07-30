@@ -1909,7 +1909,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       gameChannel.current();
     }
     
+    console.log('[FIREBASE_SUB] Setting up subscription for game:', inviteCode);
+    
     const unsubscribe = firebaseChess.subscribeToGame(inviteCode, (gameData) => {
+      try {
       const currentAddress = addressRef.current;
       
       if (!gameData) {
@@ -2018,8 +2021,36 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Process Firebase updates (opponent moves or initial state)
       if (gameData.board) {
-        const reconstructedBoard = reconstructBoard(gameData.board);
-        setBoard(reconstructedBoard);
+        try {
+          const reconstructedBoard = reconstructBoard(gameData.board);
+          
+          // Enhanced validation for initial board state
+          if (isFirstBoardLoadRef.current) {
+            console.log('[BOARD_SYNC] First board load - validating initial state');
+            if (isValidBoardState(reconstructedBoard)) {
+              setBoard(reconstructedBoard);
+              isFirstBoardLoadRef.current = false;
+              console.log('[BOARD_SYNC] Initial board state validated and set');
+            } else {
+              console.warn('[BOARD_SYNC] Initial board state invalid, using initial board');
+              setBoard(initialBoard);
+              isFirstBoardLoadRef.current = false;
+            }
+          } else {
+            // For subsequent updates, only update if board is valid
+            if (isValidBoardState(reconstructedBoard)) {
+              setBoard(reconstructedBoard);
+            } else {
+              console.warn('[BOARD_SYNC] Board update invalid, keeping current state');
+            }
+          }
+        } catch (error) {
+          console.error('[BOARD_SYNC] Error reconstructing board:', error);
+          if (isFirstBoardLoadRef.current) {
+            setBoard(initialBoard);
+            isFirstBoardLoadRef.current = false;
+          }
+        }
       }
       
       if (gameData.current_player) {
@@ -2031,6 +2062,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameMode(GameMode.ACTIVE);
         setShowGame(true); // Enable animated background and game board
         setGameStatus('Game in progress');
+        
+        // CRITICAL FIX: Force board state synchronization when game becomes active
+        if (gameData.board && isFirstBoardLoadRef.current) {
+          console.log('[GAME_ACTIVE] Game just became active, ensuring board synchronization');
+          try {
+            const reconstructedBoard = reconstructBoard(gameData.board);
+            if (isValidBoardState(reconstructedBoard)) {
+              setBoard(reconstructedBoard);
+              isFirstBoardLoadRef.current = false;
+              console.log('[GAME_ACTIVE] Board synchronized successfully');
+            } else {
+              console.warn('[GAME_ACTIVE] Invalid board state, using initial board');
+              setBoard(initialBoard);
+              isFirstBoardLoadRef.current = false;
+            }
+          } catch (error) {
+            console.error('[GAME_ACTIVE] Error synchronizing board:', error);
+            setBoard(initialBoard);
+            isFirstBoardLoadRef.current = false;
+          }
+        }
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
         setGameStatus('Game finished');
@@ -2075,7 +2127,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       debugSetWager(wagerValue, 'Firebase subscription');
       setCurrentGameToken(tokenSymbol as TokenSymbol);
+    } catch (error) {
+      console.error('[FIREBASE_SUB] Error in subscription callback:', error);
+      // Don't break the subscription on error, just log it
+    }
     });
+    
+    console.log('[FIREBASE_SUB] Subscription established successfully');
     gameChannel.current = unsubscribe;
     return unsubscribe;
   };
@@ -2084,6 +2142,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   useEffect(() => {
     if (inviteCode) {
       console.log('[FIREBASE_SUB] Setting up subscription for:', inviteCode);
+      
+      // Reset board state tracking for new game
+      previousBoardStateRef.current = null;
+      isFirstBoardLoadRef.current = true;
+      
       const unsubscribe = subscribeToGame(inviteCode);
       return () => {
         console.log('[FIREBASE_SUB] Cleaning up subscription for:', inviteCode);
@@ -2232,6 +2295,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     return flatBoard;
   };
 
+  // Helper function to validate board state
+  const isValidBoardState = (board: (string | null)[][]): boolean => {
+    if (!board || !Array.isArray(board) || board.length !== 8) {
+      return false;
+    }
+    
+    for (let row = 0; row < 8; row++) {
+      if (!Array.isArray(board[row]) || board[row].length !== 8) {
+        return false;
+      }
+    }
+    
+    // Check for basic chess piece validity
+    const validPieces = ['R', 'N', 'B', 'Q', 'K', 'P', 'r', 'n', 'b', 'q', 'k', 'p', null];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        if (!validPieces.includes(board[row][col])) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  };
+
   // Helper function to reconstruct board from Firebase data
   const reconstructBoard = (boardData: any): (string | null)[][] => {
     if (!boardData || !boardData.positions) {
@@ -2260,8 +2348,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      console.log('[BOARD] Reconstructed from flat structure:', newBoard);
-      return newBoard;
+      // Validate the reconstructed board
+      if (isValidBoardState(newBoard)) {
+        console.log('[BOARD] Reconstructed from flat structure:', newBoard);
+        return newBoard;
+      } else {
+        console.warn('[BOARD] Reconstructed board failed validation, using initial board');
+        return initialBoard;
+      }
     }
     
     // Check if it's the legacy array structure
@@ -2277,7 +2371,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           return isValid;
         });
         
-        if (isValidBoard) {
+        if (isValidBoard && isValidBoardState(boardData.positions)) {
           console.log('[BOARD] Using legacy array structure');
           return boardData.positions as (string | null)[][];
         } else {
@@ -2842,17 +2936,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const piece = board[from.row][from.col];
     if (!piece) return;
     
+    // Ensure piece is not null for TypeScript
+    const pieceString = piece as string;
+    
     // CRITICAL FIX: Set flag to prevent Firebase subscription from overriding local board state
     setIsLocalMoveInProgress(true);
     console.log('[MOVE_ANIMATION] Local move in progress flag set');
     
-    // SAFETY TIMEOUT: Reset flag after 10 seconds to prevent it from getting stuck
+    // SAFETY TIMEOUT: Reset flag after 5 seconds to prevent it from getting stuck
     const safetyTimeout = setTimeout(() => {
       if (isLocalMoveInProgress) {
-        console.warn('[SAFETY] Local move flag stuck for 10 seconds, resetting');
+        console.warn('[SAFETY] Local move flag stuck for 5 seconds, resetting');
         setIsLocalMoveInProgress(false);
       }
-    }, 10000);
+    }, 5000);
+    
+    // Cleanup safety timeout
+    return () => {
+      clearTimeout(safetyTimeout);
+    };
     
     console.log('[MOVE_ANIMATION] Starting move execution:', {
       from: { row: from.row, col: from.col, piece: piece },
@@ -2864,7 +2966,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Handle special moves (castling, en passant, pawn promotion)
     console.log('[MOVE_ANIMATION] Before special moves handling');
-    handleSpecialMoves(newBoard, from, to, piece, promotionPiece);
+    handleSpecialMoves(newBoard, from, to, pieceString, promotionPiece);
     console.log('[MOVE_ANIMATION] After special moves handling');
     
     // Move the piece (promotion is handled in handleSpecialMoves, so we need to check if it was already moved)
@@ -2872,18 +2974,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // For promotions, the piece is already moved by handleSpecialMoves
     if (newBoard[to.row][to.col] === null) {
       // Destination is empty, move the piece there
-      newBoard[to.row][to.col] = piece;
+      newBoard[to.row][to.col] = pieceString;
     } else {
       // Destination has a piece (capture or promotion already handled)
       // For captures, we need to replace the captured piece with the attacking piece
       // For promotions, the piece is already there
-      if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      if (pieceString.toLowerCase() === 'p' && ((getPieceColor(pieceString) === 'blue' && to.row === 0) || (getPieceColor(pieceString) === 'red' && to.row === 7))) {
         // This is a promotion, the piece is already handled by handleSpecialMoves
         console.log('[MOVE_ANIMATION] Promotion already handled by special moves');
       } else {
         // This is a capture, replace the captured piece with the attacking piece
         console.log('[MOVE_ANIMATION] Capturing piece, replacing captured piece with attacking piece');
-        newBoard[to.row][to.col] = piece;
+        newBoard[to.row][to.col] = pieceString;
       }
     }
     newBoard[from.row][from.col] = null;
@@ -2891,15 +2993,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[MOVE_ANIMATION] Move completed:', {
       from: { row: from.row, col: from.col },
       to: { row: to.row, col: to.col },
-      piece: piece,
+      piece: pieceString,
       finalBoardState: newBoard.map(row => [...row])
     });
     
     // Update piece state
-    updatePieceState(from, to, piece);
+    updatePieceState(from, to, pieceString);
     
     // Update move history
-    const moveNotation = getMoveNotation(from, to, piece, newBoard);
+    const moveNotation = getMoveNotation(from, to, pieceString, newBoard);
     setMoveHistory(prev => {
       const updated = [...prev, moveNotation];
       console.log('[MOVE HISTORY UPDATED]', updated);
@@ -2939,8 +3041,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Update scores for both players
       const currentContractData = getCurrentContractGameData();
       
-      if (currentContractData && currentContractData.length >= 2) {
-        await updateBothPlayersScoresLocal(currentPlayer, currentContractData[0], currentContractData[1]);
+      if (currentContractData && Array.isArray(currentContractData) && (currentContractData as any).length >= 2) {
+        const contractData = currentContractData as unknown as any[];
+        if (contractData[0] && contractData[1]) {
+          const player1 = contractData[0] as string;
+          const player2 = contractData[1] as string;
+          await updateBothPlayersScoresLocal(currentPlayer, player1, player2);
+        } else {
+          // Fallback to single player update if contract data not available
+          await updateScore(currentPlayer === playerColor ? 'win' : 'loss');
+          // Reload leaderboard after single player update
+          await loadLeaderboard();
+        }
       } else {
           // Fallback to single player update if contract data not available
           await updateScore(currentPlayer === playerColor ? 'win' : 'loss');
@@ -3015,16 +3127,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           inviteCode,
           gameState,
           winner,
-          error: error instanceof Error ? error.message : String(error)
+          error: String(error)
         });
       }
       
-      // Update scores for both players (AFTER Firebase update)
-      try {
-        const currentContractData = getCurrentContractGameData();
-        
-        if (currentContractData && currentContractData.length >= 2) {
-          await updateBothPlayersScoresLocal(winner, currentContractData[0], currentContractData[1]);
+              // Update scores for both players (AFTER Firebase update)
+        try {
+          const currentContractData = getCurrentContractGameData();
+          
+          if (currentContractData && Array.isArray(currentContractData) && (currentContractData as any).length >= 2) {
+          const contractData = currentContractData as unknown as any[];
+          if (contractData[0] && contractData[1]) {
+            const player1 = contractData[0] as string;
+            const player2 = contractData[1] as string;
+            await updateBothPlayersScoresLocal(winner, player1, player2);
+          } else {
+            // Fallback to single player update if contract data not available
+            await updateScore(winner === playerColor ? 'win' : 'loss');
+            // Reload leaderboard after single player update
+            await loadLeaderboard();
+          }
         } else {
           // Fallback to single player update if contract data not available
           await updateScore(winner === playerColor ? 'win' : 'loss');
@@ -3050,9 +3172,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           return;
         }
         
-        // Clear the local move flag AFTER Firebase update to prevent race condition
+        // CRITICAL FIX: Clear the local move flag BEFORE Firebase update to prevent race condition
         setIsLocalMoveInProgress(false);
-        console.log('[MOVE_ANIMATION] Local move in progress flag cleared AFTER Firebase update');
+        console.log('[MOVE_ANIMATION] Local move in progress flag cleared BEFORE Firebase update');
+        
+        // Add small delay to ensure local state is fully updated before Firebase update
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Flatten the board for Firebase storage
         const flattenedBoard = flattenBoard(newBoard);
@@ -3086,7 +3211,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           inviteCode,
           gameState,
           winner,
-          error: error instanceof Error ? error.message : String(error)
+          error: String(error)
         });
       }
     setBoard(newBoard);
