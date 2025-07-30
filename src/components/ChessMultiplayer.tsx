@@ -717,6 +717,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
   const [gameJustFinished, setGameJustFinished] = useState(false);
+  const [isGameLoading, setIsGameLoading] = useState(false);
 
   const handleTimeout = async () => {
     if (!inviteCode || !playerColor) return;
@@ -1929,16 +1930,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[FIREBASE_SUB] Setting up subscription for game:', inviteCode);
     
     const unsubscribe = firebaseChess.subscribeToGame(inviteCode, (gameData) => {
-      console.log('[FIREBASE_SUB] 🔥 SUBSCRIPTION TRIGGERED for game:', inviteCode);
       try {
-      console.log('[FIREBASE_SUB] Received game data update:', gameData);
-      console.log('[FIREBASE_SUB] Current game state:', gameData.game_state);
-      console.log('[FIREBASE_SUB] Current player color:', playerColor);
-      console.log('[FIREBASE_SUB] Current game mode:', gameMode);
-      console.log('[FIREBASE_SUB] Game state change detected - from:', gameMode, 'to:', gameData.game_state);
-      console.log('[FIREBASE_SUB] 🔍 DEBUG: Is game state active?', gameData.game_state === 'active');
-      console.log('[FIREBASE_SUB] 🔍 DEBUG: Will trigger active state logic?', gameData.game_state === 'active' ? 'YES' : 'NO');
-      console.log('[FIREBASE_SUB] 🔍 DEBUG: isLocalMoveInProgress:', isLocalMoveInProgress, 'current_player:', gameData.current_player, 'playerColor:', playerColor);
+      // Reduced logging for performance - only log on important state changes
+      if (gameData.game_state !== gameMode) {
+        console.log('[FIREBASE_SUB] Game state changed from:', gameMode, 'to:', gameData.game_state);
+      }
       
       const currentAddress = addressRef.current;
       
@@ -1995,19 +1991,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
+      // Clear loading state when we receive game data
+      if (isGameLoading) {
+        setIsGameLoading(false);
+      }
+      
               // Detect opponent moves and play sounds
         if (gameData.board && playerColor) {
           const currentBoardState = JSON.stringify(gameData.board);
           
-          // Debug logging for move detection
-          console.log('[OPPONENT_MOVE_DEBUG] Checking for opponent move:', {
-            hasBoard: !!gameData.board,
-            hasLastMove: !!gameData.last_move,
-            currentPlayer,
-            playerColor,
-            hasPreviousState: !!previousBoardStateRef.current,
-            boardChanged: previousBoardStateRef.current && previousBoardStateRef.current !== currentBoardState
-          });
+          // Reduced debug logging for performance
           
           // Initialize previousBoardState only on the very first load, then detect changes
           if (isFirstBoardLoadRef.current) {
@@ -2019,12 +2012,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             
             // Check if this is actually an opponent move (not our own move)
             const isOpponentMove = currentPlayer !== playerColor;
-            console.log('[OPPONENT_MOVE_DEBUG] Move analysis:', {
-              currentPlayer,
-              playerColor,
-              isOpponentMove,
-              lastMove: gameData.last_move
-            });
             
             if (isOpponentMove) {
               console.log('[OPPONENT_MOVE] Confirmed opponent move - current player:', currentPlayer, 'player color:', playerColor);
@@ -2048,7 +2035,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Process Firebase updates (opponent moves or initial state)
       if (gameData.board) {
-        console.log('[FIREBASE_SUB] Processing board update from Firebase');
         try {
           const reconstructedBoard = reconstructBoard(gameData.board);
           
@@ -2153,6 +2139,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setGameMode(GameMode.ACTIVE);
           setShowGame(true);
           setGameStatus('Game in progress');
+          
+          // OPTIMIZATION: Immediately show initial board if available
+          if (gameData.board) {
+            try {
+              const reconstructedBoard = reconstructBoard(gameData.board);
+              if (isValidBoardState(reconstructedBoard)) {
+                setBoard(reconstructedBoard);
+                console.log('[GAME_ACTIVE] Initial board loaded immediately');
+              }
+            } catch (error) {
+              console.error('[GAME_ACTIVE] Error loading initial board:', error);
+            }
+          }
         }
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
@@ -2270,6 +2269,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (inviteCode && !gameChannel.current) {
       console.log('[FIREBASE_SUB] Setting up subscription for:', inviteCode);
       
+      // Set loading state while waiting for initial data
+      setIsGameLoading(true);
+      
+      // Add timeout to clear loading state if it takes too long
+      const loadingTimeout = setTimeout(() => {
+        console.log('[LOADING] Loading timeout reached, clearing loading state');
+        setIsGameLoading(false);
+      }, 10000); // 10 second timeout
+      
       // Reset board state tracking for new game
       previousBoardStateRef.current = null;
       isFirstBoardLoadRef.current = true;
@@ -2277,6 +2285,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const unsubscribe = subscribeToGame(inviteCode);
       return () => {
         console.log('[FIREBASE_SUB] Cleaning up subscription for:', inviteCode);
+        clearTimeout(loadingTimeout);
         if (unsubscribe && typeof unsubscribe === 'function') {
           unsubscribe();
         }
@@ -2341,7 +2350,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         } catch (error) {
           console.error('[PERIODIC_CHECK] Error checking game state:', error);
         }
-      }, 2000); // Check every 2 seconds
+      }, 5000); // Check every 5 seconds (reduced frequency for performance)
       
       return () => {
         console.log('[PERIODIC_CHECK] Cleaning up periodic check');
@@ -2379,7 +2388,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         } catch (error) {
           console.error('[GAME_END_CHECK] Error checking game end state:', error);
         }
-      }, 3000); // Check every 3 seconds
+      }, 5000); // Check every 5 seconds (reduced frequency for performance)
       
       return () => {
         console.log('[GAME_END_CHECK] Cleaning up game end check for:', inviteCode);
@@ -4550,6 +4559,30 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 )}
               </div>
               <div className="chess-main-area">
+                {/* Loading indicator */}
+                {isGameLoading && (
+                  <div className="game-loading-indicator" style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 1000,
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    color: '#ff0000',
+                    padding: '20px',
+                    borderRadius: '10px',
+                    textAlign: 'center',
+                    fontFamily: 'Courier New, monospace',
+                    fontSize: '16px',
+                    fontWeight: 'bold'
+                  }}>
+                    <div style={{ marginBottom: '10px' }}>🔄</div>
+                    <div>Loading Game...</div>
+                    <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.8 }}>
+                      Connecting to Firebase...
+                    </div>
+                  </div>
+                )}
                 <div className="chessboard-container">
                   <div className="chessboard">
                     {Array.from({ length: 8 }, (_, row) => (
