@@ -9,6 +9,7 @@ import {
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
 import { ChessMultiplayer } from './ChessMultiplayer';
+import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import './ChessGame.css';
 
 // Game modes
@@ -22,23 +23,8 @@ const SANKO_CHAIN_ID = 1996;
 
 // LeaderboardEntry interface is now imported from firebaseLeaderboard
 
-// Chess piece images
-const pieceImages: { [key: string]: string } = {
-  // Red pieces (uppercase)
-  'R': '/images/redrook.png',
-  'N': '/images/redknight.png',
-  'B': '/images/redbishop.png',
-  'Q': '/images/redqueen.png',
-  'K': '/images/redking.png',
-  'P': '/images/redpawn.png',
-  // Blue pieces (lowercase)
-  'r': '/images/bluerook.png',
-  'n': '/images/blueknight.png',
-  'b': '/images/bluebishop.png',
-  'q': '/images/bluequeen.png',
-  'k': '/images/blueking.png',
-  'p': '/images/bluepawn.png'
-};
+// Chess piece images - will be set dynamically based on selected piece set
+let pieceImages: { [key: string]: string } = {};
 
 // Initial board state
 const initialBoard: (string | null)[][] = [
@@ -58,20 +44,20 @@ interface ChessGameProps {
   fullscreen?: boolean;
 }
 
-// Piece gallery data
-const pieceGallery = [
-  { key: 'K', name: 'Red King', img: '/images/redking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-  { key: 'Q', name: 'Red Queen', img: '/images/redqueen.png', desc: 'The Queen moves any number of squares in any direction.' },
-  { key: 'R', name: 'Red Rook', img: '/images/redrook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
-  { key: 'B', name: 'Red Bishop', img: '/images/redbishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
-  { key: 'N', name: 'Red Knight', img: '/images/redknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-  { key: 'P', name: 'Red Pawn', img: '/images/redpawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
-  { key: 'k', name: 'Blue King', img: '/images/blueking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-  { key: 'q', name: 'Blue Queen', img: '/images/bluequeen.png', desc: 'The Queen moves any number of squares in any direction.' },
-  { key: 'r', name: 'Blue Rook', img: '/images/bluerook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
-  { key: 'b', name: 'Blue Bishop', img: '/images/bluebishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
-  { key: 'n', name: 'Blue Knight', img: '/images/blueknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-  { key: 'p', name: 'Blue Pawn', img: '/images/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+// Piece gallery data - will be updated dynamically based on selected piece set
+let pieceGallery = [
+  { key: 'K', name: 'Red King', img: '/images/lawbstation/redking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+  { key: 'Q', name: 'Red Queen', img: '/images/lawbstation/redqueen.png', desc: 'The Queen moves any number of squares in any direction.' },
+  { key: 'R', name: 'Red Rook', img: '/images/lawbstation/redrook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
+  { key: 'B', name: 'Red Bishop', img: '/images/lawbstation/redbishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
+  { key: 'N', name: 'Red Knight', img: '/images/lawbstation/redknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+  { key: 'P', name: 'Red Pawn', img: '/images/lawbstation/redpawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+  { key: 'k', name: 'Blue King', img: '/images/lawbstation/blueking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+  { key: 'q', name: 'Blue Queen', img: '/images/lawbstation/bluequeen.png', desc: 'The Queen moves any number of squares in any direction.' },
+  { key: 'r', name: 'Blue Rook', img: '/images/lawbstation/bluerook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
+  { key: 'b', name: 'Blue Bishop', img: '/images/lawbstation/bluebishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
+  { key: 'n', name: 'Blue Knight', img: '/images/lawbstation/blueknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+  { key: 'p', name: 'Blue Pawn', img: '/images/lawbstation/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
 ];
 
 // Updated difficulty levels
@@ -365,6 +351,32 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add sound and celebration state
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
+
+  // Add piece set selection state
+  const [selectedPieceSet, setSelectedPieceSet] = useState<ChessPieceSet>(getDefaultPieceSet());
+  const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
+  const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
+
+  // Update piece images when selected piece set changes
+  useEffect(() => {
+    pieceImages = selectedPieceSet.pieceImages;
+    
+    // Update piece gallery with new piece set images
+    pieceGallery = [
+      { key: 'K', name: 'Red King', img: selectedPieceSet.pieceImages['K'], desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+      { key: 'Q', name: 'Red Queen', img: selectedPieceSet.pieceImages['Q'], desc: 'The Queen moves any number of squares in any direction.' },
+      { key: 'R', name: 'Red Rook', img: selectedPieceSet.pieceImages['R'], desc: 'The Rook moves any number of squares horizontally or vertically.' },
+      { key: 'B', name: 'Red Bishop', img: selectedPieceSet.pieceImages['B'], desc: 'The Bishop moves any number of squares diagonally.' },
+      { key: 'N', name: 'Red Knight', img: selectedPieceSet.pieceImages['N'], desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+      { key: 'P', name: 'Red Pawn', img: selectedPieceSet.pieceImages['P'], desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+      { key: 'k', name: 'Blue King', img: selectedPieceSet.pieceImages['k'], desc: 'The King moves one square in any direction. Protect your King at all costs!' },
+      { key: 'q', name: 'Blue Queen', img: selectedPieceSet.pieceImages['q'], desc: 'The Queen moves any number of squares in any direction.' },
+      { key: 'r', name: 'Blue Rook', img: selectedPieceSet.pieceImages['r'], desc: 'The Rook moves any number of squares horizontally or vertically.' },
+      { key: 'b', name: 'Blue Bishop', img: selectedPieceSet.pieceImages['b'], desc: 'The Bishop moves any number of squares diagonally.' },
+      { key: 'n', name: 'Blue Knight', img: selectedPieceSet.pieceImages['n'], desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
+      { key: 'p', name: 'Blue Pawn', img: selectedPieceSet.pieceImages['p'], desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
+    ];
+  }, [selectedPieceSet]);
 
   // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {
@@ -1314,7 +1326,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Update startAIGame to show difficulty selection instead of starting the game immediately
   const startAIGame = () => {
-    setShowDifficulty(true);
+    setShowPieceSetSelector(true);
   };
 
   const startMultiplayerGame = () => {
@@ -1330,11 +1342,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // For multiplayer, we'll show the multiplayer component instead
       setShowGame(false);
       setShowDifficulty(false);
+      setShowPieceSetSelector(false);
       return;
     }
     
     setShowGame(true);
     setShowDifficulty(false);
+    setShowPieceSetSelector(false);
     setStatus(`Match started! Your turn`);
     const newChessboard = selectRandomChessboard();
     setSelectedChessboard(newChessboard);
@@ -1416,7 +1430,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => (
     <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-              <h3 style={{color: '#ff0000'}}>Lawbstation Chess Pieces</h3>
+              <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
       <div className="piece-gallery-grid">
         {pieceGallery.map(piece => (
           <div key={piece.key} className="piece-gallery-item" onClick={() => {
@@ -1434,6 +1448,126 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       <div className="piece-gallery-tip">{tipText}</div>
     </div>
   );
+
+  const renderPieceSetSelector = () => {
+    const handlePieceSetSelect = (pieceSet: ChessPieceSet) => {
+      setSelectedPieceSet(pieceSet);
+      setShowPieceSetDropdown(false);
+    };
+
+    const getPieceSetDisplayName = (pieceSetId: string) => {
+      if (pieceSetId === 'lawbstation') return 'Lawbstation Chess Set';
+      if (pieceSetId === 'pixelawbs') return 'Pixelawbs Chess Set';
+      return 'Select Chess Set';
+    };
+
+    return (
+      <div className="piece-set-selection-row" style={{ justifyContent: 'center' }}>
+        <div className="piece-set-controls-col">
+          <div className="piece-set-selection-panel" style={{background:'transparent',borderRadius:0,padding:'32px 24px',boxShadow:'none',textAlign:'center'}}>
+            <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#ff0000',marginBottom:16,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Select Chess Set</h2>
+            <p style={{fontSize:'1.1rem',color:'#ff0000',marginBottom:24,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Choose your preferred chess set.</p>
+            
+            {/* Piece Set Dropdown */}
+            <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
+              <div style={{ position: 'relative', minWidth: '200px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPieceSetDropdown(!showPieceSetDropdown)}
+                  style={{
+                    padding: '12px 16px',
+                    border: '2px outset #fff',
+                    background: '#000000',
+                    color: '#ff0000',
+                    cursor: 'pointer',
+                    minWidth: '200px',
+                    textAlign: 'left',
+                    fontWeight: 'bold',
+                    fontSize: '1em'
+                  }}
+                >
+                  {getPieceSetDisplayName(selectedPieceSet.id)}
+                  <span style={{ float: 'right' }}>▼</span>
+                </button>
+                
+                {showPieceSetDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    background: '#000000',
+                    border: '2px outset #fff',
+                    zIndex: 10,
+                    minWidth: '200px'
+                  }}>
+                    {CHESS_PIECE_SETS.map((pieceSet) => (
+                      <div
+                        key={pieceSet.id}
+                        onClick={() => handlePieceSetSelect(pieceSet)}
+                        style={{
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #333',
+                          fontSize: '1em',
+                          color: '#ff0000',
+                          background: '#000000'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
+                      >
+                        {getPieceSetDisplayName(pieceSet.id)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button 
+              className={`piece-set-btn start-btn`}
+              onClick={() => { setShowPieceSetSelector(false); setShowDifficulty(true); }}
+              style={{ 
+                background: 'transparent',
+                color: '#ff0000',
+                fontWeight: 'bold',
+                fontSize: '1.3em',
+                padding: '18px 48px',
+                borderRadius: 0,
+                boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
+                border: '1px solid #ff0000',
+                cursor: 'pointer',
+                letterSpacing: 1,
+                marginBottom: 8
+              }}
+            >
+              <span role="img" aria-label="chess">♟️🦞</span> Continue
+            </button>
+
+            {/* Back to Chess Button */}
+            <div style={{marginTop: '16px', justifyContent: 'center'}}>
+              <button
+                onClick={() => window.location.href = '/chess'}
+                style={{ 
+                  background: 'transparent',
+                  color: '#ff0000',
+                  fontWeight: 'bold',
+                  fontSize: '1.1em',
+                  padding: '12px 24px',
+                  borderRadius: 0,
+                  boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
+                  border: '1px solid #ff0000',
+                  cursor: 'pointer',
+                  letterSpacing: 1
+                }}
+              >
+                ← Back to Chess Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderDifficultySelection = () => (
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
@@ -1741,8 +1875,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     );
   }
 
-  // Show home/mode selection UI if not in a game and not picking difficulty
-  if (!showGame && !showDifficulty) {
+  // Show home/mode selection UI if not in a game and not picking difficulty or piece set
+  if (!showGame && !showDifficulty && !showPieceSetSelector) {
     return (
       <div className="chess-game">
         <div className="chess-header">
@@ -1859,7 +1993,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 </button>
               </div>
               {gameMode === GameMode.AI && (
-                <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
+                <button className="start-btn-compact" onClick={() => setShowPieceSetSelector(true)}>
                   Start Match
                 </button>
               )}
@@ -2085,6 +2219,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <button onClick={handleBackToMenu}>Menu</button>
               </div>
             </div>
+          ) : showPieceSetSelector ? (
+            renderPieceSetSelector()
           ) : showDifficulty ? (
             renderDifficultySelection()
           ) : (
@@ -2117,7 +2253,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 </button>
               </div>
               {gameMode === GameMode.AI && (
-                <button className="start-btn-compact" onClick={() => setShowDifficulty(true)}>
+                <button className="start-btn-compact" onClick={() => setShowPieceSetSelector(true)}>
                   Start Game
                 </button>
               )}
