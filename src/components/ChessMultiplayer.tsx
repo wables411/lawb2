@@ -4742,6 +4742,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 <p className="refund-note">
                   You can refund your wager anytime before an opponent joins
                 </p>
+                <div className="waiting-gif-container" style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginTop: '20px'
+                }}>
+                  <img 
+                    src="/assets/stardance.gif" 
+                    alt="Star dance animation" 
+                    style={{
+                      maxWidth: '100px',
+                      height: 'auto'
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
