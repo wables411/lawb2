@@ -4745,13 +4745,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 <div className="waiting-gif-container" style={{
                   display: 'flex',
                   justifyContent: 'center',
-                  marginTop: '20px'
+                  marginTop: '20px',
+                  width: '100%'
                 }}>
                   <img 
                     src="/assets/stardance.gif" 
                     alt="Star dance animation" 
                     style={{
-                      maxWidth: '100px',
+                      width: '100%',
                       height: 'auto'
                     }}
                   />
