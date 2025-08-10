@@ -49,7 +49,7 @@ function App() {
         console.log('[CHESS] Loading timeout reached, navigating directly');
         setShowChessLoading(false);
         navigate('/chess');
-      }, 15000); // 15 second timeout
+      }, 5000); // Reduced to 5 seconds (video duration)
 
       return () => clearTimeout(timeout);
     }
