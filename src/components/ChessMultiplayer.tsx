@@ -3310,7 +3310,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Wait for animation to complete before executing the move
       setTimeout(() => {
         executeMoveAfterAnimation(from, to, promotionPiece);
-      }, 300); // Reduced from 500ms to 300ms
+      }, 500); // Restored to 500ms for proper GIF completion
       return;
     } else {
       playMoveSoundAndAnimation('move');

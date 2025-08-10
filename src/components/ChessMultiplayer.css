@@ -1043,9 +1043,17 @@ body, html {
     transform: scale(0.8);
     opacity: 0;
   }
+  25% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
   50% {
     transform: scale(1.2);
     opacity: 1;
+  }
+  75% {
+    transform: scale(1.1);
+    opacity: 0.8;
   }
   100% {
     transform: scale(1);
