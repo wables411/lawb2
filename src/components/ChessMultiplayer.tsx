@@ -3305,12 +3305,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Play sound effects and show animations immediately for better responsiveness
     if (isCapture) {
-      console.log('[CAPTURE] Player', currentPlayer, 'capture detected, playing effects immediately');
       playMoveSoundAndAnimation('capture', to);
       
       // Wait for animation to complete before executing the move
       setTimeout(() => {
-        console.log('[CAPTURE] Player', currentPlayer, 'capture animation timeout completed');
         executeMoveAfterAnimation(from, to, promotionPiece);
       }, 500); // Restored to 500ms for proper GIF completion
       return;
