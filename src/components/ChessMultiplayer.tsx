@@ -713,6 +713,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [gameJustFinished, setGameJustFinished] = useState(false);
   const [isGameLoading, setIsGameLoading] = useState(false);
 
+  // Add audio preloading system
+  const [audioCache, setAudioCache] = useState<{ [key: string]: HTMLAudioElement }>({});
+  const [audioLoaded, setAudioLoaded] = useState(false);
+  
+  // Add last move tracking for better capture detection
+  const [lastMoveData, setLastMoveData] = useState<{
+    from: { row: number; col: number };
+    to: { row: number; col: number };
+    piece: string;
+    capturedPiece: string | null;
+    player: 'blue' | 'red';
+  } | null>(null);
+
   const handleTimeout = async () => {
     if (!inviteCode || !playerColor) return;
     
@@ -2049,11 +2062,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setIsGameLoading(false);
       }
       
-              // Detect opponent moves and play sounds
+              // Enhanced opponent move detection with capture detection
         if (gameData.board && playerColor) {
           const currentBoardState = JSON.stringify(gameData.board);
-          
-          // Reduced debug logging for performance
           
           // Initialize previousBoardState only on the very first load, then detect changes
           if (isFirstBoardLoadRef.current) {
@@ -2069,15 +2080,59 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             if (isOpponentMove) {
               console.log('[OPPONENT_MOVE] Confirmed opponent move - current player:', currentPlayer, 'player color:', playerColor);
               
-              // Play move sound (we can't determine capture without last_move, so default to move sound)
-              console.log('[SOUND] Playing move sound for opponent move');
-              playSound('move');
+              // Enhanced capture detection by comparing board states
+              const previousBoard = reconstructBoard(JSON.parse(previousBoardStateRef.current || '{}'));
+              const currentBoard = reconstructBoard(gameData.board);
               
-              // Check for check after opponent move
-              const reconstructedBoard = reconstructBoard(gameData.board);
-              if (isKingInCheck(reconstructedBoard, playerColor)) {
-                console.log('[SOUND] Playing check sound for opponent move');
-                playSound('check');
+              // Find the move by comparing board states
+              let fromSquare = null;
+              let toSquare = null;
+              let capturedPiece = null;
+              
+              // Find the moved piece and capture
+              for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                  const prevPiece = previousBoard[row][col];
+                  const currPiece = currentBoard[row][col];
+                  
+                  if (prevPiece !== currPiece) {
+                    if (prevPiece && !currPiece) {
+                      // Piece was removed from this square
+                      fromSquare = { row, col };
+                    } else if (!prevPiece && currPiece) {
+                      // Piece was added to this square
+                      toSquare = { row, col };
+                    } else if (prevPiece && currPiece && prevPiece !== currPiece) {
+                      // Piece was captured and replaced
+                      capturedPiece = prevPiece;
+                      fromSquare = { row, col };
+                      toSquare = { row, col };
+                    }
+                  }
+                }
+              }
+              
+              // If we found a move, determine if it was a capture
+              if (fromSquare && toSquare) {
+                const isCapture = capturedPiece !== null || (fromSquare.row !== toSquare.row || fromSquare.col !== toSquare.col);
+                
+                if (isCapture) {
+                  console.log('[OPPONENT_MOVE] Opponent capture detected, playing capture sound and animation');
+                  playMoveSoundAndAnimation('capture', toSquare);
+                } else {
+                  console.log('[OPPONENT_MOVE] Opponent move detected, playing move sound');
+                  playMoveSoundAndAnimation('move');
+                }
+                
+                // Check for check after opponent move
+                if (isKingInCheck(currentBoard, playerColor)) {
+                  console.log('[SOUND] Playing check sound for opponent move');
+                  playSound('check');
+                }
+              } else {
+                // Fallback: play move sound if we can't determine the move type
+                console.log('[OPPONENT_MOVE] Could not determine move type, playing move sound');
+                playMoveSoundAndAnimation('move');
               }
             }
             
@@ -3230,6 +3285,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const capturedPiece = board[to.row][to.col];
     const isCapture = capturedPiece !== null;
     
+    // Store move data for better tracking
+    setLastMoveData({
+      from: { row: from.row, col: from.col },
+      to: { row: to.row, col: to.col },
+      piece: piece,
+      capturedPiece: capturedPiece,
+      player: currentPlayer
+    });
+    
     // Log the move details
     console.log('[MOVE] Executing move:', {
       from: { row: from.row, col: from.col, piece: piece },
@@ -3239,23 +3303,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       moveType: piece.toUpperCase() === 'K' ? 'king' : piece.toUpperCase() === 'R' ? 'rook' : 'other'
     });
     
-    // Play sound effects
+    // Play sound effects and show animations immediately for better responsiveness
     if (isCapture) {
-      playSound('capture');
-    } else {
-      playSound('move');
-    }
-    
-    // If it's a capture, show the explosion animation first
-    if (isCapture) {
-      setCaptureAnimation({ row: to.row, col: to.col, show: true });
+      playMoveSoundAndAnimation('capture', to);
       
       // Wait for animation to complete before executing the move
       setTimeout(() => {
         executeMoveAfterAnimation(from, to, promotionPiece);
-        setCaptureAnimation(null);
-      }, 500); // Animation duration
+      }, 300); // Reduced from 500ms to 300ms
       return;
+    } else {
+      playMoveSoundAndAnimation('move');
     }
     
     // If not a capture, execute move immediately
@@ -3742,41 +3800,67 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setPieceState(newPieceState);
   };
 
-  // Play sound
+  // Play sound with preloaded audio for instant playback
   const playSound = (soundType: 'move' | 'capture' | 'check' | 'checkmate' | 'victory' | 'loser' | 'upgrade') => {
     if (!soundEnabled) return;
-    let src = '';
-    switch (soundType) {
-      case 'move':
-        src = '/images/move.mp3';
-        break;
-      case 'capture':
-        src = '/images/capture.mp3';
-        break;
-      case 'check':
-        src = '/images/play.mp3';
-        break;
-      case 'checkmate':
-        src = '/images/victory.mp3';
-        break;
-      case 'victory':
-        src = '/images/victory.mp3';
-        break;
-      case 'loser':
-        src = '/images/loser.mp3';
-        break;
-      case 'upgrade':
-        src = '/images/upgrade.mp3';
-        break;
-      default:
-        src = '/images/move.mp3';
-    }
+    
     try {
-      const audio = new Audio(src);
-      audio.volume = 0.3;
-      audio.play().catch(e => console.warn('Audio play failed:', e));
+      // Use preloaded audio if available
+      if (audioLoaded && audioCache[soundType]) {
+        const audio = audioCache[soundType];
+        // Clone the audio to allow overlapping sounds
+        const audioClone = audio.cloneNode() as HTMLAudioElement;
+        audioClone.volume = 0.3;
+        audioClone.currentTime = 0;
+        audioClone.play().catch(e => console.warn('Preloaded audio play failed:', e));
+      } else {
+        // Fallback to creating new audio object
+        let src = '';
+        switch (soundType) {
+          case 'move':
+            src = '/images/move.mp3';
+            break;
+          case 'capture':
+            src = '/images/capture.mp3';
+            break;
+          case 'check':
+            src = '/images/play.mp3';
+            break;
+          case 'checkmate':
+            src = '/images/victory.mp3';
+            break;
+          case 'victory':
+            src = '/images/victory.mp3';
+            break;
+          case 'loser':
+            src = '/images/loser.mp3';
+            break;
+          case 'upgrade':
+            src = '/images/upgrade.mp3';
+            break;
+          default:
+            src = '/images/move.mp3';
+        }
+        const audio = new Audio(src);
+        audio.volume = 0.3;
+        audio.play().catch(e => console.warn('Audio play failed:', e));
+      }
     } catch (error) {
       console.warn('Sound play failed:', error);
+    }
+  };
+
+  // Synchronized sound and animation for moves
+  const playMoveSoundAndAnimation = (soundType: 'move' | 'capture', animationPosition?: { row: number; col: number }) => {
+    // Play sound immediately
+    playSound(soundType);
+    
+    // Show animation if provided
+    if (animationPosition) {
+      setCaptureAnimation({ row: animationPosition.row, col: animationPosition.col, show: true });
+      setTimeout(() => {
+        setCaptureAnimation(null);
+      }, 300);
     }
   };
 
@@ -4430,6 +4514,48 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
     };
   }, [gameMode, inviteCode, gameJustFinished]);
+
+  // Preload audio files for instant playback
+  useEffect(() => {
+    const preloadAudio = async () => {
+      const audioFiles = {
+        move: '/images/move.mp3',
+        capture: '/images/capture.mp3',
+        check: '/images/play.mp3',
+        victory: '/images/victory.mp3',
+        loser: '/images/loser.mp3',
+        upgrade: '/images/upgrade.mp3'
+      };
+
+      const cache: { [key: string]: HTMLAudioElement } = {};
+      
+      for (const [type, src] of Object.entries(audioFiles)) {
+        try {
+          const audio = new Audio(src);
+          audio.volume = 0.3;
+          audio.preload = 'auto';
+          
+          // Wait for audio to be loaded
+          await new Promise((resolve, reject) => {
+            audio.addEventListener('canplaythrough', resolve, { once: true });
+            audio.addEventListener('error', reject, { once: true });
+            // Fallback timeout
+            setTimeout(resolve, 1000);
+          });
+          
+          cache[type] = audio;
+        } catch (error) {
+          console.warn(`Failed to preload audio ${type}:`, error);
+        }
+      }
+      
+      setAudioCache(cache);
+      setAudioLoaded(true);
+      console.log('[AUDIO] Audio files preloaded successfully');
+    };
+
+    preloadAudio();
+  }, []);
 
   // Main render - single container like ChessGame.tsx
   return (

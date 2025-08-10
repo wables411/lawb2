@@ -1035,6 +1035,22 @@ body, html {
   position: absolute;
   pointer-events: none;
   z-index: 10;
+  animation: capture-pulse 0.3s ease-out;
+}
+
+@keyframes capture-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 /* --- Victory Overlay --- */
