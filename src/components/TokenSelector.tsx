@@ -50,11 +50,23 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
               color: '#ff0000',
               cursor: disabled ? 'not-allowed' : 'pointer',
               minWidth: '120px', // Increased width to accommodate longer names
-              textAlign: 'left'
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
           >
+            <img 
+              src={SUPPORTED_TOKENS[selectedToken].logo} 
+              alt={`${getTokenDisplayName(selectedToken)} logo`}
+              style={{
+                width: '16px',
+                height: '16px',
+                objectFit: 'contain'
+              }}
+            />
             {getTokenDisplayName(selectedToken)}
-            <span style={{ float: 'right' }}>▼</span>
+            <span style={{ marginLeft: 'auto' }}>▼</span>
           </button>
           
           {showDropdown && !disabled && (
@@ -77,11 +89,23 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
                     borderBottom: '1px solid #333',
                     fontSize: '12px', // Smaller font to fit longer names
                     color: '#ff0000',
-                    background: '#000000'
+                    background: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
                 >
+                  <img 
+                    src={token.logo} 
+                    alt={`${getTokenDisplayName(symbol as TokenSymbol)} logo`}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      objectFit: 'contain'
+                    }}
+                  />
                   {getTokenDisplayName(symbol as TokenSymbol)}
                 </div>
               ))}
