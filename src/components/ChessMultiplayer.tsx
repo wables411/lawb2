@@ -2114,7 +2114,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               
               // If we found a move, determine if it was a capture
               if (fromSquare && toSquare) {
-                const isCapture = capturedPiece !== null || (fromSquare.row !== toSquare.row || fromSquare.col !== toSquare.col);
+                const isCapture = capturedPiece !== null;
                 
                 if (isCapture) {
                   console.log('[OPPONENT_MOVE] Opponent capture detected, playing capture sound and animation');
