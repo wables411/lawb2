@@ -1712,18 +1712,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const piece = board[from.row][from.col];
     const capturedPiece = board[to.row][to.col];
     
-    // Check if this is a capture move - FIXED: check before move execution
+    // Check if this is a capture move
     const isCapture = capturedPiece !== null;
-    
-    // Play sound effects and create particle effects
-    if (isCapture) {
-      playSound('capture');
-    } else {
-      playSound('move');
-    }
     
     // If it's a capture, show the explosion animation first
     if (isCapture) {
+      playSound('capture');
       setCaptureAnimation({ row: to.row, col: to.col, show: true });
       
       // Wait for animation to complete before executing the move
@@ -1734,7 +1728,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return;
     }
     
-    // If not a capture, execute move immediately
+    // If not a capture, play move sound and execute move immediately
+    playSound('move');
     executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
   };
 

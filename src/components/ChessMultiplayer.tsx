@@ -3312,11 +3312,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         executeMoveAfterAnimation(from, to, promotionPiece);
       }, 500); // Restored to 500ms for proper GIF completion
       return;
-    } else {
-      playMoveSoundAndAnimation('move');
     }
     
-    // If not a capture, execute move immediately
+    // If not a capture, play move sound and execute move immediately
+    playMoveSoundAndAnimation('move');
     executeMoveAfterAnimation(from, to, promotionPiece);
   };
 
