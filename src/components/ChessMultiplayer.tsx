@@ -3350,36 +3350,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     const newBoard = board.map(row => [...row]);
     
-    // Handle special moves (castling, en passant, pawn promotion)
+    // Handle pawn promotion BEFORE moving the piece to avoid display delay
+    let pieceToPlace = pieceString;
+    if (pieceString.toLowerCase() === 'p' && ((getPieceColor(pieceString) === 'blue' && to.row === 0) || (getPieceColor(pieceString) === 'red' && to.row === 7))) {
+      pieceToPlace = getPieceColor(pieceString) === 'blue' ? promotionPiece.toLowerCase() : promotionPiece.toUpperCase();
+      console.log('[MOVE_ANIMATION] Promoting pawn to:', pieceToPlace);
+    }
+    
+    // Execute the move with the correct piece (promoted if applicable)
+    newBoard[to.row][to.col] = pieceToPlace;
+    newBoard[from.row][from.col] = null;
+    
+    // Handle special moves (castling, en passant) - but NOT pawn promotion since we handled it above
     console.log('[MOVE_ANIMATION] Before special moves handling');
     handleSpecialMoves(newBoard, from, to, pieceString, promotionPiece);
     console.log('[MOVE_ANIMATION] After special moves handling');
     
-    // Move the piece (promotion is handled in handleSpecialMoves, so we need to check if it was already moved)
-    // For captures, the destination square will contain the captured piece, so we always move the attacking piece there
-    // For promotions, the piece is already moved by handleSpecialMoves
-    if (newBoard[to.row][to.col] === null) {
-      // Destination is empty, move the piece there
-      newBoard[to.row][to.col] = pieceString;
-    } else {
-      // Destination has a piece (capture or promotion already handled)
-      // For captures, we need to replace the captured piece with the attacking piece
-      // For promotions, the piece is already there
-      if (pieceString.toLowerCase() === 'p' && ((getPieceColor(pieceString) === 'blue' && to.row === 0) || (getPieceColor(pieceString) === 'red' && to.row === 7))) {
-        // This is a promotion, the piece is already handled by handleSpecialMoves
-        console.log('[MOVE_ANIMATION] Promotion already handled by special moves');
-      } else {
-        // This is a capture, replace the captured piece with the attacking piece
-        console.log('[MOVE_ANIMATION] Capturing piece, replacing captured piece with attacking piece');
-        newBoard[to.row][to.col] = pieceString;
-      }
-    }
-    newBoard[from.row][from.col] = null;
-    
     console.log('[MOVE_ANIMATION] Move completed:', {
       from: { row: from.row, col: from.col },
       to: { row: to.row, col: to.col },
-      piece: pieceString,
+      piece: pieceToPlace,
       finalBoardState: newBoard.map(row => [...row])
     });
     
@@ -3717,22 +3707,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       isKing: piece.toLowerCase() === 'k',
       colDifference: Math.abs(from.col - to.col)
     });
-    
-    // Handle pawn promotion
-    console.log('[SPECIAL_MOVES_PROMOTION_CHECK]', {
-      piece: piece,
-      isPawn: piece.toLowerCase() === 'p',
-      pieceColor: getPieceColor(piece),
-      toRow: to.row,
-      promotionPiece: promotionPiece,
-      shouldPromote: piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))
-    });
-    
-    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      const promotedPiece = getPieceColor(piece) === 'blue' ? promotionPiece.toLowerCase() : promotionPiece.toUpperCase();
-      console.log('[SPECIAL_MOVES_PROMOTION] Promoting pawn to:', promotedPiece);
-      newBoard[to.row][to.col] = promotedPiece;
-    }
     
     // Handle castling
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {

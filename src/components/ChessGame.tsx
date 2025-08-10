@@ -970,7 +970,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   makeMoveRef.current = makeMove;
 
   // Enhanced move execution with opening analysis
-  const executeMoveAfterAnimation = useCallback((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove: boolean = false) => {
+  const executeMoveAfterAnimation = useCallback((from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove: boolean = false) => {
     
     
     // Set flag to prevent AI validation during board update
@@ -981,11 +981,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     if (!piece) return;
     
-    // Execute the move
-    newBoard[to.row][to.col] = piece;
+    // Handle pawn promotion BEFORE moving the piece to avoid display delay
+    let pieceToPlace = piece;
+    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      pieceToPlace = promotionPiece;
+    }
+    
+    // Execute the move with the correct piece (promoted if applicable)
+    newBoard[to.row][to.col] = pieceToPlace;
     newBoard[from.row][from.col] = null;
     
-    // Handle special moves (castling, en passant, pawn promotion)
+    // Handle special moves (castling, en passant) - but NOT pawn promotion since we handled it above
     handleSpecialMoves(newBoard, from, to, piece);
     
     
@@ -1647,12 +1653,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Helper functions for move execution
   const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string) => {
-    // Handle pawn promotion
-    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      const promotedPiece = getPieceColor(piece) === 'blue' ? 'q' : 'Q';
-      newBoard[to.row][to.col] = promotedPiece;
-    }
-    
     // Handle castling
     if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
       if (to.col === 6) { // Kingside
@@ -1712,7 +1712,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const piece = board[from.row][from.col];
     const capturedPiece = board[to.row][to.col];
     
-    // Check if this is a capture move
+    // Check if this is a capture move - FIXED: check before move execution
     const isCapture = capturedPiece !== null;
     
     // Play sound effects and create particle effects
@@ -1728,14 +1728,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       
       // Wait for animation to complete before executing the move
       setTimeout(() => {
-        executeMoveAfterAnimation(from, to, isAIMove);
+        executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
         setCaptureAnimation(null);
       }, 500); // Animation duration
       return;
     }
     
     // If not a capture, execute move immediately
-    executeMoveAfterAnimation(from, to, isAIMove);
+    executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
   };
 
   // Add epic sound effects and visual enhancements
