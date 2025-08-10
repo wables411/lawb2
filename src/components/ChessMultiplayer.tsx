@@ -3860,7 +3860,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setCaptureAnimation({ row: animationPosition.row, col: animationPosition.col, show: true });
       setTimeout(() => {
         setCaptureAnimation(null);
-      }, 300);
+      }, 500); // Increased to 500ms to match GIF duration
     }
   };
 
