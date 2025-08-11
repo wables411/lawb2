@@ -42,6 +42,7 @@ interface ChessGameProps {
   onClose: () => void;
   onMinimize?: () => void;
   fullscreen?: boolean;
+  onBackToModeSelect?: () => void;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -259,7 +260,7 @@ const useLichessAPI = () => {
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false }) => {
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect }) => {
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -2211,6 +2212,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   >Gallery</button>
                 </div>
                 <button onClick={handleNewGame}>New Match</button>
+                {onBackToModeSelect && (
+                  <button onClick={onBackToModeSelect}>Mode Select</button>
+                )}
                 <button onClick={handleBackToMenu}>Menu</button>
               </div>
             </div>

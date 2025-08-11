@@ -57,6 +57,7 @@ interface ChessMultiplayerProps {
   onClose: () => void;
   onMinimize?: () => void;
   fullscreen?: boolean;
+  onBackToModeSelect?: () => void;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -102,7 +103,7 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
   }
 }
 
-export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false }) => {
+export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect }) => {
   const { address, isConnected, chainId } = useAccount();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
   
@@ -5066,6 +5067,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     </button>
                   </div>
                   <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>New Match</button>
+                  {onBackToModeSelect && (
+                    <button onClick={onBackToModeSelect}>Mode Select</button>
+                  )}
                   <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>Menu</button>
                 </div>
               </div>
