@@ -781,64 +781,86 @@ body, html {
   }
 }
 
-/* --- Mobile Touch Support --- */
+/* --- Enhanced Mobile Touch Support --- */
 @media (max-width: 768px) {
   .square {
-    min-height: 40px;
-    min-width: 40px;
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   .piece {
-    width: 90%;
-    height: 90%;
+    width: 85%;
+    height: 85%;
+    touch-action: manipulation;
   }
   
   .game-controls-compact button,
   .chess-controls button {
-    min-height: 32px;
-    min-width: 60px;
-    font-size: 12px;
-    padding: 6px 8px;
+    min-height: 36px;
+    min-width: 64px;
+    font-size: 13px;
+    padding: 8px 10px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   .square:active,
   .square:focus {
     background: rgba(66, 153, 225, 0.8) !important;
-    transform: scale(1.1) !important;
+    transform: scale(1.05) !important;
   }
   
   .left-sidebar {
-    max-height: 40vh;
-    min-height: 200px;
+    max-height: 35vh;
+    min-height: 180px;
   }
   
   .game-info-compact {
-    min-height: 32px;
-    font-size: 12px;
+    min-height: 36px;
+    font-size: 13px;
   }
   
   .game-info-compact span {
-    font-size: 12px;
+    font-size: 13px;
   }
   
   .leaderboard-table-compact th,
   .leaderboard-table-compact td {
-    font-size: 10px;
-    padding: 2px 1px;
+    font-size: 11px;
+    padding: 3px 2px;
   }
   
   .help-content {
-    font-size: 12px;
-    line-height: 1.3;
+    font-size: 13px;
+    line-height: 1.4;
   }
   
   .help-content ul,
   .help-content li {
-    margin: 4px 0;
+    margin: 5px 0;
   }
   
   .help-content li {
-    padding: 2px 0;
+    padding: 3px 0;
+  }
+  
+  /* Enhanced touch feedback */
+  .square:hover {
+    transform: none;
+  }
+  
+  .square.selected {
+    transform: scale(1.05);
+  }
+  
+  .square.legal-move {
+    transform: scale(1.05);
+  }
+  
+  .square.last-move {
+    transform: scale(1.05);
   }
 }
 
@@ -877,6 +899,497 @@ body, html {
     gap: 2px;
     margin: 4px 0;
   }
+}
+
+/* --- Enhanced Mobile Responsive Design --- */
+@media (max-width: 480px) {
+  .chessboard-container,
+  .chessboard {
+    max-width: 98vw;
+    max-height: 45vh;
+    min-width: 260px;
+    min-height: 260px;
+  }
+  
+  .square {
+    min-height: 32px;
+    min-width: 32px;
+  }
+  
+  .piece {
+    width: 80%;
+    height: 80%;
+  }
+  
+  .game-controls-compact button,
+  .chess-controls button {
+    min-height: 32px;
+    min-width: 56px;
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  
+  .left-sidebar,
+  .right-sidebar {
+    min-width: 100px;
+    max-width: 150px;
+    max-height: 30vh;
+  }
+  
+  .game-info-compact {
+    min-height: 32px;
+    font-size: 11px;
+    padding: 1px 4px;
+  }
+  
+  .leaderboard-table-compact th,
+  .leaderboard-table-compact td {
+    font-size: 9px;
+    padding: 2px 1px;
+  }
+  
+  .move-history-compact .move-history-title {
+    font-size: 10px;
+  }
+  
+  .move-history-list-compact {
+    font-size: 9px;
+    max-height: 100px;
+  }
+}
+
+@media (max-width: 360px) {
+  .chessboard-container,
+  .chessboard {
+    max-width: 99vw;
+    max-height: 40vh;
+    min-width: 240px;
+    min-height: 240px;
+  }
+  
+  .square {
+    min-height: 28px;
+    min-width: 28px;
+  }
+  
+  .piece {
+    width: 75%;
+    height: 75%;
+  }
+  
+  .game-controls-compact button,
+  .chess-controls button {
+    min-height: 28px;
+    min-width: 48px;
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+  
+  .left-sidebar,
+  .right-sidebar {
+    min-width: 80px;
+    max-width: 120px;
+    max-height: 25vh;
+  }
+  
+  .game-info-compact {
+    min-height: 28px;
+    font-size: 10px;
+    padding: 1px 3px;
+  }
+  
+  .leaderboard-table-compact th,
+  .leaderboard-table-compact td {
+    font-size: 8px;
+    padding: 1px 1px;
+  }
+  
+  .move-history-list-compact {
+    font-size: 8px;
+    max-height: 80px;
+  }
+}
+
+/* --- Landscape Orientation Support --- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chessboard-container,
+  .chessboard {
+    max-width: 60vw;
+    max-height: 80vh;
+  }
+  
+  .game-content,
+  .game-stable-layout {
+    flex-direction: row;
+    gap: 4px;
+  }
+  
+  .center-area {
+    order: 0;
+  }
+  
+  .left-sidebar,
+  .right-sidebar {
+    max-height: 80vh;
+    min-height: 120px;
+  }
+  
+  .game-controls-compact {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .game-controls-compact button {
+    min-height: 28px;
+    min-width: 48px;
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+}
+
+/* --- High DPI Display Support --- */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .piece {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  
+  .chessboard {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* --- Touch Device Optimizations --- */
+@media (hover: none) and (pointer: coarse) {
+  .square:hover {
+    transform: none;
+  }
+  
+  .square.selected {
+    transform: scale(1.05);
+  }
+  
+  .square.legal-move {
+    transform: scale(1.05);
+  }
+  
+  .square.last-move {
+    transform: scale(1.05);
+  }
+  
+  .piece:hover {
+    transform: none;
+  }
+  
+  .game-controls-compact button:hover,
+  .chess-controls button:hover {
+    background: #c0c0c0;
+    transform: none;
+  }
+  
+  .game-controls-compact button:active,
+  .chess-controls button:active {
+    background: #b0b0b0;
+    border: 2px inset #c0c0c0;
+    transform: scale(0.98);
+  }
+}
+
+/* --- Mobile Device Specific Styles --- */
+.mobile-device {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.mobile-device .chessboard {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-device .square {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-device .piece {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-device .game-controls-compact button,
+.mobile-device .chess-controls button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+  min-width: 64px;
+}
+
+/* --- Landscape Orientation Styles --- */
+.landscape-orientation .game-stable-layout {
+  flex-direction: row;
+  gap: 4px;
+}
+
+.landscape-orientation .center-area {
+  order: 0;
+}
+
+.landscape-orientation .left-sidebar,
+.landscape-orientation .right-sidebar {
+  max-height: 80vh;
+  min-height: 120px;
+}
+
+.landscape-orientation .game-controls-compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* --- Portrait Orientation Styles --- */
+.portrait-orientation .game-stable-layout {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.portrait-orientation .center-area {
+  order: -1;
+}
+
+.portrait-orientation .left-sidebar,
+.portrait-orientation .right-sidebar {
+  max-height: 35vh;
+  min-height: 180px;
+}
+
+/* --- Performance Optimizations for Mobile --- */
+.mobile-device * {
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  -ms-backface-visibility: hidden;
+  -o-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000;
+  -moz-perspective: 1000;
+  -ms-perspective: 1000;
+  -o-perspective: 1000;
+  perspective: 1000;
+}
+
+/* --- Mobile Gesture Support --- */
+.mobile-device .chessboard {
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-device .square {
+  position: relative;
+  z-index: 1;
+}
+
+.mobile-device .square.dragging {
+  z-index: 10;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* --- Mobile Loading States --- */
+.mobile-device .chessboard.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.mobile-device .chessboard.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* --- Mobile Promotion Dialog Styles --- */
+.mobile-promotion {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+.mobile-promotion-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+}
+
+.mobile-promotion-piece {
+  transition: all 0.2s ease !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+}
+
+.mobile-promotion-piece:active {
+  transform: scale(0.95) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: #ffd700 !important;
+}
+
+/* --- Mobile Game Controls Enhancement --- */
+.mobile-device .game-controls-compact {
+  padding: 8px 4px;
+  gap: 6px;
+}
+
+.mobile-device .game-controls-compact button {
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-device .game-controls-compact button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Mobile Sidebar Enhancements --- */
+.mobile-device .left-sidebar,
+.mobile-device .right-sidebar {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-device .leaderboard-compact,
+.mobile-device .move-history-compact {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* --- Mobile Game Info Enhancement --- */
+.mobile-device .game-info-compact {
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Mobile Chessboard Enhancement --- */
+.mobile-device .chessboard {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-device .square {
+  border-radius: 2px;
+}
+
+/* --- Mobile Header Enhancement --- */
+.mobile-device .chess-header {
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Mobile Loading Indicator --- */
+.mobile-device .chessboard-container::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #ff0000;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 100;
+}
+
+.mobile-device .chessboard-container.loading::before {
+  opacity: 1;
+}
+
+/* --- Mobile Accessibility Improvements --- */
+.mobile-device .square:focus {
+  outline: 2px solid #ff0000;
+  outline-offset: -2px;
+}
+
+.mobile-device .game-controls-compact button:focus {
+  outline: 2px solid #ff0000;
+  outline-offset: 2px;
+}
+
+/* --- Mobile Safe Area Support --- */
+@supports (padding: max(0px)) {
+  .mobile-device {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* --- Mobile Performance Optimizations --- */
+.mobile-device .chessboard {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+.mobile-device .piece {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+/* --- Mobile Haptic Feedback Simulation --- */
+@media (hover: none) and (pointer: coarse) {
+  .mobile-device .square:active {
+    animation: haptic-feedback 0.1s ease-out;
+  }
+  
+  .mobile-device .game-controls-compact button:active {
+    animation: haptic-feedback 0.1s ease-out;
+  }
+}
+
+@keyframes haptic-feedback {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+/* --- Mobile Battery Optimization --- */
+.mobile-device .chessboard {
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+}
+
+/* --- Mobile Network Optimization --- */
+.mobile-device .piece img {
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
 }
 
 /* --- Touch Device Optimizations --- */

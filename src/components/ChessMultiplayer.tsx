@@ -13,6 +13,7 @@ import './ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from './TokenSelector';
 import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
+import { useMobileCapabilities } from '../hooks/useMediaQuery';
 import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol } from '../config/tokens';
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
@@ -726,6 +727,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     player: 'blue' | 'red';
   } | null>(null);
 
+  // Mobile capabilities detection
+  const mobileCapabilities = useMobileCapabilities();
+  const { isMobile, isLandscape, isTouchDevice, hasHapticFeedback, screenWidth, screenHeight } = mobileCapabilities;
+
   const handleTimeout = async () => {
     if (!inviteCode || !playerColor) return;
     
@@ -1174,6 +1179,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return () => clearInterval(interval);
     }
   }, [gameMode, timeoutTimer, lastMoveTime]);
+
+
 
   // Cleanup on unmount
   useEffect(() => {
@@ -3244,6 +3251,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Make move
   const makeMove = async (from: { row: number; col: number }, to: { row: number; col: number }) => {
+    // Haptic feedback for move execution
+    if (hasHapticFeedback && navigator.vibrate) {
+      navigator.vibrate(20);
+    }
     if (!playerColor || currentPlayer !== playerColor) {
       return;
     }
@@ -4189,16 +4200,81 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
 
 
-  // Mobile touch handling for better piece selection
+  // Enhanced mobile touch handling for better piece selection and drag support
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedPiece, setDraggedPiece] = useState<{ row: number; col: number } | null>(null);
+
   const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
     // Prevent default to avoid double-tap zoom on mobile
     event.preventDefault();
+    
+    const touch = event.touches[0];
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+    setIsDragging(false);
+    setDraggedPiece(null);
+    
+    // Haptic feedback for touch devices
+    if (hasHapticFeedback && navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+    
+    // Handle piece selection
     handleSquareClick(row, col);
   };
 
   const handleTouchMove = (event: React.TouchEvent) => {
     // Prevent scrolling when touching the chessboard
     event.preventDefault();
+    
+    if (!touchStartPos || !selectedSquare) return;
+    
+    const touch = event.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+    
+    // Start dragging if movement exceeds threshold
+    if ((deltaX > 10 || deltaY > 10) && !isDragging) {
+      setIsDragging(true);
+      setDraggedPiece(selectedSquare);
+    }
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    event.preventDefault();
+    
+    if (isDragging && draggedPiece && selectedSquare) {
+      // Calculate which square the piece was dropped on
+      const touch = event.changedTouches[0];
+      const boardElement = event.currentTarget.closest('.chessboard');
+      
+      if (boardElement) {
+        const boardRect = boardElement.getBoundingClientRect();
+        const squareSize = boardRect.width / 8;
+        
+        const relativeX = touch.clientX - boardRect.left;
+        const relativeY = touch.clientY - boardRect.top;
+        
+        const col = Math.floor(relativeX / squareSize);
+        const row = Math.floor(relativeY / squareSize);
+        
+        // Ensure valid coordinates
+        if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+          // Check if the move is valid
+          const validMoves = getLegalMoves(draggedPiece, board, currentPlayer);
+          const isValidMove = validMoves.some(move => move.row === row && move.col === col);
+          
+          if (isValidMove) {
+            makeMove(draggedPiece, { row, col });
+          }
+        }
+      }
+    }
+    
+    // Reset touch state
+    setTouchStartPos(null);
+    setIsDragging(false);
+    setDraggedPiece(null);
   };
 
   // Render square
@@ -4226,6 +4302,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         onClick={() => handleSquareClick(row, col)}
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {piece && (
           <div
@@ -4252,7 +4329,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
     
     return (
-      <div className="promotion-dialog" style={{
+      <div className={`promotion-dialog ${isMobile ? 'mobile-promotion' : ''}`} style={{
         position: 'fixed',
         top: '50%',
         left: '50%',
@@ -4260,30 +4337,65 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         background: 'rgba(0, 0, 0, 0.9)',
         border: '2px solid gold',
         borderRadius: '8px',
-        padding: '20px',
-        zIndex: 1000
+        padding: isMobile ? '15px' : '20px',
+        zIndex: 1000,
+        minWidth: isMobile ? '280px' : '320px',
+        maxWidth: isMobile ? '90vw' : '400px'
       }}>
         <div className="promotion-content">
-          <h3 style={{ color: 'white', marginBottom: '15px' }}>Choose promotion piece:</h3>
-          <div className="promotion-pieces" style={{ display: 'flex', gap: '10px' }}>
+          <h3 style={{ 
+            color: 'white', 
+            marginBottom: isMobile ? '10px' : '15px',
+            fontSize: isMobile ? '16px' : '18px',
+            textAlign: 'center'
+          }}>
+            Choose promotion piece:
+          </h3>
+          <div className={`promotion-pieces ${isMobile ? 'mobile-promotion-grid' : ''}`} style={{ 
+            display: 'flex', 
+            gap: isMobile ? '8px' : '10px',
+            flexWrap: isMobile ? 'wrap' : 'nowrap',
+            justifyContent: 'center'
+          }}>
             {pieces.map(piece => (
               <div
                 key={piece}
-                className="promotion-piece"
+                className={`promotion-piece ${isMobile ? 'mobile-promotion-piece' : ''}`}
                 onClick={() => {
+                  executeMove(promotionMove.from, promotionMove.to, piece);
+                  setShowPromotion(false);
+                  setPromotionMove(null);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
                   executeMove(promotionMove.from, promotionMove.to, piece);
                   setShowPromotion(false);
                   setPromotionMove(null);
                 }}
                 style={{
                   cursor: 'pointer',
-                  padding: '10px',
+                  padding: isMobile ? '8px' : '10px',
                   border: '2px solid white',
                   borderRadius: '4px',
-                  background: 'rgba(255, 255, 255, 0.1)'
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  minWidth: isMobile ? '60px' : 'auto',
+                  minHeight: isMobile ? '60px' : 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
-                <img src={pieceImages[piece]} alt={piece} style={{ width: '40px', height: '40px' }} />
+                <img 
+                  src={pieceImages[piece]} 
+                  alt={piece} 
+                  style={{ 
+                    width: isMobile ? '32px' : '40px', 
+                    height: isMobile ? '32px' : '40px',
+                    pointerEvents: 'none'
+                  }} 
+                />
               </div>
             ))}
           </div>
@@ -4532,7 +4644,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Main render - single container like ChessGame.tsx
   return (
-    <div className={`chess-game${showGame ? ' game-active' : ''}`}>
+    <div className={`chess-game${showGame ? ' game-active' : ''} ${isMobile ? 'mobile-device' : ''} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
       {/* Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
@@ -4591,7 +4703,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         )}
         
         {/* Center Area */}
-        <div className="center-area">
+        <div className={`center-area ${isGameLoading ? 'loading' : ''}`}>
           {/* Lobby Mode */}
           {gameMode === GameMode.LOBBY && (
             <div className="chess-multiplayer-lobby" style={{
@@ -4901,8 +5013,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     </div>
                   </div>
                 )}
-                <div className="chessboard-container">
-                  <div className="chessboard">
+                <div className={`chessboard-container ${isGameLoading ? 'loading' : ''}`}>
+                  <div className={`chessboard ${isGameLoading ? 'loading' : ''}`}>
                     {Array.from({ length: 8 }, (_, row) => (
                       <div key={row} className="board-row">
                         {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
