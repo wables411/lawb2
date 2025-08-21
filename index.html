@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>there is no meme we $LAWB you</title>
     <meta name="description" content="there is no meme we $LAWB you" />
     
@@ -38,7 +41,11 @@
     
     <!-- Stockfish WASM for chess AI -->
     <script src="/stockfish.js"></script>
-    <script type="module" crossorigin src="/assets/index-DO_4PkT2.js"></script>
+    
+    <!-- Mobile Console for debugging -->
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    <script type="module" crossorigin src="/assets/index-Dg8DbrCJ.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
     <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-D3Lspqub.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
