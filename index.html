@@ -51,11 +51,11 @@
       }
       
       if (isMobileDevice()) {
-        // Completely disable Eruda to prevent analytics errors
-        console.log('[ERUDA] Disabled to prevent analytics errors from interfering with wallet connections');
+        // Load Eruda for mobile debugging
+        console.log('[ERUDA] Loading Eruda for mobile debugging');
         
-        // Alternative: Only load Eruda in development mode
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Load Eruda in both development and production for mobile debugging
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'lawb.xyz' || window.location.hostname.includes('192.168.')) {
           console.log('[ERUDA] Loading Eruda only in development mode');
           
           // Add error handler to prevent Eruda from breaking the app
@@ -109,7 +109,7 @@
         }
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-BYQUwcX5.js"></script>
+    <script type="module" crossorigin src="/assets/index-CefgnnXl.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
     <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-Dfx1X9pT.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
