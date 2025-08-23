@@ -42,54 +42,18 @@
     <!-- Stockfish WASM for chess AI -->
     <script src="/stockfish.js"></script>
     
-    <!-- Mobile Console for debugging - only on mobile devices -->
+        <!-- Mobile Console for debugging - only on mobile devices -->
     <script>
-      // Only load Eruda on mobile devices
+      // Only load Eruda on mobile devices in development
       function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                window.innerWidth <= 768;
       }
       
       if (isMobileDevice()) {
-        // Load Eruda for mobile debugging
-        console.log('[ERUDA] Loading Eruda for mobile debugging');
-        
-        // Load Eruda in both development and production for mobile debugging
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'lawb.xyz' || window.location.hostname.includes('192.168.')) {
-          console.log('[ERUDA] Loading Eruda only in development mode');
-          
-          // Add error handler to prevent Eruda from breaking the app
-          window.addEventListener('error', function(e) {
-            if (e.message && (e.message.includes('Analytics SDK') || e.message.includes('eruda'))) {
-              console.log('[ERUDA] Disabling Eruda due to error:', e.message);
-              // Remove Eruda if it causes any errors
-              if (window.eruda) {
-                try {
-                  window.eruda.destroy();
-                  window.eruda = null;
-                } catch (err) {
-                  console.log('[ERUDA] Error destroying Eruda:', err);
-                }
-              }
-              return false; // Prevent error from propagating
-            }
-          });
-
-          // Add unhandled rejection handler for Analytics SDK errors
-          window.addEventListener('unhandledrejection', function(e) {
-            if (e.reason && (e.reason.message && e.reason.message.includes('Analytics SDK'))) {
-              console.log('[ERUDA] Disabling Eruda due to unhandled rejection:', e.reason);
-              if (window.eruda) {
-                try {
-                  window.eruda.destroy();
-                  window.eruda = null;
-                } catch (err) {
-                  console.log('[ERUDA] Error destroying Eruda:', err);
-                }
-              }
-              e.preventDefault(); // Prevent the rejection from being logged
-            }
-          });
+        // Only load Eruda in development (localhost) to avoid analytics issues
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          console.log('[ERUDA] Loading Eruda for mobile debugging in development only');
           
           const script = document.createElement('script');
           script.src = '//cdn.jsdelivr.net/npm/eruda';
@@ -97,47 +61,35 @@
             console.log('[ERUDA] Failed to load Eruda, continuing without debug tools');
           };
           document.head.appendChild(script);
-                       script.onload = () => {
-               try {
-                 // Initialize Eruda with minimal configuration and analytics explicitly disabled
-                 window.eruda.init({
-                   tool: ['console'], // Only console tool, no analytics
-                   useShadowDom: false,
-                   autoScale: false,
-                   // Explicitly disable analytics
-                   analytics: false
-                 });
-                 
-                 // Force disable analytics after initialization
-                 if (window.eruda && window.eruda.analytics) {
-                   try {
-                     window.eruda.analytics.destroy();
-                     window.eruda.analytics = null;
-                   } catch (err) {
-                     console.log('[ERUDA] Analytics already disabled');
-                   }
-                 }
-                 
-                 console.log('[ERUDA] Initialized successfully with analytics disabled');
-               } catch (error) {
-                 console.log('[ERUDA] Error initializing Eruda:', error);
-                 // Remove Eruda if initialization fails
-                 if (window.eruda) {
-                   try {
-                     window.eruda.destroy();
-                     window.eruda = null;
-                   } catch (err) {
-                     console.log('[ERUDA] Error destroying Eruda:', err);
-                   }
-                 }
-               }
-             };
+          script.onload = () => {
+            try {
+              // Initialize Eruda with minimal configuration
+              window.eruda.init({
+                tool: ['console'], // Only console tool, no analytics
+                useShadowDom: false,
+                autoScale: false
+              });
+              
+              console.log('[ERUDA] Initialized successfully for development');
+            } catch (error) {
+              console.log('[ERUDA] Error initializing Eruda:', error);
+              // Remove Eruda if initialization fails
+              if (window.eruda) {
+                try {
+                  window.eruda.destroy();
+                  window.eruda = null;
+                } catch (err) {
+                  console.log('[ERUDA] Error destroying Eruda:', err);
+                }
+              }
+            }
+          };
         } else {
           console.log('[ERUDA] Skipping Eruda in production to prevent wallet connection issues');
         }
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-DVlsDXYW.js"></script>
+    <script type="module" crossorigin src="/assets/index-Csl6fNw7.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
     <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-Dfx1X9pT.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
