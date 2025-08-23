@@ -74,26 +74,11 @@
               return false; // Prevent error from propagating
             }
           });
-          
-          const script = document.createElement('script');
-          script.src = '//cdn.jsdelivr.net/npm/eruda';
-          script.onerror = () => {
-            console.log('[ERUDA] Failed to load Eruda, continuing without debug tools');
-          };
-          document.head.appendChild(script);
-          script.onload = () => {
-            try {
-              // Initialize Eruda with minimal configuration
-              window.eruda.init({
-                tool: ['console'], // Only console tool, no analytics
-                useShadowDom: false,
-                autoScale: false
-              });
-              
-              console.log('[ERUDA] Initialized successfully with minimal configuration');
-            } catch (error) {
-              console.log('[ERUDA] Error initializing Eruda:', error);
-              // Remove Eruda if initialization fails
+
+          // Add unhandled rejection handler for Analytics SDK errors
+          window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && (e.reason.message && e.reason.message.includes('Analytics SDK'))) {
+              console.log('[ERUDA] Disabling Eruda due to unhandled rejection:', e.reason);
               if (window.eruda) {
                 try {
                   window.eruda.destroy();
@@ -102,8 +87,51 @@
                   console.log('[ERUDA] Error destroying Eruda:', err);
                 }
               }
+              e.preventDefault(); // Prevent the rejection from being logged
             }
+          });
+          
+          const script = document.createElement('script');
+          script.src = '//cdn.jsdelivr.net/npm/eruda';
+          script.onerror = () => {
+            console.log('[ERUDA] Failed to load Eruda, continuing without debug tools');
           };
+          document.head.appendChild(script);
+                       script.onload = () => {
+               try {
+                 // Initialize Eruda with minimal configuration and analytics explicitly disabled
+                 window.eruda.init({
+                   tool: ['console'], // Only console tool, no analytics
+                   useShadowDom: false,
+                   autoScale: false,
+                   // Explicitly disable analytics
+                   analytics: false
+                 });
+                 
+                 // Force disable analytics after initialization
+                 if (window.eruda && window.eruda.analytics) {
+                   try {
+                     window.eruda.analytics.destroy();
+                     window.eruda.analytics = null;
+                   } catch (err) {
+                     console.log('[ERUDA] Analytics already disabled');
+                   }
+                 }
+                 
+                 console.log('[ERUDA] Initialized successfully with analytics disabled');
+               } catch (error) {
+                 console.log('[ERUDA] Error initializing Eruda:', error);
+                 // Remove Eruda if initialization fails
+                 if (window.eruda) {
+                   try {
+                     window.eruda.destroy();
+                     window.eruda = null;
+                   } catch (err) {
+                     console.log('[ERUDA] Error destroying Eruda:', err);
+                   }
+                 }
+               }
+             };
         } else {
           console.log('[ERUDA] Skipping Eruda in production to prevent wallet connection issues');
         }
