@@ -51,11 +51,66 @@
       }
       
       if (isMobileDevice()) {
+        // Add error handler to prevent Eruda from breaking the app
+        window.addEventListener('error', function(e) {
+          if (e.message && e.message.includes('Analytics SDK')) {
+            console.log('[ERUDA] Disabling Eruda due to analytics error');
+            // Remove Eruda if it causes analytics errors
+            if (window.eruda) {
+              try {
+                window.eruda.destroy();
+                window.eruda = null;
+              } catch (err) {
+                console.log('[ERUDA] Error destroying Eruda:', err);
+              }
+            }
+            return false; // Prevent error from propagating
+          }
+        });
+        
         const script = document.createElement('script');
         script.src = '//cdn.jsdelivr.net/npm/eruda';
+        script.onerror = () => {
+          console.log('[ERUDA] Failed to load Eruda, continuing without debug tools');
+        };
         document.head.appendChild(script);
         script.onload = () => {
-          window.eruda.init();
+          try {
+            // Initialize Eruda with analytics disabled to prevent errors
+            window.eruda.init({
+              tool: ['console', 'elements', 'network', 'resources', 'info'],
+              useShadowDom: true,
+              autoScale: true,
+              defaults: {
+                displaySize: 50,
+                transparency: 0.9,
+                theme: 'Dark'
+              }
+            });
+            
+            // Disable analytics to prevent TypeError
+            if (window.eruda && window.eruda.get) {
+              try {
+                const analytics = window.eruda.get('analytics');
+                if (analytics) {
+                  analytics.destroy();
+                }
+              } catch (e) {
+                console.log('[ERUDA] Analytics already disabled or not available');
+              }
+            }
+          } catch (error) {
+            console.log('[ERUDA] Error initializing Eruda:', error);
+            // Remove Eruda if initialization fails
+            if (window.eruda) {
+              try {
+                window.eruda.destroy();
+                window.eruda = null;
+              } catch (err) {
+                console.log('[ERUDA] Error destroying Eruda:', err);
+              }
+            }
+          }
         };
       }
     </script>
