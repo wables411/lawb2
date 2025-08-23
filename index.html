@@ -51,8 +51,8 @@
       }
       
       if (isMobileDevice()) {
-        // Only load Eruda in development (localhost) to avoid analytics issues
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Load Eruda in both development and production for mobile debugging
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'lawb.xyz') {
           console.log('[ERUDA] Loading Eruda for mobile debugging in development only');
           
           const script = document.createElement('script');
@@ -89,9 +89,9 @@
         }
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-Csl6fNw7.js"></script>
+    <script type="module" crossorigin src="/assets/index-DEwQLsmM.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
-    <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-Dfx1X9pT.js">
+    <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-CvRy1rG-.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
     <link rel="modulepreload" crossorigin href="/assets/ui-vendor-BgPmeekb.js">
     <link rel="stylesheet" crossorigin href="/assets/index-DCUXUex1.css">
