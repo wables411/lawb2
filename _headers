@@ -10,7 +10,6 @@
   # Allow WebSocket connections
   Cross-Origin-Resource-Policy: cross-origin
 
-# Chess-specific headers for SharedArrayBuffer support
+# Chess-specific headers - removed problematic COEP header
 /chess
-  Cross-Origin-Embedder-Policy: require-corp
   Cross-Origin-Opener-Policy: same-origin-allow-popups
