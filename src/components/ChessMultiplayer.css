@@ -1588,6 +1588,20 @@ body, html {
   background: rgba(0,0,0,0.0);
 }
 
+/* --- Defeat Overlay --- */
+.defeat-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.0);
+}
+
 .balloons-container {
   position: absolute;
   top: 0;
