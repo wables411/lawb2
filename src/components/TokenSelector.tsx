@@ -66,13 +66,13 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
               }}
             />
             {getTokenDisplayName(selectedToken)}
-            <span style={{ marginLeft: 'auto' }}>▼</span>
+            <span style={{ marginLeft: 'auto' }}>▲</span>
           </button>
           
           {showDropdown && !disabled && (
             <div style={{
               position: 'absolute',
-              top: '100%',
+              bottom: '100%',
               left: 0,
               background: '#000000',
               border: '2px outset #fff',

@@ -247,7 +247,6 @@ const Mobile = () => {
     { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
-    { label: 'Chess', icon: '/assets/chessicon.png', action: () => window.location.href = '/chess' },
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Wallet', icon: '/assets/wallet.png', action: () => {
       if (!isConnected) {

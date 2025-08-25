@@ -4456,13 +4456,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   }}
                 >
                   {getPieceSetDisplayName(selectedPieceSet.id)}
-                  <span style={{ float: 'right' }}>▼</span>
+                  <span style={{ float: 'right' }}>▲</span>
                 </button>
                 
                 {showPieceSetDropdown && (
                   <div style={{
                     position: 'absolute',
-                    top: '100%',
+                    bottom: '100%',
                     left: 0,
                     background: '#000000',
                     border: '2px outset #fff',
