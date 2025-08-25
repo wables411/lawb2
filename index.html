@@ -3,10 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>there is no meme we $LAWB you</title>
     <meta name="description" content="there is no meme we $LAWB you" />
     
@@ -41,57 +38,9 @@
     
     <!-- Stockfish WASM for chess AI -->
     <script src="/stockfish.js"></script>
-    
-        <!-- Mobile Console for debugging - only on mobile devices -->
-    <script>
-      // Only load Eruda on mobile devices in development
-      function isMobileDevice() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-               window.innerWidth <= 768;
-      }
-      
-      if (isMobileDevice()) {
-        // Load Eruda in both development and production for mobile debugging
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'lawb.xyz') {
-          console.log('[ERUDA] Loading Eruda for mobile debugging in development only');
-          
-          const script = document.createElement('script');
-          script.src = '//cdn.jsdelivr.net/npm/eruda';
-          script.onerror = () => {
-            console.log('[ERUDA] Failed to load Eruda, continuing without debug tools');
-          };
-          document.head.appendChild(script);
-          script.onload = () => {
-            try {
-              // Initialize Eruda with minimal configuration
-              window.eruda.init({
-                tool: ['console'], // Only console tool, no analytics
-                useShadowDom: false,
-                autoScale: false
-              });
-              
-              console.log('[ERUDA] Initialized successfully for development');
-            } catch (error) {
-              console.log('[ERUDA] Error initializing Eruda:', error);
-              // Remove Eruda if initialization fails
-              if (window.eruda) {
-                try {
-                  window.eruda.destroy();
-                  window.eruda = null;
-                } catch (err) {
-                  console.log('[ERUDA] Error destroying Eruda:', err);
-                }
-              }
-            }
-          };
-        } else {
-          console.log('[ERUDA] Skipping Eruda in production to prevent wallet connection issues');
-        }
-      }
-    </script>
-    <script type="module" crossorigin src="/assets/index-DZdyBr7P.js"></script>
+    <script type="module" crossorigin src="/assets/index-Dfiw19v5.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
-    <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-4NKcJtQE.js">
+    <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-D-kpDhCQ.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
     <link rel="modulepreload" crossorigin href="/assets/ui-vendor-BgPmeekb.js">
     <link rel="stylesheet" crossorigin href="/assets/index-DCUXUex1.css">
