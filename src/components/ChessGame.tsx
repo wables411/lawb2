@@ -43,6 +43,8 @@ interface ChessGameProps {
   onMinimize?: () => void;
   fullscreen?: boolean;
   onBackToModeSelect?: () => void;
+  onGameStart?: (inviteCode?: string) => void;
+  onChatToggle?: () => void;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -260,7 +262,7 @@ const useLichessAPI = () => {
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect }) => {
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle }) => {
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -2069,6 +2071,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
                   onClick={() => setSidebarView('gallery')}
                 >Gallery</button>
+                {onChatToggle && (
+                  <button
+                    className="sidebar-toggle-btn"
+                    onClick={onChatToggle}
+                  >💬 Chat</button>
+                )}
               </div>
             </div>
           </div>
@@ -2212,6 +2220,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   >Gallery</button>
                 </div>
                 <button onClick={handleNewGame}>New Match</button>
+                {onChatToggle && (
+                  <button onClick={onChatToggle}>💬 Chat</button>
+                )}
                 {onBackToModeSelect && (
                   <button onClick={onBackToModeSelect}>Mode Select</button>
                 )}
@@ -2332,6 +2343,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
                   onClick={() => setSidebarView('gallery')}
                 >Gallery</button>
+                {onChatToggle && (
+                  <button
+                    className="sidebar-toggle-btn"
+                    onClick={onChatToggle}
+                  >💬 Chat</button>
+                )}
               </div>
             </div>
           )}

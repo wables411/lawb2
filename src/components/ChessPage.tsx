@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
+import { ChessChat } from './ChessChat';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
-  // Remove the showModeSelector state and always show the detailed mode selection
-  // const [showModeSelector, setShowModeSelector] = useState(true);
+  const [showChat, setShowChat] = useState(false);
+  const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
+  const [isInGame, setIsInGame] = useState(false);
 
   const handleClose = () => {
     // Navigate back to main site
@@ -16,24 +18,53 @@ const ChessPage: React.FC = () => {
 
   const handleModeSelect = (mode: 'singleplayer' | 'multiplayer') => {
     setGameMode(mode);
-    // Remove the setShowModeSelector(false) call
   };
 
   const handleBackToModeSelect = () => {
-    // This function is no longer needed since we're always showing the mode selection
-    // setShowModeSelector(true);
+    // Reset game state when going back to mode selection
+    setIsInGame(false);
+    setChatInviteCode(undefined);
   };
 
-  // Always show the detailed mode selection interface instead of the intermediate 3-button page
+  const handleChatToggle = () => {
+    setShowChat(!showChat);
+  };
+
+  const handleGameStart = (inviteCode?: string) => {
+    setIsInGame(true);
+    setChatInviteCode(inviteCode);
+  };
+
   return (
     <div className="chess-page">
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
-          <ChessGame onClose={handleClose} onBackToModeSelect={handleBackToModeSelect} />
+          <ChessGame 
+            onClose={handleClose} 
+            onBackToModeSelect={handleBackToModeSelect}
+            onGameStart={handleGameStart}
+            onChatToggle={handleChatToggle}
+          />
         ) : (
-          <ChessMultiplayer onClose={handleClose} onMinimize={() => {}} fullscreen={false} onBackToModeSelect={handleBackToModeSelect} />
+          <ChessMultiplayer 
+            onClose={handleClose} 
+            onMinimize={() => {}} 
+            fullscreen={false} 
+            onBackToModeSelect={handleBackToModeSelect}
+            onGameStart={handleGameStart}
+            onChatToggle={handleChatToggle}
+          />
         )}
       </div>
+      
+      {/* Chat Component */}
+      <ChessChat
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        onMinimize={() => setShowChat(false)}
+        currentInviteCode={chatInviteCode}
+        isInGame={isInGame}
+      />
     </div>
   );
 };
