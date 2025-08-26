@@ -39,14 +39,17 @@ export const SidebarChat: React.FC<SidebarChatProps> = ({
   // Listen to chat messages
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
+    console.log('[SidebarChat] Setting up chat listener for room:', currentRoom, 'inviteCode:', currentInviteCode);
 
     if (currentRoom === 'public') {
       unsubscribe = listenToPublicChat((newMessages) => {
+        console.log('[SidebarChat] Received public messages:', newMessages.length);
         setMessages(newMessages);
         setIsLoading(false);
       });
     } else if (currentRoom === 'private' && currentInviteCode) {
       unsubscribe = listenToPrivateChat(currentInviteCode, (newMessages) => {
+        console.log('[SidebarChat] Received private messages:', newMessages.length);
         setMessages(newMessages);
         setIsLoading(false);
       });
@@ -92,9 +95,11 @@ export const SidebarChat: React.FC<SidebarChatProps> = ({
     setIsLoading(true);
   };
 
+  console.log('[SidebarChat] Rendering with messages:', messages.length, 'isLoading:', isLoading, 'error:', error);
+  
   return (
     <div className="sidebar-chat-compact">
-      <h3>Chat</h3>
+      <h3>Chat ({messages.length})</h3>
       
       {/* Room Selector */}
       <div className="chat-room-selector">

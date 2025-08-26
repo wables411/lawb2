@@ -4660,8 +4660,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       {/* Main Layout */}
       <div className="game-stable-layout">
-        {/* Left Sidebar - Only show during active gameplay */}
-        {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame && (
+        {/* Left Sidebar - Show during active gameplay and in lobby */}
+        {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED || gameMode === GameMode.LOBBY) && (
           <div className="left-sidebar">
             {sidebarView === 'leaderboard' && (
               <div className="leaderboard-compact">
@@ -4979,6 +4979,38 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   />
                 </div>
               </div>
+            </div>
+          )}
+          
+          {/* Sidebar Toggle Buttons for Lobby */}
+          {gameMode === GameMode.LOBBY && (
+            <div className="sidebar-toggle-group" style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              gap: '4px',
+              zIndex: 100
+            }}>
+              <button
+                className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                onClick={() => setSidebarView('leaderboard')}
+              >
+                Leaderboard
+              </button>
+              <button
+                className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                onClick={() => setSidebarView('gallery')}
+              >
+                Gallery
+              </button>
+              <button
+                className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                onClick={() => setSidebarView('chat')}
+              >
+                💬 Chat
+              </button>
             </div>
           )}
           
