@@ -18,6 +18,7 @@ import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol } from
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
+import { SidebarChat } from './SidebarChat';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -711,7 +712,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('moves'); // Default to moves
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat'>('moves'); // Default to moves
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
   const [gameJustFinished, setGameJustFinished] = useState(false);
@@ -4702,6 +4703,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 {renderPieceGallery()}
               </div>
             )}
+            {sidebarView === 'chat' && (
+              <SidebarChat
+                currentInviteCode={inviteCode}
+                isInGame={gameMode === GameMode.ACTIVE}
+              />
+            )}
           </div>
         )}
         
@@ -5067,11 +5074,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     >
                       Gallery
                     </button>
+                    <button 
+                      className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('chat')}
+                    >
+                      💬 Chat
+                    </button>
                   </div>
                   <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>New Match</button>
-                  {onChatToggle && (
-                    <button onClick={onChatToggle}>💬 Chat</button>
-                  )}
                   {onBackToModeSelect && (
                     <button onClick={onBackToModeSelect}>Mode Select</button>
                   )}

@@ -31,7 +31,12 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const [currentRoom, setCurrentRoom] = useState<'public' | 'private'>('public');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [position, setPosition] = useState({ x: 50, y: 50 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatWindowRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -100,24 +105,72 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     setIsLoading(true);
   };
 
+  // Handle minimize
+  const handleMinimize = () => {
+    setIsMinimized(!isMinimized);
+    if (onMinimize) {
+      onMinimize();
+    }
+  };
+
+  // Handle dragging
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setIsDragging(true);
+      const rect = chatWindowRef.current?.getBoundingClientRect();
+      if (rect) {
+        setDragOffset({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        });
+      }
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset]);
+
   if (!isOpen) return null;
 
   return (
     <div
+      ref={chatWindowRef}
       style={{
         position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '400px',
-        height: '500px',
+        top: isMinimized ? 'calc(100vh - 40px)' : `${position.y}px`,
+        left: isMinimized ? '50%' : `${position.x}px`,
+        transform: isMinimized ? 'translateX(-50%)' : 'none',
+        width: isMinimized ? '200px' : '400px',
+        height: isMinimized ? '40px' : '500px',
         background: '#f0f0f0',
         border: '3px outset #c0c0c0',
         borderRadius: '0',
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif'
+        fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
+        cursor: isDragging ? 'grabbing' : 'default'
       }}
     >
       {/* Header */}
@@ -129,8 +182,10 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          cursor: 'move'
+          cursor: 'move',
+          userSelect: 'none'
         }}
+        onMouseDown={handleMouseDown}
       >
         <div style={{ fontWeight: 'bold', color: '#000' }}>
           LAWB CHESS CHAT
@@ -138,7 +193,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         <div style={{ display: 'flex', gap: '4px' }}>
           {onMinimize && (
             <button
-              onClick={onMinimize}
+              onClick={handleMinimize}
               style={{
                 width: '16px',
                 height: '16px',
@@ -151,7 +206,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
                 justifyContent: 'center'
               }}
             >
-              _
+              {isMinimized ? '□' : '_'}
             </button>
           )}
           <button
@@ -173,15 +228,16 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         </div>
       </div>
 
-      {/* Room Selector */}
-      <div
-        style={{
-          padding: '8px',
-          borderBottom: '1px solid #c0c0c0',
-          display: 'flex',
-          gap: '4px'
-        }}
-      >
+      {/* Room Selector - Only show when not minimized */}
+      {!isMinimized && (
+        <div
+          style={{
+            padding: '8px',
+            borderBottom: '1px solid #c0c0c0',
+            display: 'flex',
+            gap: '4px'
+          }}
+        >
         <button
           onClick={() => handleRoomSwitch('public')}
           style={{
@@ -213,9 +269,10 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           </button>
         )}
       </div>
+      )}
 
-      {/* Connection Status */}
-      {!isConnected && (
+      {/* Connection Status - Only show when not minimized */}
+      {!isMinimized && !isConnected && (
         <div
           style={{
             padding: '8px',
@@ -230,8 +287,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         </div>
       )}
 
-      {/* Error Message */}
-      {error && (
+      {/* Error Message - Only show when not minimized */}
+      {!isMinimized && error && (
         <div
           style={{
             padding: '8px',
@@ -246,18 +303,19 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         </div>
       )}
 
-      {/* Messages */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '8px',
-          background: '#ffffff',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px'
-        }}
-      >
+      {/* Messages - Only show when not minimized */}
+      {!isMinimized && (
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '8px',
+            background: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px'
+          }}
+        >
         {isLoading && (
           <div style={{ textAlign: 'center', color: '#666', fontSize: '11px' }}>
             Loading messages...
@@ -279,13 +337,16 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         ))}
         <div ref={messagesEndRef} />
       </div>
+      )}
 
-      {/* Input */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        disabled={!isConnected || isLoading}
-        placeholder={!isConnected ? "Connect wallet to chat..." : "Type a message..."}
-      />
+      {/* Input - Only show when not minimized */}
+      {!isMinimized && (
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          disabled={!isConnected || isLoading}
+          placeholder={!isConnected ? "Connect wallet to chat..." : "Type a message..."}
+        />
+      )}
     </div>
   );
 };

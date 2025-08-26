@@ -10,6 +10,7 @@ import {
 } from '../firebaseLeaderboard';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
+import { SidebarChat } from './SidebarChat';
 import './ChessGame.css';
 
 // Game modes
@@ -1847,7 +1848,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const isOnline = gameMode === 'online';
 
   // Add state for sidebar view toggle
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('leaderboard');
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat'>('leaderboard');
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
   const handlePromotion = (promotionPiece: string) => {
@@ -2071,12 +2072,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
                   onClick={() => setSidebarView('gallery')}
                 >Gallery</button>
-                {onChatToggle && (
-                  <button
-                    className="sidebar-toggle-btn"
-                    onClick={onChatToggle}
-                  >💬 Chat</button>
-                )}
+                <button
+                  className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('chat')}
+                >💬 Chat</button>
               </div>
             </div>
           </div>
@@ -2144,6 +2143,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             <div className="piece-gallery-compact">
               {renderPieceGallery(true, 'Click pieces to learn more')}
             </div>
+          )}
+          {sidebarView === 'chat' && (
+            <SidebarChat
+              currentInviteCode={undefined}
+              isInGame={false}
+            />
           )}
         </div>
         {/* Center Area - Always Show Chess Board */}
@@ -2220,9 +2225,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   >Gallery</button>
                 </div>
                 <button onClick={handleNewGame}>New Match</button>
-                {onChatToggle && (
-                  <button onClick={onChatToggle}>💬 Chat</button>
-                )}
                 {onBackToModeSelect && (
                   <button onClick={onBackToModeSelect}>Mode Select</button>
                 )}
@@ -2343,12 +2345,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
                   onClick={() => setSidebarView('gallery')}
                 >Gallery</button>
-                {onChatToggle && (
-                  <button
-                    className="sidebar-toggle-btn"
-                    onClick={onChatToggle}
-                  >💬 Chat</button>
-                )}
+                <button
+                  className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('chat')}
+                >💬 Chat</button>
               </div>
             </div>
           )}

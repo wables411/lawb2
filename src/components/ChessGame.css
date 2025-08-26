@@ -1858,6 +1858,103 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background: rgba(0,0,0,0.0);
   pointer-events: none;
 }
+
+/* --- Sidebar Chat --- */
+.sidebar-chat-compact {
+  background: #f0f0f0;
+  border: 2px outset #c0c0c0;
+  border-radius: 0;
+  padding: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
+}
+
+.sidebar-chat-compact h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+}
+
+.chat-room-selector {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.chat-room-btn {
+  flex: 1;
+  padding: 4px 8px;
+  background: #c0c0c0;
+  border: 2px outset #c0c0c0;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: bold;
+  color: #000;
+}
+
+.chat-room-btn.selected {
+  background: #ff0000;
+  color: white;
+}
+
+.chat-room-btn:hover {
+  background: #d0d0d0;
+}
+
+.chat-room-btn.selected:hover {
+  background: #ff0000;
+}
+
+.chat-connection-warning {
+  background: #ffcccc;
+  color: #cc0000;
+  padding: 4px 8px;
+  font-size: 10px;
+  text-align: center;
+  margin-bottom: 8px;
+  border: 1px solid #cc0000;
+}
+
+.chat-error-message {
+  background: #ffcccc;
+  color: #cc0000;
+  padding: 4px 8px;
+  font-size: 10px;
+  text-align: center;
+  margin-bottom: 8px;
+  border: 1px solid #cc0000;
+}
+
+.chat-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 2px inset #c0c0c0;
+  padding: 4px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 200px;
+}
+
+.chat-loading {
+  text-align: center;
+  color: #666;
+  font-size: 10px;
+  padding: 8px;
+}
+
+.chat-empty {
+  text-align: center;
+  color: #666;
+  font-size: 10px;
+  padding: 8px;
+}
 .defeat-overlay button, .victory-overlay button {
   pointer-events: auto;
   z-index: 3000;
