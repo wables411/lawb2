@@ -2074,7 +2074,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 >Gallery</button>
                 <button
                   className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('chat')}
+                  onClick={() => {
+                    console.log('[ChessGame] Chat button clicked, setting sidebarView to chat');
+                    setSidebarView('chat');
+                  }}
                 >💬 Chat</button>
               </div>
             </div>
@@ -2150,6 +2153,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               isInGame={false}
             />
           )}
+          {/* Debug info */}
+          <div style={{ fontSize: '10px', color: '#666', padding: '4px', textAlign: 'center' }}>
+            Current view: {sidebarView}
+          </div>
         </div>
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area">
@@ -2347,7 +2354,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 >Gallery</button>
                 <button
                   className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('chat')}
+                  onClick={() => {
+                    console.log('[ChessGame] Chat button clicked (second instance), setting sidebarView to chat');
+                    setSidebarView('chat');
+                  }}
                 >💬 Chat</button>
               </div>
             </div>
