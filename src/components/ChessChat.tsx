@@ -1,22 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-import { ChatMessage } from './ChatMessage';
-import { ChatInput } from './ChatInput';
-import { 
-  ChatMessage as ChatMessageType,
-  sendPublicMessage,
-  sendPrivateMessage,
-  listenToPublicChat,
-  listenToPrivateChat,
-  getDisplayName
-} from '../firebaseChat';
+import { database } from '../firebaseApp';
+import { ref, push, onValue, off, set, query, orderByChild, limitToLast } from 'firebase/database';
+import './ChessChat.css';
+
+interface ChatMessage {
+  id: string;
+  userId: string;
+  walletAddress: string;
+  displayName: string;
+  message: string;
+  timestamp: number;
+  room: 'public' | 'private';
+  inviteCode?: string;
+}
 
 interface ChessChatProps {
   isOpen: boolean;
   onClose: () => void;
-  onMinimize?: () => void;
+  onMinimize: () => void;
   currentInviteCode?: string;
-  isInGame?: boolean;
+  isDraggable?: boolean;
+  isResizable?: boolean;
 }
 
 export const ChessChat: React.FC<ChessChatProps> = ({
@@ -24,327 +29,342 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   onClose,
   onMinimize,
   currentInviteCode,
-  isInGame = false
+  isDraggable = true,
+  isResizable = true
 }) => {
   const { address: walletAddress, isConnected } = useAccount();
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [currentRoom, setCurrentRoom] = useState<'public' | 'private'>('public');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [position, setPosition] = useState({ x: 50, y: 50 });
+  
+  // Draggable/Resizable state
+  const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [size, setSize] = useState({ width: 400, height: 500 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  
+  // Refs
+  const chatRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatWindowRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to bottom when new messages arrive
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Format wallet address for display
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+  
+  // Get display name for current user
+  const getDisplayName = () => {
+    if (!walletAddress) return 'Anonymous';
+    return formatAddress(walletAddress);
+  };
+  
+  // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Listen to chat messages
-  useEffect(() => {
+  
+  // Load messages from Firebase
+  const loadMessages = useCallback(async () => {
     if (!isOpen) return;
-
-    let unsubscribe: (() => void) | null = null;
-
-    if (currentRoom === 'public') {
-      unsubscribe = listenToPublicChat((newMessages) => {
-        setMessages(newMessages);
-        setIsLoading(false);
-      });
-    } else if (currentRoom === 'private' && currentInviteCode) {
-      unsubscribe = listenToPrivateChat(currentInviteCode, (newMessages) => {
-        setMessages(newMessages);
-        setIsLoading(false);
-      });
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [isOpen, currentRoom, currentInviteCode]);
-
-  // Handle sending messages
-  const handleSendMessage = async (message: string) => {
-    if (!isConnected || !walletAddress) {
-      setError('Please connect your wallet to send messages');
-      return;
-    }
-
+    
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      setError(null);
-      setIsLoading(true);
-
-      const displayName = getDisplayName(walletAddress);
-
-      if (currentRoom === 'public') {
-        await sendPublicMessage(walletAddress, message, displayName);
-      } else if (currentRoom === 'private' && currentInviteCode) {
-        await sendPrivateMessage(currentInviteCode, walletAddress, message, displayName);
-      }
+      const roomPath = currentRoom === 'public' 
+        ? 'chess_chat/public/messages'
+        : `chess_chat/private/${currentInviteCode}/messages`;
+      
+      const messagesRef = ref(database, roomPath);
+      const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
+      
+      onValue(messagesQuery, (snapshot) => {
+        const messagesData: ChatMessage[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const message = {
+            id: childSnapshot.key!,
+            ...childSnapshot.val()
+          } as ChatMessage;
+          messagesData.push(message);
+        });
+        
+        // Sort by timestamp
+        messagesData.sort((a, b) => a.timestamp - b.timestamp);
+        setMessages(messagesData);
+        
+        // Scroll to bottom after messages load
+        setTimeout(scrollToBottom, 100);
+      });
+      
     } catch (err) {
-      setError('Failed to send message. Please try again.');
-      console.error('Error sending message:', err);
+      console.error('Error loading messages:', err);
+      setError('Failed to load messages');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Handle room switching
-  const handleRoomSwitch = (room: 'public' | 'private') => {
-    setCurrentRoom(room);
-    setMessages([]);
-    setIsLoading(true);
-  };
-
-  // Handle minimize
-  const handleMinimize = () => {
-    setIsMinimized(!isMinimized);
-    if (onMinimize) {
-      onMinimize();
+  }, [isOpen, currentRoom, currentInviteCode]);
+  
+  // Send message to Firebase
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !isConnected || !walletAddress) return;
+    
+    const messageData = {
+      userId: walletAddress,
+      walletAddress: walletAddress,
+      displayName: getDisplayName(),
+      message: newMessage.trim(),
+      timestamp: Date.now(),
+      room: currentRoom,
+      ...(currentRoom === 'private' && { inviteCode: currentInviteCode })
+    };
+    
+    try {
+      const roomPath = currentRoom === 'public' 
+        ? 'chess_chat/public/messages'
+        : `chess_chat/private/${currentInviteCode}/messages`;
+      
+      const messagesRef = ref(database, roomPath);
+      await push(messagesRef, messageData);
+      
+      setNewMessage('');
+      inputRef.current?.focus();
+      
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setError('Failed to send message');
     }
   };
-
-  // Handle dragging
+  
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void sendMessage();
+    }
+  };
+  
+  // Draggable functionality
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      setIsDragging(true);
-      const rect = chatWindowRef.current?.getBoundingClientRect();
-      if (rect) {
-        setDragOffset({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        });
-      }
+    if (!isDraggable) return;
+    
+    e.preventDefault();
+    setIsDragging(true);
+    const rect = chatRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
     }
   };
-
-  const handleMouseMove = (e: MouseEvent) => {
+  
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
       setPosition({
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y
       });
     }
-  };
-
-  const handleMouseUp = () => {
+  }, [isDragging, dragOffset]);
+  
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    setIsResizing(false);
+  }, []);
+  
+  // Resizable functionality
+  const handleResizeStart = (e: React.MouseEvent) => {
+    if (!isResizable) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: size.width,
+      height: size.height
+    });
   };
-
+  
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const deltaX = e.clientX - resizeStart.x;
+      const deltaY = e.clientY - resizeStart.y;
+      
+      setSize({
+        width: Math.max(300, resizeStart.width + deltaX),
+        height: Math.max(400, resizeStart.height + deltaY)
+      });
+    }
+  }, [isResizing, resizeStart]);
+  
+  // Switch between public and private chat
+  const switchToPublic = () => {
+    setCurrentRoom('public');
+  };
+  
+  const switchToPrivate = () => {
+    if (currentInviteCode) {
+      setCurrentRoom('private');
+    }
+  };
+  
+  // Effects
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
+    if (isOpen) {
+      void loadMessages();
+    }
+    
+    return () => {
+      // Cleanup Firebase listeners
+      off(ref(database, 'chess_chat'));
+    };
+  }, [isOpen, currentRoom, currentInviteCode, loadMessages]);
+  
+  useEffect(() => {
+    if (isDragging || isResizing) {
+      document.addEventListener('mousemove', isDragging ? handleMouseMove : handleResizeMove);
       document.addEventListener('mouseup', handleMouseUp);
+      
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mousemove', isDragging ? handleMouseMove : handleResizeMove);
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, dragOffset]);
-
+  }, [isDragging, isResizing, handleMouseMove, handleResizeMove, handleMouseUp]);
+  
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  
+  // Auto-switch to private chat when in a game
+  useEffect(() => {
+    if (currentInviteCode && currentRoom === 'public') {
+      setCurrentRoom('private');
+    }
+  }, [currentInviteCode]);
+  
   if (!isOpen) return null;
-
+  
   return (
     <div
-      ref={chatWindowRef}
+      ref={chatRef}
+      className="chess-chat-window"
       style={{
         position: 'fixed',
-        top: isMinimized ? 'calc(100vh - 40px)' : `${position.y}px`,
-        left: isMinimized ? '50%' : `${position.x}px`,
-        transform: isMinimized ? 'translateX(-50%)' : 'none',
-        width: isMinimized ? '200px' : '400px',
-        height: isMinimized ? '40px' : '500px',
-        background: '#f0f0f0',
-        border: '3px outset #c0c0c0',
-        borderRadius: '0',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
-        cursor: isDragging ? 'grabbing' : 'default'
+        left: position.x,
+        top: position.y,
+        width: size.width,
+        height: size.height,
+        zIndex: 1000
       }}
     >
-      {/* Header */}
-      <div
-        style={{
-          background: '#c0c0c0',
-          padding: '8px 12px',
-          borderBottom: '2px inset #c0c0c0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'move',
-          userSelect: 'none'
-        }}
+      {/* Chat Header */}
+      <div 
+        className="chat-header"
         onMouseDown={handleMouseDown}
       >
-        <div style={{ fontWeight: 'bold', color: '#000' }}>
-          LAWB CHESS CHAT
+        <div className="chat-title">
+          <span className="chat-icon">💬</span>
+          {currentRoom === 'public' ? 'Public Chat' : 'Game Chat'}
         </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {onMinimize && (
-            <button
-              onClick={handleMinimize}
-              style={{
-                width: '16px',
-                height: '16px',
-                background: '#c0c0c0',
-                border: '2px outset #c0c0c0',
-                cursor: 'pointer',
-                fontSize: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {isMinimized ? '□' : '_'}
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            style={{
-              width: '16px',
-              height: '16px',
-              background: '#c0c0c0',
-              border: '2px outset #c0c0c0',
-              cursor: 'pointer',
-              fontSize: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            ×
-          </button>
+        <div className="chat-controls">
+          <button className="chat-btn minimize-btn" onClick={onMinimize}>_</button>
+          <button className="chat-btn close-btn" onClick={onClose}>×</button>
         </div>
       </div>
-
-      {/* Room Selector - Only show when not minimized */}
-      {!isMinimized && (
-        <div
-          style={{
-            padding: '8px',
-            borderBottom: '1px solid #c0c0c0',
-            display: 'flex',
-            gap: '4px'
-          }}
-        >
+      
+      {/* Chat Room Tabs */}
+      <div className="chat-tabs">
         <button
-          onClick={() => handleRoomSwitch('public')}
-          style={{
-            padding: '4px 8px',
-            background: currentRoom === 'public' ? '#ff0000' : '#c0c0c0',
-            color: currentRoom === 'public' ? 'white' : 'black',
-            border: '2px outset #c0c0c0',
-            cursor: 'pointer',
-            fontSize: '10px',
-            fontWeight: 'bold'
-          }}
+          className={`chat-tab ${currentRoom === 'public' ? 'active' : ''}`}
+          onClick={switchToPublic}
         >
-          Public Chat
+          Public
         </button>
-        {isInGame && currentInviteCode && (
+        {currentInviteCode && (
           <button
-            onClick={() => handleRoomSwitch('private')}
-            style={{
-              padding: '4px 8px',
-              background: currentRoom === 'private' ? '#ff0000' : '#c0c0c0',
-              color: currentRoom === 'private' ? 'white' : 'black',
-              border: '2px outset #c0c0c0',
-              cursor: 'pointer',
-              fontSize: '10px',
-              fontWeight: 'bold'
-            }}
+            className={`chat-tab ${currentRoom === 'private' ? 'active' : ''}`}
+            onClick={switchToPrivate}
           >
-            Game Chat
+            Game
           </button>
         )}
       </div>
-      )}
-
-      {/* Connection Status - Only show when not minimized */}
-      {!isMinimized && !isConnected && (
-        <div
-          style={{
-            padding: '8px',
-            background: '#ffcccc',
-            color: '#cc0000',
-            fontSize: '11px',
-            textAlign: 'center',
-            borderBottom: '1px solid #c0c0c0'
-          }}
-        >
-          Connect wallet to send messages
-        </div>
-      )}
-
-      {/* Error Message - Only show when not minimized */}
-      {!isMinimized && error && (
-        <div
-          style={{
-            padding: '8px',
-            background: '#ffcccc',
-            color: '#cc0000',
-            fontSize: '11px',
-            textAlign: 'center',
-            borderBottom: '1px solid #c0c0c0'
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* Messages - Only show when not minimized */}
-      {!isMinimized && (
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '8px',
-            background: '#ffffff',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px'
-          }}
-        >
+      
+      {/* Messages Area */}
+      <div className="chat-messages">
         {isLoading && (
-          <div style={{ textAlign: 'center', color: '#666', fontSize: '11px' }}>
+          <div className="chat-loading">
             Loading messages...
           </div>
         )}
         
-        {messages.length === 0 && !isLoading && (
-          <div style={{ textAlign: 'center', color: '#666', fontSize: '11px' }}>
-            {currentRoom === 'public' ? 'No messages yet. Be the first to chat!' : 'No game messages yet.'}
+        {error && (
+          <div className="chat-error">
+            {error}
           </div>
         )}
-
+        
+        {!isConnected && (
+          <div className="chat-notice">
+            Connect your wallet to send messages
+          </div>
+        )}
+        
         {messages.map((message) => (
-          <ChatMessage
-            key={message.id}
-            message={message}
-            isOwnMessage={message.walletAddress === walletAddress}
-          />
+          <div key={message.id} className="chat-message">
+            <div className="message-header">
+              <span className="message-author">
+                {message.displayName}
+              </span>
+              <span className="message-time">
+                {new Date(message.timestamp).toLocaleTimeString()}
+              </span>
+            </div>
+            <div className="message-content">
+              {message.message}
+            </div>
+          </div>
         ))}
+        
         <div ref={messagesEndRef} />
       </div>
-      )}
-
-      {/* Input - Only show when not minimized */}
-      {!isMinimized && (
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          disabled={!isConnected || isLoading}
-          placeholder={!isConnected ? "Connect wallet to chat..." : "Type a message..."}
+      
+      {/* Input Area */}
+      <div className="chat-input-area">
+        <input
+          ref={inputRef}
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder={isConnected ? "Type your message..." : "Connect wallet to chat"}
+          disabled={!isConnected}
+          className="chat-input"
+        />
+        <button
+          onClick={() => void sendMessage()}
+          disabled={!isConnected || !newMessage.trim()}
+          className="chat-send-btn"
+        >
+          Send
+        </button>
+      </div>
+      
+      {/* Resize Handle */}
+      {isResizable && (
+        <div
+          className="chat-resize-handle"
+          onMouseDown={handleResizeStart}
         />
       )}
     </div>

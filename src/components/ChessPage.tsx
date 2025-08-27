@@ -7,9 +7,9 @@ import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
-  const [showChat, setShowChat] = useState(false);
   const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
   const [isInGame, setIsInGame] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(true);
 
   const handleClose = () => {
     // Navigate back to main site
@@ -26,13 +26,19 @@ const ChessPage: React.FC = () => {
     setChatInviteCode(undefined);
   };
 
-  const handleChatToggle = () => {
-    setShowChat(!showChat);
-  };
+
 
   const handleGameStart = (inviteCode?: string) => {
     setIsInGame(true);
     setChatInviteCode(inviteCode);
+  };
+
+  const handleChatToggle = () => {
+    setIsChatVisible(!isChatVisible);
+  };
+
+  const handleChatMinimize = () => {
+    setIsChatVisible(false);
   };
 
   return (
@@ -44,6 +50,7 @@ const ChessPage: React.FC = () => {
             onBackToModeSelect={handleBackToModeSelect}
             onGameStart={handleGameStart}
             onChatToggle={handleChatToggle}
+            isChatMinimized={!isChatVisible}
           />
         ) : (
           <ChessMultiplayer 
@@ -53,17 +60,19 @@ const ChessPage: React.FC = () => {
             onBackToModeSelect={handleBackToModeSelect}
             onGameStart={handleGameStart}
             onChatToggle={handleChatToggle}
+            isChatMinimized={!isChatVisible}
           />
         )}
       </div>
       
-      {/* Chat Component */}
+      {/* Independent Chat Window - Always Open */}
       <ChessChat
-        isOpen={showChat}
-        onClose={() => setShowChat(false)}
-        onMinimize={() => setShowChat(false)}
+        isOpen={isChatVisible}
+        onClose={() => {}} // Don't allow closing - always open
+        onMinimize={handleChatMinimize} // Allow minimizing
         currentInviteCode={chatInviteCode}
-        isInGame={isInGame}
+        isDraggable={true}
+        isResizable={true}
       />
     </div>
   );

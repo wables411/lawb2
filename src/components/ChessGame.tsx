@@ -10,7 +10,7 @@ import {
 } from '../firebaseLeaderboard';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
-import { SidebarChat } from './SidebarChat';
+
 import './ChessGame.css';
 
 // Game modes
@@ -46,6 +46,7 @@ interface ChessGameProps {
   onBackToModeSelect?: () => void;
   onGameStart?: (inviteCode?: string) => void;
   onChatToggle?: () => void;
+  isChatMinimized?: boolean;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -263,7 +264,7 @@ const useLichessAPI = () => {
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle }) => {
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized }) => {
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -1618,16 +1619,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </button>
 
           {/* Sidebar Toggle Buttons for Difficulty Selection */}
-          <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
-            <button
-              className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-              onClick={() => setSidebarView('leaderboard')}
-            >Leaderboard</button>
-            <button
-              className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-              onClick={() => setSidebarView('gallery')}
-            >Gallery</button>
-          </div>
+                        <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
+                <button
+                  className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('leaderboard')}
+                >Leaderboard</button>
+                <button
+                  className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                  onClick={() => setSidebarView('gallery')}
+                >Gallery</button>
+
+              </div>
 
           {/* Back to Chess Button */}
           <div style={{marginTop: '16px', justifyContent: 'center'}}>
@@ -1848,7 +1850,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const isOnline = gameMode === 'online';
 
   // Add state for sidebar view toggle
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat'>('leaderboard');
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('leaderboard');
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
   const handlePromotion = (promotionPiece: string) => {
@@ -1870,7 +1872,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   if (isOnline) {
     return (
-      <ChessMultiplayer onClose={onClose} onMinimize={onMinimize} fullscreen={fullscreen} />
+      <ChessMultiplayer 
+        onClose={onClose} 
+        onMinimize={onMinimize} 
+        fullscreen={fullscreen}
+        onChatToggle={onChatToggle}
+        isChatMinimized={isChatMinimized}
+      />
     );
   }
 
@@ -1882,6 +1890,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
+            {isChatMinimized && onChatToggle && (
+              <button 
+                className="chat-bubble-btn"
+                onClick={onChatToggle}
+                title="Open Chat"
+              >
+                💬
+              </button>
+            )}
             <button onClick={onClose}>×</button>
           </div>
         </div>
@@ -2072,13 +2089,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
                   onClick={() => setSidebarView('gallery')}
                 >Gallery</button>
-                <button
-                  className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => {
-                    console.log('[ChessGame] Chat button clicked, setting sidebarView to chat');
-                    setSidebarView('chat');
-                  }}
-                >💬 Chat</button>
+
               </div>
             </div>
           </div>
@@ -2095,6 +2106,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
+          {isChatMinimized && onChatToggle && (
+            <button 
+              className="chat-bubble-btn"
+              onClick={onChatToggle}
+              title="Open Chat"
+            >
+              💬
+            </button>
+          )}
           <button onClick={onClose}>×</button>
         </div>
       </div>
@@ -2147,16 +2167,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               {renderPieceGallery(true, 'Click pieces to learn more')}
             </div>
           )}
-          {sidebarView === 'chat' && (
-            <SidebarChat
-              currentInviteCode={undefined}
-              isInGame={false}
-            />
-          )}
-          {/* Debug info */}
-          <div style={{ fontSize: '10px', color: '#666', padding: '4px', textAlign: 'center' }}>
-            Current view: {sidebarView}
-          </div>
+
+
         </div>
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area">
@@ -2352,13 +2364,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
                   onClick={() => setSidebarView('gallery')}
                 >Gallery</button>
-                <button
-                  className={sidebarView === 'chat' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => {
-                    console.log('[ChessGame] Chat button clicked (second instance), setting sidebarView to chat');
-                    setSidebarView('chat');
-                  }}
-                >💬 Chat</button>
+
               </div>
             </div>
           )}

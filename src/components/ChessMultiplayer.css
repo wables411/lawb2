@@ -362,9 +362,14 @@
   background: #c0c0c0;
   border: 2px outset #c0c0c0;
   color: black;
-  padding: 4px 8px;
-  font-size: 12px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
   transition: all 0.1s ease;
 }
