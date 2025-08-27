@@ -17,7 +17,6 @@ interface ChatMessage {
 
 interface ChessChatProps {
   isOpen: boolean;
-  onClose: () => void;
   onMinimize: () => void;
   currentInviteCode?: string;
   isDraggable?: boolean;
@@ -26,7 +25,6 @@ interface ChessChatProps {
 
 export const ChessChat: React.FC<ChessChatProps> = ({
   isOpen,
-  onClose,
   onMinimize,
   currentInviteCode,
   isDraggable = true,
@@ -278,7 +276,6 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         </div>
         <div className="chat-controls">
           <button className="chat-btn minimize-btn" onClick={onMinimize}>_</button>
-          <button className="chat-btn close-btn" onClick={onClose}>×</button>
         </div>
       </div>
       

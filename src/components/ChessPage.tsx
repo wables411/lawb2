@@ -68,7 +68,6 @@ const ChessPage: React.FC = () => {
       {/* Independent Chat Window - Always Open */}
       <ChessChat
         isOpen={isChatVisible}
-        onClose={() => {}} // Don't allow closing - always open
         onMinimize={handleChatMinimize} // Allow minimizing
         currentInviteCode={chatInviteCode}
         isDraggable={true}
