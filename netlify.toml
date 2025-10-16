@@ -6,6 +6,11 @@
   NODE_VERSION = "18"
 
 [[redirects]]
+  from = "/api/stockfish"
+  to = "/.netlify/functions/stockfish"
+  status = 200
+
+[[redirects]]
   from = "/api/game-monitor"
   to = "/.netlify/functions/game-monitor"
   status = 200
@@ -13,11 +18,6 @@
 [[redirects]]
   from = "/api/game-monitor-simple"
   to = "/.netlify/functions/game-monitor-simple"
-  status = 200
-
-[[redirects]]
-  from = "/api/stockfish"
-  to = "/.netlify/functions/stockfish"
   status = 200
 
 [[redirects]]
