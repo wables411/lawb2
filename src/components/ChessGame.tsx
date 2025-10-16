@@ -1073,7 +1073,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       } else {
         // Hard: Stockfish API
         setStatus('AI is calculating...');
-        const fen = boardToFEN(board, currentPlayer);
+        const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
         const apiData = { fen, difficulty, movetime: 3000 };
@@ -1097,14 +1097,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             console.log('[DEBUG] Parsed move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
-              const piece = board[fromRow][fromCol];
-              console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board) });
-              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', board)) {
+              const piece = boardRef.current[fromRow][fromCol];
+              console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current) });
+              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
                 console.log('[DEBUG] Executing Stockfish move:', moveObj);
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
                 console.warn('[DEBUG] Invalid Stockfish move, falling back to random');
-                const fallbackMove = getRandomAIMove(board);
+                const fallbackMove = getRandomAIMove(boardRef.current);
                 if (fallbackMove) {
                   makeMove(fallbackMove.from, fallbackMove.to, true);
                 }
@@ -1113,7 +1113,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               }
             } else {
               console.warn('[DEBUG] Invalid move coordinates, falling back to random');
-              const fallbackMove = getRandomAIMove(board);
+              const fallbackMove = getRandomAIMove(boardRef.current);
               if (fallbackMove) {
                 makeMove(fallbackMove.from, fallbackMove.to, true);
               }
@@ -1122,7 +1122,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             }
           } else {
             console.warn('[DEBUG] Invalid move format from API, falling back to random');
-            const fallbackMove = getRandomAIMove(board);
+            const fallbackMove = getRandomAIMove(boardRef.current);
             if (fallbackMove) {
               makeMove(fallbackMove.from, fallbackMove.to, true);
             }
@@ -1132,7 +1132,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         }).catch((error) => {
           console.error('[DEBUG] Stockfish API error:', error);
           setStatus('AI error. Falling back to random moves.');
-          const fallbackMove = getRandomAIMove(board);
+          const fallbackMove = getRandomAIMove(boardRef.current);
           if (fallbackMove) {
             makeMove(fallbackMove.from, fallbackMove.to, true);
           }
@@ -1141,7 +1141,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         });
       }
     }
-  }, [currentPlayer, gameMode, difficulty, board, pieceState, stockfishReady]);
+  }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady]);
 
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
