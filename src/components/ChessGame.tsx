@@ -1076,7 +1076,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
-        const apiData = { fen, difficulty, movetime: 3000 };
+        const apiData = { fen, difficulty: difficulty === 'hard' ? 'grand-master' : 'intermediate', movetime: 3000 };
         fetch('https://lawb.xyz/.netlify/functions/stockfish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
