@@ -533,4 +533,4 @@ export async function handler(event) {
       body: JSON.stringify({ error: 'Internal server error' })
     };
   }
-} 
+}

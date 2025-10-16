@@ -16,6 +16,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/stockfish"
+  to = "/.netlify/functions/stockfish"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

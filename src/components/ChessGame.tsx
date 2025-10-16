@@ -192,7 +192,7 @@ const useStockfish = () => {
     try {
       // Use DigitalOcean VPS in production, local proxy in development
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const apiUrl = 'https://chess.lawb.xyz/api/stockfish'; // Use trusted HTTPS endpoint
+      const apiUrl = 'https://lawb.xyz/api/stockfish'; // Use main domain with Netlify function
       
       console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       
@@ -1077,7 +1077,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
         const apiData = { fen, difficulty, movetime: 3000 };
-        fetch('https://chess.lawb.xyz/api/stockfish', {
+        fetch('https://lawb.xyz/api/stockfish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(apiData)
