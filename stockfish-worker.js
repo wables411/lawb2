@@ -128,7 +128,7 @@ class AdvancedChessAI {
       const piece = board[row][col];
       if (piece) {
         const isWhite = piece === piece.toUpperCase();
-        score += isWhite ? 0.1 : -0.1;
+        score += isWhite ? 0.2 : -0.2;
       }
     }
     
@@ -137,6 +137,112 @@ class AdvancedChessAI {
     
     // Pawn structure evaluation
     score += this.evaluatePawnStructure(board);
+    
+    // Mobility evaluation
+    score += this.evaluateMobility(board);
+    
+    // Tactical evaluation
+    score += this.evaluateTactics(board);
+    
+    // Endgame evaluation
+    score += this.evaluateEndgame(board);
+    
+    return score;
+  }
+
+  // Evaluate piece mobility
+  evaluateMobility(board) {
+    let score = 0;
+    
+    // Count legal moves for each side
+    const whiteMoves = this.generateMoves(board, true).length;
+    const blackMoves = this.generateMoves(board, false).length;
+    
+    score += (whiteMoves - blackMoves) * 0.1;
+    
+    return score;
+  }
+
+  // Evaluate tactical patterns
+  evaluateTactics(board) {
+    let score = 0;
+    
+    // Look for forks, pins, skewers
+    score += this.findTacticalPatterns(board);
+    
+    return score;
+  }
+
+  // Find tactical patterns
+  findTacticalPatterns(board) {
+    let score = 0;
+    
+    // Simple fork detection (knight attacking two pieces)
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece && piece.toLowerCase() === 'n') {
+          const isWhite = piece === piece.toUpperCase();
+          const knightMoves = this.getKnightMoves(board, row, col, isWhite);
+          let attackedPieces = 0;
+          
+          for (const move of knightMoves) {
+            const target = board[move.to[0]][move.to[1]];
+            if (target && (target === target.toUpperCase()) !== isWhite) {
+              attackedPieces++;
+            }
+          }
+          
+          if (attackedPieces >= 2) {
+            score += isWhite ? 0.5 : -0.5;
+          }
+        }
+      }
+    }
+    
+    return score;
+  }
+
+  // Evaluate endgame
+  evaluateEndgame(board) {
+    let score = 0;
+    
+    // Count remaining pieces
+    let whitePieces = 0, blackPieces = 0;
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece) {
+          if (piece === piece.toUpperCase()) whitePieces++;
+          else blackPieces++;
+        }
+      }
+    }
+    
+    // If endgame (few pieces), activate king
+    if (whitePieces + blackPieces <= 8) {
+      score += this.evaluateKingActivity(board);
+    }
+    
+    return score;
+  }
+
+  // Evaluate king activity in endgame
+  evaluateKingActivity(board) {
+    let score = 0;
+    
+    // Find kings and evaluate their activity
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece && piece.toLowerCase() === 'k') {
+          const isWhite = piece === piece.toUpperCase();
+          const kingMoves = this.getKingMoves(board, row, col, isWhite);
+          const activity = kingMoves.length;
+          score += isWhite ? activity * 0.1 : -activity * 0.1;
+        }
+      }
+    }
     
     return score;
   }
@@ -381,7 +487,7 @@ class AdvancedChessAI {
     return moves;
   }
 
-  // Minimax with alpha-beta pruning
+  // Minimax with alpha-beta pruning and advanced features
   minimax(board, depth, isMaximizing, alpha = -Infinity, beta = Infinity) {
     if (depth === 0) {
       return this.evaluatePosition(board);
@@ -392,24 +498,27 @@ class AdvancedChessAI {
       return isMaximizing ? -1000 : 1000; // Checkmate
     }
     
+    // Sort moves for better alpha-beta pruning
+    const sortedMoves = this.sortMoves(board, moves);
+    
     if (isMaximizing) {
       let maxEval = -Infinity;
-      for (const move of moves) {
+      for (const move of sortedMoves) {
         const newBoard = this.makeMove(board, move);
         const eval = this.minimax(newBoard, depth - 1, false, alpha, beta);
         maxEval = Math.max(maxEval, eval);
         alpha = Math.max(alpha, eval);
-        if (beta <= alpha) break;
+        if (beta <= alpha) break; // Alpha-beta pruning
       }
       return maxEval;
     } else {
       let minEval = Infinity;
-      for (const move of moves) {
+      for (const move of sortedMoves) {
         const newBoard = this.makeMove(board, move);
         const eval = this.minimax(newBoard, depth - 1, true, alpha, beta);
         minEval = Math.min(minEval, eval);
         beta = Math.min(beta, eval);
-        if (beta <= alpha) break;
+        if (beta <= alpha) break; // Alpha-beta pruning
       }
       return minEval;
     }
@@ -426,7 +535,7 @@ class AdvancedChessAI {
   }
 
   // Get best move using advanced algorithms
-  getBestMove(fen, depth = 4) {
+  getBestMove(fen, depth = 6) {
     const board = this.parseFEN(fen);
     const moves = this.generateMoves(board, false); // Black to move
     
@@ -435,9 +544,12 @@ class AdvancedChessAI {
     let bestMove = null;
     let bestScore = -Infinity;
     
-    for (const move of moves) {
+    // Sort moves for better alpha-beta pruning (captures first, then center moves)
+    const sortedMoves = this.sortMoves(board, moves);
+    
+    for (const move of sortedMoves) {
       const newBoard = this.makeMove(board, move);
-      const score = this.minimax(newBoard, depth - 1, true);
+      const score = this.minimax(newBoard, depth - 1, true, -Infinity, Infinity);
       
       if (score > bestScore) {
         bestScore = score;
@@ -446,6 +558,31 @@ class AdvancedChessAI {
     }
     
     return bestMove;
+  }
+
+  // Sort moves for better alpha-beta pruning
+  sortMoves(board, moves) {
+    return moves.sort((a, b) => {
+      // Prioritize captures
+      const aCapture = board[a.to[0]][a.to[1]] !== null;
+      const bCapture = board[b.to[0]][b.to[1]] !== null;
+      if (aCapture && !bCapture) return -1;
+      if (!aCapture && bCapture) return 1;
+      
+      // Then prioritize center moves
+      const aCenter = this.isCenterMove(a.to);
+      const bCenter = this.isCenterMove(b.to);
+      if (aCenter && !bCenter) return -1;
+      if (!aCenter && bCenter) return 1;
+      
+      return 0;
+    });
+  }
+
+  // Check if move is to center
+  isCenterMove(to) {
+    const [row, col] = to;
+    return (row >= 2 && row <= 5) && (col >= 2 && col <= 5);
   }
 }
 
