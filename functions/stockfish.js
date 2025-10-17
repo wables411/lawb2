@@ -1,4 +1,75 @@
-// Stockfish API using external chess engines
+import { Chess } from 'chess.js';
+
+// Smart AI implementation using Chess.js
+function generateSmartMove(fen, difficulty = 'intermediate') {
+  try {
+    const chess = new Chess(fen);
+    
+    if (chess.isGameOver()) {
+      console.log('[DEBUG] Game is already over');
+      return null;
+    }
+    
+    const moves = chess.moves({ verbose: true });
+    if (moves.length === 0) {
+      console.log('[DEBUG] No moves available');
+      return null;
+    }
+    
+    let bestMove = null;
+    
+    // Check for checkmate first
+    const checkmateMoves = moves.filter(move => move.san.includes('#'));
+    if (checkmateMoves.length > 0) {
+      bestMove = checkmateMoves[0];
+    }
+    // Check for check
+    else if (moves.filter(move => move.san.includes('+')).length > 0) {
+      const checkMoves = moves.filter(move => move.san.includes('+'));
+      bestMove = checkMoves[0];
+    }
+    // Prioritize captures
+    else if (moves.filter(move => move.flags.includes('c')).length > 0) {
+      const captures = moves.filter(move => move.flags.includes('c'));
+      // Choose best capture based on piece values
+      const pieceValues = { 'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0 };
+      bestMove = captures.reduce((best, current) => {
+        const currentValue = pieceValues[current.captured?.toLowerCase()] || 0;
+        const bestValue = pieceValues[best.captured?.toLowerCase()] || 0;
+        return currentValue > bestValue ? current : best;
+      });
+    }
+    // Center control for opening/middlegame
+    else if (moves.filter(move => {
+      const to = move.to;
+      return (to === 'e4' || to === 'e5' || to === 'd4' || to === 'd5' || 
+              to === 'c4' || to === 'c5' || to === 'f4' || to === 'f5');
+    }).length > 0) {
+      const centerMoves = moves.filter(move => {
+        const to = move.to;
+        return (to === 'e4' || to === 'e5' || to === 'd4' || to === 'd5' || 
+                to === 'c4' || to === 'c5' || to === 'f4' || to === 'f5');
+      });
+      bestMove = centerMoves[Math.floor(Math.random() * centerMoves.length)];
+    }
+    // Random move as fallback
+    else {
+      bestMove = moves[Math.floor(Math.random() * moves.length)];
+    }
+    
+    if (!bestMove) {
+      bestMove = moves[Math.floor(Math.random() * moves.length)];
+    }
+    
+    console.log(`[DEBUG] Selected move: ${bestMove.san} (${bestMove.from}${bestMove.to})`);
+    return { from: bestMove.from, to: bestMove.to };
+    
+  } catch (error) {
+    console.log('[DEBUG] Error generating move:', error);
+    return null;
+  }
+}
+
 export async function handler(event) {
   // Enable CORS
   const headers = {
@@ -32,41 +103,20 @@ export async function handler(event) {
       };
     }
 
-    // Use Chess.com API for actual chess engine moves
-    const chessComUrl = `https://www.chess.com/callback/live/game/${Math.random().toString(36).substr(2, 9)}`;
+    // Generate smart move using Chess.js
+    const move = generateSmartMove(fen, difficulty);
     
-    // Alternative: Use a free chess API
-    const freeChessApiUrl = `https://chess-api.com/v1/stockfish`;
-    
-    console.log(`[DEBUG] Calling free chess API: ${freeChessApiUrl}`);
-    
-    const response = await fetch(freeChessApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        fen: fen,
-        depth: difficulty === 'grand-master' ? 20 : difficulty === 'master' ? 15 : 10
-      })
-    });
-
-    if (!response.ok) {
-      // Fallback to Lichess API
-      console.log('[DEBUG] Free chess API failed, trying Lichess API');
-      return await getLichessMove(fen, difficulty, headers);
+    if (!move) {
+      console.log('[DEBUG] No valid moves available');
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'No valid moves available' })
+      };
     }
 
-    const data = await response.json();
-    console.log('[DEBUG] Free chess API response:', data);
-
-    const bestmove = data.bestmove || data.move || data.best_move;
-    
-    if (!bestmove) {
-      console.log('[DEBUG] No moves from free chess API, trying Lichess');
-      return await getLichessMove(fen, difficulty, headers);
-    }
+    const bestmove = move.from + move.to;
+    console.log('[DEBUG] Returning move:', bestmove);
 
     return {
       statusCode: 200,
@@ -80,63 +130,6 @@ export async function handler(event) {
       statusCode: 500,
       headers,
       body: JSON.stringify({ error: 'Internal server error' })
-    };
-  }
-}
-
-// Fallback to Lichess API
-async function getLichessMove(fen, difficulty, headers) {
-  try {
-    const lichessUrl = `https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(fen)}&topGames=0&recentGames=0`;
-    
-    console.log(`[DEBUG] Calling Lichess API: ${lichessUrl}`);
-    
-    const response = await fetch(lichessUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'LawbChess/1.0'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Lichess API failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('[DEBUG] Lichess API response:', data);
-
-    // Get the best move from Lichess analysis
-    let bestmove = null;
-    
-    if (data.moves && data.moves.length > 0) {
-      // Sort moves by popularity/strength and pick the best one
-      const sortedMoves = data.moves.sort((a, b) => (b.white + b.black) - (a.white + a.black));
-      bestmove = sortedMoves[0].san;
-      console.log(`[DEBUG] Lichess best move: ${bestmove}`);
-    }
-
-    if (!bestmove) {
-      console.log('[DEBUG] No moves from Lichess API');
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'No valid moves available' })
-      };
-    }
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ bestmove: bestmove })
-    };
-
-  } catch (error) {
-    console.log('[DEBUG] Lichess API error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'External chess API error' })
     };
   }
 }
