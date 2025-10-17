@@ -85,7 +85,7 @@ const useStockfish = () => {
     const loadStockfish = () => {
       try {
         // Create Worker directly from the Worker file
-        const worker = new Worker('/stockfish.worker.js');
+        const worker = new Worker('/stockfish-worker.js');
         
         worker.onmessage = (event) => {
           console.log('[DEBUG] Stockfish worker message:', event.data);
@@ -1071,36 +1071,28 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }, 600);
       } else {
-        // Hard: Stockfish API
-        setStatus('AI is calculating...');
+        // Hard: Use Stockfish WASM directly
+        setStatus('Stockfish is calculating...');
         const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
-        const apiData = { fen, difficulty: difficulty === 'hard' ? 'grand-master' : 'intermediate', movetime: 3000 };
-        fetch('https://lawb.xyz/.netlify/functions/stockfish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(apiData)
-        }).then(response => {
-          if (response.ok) return response.json();
-          throw new Error('API call failed');
-        }).then(data => {
-          console.log('[DEBUG] Stockfish API response:', data);
-          const move = data.bestmove || data.move;
-          if (move && move !== '(none)' && move.length === 4) {
+        
+        // Use the Stockfish WASM worker directly
+        getStockfishMove(fen, 3000).then(move => {
+          if (move && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
             const fromRowStockfish = parseInt(move[1]);
             const toCol = move.charCodeAt(2) - 97;
             const toRowStockfish = parseInt(move[3]);
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
-            console.log('[DEBUG] Parsed move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
+            console.log('[DEBUG] Stockfish WASM move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               const piece = boardRef.current[fromRow][fromCol];
               console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current) });
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
-                console.log('[DEBUG] Executing Stockfish move:', moveObj);
+                console.log('[DEBUG] Executing Stockfish WASM move:', moveObj);
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
                 console.warn('[DEBUG] Invalid Stockfish move, falling back to random');
@@ -1121,7 +1113,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               apiCallInProgressRef.current = false;
             }
           } else {
-            console.warn('[DEBUG] Invalid move format from API, falling back to random');
+            console.warn('[DEBUG] Invalid move format from Stockfish, falling back to random');
             const fallbackMove = getRandomAIMove(boardRef.current);
             if (fallbackMove) {
               makeMove(fallbackMove.from, fallbackMove.to, true);
@@ -1130,8 +1122,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             apiCallInProgressRef.current = false;
           }
         }).catch((error) => {
-          console.error('[DEBUG] Stockfish API error:', error);
-          setStatus('AI error. Falling back to random moves.');
+          console.error('[DEBUG] Stockfish WASM error:', error);
+          setStatus('Stockfish error. Falling back to random moves.');
           const fallbackMove = getRandomAIMove(boardRef.current);
           if (fallbackMove) {
             makeMove(fallbackMove.from, fallbackMove.to, true);
