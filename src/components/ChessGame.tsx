@@ -71,43 +71,49 @@ type Difficulty = 'easy' | 'hard';
 // Stockfish integration for chess AI
 const useStockfish = () => {
   const [stockfishReady, setStockfishReady] = useState(false);
-  const stockfishRef = useRef<Worker | null>(null);
+  const stockfishEngineRef = useRef<any>(null);
   const isInitializingRef = useRef(false);
 
   useEffect(() => {
-    if (isInitializingRef.current || stockfishRef.current) {
+    if (isInitializingRef.current || stockfishEngineRef.current) {
       return; // Already initializing or already loaded
     }
 
     isInitializingRef.current = true;
-    console.log('[DEBUG] Initializing LawbBot...');
+    console.log('[DEBUG] Initializing Stockfish WASM...');
     
-    const loadStockfish = () => {
+    const loadStockfish = async () => {
       try {
-        // Create Worker directly from the Worker file
-        const worker = new Worker('/stockfish-worker.js');
+        // Import and initialize Stockfish WASM directly
+        const Stockfish = await import('https://unpkg.com/stockfish@15.1.0/stockfish.js');
+        const engine = Stockfish();
         
-        worker.onmessage = (event) => {
-          console.log('[DEBUG] Stockfish worker message:', event.data);
-        };
+        // Wait for engine to be ready
+        await new Promise((resolve) => {
+          engine.addMessageListener((message: string) => {
+            if (message === 'readyok') resolve(undefined);
+          });
+          engine.postMessage('isready');
+        });
         
-        worker.onerror = (error) => {
-          console.error('[DEBUG] Stockfish worker error:', error);
-          setStockfishReady(false);
-          isInitializingRef.current = false;
-        };
+        // Configure engine for maximum strength
+        engine.postMessage('setoption name Skill Level value 20');
+        engine.postMessage('setoption name MultiPV value 1');
+        engine.postMessage('setoption name Threads value 4');
+        engine.postMessage('setoption name Hash value 128');
+        engine.postMessage('setoption name Contempt value 0');
+        engine.postMessage('setoption name Move Overhead value 10');
+        engine.postMessage('setoption name Minimum Thinking Time value 20');
+        engine.postMessage('setoption name Slow Mover value 100');
+        engine.postMessage('setoption name UCI_Chess960 value false');
         
-        // Worker is ready immediately after creation
-        console.log('[DEBUG] LawbBot initialized successfully');
-        stockfishRef.current = worker;
+        console.log('[DEBUG] Stockfish WASM initialized successfully');
+        stockfishEngineRef.current = engine;
         setStockfishReady(true);
         isInitializingRef.current = false;
         
-        // Configure Stockfish for better performance - these will be sent when needed
-        console.log('[DEBUG] Stockfish worker ready for commands');
-        
       } catch (error) {
-        console.error('[DEBUG] Failed to create Stockfish worker:', error);
+        console.error('[DEBUG] Failed to initialize Stockfish WASM:', error);
         setStockfishReady(false);
         isInitializingRef.current = false;
       }
@@ -116,13 +122,13 @@ const useStockfish = () => {
     void loadStockfish();
 
     return () => {
-      if (stockfishRef.current) {
+      if (stockfishEngineRef.current) {
         try {
-          stockfishRef.current.terminate();
+          stockfishEngineRef.current.terminate?.();
         } catch (e) {
-          console.warn('[DEBUG] Error terminating LawbBot:', e);
+          console.warn('[DEBUG] Error terminating Stockfish:', e);
         }
-        stockfishRef.current = null;
+        stockfishEngineRef.current = null;
       }
       isInitializingRef.current = false;
     };
@@ -130,7 +136,7 @@ const useStockfish = () => {
 
   const getStockfishMove = useCallback((fen: string, timeLimit: number = 4000): Promise<string | null> => {
     return new Promise((resolve) => {
-      if (!stockfishRef.current) {
+      if (!stockfishEngineRef.current) {
         console.warn('[DEBUG] Stockfish not ready, using fallback');
         resolve(null);
         return;
@@ -140,31 +146,30 @@ const useStockfish = () => {
       let bestMove: string | null = null;
       let isResolved = false;
 
-      const messageHandler = (event: MessageEvent) => {
-        const message = event.data;
+      const messageHandler = (message: string) => {
         if (typeof message === 'string' && message.startsWith('bestmove ')) {
           const parts = message.split(' ');
           bestMove = parts[1] || null;
           console.log('[DEBUG] Stockfish bestmove found:', bestMove);
           if (!isResolved) {
             isResolved = true;
-            stockfishRef.current?.removeEventListener('message', messageHandler);
+            stockfishEngineRef.current?.removeMessageListener?.(messageHandler);
             resolve(bestMove);
           }
         }
       };
 
       try {
-        stockfishRef.current.addEventListener('message', messageHandler);
+        stockfishEngineRef.current.addMessageListener(messageHandler);
 
         // Set up Stockfish with higher depth
-        stockfishRef.current.postMessage('uci');
-        stockfishRef.current.postMessage('isready');
-        stockfishRef.current.postMessage(`position fen ${fen}`);
+        stockfishEngineRef.current.postMessage('uci');
+        stockfishEngineRef.current.postMessage('isready');
+        stockfishEngineRef.current.postMessage(`position fen ${fen}`);
         
-        // Use longer time limits
+        // Use longer time limits and higher depth for maximum strength
         const adjustedTimeLimit = timeLimit > 5000 ? timeLimit * 1.5 : timeLimit;
-        stockfishRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 20`);
+        stockfishEngineRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 20`);
 
         // Timeout fallback
         const timeoutDuration = timeLimit > 5000 ? timeLimit * 2 : timeLimit + 1000;
@@ -172,7 +177,7 @@ const useStockfish = () => {
           if (!isResolved) {
             isResolved = true;
             try {
-              stockfishRef.current?.removeEventListener('message', messageHandler);
+              stockfishEngineRef.current?.removeMessageListener?.(messageHandler);
             } catch (e) {
               console.warn('[DEBUG] Error removing message listener:', e);
             }
