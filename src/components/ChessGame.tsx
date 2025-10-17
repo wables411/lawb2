@@ -84,59 +84,27 @@ const useStockfish = () => {
     
     const loadStockfish = async () => {
       try {
-        // Load Stockfish dynamically at runtime to avoid TypeScript compilation issues
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/stockfish@15.1.0/stockfish.js';
-        script.async = true;
+        // Use the local Stockfish worker that's already in the public directory
+        const worker = new Worker('/stockfish-worker.js');
         
-        script.onload = () => {
-          try {
-            // @ts-ignore - Stockfish is loaded globally
-            const Stockfish = (window as any).Stockfish;
-            if (Stockfish) {
-              const engine = Stockfish();
-              
-              // Wait for engine to be ready
-              engine.addMessageListener((message: string) => {
-                if (message === 'readyok') {
-                  // Configure engine for maximum strength
-                  engine.postMessage('setoption name Skill Level value 20');
-                  engine.postMessage('setoption name MultiPV value 1');
-                  engine.postMessage('setoption name Threads value 4');
-                  engine.postMessage('setoption name Hash value 128');
-                  engine.postMessage('setoption name Contempt value 0');
-                  engine.postMessage('setoption name Move Overhead value 10');
-                  engine.postMessage('setoption name Minimum Thinking Time value 20');
-                  engine.postMessage('setoption name Slow Mover value 100');
-                  engine.postMessage('setoption name UCI_Chess960 value false');
-                  
-                  console.log('[DEBUG] Stockfish WASM initialized successfully');
-                  stockfishEngineRef.current = engine;
-                  setStockfishReady(true);
-                  isInitializingRef.current = false;
-                }
-              });
-              engine.postMessage('isready');
-            } else {
-              throw new Error('Stockfish not found on window object');
-            }
-          } catch (error) {
-            console.error('[DEBUG] Failed to initialize Stockfish WASM:', error);
-            setStockfishReady(false);
-            isInitializingRef.current = false;
-          }
+        worker.onmessage = (event) => {
+          console.log('[DEBUG] Stockfish worker message:', event.data);
         };
         
-        script.onerror = () => {
-          console.error('[DEBUG] Failed to load Stockfish script');
+        worker.onerror = (error) => {
+          console.error('[DEBUG] Stockfish worker error:', error);
           setStockfishReady(false);
           isInitializingRef.current = false;
         };
         
-        document.head.appendChild(script);
+        // Worker is ready immediately after creation
+        console.log('[DEBUG] Stockfish worker initialized successfully');
+        stockfishEngineRef.current = worker;
+        setStockfishReady(true);
+        isInitializingRef.current = false;
         
       } catch (error) {
-        console.error('[DEBUG] Failed to load Stockfish:', error);
+        console.error('[DEBUG] Failed to create Stockfish worker:', error);
         setStockfishReady(false);
         isInitializingRef.current = false;
       }
@@ -169,21 +137,22 @@ const useStockfish = () => {
       let bestMove: string | null = null;
       let isResolved = false;
 
-      const messageHandler = (message: string) => {
+      const messageHandler = (event: MessageEvent) => {
+        const message = event.data;
         if (typeof message === 'string' && message.startsWith('bestmove ')) {
           const parts = message.split(' ');
           bestMove = parts[1] || null;
           console.log('[DEBUG] Stockfish bestmove found:', bestMove);
           if (!isResolved) {
             isResolved = true;
-            stockfishEngineRef.current?.removeMessageListener?.(messageHandler);
+            stockfishEngineRef.current?.removeEventListener('message', messageHandler);
             resolve(bestMove);
           }
         }
       };
 
       try {
-        stockfishEngineRef.current.addMessageListener(messageHandler);
+        stockfishEngineRef.current.addEventListener('message', messageHandler);
 
         // Set up Stockfish with higher depth
         stockfishEngineRef.current.postMessage('uci');
@@ -200,7 +169,7 @@ const useStockfish = () => {
           if (!isResolved) {
             isResolved = true;
             try {
-              stockfishEngineRef.current?.removeMessageListener?.(messageHandler);
+              stockfishEngineRef.current?.removeEventListener('message', messageHandler);
             } catch (e) {
               console.warn('[DEBUG] Error removing message listener:', e);
             }
