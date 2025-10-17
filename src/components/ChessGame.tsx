@@ -84,36 +84,59 @@ const useStockfish = () => {
     
     const loadStockfish = async () => {
       try {
-        // Import and initialize Stockfish WASM directly
-        const Stockfish = await import('https://unpkg.com/stockfish@15.1.0/stockfish.js');
-        const engine = Stockfish();
+        // Load Stockfish dynamically at runtime to avoid TypeScript compilation issues
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/stockfish@15.1.0/stockfish.js';
+        script.async = true;
         
-        // Wait for engine to be ready
-        await new Promise((resolve) => {
-          engine.addMessageListener((message: string) => {
-            if (message === 'readyok') resolve(undefined);
-          });
-          engine.postMessage('isready');
-        });
+        script.onload = () => {
+          try {
+            // @ts-ignore - Stockfish is loaded globally
+            const Stockfish = (window as any).Stockfish;
+            if (Stockfish) {
+              const engine = Stockfish();
+              
+              // Wait for engine to be ready
+              engine.addMessageListener((message: string) => {
+                if (message === 'readyok') {
+                  // Configure engine for maximum strength
+                  engine.postMessage('setoption name Skill Level value 20');
+                  engine.postMessage('setoption name MultiPV value 1');
+                  engine.postMessage('setoption name Threads value 4');
+                  engine.postMessage('setoption name Hash value 128');
+                  engine.postMessage('setoption name Contempt value 0');
+                  engine.postMessage('setoption name Move Overhead value 10');
+                  engine.postMessage('setoption name Minimum Thinking Time value 20');
+                  engine.postMessage('setoption name Slow Mover value 100');
+                  engine.postMessage('setoption name UCI_Chess960 value false');
+                  
+                  console.log('[DEBUG] Stockfish WASM initialized successfully');
+                  stockfishEngineRef.current = engine;
+                  setStockfishReady(true);
+                  isInitializingRef.current = false;
+                }
+              });
+              engine.postMessage('isready');
+            } else {
+              throw new Error('Stockfish not found on window object');
+            }
+          } catch (error) {
+            console.error('[DEBUG] Failed to initialize Stockfish WASM:', error);
+            setStockfishReady(false);
+            isInitializingRef.current = false;
+          }
+        };
         
-        // Configure engine for maximum strength
-        engine.postMessage('setoption name Skill Level value 20');
-        engine.postMessage('setoption name MultiPV value 1');
-        engine.postMessage('setoption name Threads value 4');
-        engine.postMessage('setoption name Hash value 128');
-        engine.postMessage('setoption name Contempt value 0');
-        engine.postMessage('setoption name Move Overhead value 10');
-        engine.postMessage('setoption name Minimum Thinking Time value 20');
-        engine.postMessage('setoption name Slow Mover value 100');
-        engine.postMessage('setoption name UCI_Chess960 value false');
+        script.onerror = () => {
+          console.error('[DEBUG] Failed to load Stockfish script');
+          setStockfishReady(false);
+          isInitializingRef.current = false;
+        };
         
-        console.log('[DEBUG] Stockfish WASM initialized successfully');
-        stockfishEngineRef.current = engine;
-        setStockfishReady(true);
-        isInitializingRef.current = false;
+        document.head.appendChild(script);
         
       } catch (error) {
-        console.error('[DEBUG] Failed to initialize Stockfish WASM:', error);
+        console.error('[DEBUG] Failed to load Stockfish:', error);
         setStockfishReady(false);
         isInitializingRef.current = false;
       }
