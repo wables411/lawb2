@@ -38,7 +38,19 @@
 }
 
 *::-webkit-scrollbar-corner {
-  background: transparent;
+  background: transparent !important;
+  display: none !important;
+}
+
+/* Hide any resize handles or grips */
+* {
+  resize: none !important;
+}
+
+/* Hide webkit resize handles */
+*::-webkit-resizer {
+  display: none !important;
+  background: transparent !important;
 }
 
 /* Animated background when game is active */
