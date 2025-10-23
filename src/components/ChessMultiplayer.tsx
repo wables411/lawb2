@@ -4927,6 +4927,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               >
                 Gallery
               </button>
+              <button 
+                className="tab-button menu-button"
+                onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}
+              >
+                Menu
+              </button>
+              {onBackToModeSelect && (
+                <button 
+                  className="tab-button menu-button"
+                  onClick={onBackToModeSelect}
+                >
+                  Mode Select
+                </button>
+              )}
             </div>
 
             {/* Tab Content */}
@@ -5326,11 +5340,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </div>
                 
                 <div className="game-controls-compact">
-                  <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>New Match</button>
-                  {onBackToModeSelect && (
-                    <button onClick={onBackToModeSelect}>Mode Select</button>
-                  )}
-                  <button onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}>Menu</button>
+                  {/* Menu buttons moved to left sidebar */}
                 </div>
               </div>
             </>
