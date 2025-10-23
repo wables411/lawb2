@@ -2503,11 +2503,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             const gameData = await firebaseChess.getGame(inviteCode);
             console.log('[DEBUG] Game data:', gameData);
             console.log('[DEBUG] Current UI state - gameMode:', gameMode, 'playerColor:', playerColor, 'opponent:', opponent);
+            console.log('[DEBUG] Transaction state - joinGameHash:', joinGameHash, 'pendingJoinGameData:', pendingJoinGameData);
+            console.log('[DEBUG] Game state:', gameData?.game_state, 'Blue player:', gameData?.blue_player, 'Red player:', gameData?.red_player);
+            
+            // Return the data for inspection
+            return {
+              inviteCode,
+              gameData,
+              gameMode,
+              playerColor,
+              opponent,
+              joinGameHash,
+              pendingJoinGameData
+            };
           } catch (error) {
             console.error('[DEBUG] Error checking game state:', error);
+            return { error: error instanceof Error ? error.message : String(error) };
           }
         } else {
           console.log('[DEBUG] No invite code available');
+          return { error: 'No invite code available' };
         }
       };
       
