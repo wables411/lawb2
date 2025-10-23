@@ -266,8 +266,8 @@
 }
 
 .gallery-piece img {
-  width: 24px;
-  height: 24px;
+  width: 54px;
+  height: 54px;
   object-fit: contain;
   margin-bottom: 4px;
 }
@@ -304,8 +304,8 @@
   }
   
   .gallery-piece img {
-    width: 20px;
-    height: 20px;
+    width: 45px;
+    height: 45px;
   }
   
   .piece-name {
@@ -330,8 +330,8 @@
   }
   
   .gallery-piece img {
-    width: 18px;
-    height: 18px;
+    width: 40px;
+    height: 40px;
   }
   
   .piece-name {
@@ -357,8 +357,8 @@
   }
   
   .gallery-piece img {
-    width: 28px;
-    height: 28px;
+    width: 63px;
+    height: 63px;
   }
   
   .piece-name {
