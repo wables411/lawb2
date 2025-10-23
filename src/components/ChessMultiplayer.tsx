@@ -900,12 +900,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         });
     } else if (joinGameHash && !isWaitingForJoinReceipt && !pendingJoinGameData && inviteCode) {
       // FALLBACK: Handle case where transaction is confirmed but pendingJoinGameData is missing
-      console.log('[CONTRACT_FALLBACK] Join transaction confirmed but pendingJoinGameData missing, attempting to recover');
+      console.log('[CONTRACT_FALLBACK] Join transaction confirmed but pendingJoinGameData missing');
+      console.log('[CONTRACT_FALLBACK] Attempting to recover with inviteCode:', inviteCode);
+      console.log('[CONTRACT_FALLBACK] Current address:', address);
       
-      // Try to get the game data from Firebase and update it
       firebaseChess.getGame(inviteCode).then(gameData => {
+        console.log('[CONTRACT_FALLBACK] Retrieved game data:', gameData);
+        
         if (gameData && gameData.blue_player && address) {
-          console.log('[CONTRACT_FALLBACK] Found game data, updating to active state');
+          console.log('[CONTRACT_FALLBACK] Game data valid, updating to active state');
+          
+          // Check if red_player is already set
+          if (gameData.red_player && gameData.red_player !== '0x0000000000000000000000000000000000000000') {
+            console.log('[CONTRACT_FALLBACK] Red player already set:', gameData.red_player);
+            // Just update UI
+            setGameMode(GameMode.ACTIVE);
+            setShowGame(true);
+            setGameStatus('Game started!');
+            setPlayerColor('red');
+            setOpponent(gameData.blue_player);
+            return;
+          }
           
           firebaseChess.updateGame(inviteCode, {
             ...gameData,
@@ -920,6 +935,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setOpponent(gameData.blue_player);
           }).catch(error => {
             console.error('[CONTRACT_FALLBACK] Error updating Firebase:', error);
+            // Force UI update anyway since transaction is confirmed
+            console.log('[CONTRACT_FALLBACK] Forcing UI update despite Firebase error');
+            setGameMode(GameMode.ACTIVE);
+            setShowGame(true);
+            setGameStatus('Game started!');
+            setPlayerColor('red');
+            setOpponent(gameData.blue_player);
+          });
+        } else {
+          console.error('[CONTRACT_FALLBACK] Invalid game data or missing fields:', {
+            hasGameData: !!gameData,
+            hasBluePlayer: gameData?.blue_player,
+            hasAddress: !!address
           });
         }
       }).catch(error => {
@@ -927,6 +955,51 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       });
     }
   }, [joinGameHash, isWaitingForJoinReceipt, pendingJoinGameData, address, inviteCode]);
+
+  // Add periodic check for contract state to catch missed updates
+  useEffect(() => {
+    if (joinGameHash && address && inviteCode && gameMode === GameMode.WAITING) {
+      console.log('[CONTRACT_STATE_CHECK] Setting up periodic contract state check');
+      
+      const interval = setInterval(async () => {
+        try {
+          const gameData = await firebaseChess.getGame(inviteCode);
+          console.log('[CONTRACT_STATE_CHECK] Current game state:', gameData?.game_state);
+          
+          // If game should be active but UI is still waiting, force transition
+          if (gameData && gameData.blue_player && gameData.red_player && 
+              gameData.red_player !== '0x0000000000000000000000000000000000000000' &&
+              gameData.game_state === 'waiting_for_join') {
+            
+            console.log('[CONTRACT_STATE_CHECK] Game has both players but wrong state, fixing...');
+            
+            // Update Firebase to active
+            await firebaseChess.updateGame(inviteCode, {
+              ...gameData,
+              game_state: 'active'
+            });
+            
+            console.log('[CONTRACT_STATE_CHECK] Firebase updated, transitioning UI');
+            setGameMode(GameMode.ACTIVE);
+            setShowGame(true);
+            setGameStatus('Game started!');
+          } else if (gameData && gameData.game_state === 'active' && gameMode === GameMode.WAITING) {
+            console.log('[CONTRACT_STATE_CHECK] Game is active in Firebase, transitioning UI');
+            setGameMode(GameMode.ACTIVE);
+            setShowGame(true);
+            setGameStatus('Game started!');
+          }
+        } catch (error) {
+          console.error('[CONTRACT_STATE_CHECK] Error:', error);
+        }
+      }, 3000); // Check every 3 seconds
+      
+      return () => {
+        console.log('[CONTRACT_STATE_CHECK] Cleaning up periodic check');
+        clearInterval(interval);
+      };
+    }
+  }, [joinGameHash, address, inviteCode, gameMode]);
 
   // Handle transaction receipt for claim winnings
   useEffect(() => {
@@ -1106,7 +1179,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const timeoutId = setTimeout(() => {
         console.log('[AUTO-CLEAR] Pending join data has been stuck for too long, clearing automatically');
         setPendingJoinGameData(null);
-      }, 30000); // 30 seconds timeout
+      }, 300000); // 5 minutes timeout - allows for slow blockchain confirmations
       
       return () => clearTimeout(timeoutId);
     }
