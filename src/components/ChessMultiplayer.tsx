@@ -713,7 +713,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
-  const [sidebarView, setSidebarView] = useState<'moves'>('moves'); // Only moves available
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery'>('moves');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
   const [gameJustFinished, setGameJustFinished] = useState(false);
@@ -4907,6 +4907,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         {/* Left Sidebar - Show only during active gameplay, not in lobby */}
         {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
           <div className="left-sidebar">
+            {/* Tab Navigation */}
+            <div className="sidebar-tabs">
+              <button 
+                className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
+                onClick={() => setSidebarView('moves')}
+              >
+                Moves
+              </button>
+              <button 
+                className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
+                onClick={() => setSidebarView('leaderboard')}
+              >
+                Leaderboard
+              </button>
+              <button 
+                className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
+                onClick={() => setSidebarView('gallery')}
+              >
+                Gallery
+              </button>
+            </div>
+
+            {/* Tab Content */}
             {sidebarView === 'moves' && (
               <div className="move-history-compact">
                 <div className="move-history-title">Moves</div>
@@ -4915,6 +4938,44 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     <li key={moveHistory.length - 1 - idx}>{move}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {sidebarView === 'leaderboard' && (
+              <div className="leaderboard-compact">
+                <div className="leaderboard-title">Leaderboard</div>
+                <div className="leaderboard-list">
+                  {leaderboard.slice(0, 10).map((entry, index) => (
+                    <div key={entry.username} className="leaderboard-entry">
+                      <span className="rank">#{index + 1}</span>
+                      <span className="player">{formatLeaderboardAddress(entry.username)}</span>
+                      <span className="score">{entry.points}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sidebarView === 'gallery' && (
+              <div className="piece-gallery-compact">
+                <div className="gallery-title">Piece Gallery</div>
+                <div className="gallery-grid">
+                  {pieceGallery.map((piece) => (
+                    <div 
+                      key={piece.key} 
+                      className={`gallery-piece ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
+                      onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
+                    >
+                      <img src={piece.img} alt={piece.name} />
+                      <div className="piece-name">{piece.name}</div>
+                    </div>
+                  ))}
+                </div>
+                {selectedGalleryPiece && (
+                  <div className="piece-description">
+                    {pieceGallery.find(p => p.key === selectedGalleryPiece)?.desc}
+                  </div>
+                )}
               </div>
             )}
           </div>
