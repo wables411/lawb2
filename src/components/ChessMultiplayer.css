@@ -225,9 +225,10 @@
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
   margin-bottom: 10px;
+  overflow-x: auto;
 }
 
 .gallery-piece {
@@ -279,47 +280,21 @@
   margin-top: 6px;
 }
 
-/* Responsive Gallery Layout */
+/* Responsive Gallery Layout - Single Row */
 @media (max-width: 768px) {
   .gallery-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-  }
-  
-  .gallery-piece {
-    padding: 4px;
-    min-height: 50px;
-  }
-  
-  .gallery-piece img {
-    width: 20px;
-    height: 20px;
-  }
-  
-  .piece-name {
-    font-size: 9px;
-  }
-  
-  .piece-description {
-    font-size: 9px;
-    padding: 4px;
-  }
-}
-
-@media (max-width: 480px) {
-  .gallery-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(12, 1fr);
     gap: 3px;
   }
   
   .gallery-piece {
     padding: 3px;
-    min-height: 45px;
+    min-height: 40px;
   }
   
   .gallery-piece img {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
   
   .piece-name {
@@ -332,30 +307,56 @@
   }
 }
 
-/* Large screens - more spacious layout */
-@media (min-width: 1200px) {
+@media (max-width: 480px) {
   .gallery-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 2px;
   }
   
   .gallery-piece {
-    padding: 8px;
-    min-height: 70px;
+    padding: 2px;
+    min-height: 35px;
   }
   
   .gallery-piece img {
-    width: 28px;
-    height: 28px;
+    width: 14px;
+    height: 14px;
   }
   
   .piece-name {
-    font-size: 11px;
+    font-size: 7px;
   }
   
   .piece-description {
-    font-size: 11px;
-    padding: 8px;
+    font-size: 7px;
+    padding: 2px;
+  }
+}
+
+/* Large screens - single row with larger pieces */
+@media (min-width: 1200px) {
+  .gallery-grid {
+    grid-template-columns: repeat(12, 1fr);
+    gap: 6px;
+  }
+  
+  .gallery-piece {
+    padding: 6px;
+    min-height: 60px;
+  }
+  
+  .gallery-piece img {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .piece-name {
+    font-size: 10px;
+  }
+  
+  .piece-description {
+    font-size: 10px;
+    padding: 6px;
   }
 }
 
