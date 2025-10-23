@@ -240,6 +240,7 @@
   grid-template-columns: 1fr;
   gap: 6px;
   margin-bottom: 10px;
+  width: 100%;
 }
 
 .gallery-piece {
@@ -254,7 +255,9 @@
   transition: all 0.2s ease;
   min-height: 90px;
   width: 100%;
+  max-width: 100%;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .gallery-piece:hover {
@@ -298,6 +301,7 @@
   .gallery-grid {
     grid-template-columns: 1fr;
     gap: 4px;
+    width: 100%;
   }
   
   .gallery-piece {
@@ -324,6 +328,7 @@
   .gallery-grid {
     grid-template-columns: 1fr;
     gap: 3px;
+    width: 100%;
   }
   
   .gallery-piece {
@@ -351,6 +356,7 @@
   .gallery-grid {
     grid-template-columns: 1fr;
     gap: 8px;
+    width: 100%;
   }
   
   .gallery-piece {
