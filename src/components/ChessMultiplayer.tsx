@@ -5339,9 +5339,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   </div>
                 </div>
                 
-                <div className="game-controls-compact">
-                  {/* Menu buttons moved to left sidebar */}
-                </div>
               </div>
             </>
           )}
