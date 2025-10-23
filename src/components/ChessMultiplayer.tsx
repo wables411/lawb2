@@ -2648,6 +2648,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           console.log('[DEBUG] No invite code or address available');
         }
       };
+      
+      // Expose firebaseChess to window for debugging
+      (window as any).firebaseChess = firebaseChess;
     }
   }, [inviteCode, gameMode, playerColor, opponent]);
 
