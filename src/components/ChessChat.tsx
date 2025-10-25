@@ -21,6 +21,7 @@ interface ChessChatProps {
   currentInviteCode?: string;
   isDraggable?: boolean;
   isResizable?: boolean;
+  isMobile?: boolean;
 }
 
 export const ChessChat: React.FC<ChessChatProps> = ({
@@ -28,7 +29,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   onMinimize,
   currentInviteCode,
   isDraggable = true,
-  isResizable = true
+  isResizable = true,
+  isMobile = false
 }) => {
   const { address: walletAddress, isConnected } = useAccount();
   
@@ -255,8 +257,15 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   return (
     <div
       ref={chatRef}
-      className="chess-chat-window"
-      style={{
+      className={`chess-chat-window ${isMobile ? 'mobile' : 'desktop'}`}
+      style={isMobile ? {
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 1000
+      } : {
         position: 'fixed',
         left: position.x,
         top: position.y,

@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
   const [isInGame, setIsInGame] = useState(false);
-  const [isChatVisible, setIsChatVisible] = useState(true);
+  const [isChatVisible, setIsChatVisible] = useState(!isMobile); // Hide chat by default on mobile
 
   const handleClose = () => {
     // Navigate back to main site
@@ -42,7 +44,7 @@ const ChessPage: React.FC = () => {
   };
 
   return (
-    <div className="chess-page">
+    <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
           <ChessGame 
@@ -51,6 +53,7 @@ const ChessPage: React.FC = () => {
             onGameStart={handleGameStart}
             onChatToggle={handleChatToggle}
             isChatMinimized={!isChatVisible}
+            isMobile={isMobile}
           />
         ) : (
           <ChessMultiplayer 
@@ -61,6 +64,7 @@ const ChessPage: React.FC = () => {
             onGameStart={handleGameStart}
             onChatToggle={handleChatToggle}
             isChatMinimized={!isChatVisible}
+            isMobile={isMobile}
           />
         )}
       </div>
@@ -70,8 +74,9 @@ const ChessPage: React.FC = () => {
         isOpen={isChatVisible}
         onMinimize={handleChatMinimize} // Allow minimizing
         currentInviteCode={chatInviteCode}
-        isDraggable={true}
-        isResizable={true}
+        isDraggable={!isMobile}
+        isResizable={!isMobile}
+        isMobile={isMobile}
       />
     </div>
   );

@@ -1475,6 +1475,39 @@ body, html {
   }
 }
 
+/* --- Mobile Layout Styles --- */
+.chess-game.mobile .game-stable-layout {
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.chess-game.mobile .left-sidebar,
+.chess-game.mobile .right-sidebar {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  max-height: 30vh;
+  order: 2;
+}
+
+.chess-game.mobile .center-area {
+  order: 1;
+  width: 100%;
+  max-width: none;
+}
+
+.chess-game.mobile .chessboard-container {
+  max-width: 90vw;
+  max-height: 60vh;
+  margin: 0 auto;
+}
+
+.chess-game.mobile .chessboard {
+  max-width: 90vw;
+  max-height: 60vh;
+}
+
 /* --- Mobile Device Specific Styles --- */
 .mobile-device {
   touch-action: manipulation;
@@ -1484,6 +1517,152 @@ body, html {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+/* Mobile-specific media queries */
+@media (max-width: 768px) {
+  .chess-game.mobile .game-stable-layout {
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .chess-game.mobile .left-sidebar,
+  .chess-game.mobile .right-sidebar {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    max-height: 30vh;
+    order: 2;
+  }
+
+  .chess-game.mobile .center-area {
+    order: 1;
+    width: 100%;
+    max-width: none;
+  }
+
+  .chess-game.mobile .chessboard-container {
+    max-width: 90vw;
+    max-height: 60vh;
+    margin: 0 auto;
+  }
+
+  .chess-game.mobile .chessboard {
+    max-width: 90vw;
+    max-height: 60vh;
+  }
+
+  /* Mobile touch optimizations */
+  .square {
+    min-height: 50px;
+    min-width: 50px;
+    touch-action: manipulation;
+  }
+  
+  .piece {
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  
+  /* Larger buttons for mobile */
+  .game-controls-compact button,
+  .mode-btn-compact,
+  .start-btn-compact,
+  .sidebar-toggle-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    touch-action: manipulation;
+  }
+  
+  /* Better touch feedback */
+  .square:active,
+  .piece:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Mobile-optimized sidebar */
+  .left-sidebar {
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile-friendly game info */
+  .game-info-compact {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+  
+  .game-info-compact span {
+    font-size: 14px;
+    margin: 0 4px;
+  }
+  
+  /* Mobile-optimized leaderboard */
+  .leaderboard-table-compact th,
+  .leaderboard-table-compact td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  /* Mobile-friendly help section */
+  .help-content {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  .help-content ul,
+  .help-content ol {
+    padding-left: 20px;
+  }
+  
+  .help-content li {
+    margin-bottom: 4px;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 600px) {
+  .chess-game.mobile .game-stable-layout {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .chess-game.mobile .left-sidebar,
+  .chess-game.mobile .right-sidebar {
+    max-height: 25vh;
+    font-size: 12px;
+  }
+
+  .chess-game.mobile .chessboard-container {
+    max-width: 95vw;
+    max-height: 50vh;
+  }
+
+  .chess-game.mobile .chessboard {
+    max-width: 95vw;
+    max-height: 50vh;
+  }
+
+  /* Smaller touch targets for very small screens */
+  .square {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .game-controls-compact button,
+  .mode-btn-compact,
+  .start-btn-compact,
+  .sidebar-toggle-btn {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
 }
 
 .mobile-device .chessboard {

@@ -2607,8 +2607,74 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   aspect-ratio: 1 / 1 !important;
 }
 
+/* --- Mobile Layout Styles --- */
+.chess-game.mobile .game-stable-layout {
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.chess-game.mobile .left-sidebar,
+.chess-game.mobile .right-sidebar {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  max-height: 30vh;
+  order: 2;
+}
+
+.chess-game.mobile .center-area {
+  order: 1;
+  width: 100%;
+  max-width: none;
+}
+
+.chess-game.mobile .chessboard-container {
+  max-width: 90vw;
+  max-height: 60vh;
+  margin: 0 auto;
+}
+
+.chess-game.mobile .chessboard {
+  max-width: 90vw;
+  max-height: 60vh;
+}
+
 /* --- Mobile Touch Optimizations --- */
 @media (max-width: 768px) {
+  /* Mobile layout for all chess games */
+  .chess-game.mobile .game-stable-layout {
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .chess-game.mobile .left-sidebar,
+  .chess-game.mobile .right-sidebar {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    max-height: 30vh;
+    order: 2;
+  }
+
+  .chess-game.mobile .center-area {
+    order: 1;
+    width: 100%;
+    max-width: none;
+  }
+
+  .chess-game.mobile .chessboard-container {
+    max-width: 90vw;
+    max-height: 60vh;
+    margin: 0 auto;
+  }
+
+  .chess-game.mobile .chessboard {
+    max-width: 90vw;
+    max-height: 60vh;
+  }
+
   /* Larger touch targets for mobile */
   .square {
     min-height: 50px;
@@ -2683,6 +2749,44 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 
 /* --- Enhanced Mobile Responsiveness --- */
 @media (max-width: 600px) {
+  /* Mobile-specific layout adjustments */
+  .chess-game.mobile .game-stable-layout {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .chess-game.mobile .left-sidebar,
+  .chess-game.mobile .right-sidebar {
+    max-height: 25vh;
+    font-size: 12px;
+  }
+
+  .chess-game.mobile .chessboard-container {
+    max-width: 95vw;
+    max-height: 50vh;
+  }
+
+  .chess-game.mobile .chessboard {
+    max-width: 95vw;
+    max-height: 50vh;
+  }
+
+  /* Smaller touch targets for very small screens */
+  .square {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .game-controls-compact button,
+  .mode-btn-compact,
+  .start-btn-compact,
+  .sidebar-toggle-btn {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
   .chessboard-container,
   .chessboard {
     max-width: 95vw;

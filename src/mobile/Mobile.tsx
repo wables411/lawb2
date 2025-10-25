@@ -244,6 +244,7 @@ const Mobile = () => {
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
 
   const icons = [
+    { label: 'Chess', icon: '/assets/chessicon.png', action: () => window.location.href = '/chess' },
     { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },

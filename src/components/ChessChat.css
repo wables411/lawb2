@@ -346,3 +346,118 @@
     animation: none;
   }
 }
+
+/* Mobile chat styles */
+.chess-chat-window.mobile {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  resize: none !important;
+  z-index: 10000 !important;
+}
+
+.chess-chat-window.mobile .chat-header {
+  padding: 12px 16px;
+  font-size: 16px;
+  min-height: 60px;
+}
+
+.chess-chat-window.mobile .chat-btn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 16px;
+  padding: 8px 12px;
+}
+
+.chess-chat-window.mobile .chat-messages {
+  padding: 16px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.chess-chat-window.mobile .chat-message {
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.chess-chat-window.mobile .chat-input-container {
+  padding: 16px;
+  gap: 12px;
+}
+
+.chess-chat-window.mobile .chat-input {
+  font-size: 16px;
+  padding: 12px 16px;
+  min-height: 44px;
+}
+
+.chess-chat-window.mobile .chat-send-btn {
+  min-width: 80px;
+  min-height: 44px;
+  font-size: 16px;
+  padding: 12px 16px;
+}
+
+.chess-chat-window.mobile .chat-room-selector {
+  padding: 12px 16px;
+  gap: 8px;
+}
+
+.chess-chat-window.mobile .chat-room-btn {
+  padding: 12px 16px;
+  font-size: 16px;
+  min-height: 44px;
+}
+
+/* Mobile floating chat button */
+.mobile-chat-floating-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  background: #000080;
+  color: white;
+  border: 2px outset #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  touch-action: manipulation;
+}
+
+.mobile-chat-floating-btn:active {
+  transform: scale(0.95);
+  border: 2px inset #fff;
+}
+
+/* Mobile media queries */
+@media (max-width: 768px) {
+  .chess-chat-window:not(.mobile) {
+    display: none;
+  }
+  
+  .mobile-chat-floating-btn {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-chat-floating-btn {
+    display: none;
+  }
+}

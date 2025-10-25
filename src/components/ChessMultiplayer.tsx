@@ -61,6 +61,7 @@ interface ChessMultiplayerProps {
   onGameStart?: (inviteCode?: string) => void;
   onChatToggle?: () => void;
   isChatMinimized?: boolean;
+  isMobile?: boolean;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -106,7 +107,7 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
   }
 }
 
-export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized }) => {
+export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
 
   const { address, isConnected, chainId } = useAccount();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
@@ -734,7 +735,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Mobile capabilities detection
   const mobileCapabilities = useMobileCapabilities();
-  const { isMobile, isLandscape, isTouchDevice, hasHapticFeedback, screenWidth, screenHeight } = mobileCapabilities;
+  const { isMobile: isMobileDevice, isLandscape, isTouchDevice, hasHapticFeedback, screenWidth, screenHeight } = mobileCapabilities;
 
   const handleTimeout = async () => {
     if (!inviteCode || !playerColor) return;
@@ -4868,7 +4869,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Main render - single container like ChessGame.tsx
   return (
-    <div className={`chess-game${showGame ? ' game-active' : ''} ${isMobile ? 'mobile-device' : ''} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
+    <div className={`chess-game${showGame ? ' game-active' : ''} ${isMobile ? 'mobile mobile-device' : 'desktop'} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
       {/* Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>

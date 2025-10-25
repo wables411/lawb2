@@ -47,6 +47,7 @@ interface ChessGameProps {
   onGameStart?: (inviteCode?: string) => void;
   onChatToggle?: () => void;
   isChatMinimized?: boolean;
+  isMobile?: boolean;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -261,7 +262,7 @@ const useLichessAPI = () => {
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized }) => {
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -2094,7 +2095,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Single player game UI
   return (
-    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''}`}>
+    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''}${isMobile ? ' mobile' : ' desktop'}`}>
       {/* Streamlined Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
@@ -2112,7 +2113,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <button onClick={onClose}>×</button>
         </div>
       </div>
-      <div className="game-stable-layout">
+      <div className={`game-stable-layout ${isMobile ? 'mobile-layout' : 'desktop-layout'}`}>
         {/* Left Sidebar - Toggleable Views */}
         <div className="left-sidebar">
           {sidebarView === 'leaderboard' && (

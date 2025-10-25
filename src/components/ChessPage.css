@@ -9,4 +9,74 @@
 .chess-content {
   height: 100vh;
   width: 100vw;
+}
+
+/* Mobile-specific styles */
+.chess-page.mobile {
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chess-page.mobile .chess-content {
+  height: auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile viewport optimization */
+@media (max-width: 768px) {
+  .chess-page {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .chess-content {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .chess-page {
+    height: 100vh;
+    height: 100dvh;
+  }
+  
+  .chess-content {
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: row;
+  }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 480px) {
+  .chess-page.mobile {
+    padding: 0;
+  }
+  
+  .chess-page.mobile .chess-content {
+    padding: 4px;
+    gap: 4px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+  .chess-page.mobile {
+    font-size: 12px;
+  }
+  
+  .chess-page.mobile .chess-content {
+    padding: 2px;
+    gap: 2px;
+  }
 } 
