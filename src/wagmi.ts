@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi';
 import { mainnet, arbitrum } from 'wagmi/chains';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { injected, walletConnect, coinbaseWallet } from '@wagmi/connectors';
 
 // Custom Sanko networks
 export const sankoTestnet = {
