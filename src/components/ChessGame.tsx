@@ -1433,10 +1433,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
       <div className="piece-gallery-grid">
         {pieceGallery.map(piece => (
-          <div key={piece.key} className="piece-gallery-item" onClick={() => {
-            // Toggle description - if already selected, deselect; otherwise select
-            setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key);
-          }}>
+          <div 
+            key={piece.key} 
+            className="piece-gallery-item" 
+            data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
+            onClick={() => {
+              // Toggle description - if already selected, deselect; otherwise select
+              setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key);
+            }}
+          >
             <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
             <div className="piece-gallery-name">{piece.name}</div>
             {selectedGalleryPiece === piece.key && (

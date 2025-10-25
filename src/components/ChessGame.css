@@ -357,12 +357,12 @@
   letter-spacing: 0.5px;
 }
 
-/* Color coding for pieces */
-.piece-gallery-item:has(.piece-gallery-name:contains("Red")) .piece-gallery-name {
+/* Color coding for pieces - using data attributes for better browser support */
+.piece-gallery-item[data-piece-color="red"] .piece-gallery-name {
   color: #ff0000;
 }
 
-.piece-gallery-item:has(.piece-gallery-name:contains("Blue")) .piece-gallery-name {
+.piece-gallery-item[data-piece-color="blue"] .piece-gallery-name {
   color: #0000ff;
 }
 

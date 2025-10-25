@@ -4978,6 +4978,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     <div 
                       key={piece.key} 
                       className={`piece-gallery-item ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
+                      data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
                       onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
                     >
                       <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
