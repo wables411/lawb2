@@ -228,13 +228,42 @@ const Mobile = () => {
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
   
-  // Mobile wallet connection debugging
+  // Mobile wallet connection with direct deep linking
   const handleWalletConnection = async () => {
     try {
-      console.log('[MOBILE_WALLET] Attempting to connect wallet...');
-      await open({ view: 'Connect' });
+      // Check if we're on mobile
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        // For mobile, try direct deep linking to wallet apps
+        try {
+          // Try Rainbow first
+          window.location.href = 'rainbow://';
+        } catch (error) {
+          try {
+            // Try MetaMask
+            window.location.href = 'metamask://';
+          } catch (error2) {
+            try {
+              // Try Coinbase Wallet
+              window.location.href = 'cbwallet://';
+            } catch (error3) {
+              // Fallback to AppKit modal
+              await open({ view: 'Connect' });
+            }
+          }
+        }
+      } else {
+        // For desktop, use standard connection
+        await open({ view: 'Connect' });
+      }
     } catch (error) {
-      console.error('[MOBILE_WALLET] Wallet connection error:', error);
+      // Fallback: try to open wallet connection without specific options
+      try {
+        await open({ view: 'Connect' });
+      } catch (fallbackError) {
+        // If all else fails, show user-friendly error
+        alert('Unable to connect wallet. Please try again or check if your wallet app is installed.');
+      }
     }
   };
   const [activeView, setActiveView] = useState<ActiveView>('main');

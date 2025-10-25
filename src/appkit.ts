@@ -50,4 +50,4 @@ export const appKit = createAppKit({
     '--w3m-border-radius-master': '0px',
     '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
   }
-}); 
+});

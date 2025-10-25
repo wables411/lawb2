@@ -268,6 +268,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const { switchChain } = useSwitchChain();
   const { open } = useAppKit();
   
+  // Mobile wallet connection handler
+  const handleMobileWalletConnection = async () => {
+    try {
+      if (isMobile) {
+        await open({ view: 'Connect' });
+      } else {
+        await open({ view: 'Connect' });
+      }
+    } catch (error) {
+      try {
+        await open({ view: 'Connect' });
+      } catch (fallbackError) {
+        alert('Unable to connect wallet. Please try again or check if your wallet app is installed.');
+      }
+    }
+  };
+  
   // Game state
   const [gameMode, setGameMode] = useState<'ai' | 'online'>(GameMode.AI);
   const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)));

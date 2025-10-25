@@ -5021,6 +5021,37 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               {!isConnected ? (
                 <div className="wallet-notice" style={{ marginBottom: '20px', color: '#ff0000' }}>
                   Please connect your wallet to play multiplayer chess
+                  <button 
+                    onClick={() => {
+                      if (isMobile) {
+                        // Mobile wallet connection
+                        try {
+                          window.open('rainbow://', '_blank');
+                        } catch (error) {
+                          try {
+                            window.open('metamask://', '_blank');
+                          } catch (error2) {
+                            alert('Please install Rainbow or MetaMask wallet app');
+                          }
+                        }
+                      } else {
+                        // Desktop wallet connection
+                        alert('Please connect your wallet using the browser extension');
+                      }
+                    }}
+                    style={{
+                      display: 'block',
+                      margin: '10px auto',
+                      padding: '10px 20px',
+                      backgroundColor: '#000080',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Connect Wallet
+                  </button>
                 </div>
               ) : (
                 <>
