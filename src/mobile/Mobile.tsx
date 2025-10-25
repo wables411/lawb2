@@ -228,30 +228,14 @@ const Mobile = () => {
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
   
-  // Mobile wallet connection with direct deep linking
+  // Mobile wallet connection with proper deep linking
   const handleWalletConnection = async () => {
     try {
       // Check if we're on mobile
       const isMobile = window.innerWidth <= 768;
       if (isMobile) {
-        // For mobile, try direct deep linking to wallet apps
-        try {
-          // Try Rainbow first
-          window.location.href = 'rainbow://';
-        } catch (error) {
-          try {
-            // Try MetaMask
-            window.location.href = 'metamask://';
-          } catch (error2) {
-            try {
-              // Try Coinbase Wallet
-              window.location.href = 'cbwallet://';
-            } catch (error3) {
-              // Fallback to AppKit modal
-              await open({ view: 'Connect' });
-            }
-          }
-        }
+        // For mobile, use AppKit modal which handles mobile wallet connections properly
+        await open({ view: 'Connect' });
       } else {
         // For desktop, use standard connection
         await open({ view: 'Connect' });

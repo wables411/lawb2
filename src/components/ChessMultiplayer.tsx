@@ -5024,16 +5024,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <button 
                     onClick={() => {
                       if (isMobile) {
-                        // Mobile wallet connection
-                        try {
-                          window.open('rainbow://', '_blank');
-                        } catch (error) {
-                          try {
-                            window.open('metamask://', '_blank');
-                          } catch (error2) {
-                            alert('Please install Rainbow or MetaMask wallet app');
-                          }
-                        }
+                        // Mobile wallet connection - show instructions
+                        alert('Please install Rainbow, MetaMask, or Coinbase Wallet app on your mobile device, then refresh this page and try connecting again.');
                       } else {
                         // Desktop wallet connection
                         alert('Please connect your wallet using the browser extension');
