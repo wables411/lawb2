@@ -227,6 +227,16 @@ const Mobile = () => {
   const { isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
+  
+  // Mobile wallet connection debugging
+  const handleWalletConnection = async () => {
+    try {
+      console.log('[MOBILE_WALLET] Attempting to connect wallet...');
+      await open({ view: 'Connect' });
+    } catch (error) {
+      console.error('[MOBILE_WALLET] Wallet connection error:', error);
+    }
+  };
   const [activeView, setActiveView] = useState<ActiveView>('main');
   const [showPixelawbsPopup, setShowPixelawbsPopup] = useState(false);
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -251,8 +261,8 @@ const Mobile = () => {
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Wallet', icon: '/assets/wallet.png', action: () => {
       if (!isConnected) {
-        // Open wallet connection modal
-        void open({ view: 'Connect' });
+        // Open wallet connection modal with mobile debugging
+        handleWalletConnection();
       } else {
         // Open account management modal (chain selector/disconnect)
         void open({ view: 'Account' });

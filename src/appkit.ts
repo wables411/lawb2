@@ -45,6 +45,9 @@ export const appKit = createAppKit({
   enableCoinbase: true,
   themeMode: 'light',
   themeVariables: {
-    '--w3m-z-index': 9999
+    '--w3m-z-index': 9999,
+    '--w3m-accent': '#000080',
+    '--w3m-border-radius-master': '0px',
+    '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
   }
 }); 
