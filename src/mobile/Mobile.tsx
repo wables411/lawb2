@@ -234,8 +234,30 @@ const Mobile = () => {
       // Check if we're on mobile
       const isMobile = window.innerWidth <= 768;
       if (isMobile) {
-        // For mobile, use AppKit modal which handles mobile wallet connections properly
-        await open({ view: 'Connect' });
+        // For mobile, try to open wallet connection with mobile-specific options
+        try {
+          await open({ view: 'Connect' });
+        } catch (error) {
+          // If AppKit fails, try direct deep linking
+          const userAgent = navigator.userAgent.toLowerCase();
+          const isIOS = /iphone|ipad|ipod/.test(userAgent);
+          const isAndroid = /android/.test(userAgent);
+          
+          if (isIOS || isAndroid) {
+            // Try to open Rainbow first
+            try {
+              window.location.href = 'rainbow://';
+              setTimeout(() => {
+                // If Rainbow doesn't open, try MetaMask
+                window.location.href = 'metamask://';
+              }, 1000);
+            } catch (error) {
+              alert('Please install Rainbow or MetaMask wallet app on your mobile device.');
+            }
+          } else {
+            alert('Please install a wallet app like Rainbow, MetaMask, or Coinbase Wallet on your mobile device.');
+          }
+        }
       } else {
         // For desktop, use standard connection
         await open({ view: 'Connect' });

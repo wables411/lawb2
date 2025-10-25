@@ -5024,8 +5024,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <button 
                     onClick={() => {
                       if (isMobile) {
-                        // Mobile wallet connection - show instructions
-                        alert('Please install Rainbow, MetaMask, or Coinbase Wallet app on your mobile device, then refresh this page and try connecting again.');
+                        // Mobile wallet connection - try direct deep linking
+                        try {
+                          const userAgent = navigator.userAgent.toLowerCase();
+                          const isIOS = /iphone|ipad|ipod/.test(userAgent);
+                          const isAndroid = /android/.test(userAgent);
+                          
+                          if (isIOS || isAndroid) {
+                            // Try to open Rainbow first
+                            try {
+                              window.location.href = 'rainbow://';
+                              setTimeout(() => {
+                                // If Rainbow doesn't open, try MetaMask
+                                window.location.href = 'metamask://';
+                              }, 1000);
+                            } catch (error) {
+                              alert('Please install Rainbow or MetaMask wallet app on your mobile device.');
+                            }
+                          } else {
+                            alert('Please install a wallet app like Rainbow, MetaMask, or Coinbase Wallet on your mobile device.');
+                          }
+                        } catch (error) {
+                          alert('Please install Rainbow, MetaMask, or Coinbase Wallet app on your mobile device, then refresh this page and try connecting again.');
+                        }
                       } else {
                         // Desktop wallet connection
                         alert('Please connect your wallet using the browser extension');
