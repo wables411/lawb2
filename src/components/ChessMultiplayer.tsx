@@ -4973,23 +4973,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             {sidebarView === 'gallery' && (
               <div className="piece-gallery-compact">
                 <div className="gallery-title">Piece Gallery</div>
-                <div className="gallery-grid">
+                <div className="piece-gallery-grid">
                   {pieceGallery.map((piece) => (
                     <div 
                       key={piece.key} 
-                      className={`gallery-piece ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
+                      className={`piece-gallery-item ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
                       onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
                     >
-                      <img src={piece.img} alt={piece.name} />
-                      <div className="piece-name">{piece.name}</div>
+                      <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
+                      <div className="piece-gallery-name">{piece.name}</div>
+                      {selectedGalleryPiece === piece.key && (
+                        <div className="piece-gallery-desc">{piece.desc}</div>
+                      )}
                     </div>
                   ))}
                 </div>
-                {selectedGalleryPiece && (
-                  <div className="piece-description">
-                    {pieceGallery.find(p => p.key === selectedGalleryPiece)?.desc}
-                  </div>
-                )}
               </div>
             )}
           </div>
