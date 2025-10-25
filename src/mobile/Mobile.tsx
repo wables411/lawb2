@@ -6,6 +6,7 @@ import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
+import MobileWalletConnector from '../components/MobileWalletConnector';
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -228,36 +229,14 @@ const Mobile = () => {
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
   
-  // Mobile wallet connection with proper deep linking
+  // Mobile wallet connection with custom connector
   const handleWalletConnection = async () => {
     try {
       // Check if we're on mobile
       const isMobile = window.innerWidth <= 768;
       if (isMobile) {
-        // For mobile, try to open wallet connection with mobile-specific options
-        try {
-          await open({ view: 'Connect' });
-        } catch (error) {
-          // If AppKit fails, try direct deep linking
-          const userAgent = navigator.userAgent.toLowerCase();
-          const isIOS = /iphone|ipad|ipod/.test(userAgent);
-          const isAndroid = /android/.test(userAgent);
-          
-          if (isIOS || isAndroid) {
-            // Try to open Rainbow first
-            try {
-              window.location.href = 'rainbow://';
-              setTimeout(() => {
-                // If Rainbow doesn't open, try MetaMask
-                window.location.href = 'metamask://';
-              }, 1000);
-            } catch (error) {
-              alert('Please install Rainbow or MetaMask wallet app on your mobile device.');
-            }
-          } else {
-            alert('Please install a wallet app like Rainbow, MetaMask, or Coinbase Wallet on your mobile device.');
-          }
-        }
+        // For mobile, show custom mobile wallet connector
+        setShowMobileWalletConnector(true);
       } else {
         // For desktop, use standard connection
         await open({ view: 'Connect' });
@@ -277,6 +256,7 @@ const Mobile = () => {
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMintPopup, setShowMintPopup] = useState(false);
+  const [showMobileWalletConnector, setShowMobileWalletConnector] = useState(false);
   const [showEvmFolder, setShowEvmFolder] = useState(false);
   const [showSolFolder, setShowSolFolder] = useState(false);
   const [showLawbPopup, setShowLawbPopup] = useState(false);
@@ -450,6 +430,57 @@ const Mobile = () => {
       )}
       {/* Mobile Mint Popup */}
       <MobileMintPopup isOpen={showMintPopup} onClose={() => setShowMintPopup(false)} walletAddress={address || ''} />
+      
+      {/* Mobile Wallet Connector Popup */}
+      {showMobileWalletConnector && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            maxWidth: '90%',
+            maxHeight: '90%',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowMobileWalletConnector(false)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#000080'
+              }}
+            >
+              ×
+            </button>
+            <MobileWalletConnector 
+              onConnect={() => {
+                setShowMobileWalletConnector(false);
+                // Optionally show success message
+              }}
+              onError={(error) => {
+                alert(error);
+              }}
+            />
+          </div>
+        </div>
+      )}
       {/* EVM Folder Popup */}
       <FolderPopup open={showEvmFolder} onClose={() => setShowEvmFolder(false)} title="EVM NFT'S FOLDER" nfts={EVM_NFTS} />
       {/* SOL Folder Popup */}
