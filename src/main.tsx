@@ -14,7 +14,10 @@ import { lazy, Suspense } from 'react';
 // Lazy load the chess page to reduce initial bundle size
 const ChessPage = lazy(() => import('./components/ChessPage'));
 import { appKit } from './appkit.ts'; // Import the appKit instance
+import { getAppKit } from '@reown/appkit/react';
 
+// Initialize AppKit singleton before any hooks are used
+getAppKit(appKit);
 const queryClient = new QueryClient();
 
 const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
