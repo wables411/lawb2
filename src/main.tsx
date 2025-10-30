@@ -7,13 +7,12 @@ import { useMediaQuery } from './hooks/useMediaQuery.ts';
 import './index.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { config } from './wagmi';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 // Lazy load the chess page to reduce initial bundle size
 const ChessPage = lazy(() => import('./components/ChessPage'));
-import { appKit } from './appkit.ts'; // Import the appKit instance
+import { appKit, wagmiAdapter } from './appkit.ts'; // Import the appKit instance and wagmi adapter
 import { getAppKit } from '@reown/appkit/react';
 
 // Initialize AppKit singleton before any hooks are used
@@ -29,7 +28,7 @@ const Root = () => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <WagmiProvider config={config}>
+    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>

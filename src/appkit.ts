@@ -13,7 +13,7 @@ const metadata = {
 };
 
 // Create wagmi adapter with main networks
-const wagmiAdapter = new WagmiAdapter({
+export const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks: [
     mainnet,
