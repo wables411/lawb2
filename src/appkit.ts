@@ -21,10 +21,6 @@ export const wagmiAdapter = new WagmiAdapter({
     arbitrum,
     sankoMainnet
   ],
-  // Explicitly enable connector discovery/QR & EIP-6963 for desktop extensions
-  enableInjected: true,
-  enableWalletConnect: true,
-  enableEIP6963: true,
   pendingTransactionsFilter: {
     enable: true,
     pollingInterval: 1000
