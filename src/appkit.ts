@@ -16,9 +16,9 @@ const metadata = {
 export const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks: [
+    // WagmiAdapter is EVM-only. Do not include Solana here.
     mainnet,
     arbitrum,
-    solana,
     sankoMainnet
   ],
   pendingTransactionsFilter: {
