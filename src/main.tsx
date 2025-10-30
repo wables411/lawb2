@@ -14,10 +14,6 @@ import { lazy, Suspense } from 'react';
 // Lazy load the chess page to reduce initial bundle size
 const ChessPage = lazy(() => import('./components/ChessPage'));
 import { appKit } from './appkit.ts'; // Import the appKit instance
-import { getAppKit } from '@reown/appkit/react'; // Import getAppKit
-
-// Set up the global AppKit instance
-getAppKit(appKit);
 
 const queryClient = new QueryClient();
 

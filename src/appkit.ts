@@ -40,9 +40,7 @@ export const appKit = createAppKit({
   features: {
     analytics: false,
   },
-  enableInjected: true,
-  enableWalletConnect: true,
-  enableCoinbase: true,
+  enableWallets: true,
   themeMode: 'light',
   themeVariables: {
     '--w3m-z-index': 9999,
