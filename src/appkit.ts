@@ -23,6 +23,7 @@ export const wagmiAdapter = new WagmiAdapter({
     arbitrum,
     sankoMainnet
   ],
+  ssr: true,
   pendingTransactionsFilter: {
     enable: true,
     pollingInterval: 1000
