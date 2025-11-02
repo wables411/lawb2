@@ -1265,47 +1265,39 @@ body, html {
   }
   
   /* Mobile: Sidebar is a popup overlay - COMPLETELY HIDDEN by default */
-  .left-sidebar {
+  .left-sidebar,
+  .chess-game.mobile .left-sidebar,
+  .chess-game.mobile-device .left-sidebar {
     display: none !important; /* Force hidden on mobile */
   }
   
   /* Only show when explicitly opened */
   .left-sidebar.popup-open {
     display: flex !important;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: calc(100vw - 32px);
-    max-width: 400px;
-    max-height: calc(100vh - 32px);
-    z-index: 999;
-    background: rgba(240, 240, 240, 0.98);
-    backdrop-filter: blur(10px);
-    border: 2px solid #000;
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    flex-direction: column;
-    padding: 16px;
-    overflow-y: auto;
-    animation: slideIn 0.3s ease;
-    min-width: 0;
-    margin: 0;
-    box-sizing: border-box;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: calc(100vw - 32px) !important;
+    max-width: 400px !important;
+    max-height: calc(100vh - 32px) !important;
+    z-index: 999 !important;
+    background: rgba(240, 240, 240, 0.98) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid #000 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    flex-direction: column !important;
+    padding: 16px !important;
+    overflow-y: auto !important;
+    animation: slideIn 0.3s ease !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
   }
   
   .left-sidebar.popup-closed {
     display: none !important;
-  }
-  
-  /* Remove sidebar from normal layout flow on mobile */
-  .game-stable-layout .left-sidebar {
-    order: unset;
-    width: 0;
-    min-width: 0;
-    max-width: 0;
-    margin: 0;
-    padding: 0;
   }
   
   @keyframes slideIn {
@@ -1319,71 +1311,24 @@ body, html {
     }
   }
   
-  /* Remove sidebar from normal flow on mobile */
-  .game-stable-layout {
-    flex-direction: column;
-    gap: 0;
-    padding: 4px;
-    height: 100vh;
-    overflow-y: auto;
-    align-items: stretch;
-  }
-  
-  .center-area {
-    order: 1;
-    width: 100%;
-    flex: 0 0 auto;
-    max-width: 100vw;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .chessboard-container {
-    width: calc(100vw - 24px);
-    max-width: calc(100vw - 24px);
-    height: calc(100vw - 24px);
-    max-height: calc(100vw - 24px);
-    aspect-ratio: 1 / 1;
-    margin: 0 auto;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .chessboard {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    aspect-ratio: 1 / 1;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    position: relative;
-  }
-  
-  /* Ensure squares are perfectly sized */
+  /* Ensure squares are perfectly sized on mobile */
   .square {
     width: 100% !important;
     height: 100% !important;
-    aspect-ratio: 1 / 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+    aspect-ratio: 1 / 1 !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
   
   /* Ensure pieces fit perfectly in squares on mobile */
-  .square .piece {
+  .square .piece,
+  .chess-game.mobile .square .piece,
+  .chess-game.mobile-device .square .piece {
     width: 85% !important;
     height: 85% !important;
     max-width: 85% !important;
@@ -1396,7 +1341,7 @@ body, html {
     padding: 0 !important;
     box-sizing: border-box !important;
     pointer-events: auto !important;
-    cursor: pointer;
+    cursor: pointer !important;
   }
   
   .game-info-compact {
@@ -1444,15 +1389,86 @@ body, html {
   .square.last-move {
     transform: scale(1.05);
   }
+  
+  /* Mobile layout - force with !important */
+  .game-stable-layout,
+  .chess-game.mobile .game-stable-layout,
+  .chess-game.mobile-device .game-stable-layout {
+    flex-direction: column !important;
+    gap: 0 !important;
+    padding: 4px !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    align-items: stretch !important;
+  }
+  
+  .center-area,
+  .chess-game.mobile .center-area,
+  .chess-game.mobile-device .center-area {
+    order: 1 !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    max-width: 100vw !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .chessboard-container,
+  .chess-game.mobile .chessboard-container,
+  .chess-game.mobile-device .chessboard-container {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    height: calc(100vw - 24px) !important;
+    max-height: calc(100vw - 24px) !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .chessboard,
+  .chess-game.mobile .chessboard,
+  .chess-game.mobile-device .chessboard {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(8, 1fr) !important;
+    grid-template-rows: repeat(8, 1fr) !important;
+    position: relative !important;
+  }
 }
 
 @media (max-width: 600px) {
   .chessboard-container,
-  .chessboard {
-    max-width: 95vw;
-    max-height: 50vh;
-    min-width: 280px;
-    min-height: 280px;
+  .chess-game.mobile .chessboard-container,
+  .chess-game.mobile-device .chessboard-container {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    height: calc(100vw - 24px) !important;
+    max-height: calc(100vw - 24px) !important;
+    aspect-ratio: 1 / 1 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+  
+  .chessboard,
+  .chess-game.mobile .chessboard,
+  .chess-game.mobile-device .chessboard {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: 1 / 1 !important;
   }
   
   .game-stable-layout {
@@ -1746,15 +1762,29 @@ body, html {
     max-width: none;
   }
 
-  .chess-game.mobile .chessboard-container {
-    max-width: 90vw;
-    max-height: 60vh;
-    margin: 0 auto;
+  .chess-game.mobile .chessboard-container,
+  .chess-game.mobile-device .chessboard-container,
+  .chessboard-container {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    height: calc(100vw - 24px) !important;
+    max-height: calc(100vw - 24px) !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
   }
 
-  .chess-game.mobile .chessboard {
-    max-width: 90vw;
-    max-height: 60vh;
+  .chess-game.mobile .chessboard,
+  .chess-game.mobile-device .chessboard,
+  .chessboard {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(8, 1fr) !important;
+    grid-template-rows: repeat(8, 1fr) !important;
   }
 
   /* Mobile touch optimizations */
