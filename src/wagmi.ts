@@ -1,6 +1,5 @@
 import { createConfig, http } from 'wagmi';
 import { mainnet, arbitrum } from 'wagmi/chains';
-import { injected, walletConnect, coinbaseWallet } from '@wagmi/connectors';
 
 // Custom Sanko networks
 export const sankoTestnet = {
@@ -56,22 +55,6 @@ export const sankoMainnet = {
 // Create wagmi config with Sanko networks
 export const config = createConfig({
   chains: [mainnet, arbitrum, sankoTestnet, sankoMainnet],
-  connectors: [
-    injected(),
-    walletConnect({
-      projectId: '7c65f27254d6ddd24cf7eedf2685c4fb',
-      metadata: {
-        name: 'Lawb.xyz',
-        description: 'Windows 98-style NFT site',
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://lawb.xyz',
-        icons: ['/assets/favicon.ico']
-      }
-    }),
-    coinbaseWallet({
-      appName: 'Lawb.xyz',
-      appLogoUrl: '/assets/favicon.ico'
-    })
-  ],
   transports: {
     [mainnet.id]: http(),
     [arbitrum.id]: http(),

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useConnect, useDisconnect } from 'wagmi';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { useDisconnect } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 
 interface MobileWalletConnectorProps {
   onConnect?: () => void;
@@ -9,7 +9,7 @@ interface MobileWalletConnectorProps {
 
 const MobileWalletConnector: React.FC<MobileWalletConnectorProps> = ({ onConnect, onError }) => {
   const [isConnecting, setIsConnecting] = useState(false);
-  const { connect } = useConnect();
+  const { open } = useAppKit();
   const { disconnect } = useDisconnect();
 
   const handleMobileWalletConnection = async (walletType: 'rainbow' | 'metamask' | 'coinbase' | 'trust') => {
@@ -40,34 +40,9 @@ const MobileWalletConnector: React.FC<MobileWalletConnectorProps> = ({ onConnect
           break;
       }
 
-      // Try to open the wallet app
-      try {
-        window.location.href = walletUrl;
-        
-        // Wait a bit and then try to connect via WalletConnect as fallback
-        setTimeout(async () => {
-          try {
-            // Try WalletConnect as fallback
-            await connect({
-              connector: walletConnect({
-                projectId: '7c65f27254d6ddd24cf7eedf2685c4fb',
-                metadata: {
-                  name: 'Lawb.xyz',
-                  description: 'Windows 98-style NFT site',
-                  url: window.location.origin,
-                  icons: ['/assets/favicon.ico']
-                }
-              })
-            });
-            onConnect?.();
-          } catch (error) {
-            onError?.('Failed to connect wallet. Please try again.');
-          }
-        }, 2000);
-        
-      } catch (error) {
-        onError?.('Failed to open wallet app. Please install the wallet app and try again.');
-      }
+      // Use AppKit modal to handle connection instead of direct wagmi connector
+      await open({ view: 'Connect' });
+      onConnect?.();
       
     } catch (error) {
       onError?.('Connection failed. Please try again.');
