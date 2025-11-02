@@ -11,11 +11,7 @@ const metadata = {
   name: 'Lawb.xyz',
   description: 'Windows 98-style NFT site',
   url: baseUrl,
-  icons: [`${baseUrl}/assets/favicon.ico`],
-  redirect: {
-    native: 'lawb://',
-    universal: baseUrl
-  }
+  icons: [`${baseUrl}/assets/favicon.ico`]
 };
 
 // Create wagmi adapter with main networks
