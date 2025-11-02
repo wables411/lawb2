@@ -716,9 +716,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat'>('moves');
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat'>('leaderboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
+  
+  // Debug sidebar state changes
+  useEffect(() => {
+    console.log('Sidebar state changed:', { isSidebarOpen, isMobile, sidebarView });
+  }, [isSidebarOpen, isMobile, sidebarView]);
   
   // Chat state
   const [chatMessages, setChatMessages] = useState<Array<{
@@ -4968,10 +4973,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setIsSidebarOpen(!isSidebarOpen);
-                console.log('Menu button clicked, isSidebarOpen:', !isSidebarOpen);
+                const newState = !isSidebarOpen;
+                console.log('Menu button clicked:', { 
+                  currentState: isSidebarOpen, 
+                  newState, 
+                  isMobile,
+                  className: 'sidebar-menu-btn'
+                });
+                setIsSidebarOpen(newState);
               }}
               title="Toggle Menu"
+              type="button"
               style={{
                 background: '#c0c0c0',
                 border: '1px outset #fff',
@@ -5031,7 +5043,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             {isSidebarOpen && (
               <div 
                 className="sidebar-popup-overlay"
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Overlay clicked - closing sidebar');
+                  setIsSidebarOpen(false);
+                }}
               />
             )}
             
@@ -5039,7 +5056,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               {/* Close button for mobile popup */}
               <button
                 className="sidebar-close-btn"
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Close button clicked');
+                  setIsSidebarOpen(false);
+                }}
                 aria-label="Close menu"
               >
                 ×
@@ -5049,7 +5071,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               <div className="sidebar-tabs">
                 <button 
                   className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
-                  onClick={() => { setSidebarView('leaderboard'); }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('leaderboard');
+                    console.log('Leaderboard tab clicked, isMobile:', isMobile);
+                    if (isMobile) setIsSidebarOpen(false);
+                  }}
                 >
                   Leaderboard
                 </button>
@@ -5057,19 +5085,37 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   <>
                     <button 
                       className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
-                      onClick={() => { setSidebarView('moves'); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSidebarView('moves');
+                        console.log('Moves tab clicked, isMobile:', isMobile);
+                        if (isMobile) setIsSidebarOpen(false);
+                      }}
                     >
                       Moves
                     </button>
                     <button 
                       className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
-                      onClick={() => { setSidebarView('gallery'); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSidebarView('gallery');
+                        console.log('Gallery tab clicked, isMobile:', isMobile);
+                        if (isMobile) setIsSidebarOpen(false);
+                      }}
                     >
                       Gallery
                     </button>
                     <button 
                       className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
-                      onClick={() => { setSidebarView('chat'); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSidebarView('chat');
+                        console.log('Chat tab clicked, isMobile:', isMobile);
+                        if (isMobile) setIsSidebarOpen(false);
+                      }}
                     >
                       Chat
                     </button>
