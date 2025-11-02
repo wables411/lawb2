@@ -1,4 +1,4 @@
-import{c as e,n as t,M as i,b as o,i as r,y as s,Q as a,$ as n,R as c,t as l,x as d,a0 as u,o as h,a1 as p,A as m,a2 as g,L as w,l as v,C as f,a3 as b,E as y,a4 as x,S as C,a5 as $,Z as P,T as E}from"./index-ChflEmzT.js";import"./wagmi-vendor-CHW5eFys.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const S=e`
+import{c as e,n as t,M as i,b as o,i as r,y as s,Q as a,$ as n,R as c,t as l,x as d,a0 as u,o as h,a1 as p,A as m,a2 as g,L as w,l as v,C as f,a3 as b,E as y,a4 as x,S as C,a5 as $,Z as P,T as E}from"./index-BnysZL_a.js";import"./wagmi-vendor-CHW5eFys.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const S=e`
   :host {
     margin-top: ${({spacing:e})=>e[1]};
   }

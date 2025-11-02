@@ -1,4 +1,4 @@
-import{c as e,r as t,e as i,n as o,b as a,i as n,x as r}from"./index-ChflEmzT.js";const s=e`
+import{c as e,r as t,e as i,n as o,b as a,i as n,x as r}from"./index-BnysZL_a.js";const s=e`
   button {
     display: block;
     display: flex;

@@ -1,4 +1,4 @@
-import{c as e,r as t,e as i,n as o,b as r,i as s,x as n,l as a,S as c,K as l,U as d,T as u,L as p,k as w,W as h,R as m,o as g,M as f}from"./index-ChflEmzT.js";import"./wagmi-vendor-CHW5eFys.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const b=e`
+import{c as e,r as t,e as i,n as o,b as r,i as s,x as n,l as a,S as c,K as l,U as d,T as u,L as p,k as w,W as h,R as m,o as g,M as f}from"./index-BnysZL_a.js";import"./wagmi-vendor-CHW5eFys.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const b=e`
   button {
     width: 100%;
     display: flex;

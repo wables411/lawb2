@@ -1,4 +1,4 @@
-import{h as e,i as t,x as i,b as r}from"./index-ChflEmzT.js";import"./wagmi-vendor-CHW5eFys.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const o=e`
+import{h as e,i as t,x as i,b as r}from"./index-BnysZL_a.js";import"./wagmi-vendor-CHW5eFys.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const o=e`
   :host > wui-flex:first-child {
     height: 500px;
     overflow-y: auto;
