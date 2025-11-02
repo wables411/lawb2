@@ -5,15 +5,11 @@ import { sankoMainnet } from './wagmi';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
-// Get the actual origin from the browser to ensure it matches exactly
-const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz';
-};
-
-const baseUrl = getBaseUrl();
+// Use the actual origin at runtime - this ensures exact domain matching for WalletConnect verification
+// For production, always use https://lawb.xyz to match dashboard configuration
+const baseUrl = import.meta.env.DEV 
+  ? 'http://localhost:3000' 
+  : 'https://lawb.xyz';
 
 const metadata = {
   name: 'Lawb.xyz',
