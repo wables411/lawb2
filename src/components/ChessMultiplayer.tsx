@@ -4961,18 +4961,33 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {/* Menu button for mobile sidebar popup - Always visible on mobile */}
-          {isMobile && (
+          {/* Single menu button - replaces chat button on mobile */}
+          {isMobile ? (
             <button 
               className="sidebar-menu-btn"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               title="Toggle Menu"
+              style={{
+                background: '#c0c0c0',
+                border: '1px outset #fff',
+                borderRadius: '0',
+                color: '#000',
+                cursor: 'pointer',
+                fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                width: '28px',
+                height: '28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0',
+                margin: '0 2px'
+              }}
             >
               ☰
             </button>
-          )}
-          {/* Chat button only on desktop (chat is in sidebar popup on mobile) */}
-          {!isMobile && (
+          ) : (
             <button 
               className="chat-bubble-btn"
               onClick={onChatToggle}

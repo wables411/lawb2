@@ -645,6 +645,8 @@
   background-position: center;
   transition: all 0.2s ease;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  position: relative;
+  z-index: 1;
 }
 
 .piece:hover {
@@ -1274,9 +1276,9 @@ body, html {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 90vw;
+    width: calc(100vw - 32px);
     max-width: 400px;
-    max-height: 80vh;
+    max-height: calc(100vh - 32px);
     z-index: 999;
     background: rgba(240, 240, 240, 0.98);
     backdrop-filter: blur(10px);
@@ -1284,11 +1286,12 @@ body, html {
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     flex-direction: column;
-    padding: 12px;
+    padding: 16px;
     overflow-y: auto;
     animation: slideIn 0.3s ease;
     min-width: 0;
     margin: 0;
+    box-sizing: border-box;
   }
   
   .left-sidebar.popup-closed {
@@ -1331,22 +1334,69 @@ body, html {
     width: 100%;
     flex: 0 0 auto;
     max-width: 100vw;
-    padding: 0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
   
   .chessboard-container {
-    width: 100%;
-    max-width: calc(100vw - 8px);
-    max-height: calc(50vh - 8px);
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    height: calc(100vw - 24px);
+    max-height: calc(100vw - 24px);
     aspect-ratio: 1 / 1;
     margin: 0 auto;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .chessboard {
-    width: 100%;
-    height: 100%;
-    max-width: calc(100vw - 8px);
-    max-height: calc(50vh - 8px);
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: 1 / 1;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    position: relative;
+  }
+  
+  /* Ensure squares are perfectly sized */
+  .square {
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Ensure pieces fit perfectly in squares on mobile */
+  .square .piece {
+    width: 85% !important;
+    height: 85% !important;
+    max-width: 85% !important;
+    max-height: 85% !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+    cursor: pointer;
   }
   
   .game-info-compact {
