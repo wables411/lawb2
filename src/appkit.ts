@@ -40,12 +40,9 @@ export const appKit = createAppKit({
   features: {
     analytics: false,
   },
-  // Provide all wallet options that WagmiAdapter expects to read
-  // The adapter accesses these from createAppKit options during initialization
+  // enableWallets is the only valid wallet option per Reown docs
+  // WagmiAdapter defaults enableWalletConnect and enableEIP6963 to true internally
   enableWallets: true,
-  enableWalletConnect: true,
-  enableInjected: true,
-  enableEIP6963: true,
   themeMode: 'light',
   themeVariables: {
     '--w3m-z-index': 9999,
