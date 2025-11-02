@@ -40,8 +40,12 @@ export const appKit = createAppKit({
   features: {
     analytics: false,
   },
-  // WagmiAdapter provides EIP-6963 and WalletConnect connectors by default
-  // No need to explicitly enable them here
+  // Provide all wallet options that WagmiAdapter expects to read
+  // The adapter accesses these from createAppKit options during initialization
+  enableWallets: true,
+  enableWalletConnect: true,
+  enableInjected: true,
+  enableEIP6963: true,
   themeMode: 'light',
   themeVariables: {
     '--w3m-z-index': 9999,
