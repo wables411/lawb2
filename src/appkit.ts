@@ -5,14 +5,16 @@ import { sankoMainnet } from './wagmi';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
+const baseUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz';
+
 const metadata = {
   name: 'Lawb.xyz',
   description: 'Windows 98-style NFT site',
-  url: import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz',
-  icons: ['/assets/favicon.ico'],
+  url: baseUrl,
+  icons: [`${baseUrl}/assets/favicon.ico`],
   redirect: {
     native: 'lawb://',
-    universal: import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz'
+    universal: baseUrl
   }
 };
 
