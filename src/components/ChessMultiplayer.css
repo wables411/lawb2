@@ -101,47 +101,75 @@
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-/* Collapsible sidebar on mobile */
-.left-sidebar.collapsed {
-  transform: translateX(-100%);
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 100;
+/* Mobile Popup Sidebar Overlay */
+.sidebar-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  animation: fadeIn 0.2s ease;
 }
 
-.sidebar-collapse-btn {
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Mobile Menu Button in Header */
+.sidebar-menu-btn {
+  background: #c0c0c0;
+  border: 1px outset #fff;
+  border-radius: 0;
+  color: #000;
+  cursor: pointer;
+  font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 2px;
+  touch-action: manipulation;
+}
+
+.sidebar-menu-btn:hover {
+  background: #d4d4d4;
+}
+
+.sidebar-menu-btn:active {
+  border: 1px inset #fff;
+}
+
+/* Mobile Sidebar Close Button */
+.sidebar-close-btn {
   position: absolute;
-  right: -32px;
   top: 8px;
-  background: rgba(0, 255, 0, 0.2);
-  border: 1px solid rgba(0, 255, 0, 0.4);
-  color: #00ff00;
+  right: 8px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  color: #ff0000;
   width: 28px;
   height: 28px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 18px;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 101;
+  z-index: 10;
   touch-action: manipulation;
-  transition: all 0.3s ease;
 }
 
-.sidebar-collapse-btn:hover {
-  background: rgba(0, 255, 0, 0.3);
-  border-color: rgba(0, 255, 0, 0.6);
-}
-
-/* When sidebar is collapsed, move button to visible position */
-.sidebar-collapse-btn.collapsed-state {
-  right: 8px;
-  left: auto;
-  position: fixed;
-  top: 8px;
-  z-index: 1000;
+.sidebar-close-btn:hover {
+  background: rgba(255, 0, 0, 0.3);
+  border-color: rgba(255, 0, 0, 0.6);
 }
 
 /* Transparent backgrounds when game is active */
@@ -1234,30 +1262,53 @@ body, html {
     transform: scale(1.05) !important;
   }
   
+  /* Mobile: Sidebar is a popup overlay */
   .left-sidebar {
-    max-height: none;
-    min-height: 0;
-    width: 100%;
-    max-width: 100%;
-    position: relative;
-    order: 2;
-    height: auto;
-    max-height: 40vh;
+    display: none; /* Hidden by default on mobile */
+  }
+  
+  .left-sidebar.popup-open {
+    display: flex !important;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 400px;
+    max-height: 80vh;
+    z-index: 999;
+    background: rgba(240, 240, 240, 0.98);
+    backdrop-filter: blur(10px);
+    border: 2px solid #000;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    flex-direction: column;
+    padding: 12px;
     overflow-y: auto;
-    margin-bottom: 8px;
-    flex-shrink: 1;
+    animation: slideIn 0.3s ease;
+    min-width: 0;
+    margin: 0;
   }
   
-  .left-sidebar:not(.collapsed) {
-    position: relative;
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: all;
+  .left-sidebar.popup-closed {
+    display: none;
   }
   
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -60%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+  
+  /* Remove sidebar from normal flow on mobile */
   .game-stable-layout {
     flex-direction: column;
-    gap: 8px;
+    gap: 0;
     padding: 4px;
     height: 100vh;
     overflow-y: auto;
@@ -2545,22 +2596,26 @@ body, html {
   .sidebar-tabs {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 12px;
+    margin-top: 8px;
   }
   
   .tab-button {
     flex: 1;
-    min-width: calc(50% - 2px);
-    font-size: 10px;
-    padding: 6px 8px;
+    min-width: calc(50% - 3px);
+    font-size: 11px;
+    padding: 8px 10px;
   }
   
-  .sidebar-collapse-btn {
-    display: flex;
-    right: 4px;
-    top: 4px;
-    width: 32px;
-    height: 32px;
+  /* Optimize chat compact for popup */
+  .chat-compact {
+    max-height: calc(80vh - 120px);
+    min-height: 300px;
+  }
+  
+  .chat-compact-messages {
+    max-height: calc(80vh - 200px);
+    min-height: 200px;
   }
 } 

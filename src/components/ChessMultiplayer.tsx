@@ -717,7 +717,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
   const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat'>('moves');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(isMobile); // Collapsed by default on mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
   // Chat state
@@ -4961,30 +4961,43 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          <button 
-            className="chat-bubble-btn"
-            onClick={onChatToggle}
-            title="Toggle Chat"
-            style={{
-              background: '#c0c0c0',
-              border: '1px outset #fff',
-              borderRadius: '0',
-              color: '#000',
-              cursor: 'pointer',
-              fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              width: '24px',
-              height: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0',
-              margin: '0 2px'
-            }}
-          >
-            💬
-          </button>
+          {/* Menu button for mobile sidebar popup */}
+          {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && isMobile && (
+            <button 
+              className="sidebar-menu-btn"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title="Toggle Menu"
+            >
+              ☰
+            </button>
+          )}
+          {/* Chat button only on desktop (chat is in sidebar popup on mobile) */}
+          {!isMobile && (
+            <button 
+              className="chat-bubble-btn"
+              onClick={onChatToggle}
+              title="Toggle Chat"
+              style={{
+                background: '#c0c0c0',
+                border: '1px outset #fff',
+                borderRadius: '0',
+                color: '#000',
+                cursor: 'pointer',
+                fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0',
+                margin: '0 2px'
+              }}
+            >
+              💬
+            </button>
+          )}
           <button onClick={onClose}>×</button>
         </div>
       </div>
@@ -4994,42 +5007,49 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         {/* Left Sidebar - Show only during active gameplay, not in lobby */}
         {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
           <>
-            {/* Mobile Collapse Toggle Button - Always visible, outside sidebar */}
-            {isMobile && (
-              <button
-                className={`sidebar-collapse-btn ${isSidebarCollapsed ? 'collapsed-state' : ''}`}
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {isSidebarCollapsed ? '▶' : '◀'}
-              </button>
+            {/* Mobile Popup Overlay */}
+            {isMobile && isSidebarOpen && (
+              <div 
+                className="sidebar-popup-overlay"
+                onClick={() => setIsSidebarOpen(false)}
+              />
             )}
             
-            <div className={`left-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+            <div className={`left-sidebar ${isMobile ? (isSidebarOpen ? 'popup-open' : 'popup-closed') : ''}`}>
+              {/* Close button for mobile popup */}
+              {isMobile && (
+                <button
+                  className="sidebar-close-btn"
+                  onClick={() => setIsSidebarOpen(false)}
+                  aria-label="Close menu"
+                >
+                  ×
+                </button>
+              )}
             
             {/* Tab Navigation */}
             <div className="sidebar-tabs">
               <button 
                 className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('moves'); if (isMobile) setIsSidebarCollapsed(false); }}
+                onClick={() => { setSidebarView('moves'); }}
               >
                 Moves
               </button>
               <button 
                 className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('leaderboard'); if (isMobile) setIsSidebarCollapsed(false); }}
+                onClick={() => { setSidebarView('leaderboard'); }}
               >
                 Leaderboard
               </button>
               <button 
                 className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('gallery'); if (isMobile) setIsSidebarCollapsed(false); }}
+                onClick={() => { setSidebarView('gallery'); }}
               >
                 Gallery
               </button>
               <button 
                 className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('chat'); if (isMobile) setIsSidebarCollapsed(false); }}
+                onClick={() => { setSidebarView('chat'); }}
               >
                 Chat
               </button>
