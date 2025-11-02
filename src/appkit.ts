@@ -17,7 +17,7 @@ const baseUrl = getBaseUrl();
 
 const metadata = {
   name: 'Lawb.xyz',
-  description: 'Windows 98-style NFT site',
+  description: 'there is no meme we lawb you',
   url: baseUrl,
   icons: [`${baseUrl}/assets/favicon.ico`]
 };
