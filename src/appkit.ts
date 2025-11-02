@@ -9,7 +9,11 @@ const metadata = {
   name: 'Lawb.xyz',
   description: 'Windows 98-style NFT site',
   url: import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz',
-  icons: ['/assets/favicon.ico']
+  icons: ['/assets/favicon.ico'],
+  redirect: {
+    native: 'lawb://',
+    universal: import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz'
+  }
 };
 
 // Create wagmi adapter with main networks
