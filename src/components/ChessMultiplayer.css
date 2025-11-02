@@ -123,22 +123,25 @@
 
 /* Mobile Menu Button in Header */
 .sidebar-menu-btn {
-  background: #c0c0c0;
-  border: 1px outset #fff;
-  border-radius: 0;
-  color: #000;
-  cursor: pointer;
-  font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
-  font-size: 16px;
-  font-weight: bold;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0 2px;
-  touch-action: manipulation;
+  background: #c0c0c0 !important;
+  border: 1px outset #fff !important;
+  border-radius: 0 !important;
+  color: #000 !important;
+  cursor: pointer !important;
+  font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 2px !important;
+  touch-action: manipulation !important;
+  position: relative !important;
+  z-index: 10000 !important;
+  pointer-events: all !important;
 }
 
 .sidebar-menu-btn:hover {
@@ -2256,6 +2259,9 @@ body, html {
   margin: 0;
   box-shadow: none;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 100;
+  pointer-events: all;
 }
 
 .chess-header h2 {
