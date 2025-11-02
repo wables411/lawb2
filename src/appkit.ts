@@ -5,7 +5,15 @@ import { sankoMainnet } from './wagmi';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
-const baseUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz';
+// Get the actual origin from the browser to ensure it matches exactly
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz';
+};
+
+const baseUrl = getBaseUrl();
 
 const metadata = {
   name: 'Lawb.xyz',
@@ -23,7 +31,6 @@ export const wagmiAdapter = new WagmiAdapter({
     arbitrum,
     sankoMainnet
   ],
-  ssr: true,
   pendingTransactionsFilter: {
     enable: true,
     pollingInterval: 1000
