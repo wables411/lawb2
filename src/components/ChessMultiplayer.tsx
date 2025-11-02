@@ -4965,7 +4965,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           {isMobile ? (
             <button 
               className="sidebar-menu-btn"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsSidebarOpen(!isSidebarOpen);
+                console.log('Menu button clicked, isSidebarOpen:', !isSidebarOpen);
+              }}
               title="Toggle Menu"
               style={{
                 background: '#c0c0c0',

@@ -103,14 +103,17 @@
 
 /* Mobile Popup Sidebar Overlay */
 .sidebar-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 998;
-  animation: fadeIn 0.2s ease;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  z-index: 9998 !important;
+  animation: fadeIn 0.2s ease !important;
+  pointer-events: all !important;
 }
 
 @keyframes fadeIn {
@@ -1235,6 +1238,18 @@ body, html {
 
 /* --- Enhanced Mobile Touch Support --- */
 @media (max-width: 768px) {
+  /* Hide chat button on mobile - menu button replaces it */
+  .chat-bubble-btn,
+  .chess-game.mobile .chat-bubble-btn,
+  .chess-game.mobile-device .chat-bubble-btn {
+    display: none !important;
+  }
+  
+  /* Ensure menu button is visible */
+  .sidebar-menu-btn {
+    display: flex !important;
+  }
+  
   .square {
     min-height: 44px;
     min-width: 44px;
@@ -1272,7 +1287,9 @@ body, html {
   }
   
   /* Only show when explicitly opened */
-  .left-sidebar.popup-open {
+  .left-sidebar.popup-open,
+  .chess-game.mobile .left-sidebar.popup-open,
+  .chess-game.mobile-device .left-sidebar.popup-open {
     display: flex !important;
     position: fixed !important;
     top: 50% !important;
@@ -1281,7 +1298,7 @@ body, html {
     width: calc(100vw - 32px) !important;
     max-width: 400px !important;
     max-height: calc(100vh - 32px) !important;
-    z-index: 999 !important;
+    z-index: 9999 !important;
     background: rgba(240, 240, 240, 0.98) !important;
     backdrop-filter: blur(10px) !important;
     border: 2px solid #000 !important;
@@ -1294,10 +1311,17 @@ body, html {
     min-width: 0 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
+    pointer-events: all !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   
-  .left-sidebar.popup-closed {
+  .left-sidebar.popup-closed,
+  .chess-game.mobile .left-sidebar.popup-closed,
+  .chess-game.mobile-device .left-sidebar.popup-closed {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
   }
   
   @keyframes slideIn {
