@@ -5,11 +5,9 @@ import { sankoMainnet } from './wagmi';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
-// Use the actual origin at runtime - this ensures exact domain matching for WalletConnect verification
-// For production, always use https://lawb.xyz to match dashboard configuration
-const baseUrl = import.meta.env.DEV 
-  ? 'http://localhost:3000' 
-  : 'https://lawb.xyz';
+// Static URL ensures exact match with Reown Dashboard configuration
+// This URL must match exactly what's configured in https://dashboard.reown.com
+const baseUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://lawb.xyz';
 
 const metadata = {
   name: 'Lawb.xyz',

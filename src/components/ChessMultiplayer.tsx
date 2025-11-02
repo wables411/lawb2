@@ -9,6 +9,8 @@ import {
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
 import { firebaseChess } from '../firebaseChess';
+import { database } from '../firebaseApp';
+import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
 import './ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from './TokenSelector';
@@ -714,8 +716,92 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery'>('moves');
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat'>('moves');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(isMobile); // Collapsed by default on mobile
   const [soundEnabled, setSoundEnabled] = useState(true);
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<Array<{
+    id: string;
+    userId: string;
+    walletAddress: string;
+    displayName: string;
+    message: string;
+    timestamp: number;
+    room: 'public' | 'private';
+  }>>([]);
+  const [chatNewMessage, setChatNewMessage] = useState('');
+  const [chatCurrentRoom, setChatCurrentRoom] = useState<'public' | 'private'>(inviteCode ? 'private' : 'public');
+  
+  // Chat helper functions
+  const formatChatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const getChatDisplayName = () => {
+    if (!address) return 'Anonymous';
+    return formatChatAddress(address);
+  };
+  
+  // Load chat messages
+  useEffect(() => {
+    if (sidebarView !== 'chat') return;
+    
+    const roomPath = chatCurrentRoom === 'public' 
+      ? 'chess_chat/public/messages'
+      : `chess_chat/private/${inviteCode}/messages`;
+    
+    const messagesRef = ref(database, roomPath);
+    const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(50));
+    
+    const unsubscribe = onValue(messagesQuery, (snapshot) => {
+      const messages: typeof chatMessages = [];
+      snapshot.forEach((childSnapshot) => {
+        messages.push({
+          id: childSnapshot.key!,
+          ...childSnapshot.val()
+        });
+      });
+      messages.sort((a, b) => a.timestamp - b.timestamp);
+      setChatMessages(messages);
+    });
+    
+    return () => {
+      off(messagesRef);
+      unsubscribe();
+    };
+  }, [sidebarView, chatCurrentRoom, inviteCode]);
+  
+  // Auto-switch to private chat when in a game
+  useEffect(() => {
+    if (inviteCode && chatCurrentRoom === 'public') {
+      setChatCurrentRoom('private');
+    }
+  }, [inviteCode]);
+  
+  // Send chat message
+  const sendChatMessage = async () => {
+    if (!chatNewMessage.trim() || !isConnected || !address) return;
+    
+    const messageData = {
+      userId: address,
+      walletAddress: address,
+      displayName: getChatDisplayName(),
+      message: chatNewMessage.trim(),
+      timestamp: Date.now(),
+      room: chatCurrentRoom,
+      ...(chatCurrentRoom === 'private' && { inviteCode })
+    };
+    
+    try {
+      const roomPath = chatCurrentRoom === 'public' 
+        ? 'chess_chat/public/messages'
+        : `chess_chat/private/${inviteCode}/messages`;
+      
+      await push(ref(database, roomPath), messageData);
+      setChatNewMessage('');
+    } catch (err) {
+      console.error('Error sending chat message:', err);
+    }
+  };
+  
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
   const [gameJustFinished, setGameJustFinished] = useState(false);
   const [isGameLoading, setIsGameLoading] = useState(false);
@@ -4907,26 +4993,45 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       <div className="game-stable-layout">
         {/* Left Sidebar - Show only during active gameplay, not in lobby */}
         {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
-          <div className="left-sidebar">
+          <>
+            {/* Mobile Collapse Toggle Button - Always visible, outside sidebar */}
+            {isMobile && (
+              <button
+                className={`sidebar-collapse-btn ${isSidebarCollapsed ? 'collapsed-state' : ''}`}
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {isSidebarCollapsed ? '▶' : '◀'}
+              </button>
+            )}
+            
+            <div className={`left-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+            
             {/* Tab Navigation */}
             <div className="sidebar-tabs">
               <button 
                 className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
-                onClick={() => setSidebarView('moves')}
+                onClick={() => { setSidebarView('moves'); if (isMobile) setIsSidebarCollapsed(false); }}
               >
                 Moves
               </button>
               <button 
                 className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
-                onClick={() => setSidebarView('leaderboard')}
+                onClick={() => { setSidebarView('leaderboard'); if (isMobile) setIsSidebarCollapsed(false); }}
               >
                 Leaderboard
               </button>
               <button 
                 className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
-                onClick={() => setSidebarView('gallery')}
+                onClick={() => { setSidebarView('gallery'); if (isMobile) setIsSidebarCollapsed(false); }}
               >
                 Gallery
+              </button>
+              <button 
+                className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
+                onClick={() => { setSidebarView('chat'); if (isMobile) setIsSidebarCollapsed(false); }}
+              >
+                Chat
               </button>
               <button 
                 className="tab-button menu-button"
@@ -4992,7 +5097,72 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </div>
               </div>
             )}
-          </div>
+
+            {sidebarView === 'chat' && (
+              <div className="chat-compact">
+                <div className="chat-compact-tabs">
+                  <button
+                    className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}
+                    onClick={() => setChatCurrentRoom('public')}
+                  >
+                    Public
+                  </button>
+                  {inviteCode && (
+                    <button
+                      className={`chat-compact-tab ${chatCurrentRoom === 'private' ? 'active' : ''}`}
+                      onClick={() => setChatCurrentRoom('private')}
+                    >
+                      Game
+                    </button>
+                  )}
+                </div>
+                
+                <div className="chat-compact-messages">
+                  {!isConnected && (
+                    <div className="chat-compact-notice">
+                      Connect wallet to chat
+                    </div>
+                  )}
+                  {chatMessages.map((message) => (
+                    <div key={message.id} className="chat-compact-message">
+                      <div className="chat-compact-message-header">
+                        <span className="chat-compact-author">{message.displayName}</span>
+                        <span className="chat-compact-time">
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="chat-compact-content">{message.message}</div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="chat-compact-input">
+                  <input
+                    type="text"
+                    value={chatNewMessage}
+                    onChange={(e) => setChatNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void sendChatMessage();
+                      }
+                    }}
+                    placeholder={isConnected ? "Type message..." : "Connect wallet"}
+                    disabled={!isConnected}
+                    className="chat-compact-input-field"
+                  />
+                  <button
+                    onClick={() => void sendChatMessage()}
+                    disabled={!isConnected || !chatNewMessage.trim()}
+                    className="chat-compact-send-btn"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
+            </div>
+          </>
         )}
         
         {/* Center Area */}
