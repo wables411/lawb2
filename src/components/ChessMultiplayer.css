@@ -1262,11 +1262,12 @@ body, html {
     transform: scale(1.05) !important;
   }
   
-  /* Mobile: Sidebar is a popup overlay */
+  /* Mobile: Sidebar is a popup overlay - COMPLETELY HIDDEN by default */
   .left-sidebar {
-    display: none; /* Hidden by default on mobile */
+    display: none !important; /* Force hidden on mobile */
   }
   
+  /* Only show when explicitly opened */
   .left-sidebar.popup-open {
     display: flex !important;
     position: fixed;
@@ -1291,7 +1292,17 @@ body, html {
   }
   
   .left-sidebar.popup-closed {
-    display: none;
+    display: none !important;
+  }
+  
+  /* Remove sidebar from normal layout flow on mobile */
+  .game-stable-layout .left-sidebar {
+    order: unset;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    margin: 0;
+    padding: 0;
   }
   
   @keyframes slideIn {

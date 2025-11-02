@@ -69,15 +69,17 @@ const ChessPage: React.FC = () => {
         )}
       </div>
       
-      {/* Independent Chat Window - Always Open */}
-      <ChessChat
-        isOpen={isChatVisible}
-        onMinimize={handleChatMinimize} // Allow minimizing
-        currentInviteCode={chatInviteCode}
-        isDraggable={!isMobile}
-        isResizable={!isMobile}
-        isMobile={isMobile}
-      />
+      {/* Independent Chat Window - Only on desktop, hidden on mobile (chat is in sidebar popup) */}
+      {!isMobile && (
+        <ChessChat
+          isOpen={isChatVisible}
+          onMinimize={handleChatMinimize} // Allow minimizing
+          currentInviteCode={chatInviteCode}
+          isDraggable={true}
+          isResizable={true}
+          isMobile={false}
+        />
+      )}
     </div>
   );
 };

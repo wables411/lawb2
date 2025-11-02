@@ -4961,8 +4961,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {/* Menu button for mobile sidebar popup */}
-          {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && isMobile && (
+          {/* Menu button for mobile sidebar popup - Always visible on mobile */}
+          {isMobile && (
             <button 
               className="sidebar-menu-btn"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -5004,29 +5004,196 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       {/* Main Layout */}
       <div className="game-stable-layout">
-        {/* Left Sidebar - Show only during active gameplay, not in lobby */}
-        {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
+        {/* Mobile Sidebar Popup - Always available on mobile via menu button */}
+        {isMobile && (
           <>
             {/* Mobile Popup Overlay */}
-            {isMobile && isSidebarOpen && (
+            {isSidebarOpen && (
               <div 
                 className="sidebar-popup-overlay"
                 onClick={() => setIsSidebarOpen(false)}
               />
             )}
             
-            <div className={`left-sidebar ${isMobile ? (isSidebarOpen ? 'popup-open' : 'popup-closed') : ''}`}>
+            <div className={`left-sidebar ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}>
               {/* Close button for mobile popup */}
-              {isMobile && (
-                <button
-                  className="sidebar-close-btn"
-                  onClick={() => setIsSidebarOpen(false)}
-                  aria-label="Close menu"
-                >
-                  ×
-                </button>
-              )}
+              <button
+                className="sidebar-close-btn"
+                onClick={() => setIsSidebarOpen(false)}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
             
+              {/* Tab Navigation */}
+              <div className="sidebar-tabs">
+                <button 
+                  className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
+                  onClick={() => { setSidebarView('leaderboard'); }}
+                >
+                  Leaderboard
+                </button>
+                {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
+                  <>
+                    <button 
+                      className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
+                      onClick={() => { setSidebarView('moves'); }}
+                    >
+                      Moves
+                    </button>
+                    <button 
+                      className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
+                      onClick={() => { setSidebarView('gallery'); }}
+                    >
+                      Gallery
+                    </button>
+                    <button 
+                      className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
+                      onClick={() => { setSidebarView('chat'); }}
+                    >
+                      Chat
+                    </button>
+                  </>
+                )}
+                <button 
+                  className="tab-button menu-button"
+                  onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}
+                >
+                  Menu
+                </button>
+                {onBackToModeSelect && (
+                  <button 
+                    className="tab-button menu-button"
+                    onClick={onBackToModeSelect}
+                  >
+                    Mode Select
+                  </button>
+                )}
+              </div>
+
+              {/* Tab Content */}
+              {sidebarView === 'leaderboard' && (
+                <div className="leaderboard-compact">
+                  <div className="leaderboard-title">Leaderboard</div>
+                  <div className="leaderboard-list">
+                    {leaderboard.slice(0, 10).map((entry, index) => (
+                      <div key={entry.username} className="leaderboard-entry">
+                        <span className="rank">#{index + 1}</span>
+                        <span className="player">{formatLeaderboardAddress(entry.username)}</span>
+                        <span className="score">{entry.points}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
+                <>
+                  {sidebarView === 'moves' && (
+                    <div className="move-history-compact">
+                      <div className="move-history-title">Moves</div>
+                      <ul className="move-history-list-compact">
+                        {moveHistory.slice().reverse().map((move, idx) => (
+                          <li key={moveHistory.length - 1 - idx}>{move}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {sidebarView === 'gallery' && (
+                    <div className="piece-gallery-compact">
+                      <div className="gallery-title">Piece Gallery</div>
+                      <div className="piece-gallery-grid">
+                        {pieceGallery.map((piece) => (
+                          <div 
+                            key={piece.key} 
+                            className={`piece-gallery-item ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
+                            data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
+                            onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
+                          >
+                            <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
+                            <div className="piece-gallery-name">{piece.name}</div>
+                            {selectedGalleryPiece === piece.key && (
+                              <div className="piece-gallery-desc">{piece.desc}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {sidebarView === 'chat' && (
+                    <div className="chat-compact">
+                      <div className="chat-compact-tabs">
+                        <button
+                          className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}
+                          onClick={() => setChatCurrentRoom('public')}
+                        >
+                          Public
+                        </button>
+                        {inviteCode && (
+                          <button
+                            className={`chat-compact-tab ${chatCurrentRoom === 'private' ? 'active' : ''}`}
+                            onClick={() => setChatCurrentRoom('private')}
+                          >
+                            Game
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="chat-compact-messages">
+                        {!isConnected && (
+                          <div className="chat-compact-notice">
+                            Connect wallet to chat
+                          </div>
+                        )}
+                        {chatMessages.map((message) => (
+                          <div key={message.id} className="chat-compact-message">
+                            <div className="chat-compact-message-header">
+                              <span className="chat-compact-author">{message.displayName}</span>
+                              <span className="chat-compact-time">
+                                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="chat-compact-content">{message.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="chat-compact-input">
+                        <input
+                          type="text"
+                          value={chatNewMessage}
+                          onChange={(e) => setChatNewMessage(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              void sendChatMessage();
+                            }
+                          }}
+                          placeholder={isConnected ? "Type message..." : "Connect wallet"}
+                          disabled={!isConnected}
+                          className="chat-compact-input-field"
+                        />
+                        <button
+                          onClick={() => void sendChatMessage()}
+                          disabled={!isConnected || !chatNewMessage.trim()}
+                          className="chat-compact-send-btn"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
+        
+        {/* Desktop Sidebar - Show only during active gameplay */}
+        {!isMobile && (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
+          <div className="left-sidebar">
             {/* Tab Navigation */}
             <div className="sidebar-tabs">
               <button 
@@ -5181,8 +5348,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </div>
               </div>
             )}
-            </div>
-          </>
+          </div>
         )}
         
         {/* Center Area */}
