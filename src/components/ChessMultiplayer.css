@@ -121,10 +121,10 @@
   to { opacity: 1; }
 }
 
-/* Mobile Menu Button in Header - ALWAYS VISIBLE BY DEFAULT */
-button.sidebar-menu-btn,
-.chess-header button.sidebar-menu-btn,
+/* Mobile Menu Button in Header - MAXIMUM SPECIFICITY */
+.chess-header .chess-controls button.sidebar-menu-btn,
 .chess-controls button.sidebar-menu-btn,
+button.sidebar-menu-btn,
 .sidebar-menu-btn {
   background: #c0c0c0 !important;
   border: 1px outset #fff !important;
@@ -132,24 +132,25 @@ button.sidebar-menu-btn,
   color: #000 !important;
   cursor: pointer !important;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: bold !important;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  min-height: 28px !important;
-  display: flex !important; /* VISIBLE BY DEFAULT */
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
-  margin: 0 2px !important;
+  margin: 0 4px !important;
   touch-action: manipulation !important;
   position: relative !important;
-  z-index: 10000 !important;
-  pointer-events: all !important;
+  z-index: 10001 !important;
+  pointer-events: auto !important;
   visibility: visible !important;
   opacity: 1 !important;
   line-height: 1 !important;
+  flex-shrink: 0 !important;
 }
 
 .sidebar-menu-btn:hover {
@@ -837,7 +838,7 @@ button.sidebar-menu-btn,
   margin: 8px 0;
 }
 
-.chess-controls button {
+.chess-controls button:not(.sidebar-menu-btn) {
   background: #c0c0c0;
   border: 2px outset #c0c0c0;
   color: black;
@@ -853,11 +854,11 @@ button.sidebar-menu-btn,
   transition: all 0.1s ease;
 }
 
-.chess-controls button:hover {
+.chess-controls button:not(.sidebar-menu-btn):hover {
   background: #d0d0d0;
 }
 
-.chess-controls button:active {
+.chess-controls button:not(.sidebar-menu-btn):active {
   border: 2px inset #c0c0c0;
   background: #b0b0b0;
 }
