@@ -720,10 +720,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
-  // Debug sidebar state changes
-  useEffect(() => {
-    console.log('Sidebar state changed:', { isSidebarOpen, isMobile, sidebarView });
-  }, [isSidebarOpen, isMobile, sidebarView]);
   
   // Chat state
   const [chatMessages, setChatMessages] = useState<Array<{
@@ -4973,14 +4969,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const newState = !isSidebarOpen;
-                console.log('Menu button clicked:', { 
-                  currentState: isSidebarOpen, 
-                  newState, 
-                  isMobile,
-                  className: 'sidebar-menu-btn'
-                });
-                setIsSidebarOpen(newState);
+                setIsSidebarOpen(!isSidebarOpen);
               }}
               title="Toggle Menu"
               type="button"
@@ -5046,7 +5035,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('Overlay clicked - closing sidebar');
                   setIsSidebarOpen(false);
                 }}
               />
@@ -5059,7 +5047,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('Close button clicked');
                   setIsSidebarOpen(false);
                 }}
                 aria-label="Close menu"
@@ -5075,7 +5062,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     e.preventDefault();
                     e.stopPropagation();
                     setSidebarView('leaderboard');
-                    console.log('Leaderboard tab clicked, isMobile:', isMobile);
                     if (isMobile) setIsSidebarOpen(false);
                   }}
                 >
@@ -5089,7 +5075,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         e.preventDefault();
                         e.stopPropagation();
                         setSidebarView('moves');
-                        console.log('Moves tab clicked, isMobile:', isMobile);
                         if (isMobile) setIsSidebarOpen(false);
                       }}
                     >
@@ -5101,7 +5086,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         e.preventDefault();
                         e.stopPropagation();
                         setSidebarView('gallery');
-                        console.log('Gallery tab clicked, isMobile:', isMobile);
                         if (isMobile) setIsSidebarOpen(false);
                       }}
                     >
@@ -5113,7 +5097,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         e.preventDefault();
                         e.stopPropagation();
                         setSidebarView('chat');
-                        console.log('Chat tab clicked, isMobile:', isMobile);
                         if (isMobile) setIsSidebarOpen(false);
                       }}
                     >

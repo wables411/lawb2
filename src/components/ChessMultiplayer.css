@@ -1253,6 +1253,25 @@ body, html {
     display: flex !important;
   }
   
+  /* Hide toggle buttons under board on mobile - use menu popup instead */
+  .sidebar-toggle-group,
+  .chess-game.mobile .sidebar-toggle-group,
+  .chess-game.mobile-device .sidebar-toggle-group {
+    display: none !important;
+  }
+  
+  .sidebar-toggle-btn,
+  .chess-game.mobile .sidebar-toggle-btn,
+  .chess-game.mobile-device .sidebar-toggle-btn {
+    display: none !important;
+  }
+  
+  .game-controls-compact,
+  .chess-game.mobile .game-controls-compact,
+  .chess-game.mobile-device .game-controls-compact {
+    display: none !important;
+  }
+  
   .square {
     min-height: 44px;
     min-width: 44px;
