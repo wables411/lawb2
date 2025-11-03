@@ -4962,7 +4962,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {/* Single menu button - replaces chat button on mobile */}
+          {/* Single menu button - always show on mobile */}
           {isMobile ? (
             <button 
               className="sidebar-menu-btn"

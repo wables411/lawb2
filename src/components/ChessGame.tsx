@@ -162,7 +162,8 @@ const useStockfish = () => {
         
         // Use longer time limits and higher depth for maximum strength
         const adjustedTimeLimit = timeLimit > 5000 ? timeLimit * 1.5 : timeLimit;
-        stockfishEngineRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 20`);
+        // Increased depth for better play quality
+        stockfishEngineRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 25`);
 
         // Timeout fallback
         const timeoutDuration = timeLimit > 5000 ? timeLimit * 2 : timeLimit + 1000;
@@ -1086,14 +1087,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }, 600);
       } else {
-        // Hard: Use Stockfish WASM directly
+        // Hard: Use Stockfish with increased time and fallback to API
         setStatus('Stockfish is calculating...');
         const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
         
-        // Use the Stockfish WASM worker directly
-        getStockfishMove(fen, 3000).then(move => {
+        // Use the Stockfish WASM worker with increased time (8000ms) and higher depth
+        getStockfishMove(fen, 8000).then(move => {
           if (move && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
             const fromRowStockfish = parseInt(move[1]);
@@ -1136,9 +1137,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             isAIMovingRef.current = false;
             apiCallInProgressRef.current = false;
           }
-        }).catch((error) => {
+        }).catch(async (error) => {
           console.error('[DEBUG] Stockfish WASM error:', error);
-          setStatus('Stockfish error. Falling back to random moves.');
+          // Try API fallback before random moves
+          setStatus('Trying Stockfish API fallback...');
+          try {
+            const apiMove = await getCloudflareStockfishMove(fen, 8000);
+            if (apiMove && apiMove.length === 4) {
+              const fromCol = apiMove.charCodeAt(0) - 97;
+              const fromRowStockfish = parseInt(apiMove[1]);
+              const toCol = apiMove.charCodeAt(2) - 97;
+              const toRowStockfish = parseInt(apiMove[3]);
+              const fromRow = 8 - fromRowStockfish;
+              const toRow = 8 - toRowStockfish;
+              if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
+                const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+                const piece = boardRef.current[fromRow][fromCol];
+                if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
+                  makeMove(moveObj.from, moveObj.to, true);
+                  return;
+                }
+              }
+            }
+          } catch (apiError) {
+            console.error('[DEBUG] Stockfish API fallback also failed:', apiError);
+          }
+          // Last resort: random move
+          setStatus('Stockfish unavailable. Using fallback.');
           const fallbackMove = getRandomAIMove(boardRef.current);
           if (fallbackMove) {
             makeMove(fallbackMove.from, fallbackMove.to, true);
@@ -1148,7 +1173,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         });
       }
     }
-  }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady]);
+  }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady, getStockfishMove, getCloudflareStockfishMove]);
 
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
