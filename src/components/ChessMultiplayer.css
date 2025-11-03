@@ -121,7 +121,7 @@
   to { opacity: 1; }
 }
 
-/* Mobile Menu Button in Header */
+/* Mobile Menu Button in Header - ALWAYS VISIBLE BY DEFAULT */
 .sidebar-menu-btn {
   background: #c0c0c0 !important;
   border: 1px outset #fff !important;
@@ -133,7 +133,7 @@
   font-weight: bold !important;
   width: 28px !important;
   height: 28px !important;
-  display: none !important; /* Hidden by default (desktop) */
+  display: flex !important; /* VISIBLE BY DEFAULT */
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
@@ -142,6 +142,8 @@
   position: relative !important;
   z-index: 10000 !important;
   pointer-events: all !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .sidebar-menu-btn:hover {
@@ -150,6 +152,21 @@
 
 .sidebar-menu-btn:active {
   border: 1px inset #fff;
+}
+
+/* Hide menu button on desktop - show only on mobile */
+@media (min-width: 769px) {
+  .sidebar-menu-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  .chat-bubble-btn {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Mobile Sidebar Close Button */
@@ -1248,16 +1265,28 @@ body, html {
     display: none !important;
   }
   
-  /* Ensure menu button is visible on mobile */
+  /* Ensure menu button is visible on mobile - HIGH SPECIFICITY */
+  .chess-game.mobile .sidebar-menu-btn,
+  .chess-game.mobile-device .sidebar-menu-btn,
+  .chess-header .sidebar-menu-btn,
+  .chess-controls .sidebar-menu-btn,
   .sidebar-menu-btn {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    width: 28px !important;
+    height: 28px !important;
   }
   
   /* Hide chat button on mobile */
+  .chess-game.mobile .chat-bubble-btn,
+  .chess-game.mobile-device .chat-bubble-btn,
+  .chess-header .chat-bubble-btn,
+  .chess-controls .chat-bubble-btn,
   .chat-bubble-btn {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
   }
   
   /* Hide toggle buttons under board on mobile - use menu popup instead */

@@ -4972,23 +4972,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             }}
             title="Toggle Menu"
             type="button"
-            style={{
-              background: '#c0c0c0',
-              border: '1px outset #fff',
-              borderRadius: '0',
-              color: '#000',
-              cursor: 'pointer',
-              fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              width: '28px',
-              height: '28px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0',
-              margin: '0 2px'
-            }}
           >
             ☰
           </button>
