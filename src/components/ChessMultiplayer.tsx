@@ -4972,6 +4972,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             }}
             title="Toggle Menu"
             type="button"
+            aria-label="Toggle Menu"
           >
             ☰
           </button>
