@@ -4962,63 +4962,61 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {/* Single menu button - always show on mobile */}
-          {isMobile ? (
-            <button 
-              className="sidebar-menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsSidebarOpen(!isSidebarOpen);
-              }}
-              title="Toggle Menu"
-              type="button"
-              style={{
-                background: '#c0c0c0',
-                border: '1px outset #fff',
-                borderRadius: '0',
-                color: '#000',
-                cursor: 'pointer',
-                fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                width: '28px',
-                height: '28px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0',
-                margin: '0 2px'
-              }}
-            >
-              ☰
-            </button>
-          ) : (
-            <button 
-              className="chat-bubble-btn"
-              onClick={onChatToggle}
-              title="Toggle Chat"
-              style={{
-                background: '#c0c0c0',
-                border: '1px outset #fff',
-                borderRadius: '0',
-                color: '#000',
-                cursor: 'pointer',
-                fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                width: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0',
-                margin: '0 2px'
-              }}
-            >
-              💬
-            </button>
-          )}
+          {/* Menu button - shown on mobile, hidden on desktop */}
+          <button 
+            className="sidebar-menu-btn"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsSidebarOpen(!isSidebarOpen);
+            }}
+            title="Toggle Menu"
+            type="button"
+            style={{
+              background: '#c0c0c0',
+              border: '1px outset #fff',
+              borderRadius: '0',
+              color: '#000',
+              cursor: 'pointer',
+              fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0',
+              margin: '0 2px'
+            }}
+          >
+            ☰
+          </button>
+          {/* Chat button - shown on desktop, hidden on mobile */}
+          <button 
+            className="chat-bubble-btn"
+            onClick={onChatToggle}
+            title="Toggle Chat"
+            style={{
+              background: '#c0c0c0',
+              border: '1px outset #fff',
+              borderRadius: '0',
+              color: '#000',
+              cursor: 'pointer',
+              fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0',
+              margin: '0 2px'
+            }}
+          >
+            💬
+          </button>
           <button onClick={onClose}>×</button>
         </div>
       </div>

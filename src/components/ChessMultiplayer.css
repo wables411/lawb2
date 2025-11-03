@@ -133,7 +133,7 @@
   font-weight: bold !important;
   width: 28px !important;
   height: 28px !important;
-  display: flex !important;
+  display: none !important; /* Hidden by default (desktop) */
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
@@ -1248,9 +1248,16 @@ body, html {
     display: none !important;
   }
   
-  /* Ensure menu button is visible */
+  /* Ensure menu button is visible on mobile */
   .sidebar-menu-btn {
     display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* Hide chat button on mobile */
+  .chat-bubble-btn {
+    display: none !important;
   }
   
   /* Hide toggle buttons under board on mobile - use menu popup instead */
