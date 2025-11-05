@@ -264,14 +264,14 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         top: 0,
         width: '100vw',
         height: '100vh',
-        zIndex: 1000
+        zIndex: 10001
       } : {
         position: 'fixed',
         left: position.x,
         top: position.y,
         width: size.width,
         height: size.height,
-        zIndex: 1000
+        zIndex: 10001
       }}
     >
       {/* Chat Header */}
