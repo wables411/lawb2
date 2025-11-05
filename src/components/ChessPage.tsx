@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
@@ -7,6 +7,12 @@ import './ChessMultiplayer.css';
 import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();

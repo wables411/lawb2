@@ -2240,49 +2240,44 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 >
                   Gallery
                 </button>
-                {onBackToModeSelect && (
-                  <button 
-                    className="tab-button menu-button"
-                    onClick={() => {
-                      setIsSidebarOpen(false);
-                      if (onBackToModeSelect) onBackToModeSelect();
-                    }}
-                  >
-                    Mode Select
-                  </button>
-                )}
               </div>
 
               {/* Tab Content */}
               {sidebarView === 'leaderboard' && (
                 <div className="leaderboard-compact">
                   <div className="leaderboard-title">Leaderboard</div>
-                  <div className="leaderboard-table-compact">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Player</th>
-                          <th>Pts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
-                          if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                            const typedEntry = entry as LeaderboardEntry;
-                            return (
-                              <tr key={typedEntry.username}>
-                                <td>{index + 1}</td>
-                                <td>{formatAddress(typedEntry.username)}</td>
-                                <td>{typedEntry.points}</td>
-                              </tr>
-                            );
-                          }
-                          return null;
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
+                    <div className="leaderboard-table-compact">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leaderboardData.slice(0, 8).map((entry, index: number) => {
+                            if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                              const typedEntry = entry as LeaderboardEntry;
+                              return (
+                                <tr key={typedEntry.username}>
+                                  <td>{index + 1}</td>
+                                  <td>{formatAddress(typedEntry.username)}</td>
+                                  <td>{typedEntry.points}</td>
+                                </tr>
+                              );
+                            }
+                            return null;
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                      No leaderboard data available
+                    </div>
+                  )}
                 </div>
               )}
               {sidebarView === 'moves' && showGame && (

@@ -5092,14 +5092,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 >
                   Menu
                 </button>
-                {onBackToModeSelect && (
-                  <button 
-                    className="tab-button menu-button"
-                    onClick={onBackToModeSelect}
-                  >
-                    Mode Select
-                  </button>
-                )}
               </div>
 
               {/* Tab Content */}

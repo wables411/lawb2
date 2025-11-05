@@ -271,18 +271,21 @@ button.sidebar-menu-btn,
 
 /* Leaderboard Content Styling */
 .leaderboard-compact {
-  color: #00ff00;
-  font-size: 12px;
+  color: #00ff00 !important;
+  font-size: 12px !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .leaderboard-title {
-  color: #00ff00;
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 10px;
-  text-align: center;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
-  padding-bottom: 5px;
+  color: #00ff00 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  margin-bottom: 10px !important;
+  text-align: center !important;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.5) !important;
+  padding-bottom: 5px !important;
 }
 
 .leaderboard-list {
@@ -1066,20 +1069,30 @@ body, html {
 }
 
 .leaderboard-table-compact {
-  width: 100%;
-  overflow-x: auto;
+  width: 100% !important;
+  display: block !important;
+  overflow-x: auto !important;
 }
 
 .leaderboard-table-compact table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 11px !important;
+  color: #00ff00 !important;
 }
 
 .leaderboard-table-compact th, .leaderboard-table-compact td {
-  padding: 1px 1px;
-  text-align: center;
-  border: 1px solid #ccc;
+  padding: 4px 6px !important;
+  text-align: center !important;
+  border: 1px solid rgba(0, 255, 0, 0.3) !important;
+  color: #00ff00 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaderboard-table-compact th {
+  background: rgba(0, 255, 0, 0.1) !important;
+  font-weight: bold !important;
+  color: #00ff00 !important;
 }
 
 .leaderboard-table-compact th:nth-child(1), .leaderboard-table-compact td:nth-child(1) { 
@@ -1368,11 +1381,11 @@ body, html {
     max-width: 400px !important;
     max-height: calc(100vh - 32px) !important;
     z-index: 9999 !important;
-    background: rgba(240, 240, 240, 0.98) !important;
+    background: rgba(0, 255, 0, 0.85) !important;
     backdrop-filter: blur(10px) !important;
-    border: 2px solid #000 !important;
+    border: 2px solid #00ff00 !important;
     border-radius: 8px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 8px 32px rgba(0, 255, 0, 0.5) !important;
     flex-direction: column !important;
     padding: 16px !important;
     overflow-y: auto !important;
