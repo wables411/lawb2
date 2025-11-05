@@ -1888,6 +1888,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Add state for sidebar view toggle
   const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('leaderboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
   const handlePromotion = (promotionPiece: string) => {
@@ -2143,7 +2144,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {isChatMinimized && onChatToggle && (
+          {/* Menu button - shown on mobile, hidden on desktop */}
+          {isMobile && (
+            <button 
+              className="sidebar-menu-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsSidebarOpen(!isSidebarOpen);
+              }}
+              title="Toggle Menu"
+              type="button"
+              aria-label="Toggle Menu"
+            >
+              ☰
+            </button>
+          )}
+          {/* Chat button - shown on desktop, hidden on mobile */}
+          {!isMobile && isChatMinimized && onChatToggle && (
             <button 
               className="chat-bubble-btn"
               onClick={onChatToggle}
@@ -2156,57 +2174,187 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </div>
       </div>
       <div className={`game-stable-layout ${isMobile ? 'mobile-layout' : 'desktop-layout'}`}>
-        {/* Left Sidebar - Toggleable Views */}
-        <div className="left-sidebar">
-          {sidebarView === 'leaderboard' && (
-            <div className="leaderboard-compact">
-              <h3>Leaderboard</h3>
-              <div className="leaderboard-table-compact">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Player</th>
-                      <th>Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
-                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                        const typedEntry = entry as LeaderboardEntry;
-                        return (
-                          <tr key={typedEntry.username}>
-                            <td>{index + 1}</td>
-                            <td>{formatAddress(typedEntry.username)}</td>
-                            <td>{typedEntry.points}</td>
-                          </tr>
-                        );
-                      }
-                      return null;
-                    })}
-                  </tbody>
-                </table>
+        {/* Mobile Sidebar Popup - Always available on mobile via menu button */}
+        {isMobile && (
+          <>
+            {/* Mobile Popup Overlay */}
+            {isSidebarOpen && (
+              <div 
+                className="sidebar-popup-overlay"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(false);
+                }}
+              />
+            )}
+            
+            <div className={`left-sidebar ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}>
+              {/* Close button for mobile popup */}
+              <button
+                className="sidebar-close-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(false);
+                }}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            
+              {/* Tab Navigation */}
+              <div className="sidebar-tabs">
+                <button 
+                  className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('leaderboard');
+                    if (isMobile) setIsSidebarOpen(false);
+                  }}
+                >
+                  Leaderboard
+                </button>
+                {showGame && (
+                  <button 
+                    className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSidebarView('moves');
+                      if (isMobile) setIsSidebarOpen(false);
+                    }}
+                  >
+                    Moves
+                  </button>
+                )}
+                <button 
+                  className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('gallery');
+                    if (isMobile) setIsSidebarOpen(false);
+                  }}
+                >
+                  Gallery
+                </button>
+                {onBackToModeSelect && (
+                  <button 
+                    className="tab-button menu-button"
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      if (onBackToModeSelect) onBackToModeSelect();
+                    }}
+                  >
+                    Mode Select
+                  </button>
+                )}
               </div>
-            </div>
-          )}
-          {sidebarView === 'moves' && showGame && (
-            <div className="move-history-compact">
-              <div className="move-history-title">Moves</div>
-              <ul className="move-history-list-compact">
-                {moveHistory.slice().reverse().map((move, idx) => (
-                  <li key={moveHistory.length - 1 - idx}>{move}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {sidebarView === 'gallery' && (
-            <div className="piece-gallery-compact">
-              {renderPieceGallery(true, 'Click pieces to learn more')}
-            </div>
-          )}
 
-
-        </div>
+              {/* Tab Content */}
+              {sidebarView === 'leaderboard' && (
+                <div className="leaderboard-compact">
+                  <div className="leaderboard-title">Leaderboard</div>
+                  <div className="leaderboard-table-compact">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Rank</th>
+                          <th>Player</th>
+                          <th>Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
+                          if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                            const typedEntry = entry as LeaderboardEntry;
+                            return (
+                              <tr key={typedEntry.username}>
+                                <td>{index + 1}</td>
+                                <td>{formatAddress(typedEntry.username)}</td>
+                                <td>{typedEntry.points}</td>
+                              </tr>
+                            );
+                          }
+                          return null;
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {sidebarView === 'moves' && showGame && (
+                <div className="move-history-compact">
+                  <div className="move-history-title">Moves</div>
+                  <ul className="move-history-list-compact">
+                    {moveHistory.slice().reverse().map((move, idx) => (
+                      <li key={moveHistory.length - 1 - idx}>{move}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {sidebarView === 'gallery' && (
+                <div className="piece-gallery-compact">
+                  {renderPieceGallery(true, 'Click pieces to learn more')}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        
+        {/* Desktop Sidebar - Toggleable Views */}
+        {!isMobile && (
+          <div className="left-sidebar">
+            {sidebarView === 'leaderboard' && (
+              <div className="leaderboard-compact">
+                <h3>Leaderboard</h3>
+                <div className="leaderboard-table-compact">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
+                        if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                          const typedEntry = entry as LeaderboardEntry;
+                          return (
+                            <tr key={typedEntry.username}>
+                              <td>{index + 1}</td>
+                              <td>{formatAddress(typedEntry.username)}</td>
+                              <td>{typedEntry.points}</td>
+                            </tr>
+                          );
+                        }
+                        return null;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {sidebarView === 'moves' && showGame && (
+              <div className="move-history-compact">
+                <div className="move-history-title">Moves</div>
+                <ul className="move-history-list-compact">
+                  {moveHistory.slice().reverse().map((move, idx) => (
+                    <li key={moveHistory.length - 1 - idx}>{move}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {sidebarView === 'gallery' && (
+              <div className="piece-gallery-compact">
+                {renderPieceGallery(true, 'Click pieces to learn more')}
+              </div>
+            )}
+          </div>
+        )}
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area">
           {/* Game Info Bar - Compact */}
@@ -2264,28 +2412,30 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   )}
                 </div>
               </div>
-              {/* Compact Game Controls */}
-              <div className="game-controls-compact">
-                <div className="sidebar-toggle-group">
-                  <button
-                    className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                    onClick={() => setSidebarView('leaderboard')}
-                  >Leaderboard</button>
-                  <button
-                    className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                    onClick={() => setSidebarView('moves')}
-                  >Moves</button>
-                  <button
-                    className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                    onClick={() => setSidebarView('gallery')}
-                  >Gallery</button>
+              {/* Compact Game Controls - Hidden on mobile (use menu popup instead) */}
+              {!isMobile && (
+                <div className="game-controls-compact">
+                  <div className="sidebar-toggle-group">
+                    <button
+                      className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('leaderboard')}
+                    >Leaderboard</button>
+                    <button
+                      className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('moves')}
+                    >Moves</button>
+                    <button
+                      className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
+                      onClick={() => setSidebarView('gallery')}
+                    >Gallery</button>
+                  </div>
+                  <button onClick={handleNewGame}>New Match</button>
+                  {onBackToModeSelect && (
+                    <button onClick={onBackToModeSelect}>Mode Select</button>
+                  )}
+                  <button onClick={handleBackToMenu}>Menu</button>
                 </div>
-                <button onClick={handleNewGame}>New Match</button>
-                {onBackToModeSelect && (
-                  <button onClick={onBackToModeSelect}>Mode Select</button>
-                )}
-                <button onClick={handleBackToMenu}>Menu</button>
-              </div>
+              )}
             </div>
           ) : showPieceSetSelector ? (
             renderPieceSetSelector()

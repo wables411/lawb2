@@ -145,12 +145,13 @@ button.sidebar-menu-btn,
   margin: 0 4px !important;
   touch-action: manipulation !important;
   position: relative !important;
-  z-index: 10001 !important;
+  z-index: 10002 !important;
   pointer-events: auto !important;
   visibility: visible !important;
   opacity: 1 !important;
   line-height: 1 !important;
   flex-shrink: 0 !important;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .sidebar-menu-btn:hover {
@@ -1390,6 +1391,12 @@ body, html {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  
+  /* Ensure overlay doesn't block menu button */
+  .sidebar-popup-overlay {
+    z-index: 9998 !important;
   }
   
   @keyframes slideIn {
@@ -1415,6 +1422,10 @@ body, html {
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(66, 153, 225, 0.3) !important;
   }
   
   /* Ensure pieces fit perfectly in squares on mobile */
@@ -1434,6 +1445,27 @@ body, html {
     box-sizing: border-box !important;
     pointer-events: auto !important;
     cursor: pointer !important;
+    z-index: 2 !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  /* Ensure chessboard container doesn't block clicks */
+  .chessboard-container,
+  .chess-game.mobile .chessboard-container,
+  .chess-game.mobile-device .chessboard-container {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+  }
+  
+  /* Ensure chessboard itself is clickable */
+  .chessboard,
+  .chess-game.mobile .chessboard,
+  .chess-game.mobile-device .chessboard {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
   }
   
   .game-info-compact {
@@ -2325,8 +2357,22 @@ body, html {
   box-shadow: none;
   transition: all 0.3s ease;
   position: relative;
-  z-index: 100;
-  pointer-events: all;
+  z-index: 10000 !important;
+  pointer-events: all !important;
+}
+
+.chess-header .chess-controls {
+  position: relative;
+  z-index: 10001 !important;
+  pointer-events: all !important;
+}
+
+.chess-header .chess-controls button {
+  position: relative;
+  z-index: 10002 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .chess-header h2 {
