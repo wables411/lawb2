@@ -2194,7 +2194,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               />
             )}
             
-            <div className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}>
+            <div 
+              className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}
+              style={{ display: isSidebarOpen ? 'flex' : 'none' }}
+            >
               {/* Close button */}
               <button
                 className="mobile-menu-close-btn"
@@ -2239,7 +2242,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       e.preventDefault();
                       e.stopPropagation();
                       setIsSidebarOpen(false);
-                      if (onChatToggle) onChatToggle();
+                      // Small delay to ensure menu closes before opening chat
+                      setTimeout(() => {
+                        if (onChatToggle) {
+                          onChatToggle();
+                        }
+                      }, 100);
                     }}
                   >
                     Chat

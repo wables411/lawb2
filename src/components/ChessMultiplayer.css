@@ -134,6 +134,10 @@ button.sidebar-menu-btn,
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif !important;
   font-size: 18px !important;
   font-weight: bold !important;
+  z-index: 10004 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
   width: 32px !important;
   height: 32px !important;
   min-width: 32px !important;
@@ -1630,25 +1634,36 @@ body, html {
   .mobile-content-popup .piece-gallery,
   .mobile-content-popup .piece-gallery-compact,
   .mobile-content-popup .piece-gallery-grid,
-  .mobile-content-popup .piece-gallery h3 {
+  .mobile-content-popup .piece-gallery h3,
+  .mobile-content-popup .piece-gallery-sm,
+  .mobile-content-popup .piece-gallery-sm h3 {
     background: transparent !important;
     color: #00ff00 !important;
   }
   
-  .mobile-content-popup .piece-gallery-item {
+  .mobile-content-popup .piece-gallery-item,
+  .mobile-content-popup .piece-gallery-sm .piece-gallery-item {
     background: rgba(0, 0, 0, 0.3) !important;
     border: 1px solid rgba(0, 255, 0, 0.3) !important;
   }
   
-  .mobile-content-popup .piece-gallery-item:hover {
+  .mobile-content-popup .piece-gallery-item:hover,
+  .mobile-content-popup .piece-gallery-sm .piece-gallery-item:hover {
     background: rgba(0, 255, 0, 0.1) !important;
     border-color: rgba(0, 255, 0, 0.6) !important;
   }
   
   .mobile-content-popup .piece-gallery-name,
   .mobile-content-popup .piece-gallery-desc,
-  .mobile-content-popup .piece-gallery-tip {
+  .mobile-content-popup .piece-gallery-tip,
+  .mobile-content-popup .piece-gallery-sm .piece-gallery-name,
+  .mobile-content-popup .piece-gallery-sm .piece-gallery-desc,
+  .mobile-content-popup .piece-gallery-sm .piece-gallery-tip {
     color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .piece-gallery-img {
+    background: transparent !important;
   }
   
   /* Fix gallery height to not overlap header */

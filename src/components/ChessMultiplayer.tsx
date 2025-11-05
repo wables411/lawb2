@@ -4878,9 +4878,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Load initial data with optimized lobby loading
   useEffect(() => {
-    loadLeaderboard();
+    void loadLeaderboard();
     loadOpenGames();
     checkStuckGames(); // Check for stuck games on load
+    
+    // Also reload leaderboard periodically to ensure data is fresh
+    const leaderboardInterval = setInterval(() => {
+      void loadLeaderboard();
+    }, 30000); // Reload every 30 seconds
     
     // Set up polling for open games with debouncing and reduced frequency
     let timeoutId: NodeJS.Timeout;
@@ -4898,6 +4903,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     return () => {
       clearInterval(interval);
+      clearInterval(leaderboardInterval);
       clearTimeout(timeoutId);
       if (debouncedLoadOpenGamesRef.current) {
         clearTimeout(debouncedLoadOpenGamesRef.current);
@@ -4968,7 +4974,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setIsSidebarOpen(!isSidebarOpen);
+              console.log('Menu button clicked, isSidebarOpen:', isSidebarOpen);
+              setIsSidebarOpen(prev => {
+                console.log('Setting isSidebarOpen to:', !prev);
+                return !prev;
+              });
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Menu button touched, isSidebarOpen:', isSidebarOpen);
+              setIsSidebarOpen(prev => {
+                console.log('Setting isSidebarOpen to:', !prev);
+                return !prev;
+              });
             }}
             title="Toggle Menu"
             type="button"
@@ -5022,7 +5041,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               />
             )}
             
-            <div className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}>
+            <div 
+              className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}
+              style={{ display: isSidebarOpen ? 'flex' : 'none' }}
+            >
               {/* Close button */}
               <button
                 className="mobile-menu-close-btn"
