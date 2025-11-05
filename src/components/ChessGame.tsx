@@ -2263,6 +2263,101 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </>
         )}
         
+        {/* Mobile Content Popup - Shows content when a menu button is clicked */}
+        {isMobile && sidebarView && (
+          <>
+            {/* Overlay */}
+            <div 
+              className="mobile-content-overlay"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSidebarView(null);
+              }}
+            />
+            
+            {/* Content Popup */}
+            <div className="mobile-content-popup">
+              {/* Close button */}
+              <button
+                className="mobile-content-close-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSidebarView(null);
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              
+              {/* Content */}
+              {sidebarView === 'leaderboard' && (
+                <div className="leaderboard-compact">
+                  <div className="leaderboard-title">Leaderboard</div>
+                  {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
+                    <div className="leaderboard-table-compact">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leaderboardData.slice(0, 8).map((entry, index: number) => {
+                            if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                              const typedEntry = entry as LeaderboardEntry;
+                              return (
+                                <tr key={typedEntry.username}>
+                                  <td>{index + 1}</td>
+                                  <td>{formatAddress(typedEntry.username)}</td>
+                                  <td>{typedEntry.points}</td>
+                                </tr>
+                              );
+                            }
+                            return null;
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                      No leaderboard data available
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {sidebarView === 'moves' && showGame && (
+                <div className="move-history-compact">
+                  <div className="move-history-title">Move History</div>
+                  <ul className="move-history-list-compact">
+                    {moveHistory.slice().reverse().map((move, idx) => (
+                      <li key={moveHistory.length - 1 - idx}>{move}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {sidebarView === 'gallery' && (
+                <div className="piece-gallery-compact">
+                  {renderPieceGallery(true, 'Click pieces to learn more')}
+                </div>
+              )}
+              
+              {sidebarView === 'chat' && (
+                <div className="chat-compact">
+                  <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                    Chat is available in the main chat window
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        
         {/* Desktop Sidebar - Toggleable Views */}
         {!isMobile && (
           <div className="left-sidebar">

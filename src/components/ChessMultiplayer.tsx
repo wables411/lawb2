@@ -5088,6 +5088,156 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             </div>
       </>
     )}
+    
+    {/* Mobile Content Popup - Shows content when a menu button is clicked */}
+    {isMobile && sidebarView && (
+      <>
+        {/* Overlay */}
+        <div 
+          className="mobile-content-overlay"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setSidebarView(null);
+          }}
+        />
+        
+        {/* Content Popup */}
+        <div className="mobile-content-popup">
+          {/* Close button */}
+          <button
+            className="mobile-content-close-btn"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSidebarView(null);
+            }}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          
+          {/* Content */}
+          {sidebarView === 'leaderboard' && (
+            <div className="leaderboard-compact">
+              <div className="leaderboard-title">Leaderboard</div>
+              {leaderboard.length > 0 ? (
+                <div className="leaderboard-list">
+                  {leaderboard.slice(0, 10).map((entry, index) => (
+                    <div key={entry.username} className="leaderboard-entry">
+                      <span className="rank">#{index + 1}</span>
+                      <span className="player">{formatLeaderboardAddress(entry.username)}</span>
+                      <span className="score">{entry.points}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                  No leaderboard data available
+                </div>
+              )}
+            </div>
+          )}
+          
+          {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && sidebarView === 'moves' && (
+            <div className="move-history-compact">
+              <div className="move-history-title">Move History</div>
+              <ul className="move-history-list-compact">
+                {moveHistory.slice().reverse().map((move, idx) => (
+                  <li key={moveHistory.length - 1 - idx}>{move}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {sidebarView === 'gallery' && (
+            <div className="piece-gallery-compact">
+              <div className="gallery-title">Piece Gallery</div>
+              <div className="piece-gallery-grid">
+                {pieceGallery.map((piece) => (
+                  <div 
+                    key={piece.key} 
+                    className={`piece-gallery-item ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
+                    data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
+                    onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
+                  >
+                    <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
+                    <div className="piece-gallery-name">{piece.name}</div>
+                    {selectedGalleryPiece === piece.key && (
+                      <div className="piece-gallery-desc">{piece.desc}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {sidebarView === 'chat' && (
+            <div className="chat-compact">
+              <div className="chat-compact-tabs">
+                <button
+                  className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}
+                  onClick={() => setChatCurrentRoom('public')}
+                >
+                  Public
+                </button>
+                {inviteCode && (
+                  <button
+                    className={`chat-compact-tab ${chatCurrentRoom === 'private' ? 'active' : ''}`}
+                    onClick={() => setChatCurrentRoom('private')}
+                  >
+                    Game
+                  </button>
+                )}
+              </div>
+
+              <div className="chat-compact-messages">
+                {!isConnected && (
+                  <div className="chat-compact-notice">
+                    Connect wallet to chat
+                  </div>
+                )}
+                {chatMessages.map((message) => (
+                  <div key={message.id} className="chat-compact-message">
+                    <div className="chat-compact-message-header">
+                      <span className="chat-compact-author">{message.displayName}</span>
+                      <span className="chat-compact-time">
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className="chat-compact-content">{message.message}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="chat-compact-input">
+                <input
+                  type="text"
+                  value={chatNewMessage}
+                  onChange={(e) => setChatNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendChatMessage();
+                    }
+                  }}
+                  placeholder={isConnected ? "Type message..." : "Connect wallet"}
+                  disabled={!isConnected}
+                  className="chat-compact-input-field"
+                />
+                <button
+                  onClick={() => void sendChatMessage()}
+                  disabled={!isConnected || !chatNewMessage.trim()}
+                  className="chat-compact-send-btn"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </>
+    )}
         
         {/* Desktop Sidebar - Show only during active gameplay */}
         {!isMobile && (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (

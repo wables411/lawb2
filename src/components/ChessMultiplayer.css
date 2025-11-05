@@ -1488,6 +1488,65 @@ body, html {
     }
   }
   
+  /* Mobile Content Popup - Shows content when menu button is clicked */
+  .mobile-content-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 9998 !important;
+    pointer-events: all !important;
+  }
+  
+  .mobile-content-popup {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: calc(100vw - 32px) !important;
+    max-width: 500px !important;
+    max-height: calc(100vh - 32px) !important;
+    z-index: 9999 !important;
+    background: rgba(0, 255, 0, 0.9) !important;
+    border: 2px solid #00ff00 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 32px rgba(0, 255, 0, 0.5) !important;
+    padding: 16px !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    pointer-events: all !important;
+    animation: slideIn 0.3s ease !important;
+  }
+  
+  .mobile-content-close-btn {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: rgba(255, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 0, 0, 0.4) !important;
+    color: #ff0000 !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10 !important;
+    touch-action: manipulation !important;
+  }
+  
+  .mobile-content-close-btn:hover {
+    background: rgba(255, 0, 0, 0.3) !important;
+    border-color: rgba(255, 0, 0, 0.6) !important;
+  }
+  
   /* Only show when explicitly opened */
   .left-sidebar.popup-open,
   .chess-game.mobile .left-sidebar.popup-open,
