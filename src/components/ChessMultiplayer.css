@@ -336,28 +336,51 @@ button.sidebar-menu-btn,
   width: 100% !important;
 }
 
-/* Mobile gallery - green background */
+/* Mobile gallery - green background - MAXIMUM SPECIFICITY */
 @media (max-width: 768px) {
-  .piece-gallery-compact {
+  .piece-gallery-compact,
+  .mobile-content-popup .piece-gallery-compact,
+  .mobile-content-popup .piece-gallery {
     background: transparent !important;
   }
   
   .piece-gallery-item,
-  .gallery-piece {
+  .gallery-piece,
+  .mobile-content-popup .piece-gallery-item,
+  .mobile-content-popup .gallery-piece,
+  .piece-gallery .piece-gallery-item {
     background: rgba(0, 0, 0, 0.3) !important;
     border: 1px solid rgba(0, 255, 0, 0.3) !important;
   }
   
   .piece-gallery-item:hover,
-  .gallery-piece:hover {
+  .gallery-piece:hover,
+  .mobile-content-popup .piece-gallery-item:hover,
+  .mobile-content-popup .gallery-piece:hover {
     background: rgba(0, 255, 0, 0.1) !important;
     border-color: rgba(0, 255, 0, 0.6) !important;
   }
   
   /* Ensure gallery grid has green background */
   .piece-gallery-grid,
-  .gallery-grid {
+  .gallery-grid,
+  .mobile-content-popup .piece-gallery-grid,
+  .mobile-content-popup .gallery-grid,
+  .piece-gallery .piece-gallery-grid {
     background: transparent !important;
+  }
+  
+  /* Ensure piece-gallery wrapper has green background */
+  .piece-gallery,
+  .mobile-content-popup .piece-gallery {
+    background: transparent !important;
+  }
+  
+  /* Fix gallery container height */
+  .mobile-content-popup .piece-gallery-compact,
+  .mobile-content-popup .piece-gallery {
+    max-height: calc(100vh - 200px) !important;
+    overflow-y: auto !important;
   }
 }
 
@@ -553,14 +576,14 @@ button.sidebar-menu-btn,
 }
 
 .piece-gallery-item {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.3) !important;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   padding: 12px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.3) !important;
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -1504,12 +1527,12 @@ body, html {
   
   .mobile-content-popup {
     position: fixed !important;
-    top: 50% !important;
+    top: 60px !important;
     left: 50% !important;
-    transform: translate(-50%, -50%) !important;
+    transform: translateX(-50%) !important;
     width: calc(100vw - 32px) !important;
     max-width: 500px !important;
-    max-height: calc(100vh - 32px) !important;
+    max-height: calc(100vh - 100px) !important;
     z-index: 9999 !important;
     background: rgba(0, 255, 0, 0.9) !important;
     border: 2px solid #00ff00 !important;
@@ -1545,6 +1568,158 @@ body, html {
   .mobile-content-close-btn:hover {
     background: rgba(255, 0, 0, 0.3) !important;
     border-color: rgba(255, 0, 0, 0.6) !important;
+  }
+  
+  /* Uniform styling for all mobile content views */
+  .mobile-content-view {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-view .leaderboard-title,
+  .mobile-content-view .move-history-title,
+  .mobile-content-view .gallery-title {
+    color: #00ff00 !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    margin-bottom: 12px !important;
+    text-align: center !important;
+    border-bottom: 1px solid rgba(0, 255, 0, 0.5) !important;
+    padding-bottom: 8px !important;
+  }
+  
+  .mobile-empty-state {
+    color: #00ff00 !important;
+    text-align: center !important;
+    padding: 40px 20px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Ensure leaderboard table is visible on mobile */
+  .mobile-content-popup .leaderboard-table-compact {
+    width: 100% !important;
+    display: block !important;
+    overflow-x: auto !important;
+  }
+  
+  .mobile-content-popup .leaderboard-table-compact table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 12px !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .leaderboard-table-compact th,
+  .mobile-content-popup .leaderboard-table-compact td {
+    padding: 8px 6px !important;
+    text-align: center !important;
+    border: 1px solid rgba(0, 255, 0, 0.3) !important;
+    color: #00ff00 !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  .mobile-content-popup .leaderboard-table-compact th {
+    background: rgba(0, 255, 0, 0.1) !important;
+    font-weight: bold !important;
+    color: #00ff00 !important;
+  }
+  
+  /* Ensure gallery has green background - MAXIMUM SPECIFICITY */
+  .mobile-content-popup .piece-gallery,
+  .mobile-content-popup .piece-gallery-compact,
+  .mobile-content-popup .piece-gallery-grid,
+  .mobile-content-popup .piece-gallery h3 {
+    background: transparent !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .piece-gallery-item {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(0, 255, 0, 0.3) !important;
+  }
+  
+  .mobile-content-popup .piece-gallery-item:hover {
+    background: rgba(0, 255, 0, 0.1) !important;
+    border-color: rgba(0, 255, 0, 0.6) !important;
+  }
+  
+  .mobile-content-popup .piece-gallery-name,
+  .mobile-content-popup .piece-gallery-desc,
+  .mobile-content-popup .piece-gallery-tip {
+    color: #00ff00 !important;
+  }
+  
+  /* Fix gallery height to not overlap header */
+  .mobile-content-popup .piece-gallery-compact,
+  .mobile-content-popup .piece-gallery {
+    max-height: calc(100vh - 250px) !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Ensure move history is styled uniformly */
+  .mobile-content-popup .move-history-compact {
+    width: 100% !important;
+  }
+  
+  .mobile-content-popup .move-history-list-compact {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .mobile-content-popup .move-history-list-compact li {
+    padding: 8px !important;
+    border-bottom: 1px solid rgba(0, 255, 0, 0.2) !important;
+    color: #00ff00 !important;
+    font-size: 12px !important;
+  }
+  
+  /* Ensure chat is styled uniformly */
+  .mobile-content-popup .chat-compact {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .chat-compact-tabs {
+    background: transparent !important;
+  }
+  
+  .mobile-content-popup .chat-compact-tab {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(0, 255, 0, 0.3) !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .chat-compact-tab.active {
+    background: rgba(0, 255, 0, 0.2) !important;
+    border-color: rgba(0, 255, 0, 0.6) !important;
+  }
+  
+  .mobile-content-popup .chat-compact-messages {
+    background: transparent !important;
+  }
+  
+  .mobile-content-popup .chat-compact-message {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(0, 255, 0, 0.2) !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .chat-compact-input-field {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(0, 255, 0, 0.3) !important;
+    color: #00ff00 !important;
+  }
+  
+  .mobile-content-popup .chat-compact-send-btn {
+    background: rgba(0, 255, 0, 0.2) !important;
+    border: 1px solid rgba(0, 255, 0, 0.4) !important;
+    color: #00ff00 !important;
   }
   
   /* Only show when explicitly opened */

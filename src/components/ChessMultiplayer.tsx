@@ -5119,39 +5119,54 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           {/* Content */}
           {sidebarView === 'leaderboard' && (
-            <div className="leaderboard-compact">
+            <div className="leaderboard-compact mobile-content-view">
               <div className="leaderboard-title">Leaderboard</div>
               {leaderboard.length > 0 ? (
-                <div className="leaderboard-list">
-                  {leaderboard.slice(0, 10).map((entry, index) => (
-                    <div key={entry.username} className="leaderboard-entry">
-                      <span className="rank">#{index + 1}</span>
-                      <span className="player">{formatLeaderboardAddress(entry.username)}</span>
-                      <span className="score">{entry.points}</span>
-                    </div>
-                  ))}
+                <div className="leaderboard-table-compact">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboard.slice(0, 10).map((entry, index) => (
+                        <tr key={entry.username}>
+                          <td>{index + 1}</td>
+                          <td>{formatLeaderboardAddress(entry.username)}</td>
+                          <td>{entry.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                  No leaderboard data available
+                <div className="mobile-empty-state">
+                  Loading leaderboard...
                 </div>
               )}
             </div>
           )}
           
           {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && sidebarView === 'moves' && (
-            <div className="move-history-compact">
+            <div className="move-history-compact mobile-content-view">
               <div className="move-history-title">Move History</div>
-              <ul className="move-history-list-compact">
-                {moveHistory.slice().reverse().map((move, idx) => (
-                  <li key={moveHistory.length - 1 - idx}>{move}</li>
-                ))}
-              </ul>
+              {moveHistory.length > 0 ? (
+                <ul className="move-history-list-compact">
+                  {moveHistory.slice().reverse().map((move, idx) => (
+                    <li key={moveHistory.length - 1 - idx}>{move}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="mobile-empty-state">No moves yet</div>
+              )}
             </div>
           )}
           
           {sidebarView === 'gallery' && (
-            <div className="piece-gallery-compact">
+            <div className="piece-gallery-compact mobile-content-view">
               <div className="gallery-title">Piece Gallery</div>
               <div className="piece-gallery-grid">
                 {pieceGallery.map((piece) => (
@@ -5173,7 +5188,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           )}
           
           {sidebarView === 'chat' && (
-            <div className="chat-compact">
+            <div className="chat-compact mobile-content-view">
               <div className="chat-compact-tabs">
                 <button
                   className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}

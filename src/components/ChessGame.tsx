@@ -2293,7 +2293,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               
               {/* Content */}
               {sidebarView === 'leaderboard' && (
-                <div className="leaderboard-compact">
+                <div className="leaderboard-compact mobile-content-view">
                   <div className="leaderboard-title">Leaderboard</div>
                   {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
                     <div className="leaderboard-table-compact">
@@ -2306,7 +2306,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                           </tr>
                         </thead>
                         <tbody>
-                          {leaderboardData.slice(0, 8).map((entry, index: number) => {
+                          {leaderboardData.slice(0, 10).map((entry, index: number) => {
                             if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
                               const typedEntry = entry as LeaderboardEntry;
                               return (
@@ -2323,34 +2323,55 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       </table>
                     </div>
                   ) : (
-                    <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                      No leaderboard data available
+                    <div className="mobile-empty-state">
+                      Loading leaderboard...
                     </div>
                   )}
                 </div>
               )}
               
               {sidebarView === 'moves' && showGame && (
-                <div className="move-history-compact">
+                <div className="move-history-compact mobile-content-view">
                   <div className="move-history-title">Move History</div>
-                  <ul className="move-history-list-compact">
-                    {moveHistory.slice().reverse().map((move, idx) => (
-                      <li key={moveHistory.length - 1 - idx}>{move}</li>
-                    ))}
-                  </ul>
+                  {moveHistory.length > 0 ? (
+                    <ul className="move-history-list-compact">
+                      {moveHistory.slice().reverse().map((move, idx) => (
+                        <li key={moveHistory.length - 1 - idx}>{move}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mobile-empty-state">No moves yet</div>
+                  )}
                 </div>
               )}
               
               {sidebarView === 'gallery' && (
-                <div className="piece-gallery-compact">
+                <div className="piece-gallery-compact mobile-content-view">
+                  <div className="gallery-title">Piece Gallery</div>
                   {renderPieceGallery(true, 'Click pieces to learn more')}
                 </div>
               )}
               
               {sidebarView === 'chat' && (
-                <div className="chat-compact">
-                  <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                    Chat is available in the main chat window
+                <div className="chat-compact mobile-content-view">
+                  <div className="mobile-empty-state">
+                    {onChatToggle ? (
+                      <div>
+                        <div style={{ marginBottom: '16px', fontSize: '14px' }}>Chat is available in the main chat window</div>
+                        <button 
+                          className="mobile-menu-btn"
+                          onClick={() => {
+                            setSidebarView(null);
+                            if (onChatToggle) onChatToggle();
+                          }}
+                          style={{ marginTop: '16px' }}
+                        >
+                          Open Chat Window
+                        </button>
+                      </div>
+                    ) : (
+                      'Chat is available in the main chat window'
+                    )}
                   </div>
                 </div>
               )}
