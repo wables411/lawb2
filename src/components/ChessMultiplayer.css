@@ -342,14 +342,22 @@ button.sidebar-menu-btn,
     background: transparent !important;
   }
   
-  .piece-gallery-item {
+  .piece-gallery-item,
+  .gallery-piece {
     background: rgba(0, 0, 0, 0.3) !important;
     border: 1px solid rgba(0, 255, 0, 0.3) !important;
   }
   
-  .piece-gallery-item:hover {
+  .piece-gallery-item:hover,
+  .gallery-piece:hover {
     background: rgba(0, 255, 0, 0.1) !important;
     border-color: rgba(0, 255, 0, 0.6) !important;
+  }
+  
+  /* Ensure gallery grid has green background */
+  .piece-gallery-grid,
+  .gallery-grid {
+    background: transparent !important;
   }
 }
 
@@ -1385,6 +1393,99 @@ body, html {
   .chess-game.mobile .left-sidebar,
   .chess-game.mobile-device .left-sidebar {
     display: none !important; /* Force hidden on mobile */
+  }
+  
+  /* Mobile Menu Popup - Simple button menu */
+  .mobile-menu-popup {
+    display: none !important;
+    position: fixed !important;
+    top: 60px !important;
+    right: 16px !important;
+    width: 200px !important;
+    z-index: 9999 !important;
+    background: rgba(0, 255, 0, 0.9) !important;
+    border: 2px solid #00ff00 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 16px rgba(0, 255, 0, 0.5) !important;
+    flex-direction: column !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+    pointer-events: all !important;
+    animation: slideDown 0.2s ease !important;
+  }
+  
+  .mobile-menu-popup.popup-open {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .mobile-menu-popup.popup-closed {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  .mobile-menu-close-btn {
+    position: absolute !important;
+    top: 4px !important;
+    right: 4px !important;
+    background: rgba(255, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 0, 0, 0.4) !important;
+    color: #ff0000 !important;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 2px !important;
+    cursor: pointer !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10 !important;
+    touch-action: manipulation !important;
+  }
+  
+  .mobile-menu-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 8px !important;
+  }
+  
+  .mobile-menu-btn {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(0, 255, 0, 0.5) !important;
+    color: #00ff00 !important;
+    padding: 12px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    width: 100% !important;
+    transition: all 0.2s ease !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.2) !important;
+  }
+  
+  .mobile-menu-btn:hover,
+  .mobile-menu-btn:active {
+    background: rgba(0, 255, 0, 0.2) !important;
+    border-color: rgba(0, 255, 0, 0.8) !important;
+    transform: scale(1.02) !important;
+  }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   
   /* Only show when explicitly opened */

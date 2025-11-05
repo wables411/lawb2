@@ -2194,10 +2194,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               />
             )}
             
-            <div className={`left-sidebar ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}>
-              {/* Close button for mobile popup */}
+            <div className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}>
+              {/* Close button */}
               <button
-                className="sidebar-close-btn"
+                className="mobile-menu-close-btn"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -2208,120 +2208,57 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 ×
               </button>
             
-              {/* Tab Navigation */}
-              <div className="sidebar-tabs">
+              {/* Simple button menu - just 4 buttons */}
+              <div className="mobile-menu-buttons">
                 <button 
-                  className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
+                  className="mobile-menu-btn"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setSidebarView('leaderboard');
+                    setIsSidebarOpen(false);
                   }}
                 >
                   Leaderboard
                 </button>
-                {showGame && (
-                  <button 
-                    className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setSidebarView('moves');
-                    }}
-                  >
-                    Moves
-                  </button>
-                )}
                 <button 
-                  className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
+                  className="mobile-menu-btn"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setSidebarView('gallery');
+                    setIsSidebarOpen(false);
                   }}
                 >
                   Gallery
                 </button>
                 {onChatToggle && (
                   <button 
-                    className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
+                    className="mobile-menu-btn"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setSidebarView('chat');
+                      setIsSidebarOpen(false);
                       if (onChatToggle) onChatToggle();
                     }}
                   >
                     Chat
                   </button>
                 )}
+                {showGame && (
+                  <button 
+                    className="mobile-menu-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSidebarView('moves');
+                      setIsSidebarOpen(false);
+                    }}
+                  >
+                    Move History
+                  </button>
+                )}
               </div>
-
-              {/* Tab Content - Only show when a tab is selected */}
-              {sidebarView === 'leaderboard' && (
-                <div className="leaderboard-compact">
-                  <div className="leaderboard-title">Leaderboard</div>
-                  {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
-                    <div className="leaderboard-table-compact">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Pts</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {leaderboardData.slice(0, 8).map((entry, index: number) => {
-                            if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                              const typedEntry = entry as LeaderboardEntry;
-                              return (
-                                <tr key={typedEntry.username}>
-                                  <td>{index + 1}</td>
-                                  <td>{formatAddress(typedEntry.username)}</td>
-                                  <td>{typedEntry.points}</td>
-                                </tr>
-                              );
-                            }
-                            return null;
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                      No leaderboard data available
-                    </div>
-                  )}
-                </div>
-              )}
-              {sidebarView === 'moves' && showGame && (
-                <div className="move-history-compact">
-                  <div className="move-history-title">Moves</div>
-                  <ul className="move-history-list-compact">
-                    {moveHistory.slice().reverse().map((move, idx) => (
-                      <li key={moveHistory.length - 1 - idx}>{move}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {sidebarView === 'gallery' && (
-                <div className="piece-gallery-compact">
-                  {renderPieceGallery(true, 'Click pieces to learn more')}
-                </div>
-              )}
-              {sidebarView === 'chat' && (
-                <div className="chat-compact">
-                  <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                    Chat is available in the main chat window
-                  </div>
-                </div>
-              )}
-              {!sidebarView && (
-                <div style={{ color: '#00ff00', textAlign: 'center', padding: '40px 20px', fontSize: '14px' }}>
-                  Select a tab above to view content
-                </div>
-              )}
             </div>
           </>
         )}

@@ -7,11 +7,18 @@ import './ChessMultiplayer.css';
 import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
-  // Scroll to top on mount
+  // Scroll to top on mount and whenever component updates
   useEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    
+    scrollToTop();
+    // Also scroll after a brief delay to ensure DOM is ready
+    const timeout = setTimeout(scrollToTop, 100);
+    return () => clearTimeout(timeout);
   }, []);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
