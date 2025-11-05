@@ -330,8 +330,27 @@ button.sidebar-menu-btn,
 
 /* Piece Gallery Content Styling */
 .piece-gallery-compact {
-  color: #00ff00;
-  font-size: 12px;
+  color: #00ff00 !important;
+  font-size: 12px !important;
+  background: transparent !important;
+  width: 100% !important;
+}
+
+/* Mobile gallery - green background */
+@media (max-width: 768px) {
+  .piece-gallery-compact {
+    background: transparent !important;
+  }
+  
+  .piece-gallery-item {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(0, 255, 0, 0.3) !important;
+  }
+  
+  .piece-gallery-item:hover {
+    background: rgba(0, 255, 0, 0.1) !important;
+    border-color: rgba(0, 255, 0, 0.6) !important;
+  }
 }
 
 .gallery-title {

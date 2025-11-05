@@ -515,6 +515,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Load leaderboard
   useEffect(() => {
     void loadLeaderboard();
+    // Also reload periodically to ensure data is fresh
+    const interval = setInterval(() => {
+      void loadLeaderboard();
+    }, 30000); // Reload every 30 seconds
+    return () => clearInterval(interval);
   }, []);
 
   // Load leaderboard data from Firebase
@@ -1886,8 +1891,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Workaround for TypeScript JSX type error
   const isOnline = gameMode === 'online';
 
-  // Add state for sidebar view toggle
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery'>('leaderboard');
+  // Add state for sidebar view toggle - null on mobile (tabs first), 'leaderboard' on desktop (show content immediately)
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | null>(isMobile ? null : 'leaderboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
@@ -2211,7 +2216,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     e.preventDefault();
                     e.stopPropagation();
                     setSidebarView('leaderboard');
-                    if (isMobile) setIsSidebarOpen(false);
                   }}
                 >
                   Leaderboard
@@ -2223,7 +2227,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       e.preventDefault();
                       e.stopPropagation();
                       setSidebarView('moves');
-                      if (isMobile) setIsSidebarOpen(false);
                     }}
                   >
                     Moves
@@ -2235,14 +2238,26 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     e.preventDefault();
                     e.stopPropagation();
                     setSidebarView('gallery');
-                    if (isMobile) setIsSidebarOpen(false);
                   }}
                 >
                   Gallery
                 </button>
+                {onChatToggle && (
+                  <button 
+                    className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSidebarView('chat');
+                      if (onChatToggle) onChatToggle();
+                    }}
+                  >
+                    Chat
+                  </button>
+                )}
               </div>
 
-              {/* Tab Content */}
+              {/* Tab Content - Only show when a tab is selected */}
               {sidebarView === 'leaderboard' && (
                 <div className="leaderboard-compact">
                   <div className="leaderboard-title">Leaderboard</div>
@@ -2293,6 +2308,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               {sidebarView === 'gallery' && (
                 <div className="piece-gallery-compact">
                   {renderPieceGallery(true, 'Click pieces to learn more')}
+                </div>
+              )}
+              {sidebarView === 'chat' && (
+                <div className="chat-compact">
+                  <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                    Chat is available in the main chat window
+                  </div>
+                </div>
+              )}
+              {!sidebarView && (
+                <div style={{ color: '#00ff00', textAlign: 'center', padding: '40px 20px', fontSize: '14px' }}>
+                  Select a tab above to view content
                 </div>
               )}
             </div>

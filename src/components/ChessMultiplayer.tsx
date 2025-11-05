@@ -716,7 +716,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat'>('leaderboard');
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | null>(isMobile ? null : 'leaderboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -5044,7 +5044,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     e.preventDefault();
                     e.stopPropagation();
                     setSidebarView('leaderboard');
-                    if (isMobile) setIsSidebarOpen(false);
                   }}
                 >
                   Leaderboard
@@ -5057,7 +5056,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         e.preventDefault();
                         e.stopPropagation();
                         setSidebarView('moves');
-                        if (isMobile) setIsSidebarOpen(false);
                       }}
                     >
                       Moves
@@ -5068,7 +5066,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         e.preventDefault();
                         e.stopPropagation();
                         setSidebarView('gallery');
-                        if (isMobile) setIsSidebarOpen(false);
                       }}
                     >
                       Gallery
@@ -5079,7 +5076,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         e.preventDefault();
                         e.stopPropagation();
                         setSidebarView('chat');
-                        if (isMobile) setIsSidebarOpen(false);
                       }}
                     >
                       Chat
@@ -5094,19 +5090,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </button>
               </div>
 
-              {/* Tab Content */}
+              {/* Tab Content - Only show when a tab is selected */}
               {sidebarView === 'leaderboard' && (
                 <div className="leaderboard-compact">
                   <div className="leaderboard-title">Leaderboard</div>
-                  <div className="leaderboard-list">
-                    {leaderboard.slice(0, 10).map((entry, index) => (
-                      <div key={entry.username} className="leaderboard-entry">
-                        <span className="rank">#{index + 1}</span>
-                        <span className="player">{formatLeaderboardAddress(entry.username)}</span>
-                        <span className="score">{entry.points}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {leaderboard.length > 0 ? (
+                    <div className="leaderboard-list">
+                      {leaderboard.slice(0, 10).map((entry, index) => (
+                        <div key={entry.username} className="leaderboard-entry">
+                          <span className="rank">#{index + 1}</span>
+                          <span className="player">{formatLeaderboardAddress(entry.username)}</span>
+                          <span className="score">{entry.points}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ color: '#00ff00', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                      No leaderboard data available
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -5146,73 +5148,78 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   )}
 
                   {sidebarView === 'chat' && (
-                    <div className="chat-compact">
-                      <div className="chat-compact-tabs">
-                        <button
-                          className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}
-                          onClick={() => setChatCurrentRoom('public')}
-                        >
-                          Public
-                        </button>
-                        {inviteCode && (
-                          <button
-                            className={`chat-compact-tab ${chatCurrentRoom === 'private' ? 'active' : ''}`}
-                            onClick={() => setChatCurrentRoom('private')}
-                          >
-                            Game
-                          </button>
-                        )}
+                <div className="chat-compact">
+                  <div className="chat-compact-tabs">
+                    <button
+                      className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}
+                      onClick={() => setChatCurrentRoom('public')}
+                    >
+                      Public
+                    </button>
+                    {inviteCode && (
+                      <button
+                        className={`chat-compact-tab ${chatCurrentRoom === 'private' ? 'active' : ''}`}
+                        onClick={() => setChatCurrentRoom('private')}
+                      >
+                        Game
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="chat-compact-messages">
+                    {!isConnected && (
+                      <div className="chat-compact-notice">
+                        Connect wallet to chat
                       </div>
-                      
-                      <div className="chat-compact-messages">
-                        {!isConnected && (
-                          <div className="chat-compact-notice">
-                            Connect wallet to chat
-                          </div>
-                        )}
-                        {chatMessages.map((message) => (
-                          <div key={message.id} className="chat-compact-message">
-                            <div className="chat-compact-message-header">
-                              <span className="chat-compact-author">{message.displayName}</span>
-                              <span className="chat-compact-time">
-                                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <div className="chat-compact-content">{message.message}</div>
-                          </div>
-                        ))}
+                    )}
+                    {chatMessages.map((message) => (
+                      <div key={message.id} className="chat-compact-message">
+                        <div className="chat-compact-message-header">
+                          <span className="chat-compact-author">{message.displayName}</span>
+                          <span className="chat-compact-time">
+                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className="chat-compact-content">{message.message}</div>
                       </div>
-                      
-                      <div className="chat-compact-input">
-                        <input
-                          type="text"
-                          value={chatNewMessage}
-                          onChange={(e) => setChatNewMessage(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              void sendChatMessage();
-                            }
-                          }}
-                          placeholder={isConnected ? "Type message..." : "Connect wallet"}
-                          disabled={!isConnected}
-                          className="chat-compact-input-field"
-                        />
-                        <button
-                          onClick={() => void sendChatMessage()}
-                          disabled={!isConnected || !chatNewMessage.trim()}
-                          className="chat-compact-send-btn"
-                        >
-                          Send
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
+                    ))}
+                  </div>
+
+                  <div className="chat-compact-input">
+                    <input
+                      type="text"
+                      value={chatNewMessage}
+                      onChange={(e) => setChatNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          void sendChatMessage();
+                        }
+                      }}
+                      placeholder={isConnected ? "Type message..." : "Connect wallet"}
+                      disabled={!isConnected}
+                      className="chat-compact-input-field"
+                    />
+                    <button
+                      onClick={() => void sendChatMessage()}
+                      disabled={!isConnected || !chatNewMessage.trim()}
+                      className="chat-compact-send-btn"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
               )}
+            </>
+          )}
+          {!sidebarView && (
+            <div style={{ color: '#00ff00', textAlign: 'center', padding: '40px 20px', fontSize: '14px' }}>
+              Select a tab above to view content
             </div>
-          </>
-        )}
+          )}
+        </div>
+      </>
+    )}
         
         {/* Desktop Sidebar - Show only during active gameplay */}
         {!isMobile && (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
