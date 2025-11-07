@@ -20,6 +20,7 @@ import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol } from
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
+import Popup from './Popup';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -716,7 +717,54 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | null>(isMobile ? null : 'leaderboard');
+  // Desktop menu and window state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves'>>(new Set());
+  
+  // Window positions and sizes (for draggable windows)
+  const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
+  
+  // Helper functions for window management
+  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+    setOpenWindows(prev => new Set(prev).add(windowType));
+    setIsMenuOpen(false);
+    // Set default position if not set - position windows to avoid covering chessboard
+    if (!windowPositions[windowType]) {
+      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : 400;
+      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : 500;
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      const headerHeight = 60; // Account for header
+      
+      // Position windows on the left side to avoid center chessboard
+      // Stagger them vertically to avoid overlap
+      const openCount = Object.keys(windowPositions).length;
+      const leftMargin = 20;
+      const topMargin = headerHeight + 20;
+      const staggerOffset = openCount * 40;
+      
+      setWindowPositions(prev => ({
+        ...prev,
+        [windowType]: { 
+          x: leftMargin, 
+          y: Math.min(topMargin + staggerOffset, screenHeight - windowHeight - 20),
+          width: windowWidth, 
+          height: windowHeight 
+        }
+      }));
+    }
+  };
+  
+  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+    setOpenWindows(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(windowType);
+      return newSet;
+    });
+  };
+  
+  // Mobile sidebar state (unchanged)
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -4968,58 +5016,37 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {/* Menu button - shown on mobile, hidden on desktop */}
-          <button 
-            className="sidebar-menu-btn"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Menu button clicked, isSidebarOpen:', isSidebarOpen);
-              setIsSidebarOpen(prev => {
-                console.log('Setting isSidebarOpen to:', !prev);
-                return !prev;
-              });
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Menu button touched, isSidebarOpen:', isSidebarOpen);
-              setIsSidebarOpen(prev => {
-                console.log('Setting isSidebarOpen to:', !prev);
-                return !prev;
-              });
-            }}
-            title="Toggle Menu"
-            type="button"
-            aria-label="Toggle Menu"
-          >
-            ☰
-          </button>
-          {/* Chat button - shown on desktop, hidden on mobile */}
-          <button 
-            className="chat-bubble-btn"
-            onClick={onChatToggle}
-            title="Toggle Chat"
-            style={{
-              background: '#c0c0c0',
-              border: '1px outset #fff',
-              borderRadius: '0',
-              color: '#000',
-              cursor: 'pointer',
-              fontFamily: 'MS Sans Serif, Microsoft Sans Serif, sans-serif',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              width: '24px',
-              height: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0',
-              margin: '0 2px'
-            }}
-          >
-            💬
-          </button>
+          {/* Menu button - desktop only, mobile uses sidebar-menu-btn */}
+          {!isMobile && (
+            <button 
+              className="menu-btn"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              title="Menu"
+            >
+              ☰
+            </button>
+          )}
+          {/* Mobile menu button */}
+          {isMobile && (
+            <button 
+              className="sidebar-menu-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsSidebarOpen(prev => !prev);
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsSidebarOpen(prev => !prev);
+              }}
+              title="Toggle Menu"
+              type="button"
+              aria-label="Toggle Menu"
+            >
+              ☰
+            </button>
+          )}
           <button onClick={onClose}>×</button>
         </div>
       </div>
@@ -5087,8 +5114,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setSidebarView('chat');
                     setIsSidebarOpen(false);
+                    // Open chat window on mobile
+                    if (onChatToggle) {
+                      onChatToggle();
+                    }
                   }}
                 >
                   Chat
@@ -5276,165 +5306,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       </>
     )}
         
-        {/* Desktop Sidebar - Show only during active gameplay */}
-        {!isMobile && (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
-          <div className="left-sidebar">
-            {/* Tab Navigation */}
-            <div className="sidebar-tabs">
-              <button 
-                className={`tab-button ${sidebarView === 'moves' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('moves'); }}
-              >
-                Moves
-              </button>
-              <button 
-                className={`tab-button ${sidebarView === 'leaderboard' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('leaderboard'); }}
-              >
-                Leaderboard
-              </button>
-              <button 
-                className={`tab-button ${sidebarView === 'gallery' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('gallery'); }}
-              >
-                Gallery
-              </button>
-              <button 
-                className={`tab-button ${sidebarView === 'chat' ? 'active' : ''}`}
-                onClick={() => { setSidebarView('chat'); }}
-              >
-                Chat
-              </button>
-              <button 
-                className="tab-button menu-button"
-                onClick={() => { setGameMode(GameMode.LOBBY); setShowGame(false); }}
-              >
-                Menu
-              </button>
-              {onBackToModeSelect && (
-                <button 
-                  className="tab-button menu-button"
-                  onClick={onBackToModeSelect}
-                >
-                  Mode Select
-                </button>
-              )}
-            </div>
-
-            {/* Tab Content */}
-            {sidebarView === 'moves' && (
-              <div className="move-history-compact">
-                <div className="move-history-title">Moves</div>
-                <ul className="move-history-list-compact">
-                  {moveHistory.slice().reverse().map((move, idx) => (
-                    <li key={moveHistory.length - 1 - idx}>{move}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {sidebarView === 'leaderboard' && (
-              <div className="leaderboard-compact">
-                <div className="leaderboard-title">Leaderboard</div>
-                <div className="leaderboard-list">
-                  {leaderboard.slice(0, 10).map((entry, index) => (
-                    <div key={entry.username} className="leaderboard-entry">
-                      <span className="rank">#{index + 1}</span>
-                      <span className="player">{formatLeaderboardAddress(entry.username)}</span>
-                      <span className="score">{entry.points}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {sidebarView === 'gallery' && (
-              <div className="piece-gallery-compact">
-                <div className="gallery-title">Piece Gallery</div>
-                <div className="piece-gallery-grid">
-                  {pieceGallery.map((piece) => (
-                    <div 
-                      key={piece.key} 
-                      className={`piece-gallery-item ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
-                      data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
-                      onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
-                    >
-                      <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
-                      <div className="piece-gallery-name">{piece.name}</div>
-                      {selectedGalleryPiece === piece.key && (
-                        <div className="piece-gallery-desc">{piece.desc}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {sidebarView === 'chat' && (
-              <div className="chat-compact">
-                <div className="chat-compact-tabs">
-                  <button
-                    className={`chat-compact-tab ${chatCurrentRoom === 'public' ? 'active' : ''}`}
-                    onClick={() => setChatCurrentRoom('public')}
-                  >
-                    Public
-                  </button>
-                  {inviteCode && (
-                    <button
-                      className={`chat-compact-tab ${chatCurrentRoom === 'private' ? 'active' : ''}`}
-                      onClick={() => setChatCurrentRoom('private')}
-                    >
-                      Game
-                    </button>
-                  )}
-                </div>
-                
-                <div className="chat-compact-messages">
-                  {!isConnected && (
-                    <div className="chat-compact-notice">
-                      Connect wallet to chat
-                    </div>
-                  )}
-                  {chatMessages.map((message) => (
-                    <div key={message.id} className="chat-compact-message">
-                      <div className="chat-compact-message-header">
-                        <span className="chat-compact-author">{message.displayName}</span>
-                        <span className="chat-compact-time">
-                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div className="chat-compact-content">{message.message}</div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="chat-compact-input">
-                  <input
-                    type="text"
-                    value={chatNewMessage}
-                    onChange={(e) => setChatNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        void sendChatMessage();
-                      }
-                    }}
-                    placeholder={isConnected ? "Type message..." : "Connect wallet"}
-                    disabled={!isConnected}
-                    className="chat-compact-input-field"
-                  />
-                  <button
-                    onClick={() => void sendChatMessage()}
-                    disabled={!isConnected || !chatNewMessage.trim()}
-                    className="chat-compact-send-btn"
-                  >
-                    Send
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Desktop Sidebar removed - using menu popup and windows instead */}
         
         {/* Center Area */}
         <div className={`center-area ${isGameLoading ? 'loading' : ''}`}>
@@ -5830,6 +5702,241 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Desktop Menu Popup */}
+      {!isMobile && isMenuOpen && (
+        <div 
+          className="chess-menu-popup-overlay"
+          onClick={() => setIsMenuOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            background: 'rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <div 
+            className="chess-menu-popup"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '60px',
+              right: '20px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              padding: '10px',
+              minWidth: '200px',
+              zIndex: 10001,
+              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
+              Menu
+            </div>
+            <button
+              onClick={() => openWindow('leaderboard')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Leaderboard
+            </button>
+            <button
+              onClick={() => openWindow('gallery')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Gallery
+            </button>
+            <button
+              onClick={() => {
+                if (onChatToggle) {
+                  onChatToggle();
+                }
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Chat
+            </button>
+            {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
+              <button
+                onClick={() => openWindow('moves')}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px',
+                  marginBottom: '4px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                Move History
+              </button>
+            )}
+            {onBackToModeSelect && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setGameMode(GameMode.LOBBY);
+                  onBackToModeSelect();
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px',
+                  marginTop: '8px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  borderTop: '1px solid #000',
+                  paddingTop: '12px'
+                }}
+              >
+                Chess Home
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Desktop Windows */}
+      {!isMobile && openWindows.has('leaderboard') && (
+        <Popup
+          id="leaderboard-window"
+          isOpen={true}
+          onClose={() => closeWindow('leaderboard')}
+          title="Leaderboard"
+          initialPosition={windowPositions['leaderboard'] ? { x: windowPositions['leaderboard'].x, y: windowPositions['leaderboard'].y } : { x: 20, y: 80 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <div className="leaderboard-compact">
+            {leaderboard.length > 0 ? (
+              <div className="leaderboard-list">
+                {leaderboard.slice(0, 20).map((entry, index) => (
+                  <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <span className="rank">#{index + 1}</span>
+                    <span className="player">{formatLeaderboardAddress(entry.username)}</span>
+                    <span className="score">{entry.points}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                No leaderboard data available
+              </div>
+            )}
+          </div>
+        </Popup>
+      )}
+      
+      {!isMobile && openWindows.has('gallery') && (
+        <Popup
+          id="gallery-window"
+          isOpen={true}
+          onClose={() => closeWindow('gallery')}
+          title="Piece Gallery"
+          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
+          initialSize={{ width: 380, height: 480 }}
+          zIndex={1000}
+        >
+          <div className="piece-gallery-compact">
+            <div className="gallery-title">Piece Gallery</div>
+            <div className="piece-gallery-grid">
+              {(() => {
+                // Organize pieces into pairs: red and blue side by side
+                const redPieces = pieceGallery.filter(p => p.name.toLowerCase().includes('red'));
+                const bluePieces = pieceGallery.filter(p => p.name.toLowerCase().includes('blue'));
+                const piecePairs = redPieces.map((redPiece, index) => ({
+                  red: redPiece,
+                  blue: bluePieces[index]
+                }));
+
+                return piecePairs.map((pair, index) => (
+                  <React.Fragment key={`pair-${index}`}>
+                    {/* Red piece */}
+                    <div 
+                      className={`piece-gallery-item ${selectedGalleryPiece === pair.red.key ? 'selected' : ''}`}
+                      data-piece-color="red"
+                      onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === pair.red.key ? null : pair.red.key)}
+                    >
+                      <img src={pair.red.img} alt={pair.red.name} className="piece-gallery-img" />
+                      <div className="piece-gallery-name">{pair.red.name}</div>
+                      {selectedGalleryPiece === pair.red.key && (
+                        <div className="piece-gallery-desc">{pair.red.desc}</div>
+                      )}
+                    </div>
+                    {/* Blue piece */}
+                    <div 
+                      className={`piece-gallery-item ${selectedGalleryPiece === pair.blue.key ? 'selected' : ''}`}
+                      data-piece-color="blue"
+                      onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === pair.blue.key ? null : pair.blue.key)}
+                    >
+                      <img src={pair.blue.img} alt={pair.blue.name} className="piece-gallery-img" />
+                      <div className="piece-gallery-name">{pair.blue.name}</div>
+                      {selectedGalleryPiece === pair.blue.key && (
+                        <div className="piece-gallery-desc">{pair.blue.desc}</div>
+                      )}
+                    </div>
+                  </React.Fragment>
+                ));
+              })()}
+            </div>
+          </div>
+        </Popup>
+      )}
+      
+      {!isMobile && openWindows.has('moves') && (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
+        <Popup
+          id="moves-window"
+          isOpen={true}
+          onClose={() => closeWindow('moves')}
+          title="Move History"
+          initialPosition={windowPositions['moves'] ? { x: windowPositions['moves'].x, y: windowPositions['moves'].y } : { x: 20, y: 140 }}
+          initialSize={{ width: 300, height: 400 }}
+          zIndex={1000}
+        >
+          <div className="move-history-compact">
+            <div className="move-history-title">Moves</div>
+            <ul className="move-history-list-compact" style={{ listStyle: 'none', padding: 0 }}>
+              {moveHistory.slice().reverse().map((move, idx) => (
+                <li key={moveHistory.length - 1 - idx} style={{ padding: '4px 0' }}>{move}</li>
+              ))}
+            </ul>
+          </div>
+        </Popup>
       )}
     </div>
   );

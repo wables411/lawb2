@@ -10,6 +10,7 @@ import {
 } from '../firebaseLeaderboard';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
+import Popup from './Popup';
 
 import './ChessGame.css';
 
@@ -1476,31 +1477,56 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
 
-  const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => (
-    <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-              <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
-      <div className="piece-gallery-grid">
-        {pieceGallery.map(piece => (
-          <div 
-            key={piece.key} 
-            className="piece-gallery-item" 
-            data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
-            onClick={() => {
-              // Toggle description - if already selected, deselect; otherwise select
-              setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key);
-            }}
-          >
-            <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
-            <div className="piece-gallery-name">{piece.name}</div>
-            {selectedGalleryPiece === piece.key && (
-              <div className="piece-gallery-desc">{piece.desc}</div>
-            )}
-          </div>
-        ))}
+  const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => {
+    // Organize pieces into pairs: red and blue side by side
+    const redPieces = pieceGallery.filter(p => p.name.toLowerCase().includes('red'));
+    const bluePieces = pieceGallery.filter(p => p.name.toLowerCase().includes('blue'));
+    const piecePairs = redPieces.map((redPiece, index) => ({
+      red: redPiece,
+      blue: bluePieces[index]
+    }));
+
+    return (
+      <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
+        <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
+        <div className="piece-gallery-grid">
+          {piecePairs.map((pair, index) => (
+            <React.Fragment key={`pair-${index}`}>
+              {/* Red piece */}
+              <div 
+                className="piece-gallery-item" 
+                data-piece-color="red"
+                onClick={() => {
+                  setSelectedGalleryPiece(selectedGalleryPiece === pair.red.key ? null : pair.red.key);
+                }}
+              >
+                <img src={pair.red.img} alt={pair.red.name} className="piece-gallery-img" />
+                <div className="piece-gallery-name">{pair.red.name}</div>
+                {selectedGalleryPiece === pair.red.key && (
+                  <div className="piece-gallery-desc">{pair.red.desc}</div>
+                )}
+              </div>
+              {/* Blue piece */}
+              <div 
+                className="piece-gallery-item" 
+                data-piece-color="blue"
+                onClick={() => {
+                  setSelectedGalleryPiece(selectedGalleryPiece === pair.blue.key ? null : pair.blue.key);
+                }}
+              >
+                <img src={pair.blue.img} alt={pair.blue.name} className="piece-gallery-img" />
+                <div className="piece-gallery-name">{pair.blue.name}</div>
+                {selectedGalleryPiece === pair.blue.key && (
+                  <div className="piece-gallery-desc">{pair.blue.desc}</div>
+                )}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="piece-gallery-tip">{tipText}</div>
       </div>
-      <div className="piece-gallery-tip">{tipText}</div>
-    </div>
-  );
+    );
+  };
 
   const renderPieceSetSelector = () => {
     const handlePieceSetSelect = (pieceSet: ChessPieceSet) => {
@@ -1660,18 +1686,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             <span role="img" aria-label="chess">♟️</span> Start Match
           </button>
 
-          {/* Sidebar Toggle Buttons for Difficulty Selection */}
-                        <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
-                <button
-                  className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('leaderboard')}
-                >Leaderboard</button>
-                <button
-                  className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('gallery')}
-                >Gallery</button>
-
-              </div>
+          {/* Sidebar toggle buttons removed - use menu button instead */}
 
           {/* Back to Chess Button */}
           <div style={{marginTop: '16px', justifyContent: 'center'}}>
@@ -1891,8 +1906,63 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Workaround for TypeScript JSX type error
   const isOnline = gameMode === 'online';
 
-  // Add state for sidebar view toggle - null on mobile (tabs first), 'leaderboard' on desktop (show content immediately)
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | null>(isMobile ? null : 'leaderboard');
+  // Desktop menu and window state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves'>>(new Set());
+  
+  // Window positions and sizes (for draggable windows)
+  const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
+  
+  // Helper functions for window management
+  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+    setIsMenuOpen(false);
+    // Set default position if not set - position windows to avoid covering chessboard
+    // Calculate position BEFORE opening window to ensure it's available on first render
+    if (!windowPositions[windowType]) {
+      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : 400;
+      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : 500;
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      const headerHeight = 60; // Account for header
+      
+      // Position windows on the left side to avoid center chessboard
+      // Stagger them vertically to avoid overlap
+      const openCount = Object.keys(windowPositions).length;
+      const leftMargin = 20;
+      const topMargin = headerHeight + 20;
+      const staggerOffset = openCount * 40;
+      
+      const newPosition = { 
+        x: leftMargin, 
+        y: Math.min(topMargin + staggerOffset, screenHeight - windowHeight - 20),
+        width: windowWidth, 
+        height: windowHeight 
+      };
+      
+      // Set position synchronously before opening window
+      setWindowPositions(prev => ({
+        ...prev,
+        [windowType]: newPosition
+      }));
+      
+      // Then open the window
+      setOpenWindows(prev => new Set(prev).add(windowType));
+    } else {
+      // Position already set, just open window
+      setOpenWindows(prev => new Set(prev).add(windowType));
+    }
+  };
+  
+  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+    setOpenWindows(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(windowType);
+      return newSet;
+    });
+  };
+  
+  // Mobile sidebar state (unchanged)
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
@@ -1933,7 +2003,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
-            {isChatMinimized && onChatToggle && (
+            {!isMobile && (
+              <button 
+                className="menu-btn"
+                onClick={() => {
+                  console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
+                  setIsMenuOpen(!isMenuOpen);
+                }}
+                title="Menu"
+              >
+                ☰
+              </button>
+            )}
+            {isMobile && isChatMinimized && onChatToggle && (
               <button 
                 className="chat-bubble-btn"
                 onClick={onChatToggle}
@@ -1946,44 +2028,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </div>
         </div>
         <div className="game-stable-layout">
-          <div className="left-sidebar">
-            {sidebarView === 'leaderboard' && (
-              <div className="leaderboard-compact">
-                <h3>Leaderboard</h3>
-                <div className="leaderboard-table-compact">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>Player</th>
-                        <th>Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.isArray(leaderboardData) && leaderboardData.slice(0, 8).map((entry, index: number) => {
-                        if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                          const typedEntry = entry as LeaderboardEntry;
-                          return (
-                            <tr key={typedEntry.username}>
-                              <td>{index + 1}</td>
-                              <td>{formatAddress(typedEntry.username)}</td>
-                              <td>{typedEntry.points}</td>
-                            </tr>
-                          );
-                        }
-                        return null;
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {sidebarView === 'gallery' && (
-              <div className="piece-gallery-compact">
-                {renderPieceGallery(true, 'Click pieces to learn more')}
-              </div>
-            )}
-          </div>
+          {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="center-area">
             <div className="game-mode-panel-streamlined">
               {/* Lawbstation Game Image */}
@@ -2122,21 +2167,189 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   }}
                 />
               </div>
-              {/* Sidebar Toggle Buttons for Home Page */}
-              <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
-                <button
-                  className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('leaderboard')}
-                >Leaderboard</button>
-                <button
-                  className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('gallery')}
-                >Gallery</button>
-
-              </div>
+              {/* Sidebar toggle buttons removed - use menu button instead */}
             </div>
           </div>
         </div>
+
+        {/* Desktop Menu Popup - Home View */}
+        {!isMobile && isMenuOpen && (
+        <div 
+          className="chess-menu-popup-overlay"
+          onClick={() => {
+            console.log('Menu overlay clicked, closing menu');
+            setIsMenuOpen(false);
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            background: 'rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <div 
+            className="chess-menu-popup"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '60px',
+              right: '20px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              padding: '10px',
+              minWidth: '200px',
+              zIndex: 10001,
+              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
+              Menu
+            </div>
+            <button
+              onClick={() => openWindow('leaderboard')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Leaderboard
+            </button>
+            <button
+              onClick={() => openWindow('gallery')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Gallery
+            </button>
+            <button
+              onClick={() => {
+                if (onChatToggle) {
+                  onChatToggle();
+                }
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Chat
+            </button>
+            {onBackToModeSelect && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  clearCelebration();
+                  setShowGame(false);
+                  resetGame();
+                  onBackToModeSelect();
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px',
+                  marginTop: '8px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  borderTop: '1px solid #000',
+                  paddingTop: '12px'
+                }}
+              >
+                Chess Home
+              </button>
+            )}
+          </div>
+        </div>
+        )}
+
+        {/* Desktop Windows - Home View */}
+        {!isMobile && openWindows.has('leaderboard') && (
+        <Popup
+          id="leaderboard-window"
+          isOpen={true}
+          onClose={() => closeWindow('leaderboard')}
+          title="Leaderboard"
+          initialPosition={windowPositions['leaderboard'] ? { x: windowPositions['leaderboard'].x, y: windowPositions['leaderboard'].y } : { x: 20, y: 80 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <div className="leaderboard-compact">
+            {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
+              <div className="leaderboard-table-compact">
+                <table style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboardData.slice(0, 20).map((entry, index: number) => {
+                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                        const typedEntry = entry as LeaderboardEntry;
+                        return (
+                          <tr key={typedEntry.username}>
+                            <td>{index + 1}</td>
+                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td>{typedEntry.points}</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                No leaderboard data available
+              </div>
+            )}
+          </div>
+        </Popup>
+        )}
+
+        {!isMobile && openWindows.has('gallery') && (
+        <Popup
+          id="gallery-window"
+          isOpen={true}
+          onClose={() => closeWindow('gallery')}
+          title="Piece Gallery"
+          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
+          initialSize={{ width: 380, height: 480 }}
+          zIndex={1000}
+        >
+          <div className="piece-gallery-compact">
+            {renderPieceGallery(true, 'Click pieces to learn more')}
+          </div>
+        </Popup>
+        )}
       </div>
     );
   }
@@ -2149,6 +2362,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
+          {!isMobile && (
+            <button 
+              className="menu-btn"
+              onClick={() => {
+                console.log('Menu button clicked (game view), current isMenuOpen:', isMenuOpen);
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              title="Menu"
+            >
+              ☰
+            </button>
+          )}
           {/* Menu button - shown on mobile, hidden on desktop */}
           {isMobile && (
             <button 
@@ -2163,16 +2388,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               aria-label="Toggle Menu"
             >
               ☰
-            </button>
-          )}
-          {/* Chat button - shown on desktop, hidden on mobile */}
-          {!isMobile && isChatMinimized && onChatToggle && (
-            <button 
-              className="chat-bubble-btn"
-              onClick={onChatToggle}
-              title="Open Chat"
-            >
-              💬
             </button>
           )}
           <button onClick={onClose}>×</button>
@@ -2242,12 +2457,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       e.preventDefault();
                       e.stopPropagation();
                       setIsSidebarOpen(false);
-                      // Small delay to ensure menu closes before opening chat
-                      setTimeout(() => {
-                        if (onChatToggle) {
-                          onChatToggle();
-                        }
-                      }, 100);
+                      // Open chat window on mobile
+                      if (onChatToggle) {
+                        onChatToggle();
+                      }
                     }}
                   >
                     Chat
@@ -2387,63 +2600,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </>
         )}
         
-        {/* Desktop Sidebar - Toggleable Views */}
-        {!isMobile && (
-          <div className="left-sidebar">
-            {sidebarView === 'leaderboard' && (
-              <div className="leaderboard-compact">
-                <h3>Leaderboard</h3>
-                {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
-                  <div className="leaderboard-table-compact">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Player</th>
-                          <th>Pts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leaderboardData.slice(0, 8).map((entry, index: number) => {
-                          if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                            const typedEntry = entry as LeaderboardEntry;
-                            return (
-                              <tr key={typedEntry.username}>
-                                <td>{index + 1}</td>
-                                <td>{formatAddress(typedEntry.username)}</td>
-                                <td>{typedEntry.points}</td>
-                              </tr>
-                            );
-                          }
-                          return null;
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                    No leaderboard data available
-                  </div>
-                )}
-              </div>
-            )}
-            {sidebarView === 'moves' && showGame && (
-              <div className="move-history-compact">
-                <div className="move-history-title">Moves</div>
-                <ul className="move-history-list-compact">
-                  {moveHistory.slice().reverse().map((move, idx) => (
-                    <li key={moveHistory.length - 1 - idx}>{move}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {sidebarView === 'gallery' && (
-              <div className="piece-gallery-compact">
-                {renderPieceGallery(true, 'Click pieces to learn more')}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Desktop Sidebar removed - using menu popup and windows instead */}
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area">
           {/* Game Info Bar - Compact */}
@@ -2501,30 +2658,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   )}
                 </div>
               </div>
-              {/* Compact Game Controls - Hidden on mobile (use menu popup instead) */}
-              {!isMobile && (
-                <div className="game-controls-compact">
-                  <div className="sidebar-toggle-group">
-                    <button
-                      className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                      onClick={() => setSidebarView('leaderboard')}
-                    >Leaderboard</button>
-                    <button
-                      className={sidebarView === 'moves' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                      onClick={() => setSidebarView('moves')}
-                    >Moves</button>
-                    <button
-                      className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                      onClick={() => setSidebarView('gallery')}
-                    >Gallery</button>
-                  </div>
-                  <button onClick={handleNewGame}>New Match</button>
-                  {onBackToModeSelect && (
-                    <button onClick={onBackToModeSelect}>Mode Select</button>
-                  )}
-                  <button onClick={handleBackToMenu}>Menu</button>
-                </div>
-              )}
+              {/* Desktop game controls removed - use menu button instead */}
             </div>
           ) : showPieceSetSelector ? (
             renderPieceSetSelector()
@@ -2630,18 +2764,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   }}
                 />
               </div>
-              {/* Sidebar Toggle Buttons for Home Page */}
-              <div className="sidebar-toggle-group" style={{marginTop: '20px', justifyContent: 'center'}}>
-                <button
-                  className={sidebarView === 'leaderboard' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('leaderboard')}
-                >Leaderboard</button>
-                <button
-                  className={sidebarView === 'gallery' ? 'sidebar-toggle-btn selected' : 'sidebar-toggle-btn'}
-                  onClick={() => setSidebarView('gallery')}
-                >Gallery</button>
-
-              </div>
+              {/* Sidebar toggle buttons removed - use menu button instead */}
             </div>
           )}
         </div>
@@ -2680,6 +2803,223 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Desktop Menu Popup */}
+      {!isMobile && isMenuOpen && (
+        <div 
+          className="chess-menu-popup-overlay"
+          onClick={() => {
+            console.log('Menu overlay clicked, closing menu');
+            setIsMenuOpen(false);
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            background: 'rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <div 
+            className="chess-menu-popup"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '60px',
+              right: '20px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              padding: '10px',
+              minWidth: '200px',
+              zIndex: 10001,
+              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
+              Menu
+            </div>
+            <button
+              onClick={() => openWindow('leaderboard')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Leaderboard
+            </button>
+            <button
+              onClick={() => openWindow('gallery')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Gallery
+            </button>
+            <button
+              onClick={() => {
+                if (onChatToggle) {
+                  onChatToggle();
+                }
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Chat
+            </button>
+            {showGame && (
+              <button
+                onClick={() => openWindow('moves')}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px',
+                  marginBottom: '4px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                Move History
+              </button>
+            )}
+            {onBackToModeSelect && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  clearCelebration();
+                  setShowGame(false);
+                  resetGame();
+                  onBackToModeSelect();
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px',
+                  marginTop: '8px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  borderTop: '1px solid #000',
+                  paddingTop: '12px'
+                }}
+              >
+                Chess Home
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Desktop Windows */}
+      {!isMobile && openWindows.has('leaderboard') && (
+        <Popup
+          id="leaderboard-window"
+          isOpen={true}
+          onClose={() => closeWindow('leaderboard')}
+          title="Leaderboard"
+          initialPosition={windowPositions['leaderboard'] ? { x: windowPositions['leaderboard'].x, y: windowPositions['leaderboard'].y } : { x: 20, y: 80 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <div className="leaderboard-compact">
+            {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
+              <div className="leaderboard-table-compact">
+                <table style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboardData.slice(0, 20).map((entry, index: number) => {
+                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                        const typedEntry = entry as LeaderboardEntry;
+                        return (
+                          <tr key={typedEntry.username}>
+                            <td>{index + 1}</td>
+                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td>{typedEntry.points}</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                No leaderboard data available
+              </div>
+            )}
+          </div>
+        </Popup>
+      )}
+      
+      {!isMobile && openWindows.has('gallery') && (
+        <Popup
+          id="gallery-window"
+          isOpen={true}
+          onClose={() => closeWindow('gallery')}
+          title="Piece Gallery"
+          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
+          initialSize={{ width: 380, height: 480 }}
+          zIndex={1000}
+        >
+          <div className="piece-gallery-compact">
+            {renderPieceGallery(true, 'Click pieces to learn more')}
+          </div>
+        </Popup>
+      )}
+      
+      {!isMobile && openWindows.has('moves') && showGame && (
+        <Popup
+          id="moves-window"
+          isOpen={true}
+          onClose={() => closeWindow('moves')}
+          title="Move History"
+          initialPosition={windowPositions['moves'] ? { x: windowPositions['moves'].x, y: windowPositions['moves'].y } : { x: 20, y: 140 }}
+          initialSize={{ width: 300, height: 400 }}
+          zIndex={1000}
+        >
+          <div className="move-history-compact">
+            <div className="move-history-title">Moves</div>
+            <ul className="move-history-list-compact" style={{ listStyle: 'none', padding: 0 }}>
+              {moveHistory.slice().reverse().map((move, idx) => (
+                <li key={moveHistory.length - 1 - idx} style={{ padding: '4px 0' }}>{move}</li>
+              ))}
+            </ul>
+          </div>
+        </Popup>
       )}
     </div>
   );

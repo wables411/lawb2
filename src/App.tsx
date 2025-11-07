@@ -22,6 +22,7 @@ const useStyles = createUseStyles({
     fontFamily: "'MS Sans Serif', Arial, sans-serif",
     color: '#000',
     cursor: 'url("/assets/lawbpointer.png"), auto',
+    position: 'relative', // Required for absolute positioning of popups
     // overflow: 'hidden', // Removed to allow modals to be clickable
   }
 });
@@ -32,6 +33,11 @@ function App() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
+  
+  // Debug: log activePopup changes
+  useEffect(() => {
+    console.log('[APP] activePopup changed to:', activePopup);
+  }, [activePopup]);
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
@@ -89,9 +95,11 @@ function App() {
   }, [activePopup]);
 
   const handleIconClick = (action: string, popupId?: string, url?: string) => {
+    console.log('[APP] handleIconClick called with:', { action, popupId, url });
     if (action === 'url' && url) {
       window.open(url, '_blank');
     } else if (action === 'popup' && popupId) {
+      console.log('[APP] Setting active popup to:', popupId);
       setActivePopup(popupId);
       setMinimizedPopups(prev => {
         const newSet = new Set(prev);
@@ -283,14 +291,14 @@ function App() {
         }}
       />
 
-      <Popup id="chat-popup" isOpen={activePopup === 'chat-popup'} onClose={closePopup} onMinimize={minimizePopup}>
+      <Popup id="chat-popup" isOpen={activePopup === 'chat-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
         <p style={{marginBottom: '10px'}}>
           join the chat, there is no meme we lawb you <a href="https://boards.miladychan.org/milady/33793" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>/milady/33793</a>
         </p>
         <img src="/assets/miladychanfaq.png" alt="Milady Chan FAQ" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
 
-      <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup}>
+      <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
         <p style={{marginBottom: '10px'}}>
           purify your wallet and cleanse your soul with Purity Finance.
         </p>
@@ -402,7 +410,7 @@ function App() {
         </div>
       </Popup>
 
-      <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup}>
+      <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
         <h1 style={{marginBottom: '10px'}}>
           <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>🦞 $LAWB</a>
         </h1>

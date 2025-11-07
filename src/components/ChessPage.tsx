@@ -82,15 +82,16 @@ const ChessPage: React.FC = () => {
         )}
       </div>
       
-      {/* Independent Chat Window - Only on desktop, hidden on mobile (chat is in sidebar popup) */}
-      {!isMobile && (
+      {/* Independent Chat Window - Available on both desktop and mobile when opened via menu */}
+      {/* Chat is now opened via menu button in ChessGame/ChessMultiplayer components */}
+      {isChatVisible && (
         <ChessChat
           isOpen={isChatVisible}
           onMinimize={handleChatMinimize} // Allow minimizing
           currentInviteCode={chatInviteCode}
-          isDraggable={true}
-          isResizable={true}
-          isMobile={false}
+          isDraggable={!isMobile}
+          isResizable={!isMobile}
+          isMobile={isMobile}
         />
       )}
     </div>

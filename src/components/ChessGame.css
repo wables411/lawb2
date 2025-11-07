@@ -109,6 +109,26 @@
   backdrop-filter: blur(5px);
 }
 
+/* Menu button styling */
+.menu-btn {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  color: #000;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+.menu-btn:hover {
+  background: #d0d0d0;
+}
+
+.menu-btn:active {
+  border: 2px inset #fff;
+}
+
 .chess-game .chess-header h2 {
   color: #ff0000;
   text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
@@ -315,16 +335,16 @@
 
 .piece-gallery-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  padding: 0 4px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 4px;
+  padding: 0 2px;
 }
 
 .piece-gallery-item {
   background: transparent;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  padding: 12px 8px;
+  box-shadow: none;
+  padding: 4px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -340,10 +360,10 @@
 }
 
 .piece-gallery-img {
-  width: 48px;
-  height: 48px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
@@ -2427,6 +2447,33 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   max-height: 100%;
   height: 100%;
   min-height: 0;
+}
+
+/* Compact gallery in popup windows - larger images, less padding, transparent background */
+.piece-gallery-compact {
+  background: transparent !important;
+}
+
+.piece-gallery-compact .piece-gallery-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 4px;
+  padding: 0 2px;
+  background: transparent;
+}
+
+.piece-gallery-compact .piece-gallery-item {
+  padding: 4px 2px;
+  background: transparent;
+}
+
+.piece-gallery-compact .piece-gallery-img {
+  width: 70px;
+  height: 70px;
+  margin-bottom: 4px;
+}
+
+.piece-gallery-compact .piece-gallery {
+  background: transparent;
 }
 
 /* Wallet Connection Overlay */

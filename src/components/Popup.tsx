@@ -4,18 +4,19 @@ import { createUseStyles } from 'react-jss';
 
 const useStyles = createUseStyles({
   popup: {
-    position: 'absolute',
+    position: 'fixed',
     background: '#c0c0c0',
     border: '2px outset #fff',
     width: '600px',
     height: '480px',
     minWidth: '360px',
     minHeight: '240px',
-    top: 'calc(50vh - 240px)',
-    left: 'calc(50vw - 300px)',
+    // Remove centering CSS - let react-draggable handle positioning
     display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
-    overflow: 'auto'
+    overflow: 'auto',
+    top: 0,
+    left: 0
   },
   header: {
     background: 'navy',
@@ -51,7 +52,32 @@ const useStyles = createUseStyles({
   content: {
     padding: '15px',
     height: 'calc(100% - 30px)',
-    overflow: 'auto'
+    overflow: 'auto',
+    background: 'transparent'
+  },
+  resizeHandle: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: '20px',
+    height: '20px',
+    cursor: 'nwse-resize',
+    background: 'transparent',
+    zIndex: 10,
+    '&:hover': {
+      background: 'rgba(0, 0, 0, 0.1)'
+    },
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      bottom: '2px',
+      right: '2px',
+      width: 0,
+      height: 0,
+      borderStyle: 'solid',
+      borderWidth: '0 0 8px 8px',
+      borderColor: 'transparent transparent rgba(0, 0, 0, 0.3) transparent'
+    }
   }
 });
 
@@ -69,7 +95,17 @@ interface PopupProps {
 
 function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPosition, initialSize, zIndex }: PopupProps) {
   const classes = useStyles({ isOpen });
-  const nodeRef = useRef(null);
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<HTMLDivElement>(null);
+  
+  // Debug: log when popup should be visible
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log(`[POPUP] ${id} is now OPEN`);
+    } else {
+      console.log(`[POPUP] ${id} is now CLOSED`);
+    }
+  }, [isOpen, id]);
 
   const handleMinimize = () => {
     if (onMinimize) {
@@ -77,9 +113,101 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     }
   };
 
+  // Handle resize
+  React.useEffect(() => {
+    if (!resizeRef.current || !nodeRef.current) return;
+
+    const resizeHandle = resizeRef.current;
+    const popup = nodeRef.current;
+    let isResizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = popup.offsetWidth;
+      startHeight = popup.offsetHeight;
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const width = startWidth + (e.clientX - startX);
+      const height = startHeight + (e.clientY - startY);
+      const minWidth = 360;
+      const minHeight = 240;
+      popup.style.width = `${Math.max(minWidth, width)}px`;
+      popup.style.height = `${Math.max(minHeight, height)}px`;
+    };
+
+    const handleMouseUp = () => {
+      isResizing = false;
+    };
+
+    resizeHandle.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      resizeHandle.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // Use defaultPosition for initial placement - user can then drag freely
+  const defaultPos = initialPosition || { x: 100, y: 100 };
+  
+  // Store position state to persist drag position
+  const [position, setPosition] = React.useState(defaultPos);
+  
+  // Update position when initialPosition changes or when popup opens
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialPosition) {
+        setPosition(initialPosition);
+      } else {
+        // Reset to default position when opening
+        setPosition({ x: 100, y: 100 });
+      }
+    }
+  }, [isOpen, initialPosition]);
+  
+  const handleDrag = (e: any, data: any) => {
+    setPosition({ x: data.x, y: data.y });
+  };
+  
+  // Debug: log when popup renders
+  React.useEffect(() => {
+    if (isOpen && nodeRef.current) {
+      console.log(`[POPUP] ${id} rendered, position:`, position, 'nodeRef:', nodeRef.current);
+      console.log(`[POPUP] ${id} computed styles:`, window.getComputedStyle(nodeRef.current));
+    }
+  }, [isOpen, id, position]);
+  
   return (
-    <Draggable nodeRef={nodeRef} handle={`.${classes.header}`} defaultPosition={initialPosition}>
-      <div ref={nodeRef} className={classes.popup} style={{ width: initialSize?.width, height: initialSize?.height, zIndex: zIndex || 100 }}>
+    <Draggable 
+      nodeRef={nodeRef} 
+      handle={`.${classes.header}`} 
+      defaultPosition={defaultPos}
+      position={isOpen ? position : undefined}
+      onDrag={handleDrag}
+      key={id}
+      disabled={!isOpen}
+    >
+      <div 
+        ref={nodeRef} 
+        className={classes.popup} 
+        style={{ 
+          width: initialSize?.width, 
+          height: initialSize?.height, 
+          zIndex: zIndex || 100
+        }}
+      >
         <div className={classes.header}>
           <span>{title || id.replace('-popup', '')}</span>
           <div className={classes.titleBarButtons}>
@@ -102,6 +230,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         <div className={classes.content}>
           {children}
         </div>
+        <div ref={resizeRef} className={classes.resizeHandle} title="Resize" />
       </div>
     </Draggable>
   );

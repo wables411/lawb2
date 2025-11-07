@@ -44,19 +44,67 @@ interface IconProps {
 
 function Icon({ image, label, action, url, popupId, folderId, isInFolder = false, position, onDrag, onClick }: IconProps) {
   const classes = useStyles();
-  const nodeRef = useRef(null);
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const hasDragged = useRef(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     onClick(action, popupId, url, folderId);
   };
+
+  const handleDragStart = () => {
+    if (position) {
+      dragStartPos.current = { x: position.x, y: position.y };
+      hasDragged.current = false;
+    }
+    // Clear any pending click timeout
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+  };
+
+  const handleDrag = (e: DraggableEvent, data: DraggableData) => {
+    if (dragStartPos.current && position) {
+      // Check if we actually moved (more than 5 pixels)
+      const deltaX = Math.abs(data.x - dragStartPos.current.x);
+      const deltaY = Math.abs(data.y - dragStartPos.current.y);
+      if (deltaX > 5 || deltaY > 5) {
+        hasDragged.current = true;
+        // Clear click timeout if we're dragging
+        if (clickTimeoutRef.current) {
+          clearTimeout(clickTimeoutRef.current);
+          clickTimeoutRef.current = null;
+        }
+      }
+    }
+    if (onDrag) {
+      onDrag(e, data);
+    }
+  };
+
+  const handleDragStop = () => {
+    // If we didn't drag, treat it as a click (with small delay to ensure drag is complete)
+    if (!hasDragged.current) {
+      clickTimeoutRef.current = setTimeout(() => {
+        console.log('[ICON] Click detected, calling onClick with:', { action, popupId, url, folderId });
+        onClick(action, popupId, url, folderId);
+        clickTimeoutRef.current = null;
+      }, 50);
+    } else {
+      console.log('[ICON] Drag detected, skipping click');
+    }
+    hasDragged.current = false;
+    dragStartPos.current = null;
+  };
   
   const iconMarkup = (
     <div 
       ref={nodeRef}
       className={classes.icon}
-      onClick={handleClick}
       style={{ 
         position: isInFolder ? 'relative' : 'absolute',
         zIndex: 3000,
@@ -70,14 +118,20 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
   );
 
   if (isInFolder) {
-    return iconMarkup;
+    return (
+      <div onClick={handleClick}>
+        {iconMarkup}
+      </div>
+    );
   }
 
   return (
     <Draggable 
       nodeRef={nodeRef} 
       position={position}
-      onDrag={onDrag}
+      onStart={handleDragStart}
+      onDrag={handleDrag}
+      onStop={handleDragStop}
       bounds="parent"
     >
       {iconMarkup}
