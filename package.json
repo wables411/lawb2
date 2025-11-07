@@ -9,7 +9,6 @@
     "postbuild": "cp _headers dist/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "start": "node simple-websocket-server.js"
   },
   "keywords": [],
   "author": "",

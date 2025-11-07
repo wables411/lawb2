@@ -26,20 +26,8 @@ export const resolveStuckGame = async (
         break;
     }
 
-    // This part of the code was removed as per the edit hint.
-    // const { error } = await supabase
-    //   .from('chess_games')
-    //   .update({
-    //     game_state: gameState,
-    //     winner: winner,
-    //     updated_at: new Date().toISOString()
-    //   })
-    //   .eq('inviteCode', inviteCode);
-
-    // if (error) {
-    //   console.error('Error forcing game resolution:', error);
-    //   return { success: false, error };
-    // }
+    // TODO: Implement Firebase-based game resolution if needed
+    // This function currently only logs the resolution
 
     console.log(`Game ${inviteCode} resolved: ${gameStatus}`);
     return { success: true, gameStatus };
@@ -52,20 +40,8 @@ export const resolveStuckGame = async (
 // Check current game state
 export const checkGameState = async (inviteCode: string = '39308204b531') => {
   try {
-    // This part of the code was removed as per the edit hint.
-    // const { data, error } = await supabase
-    //   .from('chess_games')
-    //   .select('*')
-    //   .eq('inviteCode', inviteCode)
-    //   .single();
-
-    // if (error) {
-    //   console.error('Error checking game state:', error);
-    //   return null;
-    // }
-
-    // return data;
-    // Placeholder for Firebase logic if needed
+    // TODO: Implement Firebase-based game state checking if needed
+    // This function currently returns placeholder data
     console.log(`Checking game state for inviteCode: ${inviteCode}`);
     return { inviteCode, game_state: 'finished', winner: 'blue', created_at: new Date().toISOString() };
   } catch (error) {
