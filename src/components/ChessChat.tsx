@@ -127,6 +127,15 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         return;
       }
       
+      // Check if site is accessed over HTTP (Firebase WebSocket requires HTTPS)
+      if (typeof window !== 'undefined' && window.location.protocol === 'http:') {
+        clearTimeout(timeout);
+        setIsLoading(false);
+        setError('Firebase requires HTTPS for WebSocket connections. Please access the site via https://lawb.xyz (not http://).');
+        setConnectionStatus('disconnected');
+        return;
+      }
+      
       const roomPath = currentRoom === 'public' 
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${currentInviteCode}/messages`;
@@ -136,6 +145,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       
       // Set up real-time listener (works on both desktop and mobile)
       // Note: On mobile, the listener may take longer to establish, but we let it try
+      console.log('[FIREBASE] Setting up real-time listener', isMobile ? '(mobile)' : '(desktop)', 'protocol:', typeof window !== 'undefined' ? window.location.protocol : 'unknown');
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
         // Only process if timeout hasn't fired
         if (timeoutFired) {
