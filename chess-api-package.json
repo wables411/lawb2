@@ -1,0 +1,16 @@
+{
+  "name": "chess-stockfish-api",
+  "version": "1.0.0",
+  "description": "Stockfish API server for chess.lawb.xyz",
+  "main": "simple-stockfish-api.js",
+  "scripts": {
+    "start": "node simple-stockfish-api.js"
+  },
+  "keywords": ["chess", "stockfish", "api"],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

@@ -1,0 +1,28 @@
+FROM node:18
+
+# Install Stockfish chess engine
+RUN apt-get update && \
+    apt-get install -y stockfish curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verify Stockfish installation
+RUN stockfish --version || echo "Stockfish installed"
+
+WORKDIR /app
+
+# Copy server file
+COPY simple-stockfish-api.js .
+
+# Expose port
+EXPOSE 3001
+
+# Set environment variable
+ENV PORT=3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3001/api/stockfish || exit 1
+
+# Start server
+CMD ["node", "simple-stockfish-api.js"]
+

@@ -189,12 +189,11 @@ const useStockfish = () => {
     });
   }, []);
 
-  // DigitalOcean VPS Stockfish API for production
+  // Stockfish API hosted on chess.lawb.xyz for production
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
     try {
-      // Use DigitalOcean VPS in production, local proxy in development
-      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const apiUrl = 'https://lawb.xyz/.netlify/functions/stockfish'; // Use direct Netlify function URL
+      // Use chess.lawb.xyz subdomain for Stockfish API
+      const apiUrl = 'https://chess.lawb.xyz/api/stockfish';
       
       console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       
@@ -205,14 +204,16 @@ const useStockfish = () => {
         },
         body: JSON.stringify({
           fen,
-          movetime: timeLimit
+          movetime: timeLimit,
+          difficulty: 'play' // Use maximum strength
         })
       });
 
       if (response.ok) {
-        const data = await response.json() as { move?: string };
+        const data = await response.json() as { bestmove?: string; move?: string };
         console.log(`[DEBUG] API call successful to ${apiUrl}:`, data);
-        return data.move || null; // Netlify function returns 'move', not 'bestmove'
+        // Handle both 'bestmove' and 'move' response formats
+        return data.bestmove || data.move || null;
       } else {
         console.warn(`[DEBUG] API failed with status ${response.status} on ${apiUrl}`);
         return null;
