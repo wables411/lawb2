@@ -2,6 +2,8 @@
 
 This guide explains how to deploy the Stockfish API to `chess.lawb.xyz` subdomain using Docker.
 
+**For DigitalOcean-specific instructions, see [DIGITALOCEAN_DEPLOYMENT.md](./DIGITALOCEAN_DEPLOYMENT.md)**
+
 ## Overview
 
 The Stockfish API is a Node.js server that spawns the Stockfish chess engine binary to calculate optimal moves. It should be deployed on the `chess.lawb.xyz` subdomain.
