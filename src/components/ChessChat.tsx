@@ -70,9 +70,18 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
+  // Store unsubscribe function for cleanup
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  
   // Load messages from Firebase
   const loadMessages = useCallback(async () => {
     if (!isOpen) return;
+    
+    // Cleanup previous listener
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
     
     setIsLoading(true);
     setError(null);
@@ -85,7 +94,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       const messagesRef = ref(database, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
-      onValue(messagesQuery, (snapshot) => {
+      // Store unsubscribe function
+      unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
         const messagesData: ChatMessage[] = [];
         snapshot.forEach((childSnapshot) => {
           const message = {
@@ -98,15 +108,19 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         // Sort by timestamp
         messagesData.sort((a, b) => a.timestamp - b.timestamp);
         setMessages(messagesData);
+        setIsLoading(false);
         
         // Scroll to bottom after messages load
         setTimeout(scrollToBottom, 100);
+      }, (error) => {
+        console.error('Error loading messages:', error);
+        setError('Failed to load messages');
+        setIsLoading(false);
       });
       
     } catch (err) {
       console.error('Error loading messages:', err);
       setError('Failed to load messages');
-    } finally {
       setIsLoading(false);
     }
   }, [isOpen, currentRoom, currentInviteCode]);
@@ -224,8 +238,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
     
     return () => {
-      // Cleanup Firebase listeners
-      off(ref(database, 'chess_chat'));
+      // Cleanup Firebase listener properly
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, [isOpen, currentRoom, currentInviteCode, loadMessages]);
   

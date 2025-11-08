@@ -535,9 +535,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       const data = await getTopLeaderboardEntries(20);
       setLeaderboardData(data);
       console.log('Leaderboard data loaded:', data);
+      
+      // If no data, set empty array explicitly (not loading state)
+      if (!data || data.length === 0) {
+        console.log('Leaderboard is empty - no entries found');
+      }
     } catch (error) {
-      setStatus('Failed to load leaderboard');
       console.error('Leaderboard error:', error);
+      setStatus('Failed to load leaderboard');
+      // Set empty array on error so it doesn't show "Loading..." forever
+      setLeaderboardData([]);
     }
   };
 
@@ -2554,7 +2561,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     </div>
                   ) : (
                     <div className="mobile-empty-state">
-                      Loading leaderboard...
+                      {leaderboardData.length === 0 ? 'No leaderboard entries yet' : 'Loading leaderboard...'}
                     </div>
                   )}
                 </div>

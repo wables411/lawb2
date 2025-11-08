@@ -1629,8 +1629,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       const data = await getTopLeaderboardEntries(20);
       setLeaderboard(data);
+      console.log('Leaderboard data loaded:', data);
+      
+      // If no data, set empty array explicitly
+      if (!data || data.length === 0) {
+        console.log('Leaderboard is empty - no entries found');
+      }
     } catch (error) {
       console.error('Error loading leaderboard:', error);
+      // Set empty array on error so it doesn't show "Loading..." forever
+      setLeaderboard([]);
     }
   };
 
@@ -5196,7 +5204,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </div>
               ) : (
                 <div className="mobile-empty-state">
-                  Loading leaderboard...
+                  {leaderboard.length === 0 ? 'No leaderboard entries yet' : 'Loading leaderboard...'}
                 </div>
               )}
             </div>
