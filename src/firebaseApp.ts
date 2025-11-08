@@ -13,6 +13,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:724477138097:web:7dc15f79db3bda5c763e90"
 };
 
+// Mobile-specific Firebase configuration
+// Some mobile browsers need explicit database URL configuration
+if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+  // Mobile detected - ensure database URL is properly configured
+  // Firebase SDK should handle this automatically, but we log for debugging
+  console.log('[FIREBASE] Mobile detected, database URL:', firebaseConfig.databaseURL);
+}
+
 // Initialize Firebase with error handling
 let app: FirebaseApp;
 let database: Database;

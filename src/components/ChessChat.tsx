@@ -104,7 +104,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     const timeout = setTimeout(() => {
       timeoutFired = true;
       setIsLoading(false);
-      setError('Firebase connection timeout. If you just added lawb.xyz to authorized domains, wait 2-3 minutes and refresh. Otherwise check: 1) Firebase Console → Authentication → Authorized domains, 2) Network connection. Tap "Retry".');
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+      setError(`Firebase connection timeout (8s). Current domain: ${currentDomain}. Mobile issue: Check 1) Firebase Console → Authentication → Authorized domains (must include ${currentDomain}), 2) Try WiFi instead of cellular, 3) Check mobile browser console for CORS errors. Tap "Retry".`);
       setConnectionStatus('disconnected');
       // Cleanup listener if timeout fires
       if (unsubscribeRef.current) {
@@ -160,7 +161,9 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         // Clear timeout on error
         clearTimeout(timeout);
         const errorMsg = error.message || 'Connection error';
-        setError(`Firebase error: ${errorMsg}. If you just added lawb.xyz, wait 2-3 minutes. Otherwise check Firebase Console → Authentication → Authorized domains. Tap "Retry".`);
+        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+        const errorCode = (error as any)?.code || 'unknown';
+        setError(`Firebase error: ${errorMsg} (Code: ${errorCode}). Current domain: ${currentDomain}. Check Firebase Console → Authentication → Authorized domains includes this domain. Tap "Retry".`);
         setIsLoading(false);
         setConnectionStatus('disconnected');
       });
@@ -173,7 +176,9 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       
       // Clear timeout on exception
       clearTimeout(timeout);
-      setError(`Error: ${err.message || 'Unknown error'}. Tap "Retry" to try again.`);
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+      const errorCode = err?.code || 'unknown';
+      setError(`Exception: ${err.message || 'Unknown error'} (Code: ${errorCode}). Current domain: ${currentDomain}. Check Firebase Console authorized domains. Tap "Retry".`);
       setIsLoading(false);
       setConnectionStatus('disconnected');
     }

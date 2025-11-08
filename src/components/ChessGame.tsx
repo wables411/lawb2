@@ -538,7 +538,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     let timeoutFired = false;
     const timeout = setTimeout(() => {
       timeoutFired = true;
-      setLeaderboardError('Firebase connection timeout. If you just added lawb.xyz to authorized domains, wait 2-3 minutes and refresh. Otherwise check Firebase Console → Authentication → Authorized domains. Tap "Retry".');
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+      setLeaderboardError(`Firebase connection timeout (8s). Current domain: ${currentDomain}. Mobile issue: Check 1) Firebase Console → Authentication → Authorized domains (must include ${currentDomain}), 2) Try WiFi instead of cellular. Tap "Retry".`);
       setLeaderboardLoading(false);
       setLeaderboardData([]);
     }, 8000);
@@ -561,7 +562,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // Only update if timeout hasn't fired
       if (!timeoutFired) {
         clearTimeout(timeout);
-        setLeaderboardError(`Error: ${error?.message || 'Unknown error'}. Tap "Retry" to try again.`);
+        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+        const errorCode = error?.code || 'unknown';
+        setLeaderboardError(`Error: ${error?.message || 'Unknown error'} (Code: ${errorCode}). Current domain: ${currentDomain}. Check Firebase Console authorized domains. Tap "Retry".`);
         setLeaderboardLoading(false);
         setLeaderboardData([]);
       }
