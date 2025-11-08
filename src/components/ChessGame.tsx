@@ -534,39 +534,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setLeaderboardLoading(true);
     setLeaderboardError(null);
     
-    // First, test if we can reach Firebase at all using REST API
-    const testFirebaseReachability = async (): Promise<boolean> => {
-      try {
-        // Test Firebase REST API directly - use .info/connected which is a valid Firebase path
-        const testUrl = 'https://chess-220ee-default-rtdb.firebaseio.com/.info/connected.json';
-        const response = await fetch(testUrl, { 
-          method: 'GET',
-          signal: AbortSignal.timeout(3000)
-        });
-        // Any response (even 400/401) means Firebase is reachable
-        return response.status !== 0 && !response.type.includes('error');
-      } catch (err) {
-        return false;
-      }
-    };
-    
-    // Test network reachability first
-    const networkTest = await testFirebaseReachability();
-    if (!networkTest) {
-      setLeaderboardLoading(false);
-      setLeaderboardError('Cannot reach Firebase on mobile network. Check: 1) Mobile network blocking, 2) Domain authorized in Firebase Console, 3) Try WiFi. Tap "Retry".');
-      setLeaderboardData([]);
-      return;
-    }
-    
-    // Set timeout - if loading takes more than 5 seconds, show error
+    // Set timeout - if loading takes more than 8 seconds, show error
     let timeoutFired = false;
     const timeout = setTimeout(() => {
       timeoutFired = true;
-      setLeaderboardError('Firebase SDK timeout (5s). Network reachable but SDK cannot connect. Check Firebase Console → Authentication → Authorized domains. Tap "Retry".');
+      setLeaderboardError('Firebase connection timeout. If you just added lawb.xyz to authorized domains, wait 2-3 minutes and refresh. Otherwise check Firebase Console → Authentication → Authorized domains. Tap "Retry".');
       setLeaderboardLoading(false);
       setLeaderboardData([]);
-    }, 5000);
+    }, 8000);
     
     try {
       // First, try to remove any zero address entry
@@ -1542,25 +1517,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }));
 
     return (
-      <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-        <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
-        <div className="piece-gallery-grid">
+    <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
+              <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
+      <div className="piece-gallery-grid">
           {piecePairs.map((pair, index) => (
             <React.Fragment key={`pair-${index}`}>
               {/* Red piece */}
-              <div 
-                className="piece-gallery-item" 
+          <div 
+            className="piece-gallery-item" 
                 data-piece-color="red"
-                onClick={() => {
+            onClick={() => {
                   setSelectedGalleryPiece(selectedGalleryPiece === pair.red.key ? null : pair.red.key);
-                }}
-              >
+            }}
+          >
                 <img src={pair.red.img} alt={pair.red.name} className="piece-gallery-img" />
                 <div className="piece-gallery-name">{pair.red.name}</div>
                 {selectedGalleryPiece === pair.red.key && (
                   <div className="piece-gallery-desc">{pair.red.desc}</div>
-                )}
-              </div>
+            )}
+          </div>
               {/* Blue piece */}
               <div 
                 className="piece-gallery-item" 
@@ -1576,11 +1551,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 )}
               </div>
             </React.Fragment>
-          ))}
-        </div>
-        <div className="piece-gallery-tip">{tipText}</div>
+        ))}
       </div>
-    );
+      <div className="piece-gallery-tip">{tipText}</div>
+    </div>
+  );
   };
 
   const renderPieceSetSelector = () => {
@@ -1841,13 +1816,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // Wait for animation to complete before executing the move
       // Use requestAnimationFrame to ensure animation renders before board update
       requestAnimationFrame(() => {
-        setTimeout(() => {
-          executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
+      setTimeout(() => {
+        executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
           // Clear animation after board has updated
           setTimeout(() => {
-            setCaptureAnimation(null);
+        setCaptureAnimation(null);
           }, 100);
-        }, 500); // Animation duration
+      }, 500); // Animation duration
       });
       return;
     }
@@ -2269,7 +2244,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
               Menu
             </div>
-            <button
+                <button
               onClick={() => openWindow('leaderboard')}
               style={{
                 display: 'block',
@@ -2284,7 +2259,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             >
               Leaderboard
             </button>
-            <button
+                <button
               onClick={() => openWindow('gallery')}
               style={{
                 display: 'block',
@@ -2390,7 +2365,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             ) : (
               <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
                 No leaderboard data available
-              </div>
+            </div>
             )}
           </div>
         </Popup>
@@ -2408,7 +2383,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         >
           <div className="piece-gallery-compact">
             {renderPieceGallery(true, 'Click pieces to learn more')}
-          </div>
+        </div>
         </Popup>
         )}
       </div>
@@ -2519,9 +2494,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       e.stopPropagation();
                       setIsSidebarOpen(false);
                       // Open chat window on mobile
-                      if (onChatToggle) {
-                        onChatToggle();
-                      }
+                        if (onChatToggle) {
+                          onChatToggle();
+                        }
                     }}
                   >
                     Chat
