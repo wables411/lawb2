@@ -152,7 +152,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           }
       }
       
-      // Set up real-time listener directly
+      // Set up real-time listener (works on both desktop and mobile)
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
         // Only process if timeout hasn't fired
         if (timeoutFired) {
