@@ -99,20 +99,23 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     setError(null);
     setConnectionStatus('checking');
     
-    // Set timeout - if loading takes more than 8 seconds, show error
+    // Set timeout - if loading takes more than 15 seconds on mobile, 8 seconds on desktop
+    // Mobile may need more time for WebSocket connection to establish
+    const timeoutDuration = isMobile ? 15000 : 8000;
     let timeoutFired = false;
     const timeout = setTimeout(() => {
       timeoutFired = true;
       setIsLoading(false);
       const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
-      setError(`Firebase connection timeout (8s). Current domain: ${currentDomain}. Mobile issue: Check 1) Firebase Console → Authentication → Authorized domains (must include ${currentDomain}), 2) Try WiFi instead of cellular, 3) Check mobile browser console for CORS errors. Tap "Retry".`);
+      const protocol = typeof window !== 'undefined' ? window.location.protocol : 'unknown';
+      setError(`Firebase connection timeout (${timeoutDuration/1000}s). Current domain: ${currentDomain}. Protocol: ${protocol}. Mobile issue: Check 1) Firebase Console → Authentication → Authorized domains (must include ${currentDomain}), 2) Try WiFi instead of cellular, 3) Check mobile browser console for CORS/WebSocket errors. Tap "Retry".`);
       setConnectionStatus('disconnected');
       // Cleanup listener if timeout fires
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-    }, 8000);
+    }, timeoutDuration);
     
     try {
       // Double-check database is available (mobile-specific check)
@@ -131,28 +134,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       const messagesRef = ref(database, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
-      // For mobile, try a simple read first with a shorter timeout
-      if (isMobile) {
-        try {
-            // Test connection with a 3-second timeout
-            const testPromise = get(messagesRef);
-            const testTimeout = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Connection test timeout (3s)')), 3000)
-            );
-            await Promise.race([testPromise, testTimeout]);
-          } catch (testError: any) {
-            clearTimeout(timeout);
-            setIsLoading(false);
-            const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
-            const errorCode = testError?.code || 'timeout';
-            const errorMsg = testError?.message || 'Connection test failed';
-            setError(`Firebase mobile connection failed: ${errorMsg} (Code: ${errorCode}). Domain: ${currentDomain}. This suggests Firebase SDK cannot connect on mobile. Check: 1) Firebase Console → Authentication → Authorized domains includes ${currentDomain}, 2) Try WiFi instead of cellular, 3) Check mobile browser console. Tap "Retry".`);
-            setConnectionStatus('disconnected');
-            return;
-          }
-      }
-      
       // Set up real-time listener (works on both desktop and mobile)
+      // Note: On mobile, the listener may take longer to establish, but we let it try
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
         // Only process if timeout hasn't fired
         if (timeoutFired) {
