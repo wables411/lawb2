@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast } from 'firebase/database';
-import { testFirebaseConnection, testFirebaseRead } from '../utils/firebaseConnection';
+// Removed blocking connection test - loading data directly with timeout
 import './ChessChat.css';
 
 interface ChatMessage {
@@ -75,22 +75,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   // Store unsubscribe function for cleanup
   const unsubscribeRef = useRef<(() => void) | null>(null);
   
-  // Test Firebase connection
-  const testConnection = useCallback(async () => {
-    setConnectionStatus('checking');
-    const result = await testFirebaseConnection();
-    if (result.success) {
-      setConnectionStatus('connected');
-      return true;
-    } else {
-      setConnectionStatus('disconnected');
-      setError(`Connection failed: ${result.error}`);
-      return false;
-    }
-  }, []);
-
   // Load messages from Firebase
-  const loadMessages = useCallback(async (showRetry = false) => {
+  const loadMessages = useCallback(async () => {
     if (!isOpen) {
       return;
     }
@@ -103,13 +89,6 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       return;
     }
     
-    // Test connection first
-    const connected = await testConnection();
-    if (!connected && showRetry) {
-      setIsLoading(false);
-      return;
-    }
-    
     // Cleanup previous listener
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
@@ -118,13 +97,21 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     
     setIsLoading(true);
     setError(null);
+    setConnectionStatus('checking');
     
-    // Set timeout - if loading takes more than 10 seconds, show error
+    // Set timeout - if loading takes more than 8 seconds, show error
+    let timeoutFired = false;
     const timeout = setTimeout(() => {
+      timeoutFired = true;
       setIsLoading(false);
       setError('Loading timeout. Firebase may be unreachable. Tap "Retry" to try again.');
       setConnectionStatus('disconnected');
-    }, 10000);
+      // Cleanup listener if timeout fires
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    }, 8000);
     
     try {
       const roomPath = currentRoom === 'public' 
@@ -136,6 +123,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       
       // Store unsubscribe function
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
+        // Only process if timeout hasn't fired
+        if (timeoutFired) {
+          return;
+        }
+        
         // Clear timeout on success
         clearTimeout(timeout);
         
@@ -160,6 +152,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         // Scroll to bottom after messages load
         setTimeout(scrollToBottom, 100);
       }, (error) => {
+        // Only process if timeout hasn't fired
+        if (timeoutFired) {
+          return;
+        }
+        
         // Clear timeout on error
         clearTimeout(timeout);
         setError(`Failed to load messages: ${error.message || 'Connection error'}. Tap "Retry" to try again.`);
@@ -168,13 +165,18 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       });
       
     } catch (err: any) {
+      // Only process if timeout hasn't fired
+      if (timeoutFired) {
+        return;
+      }
+      
       // Clear timeout on exception
       clearTimeout(timeout);
       setError(`Error: ${err.message || 'Unknown error'}. Tap "Retry" to try again.`);
       setIsLoading(false);
       setConnectionStatus('disconnected');
     }
-  }, [isOpen, currentRoom, currentInviteCode, isMobile, testConnection]);
+  }, [isOpen, currentRoom, currentInviteCode, isMobile]);
   
   // Send message to Firebase
   const sendMessage = async () => {
@@ -407,7 +409,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
             <button
               onClick={() => {
                 setError(null);
-                void loadMessages(true);
+                void loadMessages();
               }}
               style={{
                 padding: '8px 16px',

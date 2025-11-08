@@ -8,7 +8,7 @@ import {
   removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
-import { testFirebaseConnection, testFirebaseRead } from '../utils/firebaseConnection';
+// Removed blocking connection test - loading data directly with timeout
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
@@ -530,48 +530,41 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   }, []);
 
   // Load leaderboard data from Firebase
-  const loadLeaderboard = async (showRetry = false): Promise<void> => {
+  const loadLeaderboard = async (): Promise<void> => {
     setLeaderboardLoading(true);
     setLeaderboardError(null);
     
-    // Test Firebase connection first
-    const connectionTest = await testFirebaseConnection();
-    if (!connectionTest.success) {
-      setLeaderboardError(`Connection failed: ${connectionTest.error}. Tap "Retry" to try again.`);
-      setLeaderboardLoading(false);
-      setLeaderboardData([]);
-      return;
-    }
-    
-    // Set timeout - if loading takes more than 10 seconds, show error
+    // Set timeout - if loading takes more than 8 seconds, show error
+    let timeoutFired = false;
     const timeout = setTimeout(() => {
+      timeoutFired = true;
       setLeaderboardError('Loading timeout. Firebase may be unreachable. Tap "Retry" to try again.');
       setLeaderboardLoading(false);
       setLeaderboardData([]);
-    }, 10000);
+    }, 8000);
     
     try {
       // First, try to remove any zero address entry
       await removeZeroAddressEntry();
       
       const data = await getTopLeaderboardEntries(20);
-      clearTimeout(timeout);
-      setLeaderboardData(data || []);
-      setLeaderboardLoading(false);
       
-      // If no data, set empty array explicitly (not loading state)
-      if (!data || data.length === 0) {
-        // Test if we can read from Firebase at all
-        const testRead = await testFirebaseRead('leaderboard');
-        if (!testRead.success) {
-          setLeaderboardError(`Cannot read from Firebase: ${testRead.error}. Tap "Retry" to try again.`);
-        }
+      // Only update if timeout hasn't fired
+      if (!timeoutFired) {
+        clearTimeout(timeout);
+        setLeaderboardData(data || []);
+        setLeaderboardLoading(false);
+        
+        // If no data, that's fine - just show empty state
       }
     } catch (error: any) {
-      clearTimeout(timeout);
-      setLeaderboardError(`Error: ${error?.message || 'Unknown error'}. Tap "Retry" to try again.`);
-      setLeaderboardLoading(false);
-      setLeaderboardData([]);
+      // Only update if timeout hasn't fired
+      if (!timeoutFired) {
+        clearTimeout(timeout);
+        setLeaderboardError(`Error: ${error?.message || 'Unknown error'}. Tap "Retry" to try again.`);
+        setLeaderboardLoading(false);
+        setLeaderboardData([]);
+      }
     }
   };
 
@@ -2594,7 +2587,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                         <div style={{ padding: '15px', background: '#fee', border: '1px solid #fcc', borderRadius: '4px' }}>
                           <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#d00' }}>{leaderboardError}</div>
                           <button
-                            onClick={() => void loadLeaderboard(true)}
+                            onClick={() => void loadLeaderboard()}
                             style={{
                               padding: '8px 16px',
                               background: '#4CAF50',
