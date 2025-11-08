@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { database } from '../firebaseApp';
-import { ref, push, onValue, set, query, orderByChild, limitToLast } from 'firebase/database';
+import { ref, push, onValue, set, query, orderByChild, limitToLast, get } from 'firebase/database';
 // Removed blocking connection test - loading data directly with timeout
 import './ChessChat.css';
 
@@ -99,19 +99,46 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     setError(null);
     setConnectionStatus('checking');
     
-    // Set timeout - if loading takes more than 8 seconds, show error
+    // First, test if we can reach Firebase at all using REST API
+    const testFirebaseReachability = async (): Promise<boolean> => {
+      try {
+        // Test Firebase REST API directly
+        const testUrl = 'https://chess-220ee-default-rtdb.firebaseio.com/.json?auth=null&limitToFirst=1';
+        const response = await fetch(testUrl, { 
+          method: 'GET',
+          signal: AbortSignal.timeout(3000)
+        });
+        return response.ok || response.status === 401; // 401 means reachable but unauthorized (which is fine for test)
+      } catch (err) {
+        return false;
+      }
+    };
+    
+    // Test network reachability first
+    const networkTest = await testFirebaseReachability();
+    if (!networkTest) {
+      setIsLoading(false);
+      setError('Cannot reach Firebase on mobile network. Possible causes: 1) Mobile network blocking Firebase, 2) Domain not authorized (Firebase Console → Authentication → Authorized domains), 3) Try WiFi instead of cellular. Tap "Retry".');
+      setConnectionStatus('disconnected');
+      return;
+    }
+    
+    // Set timeout - if loading takes more than 5 seconds, show error (reduced for mobile)
     let timeoutFired = false;
+    let timeoutId: NodeJS.Timeout;
+    
     const timeout = setTimeout(() => {
       timeoutFired = true;
+      timeoutId = timeout;
       setIsLoading(false);
-      setError('Loading timeout. Firebase may be unreachable. Tap "Retry" to try again.');
+      setError('Firebase SDK timeout (5s). Network reachable but SDK cannot connect. Check: 1) Firebase Console → Authentication → Authorized domains (add lawb.xyz), 2) Try "Retry" button.');
       setConnectionStatus('disconnected');
       // Cleanup listener if timeout fires
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-    }, 8000);
+    }, 5000);
     
     try {
       const roomPath = currentRoom === 'public' 
@@ -121,48 +148,73 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       const messagesRef = ref(database, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
-      // Store unsubscribe function
-      unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
-        // Only process if timeout hasn't fired
-        if (timeoutFired) {
-          return;
+      // Store unsubscribe function with immediate connection test
+      // Use once() first to test if we can read at all, then set up real-time listener
+      const testRef = ref(database, roomPath);
+      
+      // First, try a simple read to test connection
+      const testTimeout = setTimeout(() => {
+        if (!timeoutFired) {
+          setError('Firebase connection test failed. Possible causes: 1) Domain not authorized in Firebase Console (check lawb.xyz), 2) Network blocked, 3) CORS issue. Tap "Retry".');
+          setIsLoading(false);
+          setConnectionStatus('disconnected');
         }
-        
-        // Clear timeout on success
-        clearTimeout(timeout);
-        
-        const messagesData: ChatMessage[] = [];
-        
-        if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
-            const message = {
-              id: childSnapshot.key!,
-              ...childSnapshot.val()
-            } as ChatMessage;
-            messagesData.push(message);
+      }, 3000);
+      
+      // Try to read once to test connection
+      get(testRef).then((testSnapshot: any) => {
+          clearTimeout(testTimeout);
+          if (timeoutFired) return;
+          
+          // Connection works, now set up real-time listener
+          unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
+            // Only process if timeout hasn't fired
+            if (timeoutFired) {
+              return;
+            }
+            
+            // Clear timeout on success
+            clearTimeout(timeout);
+            
+            const messagesData: ChatMessage[] = [];
+            
+            if (snapshot.exists()) {
+              snapshot.forEach((childSnapshot) => {
+                const message = {
+                  id: childSnapshot.key!,
+                  ...childSnapshot.val()
+                } as ChatMessage;
+                messagesData.push(message);
+              });
+            }
+            
+            // Sort by timestamp
+            messagesData.sort((a, b) => a.timestamp - b.timestamp);
+            setMessages(messagesData);
+            setIsLoading(false);
+            setConnectionStatus('connected');
+            
+            // Scroll to bottom after messages load
+            setTimeout(scrollToBottom, 100);
+          }, (error) => {
+            // Only process if timeout hasn't fired
+            if (timeoutFired) {
+              return;
+            }
+            
+            // Clear timeout on error
+            clearTimeout(timeout);
+            setError(`Firebase error: ${error.message || 'Connection error'}. Check Firebase Console authorized domains. Tap "Retry".`);
+            setIsLoading(false);
+            setConnectionStatus('disconnected');
           });
-        }
-        
-        // Sort by timestamp
-        messagesData.sort((a, b) => a.timestamp - b.timestamp);
-        setMessages(messagesData);
-        setIsLoading(false);
-        setConnectionStatus('connected');
-        
-        // Scroll to bottom after messages load
-        setTimeout(scrollToBottom, 100);
-      }, (error) => {
-        // Only process if timeout hasn't fired
-        if (timeoutFired) {
-          return;
-        }
-        
-        // Clear timeout on error
-        clearTimeout(timeout);
-        setError(`Failed to load messages: ${error.message || 'Connection error'}. Tap "Retry" to try again.`);
-        setIsLoading(false);
-        setConnectionStatus('disconnected');
-      });
+        }).catch((testError: any) => {
+          clearTimeout(testTimeout);
+          if (timeoutFired) return;
+          setError(`Firebase read failed: ${testError.message || 'Cannot connect'}. Check: 1) Firebase Console → Authentication → Authorized domains (add lawb.xyz), 2) Network. Tap "Retry".`);
+          setIsLoading(false);
+          setConnectionStatus('disconnected');
+        });
       
     } catch (err: any) {
       // Only process if timeout hasn't fired

@@ -534,14 +534,37 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setLeaderboardLoading(true);
     setLeaderboardError(null);
     
-    // Set timeout - if loading takes more than 8 seconds, show error
+    // First, test if we can reach Firebase at all using REST API
+    const testFirebaseReachability = async (): Promise<boolean> => {
+      try {
+        const testUrl = 'https://chess-220ee-default-rtdb.firebaseio.com/.json?auth=null&limitToFirst=1';
+        const response = await fetch(testUrl, { 
+          method: 'GET',
+          signal: AbortSignal.timeout(3000)
+        });
+        return response.ok || response.status === 401;
+      } catch (err) {
+        return false;
+      }
+    };
+    
+    // Test network reachability first
+    const networkTest = await testFirebaseReachability();
+    if (!networkTest) {
+      setLeaderboardLoading(false);
+      setLeaderboardError('Cannot reach Firebase on mobile network. Check: 1) Mobile network blocking, 2) Domain authorized in Firebase Console, 3) Try WiFi. Tap "Retry".');
+      setLeaderboardData([]);
+      return;
+    }
+    
+    // Set timeout - if loading takes more than 5 seconds, show error
     let timeoutFired = false;
     const timeout = setTimeout(() => {
       timeoutFired = true;
-      setLeaderboardError('Loading timeout. Firebase may be unreachable. Tap "Retry" to try again.');
+      setLeaderboardError('Firebase SDK timeout (5s). Network reachable but SDK cannot connect. Check Firebase Console → Authentication → Authorized domains. Tap "Retry".');
       setLeaderboardLoading(false);
       setLeaderboardData([]);
-    }, 8000);
+    }, 5000);
     
     try {
       // First, try to remove any zero address entry
