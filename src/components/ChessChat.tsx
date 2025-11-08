@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast } from 'firebase/database';
+import { testFirebaseConnection, testFirebaseRead } from '../utils/firebaseConnection';
 import './ChessChat.css';
 
 interface ChatMessage {
@@ -40,6 +41,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const [currentRoom, setCurrentRoom] = useState<'public' | 'private'>('public');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   
   // Draggable/Resizable state
   const [position, setPosition] = useState({ x: 20, y: 20 });
@@ -73,17 +75,37 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   // Store unsubscribe function for cleanup
   const unsubscribeRef = useRef<(() => void) | null>(null);
   
+  // Test Firebase connection
+  const testConnection = useCallback(async () => {
+    setConnectionStatus('checking');
+    const result = await testFirebaseConnection();
+    if (result.success) {
+      setConnectionStatus('connected');
+      return true;
+    } else {
+      setConnectionStatus('disconnected');
+      setError(`Connection failed: ${result.error}`);
+      return false;
+    }
+  }, []);
+
   // Load messages from Firebase
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (showRetry = false) => {
     if (!isOpen) {
-      console.log('[CHAT] loadMessages: isOpen is false, skipping');
       return;
     }
     
     // Check if database is available
     if (!database) {
-      console.error('[CHAT] Database not available');
-      setError('Firebase not initialized');
+      setError('Firebase not initialized. Please refresh the page.');
+      setIsLoading(false);
+      setConnectionStatus('disconnected');
+      return;
+    }
+    
+    // Test connection first
+    const connected = await testConnection();
+    if (!connected && showRetry) {
       setIsLoading(false);
       return;
     }
@@ -97,19 +119,26 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     setIsLoading(true);
     setError(null);
     
+    // Set timeout - if loading takes more than 10 seconds, show error
+    const timeout = setTimeout(() => {
+      setIsLoading(false);
+      setError('Loading timeout. Firebase may be unreachable. Tap "Retry" to try again.');
+      setConnectionStatus('disconnected');
+    }, 10000);
+    
     try {
       const roomPath = currentRoom === 'public' 
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${currentInviteCode}/messages`;
-      
-      console.log('[CHAT] Loading messages from path:', roomPath, 'isMobile:', isMobile);
       
       const messagesRef = ref(database, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
       // Store unsubscribe function
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
-        console.log('[CHAT] onValue callback triggered, snapshot exists:', snapshot.exists(), 'isMobile:', isMobile);
+        // Clear timeout on success
+        clearTimeout(timeout);
+        
         const messagesData: ChatMessage[] = [];
         
         if (snapshot.exists()) {
@@ -124,24 +153,28 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         
         // Sort by timestamp
         messagesData.sort((a, b) => a.timestamp - b.timestamp);
-        console.log('[CHAT] Loaded', messagesData.length, 'messages, isMobile:', isMobile);
         setMessages(messagesData);
         setIsLoading(false);
+        setConnectionStatus('connected');
         
         // Scroll to bottom after messages load
         setTimeout(scrollToBottom, 100);
       }, (error) => {
-        console.error('[CHAT] Error loading messages:', error, 'isMobile:', isMobile);
-        setError(`Failed to load messages: ${error.message || error}`);
+        // Clear timeout on error
+        clearTimeout(timeout);
+        setError(`Failed to load messages: ${error.message || 'Connection error'}. Tap "Retry" to try again.`);
         setIsLoading(false);
+        setConnectionStatus('disconnected');
       });
       
     } catch (err: any) {
-      console.error('[CHAT] Exception loading messages:', err, 'isMobile:', isMobile);
-      setError(`Failed to load messages: ${err.message || err}`);
+      // Clear timeout on exception
+      clearTimeout(timeout);
+      setError(`Error: ${err.message || 'Unknown error'}. Tap "Retry" to try again.`);
       setIsLoading(false);
+      setConnectionStatus('disconnected');
     }
-  }, [isOpen, currentRoom, currentInviteCode, isMobile]);
+  }, [isOpen, currentRoom, currentInviteCode, isMobile, testConnection]);
   
   // Send message to Firebase
   const sendMessage = async () => {
@@ -343,15 +376,52 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       
       {/* Messages Area */}
       <div className="chat-messages">
+        {/* Connection Status */}
+        {connectionStatus === 'checking' && (
+          <div className="chat-status" style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+            Checking connection...
+          </div>
+        )}
+        {connectionStatus === 'disconnected' && !error && (
+          <div className="chat-status" style={{ padding: '10px', textAlign: 'center', color: '#d00', fontWeight: 'bold' }}>
+            ⚠️ Disconnected from Firebase
+          </div>
+        )}
+        
         {isLoading && (
-          <div className="chat-loading">
-            Loading messages...
+          <div className="chat-loading" style={{ padding: '10px', textAlign: 'center' }}>
+            Loading messages... {connectionStatus === 'checking' && '(Testing connection)'}
           </div>
         )}
         
         {error && (
-          <div className="chat-error">
-            {error}
+          <div className="chat-error" style={{ 
+            padding: '15px', 
+            margin: '10px', 
+            background: '#fee', 
+            border: '1px solid #fcc',
+            borderRadius: '4px',
+            textAlign: 'center'
+          }}>
+            <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>{error}</div>
+            <button
+              onClick={() => {
+                setError(null);
+                void loadMessages(true);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              Retry
+            </button>
           </div>
         )}
         

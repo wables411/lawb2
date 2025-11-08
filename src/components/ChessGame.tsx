@@ -8,6 +8,7 @@ import {
   removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
+import { testFirebaseConnection, testFirebaseRead } from '../utils/firebaseConnection';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
@@ -300,6 +301,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
@@ -527,25 +530,47 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   }, []);
 
   // Load leaderboard data from Firebase
-  const loadLeaderboard = async (): Promise<void> => {
+  const loadLeaderboard = async (showRetry = false): Promise<void> => {
+    setLeaderboardLoading(true);
+    setLeaderboardError(null);
+    
+    // Test Firebase connection first
+    const connectionTest = await testFirebaseConnection();
+    if (!connectionTest.success) {
+      setLeaderboardError(`Connection failed: ${connectionTest.error}. Tap "Retry" to try again.`);
+      setLeaderboardLoading(false);
+      setLeaderboardData([]);
+      return;
+    }
+    
+    // Set timeout - if loading takes more than 10 seconds, show error
+    const timeout = setTimeout(() => {
+      setLeaderboardError('Loading timeout. Firebase may be unreachable. Tap "Retry" to try again.');
+      setLeaderboardLoading(false);
+      setLeaderboardData([]);
+    }, 10000);
+    
     try {
-      console.log('[LEADERBOARD] Loading leaderboard, isMobile:', isMobile);
-      
       // First, try to remove any zero address entry
       await removeZeroAddressEntry();
       
       const data = await getTopLeaderboardEntries(20);
-      console.log('[LEADERBOARD] Data loaded:', data?.length || 0, 'entries, isMobile:', isMobile);
+      clearTimeout(timeout);
       setLeaderboardData(data || []);
+      setLeaderboardLoading(false);
       
       // If no data, set empty array explicitly (not loading state)
       if (!data || data.length === 0) {
-        console.log('[LEADERBOARD] Leaderboard is empty - no entries found, isMobile:', isMobile);
+        // Test if we can read from Firebase at all
+        const testRead = await testFirebaseRead('leaderboard');
+        if (!testRead.success) {
+          setLeaderboardError(`Cannot read from Firebase: ${testRead.error}. Tap "Retry" to try again.`);
+        }
       }
     } catch (error: any) {
-      console.error('[LEADERBOARD] Error loading leaderboard, isMobile:', isMobile, error, 'message:', error?.message);
-      setStatus('Failed to load leaderboard');
-      // Set empty array on error so it doesn't show "Loading..." forever
+      clearTimeout(timeout);
+      setLeaderboardError(`Error: ${error?.message || 'Unknown error'}. Tap "Retry" to try again.`);
+      setLeaderboardLoading(false);
       setLeaderboardData([]);
     }
   };
@@ -2562,8 +2587,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       </table>
                     </div>
                   ) : (
-                    <div className="mobile-empty-state">
-                      {leaderboardData.length === 0 ? 'No leaderboard entries yet' : 'Loading leaderboard...'}
+                    <div className="mobile-empty-state" style={{ padding: '20px', textAlign: 'center' }}>
+                      {leaderboardLoading ? (
+                        <div>Loading leaderboard...</div>
+                      ) : leaderboardError ? (
+                        <div style={{ padding: '15px', background: '#fee', border: '1px solid #fcc', borderRadius: '4px' }}>
+                          <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#d00' }}>{leaderboardError}</div>
+                          <button
+                            onClick={() => void loadLeaderboard(true)}
+                            style={{
+                              padding: '8px 16px',
+                              background: '#4CAF50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : leaderboardData.length === 0 ? (
+                        <div>No leaderboard entries yet</div>
+                      ) : (
+                        <div>Loading leaderboard...</div>
+                      )}
                     </div>
                   )}
                 </div>
