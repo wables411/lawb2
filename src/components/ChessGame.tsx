@@ -545,7 +545,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }, 8000);
     
     try {
-      // For mobile, test Firebase connection first
+      // For mobile, test Firebase connection first with shorter timeout
       if (isMobile) {
         try {
           // Import database to test connection
@@ -556,15 +556,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             setLeaderboardData([]);
             return;
           }
-          // Test with a simple read
+          // Test with a simple read (3-second timeout)
           const { ref, get } = await import('firebase/database');
           const testRef = ref(database, 'leaderboard');
-          await get(testRef);
+          const testPromise = get(testRef);
+          const testTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection test timeout (3s)')), 3000)
+          );
+          await Promise.race([testPromise, testTimeout]);
         } catch (testError: any) {
           clearTimeout(timeout);
           const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
-          const errorCode = testError?.code || 'unknown';
-          setLeaderboardError(`Firebase mobile connection failed: ${testError?.message || 'Cannot connect'} (Code: ${errorCode}). Domain: ${currentDomain}. Check Firebase Console authorized domains. Tap "Retry".`);
+          const errorCode = testError?.code || 'timeout';
+          const errorMsg = testError?.message || 'Connection test failed';
+          setLeaderboardError(`Firebase mobile connection failed: ${errorMsg} (Code: ${errorCode}). Domain: ${currentDomain}. This suggests Firebase SDK cannot connect on mobile. Check: 1) Firebase Console → Authentication → Authorized domains includes ${currentDomain}, 2) Try WiFi instead of cellular. Tap "Retry".`);
           setLeaderboardLoading(false);
           setLeaderboardData([]);
           return;

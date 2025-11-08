@@ -28,7 +28,11 @@ let database: Database;
 try {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   database = getDatabase(app);
-  console.log('[FIREBASE] Initialized successfully');
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  console.log('[FIREBASE] Initialized successfully', isMobile ? '(mobile)' : '(desktop)');
+  console.log('[FIREBASE] Database URL:', firebaseConfig.databaseURL);
+  console.log('[FIREBASE] Auth Domain:', firebaseConfig.authDomain);
+  console.log('[FIREBASE] Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'unknown');
 } catch (error) {
   console.error('[FIREBASE] Initialization error:', error);
   // Re-throw to prevent silent failures
