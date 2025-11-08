@@ -115,12 +115,37 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }, 8000);
     
     try {
+      // Double-check database is available (mobile-specific check)
+      if (!database) {
+        clearTimeout(timeout);
+        setIsLoading(false);
+        setError('Firebase database not initialized. Please refresh the page.');
+        setConnectionStatus('disconnected');
+        return;
+      }
+      
       const roomPath = currentRoom === 'public' 
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${currentInviteCode}/messages`;
       
       const messagesRef = ref(database, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
+      
+      // For mobile, try a simple read first to ensure connection works
+      if (isMobile) {
+        try {
+          // Test connection with a simple read
+          await get(messagesRef);
+        } catch (testError: any) {
+          clearTimeout(timeout);
+          setIsLoading(false);
+          const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+          const errorCode = testError?.code || 'unknown';
+          setError(`Firebase mobile connection failed: ${testError?.message || 'Cannot connect'} (Code: ${errorCode}). Domain: ${currentDomain}. Check Firebase Console authorized domains. Tap "Retry".`);
+          setConnectionStatus('disconnected');
+          return;
+        }
+      }
       
       // Set up real-time listener directly
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {

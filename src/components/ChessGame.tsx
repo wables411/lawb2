@@ -545,6 +545,32 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }, 8000);
     
     try {
+      // For mobile, test Firebase connection first
+      if (isMobile) {
+        try {
+          // Import database to test connection
+          const { database } = await import('../firebaseApp');
+          if (!database) {
+            setLeaderboardError('Firebase database not initialized on mobile. Please refresh.');
+            setLeaderboardLoading(false);
+            setLeaderboardData([]);
+            return;
+          }
+          // Test with a simple read
+          const { ref, get } = await import('firebase/database');
+          const testRef = ref(database, 'leaderboard');
+          await get(testRef);
+        } catch (testError: any) {
+          clearTimeout(timeout);
+          const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+          const errorCode = testError?.code || 'unknown';
+          setLeaderboardError(`Firebase mobile connection failed: ${testError?.message || 'Cannot connect'} (Code: ${errorCode}). Domain: ${currentDomain}. Check Firebase Console authorized domains. Tap "Retry".`);
+          setLeaderboardLoading(false);
+          setLeaderboardData([]);
+          return;
+        }
+      }
+      
       // First, try to remove any zero address entry
       await removeZeroAddressEntry();
       
