@@ -144,8 +144,6 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
       // Set up real-time listener (works on both desktop and mobile)
-      // Note: On mobile, the listener may take longer to establish, but we let it try
-      console.log('[FIREBASE] Setting up real-time listener', isMobile ? '(mobile)' : '(desktop)', 'protocol:', typeof window !== 'undefined' ? window.location.protocol : 'unknown');
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
         // Only process if timeout hasn't fired
         if (timeoutFired) {
