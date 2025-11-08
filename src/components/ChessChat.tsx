@@ -102,13 +102,14 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     // First, test if we can reach Firebase at all using REST API
     const testFirebaseReachability = async (): Promise<boolean> => {
       try {
-        // Test Firebase REST API directly
-        const testUrl = 'https://chess-220ee-default-rtdb.firebaseio.com/.json?auth=null&limitToFirst=1';
+        // Test Firebase REST API directly - use .info/connected which is a valid Firebase path
+        const testUrl = 'https://chess-220ee-default-rtdb.firebaseio.com/.info/connected.json';
         const response = await fetch(testUrl, { 
           method: 'GET',
           signal: AbortSignal.timeout(3000)
         });
-        return response.ok || response.status === 401; // 401 means reachable but unauthorized (which is fine for test)
+        // Any response (even 400/401) means Firebase is reachable
+        return response.status !== 0 && !response.type.includes('error');
       } catch (err) {
         return false;
       }
