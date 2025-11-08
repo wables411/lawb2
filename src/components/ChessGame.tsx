@@ -161,13 +161,15 @@ const useStockfish = () => {
         stockfishEngineRef.current.postMessage('isready');
         stockfishEngineRef.current.postMessage(`position fen ${fen}`);
         
-        // Use longer time limits and higher depth for maximum strength
-        const adjustedTimeLimit = timeLimit > 5000 ? timeLimit * 1.5 : timeLimit;
-        // Increased depth for better play quality
-        stockfishEngineRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth 25`);
+        // Use optimized time limits and depth for Hard mode
+        // For Hard mode: use depth 8-10 (strong but not too slow)
+        // Reduce timeout to 5-6 seconds for better UX
+        const adjustedTimeLimit = Math.min(timeLimit, 6000); // Cap at 6 seconds
+        const searchDepth = 18; // High depth for maximum Stockfish strength (can go up to 20+)
+        stockfishEngineRef.current.postMessage(`go movetime ${adjustedTimeLimit} depth ${searchDepth}`);
 
-        // Timeout fallback
-        const timeoutDuration = timeLimit > 5000 ? timeLimit * 2 : timeLimit + 1000;
+        // Timeout fallback - reduced for better UX
+        const timeoutDuration = Math.min(adjustedTimeLimit + 2000, 8000); // Max 8 seconds total
         window.setTimeout(() => {
           if (!isResolved) {
             isResolved = true;
@@ -1093,14 +1095,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }, 600);
       } else {
-        // Hard: Use Stockfish with increased time and fallback to API
-        setStatus('Stockfish is calculating...');
+        // Hard: Use Stockfish with optimized settings for strong play
+        setStatus('AI is thinking...');
         const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
         
-        // Use the Stockfish WASM worker with increased time (8000ms) and higher depth
-        getStockfishMove(fen, 8000).then(move => {
+        // Use the Stockfish WASM worker with optimized time (5000ms) and depth 8
+        getStockfishMove(fen, 5000).then(move => {
           if (move && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
             const fromRowStockfish = parseInt(move[1]);
@@ -1146,9 +1148,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         }).catch(async (error) => {
           console.error('[DEBUG] Stockfish WASM error:', error);
           // Try API fallback before random moves
-          setStatus('Trying Stockfish API fallback...');
+          setStatus('Trying API fallback...');
           try {
-            const apiMove = await getCloudflareStockfishMove(fen, 8000);
+            const apiMove = await getCloudflareStockfishMove(fen, 5000);
             if (apiMove && apiMove.length === 4) {
               const fromCol = apiMove.charCodeAt(0) - 97;
               const fromRowStockfish = parseInt(apiMove[1]);
@@ -1784,10 +1786,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       setCaptureAnimation({ row: to.row, col: to.col, show: true });
       
       // Wait for animation to complete before executing the move
-      setTimeout(() => {
-        executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
-        setCaptureAnimation(null);
-      }, 500); // Animation duration
+      // Use requestAnimationFrame to ensure animation renders before board update
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          executeMoveAfterAnimation(from, to, promotionPiece, isAIMove);
+          // Clear animation after board has updated
+          setTimeout(() => {
+            setCaptureAnimation(null);
+          }, 100);
+        }, 500); // Animation duration
+      });
       return;
     }
     
@@ -2646,7 +2654,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                         left: `${captureAnimation.col * 12.5}%`,
                         width: '12.5%',
                         height: '12.5%',
-                        zIndex: 10
+                        zIndex: 1000
                       }}
                     >
                       <img 

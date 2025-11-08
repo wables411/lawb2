@@ -3022,8 +3022,11 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .capture-animation {
   position: absolute;
   pointer-events: none;
-  z-index: 10;
-  animation: capture-pulse 0.3s ease-out;
+  z-index: 1000; /* Increased z-index to ensure it's above board pieces */
+  animation: capture-pulse 0.5s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes capture-pulse {

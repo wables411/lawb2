@@ -1,485 +1,142 @@
-// Advanced Chess AI - Actually Smart and Unbeatable
-// Uses sophisticated algorithms for maximum strength
+// Stockfish WASM Worker - Uses actual Stockfish engine
+// Load Stockfish WASM module
+importScripts('stockfish.js');
 
-// Piece values for material evaluation
-const PIECE_VALUES = {
-  'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000
-};
+// Initialize Stockfish engine
+// After importScripts, Stockfish methods are available on self
+const stockfish = self;
 
-// Position tables for piece-square evaluation
-const PAWN_TABLE = [
-  [0,  0,  0,  0,  0,  0,  0,  0],
-  [50, 50, 50, 50, 50, 50, 50, 50],
-  [10, 10, 20, 30, 30, 20, 10, 10],
-  [5,  5, 10, 25, 25, 10,  5,  5],
-  [0,  0,  0, 20, 20,  0,  0,  0],
-  [5, -5,-10,  0,  0,-10, -5,  5],
-  [5, 10, 10,-20,-20, 10, 10,  5],
-  [0,  0,  0,  0,  0,  0,  0,  0]
-];
+// Track if engine is ready
+let engineReady = false;
+let currentFen = '';
 
-const KNIGHT_TABLE = [
-  [-50,-40,-30,-30,-30,-30,-40,-50],
-  [-40,-20,  0,  0,  0,  0,-20,-40],
-  [-30,  0, 10, 15, 15, 10,  0,-30],
-  [-30,  5, 15, 20, 20, 15,  5,-30],
-  [-30,  0, 15, 20, 20, 15,  0,-30],
-  [-30,  5, 10, 15, 15, 10,  5,-30],
-  [-40,-20,  0,  5,  5,  0,-20,-40],
-  [-50,-40,-30,-30,-30,-30,-40,-50]
-];
-
-const BISHOP_TABLE = [
-  [-20,-10,-10,-10,-10,-10,-10,-20],
-  [-10,  0,  0,  0,  0,  0,  0,-10],
-  [-10,  0,  5, 10, 10,  5,  0,-10],
-  [-10,  5,  5, 10, 10,  5,  5,-10],
-  [-10,  0, 10, 10, 10, 10,  0,-10],
-  [-10, 10, 10, 10, 10, 10, 10,-10],
-  [-10,  5,  0,  0,  0,  0,  5,-10],
-  [-20,-10,-10,-10,-10,-10,-10,-20]
-];
-
-const ROOK_TABLE = [
-  [0,  0,  0,  0,  0,  0,  0,  0],
-  [5, 10, 10, 10, 10, 10, 10,  5],
-  [-5,  0,  0,  0,  0,  0,  0, -5],
-  [-5,  0,  0,  0,  0,  0,  0, -5],
-  [-5,  0,  0,  0,  0,  0,  0, -5],
-  [-5,  0,  0,  0,  0,  0,  0, -5],
-  [5, 10, 10, 10, 10, 10, 10,  5],
-  [0,  0,  0,  5,  5,  0,  0,  0]
-];
-
-const QUEEN_TABLE = [
-  [-20,-10,-10, -5, -5,-10,-10,-20],
-  [-10,  0,  0,  0,  0,  0,  0,-10],
-  [-10,  0,  5,  5,  5,  5,  0,-10],
-  [-5,  0,  5,  5,  5,  5,  0, -5],
-  [0,  0,  5,  5,  5,  5,  0, -5],
-  [-10,  5,  5,  5,  5,  5,  0,-10],
-  [-10,  0,  5,  0,  0,  0,  0,-10],
-  [-20,-10,-10, -5, -5,-10,-10,-20]
-];
-
-const KING_TABLE = [
-  [-30,-40,-40,-50,-50,-40,-40,-30],
-  [-30,-40,-40,-50,-50,-40,-40,-30],
-  [-30,-40,-40,-50,-50,-40,-40,-30],
-  [-30,-40,-40,-50,-50,-40,-40,-30],
-  [-20,-30,-30,-40,-40,-30,-30,-20],
-  [-10,-20,-20,-20,-20,-20,-20,-10],
-  [20, 20,  0,  0,  0,  0, 20, 20],
-  [20, 30, 10,  0,  0, 10, 30, 20]
-];
-
-// Convert FEN to board array
-function fenToBoard(fen) {
-  const board = Array(8).fill(null).map(() => Array(8).fill(null));
-  const parts = fen.split(' ');
-  const position = parts[0];
-  
-  let row = 0, col = 0;
-  for (let char of position) {
-    if (char === '/') {
-      row++;
-      col = 0;
-    } else if (char >= '1' && char <= '8') {
-      col += parseInt(char);
-    } else {
-      board[row][col] = char;
-      col++;
-    }
+// Set up message listener for UCI responses
+stockfish.addMessageListener((message) => {
+  if (message === 'uciok') {
+    // Engine is ready, configure for maximum strength
+    stockfish.postMessage('setoption name Skill Level value 20');
+    stockfish.postMessage('setoption name MultiPV value 1');
+    stockfish.postMessage('setoption name Threads value 4');
+    stockfish.postMessage('setoption name Hash value 128');
+    stockfish.postMessage('setoption name Contempt value 0');
+    stockfish.postMessage('setoption name Move Overhead value 10');
+    stockfish.postMessage('setoption name Minimum Thinking Time value 20');
+    stockfish.postMessage('setoption name Slow Mover value 100');
+    stockfish.postMessage('setoption name UCI_Chess960 value false');
+    stockfish.postMessage('isready');
+  } else if (message === 'readyok') {
+    engineReady = true;
+    console.log('[STOCKFISH WORKER] Engine configured and ready');
   }
-  
-  return board;
-}
+});
 
-// Convert board to FEN
-function boardToFen(board) {
-  let fen = '';
-  for (let row = 0; row < 8; row++) {
-    let emptyCount = 0;
-    for (let col = 0; col < 8; col++) {
-      if (board[row][col] === null) {
-        emptyCount++;
-      } else {
-        if (emptyCount > 0) {
-          fen += emptyCount;
-          emptyCount = 0;
-        }
-        fen += board[row][col];
-      }
-    }
-    if (emptyCount > 0) {
-      fen += emptyCount;
-    }
-    if (row < 7) fen += '/';
-  }
-  return fen;
-}
-
-// Generate all possible moves
-function generateMoves(board, isWhite) {
-  const moves = [];
-  
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const piece = board[row][col];
-      if (piece && ((isWhite && piece === piece.toUpperCase()) || (!isWhite && piece === piece.toLowerCase()))) {
-        const pieceMoves = getPieceMoves(board, row, col, piece, isWhite);
-        moves.push(...pieceMoves);
-      }
-    }
-  }
-  
-  return moves;
-}
-
-// Get moves for a specific piece
-function getPieceMoves(board, row, col, piece, isWhite) {
-  const moves = [];
-  const pieceType = piece.toLowerCase();
-  
-  switch (pieceType) {
-    case 'p':
-      moves.push(...getPawnMoves(board, row, col, isWhite));
-      break;
-    case 'n':
-      moves.push(...getKnightMoves(board, row, col, isWhite));
-      break;
-    case 'b':
-      moves.push(...getBishopMoves(board, row, col, isWhite));
-      break;
-    case 'r':
-      moves.push(...getRookMoves(board, row, col, isWhite));
-      break;
-    case 'q':
-      moves.push(...getQueenMoves(board, row, col, isWhite));
-      break;
-    case 'k':
-      moves.push(...getKingMoves(board, row, col, isWhite));
-      break;
-  }
-  
-  return moves.map(move => ({
-    from: { row, col },
-    to: move,
-    piece: piece
-  }));
-}
-
-// Pawn moves
-function getPawnMoves(board, row, col, isWhite) {
-  const moves = [];
-  const direction = isWhite ? -1 : 1;
-  const startRow = isWhite ? 6 : 1;
-  
-  // Forward move
-  if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
-    moves.push({ row: row + direction, col });
-    
-    // Double move from start
-    if (row === startRow && !board[row + 2 * direction][col]) {
-      moves.push({ row: row + 2 * direction, col });
-    }
-  }
-  
-  // Captures
-  for (const dc of [-1, 1]) {
-    const newRow = row + direction;
-    const newCol = col + dc;
-    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-      const target = board[newRow][newCol];
-      if (target && ((isWhite && target === target.toLowerCase()) || (!isWhite && target === target.toUpperCase()))) {
-        moves.push({ row: newRow, col: newCol });
-      }
-    }
-  }
-  
-  return moves;
-}
-
-// Knight moves
-function getKnightMoves(board, row, col, isWhite) {
-  const moves = [];
-  const knightMoves = [
-    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-    [1, -2], [1, 2], [2, -1], [2, 1]
-  ];
-  
-  for (const [dr, dc] of knightMoves) {
-    const newRow = row + dr;
-    const newCol = col + dc;
-    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-      const target = board[newRow][newCol];
-      if (!target || ((isWhite && target === target.toLowerCase()) || (!isWhite && target === target.toUpperCase()))) {
-        moves.push({ row: newRow, col: newCol });
-      }
-    }
-  }
-  
-  return moves;
-}
-
-// Bishop moves
-function getBishopMoves(board, row, col, isWhite) {
-  return getSlidingMoves(board, row, col, isWhite, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
-}
-
-// Rook moves
-function getRookMoves(board, row, col, isWhite) {
-  return getSlidingMoves(board, row, col, isWhite, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
-}
-
-// Queen moves
-function getQueenMoves(board, row, col, isWhite) {
-  return getSlidingMoves(board, row, col, isWhite, [
-    [-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]
-  ]);
-}
-
-// King moves
-function getKingMoves(board, row, col, isWhite) {
-  const moves = [];
-  const kingMoves = [
-    [-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]
-  ];
-  
-  for (const [dr, dc] of kingMoves) {
-    const newRow = row + dr;
-    const newCol = col + dc;
-    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-      const target = board[newRow][newCol];
-      if (!target || ((isWhite && target === target.toLowerCase()) || (!isWhite && target === target.toUpperCase()))) {
-        moves.push({ row: newRow, col: newCol });
-      }
-    }
-  }
-  
-  return moves;
-}
-
-// Sliding piece moves
-function getSlidingMoves(board, row, col, isWhite, directions) {
-  const moves = [];
-  
-  for (const [dr, dc] of directions) {
-    let newRow = row + dr;
-    let newCol = col + dc;
-    
-    while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-      const target = board[newRow][newCol];
-      if (!target) {
-        moves.push({ row: newRow, col: newCol });
-      } else {
-        if ((isWhite && target === target.toLowerCase()) || (!isWhite && target === target.toUpperCase())) {
-          moves.push({ row: newRow, col: newCol });
-        }
-        break;
-      }
-      newRow += dr;
-      newCol += dc;
-    }
-  }
-  
-  return moves;
-}
-
-// Make a move on the board
-function makeMove(board, move) {
-  const newBoard = board.map(row => [...row]);
-  const { from, to, piece } = move;
-  
-  newBoard[to.row][to.col] = piece;
-  newBoard[from.row][from.col] = null;
-  
-  return newBoard;
-}
-
-// Evaluate board position
-function evaluateBoard(board) {
-  let score = 0;
-  
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const piece = board[row][col];
-      if (piece) {
-        const isWhite = piece === piece.toUpperCase();
-        const pieceType = piece.toLowerCase();
-        let pieceValue = PIECE_VALUES[pieceType];
-        
-        // Add positional value
-        if (isWhite) {
-          pieceValue += getPositionValue(pieceType, row, col);
-        } else {
-          pieceValue += getPositionValue(pieceType, 7 - row, col);
-        }
-        
-        score += isWhite ? pieceValue : -pieceValue;
-      }
-    }
-  }
-  
-  return score;
-}
-
-// Get positional value for a piece
-function getPositionValue(pieceType, row, col) {
-  switch (pieceType) {
-    case 'p': return PAWN_TABLE[row][col];
-    case 'n': return KNIGHT_TABLE[row][col];
-    case 'b': return BISHOP_TABLE[row][col];
-    case 'r': return ROOK_TABLE[row][col];
-    case 'q': return QUEEN_TABLE[row][col];
-    case 'k': return KING_TABLE[row][col];
-    default: return 0;
-  }
-}
-
-// Minimax with alpha-beta pruning
-function minimax(board, depth, isMaximizing, alpha, beta, isWhite) {
-  if (depth === 0) {
-    return evaluateBoard(board);
-  }
-  
-  const moves = generateMoves(board, isWhite);
-  if (moves.length === 0) {
-    return isMaximizing ? -10000 : 10000; // Checkmate
-  }
-  
-  if (isMaximizing) {
-    let maxEval = -Infinity;
-    for (const move of moves) {
-      const newBoard = makeMove(board, move);
-      const eval = minimax(newBoard, depth - 1, false, alpha, beta, !isWhite);
-      maxEval = Math.max(maxEval, eval);
-      alpha = Math.max(alpha, eval);
-      if (beta <= alpha) break;
-    }
-    return maxEval;
-  } else {
-    let minEval = Infinity;
-    for (const move of moves) {
-      const newBoard = makeMove(board, move);
-      const eval = minimax(newBoard, depth - 1, true, alpha, beta, !isWhite);
-      minEval = Math.min(minEval, eval);
-      beta = Math.min(beta, eval);
-      if (beta <= alpha) break;
-    }
-    return minEval;
-  }
-}
-
-// Find best move using minimax
-function findBestMove(fen, timeLimit = 3000) {
-  const board = fenToBoard(fen);
-  const moves = generateMoves(board, false); // Black to move
-  
-  if (moves.length === 0) {
-    return null;
-  }
-  
-  let bestMove = null;
-  let bestScore = -Infinity;
-  const depth = 6; // Increased depth for stronger play
-  
-  // Sort moves for better alpha-beta pruning
-  moves.sort((a, b) => {
-    const aScore = evaluateMove(board, a);
-    const bScore = evaluateMove(board, b);
-    return bScore - aScore;
-  });
-  
-  for (const move of moves) {
-    const newBoard = makeMove(board, move);
-    const score = minimax(newBoard, depth - 1, false, -Infinity, Infinity, true);
-    
-    if (score > bestScore) {
-      bestScore = score;
-      bestMove = move;
-    }
-  }
-  
-  return bestMove;
-}
-
-// Evaluate a single move
-function evaluateMove(board, move) {
-  let score = 0;
-  
-  // Material gain
-  const target = board[move.to.row][move.to.col];
-  if (target) {
-    score += PIECE_VALUES[target.toLowerCase()] * 10;
-  }
-  
-  // Center control
-  const centerDistance = Math.abs(move.to.row - 3.5) + Math.abs(move.to.col - 3.5);
-  score += (7 - centerDistance) * 5;
-  
-  // Piece activity
-  score += getPieceActivity(board, move.to.row, move.to.col) * 2;
-  
-  return score;
-}
-
-// Get piece activity score
-function getPieceActivity(board, row, col) {
-  const piece = board[row][col];
-  if (!piece) return 0;
-  
-  const pieceType = piece.toLowerCase();
-  let activity = 0;
-  
-  switch (pieceType) {
-    case 'p':
-      activity = getPawnMoves(board, row, col, piece === piece.toUpperCase()).length;
-      break;
-    case 'n':
-      activity = getKnightMoves(board, row, col, piece === piece.toUpperCase()).length;
-      break;
-    case 'b':
-      activity = getBishopMoves(board, row, col, piece === piece.toUpperCase()).length;
-      break;
-    case 'r':
-      activity = getRookMoves(board, row, col, piece === piece.toUpperCase()).length;
-      break;
-    case 'q':
-      activity = getQueenMoves(board, row, col, piece === piece.toUpperCase()).length;
-      break;
-    case 'k':
-      activity = getKingMoves(board, row, col, piece === piece.toUpperCase()).length;
-      break;
-  }
-  
-  return activity;
-}
-
-// Convert move to UCI notation
-function moveToUCI(move) {
-  const from = String.fromCharCode(97 + move.from.col) + (8 - move.from.row);
-  const to = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
-  return from + to;
-}
+// Initialize UCI - this will trigger uciok response
+stockfish.postMessage('uci');
 
 // Worker message handler
 self.onmessage = function(event) {
-  const { command, fen, timeLimit } = event.data;
+  let command, fen, timeLimit, depth;
   
-  if (command === 'uci') {
-    self.postMessage('uciok');
-  } else if (command === 'isready') {
-    self.postMessage('readyok');
-  } else if (command.startsWith('position fen ')) {
-    // Position set, ready for go command
-  } else if (command.startsWith('go ')) {
-    const bestMove = findBestMove(fen, timeLimit);
-    if (bestMove) {
-      const uciMove = moveToUCI(bestMove);
-      self.postMessage(`bestmove ${uciMove}`);
-    } else {
-      self.postMessage('bestmove (none)');
+  // Handle both string messages (current format) and object messages
+  if (typeof event.data === 'string') {
+    command = event.data;
+    fen = currentFen;
+    timeLimit = 5000;
+    depth = 8;
+    
+    // Extract FEN from position command
+    if (command.startsWith('position fen ')) {
+      currentFen = command.substring(13).split(' ')[0];
+      return;
     }
+    
+    // Extract timeLimit and depth from go command
+    if (command.startsWith('go ')) {
+      const movetimeMatch = command.match(/movetime (\d+)/);
+      if (movetimeMatch) {
+        timeLimit = parseInt(movetimeMatch[1]);
+      }
+      const depthMatch = command.match(/depth (\d+)/);
+      if (depthMatch) {
+        depth = parseInt(depthMatch[1]);
+      }
+    }
+  } else if (typeof event.data === 'object' && event.data !== null) {
+    command = event.data.command;
+    fen = event.data.fen;
+    timeLimit = event.data.timeLimit || 5000;
+    depth = event.data.depth || 8;
+  } else {
+    console.error('[STOCKFISH WORKER] Invalid message format:', event.data);
+    return;
+  }
+  
+  // Safety check for command
+  if (!command || typeof command !== 'string') {
+    console.error('[STOCKFISH WORKER] Invalid command:', command);
+    return;
+  }
+  
+  // Handle UCI commands
+  if (command === 'uci') {
+    // Already handled in initialization
+    return;
+  } else if (command === 'isready') {
+    // Engine will respond with readyok
+    return;
+  } else if (command.startsWith('position fen ')) {
+    // Store FEN for later use
+    currentFen = command.substring(13).split(' ')[0];
+    stockfish.postMessage(command);
+    return;
+  } else if (command.startsWith('go ')) {
+    // Use stored FEN if not provided
+    const fenToUse = fen || currentFen;
+    if (!fenToUse) {
+      console.error('[STOCKFISH WORKER] No FEN available for move calculation');
+      self.postMessage('bestmove (none)');
+      return;
+    }
+    
+    // Set position if not already set
+    if (fenToUse !== currentFen) {
+      stockfish.postMessage(`position fen ${fenToUse}`);
+      currentFen = fenToUse;
+    }
+    
+    // Set up message listener for this calculation
+    let bestMove = null;
+    let isResolved = false;
+    
+    const messageHandler = (message) => {
+      if (message.startsWith('bestmove ')) {
+        const parts = message.split(' ');
+        bestMove = parts[1] || null;
+        if (!isResolved) {
+          isResolved = true;
+          stockfish.removeMessageListener(messageHandler);
+          self.postMessage(`bestmove ${bestMove || '(none)'}`);
+        }
+      }
+    };
+    
+    stockfish.addMessageListener(messageHandler);
+    
+    // Start calculation with depth and time limit
+    // For Hard mode, use higher depth (up to 20 for strong play)
+    const searchDepth = Math.min(20, Math.max(8, depth || 8));
+    stockfish.postMessage(`go movetime ${timeLimit} depth ${searchDepth}`);
+    
+    // Timeout fallback
+    setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        stockfish.removeMessageListener(messageHandler);
+        stockfish.postMessage('stop');
+        self.postMessage(`bestmove ${bestMove || '(none)'}`);
+      }
+    }, timeLimit + 2000);
+    
+    return;
   }
 };
