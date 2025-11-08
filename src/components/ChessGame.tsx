@@ -545,36 +545,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }, 8000);
     
     try {
-      // For mobile, test Firebase connection first with shorter timeout
-      if (isMobile) {
-        try {
-          // Import database to test connection
-          const { database } = await import('../firebaseApp');
-          if (!database) {
-            setLeaderboardError('Firebase database not initialized on mobile. Please refresh.');
-            setLeaderboardLoading(false);
-            setLeaderboardData([]);
-            return;
-          }
-          // Test with a simple read (3-second timeout)
-          const { ref, get } = await import('firebase/database');
-          const testRef = ref(database, 'leaderboard');
-          const testPromise = get(testRef);
-          const testTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Connection test timeout (3s)')), 3000)
-          );
-          await Promise.race([testPromise, testTimeout]);
-        } catch (testError: any) {
-          clearTimeout(timeout);
-          const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
-          const errorCode = testError?.code || 'timeout';
-          const errorMsg = testError?.message || 'Connection test failed';
-          setLeaderboardError(`Firebase mobile connection failed: ${errorMsg} (Code: ${errorCode}). Domain: ${currentDomain}. This suggests Firebase SDK cannot connect on mobile. Check: 1) Firebase Console → Authentication → Authorized domains includes ${currentDomain}, 2) Try WiFi instead of cellular. Tap "Retry".`);
-          setLeaderboardLoading(false);
-          setLeaderboardData([]);
-          return;
-        }
-      }
       
       // First, try to remove any zero address entry
       await removeZeroAddressEntry();
