@@ -27,8 +27,17 @@ let database: Database;
 
 try {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  database = getDatabase(app);
+  
+  // Initialize database - ensure we're using the correct database URL
+  // On mobile, explicitly pass the databaseURL to ensure proper connection
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  if (isMobile) {
+    // For mobile, explicitly specify database URL to ensure proper initialization
+    database = getDatabase(app, firebaseConfig.databaseURL);
+  } else {
+    database = getDatabase(app);
+  }
+  
   console.log('[FIREBASE] Initialized successfully', isMobile ? '(mobile)' : '(desktop)');
   console.log('[FIREBASE] Database URL:', firebaseConfig.databaseURL);
   console.log('[FIREBASE] Auth Domain:', firebaseConfig.authDomain);
