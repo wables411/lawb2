@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { database } from '../firebaseApp';
-import { ref, push, onValue, off, set, query, orderByChild, limitToLast } from 'firebase/database';
+import { ref, push, onValue, set, query, orderByChild, limitToLast } from 'firebase/database';
 import './ChessChat.css';
 
 interface ChatMessage {
@@ -75,7 +75,18 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   
   // Load messages from Firebase
   const loadMessages = useCallback(async () => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      console.log('[CHAT] loadMessages: isOpen is false, skipping');
+      return;
+    }
+    
+    // Check if database is available
+    if (!database) {
+      console.error('[CHAT] Database not available');
+      setError('Firebase not initialized');
+      setIsLoading(false);
+      return;
+    }
     
     // Cleanup previous listener
     if (unsubscribeRef.current) {
@@ -91,39 +102,46 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${currentInviteCode}/messages`;
       
+      console.log('[CHAT] Loading messages from path:', roomPath, 'isMobile:', isMobile);
+      
       const messagesRef = ref(database, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
       // Store unsubscribe function
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
+        console.log('[CHAT] onValue callback triggered, snapshot exists:', snapshot.exists(), 'isMobile:', isMobile);
         const messagesData: ChatMessage[] = [];
-        snapshot.forEach((childSnapshot) => {
-          const message = {
-            id: childSnapshot.key!,
-            ...childSnapshot.val()
-          } as ChatMessage;
-          messagesData.push(message);
-        });
+        
+        if (snapshot.exists()) {
+          snapshot.forEach((childSnapshot) => {
+            const message = {
+              id: childSnapshot.key!,
+              ...childSnapshot.val()
+            } as ChatMessage;
+            messagesData.push(message);
+          });
+        }
         
         // Sort by timestamp
         messagesData.sort((a, b) => a.timestamp - b.timestamp);
+        console.log('[CHAT] Loaded', messagesData.length, 'messages, isMobile:', isMobile);
         setMessages(messagesData);
         setIsLoading(false);
         
         // Scroll to bottom after messages load
         setTimeout(scrollToBottom, 100);
       }, (error) => {
-        console.error('Error loading messages:', error);
-        setError('Failed to load messages');
+        console.error('[CHAT] Error loading messages:', error, 'isMobile:', isMobile);
+        setError(`Failed to load messages: ${error.message || error}`);
         setIsLoading(false);
       });
       
-    } catch (err) {
-      console.error('Error loading messages:', err);
-      setError('Failed to load messages');
+    } catch (err: any) {
+      console.error('[CHAT] Exception loading messages:', err, 'isMobile:', isMobile);
+      setError(`Failed to load messages: ${err.message || err}`);
       setIsLoading(false);
     }
-  }, [isOpen, currentRoom, currentInviteCode]);
+  }, [isOpen, currentRoom, currentInviteCode, isMobile]);
   
   // Send message to Firebase
   const sendMessage = async () => {

@@ -529,19 +529,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Load leaderboard data from Firebase
   const loadLeaderboard = async (): Promise<void> => {
     try {
+      console.log('[LEADERBOARD] Loading leaderboard, isMobile:', isMobile);
+      
       // First, try to remove any zero address entry
       await removeZeroAddressEntry();
       
       const data = await getTopLeaderboardEntries(20);
-      setLeaderboardData(data);
-      console.log('Leaderboard data loaded:', data);
+      console.log('[LEADERBOARD] Data loaded:', data?.length || 0, 'entries, isMobile:', isMobile);
+      setLeaderboardData(data || []);
       
       // If no data, set empty array explicitly (not loading state)
       if (!data || data.length === 0) {
-        console.log('Leaderboard is empty - no entries found');
+        console.log('[LEADERBOARD] Leaderboard is empty - no entries found, isMobile:', isMobile);
       }
-    } catch (error) {
-      console.error('Leaderboard error:', error);
+    } catch (error: any) {
+      console.error('[LEADERBOARD] Error loading leaderboard, isMobile:', isMobile, error, 'message:', error?.message);
       setStatus('Failed to load leaderboard');
       // Set empty array on error so it doesn't show "Loading..." forever
       setLeaderboardData([]);

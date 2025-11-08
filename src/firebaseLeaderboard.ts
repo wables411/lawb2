@@ -150,9 +150,13 @@ export const getTopLeaderboardEntries = async (limit: number = 20): Promise<Lead
   try {
     const database = getDatabaseOrThrow();
     const leaderboardRef = ref(database, 'leaderboard');
+    console.log('[LEADERBOARD] Fetching from Firebase path: leaderboard');
+    
     const snapshot = await get(leaderboardRef);
+    console.log('[LEADERBOARD] Snapshot exists:', snapshot.exists(), 'hasChildren:', snapshot.hasChildren());
     
     if (!snapshot.exists()) {
+      console.log('[LEADERBOARD] No data in leaderboard path');
       return [];
     }
 
@@ -163,6 +167,8 @@ export const getTopLeaderboardEntries = async (limit: number = 20): Promise<Lead
         entries.push(entry);
       }
     });
+
+    console.log('[LEADERBOARD] Found', entries.length, 'entries before sorting');
 
     // Sort by points descending, then by wins descending, then by total games ascending
     entries.sort((a, b) => {
@@ -175,9 +181,11 @@ export const getTopLeaderboardEntries = async (limit: number = 20): Promise<Lead
       return a.total_games - b.total_games;
     });
 
-    return entries.slice(0, limit);
-  } catch (error) {
-    console.error('[LEADERBOARD] Error getting top entries:', error);
+    const result = entries.slice(0, limit);
+    console.log('[LEADERBOARD] Returning', result.length, 'entries');
+    return result;
+  } catch (error: any) {
+    console.error('[LEADERBOARD] Error getting top entries:', error, 'message:', error?.message);
     return [];
   }
 };

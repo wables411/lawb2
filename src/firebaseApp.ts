@@ -1,5 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import type { FirebaseApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
+import type { Database } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAed5bn78c6Mb5Y3ezULH9CEg7IAKYFAps",
@@ -11,7 +13,18 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:724477138097:web:7dc15f79db3bda5c763e90"
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const database = getDatabase(app);
+// Initialize Firebase with error handling
+let app: FirebaseApp;
+let database: Database;
+
+try {
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  database = getDatabase(app);
+  console.log('[FIREBASE] Initialized successfully');
+} catch (error) {
+  console.error('[FIREBASE] Initialization error:', error);
+  // Re-throw to prevent silent failures
+  throw error;
+}
 
 export { app, database }; 
