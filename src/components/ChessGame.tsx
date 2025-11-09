@@ -83,25 +83,26 @@ const useStockfish = () => {
     }
 
     isInitializingRef.current = true;
-    console.log('[DEBUG] Initializing Stockfish WASM...');
+    console.log('[STOCKFISH] Initializing Stockfish WASM...');
     
     const loadStockfish = async () => {
       try {
         // Use the local Stockfish worker that's already in the public directory
+        console.log('[STOCKFISH] Creating worker from /stockfish-worker.js');
         const worker = new Worker('/stockfish-worker.js');
         
         worker.onmessage = (event) => {
-          console.log('[DEBUG] Stockfish worker message:', event.data);
+          console.log('[STOCKFISH] Worker message:', event.data);
         };
         
         worker.onerror = (error) => {
-          console.error('[DEBUG] Stockfish worker error:', error);
+          console.error('[STOCKFISH] Worker error:', error);
           setStockfishReady(false);
           isInitializingRef.current = false;
         };
         
         // Worker is ready immediately after creation
-        console.log('[DEBUG] Stockfish worker initialized successfully');
+        console.log('[STOCKFISH] Worker created successfully, setting as ready');
         stockfishEngineRef.current = worker;
         setStockfishReady(true);
         isInitializingRef.current = false;
@@ -136,7 +137,7 @@ const useStockfish = () => {
         return;
       }
 
-      console.log('[DEBUG] Starting Stockfish calculation for FEN:', fen, 'timeLimit:', timeLimit);
+      console.log('[STOCKFISH] Starting calculation for FEN:', fen, 'timeLimit:', timeLimit);
       let bestMove: string | null = null;
       let isResolved = false;
 
@@ -145,7 +146,7 @@ const useStockfish = () => {
         if (typeof message === 'string' && message.startsWith('bestmove ')) {
           const parts = message.split(' ');
           bestMove = parts[1] || null;
-          console.log('[DEBUG] Stockfish bestmove found:', bestMove);
+          console.log('[STOCKFISH] Bestmove found:', bestMove);
           if (!isResolved) {
             isResolved = true;
             stockfishEngineRef.current?.removeEventListener('message', messageHandler);
