@@ -156,13 +156,13 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         const messagesData: ChatMessage[] = [];
         
         if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
-            const message = {
-              id: childSnapshot.key!,
-              ...childSnapshot.val()
-            } as ChatMessage;
-            messagesData.push(message);
-          });
+        snapshot.forEach((childSnapshot) => {
+          const message = {
+            id: childSnapshot.key!,
+            ...childSnapshot.val()
+          } as ChatMessage;
+          messagesData.push(message);
+        });
         }
         
         // Sort by timestamp

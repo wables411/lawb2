@@ -30,7 +30,7 @@ Stockfish().then((sf) => {
     } else if (message === 'readyok') {
       engineReady = true;
       console.log('[STOCKFISH WORKER] Engine configured and ready');
-    }
+      }
   });
   
   // Initialize UCI - this will trigger uciok response
@@ -54,8 +54,8 @@ self.onmessage = function(event) {
     if (command.startsWith('position fen ')) {
       currentFen = command.substring(13).split(' ')[0];
       return;
-    }
-    
+}
+
     // Extract timeLimit and depth from go command
     if (command.startsWith('go ')) {
       const movetimeMatch = command.match(/movetime (\d+)/);
@@ -65,7 +65,7 @@ self.onmessage = function(event) {
       const depthMatch = command.match(/depth (\d+)/);
       if (depthMatch) {
         depth = parseInt(depthMatch[1]);
-      }
+  }
     }
   } else if (typeof event.data === 'object' && event.data !== null) {
     command = event.data.command;
@@ -81,8 +81,8 @@ self.onmessage = function(event) {
   if (!command || typeof command !== 'string') {
     console.error('[STOCKFISH WORKER] Invalid command:', command);
     return;
-  }
-  
+}
+
   // Handle UCI commands
   if (command === 'uci') {
     // Already handled in initialization

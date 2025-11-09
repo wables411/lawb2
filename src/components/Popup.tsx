@@ -188,7 +188,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       console.log(`[POPUP] ${id} computed styles:`, window.getComputedStyle(nodeRef.current));
     }
   }, [isOpen, id, position]);
-  
+
   return (
     <Draggable 
       nodeRef={nodeRef} 

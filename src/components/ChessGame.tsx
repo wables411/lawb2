@@ -154,11 +154,11 @@ const useStockfish = () => {
 
   // Stockfish API hosted on chess.lawb.xyz for production
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
-    // If DNS has failed before, skip the API call immediately
-    if (dnsFailureRef.current) {
-      console.warn('[STOCKFISH] Skipping API call - DNS previously failed. chess.lawb.xyz not configured.');
-      return null;
-    }
+    // Reset DNS failure flag on each attempt (DNS might be fixed now)
+    // if (dnsFailureRef.current) {
+    //   console.warn('[STOCKFISH] Skipping API call - DNS previously failed. chess.lawb.xyz not configured.');
+    //   return null;
+    // }
     
     try {
       // Use chess.lawb.xyz subdomain for Stockfish API
@@ -195,9 +195,9 @@ const useStockfish = () => {
                          error?.code === 'ENOTFOUND';
       
       if (isDnsError) {
-        // Mark DNS as failed to prevent future attempts
-        dnsFailureRef.current = true;
-        console.warn('[STOCKFISH] DNS error detected - chess.lawb.xyz not resolving. Will skip future API calls until page reload.');
+        // Only mark DNS failure temporarily - don't permanently block (DNS might be fixed)
+        // dnsFailureRef.current = true;
+        console.warn('[STOCKFISH] DNS error detected - chess.lawb.xyz not resolving. Will retry on next move.');
       } else {
         console.warn('[STOCKFISH] API error:', error?.message || error);
       }
