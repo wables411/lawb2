@@ -153,11 +153,15 @@ const useStockfish = () => {
 
   // Stockfish API hosted on chess.lawb.xyz for production
   const getCloudflareStockfishMove = useCallback(async (fen: string, timeLimit: number = 4000): Promise<string | null> => {
+    // If DNS has failed before, skip the API call immediately
+    if (dnsFailureRef.current) {
+      console.warn('[STOCKFISH] Skipping API call - DNS previously failed. chess.lawb.xyz not configured.');
+      return null;
+    }
+    
     try {
       // Use chess.lawb.xyz subdomain for Stockfish API
       const apiUrl = 'https://chess.lawb.xyz/api/stockfish';
-      
-      console.log(`[DEBUG] Attempting API call to ${apiUrl}`);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -168,20 +172,34 @@ const useStockfish = () => {
           fen,
           movetime: timeLimit,
           difficulty: 'play' // Use maximum strength
-        })
+        }),
+        // Add timeout to prevent hanging
+        signal: AbortSignal.timeout(8000)
       });
 
       if (response.ok) {
         const data = await response.json() as { bestmove?: string; move?: string };
-        console.log(`[DEBUG] API call successful to ${apiUrl}:`, data);
+        console.log(`[STOCKFISH] API call successful:`, data);
         // Handle both 'bestmove' and 'move' response formats
         return data.bestmove || data.move || null;
       } else {
-        console.warn(`[DEBUG] API failed with status ${response.status} on ${apiUrl}`);
+        console.warn(`[STOCKFISH] API failed with status ${response.status}`);
         return null;
       }
-    } catch (error) {
-      console.warn('[DEBUG] API error:', error);
+    } catch (error: any) {
+      // Check if it's a DNS/network error
+      const isDnsError = error?.message?.includes('Failed to fetch') || 
+                         error?.message?.includes('ERR_NAME_NOT_RESOLVED') ||
+                         error?.name === 'TypeError' ||
+                         error?.code === 'ENOTFOUND';
+      
+      if (isDnsError) {
+        // Mark DNS as failed to prevent future attempts
+        dnsFailureRef.current = true;
+        console.warn('[STOCKFISH] DNS error detected - chess.lawb.xyz not resolving. Will skip future API calls until page reload.');
+      } else {
+        console.warn('[STOCKFISH] API error:', error?.message || error);
+      }
       return null;
     }
   }, []);
