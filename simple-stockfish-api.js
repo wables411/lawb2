@@ -75,7 +75,8 @@ const server = http.createServer(async (req, res) => {
       
       console.log(`Using settings: skillLevel=${settings.skillLevel}, depth=${settings.depth}, movetime=${actualMovetime}`);
       
-      const stockfish = spawn('stockfish');
+      // Stockfish is typically installed in /usr/games/stockfish on Debian/Ubuntu
+      const stockfish = spawn('/usr/games/stockfish');
       let bestmove = null;
       let evaluation = null;
       let depth = null;
