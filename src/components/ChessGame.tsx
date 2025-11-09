@@ -76,6 +76,7 @@ const useStockfish = () => {
   const [stockfishReady, setStockfishReady] = useState(false);
   const stockfishEngineRef = useRef<any>(null);
   const isInitializingRef = useRef(false);
+  const dnsFailureRef = useRef(false);
 
   useEffect(() => {
     // Stockfish WASM worker is no longer used - we use the API endpoint instead
