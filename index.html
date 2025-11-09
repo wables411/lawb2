@@ -16,7 +16,7 @@
     <link rel="dns-prefetch" href="https://www.tiktok.com" />
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/stockfish.js" as="script" />
+    <!-- Stockfish WASM preload removed - using API endpoint instead -->
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -38,8 +38,8 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     
-    <!-- Stockfish WASM for chess AI -->
-    <script src="/stockfish.js"></script>
+    <!-- Stockfish WASM removed - using API endpoint (chess.lawb.xyz) instead -->
+    <!-- This avoids SharedArrayBuffer/COEP issues with wallet connections -->
   </head>
   <body>
     <div id="root"></div>

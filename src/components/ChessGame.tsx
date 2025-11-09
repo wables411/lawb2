@@ -78,54 +78,14 @@ const useStockfish = () => {
   const isInitializingRef = useRef(false);
 
   useEffect(() => {
-    if (isInitializingRef.current || stockfishEngineRef.current) {
-      return; // Already initializing or already loaded
-    }
-
-    isInitializingRef.current = true;
-    console.log('[STOCKFISH] Initializing Stockfish WASM...');
+    // Stockfish WASM worker is no longer used - we use the API endpoint instead
+    // This avoids SharedArrayBuffer/COEP issues and works more reliably
+    // Keeping this hook for API compatibility but not initializing WASM
+    console.log('[STOCKFISH] Using API endpoint (chess.lawb.xyz) - WASM worker disabled');
+    setStockfishReady(true); // Mark as ready since API doesn't need initialization
     
-    const loadStockfish = async () => {
-      try {
-        // Use the local Stockfish worker that's already in the public directory
-        console.log('[STOCKFISH] Creating worker from /stockfish-worker.js');
-        const worker = new Worker('/stockfish-worker.js');
-        
-        worker.onmessage = (event) => {
-          console.log('[STOCKFISH] Worker message:', event.data);
-        };
-        
-        worker.onerror = (error) => {
-          console.error('[STOCKFISH] Worker error:', error);
-          setStockfishReady(false);
-          isInitializingRef.current = false;
-        };
-        
-        // Worker is ready immediately after creation
-        console.log('[STOCKFISH] Worker created successfully, setting as ready');
-        stockfishEngineRef.current = worker;
-        setStockfishReady(true);
-        isInitializingRef.current = false;
-        
-      } catch (error) {
-        console.error('[DEBUG] Failed to create Stockfish worker:', error);
-        setStockfishReady(false);
-        isInitializingRef.current = false;
-      }
-    };
-
-    void loadStockfish();
-
     return () => {
-      if (stockfishEngineRef.current) {
-        try {
-          stockfishEngineRef.current.terminate?.();
-        } catch (e) {
-          console.warn('[DEBUG] Error terminating Stockfish:', e);
-        }
-        stockfishEngineRef.current = null;
-      }
-      isInitializingRef.current = false;
+      // Cleanup not needed for API approach
     };
   }, []);
 
@@ -1181,8 +1141,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }).catch(async (error) => {
           console.error('[STOCKFISH] API error:', error);
+          // Check if it's a DNS/network error
+          const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                                 error?.message?.includes('ERR_NAME_NOT_RESOLVED') ||
+                                 error?.name === 'TypeError';
+          
+          if (isNetworkError) {
+            setStatus('Stockfish API unavailable (DNS/network error). Check chess.lawb.xyz configuration. Using fallback.');
+          } else {
+            setStatus('Stockfish unavailable. Using fallback.');
+          }
+          
           // Last resort: random move
-          setStatus('Stockfish unavailable. Using fallback.');
           const fallbackMove = getRandomAIMove(boardRef.current);
           if (fallbackMove) {
             makeMove(fallbackMove.from, fallbackMove.to, true);
