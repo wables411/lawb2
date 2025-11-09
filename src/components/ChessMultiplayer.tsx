@@ -2356,7 +2356,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     console.log('[FIREBASE_SUB] Setting up subscription for game:', inviteCode);
     
-    const unsubscribe = firebaseChess.subscribeToGame(inviteCode, (gameData) => {
+    const unsubscribe = firebaseChess.subscribeToGame(inviteCode, async (gameData) => {
       try {
       // Reduced logging for performance - only log on important state changes
       if (gameData.game_state !== gameMode) {
