@@ -1128,14 +1128,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }, 600);
       } else {
-        // Hard: Use Stockfish with optimized settings for strong play
+        // Hard: Use Stockfish API directly (chess.lawb.xyz) for strong play
+        // Using API avoids COEP/SharedArrayBuffer issues with wallet connections
         setStatus('AI is thinking...');
         const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
         
-        // Use the Stockfish WASM worker with optimized time (5000ms) and depth 8
-        getStockfishMove(fen, 5000).then(move => {
+        // Use the Stockfish API directly for hard mode (stronger and more reliable)
+        getCloudflareStockfishMove(fen, 5000).then(move => {
           if (move && move.length === 4) {
             const fromCol = move.charCodeAt(0) - 97;
             const fromRowStockfish = parseInt(move[1]);
@@ -1143,13 +1144,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             const toRowStockfish = parseInt(move[3]);
             const fromRow = 8 - fromRowStockfish;
             const toRow = 8 - toRowStockfish;
-            console.log('[DEBUG] Stockfish WASM move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
+            console.log('[STOCKFISH] API move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
             if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
               const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
               const piece = boardRef.current[fromRow][fromCol];
               console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current) });
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
-                console.log('[DEBUG] Executing Stockfish WASM move:', moveObj);
+                console.log('[STOCKFISH] Executing API move:', moveObj);
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
                 console.warn('[DEBUG] Invalid Stockfish move, falling back to random');
@@ -1179,30 +1180,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             apiCallInProgressRef.current = false;
           }
         }).catch(async (error) => {
-          console.error('[DEBUG] Stockfish WASM error:', error);
-          // Try API fallback before random moves
-          setStatus('Trying API fallback...');
-          try {
-            const apiMove = await getCloudflareStockfishMove(fen, 5000);
-            if (apiMove && apiMove.length === 4) {
-              const fromCol = apiMove.charCodeAt(0) - 97;
-              const fromRowStockfish = parseInt(apiMove[1]);
-              const toCol = apiMove.charCodeAt(2) - 97;
-              const toRowStockfish = parseInt(apiMove[3]);
-              const fromRow = 8 - fromRowStockfish;
-              const toRow = 8 - toRowStockfish;
-              if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
-                const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
-                const piece = boardRef.current[fromRow][fromCol];
-                if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
-                  makeMove(moveObj.from, moveObj.to, true);
-                  return;
-                }
-              }
-            }
-          } catch (apiError) {
-            console.error('[DEBUG] Stockfish API fallback also failed:', apiError);
-          }
+          console.error('[STOCKFISH] API error:', error);
           // Last resort: random move
           setStatus('Stockfish unavailable. Using fallback.');
           const fallbackMove = getRandomAIMove(boardRef.current);

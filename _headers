@@ -11,9 +11,9 @@
   Cross-Origin-Resource-Policy: cross-origin
   Cross-Origin-Embedder-Policy: unsafe-none
 
-# Chess-specific headers for SharedArrayBuffer support
-# Stockfish WASM requires SharedArrayBuffer, which needs COEP and COOP headers
-# These headers are required for Stockfish to work
-/chess
-  Cross-Origin-Embedder-Policy: require-corp
-  Cross-Origin-Opener-Policy: same-origin-allow-popups
+# Chess-specific headers
+# Note: Stockfish now uses API endpoint (chess.lawb.xyz) instead of WASM
+# This avoids COEP/SharedArrayBuffer conflicts with wallet connections
+# /chess
+#   Cross-Origin-Embedder-Policy: require-corp
+#   Cross-Origin-Opener-Policy: same-origin-allow-popups
