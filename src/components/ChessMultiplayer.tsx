@@ -885,6 +885,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (winnerAddress) {
       console.log('[TIMEOUT] Ending game with winner:', winnerAddress);
       
+      // Update Firebase FIRST to mark game as finished (will be confirmed when transaction completes)
+      try {
+        await firebaseChess.updateGame(inviteCode, {
+          game_state: 'finished',
+          winner: winnerAddress,
+          updated_at: new Date().toISOString()
+        });
+        console.log('[TIMEOUT] Firebase updated to finished state');
+      } catch (error) {
+        console.error('[TIMEOUT] Error updating Firebase:', error);
+      }
+      
       // Call contract to end game
       writeEndGame({
         address: chessContractAddress as `0x${string}`,
@@ -1143,10 +1155,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CLAIM] End game transaction confirmed:', endGameHash);
       setGameStatus('Winnings claimed successfully! Transaction hash: ' + endGameHash.slice(0, 10) + '...');
       
+      // CRITICAL: Update Firebase to mark game as finished when endGame is confirmed
+      if (inviteCode) {
+        console.log('[FIREBASE_SYNC] Updating Firebase game state to finished after endGame transaction');
+        firebaseChess.updateGame(inviteCode, {
+          game_state: 'finished',
+          updated_at: new Date().toISOString()
+        }).catch((error) => {
+          console.error('[FIREBASE_SYNC] Error updating Firebase after endGame:', error);
+        });
+      }
+      
       // Reset claiming state
       setIsClaimingWinnings(false);
     }
-  }, [endGameHash, isWaitingForEndReceipt]);
+  }, [endGameHash, isWaitingForEndReceipt, inviteCode]);
 
   // Handle transaction rejection for claim winnings
   useEffect(() => {
@@ -1474,6 +1497,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             return;
           }
           console.log('[GAME_STATE] Parsed contract game data:', { player1, player2, isActive, winner, inviteCode, wagerAmount });
+          
+          // CRITICAL FIX: If contract shows game is not active (ended), don't load it even if Firebase shows it as active
+          if (!isActive) {
+            console.log('[GAME_STATE] Contract shows game is ended (isActive=false). Not loading game even if Firebase shows it as active.');
+            console.log('[GAME_STATE] This prevents loading games that were ended by timeout or endGame call.');
+            // Update Firebase to sync with contract state
+            try {
+              await firebaseChess.updateGame(inviteCode, {
+                game_state: 'finished',
+                winner: winner || null,
+                updated_at: new Date().toISOString()
+              });
+              console.log('[GAME_STATE] Firebase synced to finished state to match contract');
+            } catch (error) {
+              console.error('[GAME_STATE] Error syncing Firebase:', error);
+            }
+            setGameMode(GameMode.LOBBY);
+            setHasLoadedGame(true);
+            return;
+          }
+          
           // Use the full inviteCode (bytes6 string) for all Firebase lookups and subscriptions
           if (!inviteCode) {
             console.error('[GAME_STATE] Invalid invite code:', inviteCode);
@@ -4301,19 +4345,63 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const resumeGame = async () => {
     if (!address) return;
     // Use contract to get inviteCode
-            const playerInviteCode = await getPlayerInviteCodeFromContract(address, chessContractAddress);
+    const playerInviteCode = await getPlayerInviteCodeFromContract(address, chessContractAddress);
     if (!playerInviteCode || playerInviteCode === '0x000000000000') {
       setGameStatus('No active game found');
       return;
     }
+    
+    // CRITICAL FIX: Check contract state before loading from Firebase
+    try {
+      const currentContractData = await publicClient?.readContract({
+        address: chessContractAddress as `0x${string}`,
+        abi: CHESS_CONTRACT_ABI,
+        functionName: 'games',
+        args: [playerInviteCode as `0x${string}`]
+      });
+      
+      if (currentContractData && Array.isArray(currentContractData)) {
+        const [, , isActive, winner] = currentContractData;
+        if (!isActive) {
+          console.log('[RESUME] Contract shows game is ended (isActive=false). Not resuming game.');
+          // Sync Firebase to match contract
+          try {
+            await firebaseChess.updateGame(playerInviteCode, {
+              game_state: 'finished',
+              winner: winner || null,
+              updated_at: new Date().toISOString()
+            });
+            console.log('[RESUME] Firebase synced to finished state');
+          } catch (error) {
+            console.error('[RESUME] Error syncing Firebase:', error);
+          }
+          setGameStatus('Game has ended. Returning to lobby.');
+          setGameMode(GameMode.LOBBY);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('[RESUME] Error checking contract state:', error);
+      // Continue with Firebase load if contract check fails
+    }
+    
     setInviteCode(playerInviteCode);
     const gameData = await firebaseChess.getGame(playerInviteCode);
     if (!gameData) {
       setGameStatus('Game not found');
       return;
     }
+    
+    // Double-check Firebase game state
+    if (gameData.game_state === 'finished') {
+      console.log('[RESUME] Firebase shows game as finished. Not resuming.');
+      setGameStatus('Game has ended. Returning to lobby.');
+      setGameMode(GameMode.LOBBY);
+      return;
+    }
+    
     setPlayerColor(address === gameData.blue_player ? 'blue' : 'red');
-            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'resumeGame');
+    debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'resumeGame');
     setOpponent(address === gameData.blue_player ? gameData.red_player : gameData.blue_player);
     setGameMode(GameMode.ACTIVE);
     setGameStatus('Game resumed');
