@@ -5867,11 +5867,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
                 </span>
                 <span className="wager-display">
-                  Wager: {wager.toFixed(6)} {currentGameToken}
+                  {isMobile ? `${wager.toFixed(2)} ${currentGameToken}` : `Wager: ${wager.toFixed(6)} ${currentGameToken}`}
                 </span>
                 {opponent && (
                   <span className="opponent-info">
-                    vs {formatAddress(opponent)}
+                    {isMobile ? `vs ${formatAddress(opponent).slice(0, 6)}...` : `vs ${formatAddress(opponent)}`}
                   </span>
                 )}
               </div>
