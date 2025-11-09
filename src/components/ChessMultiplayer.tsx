@@ -2555,15 +2555,89 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (gameData.game_state === 'active') {
         console.log('[FIREBASE_SUB] 🎯 GAME STATE CHANGED TO ACTIVE!');
         console.log('[FIREBASE_SUB] Previous game mode:', gameMode);
-        console.log('[FIREBASE_SUB] Setting game mode to ACTIVE');
-        setGameMode(GameMode.ACTIVE);
-        setShowGame(true);
-        setGameStatus('Game in progress');
         
-        // CRITICAL FIX: Force contract state refresh when game becomes active
-        if (refetchPlayerGame) {
-          console.log('[GAME_ACTIVE] Forcing contract state refresh for game creator');
-          refetchPlayerGame();
+        // CRITICAL FIX: Check contract state before setting game to active
+        // If contract shows game is ended, don't load it even if Firebase shows active
+        const currentContractData = getCurrentContractGameData();
+        let contractIsActive = true; // Default to true if we can't check
+        
+        if (currentContractData && Array.isArray(currentContractData)) {
+          const [, , isActive, winner] = currentContractData;
+          contractIsActive = isActive;
+          console.log('[FIREBASE_SUB] Contract state check:', { isActive, winner });
+          
+          if (!isActive) {
+            console.log('[FIREBASE_SUB] ❌ Contract shows game is ended (isActive=false). NOT LOADING GAME.');
+            console.log('[FIREBASE_SUB] Firebase shows active but contract shows ended - syncing Firebase...');
+            
+            // Sync Firebase to match contract
+            try {
+              await firebaseChess.updateGame(inviteCode, {
+                game_state: 'finished',
+                winner: winner || null,
+                updated_at: new Date().toISOString()
+              });
+              console.log('[FIREBASE_SUB] ✅ Firebase synced to finished state');
+            } catch (error) {
+              console.error('[FIREBASE_SUB] ❌ Error syncing Firebase:', error);
+            }
+            
+            // Don't set game to active - return to lobby
+            setGameMode(GameMode.LOBBY);
+            setGameStatus('Game has ended. Returning to lobby.');
+            return; // Exit early, don't load the game
+          }
+        } else if (inviteCode) {
+          // If we don't have contract data, try to read it directly
+          console.log('[FIREBASE_SUB] No contract data in state, reading directly...');
+          try {
+            const directContractData = await publicClient?.readContract({
+              address: chessContractAddress as `0x${string}`,
+              abi: CHESS_CONTRACT_ABI,
+              functionName: 'games',
+              args: [inviteCode as `0x${string}`]
+            });
+            
+            if (directContractData && Array.isArray(directContractData)) {
+              const [, , isActiveDirect, winnerDirect] = directContractData;
+              contractIsActive = isActiveDirect;
+              console.log('[FIREBASE_SUB] Direct contract read:', { isActive: contractIsActive, winner: winnerDirect });
+              
+              if (!isActiveDirect) {
+                console.log('[FIREBASE_SUB] ❌ Direct contract read shows game is ended. NOT LOADING GAME.');
+                try {
+                  await firebaseChess.updateGame(inviteCode, {
+                    game_state: 'finished',
+                    winner: winnerDirect || null,
+                    updated_at: new Date().toISOString()
+                  });
+                  console.log('[FIREBASE_SUB] ✅ Firebase synced to finished state');
+                } catch (error) {
+                  console.error('[FIREBASE_SUB] ❌ Error syncing Firebase:', error);
+                }
+                setGameMode(GameMode.LOBBY);
+                setGameStatus('Game has ended. Returning to lobby.');
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('[FIREBASE_SUB] Error reading contract directly:', error);
+            // Continue if contract read fails, but log it
+          }
+        }
+        
+        // Only set to active if contract confirms it's active
+        if (contractIsActive) {
+          console.log('[FIREBASE_SUB] ✅ Contract confirms game is active, setting game mode to ACTIVE');
+          setGameMode(GameMode.ACTIVE);
+          setShowGame(true);
+          setGameStatus('Game in progress');
+          
+          // CRITICAL FIX: Force contract state refresh when game becomes active
+          if (refetchPlayerGame) {
+            console.log('[GAME_ACTIVE] Forcing contract state refresh for game creator');
+            refetchPlayerGame();
+          }
         }
         
         // CRITICAL FIX: Ensure player color and opponent are set when game becomes active
