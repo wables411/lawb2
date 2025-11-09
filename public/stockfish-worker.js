@@ -93,7 +93,9 @@ self.onmessage = function(event) {
   } else if (command.startsWith('position fen ')) {
     // Store FEN for later use
     currentFen = command.substring(13).split(' ')[0];
-    stockfish.postMessage(command);
+    if (stockfish) {
+      stockfish.postMessage(command);
+    }
     return;
   } else if (command.startsWith('go ')) {
     // Use stored FEN if not provided
