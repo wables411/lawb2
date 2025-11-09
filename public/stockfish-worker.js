@@ -3,35 +3,41 @@
 importScripts('stockfish.js');
 
 // Initialize Stockfish engine
-// After importScripts, Stockfish methods are available on self
-const stockfish = self;
-
-// Track if engine is ready
+// Stockfish is a function that returns the module
+let stockfish = null;
 let engineReady = false;
 let currentFen = '';
 
-// Set up message listener for UCI responses
-stockfish.addMessageListener((message) => {
-  if (message === 'uciok') {
-    // Engine is ready, configure for maximum strength
-    stockfish.postMessage('setoption name Skill Level value 20');
-    stockfish.postMessage('setoption name MultiPV value 1');
-    stockfish.postMessage('setoption name Threads value 4');
-    stockfish.postMessage('setoption name Hash value 128');
-    stockfish.postMessage('setoption name Contempt value 0');
-    stockfish.postMessage('setoption name Move Overhead value 10');
-    stockfish.postMessage('setoption name Minimum Thinking Time value 20');
-    stockfish.postMessage('setoption name Slow Mover value 100');
-    stockfish.postMessage('setoption name UCI_Chess960 value false');
-    stockfish.postMessage('isready');
-  } else if (message === 'readyok') {
-    engineReady = true;
-    console.log('[STOCKFISH WORKER] Engine configured and ready');
-  }
+// Wait for Stockfish to be ready, then initialize
+Stockfish().then((sf) => {
+  stockfish = sf;
+  console.log('[STOCKFISH WORKER] Stockfish module loaded');
+  
+  // Set up message listener for UCI responses
+  stockfish.addMessageListener((message) => {
+    if (message === 'uciok') {
+      // Engine is ready, configure for maximum strength
+      stockfish.postMessage('setoption name Skill Level value 20');
+      stockfish.postMessage('setoption name MultiPV value 1');
+      stockfish.postMessage('setoption name Threads value 4');
+      stockfish.postMessage('setoption name Hash value 128');
+      stockfish.postMessage('setoption name Contempt value 0');
+      stockfish.postMessage('setoption name Move Overhead value 10');
+      stockfish.postMessage('setoption name Minimum Thinking Time value 20');
+      stockfish.postMessage('setoption name Slow Mover value 100');
+      stockfish.postMessage('setoption name UCI_Chess960 value false');
+      stockfish.postMessage('isready');
+    } else if (message === 'readyok') {
+      engineReady = true;
+      console.log('[STOCKFISH WORKER] Engine configured and ready');
+    }
+  });
+  
+  // Initialize UCI - this will trigger uciok response
+  stockfish.postMessage('uci');
+}).catch((error) => {
+  console.error('[STOCKFISH WORKER] Failed to load Stockfish:', error);
 });
-
-// Initialize UCI - this will trigger uciok response
-stockfish.postMessage('uci');
 
 // Worker message handler
 self.onmessage = function(event) {
