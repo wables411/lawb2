@@ -12,8 +12,8 @@
   Cross-Origin-Embedder-Policy: unsafe-none
 
 # Chess-specific headers for SharedArrayBuffer support
-# Note: COEP require-corp can block Firebase on mobile - testing without it
-# Stockfish runs in a Web Worker which may not need COEP
-# /chess
-#   Cross-Origin-Embedder-Policy: require-corp
-#   Cross-Origin-Opener-Policy: same-origin-allow-popups
+# Stockfish WASM requires SharedArrayBuffer, which needs COEP and COOP headers
+# These headers are required for Stockfish to work
+/chess
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
