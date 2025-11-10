@@ -5398,6 +5398,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     Move History
                   </button>
                 )}
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsSidebarOpen(false);
+                    // Reset game state and go back to mode select
+                    clearCelebration();
+                    setShowGame(false);
+                    setGameMode(GameMode.LOBBY);
+                    if (onBackToModeSelect) {
+                      onBackToModeSelect();
+                    }
+                  }}
+                >
+                  Chess Home
+                </button>
               </div>
             </div>
       </>

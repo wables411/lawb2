@@ -1564,22 +1564,33 @@ body, html {
   
   .mobile-content-popup {
     position: fixed !important;
-    top: 60px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: calc(100vw - 32px) !important;
-    max-width: 500px !important;
-    max-height: calc(100vh - 100px) !important;
+    bottom: 0 !important; /* Changed from top: 60px to bottom: 0 */
+    left: 0 !important; /* Changed from left: 50% to left: 0 */
+    right: 0 !important; /* Added to span full width */
+    width: 100vw !important; /* Changed from calc(100vw - 32px) to 100vw */
+    max-width: 100vw !important; /* Changed from 500px to 100vw */
+    max-height: 70vh !important; /* Changed from calc(100vh - 100px) to 70vh - leaves room for chessboard */
     z-index: 9999 !important;
     background: rgba(0, 255, 0, 0.9) !important;
     border: 2px solid #00ff00 !important;
-    border-radius: 8px !important;
-    box-shadow: 0 8px 32px rgba(0, 255, 0, 0.5) !important;
+    border-radius: 12px 12px 0 0 !important; /* Rounded top corners only */
+    box-shadow: 0 -8px 32px rgba(0, 255, 0, 0.5) !important; /* Shadow on top */
     padding: 16px !important;
     overflow-y: auto !important;
     box-sizing: border-box !important;
     pointer-events: all !important;
-    animation: slideIn 0.3s ease !important;
+    animation: slideUp 0.3s ease !important; /* Changed animation name */
+    transform: none !important; /* Removed translateX */
+  }
+  
+  /* Slide up animation for mobile content popup */
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
   }
   
   .mobile-content-close-btn {
@@ -1949,10 +1960,13 @@ body, html {
     flex: 0 0 auto !important;
     max-width: 100vw !important;
     padding: 12px !important;
+    padding-left: 0 !important; /* Remove left padding to ensure centering */
+    padding-right: 0 !important; /* Remove right padding to ensure centering */
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
+    margin: 0 auto !important; /* Ensure centering */
   }
   
   .chessboard-container,
@@ -1968,6 +1982,9 @@ body, html {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    position: relative !important; /* Ensure proper positioning */
+    left: auto !important; /* Reset any left positioning */
+    right: auto !important; /* Reset any right positioning */
   }
   
   .chessboard,
