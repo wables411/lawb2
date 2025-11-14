@@ -121,7 +121,7 @@ export const firebaseChess = {
         bet_token: tokenSymbol,
         blue_player: bluePlayer,
         red_player: '0x0000000000000000000000000000000000000000',
-        game_state: 'waiting',
+        game_state: 'waiting_for_join',
         board: { 
           positions: {
             '0,0': 'R', '0,1': 'N', '0,2': 'B', '0,3': 'Q', '0,4': 'K', '0,5': 'B', '0,6': 'N', '0,7': 'R',
@@ -157,7 +157,7 @@ export const firebaseChess = {
       if (!snapshot.exists()) return [];
       const games = snapshot.val();
       return Object.values(games).filter((game: any) => 
-        game.game_state === 'waiting_for_join' || game.game_state === 'active'
+        game.game_state === 'waiting_for_join' || game.game_state === 'waiting' || game.game_state === 'active'
       );
     } catch (error) {
       console.error('[FIREBASE] Error getting active games:', error);
@@ -181,12 +181,12 @@ export const firebaseChess = {
       
       const openGames = Object.values(games).filter((game: any) => {
         // Only show games that are waiting for join (not active yet)
-        const isWaitingForJoin = game.game_state === 'waiting_for_join';
+        const isWaitingForJoin = game.game_state === 'waiting_for_join' || game.game_state === 'waiting';
         const isPublic = game.is_public !== false; // Default to true if not set
         const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
         
         // Additional check: if game_state is undefined, treat as waiting_for_join
-        const hasValidState = game.game_state === 'waiting_for_join' || game.game_state === undefined;
+        const hasValidState = game.game_state === 'waiting_for_join' || game.game_state === 'waiting' || game.game_state === undefined;
         
         return hasValidState && isPublic && noRedPlayer;
       });

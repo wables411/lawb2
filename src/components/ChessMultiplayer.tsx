@@ -1535,25 +1535,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }
           
           // CRITICAL FIX: If contract shows game is not active (ended), don't load it even if Firebase shows it as active
+          // BUT: Don't mark as finished if the game is waiting for an opponent (red_player is zero address)
           if (!isActive) {
-            console.log('[GAME_STATE] ❌ Contract shows game is ended (isActive=false). NOT LOADING GAME.');
-            console.log('[GAME_STATE] Winner:', winner);
-            console.log('[GAME_STATE] This prevents loading games that were ended by timeout or endGame call.');
-            // Update Firebase to sync with contract state
-            try {
-              await firebaseChess.updateGame(inviteCode, {
-                game_state: 'finished',
-                winner: winner || null,
-                updated_at: new Date().toISOString()
-              });
-              console.log('[GAME_STATE] ✅ Firebase synced to finished state to match contract');
-            } catch (error) {
-              console.error('[GAME_STATE] ❌ Error syncing Firebase:', error);
+            // Check if game is waiting for opponent - if so, don't mark as finished
+            const isWaitingForOpponent = !player2 || player2 === '0x0000000000000000000000000000000000000000';
+            
+            if (isWaitingForOpponent) {
+              console.log('[GAME_STATE] ⚠️ Contract shows isActive=false but game is waiting for opponent. This is normal for new games.');
+              console.log('[GAME_STATE] Loading game from Firebase instead of marking as finished.');
+              // Continue to load from Firebase - don't mark as finished
+            } else {
+              console.log('[GAME_STATE] ❌ Contract shows game is ended (isActive=false). NOT LOADING GAME.');
+              console.log('[GAME_STATE] Winner:', winner);
+              console.log('[GAME_STATE] This prevents loading games that were ended by timeout or endGame call.');
+              // Update Firebase to sync with contract state
+              try {
+                await firebaseChess.updateGame(inviteCode, {
+                  game_state: 'finished',
+                  winner: winner || null,
+                  updated_at: new Date().toISOString()
+                });
+                console.log('[GAME_STATE] ✅ Firebase synced to finished state to match contract');
+              } catch (error) {
+                console.error('[GAME_STATE] ❌ Error syncing Firebase:', error);
+              }
+              setGameMode(GameMode.LOBBY);
+              setHasLoadedGame(true);
+              console.log('[GAME_STATE] ========== checkPlayerGameState END (game ended) ==========');
+              return;
             }
-            setGameMode(GameMode.LOBBY);
-            setHasLoadedGame(true);
-            console.log('[GAME_STATE] ========== checkPlayerGameState END (game ended) ==========');
-            return;
           }
           
           // Use the full inviteCode (bytes6 string) for all Firebase lookups and subscriptions
@@ -1666,7 +1676,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const activeGames = allGames.filter((game: any) => {
         const isPlayerInGame = game.chain === 'sanko' && 
           (game.blue_player === address || game.red_player === address);
-        const isActiveState = ['waiting', 'active'].includes(game.game_state);
+        const isActiveState = ['waiting', 'waiting_for_join', 'active'].includes(game.game_state);
         const isNotFinished = game.game_state !== 'finished' && game.game_state !== 'ended';
         
         console.log('[GAME_STATE] Game filter check:', {
@@ -1690,7 +1700,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     debugSetWager(convertWagerFromWei(game.bet_amount, game.bet_token || 'DMT'), 'checkPlayerGameState fallback');
                     setCurrentGameToken(game.bet_token as TokenSymbol || 'DMT');
         setOpponent(game.blue_player === address ? game.red_player : game.blue_player);
-        if (game.game_state === 'waiting') {
+        if (game.game_state === 'waiting' || game.game_state === 'waiting_for_join') {
           setGameMode(GameMode.WAITING);
           setGameStatus('Waiting for opponent to join...');
         } else if (game.game_state === 'active' || game.game_state === 'test_update') {
@@ -4693,7 +4703,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         if (player1 && player2 && 
             player1 !== '0x0000000000000000000000000000000000000000' && 
             player2 !== '0x0000000000000000000000000000000000000000' &&
-            (gameData.game_state === 'waiting' || !gameData.game_state)) {
+            (gameData.game_state === 'waiting' || gameData.game_state === 'waiting_for_join' || !gameData.game_state)) {
           console.log('[FIX] Activating game in Firebase');
           updateData.game_state = 'active';
           updateData.current_player = 'blue';
