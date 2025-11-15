@@ -1449,8 +1449,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }, 1000);
       
       return () => clearInterval(interval);
+    } else {
+      setTimeoutCountdown(0);
     }
   }, [gameMode, timeoutTimer, lastMoveTime]);
+
+  // Format countdown timer for display (MM:SS or HH:MM:SS)
+  const formatCountdown = (seconds: number): string => {
+    if (seconds <= 0) return '00:00';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
 
 
@@ -4006,6 +4021,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     const nextPlayer = currentPlayer === 'blue' ? 'red' : 'blue';
     
+    // Update last move time for timeout timer
+    setLastMoveTime(Date.now());
+    
     // Check for check
     if (isKingInCheck(newBoard, nextPlayer)) {
       playSound('check');
@@ -5943,6 +5961,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                   {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
                 </span>
+                {gameMode === GameMode.ACTIVE && timeoutCountdown > 0 && (
+                  <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
+                    {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
+                  </span>
+                )}
                 <span className="wager-display">
                   {isMobile ? `${wager.toFixed(2)} ${currentGameToken}` : `Wager: ${wager.toFixed(6)} ${currentGameToken}`}
                 </span>
