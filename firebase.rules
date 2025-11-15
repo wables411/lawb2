@@ -1,0 +1,79 @@
+{
+  "rules": {
+    "chess_games": {
+      ".read": true,
+      ".write": true,
+      "$inviteCode": {
+        ".validate": "newData.hasChildren(['invite_code', 'game_state']) && 
+                     newData.child('invite_code').isString() && 
+                     newData.child('game_state').isString() &&
+                     (newData.child('game_state').val() === 'waiting' ||
+                      newData.child('game_state').val() === 'waiting_for_join' || 
+                      newData.child('game_state').val() === 'active' || 
+                      newData.child('game_state').val() === 'finished')"
+      }
+    },
+    "leaderboard": {
+      ".read": true,
+      ".write": true,
+      "$walletAddress": {
+        ".validate": "newData.hasChildren(['username', 'wins', 'losses', 'draws', 'total_games', 'points']) && 
+                     newData.child('username').isString() && 
+                     newData.child('wins').isNumber() && 
+                     newData.child('losses').isNumber() && 
+                     newData.child('draws').isNumber() && 
+                     newData.child('total_games').isNumber() && 
+                     newData.child('points').isNumber() &&
+                     newData.child('wins').val() >= 0 &&
+                     newData.child('losses').val() >= 0 &&
+                     newData.child('draws').val() >= 0 &&
+                     newData.child('total_games').val() >= 0 &&
+                     newData.child('points').val() >= 0"
+      }
+    },
+    "chess_chat": {
+      "public": {
+        ".read": true,
+        ".write": true,
+        "messages": {
+          "$messageId": {
+            ".validate": "newData.hasChildren(['userId', 'walletAddress', 'displayName', 'message', 'timestamp', 'room']) && 
+                         newData.child('userId').isString() && 
+                         newData.child('walletAddress').isString() && 
+                         newData.child('displayName').isString() && 
+                         newData.child('message').isString() && 
+                         newData.child('timestamp').isNumber() && 
+                         newData.child('room').val() === 'public' &&
+                         newData.child('message').val().length > 0 &&
+                         newData.child('message').val().length <= 500"
+          }
+        }
+      },
+      "private": {
+        "$inviteCode": {
+          ".read": "auth != null && (data.child('participants').child(auth.uid).exists() || root.child('chess_games').child($inviteCode).child('blue_player').val() === auth.uid || root.child('chess_games').child($inviteCode).child('red_player').val() === auth.uid)",
+          ".write": "auth != null && (data.child('participants').child(auth.uid).exists() || root.child('chess_games').child($inviteCode).child('blue_player').val() === auth.uid || root.child('chess_games').child($inviteCode).child('red_player').val() === auth.uid)",
+          "messages": {
+            "$messageId": {
+              ".validate": "newData.hasChildren(['userId', 'walletAddress', 'displayName', 'message', 'timestamp', 'room', 'inviteCode']) && 
+                           newData.child('userId').isString() && 
+                           newData.child('walletAddress').isString() && 
+                           newData.child('displayName').isString() && 
+                           newData.child('message').isString() && 
+                           newData.child('timestamp').isNumber() && 
+                           newData.child('room').val() === 'private' &&
+                           newData.child('inviteCode').val() === $inviteCode &&
+                           newData.child('message').val().length > 0 &&
+                           newData.child('message').val().length <= 500"
+            }
+          }
+        }
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
+

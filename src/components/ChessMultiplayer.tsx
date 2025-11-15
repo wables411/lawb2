@@ -2816,8 +2816,58 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }
         }
       } else if (gameData.game_state === 'waiting_for_join') {
-        setGameMode(GameMode.WAITING);
-        setGameStatus('Waiting for opponent to join...');
+        // CRITICAL FIX: Check if both players are present - if so, activate the game
+        // First check Firebase data
+        let hasBothPlayers = gameData.blue_player && 
+                            gameData.red_player && 
+                            gameData.red_player !== '0x0000000000000000000000000000000000000000';
+        
+        // If red_player is missing from Firebase, check contract
+        if (!hasBothPlayers && gameData.blue_player) {
+          try {
+            const currentContractData = getCurrentContractGameData();
+            if (currentContractData && Array.isArray(currentContractData)) {
+              const [player1, player2] = currentContractData;
+              if (player1 && player2 && 
+                  player1 !== '0x0000000000000000000000000000000000000000' && 
+                  player2 !== '0x0000000000000000000000000000000000000000') {
+                console.log('[FIREBASE_SUB] Contract shows both players, but Firebase missing red_player - syncing');
+                hasBothPlayers = true;
+                // Update Firebase with red_player from contract
+                // player1 is always blue_player (creator), player2 is always red_player (joiner)
+                firebaseChess.updateGame(inviteCode, {
+                  red_player: player2, // player2 is always the joiner (red)
+                  game_state: 'active',
+                  current_player: 'blue',
+                  winner: null
+                }).catch((error) => {
+                  console.error('[FIREBASE_SUB] Error syncing red_player from contract:', error);
+                });
+              }
+            }
+          } catch (error) {
+            console.error('[FIREBASE_SUB] Error checking contract for players:', error);
+          }
+        }
+        
+        if (hasBothPlayers) {
+          console.log('[FIREBASE_SUB] Both players present but game_state is waiting_for_join - activating game');
+          // Update Firebase to active state
+          firebaseChess.updateGame(inviteCode, {
+            game_state: 'active',
+            current_player: 'blue',
+            winner: null
+          }).catch((error) => {
+            console.error('[FIREBASE_SUB] Error activating game:', error);
+          });
+          // Set UI to active mode immediately
+          setGameMode(GameMode.ACTIVE);
+          setShowGame(true);
+          setGameStatus('Game started!');
+        } else {
+          setGameMode(GameMode.WAITING);
+          setGameStatus('Waiting for opponent to join...');
+        }
       }
       
       // Try to get wager from contract data if Firebase doesn't have it
