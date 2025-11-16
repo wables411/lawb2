@@ -40,7 +40,13 @@
       ".read": true,
       ".write": true,
       "$walletAddress": {
-        ".validate": "(!data.exists() || data.hasChildren(['wallet_address', 'game_stats'])) && (!newData.hasChild('wallet_address') || (newData.child('wallet_address').isString() && newData.child('wallet_address').val() === $walletAddress)) && (!newData.hasChild('username') || (newData.child('username').isString() && newData.child('username').val().length >= 3 && newData.child('username').val().length <= 20)) && (!newData.hasChild('game_stats') || (newData.child('game_stats').hasChildren(['total_games', 'wins', 'losses', 'draws', 'total_points']) && newData.child('game_stats').child('total_games').isNumber() && newData.child('game_stats').child('wins').isNumber() && newData.child('game_stats').child('losses').isNumber() && newData.child('game_stats').child('draws').isNumber() && newData.child('game_stats').child('total_points').isNumber() && newData.child('game_stats').child('total_games').val() >= 0 && newData.child('game_stats').child('wins').val() >= 0 && newData.child('game_stats').child('losses').val() >= 0 && newData.child('game_stats').child('draws').val() >= 0 && newData.child('game_stats').child('total_points').val() >= 0))"
+        ".validate": "(!newData.hasChild('wallet_address') || (newData.child('wallet_address').isString() && newData.child('wallet_address').val() === $walletAddress)) && (!newData.hasChild('username') || (newData.child('username').isString() && newData.child('username').val().length >= 3 && newData.child('username').val().length <= 20)) && (!newData.hasChild('created_at') || newData.child('created_at').isString()) && (!newData.hasChild('updated_at') || newData.child('updated_at').isString())",
+        "game_stats": {
+          ".validate": "newData.hasChildren(['total_games', 'wins', 'losses', 'draws', 'total_points', 'win_rate']) && newData.child('total_games').isNumber() && newData.child('wins').isNumber() && newData.child('losses').isNumber() && newData.child('draws').isNumber() && newData.child('total_points').isNumber() && newData.child('win_rate').isNumber() && newData.child('total_games').val() >= 0 && newData.child('wins').val() >= 0 && newData.child('losses').val() >= 0 && newData.child('draws').val() >= 0 && newData.child('total_points').val() >= 0 && newData.child('win_rate').val() >= 0"
+        },
+        "nft_inventory": {
+          ".validate": "newData.hasChildren(['lawbsters', 'lawbstarz', 'halloween_lawbsters', 'pixelawbs'])"
+        }
       }
     },
     "usernames": {
