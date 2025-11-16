@@ -2007,6 +2007,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   
   // Helper functions for window management
   const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[OPEN WINDOW] Opening window:', windowType);
+    }
     setIsMenuOpen(false);
     // Set default position if not set - position windows to avoid covering chessboard
     // Calculate position BEFORE opening window to ensure it's available on first render
@@ -2038,10 +2041,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }));
       
       // Then open the window
-      setOpenWindows(prev => new Set(prev).add(windowType));
+      setOpenWindows(prev => {
+        const newSet = new Set(prev);
+        newSet.add(windowType);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[OPEN WINDOW] Added window to set:', windowType, 'New set:', Array.from(newSet));
+        }
+        return newSet;
+      });
     } else {
       // Position already set, just open window
-      setOpenWindows(prev => new Set(prev).add(windowType));
+      setOpenWindows(prev => {
+        const newSet = new Set(prev);
+        newSet.add(windowType);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[OPEN WINDOW] Added window to set (existing position):', windowType, 'New set:', Array.from(newSet));
+        }
+        return newSet;
+      });
     }
   };
   
@@ -2379,7 +2396,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               Chat
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.log('[MENU] Profile button clicked (home view)');
+                }
                 openWindow('profile');
                 setIsMenuOpen(false);
               }}
@@ -3088,7 +3110,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               Chat
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.log('[MENU] Profile button clicked (game view)');
+                }
                 openWindow('profile');
                 setIsMenuOpen(false);
               }}
@@ -3240,7 +3267,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <Popup
           id="profile-window"
           isOpen={true}
-          onClose={() => closeWindow('profile')}
+          onClose={() => {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[PROFILE WINDOW] Closing profile window');
+            }
+            closeWindow('profile');
+          }}
           title="Profile"
           initialPosition={windowPositions['profile'] ? { x: windowPositions['profile'].x, y: windowPositions['profile'].y } : { x: 20, y: 180 }}
           initialSize={{ width: 400, height: 500 }}
@@ -3248,6 +3280,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         >
           <PlayerProfile isMobile={false} />
         </Popup>
+      )}
+      {!isMobile && typeof window !== 'undefined' && window.console && (
+        <div style={{ display: 'none' }}>
+          {window.console.log('[DEBUG] openWindows:', Array.from(openWindows), 'has profile:', openWindows.has('profile'))}
+        </div>
       )}
     </div>
   );
