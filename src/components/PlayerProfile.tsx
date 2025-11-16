@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { firebaseProfiles, type PlayerProfile } from '../firebaseProfiles';
+import { firebaseProfiles, type PlayerProfile as PlayerProfileData } from '../firebaseProfiles';
 import { fetchNFTInventory } from '../utils/nftInventory';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
@@ -11,7 +11,7 @@ interface PlayerProfileProps {
 
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }) => {
   const { address } = useAccount();
-  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [profile, setProfile] = useState<PlayerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [usernameInput, setUsernameInput] = useState('');
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
