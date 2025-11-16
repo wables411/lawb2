@@ -2308,7 +2308,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </div>
 
         {/* Desktop Menu Popup - Home View */}
-        {!isMobile && isMenuOpen && (
+        {!isMobile && isMenuOpen && !showGame && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
