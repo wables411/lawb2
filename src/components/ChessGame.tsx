@@ -2286,7 +2286,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </div>
 
         {/* Desktop Menu Popup - Home View */}
-        {!isMobile && isMenuOpen && (
+        {!isMobile && isMenuOpen && !showGame && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
@@ -2370,6 +2370,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               }}
             >
               Chat
+            </button>
+            <button
+              onClick={() => {
+                openWindow('profile');
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Profile
             </button>
             {onBackToModeSelect && showGame && (
               <button
@@ -2967,8 +2985,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </div>
       )}
       
-      {/* Desktop Menu Popup */}
-      {!isMobile && isMenuOpen && (
+      {/* Desktop Menu Popup - Game View */}
+      {!isMobile && isMenuOpen && showGame && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {

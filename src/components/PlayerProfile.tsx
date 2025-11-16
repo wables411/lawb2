@@ -20,8 +20,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
   const [usernameSuccess, setUsernameSuccess] = useState(false);
   const [refreshingInventory, setRefreshingInventory] = useState(false);
 
-  // Immediate console log on render
-  console.log('[PROFILE] Component rendered', { address, isMobile, hasProfile: !!profile });
+  // Immediate console log on render - use window.console to ensure it's not stripped
+  if (typeof window !== 'undefined' && window.console) {
+    window.console.log('[PROFILE] Component rendered', { address, isMobile, hasProfile: !!profile });
+  }
 
   useEffect(() => {
     if (!address) {
@@ -31,19 +33,29 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     
     const loadProfile = async () => {
       setLoading(true);
-      console.log('[PROFILE] Loading profile for', address);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] Loading profile for', address);
+      }
       try {
         let profileData = await firebaseProfiles.getProfile(address);
-        console.log('[PROFILE] Profile data from Firebase:', profileData);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[PROFILE] Profile data from Firebase:', profileData);
+        }
         
         // Load game stats from leaderboard
-        console.log('[PROFILE] Fetching leaderboard entry...');
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[PROFILE] Fetching leaderboard entry...');
+        }
         const leaderboardEntry = await getUserLeaderboardEntry(address);
-        console.log('[PROFILE] Leaderboard entry:', leaderboardEntry);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[PROFILE] Leaderboard entry:', leaderboardEntry);
+        }
         
         if (!profileData) {
           // Create profile if it doesn't exist
-          console.log('[PROFILE] Creating new profile...');
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[PROFILE] Creating new profile...');
+          }
           await firebaseProfiles.upsertProfile(address, {});
           profileData = await firebaseProfiles.getProfile(address);
         }
@@ -63,7 +75,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             last_match_invite_code: null
           };
           
-          console.log('[PROFILE] Syncing leaderboard stats:', leaderboardStats);
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[PROFILE] Syncing leaderboard stats:', leaderboardStats);
+          }
           // Always use leaderboard data for display (it's the source of truth)
           profileData.game_stats = leaderboardStats;
           // Also sync to Firebase profile
@@ -71,7 +85,22 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           const updated = await firebaseProfiles.getProfile(address);
           if (updated) profileData = updated;
         } else {
-          console.log('[PROFILE] No leaderboard entry found - stats will be 0');
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[PROFILE] No leaderboard entry found - stats will be 0');
+          }
+          // Initialize game_stats with zeros if no leaderboard entry
+          if (profileData && !profileData.game_stats) {
+            profileData.game_stats = {
+              total_games: 0,
+              wins: 0,
+              losses: 0,
+              draws: 0,
+              total_points: 0,
+              win_rate: 0,
+              last_match_timestamp: null,
+              last_match_invite_code: null
+            };
+          }
         }
         
         // Load NFT inventory if not already loaded
@@ -80,26 +109,38 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
              profileData.nft_inventory.lawbstarz.length === 0 && 
              profileData.nft_inventory.halloween_lawbsters.length === 0 && 
              profileData.nft_inventory.pixelawbs.length === 0))) {
-          console.log('[PROFILE] Fetching NFT inventory...');
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[PROFILE] Fetching NFT inventory...');
+          }
           try {
             const inventory = await fetchNFTInventory(address);
-            console.log('[PROFILE] NFT inventory fetched:', inventory);
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[PROFILE] NFT inventory fetched:', inventory);
+            }
             await firebaseProfiles.updateNFTInventory(address, inventory);
             const updated = await firebaseProfiles.getProfile(address);
             if (updated) profileData = updated;
           } catch (invError) {
-            console.error('[PROFILE] Error fetching NFT inventory:', invError);
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.error('[PROFILE] Error fetching NFT inventory:', invError);
+            }
           }
         } else if (profileData) {
-          console.log('[PROFILE] Using existing NFT inventory:', profileData.nft_inventory);
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[PROFILE] Using existing NFT inventory:', profileData.nft_inventory);
+          }
         }
         
-        console.log('[PROFILE] Final profile data:', profileData);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[PROFILE] Final profile data:', profileData);
+        }
         if (profileData) {
           setProfile(profileData);
         }
       } catch (error) {
-        console.error('[PROFILE] Error loading profile:', error);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[PROFILE] Error loading profile:', error);
+        }
       } finally {
         setLoading(false);
       }
@@ -279,6 +320,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input
                 type="text"
+                id="username-input"
+                name="username"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
                 placeholder="3-20 characters"
@@ -317,6 +360,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
+                id="username-change-input"
+                name="username-change"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
                 placeholder="New username"
