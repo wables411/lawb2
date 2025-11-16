@@ -67,43 +67,27 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Fetch Lawbsters (Ethereum) - Try OpenSea API by contract address
+  // Fetch Lawbsters (Ethereum) - Use contract directly for accurate count, then verify with OpenSea if needed
   try {
-    const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-    const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
+    const lawbsters = NFT_COLLECTIONS.lawbsters;
+    const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
+    const contract = new Contract(lawbsters.address, ERC721_ABI, ethereumProvider);
+    const balance = await contract.balanceOf(walletAddress);
+    
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from OpenSea');
+      window.console.log('[NFT] Lawbsters contract balance:', balance.toString());
     }
-    const response = await fetch(
-      `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
-      { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-    );
-    if (response.ok) {
-      const data = await response.json();
+    
+    // If balance is 0, skip fetching token IDs
+    if (balance === 0n) {
+      inventory.lawbsters = [];
       if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Lawbsters response:', data);
-      }
-      inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters');
+        window.console.log('[NFT] No Lawbsters found (balance is 0)');
       }
     } else {
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.error('[NFT] OpenSea API error for Lawbsters:', response.status, response.statusText);
-      }
-    }
-  } catch (apiError) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.error('Error fetching Lawbsters from OpenSea API, trying contract:', apiError);
-    }
-    try {
-      const lawbsters = NFT_COLLECTIONS.lawbsters;
-      const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
-      const contract = new Contract(lawbsters.address, ERC721_ABI, ethereumProvider);
-      const balance = await contract.balanceOf(walletAddress);
-      
       const tokenIds: string[] = [];
-      for (let i = 0; i < balance; i++) {
+      const balanceNum = Number(balance);
+      for (let i = 0; i < balanceNum; i++) {
         try {
           const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
           tokenIds.push(tokenId.toString());
@@ -115,9 +99,43 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         }
       }
       inventory.lawbsters = tokenIds;
-    } catch (error) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.error('Error fetching Lawbsters from contract:', error);
+        window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from contract');
+      }
+    }
+  } catch (contractError) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.error('Error fetching Lawbsters from contract, trying OpenSea API:', contractError);
+    }
+    // Fallback to OpenSea API
+    try {
+      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+      const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from OpenSea');
+      }
+      const response = await fetch(
+        `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
+        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Lawbsters OpenSea response:', data);
+        }
+        // Verify ownership - OpenSea API should only return owned NFTs, but double-check
+        inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea');
+        }
+      } else {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[NFT] OpenSea API error for Lawbsters:', response.status, response.statusText);
+        }
+      }
+    } catch (apiError) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('Error fetching Lawbsters from OpenSea API:', apiError);
       }
     }
   }
@@ -167,43 +185,27 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Fetch Halloween Lawbsters (Base chain) - Try OpenSea API by contract address
+  // Fetch Halloween Lawbsters (Base chain) - Use contract directly for accurate count
   try {
-    const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-    const halloweenAddress = NFT_COLLECTIONS.halloween_lawbsters.address;
+    const halloween = NFT_COLLECTIONS.halloween_lawbsters;
+    const baseProvider = new JsonRpcProvider('https://mainnet.base.org');
+    const contract = new Contract(halloween.address, ERC721_ABI, baseProvider);
+    const balance = await contract.balanceOf(walletAddress);
+    
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching Halloween Lawbsters for', walletAddress, 'from OpenSea Base');
+      window.console.log('[NFT] Halloween Lawbsters contract balance:', balance.toString());
     }
-    const response = await fetch(
-      `https://api.opensea.io/api/v2/chain/base/account/${walletAddress}/nfts?contract_address=${halloweenAddress}&limit=100`,
-      { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-    );
-    if (response.ok) {
-      const data = await response.json();
+    
+    // If balance is 0, skip fetching token IDs
+    if (balance === 0n) {
+      inventory.halloween_lawbsters = [];
       if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Halloween Lawbsters response:', data);
-      }
-      inventory.halloween_lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters');
+        window.console.log('[NFT] No Halloween Lawbsters found (balance is 0)');
       }
     } else {
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.error('[NFT] OpenSea API error for Halloween Lawbsters:', response.status, response.statusText);
-      }
-    }
-  } catch (apiError) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.error('[NFT] Error fetching Halloween Lawbsters from OpenSea API, trying contract:', apiError);
-    }
-    try {
-      const halloween = NFT_COLLECTIONS.halloween_lawbsters;
-      const baseProvider = new JsonRpcProvider('https://mainnet.base.org');
-      const contract = new Contract(halloween.address, ERC721_ABI, baseProvider);
-      const balance = await contract.balanceOf(walletAddress);
-      
       const tokenIds: string[] = [];
-      for (let i = 0; i < balance; i++) {
+      const balanceNum = Number(balance);
+      for (let i = 0; i < balanceNum; i++) {
         try {
           const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
           tokenIds.push(tokenId.toString());
@@ -215,9 +217,42 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         }
       }
       inventory.halloween_lawbsters = tokenIds;
-    } catch (error) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.error('Error fetching Halloween Lawbsters from contract:', error);
+        window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from contract');
+      }
+    }
+  } catch (contractError) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.error('Error fetching Halloween Lawbsters from contract, trying OpenSea API:', contractError);
+    }
+    // Fallback to OpenSea API
+    try {
+      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+      const halloweenAddress = NFT_COLLECTIONS.halloween_lawbsters.address;
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] Fetching Halloween Lawbsters for', walletAddress, 'from OpenSea Base');
+      }
+      const response = await fetch(
+        `https://api.opensea.io/api/v2/chain/base/account/${walletAddress}/nfts?contract_address=${halloweenAddress}&limit=100`,
+        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Halloween Lawbsters OpenSea response:', data);
+        }
+        inventory.halloween_lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from OpenSea');
+        }
+      } else {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[NFT] OpenSea API error for Halloween Lawbsters:', response.status, response.statusText);
+        }
+      }
+    } catch (apiError) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('Error fetching Halloween Lawbsters from OpenSea API:', apiError);
       }
     }
   }
