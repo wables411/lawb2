@@ -5,42 +5,60 @@ const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
 
 export async function fetchTokenMetadata(
   collection: keyof typeof NFT_COLLECTIONS,
-  tokenId: string
+  tokenId: string,
+  ownerAddress?: string
 ): Promise<{ image_url: string; name?: string }> {
   const collectionConfig = NFT_COLLECTIONS[collection];
   
   try {
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT METADATA] Fetching metadata for', collection, 'token', tokenId);
+      window.console.log('[NFT METADATA] Fetching metadata for', collection, 'token', tokenId, ownerAddress ? `(owner: ${ownerAddress})` : '');
     }
     
     // Use Scatter API for Pixelawbs and Lawbstarz
     if (collectionConfig.api === 'scatter') {
       try {
-        // Search up to 5 pages (500 NFTs) to find the token
-        for (let page = 1; page <= 5; page++) {
-          const response = await getCollectionNFTs(collectionConfig.slug, page, 100);
+        // If we have owner address, filter by owner (much faster and more reliable)
+        if (ownerAddress) {
+          const response = await getCollectionNFTs(collectionConfig.slug, 1, 100, ownerAddress);
           const nft = response.data.find(n => n.token_id.toString() === tokenId);
           
           if (nft) {
             const imageUrl = nft.image_url || nft.image || nft.image_url_shrunk || '';
             if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[NFT METADATA] Found NFT in Scatter API (page', page, '):', nft.name, 'Image:', imageUrl);
+              window.console.log('[NFT METADATA] Found NFT in Scatter API (filtered by owner):', nft.name, 'Image:', imageUrl);
             }
             return {
               image_url: imageUrl,
               name: nft.name
             };
           }
+        } else {
+          // Fallback: Search up to 5 pages (500 NFTs) to find the token
+          for (let page = 1; page <= 5; page++) {
+            const response = await getCollectionNFTs(collectionConfig.slug, page, 100);
+            const nft = response.data.find(n => n.token_id.toString() === tokenId);
           
-          // If we've searched all available pages, stop
-          if (page >= response.totalPages) {
-            break;
+            if (nft) {
+              const imageUrl = nft.image_url || nft.image || nft.image_url_shrunk || '';
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[NFT METADATA] Found NFT in Scatter API (page', page, '):', nft.name, 'Image:', imageUrl);
+              }
+              return {
+                image_url: imageUrl,
+                name: nft.name
+              };
+            }
+            
+            // If we've searched all available pages, stop
+            if (page >= response.totalPages) {
+              break;
+            }
           }
         }
         
         if (typeof window !== 'undefined' && window.console) {
-          window.console.warn('[NFT METADATA] Token', tokenId, 'not found in Scatter API after searching all pages');
+          window.console.warn('[NFT METADATA] Token', tokenId, 'not found in Scatter API' + (ownerAddress ? ' for owner ' + ownerAddress : ' after searching all pages'));
         }
       } catch (scatterError) {
         if (typeof window !== 'undefined' && window.console) {

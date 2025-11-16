@@ -253,7 +253,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
       window.console.log('[PROFILE] Selecting profile picture:', collection, tokenId);
     }
     try {
-      const metadata = await fetchTokenMetadata(collection, tokenId);
+      const metadata = await fetchTokenMetadata(collection, tokenId, address);
       if (typeof window !== 'undefined' && window.console) {
         window.console.log('[PROFILE] Metadata fetched:', metadata);
       }

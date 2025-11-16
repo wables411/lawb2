@@ -2311,12 +2311,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         {(() => {
           const shouldRender = !isMobile && isMenuOpen && !showGame;
           if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[MENU RENDER] Home view menu check:', {
+            window.console.log('[MENU RENDER] Home view menu check:', JSON.stringify({
               isMobile,
               isMenuOpen,
               showGame,
               shouldRender
-            });
+            }));
           }
           return shouldRender;
         })() && (
@@ -3050,12 +3050,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       {(() => {
         const shouldRender = !isMobile && isMenuOpen && showGame;
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[MENU RENDER] Game view menu check:', {
+          window.console.log('[MENU RENDER] Game view menu check:', JSON.stringify({
             isMobile,
             isMenuOpen,
             showGame,
             shouldRender
-          });
+          }));
         }
         return shouldRender;
       })() && (
