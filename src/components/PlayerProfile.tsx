@@ -300,6 +300,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           <img 
             src={profile.profile_picture.image_url} 
             alt="Profile" 
+            onError={(e) => {
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.error('[PROFILE] Failed to load profile picture:', profile.profile_picture?.image_url);
+              }
+              e.currentTarget.style.display = 'none';
+            }}
             style={{ 
               width: isMobile ? '60px' : '80px', 
               height: isMobile ? '60px' : '80px', 
@@ -459,6 +465,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             <img 
               src={profile.profile_picture.image_url} 
               alt="Current profile picture" 
+              onError={(e) => {
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.error('[PROFILE] Failed to load profile picture in selection:', profile.profile_picture?.image_url);
+                }
+                e.currentTarget.style.display = 'none';
+              }}
               style={{ 
                 width: '60px', 
                 height: '60px', 
