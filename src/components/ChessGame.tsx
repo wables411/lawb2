@@ -1416,7 +1416,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setSelectedChessboard(newChessboard);
     console.log('[DEBUG] Match started with chessboard:', newChessboard);
     // Start timer when game starts
-    setLastMoveTime(Date.now());
+    const now = Date.now();
+    setLastMoveTime(now);
+    console.log('[TIMER] Game started, setting lastMoveTime to:', now);
   };
 
   // Timer functions
@@ -1449,25 +1451,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Update countdown timer
   useEffect(() => {
-    if (showGame && gameState === 'active' && currentPlayer === 'blue') {
+    if (showGame && gameState === 'active' && currentPlayer === 'blue' && gameMode === 'ai') {
+      console.log('[TIMER] Starting timer effect', { showGame, gameState, currentPlayer, gameMode, lastMoveTime });
       const interval = setInterval(() => {
         const elapsed = Date.now() - lastMoveTime;
         const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
-        setTimeoutCountdown(Math.ceil(remaining / 1000));
+        const seconds = Math.ceil(remaining / 1000);
+        setTimeoutCountdown(seconds);
+        console.log('[TIMER] Countdown:', seconds, 'seconds remaining');
         
         // End game if timeout
         if (remaining <= 0) {
+          console.log('[TIMER] Timeout reached!');
           setGameState('checkmate');
           setStatus('Time out! You lost.');
           stopTimeoutTimer();
         }
       }, 1000);
       
-      return () => clearInterval(interval);
+      return () => {
+        console.log('[TIMER] Cleaning up timer interval');
+        clearInterval(interval);
+      };
     } else {
+      console.log('[TIMER] Timer not active', { showGame, gameState, currentPlayer, gameMode });
       setTimeoutCountdown(0);
     }
-  }, [showGame, gameState, lastMoveTime, currentPlayer]);
+  }, [showGame, gameState, lastMoveTime, currentPlayer, gameMode]);
 
   // Multiplayer functionality moved to ChessMultiplayer component
 
@@ -2553,12 +2563,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('[MENU] Profile button clicked');
                     setSidebarView('profile');
                     setIsSidebarOpen(false);
                   }}
                 >
                   Profile
                 </button>
+                {console.log('[MENU] Rendering menu buttons, isSidebarOpen:', isSidebarOpen)}
                 {showGame && (
                   <button 
                     className="mobile-menu-btn"
