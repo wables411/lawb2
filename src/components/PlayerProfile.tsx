@@ -28,21 +28,25 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     
     const loadProfile = async () => {
       setLoading(true);
+      console.log('[PROFILE] Loading profile for', address);
       try {
         let profileData = await firebaseProfiles.getProfile(address);
+        console.log('[PROFILE] Profile data from Firebase:', profileData);
         
         // Load game stats from leaderboard
+        console.log('[PROFILE] Fetching leaderboard entry...');
         const leaderboardEntry = await getUserLeaderboardEntry(address);
+        console.log('[PROFILE] Leaderboard entry:', leaderboardEntry);
         
         if (!profileData) {
           // Create profile if it doesn't exist
+          console.log('[PROFILE] Creating new profile...');
           await firebaseProfiles.upsertProfile(address, {});
           profileData = await firebaseProfiles.getProfile(address);
         }
         
         // Sync leaderboard stats to profile if leaderboard has data
         if (leaderboardEntry) {
-          console.log('[PROFILE] Leaderboard entry found:', leaderboardEntry);
           const leaderboardStats = {
             total_games: leaderboardEntry.total_games || 0,
             wins: leaderboardEntry.wins || 0,
@@ -56,20 +60,39 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             last_match_invite_code: null
           };
           
+          console.log('[PROFILE] Syncing leaderboard stats:', leaderboardStats);
           // Always use leaderboard data for display (it's the source of truth)
-          if (profileData) {
-            profileData.game_stats = leaderboardStats;
-            // Also sync to Firebase profile
-            await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
-            profileData = await firebaseProfiles.getProfile(address);
-          }
+          profileData.game_stats = leaderboardStats;
+          // Also sync to Firebase profile
+          await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
+          profileData = await firebaseProfiles.getProfile(address);
         } else {
-          console.log('[PROFILE] No leaderboard entry found for', address);
+          console.log('[PROFILE] No leaderboard entry found - stats will be 0');
         }
         
+        // Load NFT inventory if not already loaded
+        if (!profileData.nft_inventory || 
+            (profileData.nft_inventory.lawbsters.length === 0 && 
+             profileData.nft_inventory.lawbstarz.length === 0 && 
+             profileData.nft_inventory.halloween_lawbsters.length === 0 && 
+             profileData.nft_inventory.pixelawbs.length === 0)) {
+          console.log('[PROFILE] Fetching NFT inventory...');
+          try {
+            const inventory = await fetchNFTInventory(address);
+            console.log('[PROFILE] NFT inventory fetched:', inventory);
+            await firebaseProfiles.updateNFTInventory(address, inventory);
+            profileData = await firebaseProfiles.getProfile(address);
+          } catch (invError) {
+            console.error('[PROFILE] Error fetching NFT inventory:', invError);
+          }
+        } else {
+          console.log('[PROFILE] Using existing NFT inventory:', profileData.nft_inventory);
+        }
+        
+        console.log('[PROFILE] Final profile data:', profileData);
         setProfile(profileData);
       } catch (error) {
-        console.error('Error loading profile:', error);
+        console.error('[PROFILE] Error loading profile:', error);
       } finally {
         setLoading(false);
       }
@@ -364,15 +387,143 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
         )}
       </div>
 
-      {/* Profile Picture Selection (simplified - just shows current) */}
-      {profile?.profile_picture && (
-        <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
-          <div style={{ fontSize: isMobile ? '12px' : '13px', marginBottom: '8px' }}>Profile Picture</div>
-          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
-            {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{profile.profile_picture.token_id}
+      {/* Profile Picture Selection */}
+      <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
+        <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Profile Picture</h4>
+        {profile?.profile_picture ? (
+          <div style={{ marginBottom: '12px' }}>
+            <img 
+              src={profile.profile_picture.image_url} 
+              alt="Current profile picture" 
+              style={{ 
+                width: '60px', 
+                height: '60px', 
+                borderRadius: '4px', 
+                border: '2px solid #000',
+                objectFit: 'cover',
+                marginBottom: '8px'
+              }} 
+            />
+            <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
+              {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{profile.profile_picture.token_id}
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#888', marginBottom: '12px' }}>
+            No profile picture set. Select an NFT below.
+          </div>
+        )}
+        
+        {/* NFT Selection for Profile Picture */}
+        {totalNFTs > 0 && (
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            <div style={{ fontSize: isMobile ? '11px' : '12px', marginBottom: '8px', fontWeight: 'bold' }}>
+              Select from your NFTs:
+            </div>
+            {inventory.pixelawbs.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Pixelawbs:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {inventory.pixelawbs.slice(0, 10).map(tokenId => (
+                    <button
+                      key={`pixelawbs-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('pixelawbs', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'pixelawbs' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'pixelawbs' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      #{tokenId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {inventory.lawbsters.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Lawbsters:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {inventory.lawbsters.slice(0, 10).map(tokenId => (
+                    <button
+                      key={`lawbsters-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('lawbsters', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'lawbsters' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbsters' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      #{tokenId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {inventory.lawbstarz.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Lawbstarz:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {inventory.lawbstarz.slice(0, 10).map(tokenId => (
+                    <button
+                      key={`lawbstarz-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('lawbstarz', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'lawbstarz' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbstarz' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      #{tokenId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {inventory.halloween_lawbsters.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Halloween Lawbsters:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {inventory.halloween_lawbsters.slice(0, 10).map(tokenId => (
+                    <button
+                      key={`halloween-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('halloween_lawbsters', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'halloween_lawbsters' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'halloween_lawbsters' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      #{tokenId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {totalNFTs === 0 && (
+          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#888', fontStyle: 'italic' }}>
+            No NFTs found. Click "Refresh" above to check your wallet.
+          </div>
+        )}
+      </div>
     </div>
   );
 };
