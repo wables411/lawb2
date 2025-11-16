@@ -1452,31 +1452,35 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Update countdown timer
   useEffect(() => {
-    console.log('[TIMER EFFECT] Running', { showGame, gameState, currentPlayer, gameMode, lastMoveTime });
-    if (showGame && gameState === 'active' && currentPlayer === 'blue' && gameMode === 'ai') {
-      console.log('[TIMER] Starting timer effect', { showGame, gameState, currentPlayer, gameMode, lastMoveTime });
-      const interval = setInterval(() => {
+    if (showGame && gameState === 'active' && gameMode === 'ai') {
+      if (currentPlayer === 'blue') {
+        // Human's turn - countdown is active
+        const interval = setInterval(() => {
+          const elapsed = Date.now() - lastMoveTime;
+          const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
+          const seconds = Math.ceil(remaining / 1000);
+          setTimeoutCountdown(seconds);
+          
+          // End game if timeout
+          if (remaining <= 0) {
+            setGameState('checkmate');
+            setStatus('Time out! You lost.');
+            stopTimeoutTimer();
+          }
+        }, 1000);
+        
+        return () => {
+          clearInterval(interval);
+        };
+      } else {
+        // AI's turn - keep showing the last countdown value (timer paused)
+        // Don't reset to 0, just keep the current value
         const elapsed = Date.now() - lastMoveTime;
         const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
         const seconds = Math.ceil(remaining / 1000);
         setTimeoutCountdown(seconds);
-        console.log('[TIMER] Countdown update:', seconds, 'seconds');
-        
-        // End game if timeout
-        if (remaining <= 0) {
-          console.log('[TIMER] Timeout reached!');
-          setGameState('checkmate');
-          setStatus('Time out! You lost.');
-          stopTimeoutTimer();
-        }
-      }, 1000);
-      
-      return () => {
-        console.log('[TIMER] Cleaning up interval');
-        clearInterval(interval);
-      };
+      }
     } else {
-      console.log('[TIMER] Timer not active', { showGame, gameState, currentPlayer, gameMode });
       setTimeoutCountdown(0);
     }
   }, [showGame, gameState, lastMoveTime, currentPlayer, gameMode]);
@@ -1998,19 +2002,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves'>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
     setIsMenuOpen(false);
     // Set default position if not set - position windows to avoid covering chessboard
     // Calculate position BEFORE opening window to ensure it's available on first render
     if (!windowPositions[windowType]) {
-      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : 400;
-      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : 500;
+      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : windowType === 'profile' ? 400 : 400;
+      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : windowType === 'profile' ? 500 : 500;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
@@ -2043,7 +2047,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
@@ -2768,8 +2772,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
               {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (
-                <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
+                <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''} ${currentPlayer === 'red' ? 'timer-paused' : ''}`}>
                   {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
+                  {currentPlayer === 'red' && <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.7 }}>(paused)</span>}
                 </span>
               )}
               {gameMode === GameMode.AI && (
@@ -3054,6 +3059,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             >
               Chat
             </button>
+            <button
+              onClick={() => {
+                openWindow('profile');
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Profile
+            </button>
             {showGame && (
               <button
                 onClick={() => openWindow('moves')}
@@ -3181,6 +3204,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <li key={moveHistory.length - 1 - idx} style={{ padding: '4px 0' }}>{move}</li>
               ))}
             </ul>
+          </div>
+        </Popup>
+      )}
+      
+      {!isMobile && openWindows.has('profile') && (
+        <Popup
+          id="profile-window"
+          isOpen={true}
+          onClose={() => closeWindow('profile')}
+          title="Profile"
+          initialPosition={windowPositions['profile'] ? { x: windowPositions['profile'].x, y: windowPositions['profile'].y } : { x: 20, y: 180 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <div className="profile-compact" style={{ padding: '20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '16px' }}>Profile feature coming soon!</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Player profiles with username, stats, and NFT inventory will be available here.</div>
+            </div>
           </div>
         </Popup>
       )}
