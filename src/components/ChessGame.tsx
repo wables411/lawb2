@@ -2142,7 +2142,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 }}>
                   {status}
                 </div>
-                {showGame && gameState === 'active' && timeoutCountdown > 0 && (
+                {showGame && gameState === 'active' && gameMode === 'ai' && timeoutCountdown > 0 && (
                   <div className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`} style={{
                     color: timeoutCountdown < 60 ? '#ff0000' : timeoutCountdown < 300 ? '#ff8800' : '#000080',
                     fontSize: '12px',
@@ -2153,6 +2153,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </div>
                 )}
+                {console.log('[TIMER DISPLAY]', { showGame, gameState, gameMode, timeoutCountdown, currentPlayer })}
                 {chainId !== SANKO_CHAIN_ID && isConnected && (
                   <button 
                     onClick={handleSwitchToSanko}
