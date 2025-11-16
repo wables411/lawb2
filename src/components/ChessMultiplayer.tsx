@@ -6336,6 +6336,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           </div>
         </Popup>
       )}
+      
+      {!isMobile && openWindows.has('profile') && (
+        <Popup
+          id="profile-window"
+          isOpen={true}
+          onClose={() => closeWindow('profile')}
+          title="Profile"
+          initialPosition={windowPositions['profile'] ? { x: windowPositions['profile'].x, y: windowPositions['profile'].y } : { x: 20, y: 180 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <PlayerProfile isMobile={false} />
+        </Popup>
+      )}
     </div>
   );
 };
