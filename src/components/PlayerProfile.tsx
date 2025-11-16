@@ -49,7 +49,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
         }
         
         // Sync leaderboard stats to profile if leaderboard has data
-        if (leaderboardEntry) {
+        if (leaderboardEntry && profileData) {
           const leaderboardStats = {
             total_games: leaderboardEntry.total_games || 0,
             wins: leaderboardEntry.wins || 0,
@@ -68,32 +68,36 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           profileData.game_stats = leaderboardStats;
           // Also sync to Firebase profile
           await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
-          profileData = await firebaseProfiles.getProfile(address);
+          const updated = await firebaseProfiles.getProfile(address);
+          if (updated) profileData = updated;
         } else {
           console.log('[PROFILE] No leaderboard entry found - stats will be 0');
         }
         
         // Load NFT inventory if not already loaded
-        if (!profileData.nft_inventory || 
+        if (profileData && (!profileData.nft_inventory || 
             (profileData.nft_inventory.lawbsters.length === 0 && 
              profileData.nft_inventory.lawbstarz.length === 0 && 
              profileData.nft_inventory.halloween_lawbsters.length === 0 && 
-             profileData.nft_inventory.pixelawbs.length === 0)) {
+             profileData.nft_inventory.pixelawbs.length === 0))) {
           console.log('[PROFILE] Fetching NFT inventory...');
           try {
             const inventory = await fetchNFTInventory(address);
             console.log('[PROFILE] NFT inventory fetched:', inventory);
             await firebaseProfiles.updateNFTInventory(address, inventory);
-            profileData = await firebaseProfiles.getProfile(address);
+            const updated = await firebaseProfiles.getProfile(address);
+            if (updated) profileData = updated;
           } catch (invError) {
             console.error('[PROFILE] Error fetching NFT inventory:', invError);
           }
-        } else {
+        } else if (profileData) {
           console.log('[PROFILE] Using existing NFT inventory:', profileData.nft_inventory);
         }
         
         console.log('[PROFILE] Final profile data:', profileData);
-        setProfile(profileData);
+        if (profileData) {
+          setProfile(profileData);
+        }
       } catch (error) {
         console.error('[PROFILE] Error loading profile:', error);
       } finally {
@@ -180,17 +184,22 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
   const handleSelectProfilePicture = async (collection: keyof typeof NFT_COLLECTIONS, tokenId: string) => {
     if (!address) return;
     
+    console.log('[PROFILE] Selecting profile picture:', collection, tokenId);
     try {
       const metadata = await fetchTokenMetadata(collection, tokenId);
+      console.log('[PROFILE] Metadata fetched:', metadata);
       await firebaseProfiles.updateProfilePicture(address, {
         collection,
         token_id: tokenId,
         image_url: metadata.image_url
       });
       const updatedProfile = await firebaseProfiles.getProfile(address);
-      setProfile(updatedProfile);
+      if (updatedProfile) {
+        console.log('[PROFILE] Profile picture updated:', updatedProfile.profile_picture);
+        setProfile(updatedProfile);
+      }
     } catch (error) {
-      console.error('Error setting profile picture:', error);
+      console.error('[PROFILE] Error setting profile picture:', error);
     }
   };
 
