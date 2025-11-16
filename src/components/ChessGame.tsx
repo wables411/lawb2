@@ -3088,7 +3088,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 Move History
               </button>
             )}
-            {onBackToModeSelect && (
+            {onBackToModeSelect && showGame && (
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
