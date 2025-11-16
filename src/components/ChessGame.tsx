@@ -1458,7 +1458,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
         const seconds = Math.ceil(remaining / 1000);
         setTimeoutCountdown(seconds);
-        console.log('[TIMER] Countdown:', seconds, 'seconds remaining');
         
         // End game if timeout
         if (remaining <= 0) {
@@ -1470,7 +1469,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }, 1000);
       
       return () => {
-        console.log('[TIMER] Cleaning up timer interval');
         clearInterval(interval);
       };
     } else {
@@ -1478,6 +1476,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       setTimeoutCountdown(0);
     }
   }, [showGame, gameState, lastMoveTime, currentPlayer, gameMode]);
+
+  // Debug timer display state
+  useEffect(() => {
+    if (showGame && gameState === 'active' && gameMode === 'ai') {
+      console.log('[TIMER DISPLAY]', { showGame, gameState, gameMode, timeoutCountdown, currentPlayer });
+    }
+  }, [showGame, gameState, gameMode, timeoutCountdown, currentPlayer]);
+
+  // Debug menu state
+  useEffect(() => {
+    if (isMobile) {
+      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
+    }
+  }, [isMobile, isSidebarOpen, sidebarView]);
 
   // Multiplayer functionality moved to ChessMultiplayer component
 
@@ -2153,7 +2165,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </div>
                 )}
-                {console.log('[TIMER DISPLAY]', { showGame, gameState, gameMode, timeoutCountdown, currentPlayer })}
                 {chainId !== SANKO_CHAIN_ID && isConnected && (
                   <button 
                     onClick={handleSwitchToSanko}
@@ -2571,7 +2582,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 >
                   Profile
                 </button>
-                {console.log('[MENU] Rendering menu buttons, isSidebarOpen:', isSidebarOpen)}
                 {showGame && (
                   <button 
                     className="mobile-menu-btn"
