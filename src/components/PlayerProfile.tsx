@@ -224,7 +224,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     
     setRefreshingInventory(true);
     try {
-      console.log('[PROFILE] Refreshing NFT inventory for', address);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] Refreshing NFT inventory for', address);
+      }
       const inventory = await fetchNFTInventory(address);
       if (typeof window !== 'undefined' && window.console) {
         window.console.log('[PROFILE] NFT inventory fetched:', inventory);
