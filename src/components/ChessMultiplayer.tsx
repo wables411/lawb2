@@ -21,6 +21,7 @@ import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
 import Popup from './Popup';
+import { PlayerProfile } from './PlayerProfile';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -5673,10 +5674,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           {sidebarView === 'profile' && (
             <div className="profile-compact mobile-content-view">
-              <div className="mobile-empty-state" style={{ padding: '20px', textAlign: 'center' }}>
-                <div style={{ marginBottom: '16px', fontSize: '14px' }}>Profile feature coming soon!</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>Player profiles with username, stats, and NFT inventory will be available here.</div>
-              </div>
+              <PlayerProfile isMobile={true} />
             </div>
           )}
         </div>

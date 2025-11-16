@@ -12,6 +12,7 @@ import {
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
+import { PlayerProfile } from './PlayerProfile';
 
 import './ChessGame.css';
 
@@ -2749,10 +2750,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               
               {sidebarView === 'profile' && (
                 <div className="profile-compact mobile-content-view">
-                  <div className="mobile-empty-state" style={{ padding: '20px', textAlign: 'center' }}>
-                    <div style={{ marginBottom: '16px', fontSize: '14px' }}>Profile feature coming soon!</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>Player profiles with username, stats, and NFT inventory will be available here.</div>
-                  </div>
+                  <PlayerProfile isMobile={true} />
                 </div>
               )}
             </div>
@@ -3214,12 +3212,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 400, height: 500 }}
           zIndex={1000}
         >
-          <div className="profile-compact" style={{ padding: '20px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '16px' }}>Profile feature coming soon!</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>Player profiles with username, stats, and NFT inventory will be available here.</div>
-            </div>
-          </div>
+          <PlayerProfile isMobile={false} />
         </Popup>
       )}
     </div>
