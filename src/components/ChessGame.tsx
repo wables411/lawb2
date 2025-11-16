@@ -1484,13 +1484,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   }, [showGame, gameState, gameMode, timeoutCountdown, currentPlayer]);
 
-  // Debug menu state
-  useEffect(() => {
-    if (isMobile) {
-      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
-    }
-  }, [isMobile, isSidebarOpen, sidebarView]);
-
   // Multiplayer functionality moved to ChessMultiplayer component
 
   const formatAddress = (address: string) => {
@@ -2057,6 +2050,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Mobile sidebar state (unchanged)
   const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | 'profile' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Debug menu state
+  useEffect(() => {
+    if (isMobile) {
+      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
+    }
+  }, [isMobile, isSidebarOpen, sidebarView]);
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
   const handlePromotion = (promotionPiece: string) => {
