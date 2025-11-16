@@ -1076,17 +1076,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     
     
-    // Update last move time for timeout timer (only for human player moves)
-    if (!isAIMove) {
-      setLastMoveTime(Date.now());
-    }
-    
     // Switch players
     setCurrentPlayer(prev => {
       const newPlayer = prev === 'blue' ? 'red' : 'blue';
       console.log('[DEBUG] Player switched to:', newPlayer);
       // Check game end for the player who is about to move (after switch)
       checkGameEnd(newBoard, newPlayer);
+      
+      // Reset timer for the new player's turn - reset to 60 minutes
+      const now = Date.now();
+      setLastMoveTime(now);
+      setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Reset to full 60 minutes
+      console.log('[TIMER] Move completed, timer reset for', newPlayer, 'turn');
+      
       return newPlayer;
     });
     
@@ -1450,36 +1452,31 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Update countdown timer
+  // Update countdown timer - counts down for whichever player's turn it is
   useEffect(() => {
     if (showGame && gameState === 'active' && gameMode === 'ai') {
-      if (currentPlayer === 'blue') {
-        // Human's turn - countdown is active
-        const interval = setInterval(() => {
-          const elapsed = Date.now() - lastMoveTime;
-          const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
-          const seconds = Math.ceil(remaining / 1000);
-          setTimeoutCountdown(seconds);
-          
-          // End game if timeout
-          if (remaining <= 0) {
-            setGameState('checkmate');
-            setStatus('Time out! You lost.');
-            stopTimeoutTimer();
-          }
-        }, 1000);
-        
-        return () => {
-          clearInterval(interval);
-        };
-      } else {
-        // AI's turn - keep showing the last countdown value (timer paused)
-        // Don't reset to 0, just keep the current value
+      // Timer counts down for both players' turns
+      const interval = setInterval(() => {
         const elapsed = Date.now() - lastMoveTime;
         const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
         const seconds = Math.ceil(remaining / 1000);
         setTimeoutCountdown(seconds);
-      }
+        
+        // End game if timeout - current player loses
+        if (remaining <= 0) {
+          setGameState('checkmate');
+          if (currentPlayer === 'blue') {
+            setStatus('Time out! You lost.');
+          } else {
+            setStatus('AI timed out! You won!');
+          }
+          stopTimeoutTimer();
+        }
+      }, 1000);
+      
+      return () => {
+        clearInterval(interval);
+      };
     } else {
       setTimeoutCountdown(0);
     }
@@ -2772,9 +2769,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
               {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (
-                <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''} ${currentPlayer === 'red' ? 'timer-paused' : ''}`}>
+                <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
                   {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
-                  {currentPlayer === 'red' && <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.7 }}>(paused)</span>}
                 </span>
               )}
               {gameMode === GameMode.AI && (
