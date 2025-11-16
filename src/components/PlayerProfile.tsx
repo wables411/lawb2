@@ -20,6 +20,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
   const [usernameSuccess, setUsernameSuccess] = useState(false);
   const [refreshingInventory, setRefreshingInventory] = useState(false);
 
+  // Immediate console log on render
+  console.log('[PROFILE] Component rendered', { address, isMobile, hasProfile: !!profile });
+
   useEffect(() => {
     if (!address) {
       setLoading(false);
