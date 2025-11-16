@@ -107,6 +107,8 @@
   background: transparent;
   border-bottom: 1px solid rgba(255, 0, 0, 0.3);
   backdrop-filter: blur(5px);
+  position: relative;
+  z-index: 10001;
 }
 
 /* Menu button styling */
@@ -119,6 +121,9 @@
   font-size: 16px;
   font-weight: bold;
   margin-right: 4px;
+  position: relative;
+  z-index: 10002;
+  pointer-events: auto;
 }
 
 .menu-btn:hover {
@@ -442,6 +447,9 @@
 .chess-controls {
   display: flex;
   gap: 8px;
+  position: relative;
+  z-index: 10002;
+  pointer-events: auto;
 }
 
 .chess-controls button {

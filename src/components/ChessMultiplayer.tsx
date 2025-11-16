@@ -5361,8 +5361,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           {!isMobile && (
             <button 
               className="menu-btn"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.log('[MENU] Button clicked, current isMenuOpen:', isMenuOpen);
+                }
+                setIsMenuOpen(prev => !prev);
+              }}
               title="Menu"
+              type="button"
             >
               ☰
             </button>

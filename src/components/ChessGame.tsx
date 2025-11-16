@@ -2108,11 +2108,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             {!isMobile && (
               <button 
                 className="menu-btn"
-                onClick={() => {
-                  console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
-                  setIsMenuOpen(!isMenuOpen);
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (typeof window !== 'undefined' && window.console) {
+                    window.console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
+                  }
+                  setIsMenuOpen(prev => !prev);
                 }}
                 title="Menu"
+                type="button"
               >
                 ☰
               </button>
@@ -2498,11 +2503,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           {!isMobile && (
             <button 
               className="menu-btn"
-              onClick={() => {
-                console.log('Menu button clicked (game view), current isMenuOpen:', isMenuOpen);
-                setIsMenuOpen(!isMenuOpen);
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.log('Menu button clicked (game view), current isMenuOpen:', isMenuOpen);
+                }
+                setIsMenuOpen(prev => !prev);
               }}
               title="Menu"
+              type="button"
             >
               ☰
             </button>
