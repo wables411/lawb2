@@ -32,8 +32,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       .map(nft => nft.token_id.toString());
     console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs owned by', walletAddress);
   } catch (apiError) {
-    console.error('[NFT] Error fetching Pixelawbs from API:', apiError);
-    console.error('Error fetching Pixelawbs from API, trying contract:', apiError);
+    console.error('[NFT] Error fetching Pixelawbs from API, trying contract:', apiError);
     try {
       const pixelawbs = NFT_COLLECTIONS.pixelawbs;
       const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
@@ -107,8 +106,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       .map(nft => nft.token_id.toString());
     console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz owned by', walletAddress);
   } catch (apiError) {
-    console.error('[NFT] Error fetching Lawbstarz from API:', apiError);
-    console.error('Error fetching Lawbstarz from API, trying contract:', apiError);
+    console.error('[NFT] Error fetching Lawbstarz from API, trying contract:', apiError);
     try {
       const lawbstarz = NFT_COLLECTIONS.lawbstarz;
       const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
@@ -149,8 +147,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       console.error('[NFT] OpenSea API error for Halloween Lawbsters:', response.status, response.statusText);
     }
   } catch (apiError) {
-    console.error('[NFT] Error fetching Halloween Lawbsters from OpenSea API:', apiError);
-    console.error('Error fetching Halloween Lawbsters from OpenSea API, trying contract:', apiError);
+    console.error('[NFT] Error fetching Halloween Lawbsters from OpenSea API, trying contract:', apiError);
     try {
       const halloween = NFT_COLLECTIONS.halloween_lawbsters;
       const baseProvider = new JsonRpcProvider('https://mainnet.base.org');
