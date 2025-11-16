@@ -56,19 +56,46 @@ export const firebaseProfiles = {
       const db = getDatabaseOrThrow();
       const profileRef = ref(db, `profiles/${walletAddress.toLowerCase()}`);
       const existing = await get(profileRef);
+      const existingProfile = existing.exists() ? existing.val() as PlayerProfile : null;
       
       const now = new Date().toISOString();
+      
+      // If updating specific fields, use update() to preserve existing data
+      if (existingProfile && Object.keys(profileData).length < Object.keys(existingProfile).length) {
+        const updateData: any = {
+          updated_at: now
+        };
+        
+        if (profileData.game_stats !== undefined) {
+          updateData.game_stats = profileData.game_stats;
+        }
+        if (profileData.nft_inventory !== undefined) {
+          updateData.nft_inventory = profileData.nft_inventory;
+        }
+        if (profileData.username !== undefined) {
+          updateData.username = profileData.username;
+        }
+        if (profileData.profile_picture !== undefined) {
+          updateData.profile_picture = profileData.profile_picture;
+        }
+        
+        await update(profileRef, updateData);
+        console.log('[FIREBASE] Profile updated:', walletAddress);
+        return;
+      }
+      
+      // Full profile creation/update
       const profile: PlayerProfile = {
         wallet_address: walletAddress.toLowerCase(),
-        username: profileData.username,
-        profile_picture: profileData.profile_picture,
-        nft_inventory: profileData.nft_inventory || {
+        username: profileData.username !== undefined ? profileData.username : existingProfile?.username,
+        profile_picture: profileData.profile_picture !== undefined ? profileData.profile_picture : existingProfile?.profile_picture,
+        nft_inventory: profileData.nft_inventory || existingProfile?.nft_inventory || {
           lawbsters: [],
           lawbstarz: [],
           halloween_lawbsters: [],
           pixelawbs: []
         },
-        game_stats: profileData.game_stats || {
+        game_stats: profileData.game_stats || existingProfile?.game_stats || {
           total_games: 0,
           wins: 0,
           losses: 0,
@@ -78,7 +105,7 @@ export const firebaseProfiles = {
           last_match_timestamp: null,
           last_match_invite_code: null
         },
-        created_at: existing.exists() ? existing.val().created_at : now,
+        created_at: existingProfile?.created_at || now,
         updated_at: now
       };
       

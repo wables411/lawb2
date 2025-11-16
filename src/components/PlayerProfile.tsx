@@ -60,6 +60,30 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           profileData = await firebaseProfiles.getProfile(address);
         }
         
+        // Ensure profileData has required fields
+        if (profileData) {
+          if (!profileData.nft_inventory) {
+            profileData.nft_inventory = {
+              lawbsters: [],
+              lawbstarz: [],
+              halloween_lawbsters: [],
+              pixelawbs: []
+            };
+          }
+          if (!profileData.game_stats) {
+            profileData.game_stats = {
+              total_games: 0,
+              wins: 0,
+              losses: 0,
+              draws: 0,
+              total_points: 0,
+              win_rate: 0,
+              last_match_timestamp: null,
+              last_match_invite_code: null
+            };
+          }
+        }
+        
         // Sync leaderboard stats to profile if leaderboard has data
         if (leaderboardEntry && profileData) {
           const leaderboardStats = {
@@ -80,27 +104,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           }
           // Always use leaderboard data for display (it's the source of truth)
           profileData.game_stats = leaderboardStats;
-          // Also sync to Firebase profile
+          // Also sync to Firebase profile - use update() to preserve username
           await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
           const updated = await firebaseProfiles.getProfile(address);
           if (updated) profileData = updated;
-        } else {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] No leaderboard entry found - stats will be 0');
-          }
-          // Initialize game_stats with zeros if no leaderboard entry
-          if (profileData && !profileData.game_stats) {
-            profileData.game_stats = {
-              total_games: 0,
-              wins: 0,
-              losses: 0,
-              draws: 0,
-              total_points: 0,
-              win_rate: 0,
-              last_match_timestamp: null,
-              last_match_invite_code: null
-            };
-          }
         }
         
         // Load NFT inventory if not already loaded

@@ -2389,13 +2389,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             >
               Profile
             </button>
-            {onBackToModeSelect && showGame && (
+            {onBackToModeSelect && (
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
-                  clearCelebration();
-                  setShowGame(false);
-                  resetGame();
+                  if (showGame) {
+                    clearCelebration();
+                    setShowGame(false);
+                    resetGame();
+                  }
                   onBackToModeSelect();
                 }}
                 style={{

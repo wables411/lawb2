@@ -6167,6 +6167,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             >
               Chat
             </button>
+            <button
+              onClick={() => {
+                openWindow('profile');
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              Profile
+            </button>
             {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
               <button
                 onClick={() => openWindow('moves')}
