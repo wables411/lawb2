@@ -6103,7 +6103,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 10000,
+            zIndex: 10003,
             background: 'rgba(0, 0, 0, 0.3)'
           }}
         >
@@ -6118,7 +6118,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               border: '2px outset #fff',
               padding: '10px',
               minWidth: '200px',
-              zIndex: 10001,
+              zIndex: 10004,
               boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
             }}
           >

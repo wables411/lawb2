@@ -2295,7 +2295,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
-            console.log('Menu overlay clicked, closing menu');
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('Menu overlay clicked, closing menu');
+            }
             setIsMenuOpen(false);
           }}
           style={{
@@ -2304,7 +2306,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 10000,
+            zIndex: 10003,
             background: 'rgba(0, 0, 0, 0.3)'
           }}
         >
@@ -2319,7 +2321,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               border: '2px outset #fff',
               padding: '10px',
               minWidth: '200px',
-              zIndex: 10001,
+              zIndex: 10004,
               boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
             }}
           >
@@ -3002,7 +3004,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
-            console.log('Menu overlay clicked, closing menu');
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('Menu overlay clicked, closing menu');
+            }
             setIsMenuOpen(false);
           }}
           style={{
@@ -3011,7 +3015,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 10000,
+            zIndex: 10003,
             background: 'rgba(0, 0, 0, 0.3)'
           }}
         >
@@ -3026,7 +3030,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               border: '2px outset #fff',
               padding: '10px',
               minWidth: '200px',
-              zIndex: 10001,
+              zIndex: 10004,
               boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
             }}
           >
