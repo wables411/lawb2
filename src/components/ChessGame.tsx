@@ -2308,7 +2308,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </div>
 
         {/* Desktop Menu Popup - Home View */}
-        {!isMobile && isMenuOpen && !showGame && (
+        {(() => {
+          const shouldRender = !isMobile && isMenuOpen && !showGame;
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[MENU RENDER] Home view menu check:', {
+              isMobile,
+              isMenuOpen,
+              showGame,
+              shouldRender
+            });
+          }
+          return shouldRender;
+        })() && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
@@ -3036,7 +3047,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       )}
       
       {/* Desktop Menu Popup - Game View */}
-      {!isMobile && isMenuOpen && showGame && (
+      {(() => {
+        const shouldRender = !isMobile && isMenuOpen && showGame;
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[MENU RENDER] Game view menu check:', {
+            isMobile,
+            isMenuOpen,
+            showGame,
+            shouldRender
+          });
+        }
+        return shouldRender;
+      })() && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
