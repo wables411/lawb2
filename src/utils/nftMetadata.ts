@@ -1,9 +1,7 @@
-import { JsonRpcProvider, Contract } from 'ethers';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
+import { getCollectionNFTs } from '../mint';
 
-const ERC721_ABI = [
-  "function tokenURI(uint256 tokenId) view returns (string)"
-];
+const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
 
 export async function fetchTokenMetadata(
   collection: keyof typeof NFT_COLLECTIONS,
@@ -16,53 +14,82 @@ export async function fetchTokenMetadata(
       window.console.log('[NFT METADATA] Fetching metadata for', collection, 'token', tokenId);
     }
     
-    // Use appropriate provider based on chain
-    const provider = collectionConfig.chainId === 8453 
-      ? new JsonRpcProvider('https://mainnet.base.org')
-      : new JsonRpcProvider('https://eth.llamarpc.com');
+    // Use Scatter API for Pixelawbs and Lawbstarz
+    if (collectionConfig.api === 'scatter') {
+      try {
+        // Search up to 5 pages (500 NFTs) to find the token
+        for (let page = 1; page <= 5; page++) {
+          const response = await getCollectionNFTs(collectionConfig.slug, page, 100);
+          const nft = response.data.find(n => n.token_id.toString() === tokenId);
+          
+          if (nft) {
+            const imageUrl = nft.image_url || nft.image || nft.image_url_shrunk || '';
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT METADATA] Found NFT in Scatter API (page', page, '):', nft.name, 'Image:', imageUrl);
+            }
+            return {
+              image_url: imageUrl,
+              name: nft.name
+            };
+          }
+          
+          // If we've searched all available pages, stop
+          if (page >= response.totalPages) {
+            break;
+          }
+        }
+        
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn('[NFT METADATA] Token', tokenId, 'not found in Scatter API after searching all pages');
+        }
+      } catch (scatterError) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[NFT METADATA] Error fetching from Scatter API:', scatterError);
+        }
+      }
+    }
     
-    const contract = new Contract(collectionConfig.address, ERC721_ABI, provider);
-    const tokenURI = await contract.tokenURI(tokenId);
+    // Use OpenSea API for Lawbsters and Halloween Lawbsters
+    if (collectionConfig.api === 'opensea') {
+      try {
+        const chain = collectionConfig.chainId === 8453 ? 'base' : 'ethereum';
+        const response = await fetch(
+          `https://api.opensea.io/api/v2/chain/${chain}/contract/${collectionConfig.address}/nfts/${tokenId}`,
+          { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[NFT METADATA] OpenSea API response:', data);
+          }
+          
+          const imageUrl = data.nft?.image_url || data.image_url || '';
+          const name = data.nft?.name || data.name;
+          
+          if (imageUrl) {
+            return {
+              image_url: imageUrl,
+              name: name
+            };
+          }
+        } else {
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.error('[NFT METADATA] OpenSea API error:', response.status, response.statusText);
+          }
+        }
+      } catch (openseaError) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[NFT METADATA] Error fetching from OpenSea API:', openseaError);
+        }
+      }
+    }
     
+    // Fallback: return empty if all APIs fail
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT METADATA] Token URI:', tokenURI);
+      window.console.warn('[NFT METADATA] All API methods failed, returning empty');
     }
-    
-    let metadataUrl = tokenURI;
-    
-    // If it's IPFS, convert to HTTP gateway
-    if (tokenURI.startsWith('ipfs://')) {
-      const ipfsHash = tokenURI.replace('ipfs://', '');
-      metadataUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
-    }
-    
-    // Fetch metadata
-    const response = await fetch(metadataUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch metadata: ${response.status}`);
-    }
-    const metadata = await response.json();
-    
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT METADATA] Metadata:', metadata);
-    }
-    
-    let imageUrl = metadata.image || metadata.image_url || '';
-    
-    // Convert IPFS image URLs to HTTP gateway
-    if (imageUrl.startsWith('ipfs://')) {
-      const ipfsHash = imageUrl.replace('ipfs://', '');
-      imageUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
-    }
-    
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT METADATA] Final image URL:', imageUrl);
-    }
-    
-    return {
-      image_url: imageUrl,
-      name: metadata.name
-    };
+    return { image_url: '', name: undefined };
   } catch (error) {
     if (typeof window !== 'undefined' && window.console) {
       window.console.error(`[NFT METADATA] Error fetching metadata for ${collection} token ${tokenId}:`, error);

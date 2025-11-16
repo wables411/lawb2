@@ -226,13 +226,19 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     try {
       console.log('[PROFILE] Refreshing NFT inventory for', address);
       const inventory = await fetchNFTInventory(address);
-      console.log('[PROFILE] NFT inventory fetched:', inventory);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] NFT inventory fetched:', inventory);
+      }
       await firebaseProfiles.updateNFTInventory(address, inventory);
       const updatedProfile = await firebaseProfiles.getProfile(address);
       setProfile(updatedProfile);
-      console.log('[PROFILE] Profile updated with inventory');
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] Profile updated with inventory');
+      }
     } catch (error) {
-      console.error('[PROFILE] Error refreshing NFT inventory:', error);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('[PROFILE] Error refreshing NFT inventory:', error);
+      }
     } finally {
       setRefreshingInventory(false);
     }
@@ -241,10 +247,23 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
   const handleSelectProfilePicture = async (collection: keyof typeof NFT_COLLECTIONS, tokenId: string) => {
     if (!address) return;
     
-    console.log('[PROFILE] Selecting profile picture:', collection, tokenId);
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[PROFILE] Selecting profile picture:', collection, tokenId);
+    }
     try {
       const metadata = await fetchTokenMetadata(collection, tokenId);
-      console.log('[PROFILE] Metadata fetched:', metadata);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] Metadata fetched:', metadata);
+      }
+      
+      if (!metadata.image_url) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[PROFILE] No image URL found for token', tokenId, 'in collection', collection);
+        }
+        alert('Failed to fetch image URL for this NFT. Please try another one.');
+        return;
+      }
+      
       await firebaseProfiles.updateProfilePicture(address, {
         collection,
         token_id: tokenId,
@@ -252,11 +271,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
       });
       const updatedProfile = await firebaseProfiles.getProfile(address);
       if (updatedProfile) {
-        console.log('[PROFILE] Profile picture updated:', updatedProfile.profile_picture);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[PROFILE] Profile picture updated:', updatedProfile.profile_picture);
+        }
         setProfile(updatedProfile);
       }
     } catch (error) {
-      console.error('[PROFILE] Error setting profile picture:', error);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('[PROFILE] Error setting profile picture:', error);
+      }
+      alert('Failed to set profile picture. Please try again.');
     }
   };
 
