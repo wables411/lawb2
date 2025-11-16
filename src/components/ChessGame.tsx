@@ -1418,7 +1418,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Start timer when game starts
     const now = Date.now();
     setLastMoveTime(now);
-    console.log('[TIMER] Game started, setting lastMoveTime to:', now);
+    setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Initialize countdown to full time
+    console.log('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
   };
 
   // Timer functions
@@ -1451,6 +1452,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Update countdown timer
   useEffect(() => {
+    console.log('[TIMER EFFECT] Running', { showGame, gameState, currentPlayer, gameMode, lastMoveTime });
     if (showGame && gameState === 'active' && currentPlayer === 'blue' && gameMode === 'ai') {
       console.log('[TIMER] Starting timer effect', { showGame, gameState, currentPlayer, gameMode, lastMoveTime });
       const interval = setInterval(() => {
@@ -1458,6 +1460,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
         const seconds = Math.ceil(remaining / 1000);
         setTimeoutCountdown(seconds);
+        console.log('[TIMER] Countdown update:', seconds, 'seconds');
         
         // End game if timeout
         if (remaining <= 0) {
@@ -1469,6 +1472,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }, 1000);
       
       return () => {
+        console.log('[TIMER] Cleaning up interval');
         clearInterval(interval);
       };
     } else {
@@ -2055,6 +2059,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     if (isMobile) {
       console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
+      if (isSidebarOpen) {
+        console.log('[MENU RENDER] Menu is open, rendering buttons');
+      }
     }
   }, [isMobile, isSidebarOpen, sidebarView]);
 
@@ -2485,6 +2492,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[MENU BUTTON] Clicked, current isSidebarOpen:', isSidebarOpen);
                 setIsSidebarOpen(!isSidebarOpen);
               }}
               title="Toggle Menu"
@@ -2759,6 +2767,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
+              {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (
+                <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
+                  {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
+                </span>
+              )}
               {gameMode === GameMode.AI && (
                 <span className="mode-play">
                   {difficulty === 'easy' ? 'Easy' : 'Hard'} AI
