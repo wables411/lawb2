@@ -3263,6 +3263,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
       )}
       
+      {(() => {
+        if (!isMobile && typeof window !== 'undefined' && window.console) {
+          window.console.log('[DEBUG] openWindows:', Array.from(openWindows), 'has profile:', openWindows.has('profile'));
+        }
+        return null;
+      })()}
       {!isMobile && openWindows.has('profile') && (
         <Popup
           id="profile-window"
@@ -3280,11 +3286,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         >
           <PlayerProfile isMobile={false} />
         </Popup>
-      )}
-      {!isMobile && typeof window !== 'undefined' && window.console && (
-        <div style={{ display: 'none' }}>
-          {window.console.log('[DEBUG] openWindows:', Array.from(openWindows), 'has profile:', openWindows.has('profile'))}
-        </div>
       )}
     </div>
   );
