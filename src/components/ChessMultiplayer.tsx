@@ -720,19 +720,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves'>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
     setOpenWindows(prev => new Set(prev).add(windowType));
     setIsMenuOpen(false);
     // Set default position if not set - position windows to avoid covering chessboard
     if (!windowPositions[windowType]) {
-      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : 400;
-      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : 500;
+      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : windowType === 'profile' ? 400 : 400;
+      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : windowType === 'profile' ? 500 : 500;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
@@ -756,7 +756,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves') => {
+  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
