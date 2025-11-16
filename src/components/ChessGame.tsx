@@ -324,6 +324,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for leaderboard updated message
   const [showLeaderboardUpdated, setShowLeaderboardUpdated] = useState(false);
 
+  // Timer state for 60-minute move timeout
+  const GAME_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+  const [timeoutTimer, setTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
+  const [timeoutCountdown, setTimeoutCountdown] = useState<number>(0);
+  const [lastMoveTime, setLastMoveTime] = useState<number>(Date.now());
+
 
 
   // Add Stockfish integration
@@ -1070,6 +1076,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     
     
+    // Update last move time for timeout timer (only for human player moves)
+    if (!isAIMove) {
+      setLastMoveTime(Date.now());
+    }
+    
     // Switch players
     setCurrentPlayer(prev => {
       const newPlayer = prev === 'blue' ? 'red' : 'blue';
@@ -1404,7 +1415,59 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const newChessboard = selectRandomChessboard();
     setSelectedChessboard(newChessboard);
     console.log('[DEBUG] Match started with chessboard:', newChessboard);
+    // Start timer when game starts
+    setLastMoveTime(Date.now());
   };
+
+  // Timer functions
+  const startTimeoutTimer = () => {
+    if (timeoutTimer) return; // Already running
+    const timer = setInterval(() => {}, 1000);
+    setTimeoutTimer(timer);
+  };
+
+  const stopTimeoutTimer = () => {
+    if (timeoutTimer) {
+      clearInterval(timeoutTimer);
+      setTimeoutTimer(null);
+    }
+    setTimeoutCountdown(0);
+  };
+
+  // Format countdown timer for display (MM:SS or HH:MM:SS)
+  const formatCountdown = (seconds: number): string => {
+    if (seconds <= 0) return '00:00';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Update countdown timer
+  useEffect(() => {
+    if (showGame && gameState === 'active' && currentPlayer === 'blue') {
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - lastMoveTime;
+        const remaining = Math.max(0, GAME_TIMEOUT_MS - elapsed);
+        setTimeoutCountdown(Math.ceil(remaining / 1000));
+        
+        // End game if timeout
+        if (remaining <= 0) {
+          setGameState('checkmate');
+          setStatus('Time out! You lost.');
+          stopTimeoutTimer();
+        }
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    } else {
+      setTimeoutCountdown(0);
+    }
+  }, [showGame, gameState, lastMoveTime, currentPlayer]);
 
   // Multiplayer functionality moved to ChessMultiplayer component
 
@@ -1970,7 +2033,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
   
   // Mobile sidebar state (unchanged)
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | null>(isMobile ? null : null);
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | 'profile' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // In the promotion dialog handler, after a pawn is promoted, play the upgrade sound
@@ -2069,6 +2132,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 }}>
                   {status}
                 </div>
+                {showGame && gameState === 'active' && timeoutCountdown > 0 && (
+                  <div className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`} style={{
+                    color: timeoutCountdown < 60 ? '#ff0000' : timeoutCountdown < 300 ? '#ff8800' : '#000080',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    fontFamily: 'Courier New, monospace',
+                    marginTop: '5px'
+                  }}>
+                    {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
+                  </div>
+                )}
                 {chainId !== SANKO_CHAIN_ID && isConnected && (
                   <button 
                     onClick={handleSwitchToSanko}
@@ -2474,6 +2548,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     Chat
                   </button>
                 )}
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('profile');
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  Profile
+                </button>
                 {showGame && (
                   <button 
                     className="mobile-menu-btn"
@@ -2626,6 +2711,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     ) : (
                       'Chat is available in the main chat window'
                     )}
+                  </div>
+                </div>
+              )}
+              
+              {sidebarView === 'profile' && (
+                <div className="profile-compact mobile-content-view">
+                  <div className="mobile-empty-state" style={{ padding: '20px', textAlign: 'center' }}>
+                    <div style={{ marginBottom: '16px', fontSize: '14px' }}>Profile feature coming soon!</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>Player profiles with username, stats, and NFT inventory will be available here.</div>
                   </div>
                 </div>
               )}

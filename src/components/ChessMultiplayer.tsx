@@ -5463,6 +5463,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 >
                   Chat
                 </button>
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('profile');
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  Profile
+                </button>
                 {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
                   <button 
                     className="mobile-menu-btn"
@@ -5656,6 +5667,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 >
                   Send
                 </button>
+              </div>
+            </div>
+          )}
+          
+          {sidebarView === 'profile' && (
+            <div className="profile-compact mobile-content-view">
+              <div className="mobile-empty-state" style={{ padding: '20px', textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '14px' }}>Profile feature coming soon!</div>
+                <div style={{ fontSize: '12px', color: '#888' }}>Player profiles with username, stats, and NFT inventory will be available here.</div>
               </div>
             </div>
           )}
