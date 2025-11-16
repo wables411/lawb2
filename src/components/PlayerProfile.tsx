@@ -86,21 +86,26 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
         
         // Sync leaderboard stats to profile if leaderboard has data
         if (leaderboardEntry && profileData) {
+          // Validate and convert leaderboard data to numbers
+          const totalGames = Number(leaderboardEntry.total_games) || 0;
+          const wins = Number(leaderboardEntry.wins) || 0;
+          const losses = Number(leaderboardEntry.losses) || 0;
+          const draws = Number(leaderboardEntry.draws) || 0;
+          const points = Number(leaderboardEntry.points) || 0;
+          
           const leaderboardStats = {
-            total_games: leaderboardEntry.total_games || 0,
-            wins: leaderboardEntry.wins || 0,
-            losses: leaderboardEntry.losses || 0,
-            draws: leaderboardEntry.draws || 0,
-            total_points: leaderboardEntry.points || 0,
-            win_rate: leaderboardEntry.total_games > 0 
-              ? (leaderboardEntry.wins || 0) / leaderboardEntry.total_games 
-              : 0,
+            total_games: totalGames,
+            wins: wins,
+            losses: losses,
+            draws: draws,
+            total_points: points,
+            win_rate: totalGames > 0 ? wins / totalGames : 0,
             last_match_timestamp: leaderboardEntry.updated_at || null,
             last_match_invite_code: null
           };
           
           if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] Syncing leaderboard stats:', leaderboardStats);
+            window.console.log('[PROFILE] Syncing leaderboard stats:', leaderboardStats, 'from entry:', leaderboardEntry);
           }
           // Always use leaderboard data for display (it's the source of truth)
           profileData.game_stats = leaderboardStats;
@@ -108,6 +113,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
           const updated = await firebaseProfiles.getProfile(address);
           if (updated) profileData = updated;
+        } else {
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[PROFILE] No leaderboard entry found. Leaderboard entry:', leaderboardEntry, 'Profile data:', profileData);
+          }
         }
         
         // Load NFT inventory if not already loaded
