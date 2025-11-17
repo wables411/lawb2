@@ -58,7 +58,8 @@ async function fetchTokenIdsFromTransferEvents(
     const TRANSFER_EVENT_SIGNATURE = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
     
     // Pad wallet address to 32 bytes (64 hex chars) for topic filter
-    const walletAddressPadded = walletAddress.toLowerCase().padStart(66, '0x0');
+    // Format: 0x + 64 hex characters (32 bytes)
+    const walletAddressPadded = '0x' + walletAddress.toLowerCase().slice(2).padStart(64, '0');
     
     // Query Transfer events where 'to' is the wallet address
     const logs = await provider.getLogs({
