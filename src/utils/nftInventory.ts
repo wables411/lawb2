@@ -205,15 +205,16 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       );
       if (response.ok) {
         const data = await response.json();
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] OpenSea API response:', JSON.stringify(data, null, 2));
-        }
-        // OpenSea API v2 /account/{walletAddress}/nfts endpoint should filter by owner
-        // But if it's returning 100, there might be a pagination issue or the API is wrong
+        // OpenSea API v2 /account/{walletAddress}/nfts?contract_address={address} should filter by contract
+        // But it's returning ALL NFTs - we need to filter by contract address ourselves
         const nfts = data.nfts || [];
-        inventory.lawbsters = nfts.map((nft: any) => nft.identifier);
+        const lawbstersAddressLower = lawbstersAddress.toLowerCase();
+        const filteredNFTs = nfts.filter((nft: any) => 
+          nft.contract?.toLowerCase() === lawbstersAddressLower
+        );
+        inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API. Response had', nfts.length, 'NFTs');
+          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs total, filtered to', inventory.lawbsters.length, 'Lawbsters (contract:', lawbstersAddressLower, ')');
         }
       } else {
         if (typeof window !== 'undefined' && window.console) {

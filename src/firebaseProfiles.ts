@@ -172,19 +172,25 @@ export const firebaseProfiles = {
       const db = getDatabaseOrThrow();
       const profileRef = ref(db, `profiles/${walletAddress.toLowerCase()}`);
       
-      // Use upsertProfile to ensure profile exists and handle all edge cases
+      // Ensure profile exists first
       const existing = await get(profileRef);
-      const existingProfile = existing.exists() ? existing.val() as PlayerProfile : null;
+      if (!existing.exists()) {
+        // Create profile with inventory
+        await this.upsertProfile(walletAddress, { nft_inventory: inventory });
+        console.log('[FIREBASE] Profile created with NFT inventory:', walletAddress);
+        return;
+      }
       
-      // Use update() directly for nft_inventory to avoid undefined issues
-      const updateData: any = {
-        'nft_inventory': inventory,
+      // Update only nft_inventory path to avoid validation issues
+      const inventoryRef = ref(db, `profiles/${walletAddress.toLowerCase()}/nft_inventory`);
+      await set(inventoryRef, inventory);
+      
+      // Also update updated_at
+      await update(profileRef, {
         'updated_at': new Date().toISOString()
-      };
+      });
       
-      await update(profileRef, updateData);
-      
-      console.log('[FIREBASE] NFT inventory updated via upsertProfile:', walletAddress);
+      console.log('[FIREBASE] NFT inventory updated:', walletAddress);
     } catch (error) {
       console.error('[FIREBASE] Error updating NFT inventory:', error);
       throw error;
