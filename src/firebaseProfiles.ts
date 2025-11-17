@@ -181,12 +181,10 @@ export const firebaseProfiles = {
         return;
       }
       
-      // Update only nft_inventory path to avoid validation issues
-      const inventoryRef = ref(db, `profiles/${walletAddress.toLowerCase()}/nft_inventory`);
-      await set(inventoryRef, inventory);
-      
-      // Also update updated_at
+      // Use update() on the profile path with only nft_inventory to avoid validation issues
+      // Firebase rules allow partial updates to nft_inventory
       await update(profileRef, {
+        'nft_inventory': inventory,
         'updated_at': new Date().toISOString()
       });
       

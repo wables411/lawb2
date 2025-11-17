@@ -10,7 +10,7 @@ export const NFT_COLLECTIONS = {
     address: '0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42',
     name: 'Lawbsters',
     chainId: 1, // Ethereum mainnet
-    api: 'opensea' as const,
+    api: 'scatter' as const,
     slug: 'lawbsters'
   },
   lawbstarz: {
