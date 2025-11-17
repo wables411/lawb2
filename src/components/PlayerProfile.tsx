@@ -331,11 +331,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     last_match_invite_code: null
   };
 
-  const inventory = profile?.nft_inventory || {
-    lawbsters: [],
-    lawbstarz: [],
-    halloween_lawbsters: [],
-    pixelawbs: []
+  const inventory = {
+    lawbsters: profile?.nft_inventory?.lawbsters || [],
+    lawbstarz: profile?.nft_inventory?.lawbstarz || [],
+    halloween_lawbsters: profile?.nft_inventory?.halloween_lawbsters || [],
+    pixelawbs: profile?.nft_inventory?.pixelawbs || []
   };
 
   // Debug logging
@@ -343,15 +343,15 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     window.console.log('[PROFILE RENDER] Current profile:', profile);
     window.console.log('[PROFILE RENDER] Current inventory:', inventory);
     window.console.log('[PROFILE RENDER] Inventory counts:', {
-      lawbsters: inventory.lawbsters.length,
-      lawbstarz: inventory.lawbstarz.length,
-      halloween_lawbsters: inventory.halloween_lawbsters.length,
-      pixelawbs: inventory.pixelawbs.length
+      lawbsters: inventory.lawbsters?.length || 0,
+      lawbstarz: inventory.lawbstarz?.length || 0,
+      halloween_lawbsters: inventory.halloween_lawbsters?.length || 0,
+      pixelawbs: inventory.pixelawbs?.length || 0
     });
   }
 
-  const totalNFTs = inventory.lawbsters.length + inventory.lawbstarz.length + 
-                    inventory.halloween_lawbsters.length + inventory.pixelawbs.length;
+  const totalNFTs = (inventory.lawbsters?.length || 0) + (inventory.lawbstarz?.length || 0) + 
+                    (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0);
 
   return (
     <div className="profile-compact" style={{ padding: isMobile ? '16px' : '20px', fontSize: isMobile ? '12px' : '14px' }}>
@@ -519,10 +519,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           </button>
         </div>
         <div style={{ fontSize: isMobile ? '11px' : '12px', lineHeight: '1.6' }}>
-          <div>Lawbsters: {inventory.lawbsters.length}</div>
-          <div>Lawbstarz: {inventory.lawbstarz.length}</div>
-          <div>Halloween Lawbsters: {inventory.halloween_lawbsters.length}</div>
-          <div>Pixelawbs: {inventory.pixelawbs.length}</div>
+          <div>Lawbsters: {inventory.lawbsters?.length || 0}</div>
+          <div>Lawbstarz: {inventory.lawbstarz?.length || 0}</div>
+          <div>Halloween Lawbsters: {inventory.halloween_lawbsters?.length || 0}</div>
+          <div>Pixelawbs: {inventory.pixelawbs?.length || 0}</div>
         </div>
         {totalNFTs === 0 && (
           <div style={{ marginTop: '8px', fontSize: isMobile ? '11px' : '12px', color: '#888', fontStyle: 'italic' }}>
@@ -594,11 +594,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             <div style={{ fontSize: isMobile ? '11px' : '12px', marginBottom: '8px', fontWeight: 'bold' }}>
               Select from your NFTs:
             </div>
-            {inventory.pixelawbs.length > 0 && (
+            {(inventory.pixelawbs?.length || 0) > 0 && (
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Pixelawbs:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {inventory.pixelawbs.slice(0, 10).map(tokenId => (
+                  {(inventory.pixelawbs || []).slice(0, 10).map(tokenId => (
                     <button
                       key={`pixelawbs-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('pixelawbs', tokenId)}
@@ -618,11 +618,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
                 </div>
               </div>
             )}
-            {inventory.lawbsters.length > 0 && (
+            {(inventory.lawbsters?.length || 0) > 0 && (
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Lawbsters:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {inventory.lawbsters.slice(0, 10).map(tokenId => (
+                  {(inventory.lawbsters || []).slice(0, 10).map(tokenId => (
                     <button
                       key={`lawbsters-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('lawbsters', tokenId)}
@@ -642,11 +642,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
                 </div>
               </div>
             )}
-            {inventory.lawbstarz.length > 0 && (
+            {(inventory.lawbstarz?.length || 0) > 0 && (
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Lawbstarz:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {inventory.lawbstarz.slice(0, 10).map(tokenId => (
+                  {(inventory.lawbstarz || []).slice(0, 10).map(tokenId => (
                     <button
                       key={`lawbstarz-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('lawbstarz', tokenId)}
@@ -666,11 +666,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
                 </div>
               </div>
             )}
-            {inventory.halloween_lawbsters.length > 0 && (
+            {(inventory.halloween_lawbsters?.length || 0) > 0 && (
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>Halloween Lawbsters:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {inventory.halloween_lawbsters.slice(0, 10).map(tokenId => (
+                  {(inventory.halloween_lawbsters || []).slice(0, 10).map(tokenId => (
                     <button
                       key={`halloween-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('halloween_lawbsters', tokenId)}

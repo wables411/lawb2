@@ -244,9 +244,17 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
           window.console.log('[NFT] OpenSea account endpoint response:', JSON.stringify(data, null, 2));
           window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs from account endpoint');
         }
-        inventory.lawbsters = nfts.map((nft: any) => nft.identifier);
+        // Filter by contract address - OpenSea API doesn't always respect the contract_address filter
+        const lawbstersAddressLower = lawbstersAddress.toLowerCase();
+        const filteredNFTs = nfts.filter((nft: any) => 
+          nft.contract?.toLowerCase() === lawbstersAddressLower
+        );
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (fallback)');
+          window.console.log('[NFT] Filtered to', filteredNFTs.length, 'Lawbsters (contract:', lawbstersAddressLower, ')');
+        }
+        inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (fallback, filtered by contract)');
         }
       } else {
         if (typeof window !== 'undefined' && window.console) {
