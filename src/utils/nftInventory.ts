@@ -196,25 +196,25 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     if (typeof window !== 'undefined' && window.console) {
       window.console.warn('Error fetching Lawbsters from Etherscan, trying OpenSea API directly:', etherscanError);
     }
-    // Fallback to OpenSea API - use contract endpoint with owner filter
+    // Fallback to OpenSea API - use account endpoint with contract_address filter
     try {
       const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
       const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
-      // Use contract endpoint with owner parameter - this should properly filter
+      // Use account endpoint with contract_address filter - same approach as Halloween Lawbsters
       const response = await fetch(
-        `https://api.opensea.io/api/v2/chain/ethereum/contract/${lawbstersAddress}/nfts?owner=${walletAddress}&limit=100`,
+        `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
         { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
       );
       if (response.ok) {
         const data = await response.json();
         const nfts = data.nfts || [];
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] OpenSea contract endpoint response:', JSON.stringify(data, null, 2));
-          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs from contract endpoint');
+          window.console.log('[NFT] OpenSea account endpoint response:', JSON.stringify(data, null, 2));
+          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs from account endpoint');
         }
         inventory.lawbsters = nfts.map((nft: any) => nft.identifier);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (contract endpoint with owner filter)');
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (account endpoint with contract filter)');
         }
       } else {
         if (typeof window !== 'undefined' && window.console) {

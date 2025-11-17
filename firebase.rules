@@ -47,6 +47,9 @@
         "nft_inventory": {
           ".read": true,
           ".write": true
+        },
+        "profile_picture": {
+          ".validate": "!newData.exists() || (newData.hasChildren(['collection', 'token_id', 'image_url']) && newData.child('collection').isString() && newData.child('token_id').isString() && newData.child('image_url').isString())"
         }
       }
     },
