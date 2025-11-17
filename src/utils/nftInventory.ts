@@ -209,12 +209,20 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         // But it's returning ALL NFTs - we need to filter by contract address ourselves
         const nfts = data.nfts || [];
         const lawbstersAddressLower = lawbstersAddress.toLowerCase();
-        const filteredNFTs = nfts.filter((nft: any) => 
-          nft.contract?.toLowerCase() === lawbstersAddressLower
-        );
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs. Sample NFT contract:', nfts[0]?.contract, 'Expected:', lawbstersAddressLower);
+        }
+        const filteredNFTs = nfts.filter((nft: any) => {
+          const nftContract = nft.contract?.toLowerCase();
+          const matches = nftContract === lawbstersAddressLower;
+          if (typeof window !== 'undefined' && window.console && nfts.length > 0 && nfts.indexOf(nft) < 3) {
+            window.console.log('[NFT] Checking NFT', nft.identifier, 'contract:', nftContract, 'matches:', matches);
+          }
+          return matches;
+        });
         inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs total, filtered to', inventory.lawbsters.length, 'Lawbsters (contract:', lawbstersAddressLower, ')');
+          window.console.log('[NFT] Filtered to', inventory.lawbsters.length, 'Lawbsters');
         }
       } else {
         if (typeof window !== 'undefined' && window.console) {

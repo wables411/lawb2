@@ -45,6 +45,8 @@
           ".validate": "newData.hasChildren(['total_games', 'wins', 'losses', 'draws', 'total_points', 'win_rate']) && newData.child('total_games').isNumber() && newData.child('wins').isNumber() && newData.child('losses').isNumber() && newData.child('draws').isNumber() && newData.child('total_points').isNumber() && newData.child('win_rate').isNumber() && newData.child('total_games').val() >= 0 && newData.child('wins').val() >= 0 && newData.child('losses').val() >= 0 && newData.child('draws').val() >= 0 && newData.child('total_points').val() >= 0 && newData.child('win_rate').val() >= 0"
         },
         "nft_inventory": {
+          ".read": true,
+          ".write": true,
           ".validate": "(!newData.hasChild('lawbsters') || newData.child('lawbsters').isArray()) && (!newData.hasChild('lawbstarz') || newData.child('lawbstarz').isArray()) && (!newData.hasChild('halloween_lawbsters') || newData.child('halloween_lawbsters').isArray()) && (!newData.hasChild('pixelawbs') || newData.child('pixelawbs').isArray())"
         }
       }
