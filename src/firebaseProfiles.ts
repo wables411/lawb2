@@ -174,18 +174,26 @@ export const firebaseProfiles = {
     }
   },
 
-  // Update profile picture
-  async updateProfilePicture(walletAddress: string, picture: ProfilePicture): Promise<void> {
+  // Update profile picture (pass null to clear)
+  async updateProfilePicture(walletAddress: string, picture: ProfilePicture | null): Promise<void> {
     try {
       const db = getDatabaseOrThrow();
       const profileRef = ref(db, `profiles/${walletAddress.toLowerCase()}`);
       
-      await update(profileRef, {
-        'profile_picture': picture,
-        'updated_at': new Date().toISOString()
-      });
-      
-      console.log('[FIREBASE] Profile picture updated:', walletAddress);
+      if (picture === null) {
+        // Clear profile picture
+        await update(profileRef, {
+          'profile_picture': null,
+          'updated_at': new Date().toISOString()
+        });
+        console.log('[FIREBASE] Profile picture cleared:', walletAddress);
+      } else {
+        await update(profileRef, {
+          'profile_picture': picture,
+          'updated_at': new Date().toISOString()
+        });
+        console.log('[FIREBASE] Profile picture updated:', walletAddress);
+      }
     } catch (error) {
       console.error('[FIREBASE] Error updating profile picture:', error);
       throw error;

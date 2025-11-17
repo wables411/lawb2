@@ -46,25 +46,40 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
             window.console.log('[NFT] No Pixelawbs found from Etherscan (balance is 0)');
           }
         } else {
-          // Etherscan confirmed ownership, get token IDs from contract
-          const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
-          const contract = new Contract(pixelawbs.address, ERC721_ABI, ethereumProvider);
-          const tokenIds: string[] = [];
-          const balanceNum = Number(balance);
-          for (let i = 0; i < balanceNum; i++) {
-            try {
-              const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-              tokenIds.push(tokenId.toString());
-            } catch (e) {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.warn(`Error fetching token ${i} for Pixelawbs:`, e);
+          // Etherscan confirmed ownership, try to get token IDs from contract
+          // If contract doesn't support tokenOfOwnerByIndex, fall back to Scatter API
+          try {
+            const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
+            const contract = new Contract(pixelawbs.address, ERC721_ABI, ethereumProvider);
+            const tokenIds: string[] = [];
+            const balanceNum = Number(balance);
+            for (let i = 0; i < balanceNum; i++) {
+              try {
+                const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+                tokenIds.push(tokenId.toString());
+              } catch (e) {
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.warn(`Error fetching token ${i} for Pixelawbs (contract may not support tokenOfOwnerByIndex):`, e);
+                }
+                throw e; // Re-throw to trigger fallback
               }
-              break;
             }
-          }
-          inventory.pixelawbs = tokenIds;
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs (verified via Etherscan, token IDs from contract)');
+            inventory.pixelawbs = tokenIds;
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs (verified via Etherscan, token IDs from contract)');
+            }
+          } catch (contractError) {
+            // Contract doesn't support tokenOfOwnerByIndex, use Scatter API
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Contract call failed, using Scatter API to get token IDs for Pixelawbs');
+            }
+            const response = await getCollectionNFTs('pixelawbs', 1, 100, walletAddress);
+            inventory.pixelawbs = response.data
+              .filter(nft => nft.owner_of?.toLowerCase() === walletAddress.toLowerCase())
+              .map(nft => nft.token_id.toString());
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs from Scatter API');
+            }
           }
         }
       } else {
@@ -73,50 +88,18 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     } else {
       throw new Error(`Etherscan HTTP error: ${etherscanResponse.status}`);
     }
-  } catch (etherscanError) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.warn('Error fetching Pixelawbs from Etherscan, trying contract:', etherscanError);
-    }
-    // Fallback to contract call
-    try {
-      const pixelawbs = NFT_COLLECTIONS.pixelawbs;
-      const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
-      const contract = new Contract(pixelawbs.address, ERC721_ABI, ethereumProvider);
-      const balance = await contract.balanceOf(walletAddress);
-      
-      if (balance === 0n) {
-        inventory.pixelawbs = [];
-      } else {
-        const tokenIds: string[] = [];
-        const balanceNum = Number(balance);
-        for (let i = 0; i < balanceNum; i++) {
-          try {
-            const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-            tokenIds.push(tokenId.toString());
-          } catch (e) {
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.warn(`Error fetching token ${i} for Pixelawbs:`, e);
-            }
-            break;
-          }
-        }
-        inventory.pixelawbs = tokenIds;
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs from contract');
-        }
-      }
-    } catch (contractError) {
+    } catch (etherscanError) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.warn('Error fetching Pixelawbs from contract, trying Scatter API:', contractError);
+        window.console.warn('Error fetching Pixelawbs from Etherscan, trying Scatter API directly:', etherscanError);
       }
-      // Final fallback to Scatter API
+      // Fallback to Scatter API (most reliable for getting token IDs)
       try {
         const response = await getCollectionNFTs('pixelawbs', 1, 100, walletAddress);
         inventory.pixelawbs = response.data
           .filter(nft => nft.owner_of?.toLowerCase() === walletAddress.toLowerCase())
           .map(nft => nft.token_id.toString());
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs from Scatter API (fallback)');
+          window.console.log('[NFT] Found', inventory.pixelawbs.length, 'Pixelawbs from Scatter API');
         }
       } catch (apiError) {
         if (typeof window !== 'undefined' && window.console) {
@@ -124,7 +107,6 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         }
       }
     }
-  }
 
   // Fetch Lawbsters (Ethereum) - Try Etherscan API first (most reliable), then contract, then OpenSea
   try {
@@ -154,25 +136,45 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
             window.console.log('[NFT] No Lawbsters found from Etherscan (balance is 0)');
           }
         } else {
-          // Etherscan confirmed ownership, now get token IDs from contract (more reliable than parsing transactions)
-          const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
-          const contract = new Contract(lawbsters.address, ERC721_ABI, ethereumProvider);
-          const tokenIds: string[] = [];
-          const balanceNum = Number(balance);
-          for (let i = 0; i < balanceNum; i++) {
-            try {
-              const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-              tokenIds.push(tokenId.toString());
-            } catch (e) {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.warn(`Error fetching token ${i} for Lawbsters:`, e);
+          // Etherscan confirmed ownership, try to get token IDs from contract
+          // If contract doesn't support tokenOfOwnerByIndex, fall back to OpenSea API
+          try {
+            const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
+            const contract = new Contract(lawbsters.address, ERC721_ABI, ethereumProvider);
+            const tokenIds: string[] = [];
+            const balanceNum = Number(balance);
+            for (let i = 0; i < balanceNum; i++) {
+              try {
+                const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+                tokenIds.push(tokenId.toString());
+              } catch (e) {
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.warn(`Error fetching token ${i} for Lawbsters (contract may not support tokenOfOwnerByIndex):`, e);
+                }
+                throw e; // Re-throw to trigger fallback
               }
-              break;
             }
-          }
-          inventory.lawbsters = tokenIds;
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters (verified via Etherscan, token IDs from contract)');
+            inventory.lawbsters = tokenIds;
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters (verified via Etherscan, token IDs from contract)');
+            }
+          } catch (contractError) {
+            // Contract doesn't support tokenOfOwnerByIndex, use OpenSea API
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Contract call failed, using OpenSea API to get token IDs for Lawbsters');
+            }
+            const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+            const response = await fetch(
+              `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbsters.address}&limit=100`,
+              { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API');
+              }
+            }
           }
         }
       } else {
@@ -183,63 +185,30 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   } catch (etherscanError) {
     if (typeof window !== 'undefined' && window.console) {
-      window.console.warn('Error fetching Lawbsters from Etherscan, trying contract:', etherscanError);
+      window.console.warn('Error fetching Lawbsters from Etherscan, trying OpenSea API directly:', etherscanError);
     }
-    // Fallback to contract call
+    // Fallback to OpenSea API (most reliable for getting token IDs)
     try {
-      const lawbsters = NFT_COLLECTIONS.lawbsters;
-      const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
-      const contract = new Contract(lawbsters.address, ERC721_ABI, ethereumProvider);
-      const balance = await contract.balanceOf(walletAddress);
-      
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Lawbsters contract balance:', balance.toString());
-      }
-      
-      if (balance === 0n) {
-        inventory.lawbsters = [];
+      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+      const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
+      const response = await fetch(
+        `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
+        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API');
+        }
       } else {
-        const tokenIds: string[] = [];
-        const balanceNum = Number(balance);
-        for (let i = 0; i < balanceNum; i++) {
-          try {
-            const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-            tokenIds.push(tokenId.toString());
-          } catch (e) {
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.warn(`Error fetching token ${i} for Lawbsters:`, e);
-            }
-            break;
-          }
-        }
-        inventory.lawbsters = tokenIds;
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from contract');
+          window.console.error('[NFT] OpenSea API error for Lawbsters:', response.status, response.statusText);
         }
       }
-    } catch (contractError) {
+    } catch (apiError) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.error('Error fetching Lawbsters from contract, trying OpenSea API:', contractError);
-      }
-      // Final fallback to OpenSea API
-      try {
-        const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-        const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
-        const response = await fetch(
-          `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
-          { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea (fallback)');
-          }
-        }
-      } catch (apiError) {
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.error('Error fetching Lawbsters from OpenSea API:', apiError);
-        }
+        window.console.error('Error fetching Lawbsters from OpenSea API:', apiError);
       }
     }
   }
@@ -268,25 +237,40 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
             window.console.log('[NFT] No Lawbstarz found from Etherscan (balance is 0)');
           }
         } else {
-          // Etherscan confirmed ownership, get token IDs from contract
-          const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
-          const contract = new Contract(lawbstarz.address, ERC721_ABI, ethereumProvider);
-          const tokenIds: string[] = [];
-          const balanceNum = Number(balance);
-          for (let i = 0; i < balanceNum; i++) {
-            try {
-              const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-              tokenIds.push(tokenId.toString());
-            } catch (e) {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.warn(`Error fetching token ${i} for Lawbstarz:`, e);
+          // Etherscan confirmed ownership, try to get token IDs from contract
+          // If contract doesn't support tokenOfOwnerByIndex, fall back to Scatter API
+          try {
+            const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
+            const contract = new Contract(lawbstarz.address, ERC721_ABI, ethereumProvider);
+            const tokenIds: string[] = [];
+            const balanceNum = Number(balance);
+            for (let i = 0; i < balanceNum; i++) {
+              try {
+                const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+                tokenIds.push(tokenId.toString());
+              } catch (e) {
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.warn(`Error fetching token ${i} for Lawbstarz (contract may not support tokenOfOwnerByIndex):`, e);
+                }
+                throw e; // Re-throw to trigger fallback
               }
-              break;
             }
-          }
-          inventory.lawbstarz = tokenIds;
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz (verified via Etherscan, token IDs from contract)');
+            inventory.lawbstarz = tokenIds;
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz (verified via Etherscan, token IDs from contract)');
+            }
+          } catch (contractError) {
+            // Contract doesn't support tokenOfOwnerByIndex, use Scatter API
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Contract call failed, using Scatter API to get token IDs for Lawbstarz');
+            }
+            const response = await getCollectionNFTs('lawbstarz', 1, 100, walletAddress);
+            inventory.lawbstarz = response.data
+              .filter(nft => nft.owner_of?.toLowerCase() === walletAddress.toLowerCase())
+              .map(nft => nft.token_id.toString());
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz from Scatter API');
+            }
           }
         }
       } else {
@@ -327,18 +311,18 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
           window.console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz from contract');
         }
       }
-    } catch (contractError) {
+    } catch (etherscanError) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.warn('Error fetching Lawbstarz from contract, trying Scatter API:', contractError);
+        window.console.warn('Error fetching Lawbstarz from Etherscan, trying Scatter API directly:', etherscanError);
       }
-      // Final fallback to Scatter API
+      // Fallback to Scatter API (most reliable for getting token IDs)
       try {
         const response = await getCollectionNFTs('lawbstarz', 1, 100, walletAddress);
         inventory.lawbstarz = response.data
           .filter(nft => nft.owner_of?.toLowerCase() === walletAddress.toLowerCase())
           .map(nft => nft.token_id.toString());
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz from Scatter API (fallback)');
+          window.console.log('[NFT] Found', inventory.lawbstarz.length, 'Lawbstarz from Scatter API');
         }
       } catch (apiError) {
         if (typeof window !== 'undefined' && window.console) {

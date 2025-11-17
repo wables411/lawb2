@@ -327,7 +327,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     <div className="profile-compact" style={{ padding: isMobile ? '16px' : '20px', fontSize: isMobile ? '12px' : '14px' }}>
       {/* Profile Header */}
       <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-        {profile?.profile_picture?.image_url && (
+        {(() => {
+          if (!profile?.profile_picture?.image_url) return false;
+          const totalNFTs = (profile?.nft_inventory?.lawbsters?.length || 0) + 
+                           (profile?.nft_inventory?.lawbstarz?.length || 0) + 
+                           (profile?.nft_inventory?.halloween_lawbsters?.length || 0) + 
+                           (profile?.nft_inventory?.pixelawbs?.length || 0);
+          return totalNFTs > 0;
+        })() && profile?.profile_picture?.image_url && (
           <img 
             src={profile.profile_picture.image_url} 
             alt="Profile"
@@ -497,36 +504,54 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
       {/* Profile Picture Selection */}
       <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
         <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Profile Picture</h4>
-        {profile?.profile_picture ? (
-          <div style={{ marginBottom: '12px' }}>
-                     <img 
-                       src={profile.profile_picture.image_url} 
-                       alt="Current profile picture"
-                       onError={(e) => {
-                         if (typeof window !== 'undefined' && window.console) {
-                           window.console.error('[PROFILE] Failed to load profile picture in selection:', profile.profile_picture?.image_url);
-                         }
-                         e.currentTarget.style.display = 'none';
-                       }}
-                       onLoad={() => {
-                         if (typeof window !== 'undefined' && window.console) {
-                           window.console.log('[PROFILE] Profile picture loaded in selection:', profile.profile_picture?.image_url);
-                         }
-                       }}
-                       style={{ 
-                         width: '60px', 
-                         height: '60px', 
-                         borderRadius: '4px', 
-                         border: '2px solid #000',
-                         objectFit: 'cover',
-                         marginBottom: '8px',
-                         backgroundColor: '#f0f0f0'
-                       }} 
-                     />
-            <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
-              {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{profile.profile_picture.token_id}
+        {(() => {
+          if (!profile) return false;
+          const totalNFTs = (profile?.nft_inventory?.lawbsters?.length || 0) + 
+                           (profile?.nft_inventory?.lawbstarz?.length || 0) + 
+                           (profile?.nft_inventory?.halloween_lawbsters?.length || 0) + 
+                           (profile?.nft_inventory?.pixelawbs?.length || 0);
+          // Clear profile picture if no NFTs owned
+          if (totalNFTs === 0 && profile?.profile_picture) {
+            // Clear profile picture asynchronously
+            firebaseProfiles.updateProfilePicture(address, null).catch(err => {
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.error('[PROFILE] Error clearing profile picture:', err);
+              }
+            });
+          }
+          return profile?.profile_picture && totalNFTs > 0;
+        })() ? (
+          profile?.profile_picture && (
+            <div style={{ marginBottom: '12px' }}>
+              <img 
+                src={profile.profile_picture.image_url} 
+                alt="Current profile picture"
+                onError={(e) => {
+                  if (typeof window !== 'undefined' && window.console) {
+                    window.console.error('[PROFILE] Failed to load profile picture in selection:', profile.profile_picture?.image_url);
+                  }
+                  e.currentTarget.style.display = 'none';
+                }}
+                onLoad={() => {
+                  if (typeof window !== 'undefined' && window.console) {
+                    window.console.log('[PROFILE] Profile picture loaded in selection:', profile.profile_picture?.image_url);
+                  }
+                }}
+                style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  borderRadius: '4px', 
+                  border: '2px solid #000',
+                  objectFit: 'cover',
+                  marginBottom: '8px',
+                  backgroundColor: '#f0f0f0'
+                }} 
+              />
+              <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
+                {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{profile.profile_picture.token_id}
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#888', marginBottom: '12px' }}>
             No profile picture set. Select an NFT below.
