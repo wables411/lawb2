@@ -43,6 +43,89 @@ async function getEthereumProvider(): Promise<JsonRpcProvider> {
 }
 
 /**
+ * Fetch token IDs using Transfer events when tokenOfOwnerByIndex is not supported
+ * Uses eth_getLogs to query Transfer events where 'to' is the wallet address
+ */
+async function fetchTokenIdsFromTransferEvents(
+  contractAddress: string,
+  walletAddress: string,
+  collectionName: string,
+  provider: JsonRpcProvider
+): Promise<string[]> {
+  try {
+    // ERC721 Transfer event signature: Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+    // Event signature hash: keccak256("Transfer(address,address,uint256)")
+    const TRANSFER_EVENT_SIGNATURE = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    
+    // Pad wallet address to 32 bytes (64 hex chars) for topic filter
+    const walletAddressPadded = walletAddress.toLowerCase().padStart(66, '0x0');
+    
+    // Query Transfer events where 'to' is the wallet address
+    const logs = await provider.getLogs({
+      address: contractAddress,
+      topics: [
+        TRANSFER_EVENT_SIGNATURE,
+        null, // from (any address)
+        walletAddressPadded // to (our wallet)
+      ],
+      fromBlock: 0,
+      toBlock: 'latest'
+    });
+    
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log(`[NFT] Found ${logs.length} Transfer events to ${walletAddress} for ${collectionName}`);
+    }
+    
+    // Extract token IDs from Transfer events
+    // tokenId is in topics[3] (indexed parameter)
+    const tokenIds = new Set<string>();
+    
+    for (const log of logs) {
+      if (log.topics.length >= 4) {
+        // topics[3] contains the tokenId (uint256, padded to 32 bytes)
+        const tokenIdHex = log.topics[3];
+        const tokenId = BigInt(tokenIdHex).toString();
+        tokenIds.add(tokenId);
+      }
+    }
+    
+    // Also check for Transfer events where 'from' is the wallet (to handle transfers out)
+    const fromLogs = await provider.getLogs({
+      address: contractAddress,
+      topics: [
+        TRANSFER_EVENT_SIGNATURE,
+        walletAddressPadded, // from (our wallet)
+        null // to (any address)
+      ],
+      fromBlock: 0,
+      toBlock: 'latest'
+    });
+    
+    // Remove token IDs that were transferred out
+    for (const log of fromLogs) {
+      if (log.topics.length >= 4) {
+        const tokenIdHex = log.topics[3];
+        const tokenId = BigInt(tokenIdHex).toString();
+        tokenIds.delete(tokenId);
+      }
+    }
+    
+    const tokenIdsArray = Array.from(tokenIds);
+    
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log(`[NFT] Found ${tokenIdsArray.length} ${collectionName} token IDs from Transfer events`);
+    }
+    
+    return tokenIdsArray;
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.error(`[NFT] Error fetching ${collectionName} token IDs from Transfer events:`, error);
+    }
+    throw error;
+  }
+}
+
+/**
  * Fetch NFT balance and token IDs directly from contract using RPC calls
  * Tries multiple RPC endpoints with automatic fallback
  */
@@ -66,9 +149,10 @@ async function fetchNFTsFromContract(
       return { balance: 0n, tokenIds: [] };
     }
     
-    // Get token IDs
+    // Try to get token IDs using tokenOfOwnerByIndex first
     const tokenIds: string[] = [];
     const balanceNum = Number(balance);
+    let enumerationFailed = false;
     
     for (let i = 0; i < balanceNum; i++) {
       try {
@@ -78,9 +162,28 @@ async function fetchNFTsFromContract(
         if (typeof window !== 'undefined' && window.console) {
           window.console.warn(`[NFT] Error fetching token ${i} for ${collectionName} (contract may not support tokenOfOwnerByIndex):`, e);
         }
-        // If tokenOfOwnerByIndex fails, we can't get token IDs from contract
-        // Return what we have so far
+        enumerationFailed = true;
         break;
+      }
+    }
+    
+    // If enumeration failed but we have a balance, try using Transfer events
+    if (enumerationFailed && tokenIds.length === 0 && balance > 0n) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log(`[NFT] Contract doesn't support tokenOfOwnerByIndex, trying Transfer events for ${collectionName}`);
+      }
+      try {
+        const eventTokenIds = await fetchTokenIdsFromTransferEvents(
+          contractAddress,
+          walletAddress,
+          collectionName,
+          provider
+        );
+        tokenIds.push(...eventTokenIds);
+      } catch (eventError) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn(`[NFT] Failed to get token IDs from Transfer events for ${collectionName}:`, eventError);
+        }
       }
     }
     
