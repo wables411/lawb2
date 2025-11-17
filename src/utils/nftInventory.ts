@@ -172,15 +172,16 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
               window.console.log('[NFT] Contract call failed, using OpenSea API to get token IDs for Lawbsters');
             }
             const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+            // Use contract endpoint with owner parameter
             const response = await fetch(
-              `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbsters.address}&limit=100`,
+              `https://api.opensea.io/api/v2/chain/ethereum/contract/${lawbsters.address}/nfts?owner=${walletAddress}&limit=100`,
               { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
             );
             if (response.ok) {
               const data = await response.json();
               inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
               if (typeof window !== 'undefined' && window.console) {
-                window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API');
+                window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (contract endpoint)');
               }
             }
           }
@@ -195,34 +196,21 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     if (typeof window !== 'undefined' && window.console) {
       window.console.warn('Error fetching Lawbsters from Etherscan, trying OpenSea API directly:', etherscanError);
     }
-    // Fallback to OpenSea API (most reliable for getting token IDs)
+    // Fallback to OpenSea API - use contract endpoint with owner filter
     try {
       const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
       const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
+      // Use contract endpoint with owner parameter - this should properly filter
       const response = await fetch(
-        `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
+        `https://api.opensea.io/api/v2/chain/ethereum/contract/${lawbstersAddress}/nfts?owner=${walletAddress}&limit=100`,
         { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
       );
       if (response.ok) {
         const data = await response.json();
-        // OpenSea API v2 /account/{walletAddress}/nfts?contract_address={address} should filter by contract
-        // But it's returning ALL NFTs - we need to filter by contract address ourselves
         const nfts = data.nfts || [];
-        const lawbstersAddressLower = lawbstersAddress.toLowerCase();
+        inventory.lawbsters = nfts.map((nft: any) => nft.identifier);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs. Sample NFT contract:', nfts[0]?.contract, 'Expected:', lawbstersAddressLower);
-        }
-        const filteredNFTs = nfts.filter((nft: any) => {
-          const nftContract = nft.contract?.toLowerCase();
-          const matches = nftContract === lawbstersAddressLower;
-          if (typeof window !== 'undefined' && window.console && nfts.length > 0 && nfts.indexOf(nft) < 3) {
-            window.console.log('[NFT] Checking NFT', nft.identifier, 'contract:', nftContract, 'matches:', matches);
-          }
-          return matches;
-        });
-        inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Filtered to', inventory.lawbsters.length, 'Lawbsters');
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (contract endpoint with owner filter)');
         }
       } else {
         if (typeof window !== 'undefined' && window.console) {
