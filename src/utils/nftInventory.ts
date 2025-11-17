@@ -205,14 +205,11 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       );
       if (response.ok) {
         const data = await response.json();
-        // OpenSea API returns NFTs owned by the account - filter to ensure they're actually owned
-        const ownedNFTs = data.nfts?.filter((nft: any) => {
-          // Verify ownership - OpenSea v2 API should only return owned NFTs, but double-check
-          return nft.owners?.some((owner: any) => owner.address?.toLowerCase() === walletAddress.toLowerCase()) || true;
-        }) || [];
-        inventory.lawbsters = ownedNFTs.map((nft: any) => nft.identifier);
+        // OpenSea API v2 returns NFTs owned by the account - no need to filter
+        // The API endpoint /account/{walletAddress}/nfts already filters by owner
+        inventory.lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (filtered by ownership)');
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API');
         }
       } else {
         if (typeof window !== 'undefined' && window.console) {
