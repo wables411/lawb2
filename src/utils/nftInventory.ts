@@ -208,6 +208,10 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       if (response.ok) {
         const data = await response.json();
         const nfts = data.nfts || [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] OpenSea contract endpoint response:', JSON.stringify(data, null, 2));
+          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs from contract endpoint');
+        }
         inventory.lawbsters = nfts.map((nft: any) => nft.identifier);
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (contract endpoint with owner filter)');

@@ -46,8 +46,7 @@
         },
         "nft_inventory": {
           ".read": true,
-          ".write": true,
-          ".validate": "(!newData.hasChild('lawbsters') || newData.child('lawbsters').isArray()) && (!newData.hasChild('lawbstarz') || newData.child('lawbstarz').isArray()) && (!newData.hasChild('halloween_lawbsters') || newData.child('halloween_lawbsters').isArray()) && (!newData.hasChild('pixelawbs') || newData.child('pixelawbs').isArray())"
+          ".write": true
         }
       }
     },
