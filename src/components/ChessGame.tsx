@@ -2319,7 +2319,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             }));
           }
           return shouldRender;
-        })() && (
+        })() ? (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
@@ -2458,7 +2458,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             )}
           </div>
         </div>
-        )}
+        ) : null}
 
         {/* Desktop Windows - Home View */}
         {!isMobile && openWindows.has('leaderboard') && (
@@ -3058,7 +3058,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }));
         }
         return shouldRender;
-      })() && (
+      })() ? (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
@@ -3212,7 +3212,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             )}
           </div>
         </div>
-      )}
+      ) : null}
       
       {/* Desktop Windows */}
       {!isMobile && openWindows.has('leaderboard') && (
