@@ -130,8 +130,19 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
               window.console.log('[PROFILE] NFT inventory fetched:', inventory);
             }
             await firebaseProfiles.updateNFTInventory(address, inventory);
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[PROFILE] NFT inventory saved to Firebase');
+            }
             const updated = await firebaseProfiles.getProfile(address);
-            if (updated) profileData = updated;
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[PROFILE] Updated profile from Firebase:', updated);
+              window.console.log('[PROFILE] Updated profile nft_inventory:', updated?.nft_inventory);
+            }
+            if (updated) {
+              profileData = updated;
+              // Force update the state immediately
+              setProfile(updated);
+            }
           } catch (invError) {
             if (typeof window !== 'undefined' && window.console) {
               window.console.error('[PROFILE] Error fetching NFT inventory:', invError);
@@ -228,10 +239,17 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
         window.console.log('[PROFILE] NFT inventory fetched:', inventory);
       }
       await firebaseProfiles.updateNFTInventory(address, inventory);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] NFT inventory saved to Firebase');
+      }
       const updatedProfile = await firebaseProfiles.getProfile(address);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[PROFILE] Updated profile from Firebase:', updatedProfile);
+        window.console.log('[PROFILE] Updated profile nft_inventory:', updatedProfile?.nft_inventory);
+      }
       setProfile(updatedProfile);
       if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] Profile updated with inventory');
+        window.console.log('[PROFILE] Profile state updated with inventory');
       }
     } catch (error) {
       if (typeof window !== 'undefined' && window.console) {
@@ -319,6 +337,18 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
     halloween_lawbsters: [],
     pixelawbs: []
   };
+
+  // Debug logging
+  if (typeof window !== 'undefined' && window.console) {
+    window.console.log('[PROFILE RENDER] Current profile:', profile);
+    window.console.log('[PROFILE RENDER] Current inventory:', inventory);
+    window.console.log('[PROFILE RENDER] Inventory counts:', {
+      lawbsters: inventory.lawbsters.length,
+      lawbstarz: inventory.lawbstarz.length,
+      halloween_lawbsters: inventory.halloween_lawbsters.length,
+      pixelawbs: inventory.pixelawbs.length
+    });
+  }
 
   const totalNFTs = inventory.lawbsters.length + inventory.lawbstarz.length + 
                     inventory.halloween_lawbsters.length + inventory.pixelawbs.length;
