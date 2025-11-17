@@ -85,10 +85,8 @@ export const firebaseProfiles = {
       }
       
       // Full profile creation/update
-      const profile: PlayerProfile = {
+      const profile: any = {
         wallet_address: walletAddress.toLowerCase(),
-        username: profileData.username !== undefined ? profileData.username : existingProfile?.username,
-        profile_picture: profileData.profile_picture !== undefined ? profileData.profile_picture : existingProfile?.profile_picture,
         nft_inventory: profileData.nft_inventory || existingProfile?.nft_inventory || {
           lawbsters: [],
           lawbstarz: [],
@@ -108,6 +106,18 @@ export const firebaseProfiles = {
         created_at: existingProfile?.created_at || now,
         updated_at: now
       };
+      
+      // Only include username if it exists (not undefined)
+      const username = profileData.username !== undefined ? profileData.username : existingProfile?.username;
+      if (username !== undefined) {
+        profile.username = username;
+      }
+      
+      // Only include profile_picture if it exists (not undefined)
+      const profilePicture = profileData.profile_picture !== undefined ? profileData.profile_picture : existingProfile?.profile_picture;
+      if (profilePicture !== undefined) {
+        profile.profile_picture = profilePicture;
+      }
       
       await set(profileRef, profile);
       console.log('[FIREBASE] Profile upserted:', walletAddress);
@@ -166,13 +176,13 @@ export const firebaseProfiles = {
       const existing = await get(profileRef);
       const existingProfile = existing.exists() ? existing.val() as PlayerProfile : null;
       
-      // Use upsertProfile which handles both create and update properly
-      await this.upsertProfile(walletAddress, {
-        nft_inventory: inventory,
-        username: existingProfile?.username, // Preserve username
-        profile_picture: existingProfile?.profile_picture, // Preserve profile picture
-        game_stats: existingProfile?.game_stats // Preserve game stats
-      });
+      // Use update() directly for nft_inventory to avoid undefined issues
+      const updateData: any = {
+        'nft_inventory': inventory,
+        'updated_at': new Date().toISOString()
+      };
+      
+      await update(profileRef, updateData);
       
       console.log('[FIREBASE] NFT inventory updated via upsertProfile:', walletAddress);
     } catch (error) {
