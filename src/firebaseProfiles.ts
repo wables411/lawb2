@@ -162,6 +162,18 @@ export const firebaseProfiles = {
       const db = getDatabaseOrThrow();
       const profileRef = ref(db, `profiles/${walletAddress.toLowerCase()}`);
       
+      // Ensure profile exists first
+      const existing = await get(profileRef);
+      if (!existing.exists()) {
+        // Create profile if it doesn't exist
+        await this.upsertProfile(walletAddress, {
+          nft_inventory: inventory
+        });
+        console.log('[FIREBASE] Profile created with NFT inventory:', walletAddress);
+        return;
+      }
+      
+      // Update existing profile
       await update(profileRef, {
         'nft_inventory': inventory,
         'updated_at': new Date().toISOString()
