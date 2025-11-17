@@ -20,18 +20,26 @@ export async function fetchTokenMetadata(
       try {
         // If we have owner address, filter by owner (much faster and more reliable)
         if (ownerAddress) {
-          const response = await getCollectionNFTs(collectionConfig.slug, 1, 100, ownerAddress);
-          const nft = response.data.find(n => n.token_id.toString() === tokenId);
-          
-          if (nft) {
-            const imageUrl = nft.image_url || nft.image || nft.image_url_shrunk || '';
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[NFT METADATA] Found NFT in Scatter API (filtered by owner):', nft.name, 'Image:', imageUrl);
+          // Try multiple pages in case the token isn't in the first 100
+          for (let page = 1; page <= 3; page++) {
+            const response = await getCollectionNFTs(collectionConfig.slug, page, 100, ownerAddress);
+            const nft = response.data.find(n => n.token_id.toString() === tokenId);
+            
+            if (nft) {
+              const imageUrl = nft.image_url || nft.image || nft.image_url_shrunk || '';
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[NFT METADATA] Found NFT in Scatter API (filtered by owner, page', page, '):', nft.name, 'Image:', imageUrl);
+              }
+              return {
+                image_url: imageUrl,
+                name: nft.name
+              };
             }
-            return {
-              image_url: imageUrl,
-              name: nft.name
-            };
+            
+            // If we've searched all available pages, stop
+            if (page >= response.totalPages) {
+              break;
+            }
           }
         } else {
           // Fallback: Search up to 5 pages (500 NFTs) to find the token
