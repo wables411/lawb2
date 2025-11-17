@@ -119,14 +119,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
           }
         }
         
-        // Load NFT inventory if not already loaded
-        if (profileData && (!profileData.nft_inventory || 
-            (profileData.nft_inventory.lawbsters.length === 0 && 
-             profileData.nft_inventory.lawbstarz.length === 0 && 
-             profileData.nft_inventory.halloween_lawbsters.length === 0 && 
-             profileData.nft_inventory.pixelawbs.length === 0))) {
+        // Always refresh NFT inventory to ensure accuracy (Etherscan/contract data is source of truth)
+        if (profileData) {
           if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] Fetching NFT inventory...');
+            window.console.log('[PROFILE] Refreshing NFT inventory to ensure accuracy...');
           }
           try {
             const inventory = await fetchNFTInventory(address);
@@ -140,10 +136,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
             if (typeof window !== 'undefined' && window.console) {
               window.console.error('[PROFILE] Error fetching NFT inventory:', invError);
             }
-          }
-        } else if (profileData) {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] Using existing NFT inventory:', profileData.nft_inventory);
+            // If refresh fails, use existing inventory as fallback
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[PROFILE] Using existing NFT inventory as fallback:', profileData.nft_inventory);
+            }
           }
         }
         
@@ -334,12 +330,17 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
         {profile?.profile_picture?.image_url && (
           <img 
             src={profile.profile_picture.image_url} 
-            alt="Profile" 
+            alt="Profile"
             onError={(e) => {
               if (typeof window !== 'undefined' && window.console) {
                 window.console.error('[PROFILE] Failed to load profile picture:', profile.profile_picture?.image_url);
               }
               e.currentTarget.style.display = 'none';
+            }}
+            onLoad={() => {
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[PROFILE] Profile picture loaded successfully:', profile.profile_picture?.image_url);
+              }
             }}
             style={{ 
               width: isMobile ? '60px' : '80px', 
@@ -347,7 +348,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
               borderRadius: '50%', 
               border: '2px solid #000',
               marginBottom: '10px',
-              objectFit: 'cover'
+              objectFit: 'cover',
+              backgroundColor: '#f0f0f0'
             }} 
           />
         )}
@@ -497,24 +499,30 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }
         <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Profile Picture</h4>
         {profile?.profile_picture ? (
           <div style={{ marginBottom: '12px' }}>
-            <img 
-              src={profile.profile_picture.image_url} 
-              alt="Current profile picture" 
-              onError={(e) => {
-                if (typeof window !== 'undefined' && window.console) {
-                  window.console.error('[PROFILE] Failed to load profile picture in selection:', profile.profile_picture?.image_url);
-                }
-                e.currentTarget.style.display = 'none';
-              }}
-              style={{ 
-                width: '60px', 
-                height: '60px', 
-                borderRadius: '4px', 
-                border: '2px solid #000',
-                objectFit: 'cover',
-                marginBottom: '8px'
-              }} 
-            />
+                     <img 
+                       src={profile.profile_picture.image_url} 
+                       alt="Current profile picture"
+                       onError={(e) => {
+                         if (typeof window !== 'undefined' && window.console) {
+                           window.console.error('[PROFILE] Failed to load profile picture in selection:', profile.profile_picture?.image_url);
+                         }
+                         e.currentTarget.style.display = 'none';
+                       }}
+                       onLoad={() => {
+                         if (typeof window !== 'undefined' && window.console) {
+                           window.console.log('[PROFILE] Profile picture loaded in selection:', profile.profile_picture?.image_url);
+                         }
+                       }}
+                       style={{ 
+                         width: '60px', 
+                         height: '60px', 
+                         borderRadius: '4px', 
+                         border: '2px solid #000',
+                         objectFit: 'cover',
+                         marginBottom: '8px',
+                         backgroundColor: '#f0f0f0'
+                       }} 
+                     />
             <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
               {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{profile.profile_picture.token_id}
             </div>
