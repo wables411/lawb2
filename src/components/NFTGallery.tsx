@@ -163,6 +163,13 @@ const COLLECTIONS: Collection[] = [
   { slug: 'lawbnexus', name: 'Nexus', api: 'opensea-solana', chain: 'solana' },
 ];
 
+// Map collection slugs to contract addresses for Alchemy API
+const COLLECTION_CONTRACT_MAP: Record<string, string> = {
+  'lawbsters': NFT_COLLECTIONS.lawbsters.address,
+  'lawbstarz': NFT_COLLECTIONS.lawbstarz.address,
+  'pixelawbs': NFT_COLLECTIONS.pixelawbs.address,
+};
+
 declare global {
   interface Window {
     reown?: {
@@ -278,9 +285,21 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             }
           }
         } else if (currentCollection.api === 'opensea') {
-          response = await getOpenSeaNFTs(currentCollection.slug, 50, walletAddressToFetch);
+          // For "MY NFTs" view with EVM collections, use Alchemy API for accurate ownership
+          if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug] && currentCollection.chain === 'ethereum') {
+            const contractAddress = COLLECTION_CONTRACT_MAP[currentCollection.slug];
+            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50);
+          } else {
+            response = await getOpenSeaNFTs(currentCollection.slug, 50, walletAddressToFetch);
+          }
         } else {
-          response = await getCollectionNFTs(currentCollection.slug, currentPage, 50, walletAddressToFetch);
+          // For "MY NFTs" view with Scatter collections (Pixelawbs, Lawbstarz), use Alchemy if on Ethereum
+          if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
+            const contractAddress = COLLECTION_CONTRACT_MAP[currentCollection.slug];
+            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50);
+          } else {
+            response = await getCollectionNFTs(currentCollection.slug, currentPage, 50, walletAddressToFetch);
+          }
         }
         setNfts(response.data);
         setTotalPages(response.totalPages);
