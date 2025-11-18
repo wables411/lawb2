@@ -351,16 +351,21 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
 
   // Fetch Lawbsters (Ethereum) - Use Etherscan tokennfttx API to get token IDs from transaction history
-  // This is more reliable than RPC calls or OpenSea for contracts that don't support enumeration
+  // This is the most reliable method - Etherscan indexes all NFT transactions
+  // Note: Works without API key but has rate limits. Set REACT_APP_ETHERSCAN_API_KEY in Netlify for higher limits.
   const lawbsters = NFT_COLLECTIONS.lawbsters;
   try {
-    const ETHERSCAN_API_KEY = process.env.REACT_APP_ETHERSCAN_API_KEY || "";
+    const ETHERSCAN_API_KEY = import.meta.env.VITE_ETHERSCAN_API_KEY || process.env.REACT_APP_ETHERSCAN_API_KEY || "";
     if (typeof window !== 'undefined' && window.console) {
       window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from Etherscan transaction history');
+      if (!ETHERSCAN_API_KEY) {
+        window.console.warn('[NFT] No Etherscan API key set - using free tier (rate limited)');
+      }
     }
     
     // First check balance
-    const balanceUrl = `https://api.etherscan.io/api?module=account&action=tokennftbalance&contractaddress=${lawbsters.address}&address=${walletAddress}&tag=latest&apikey=${ETHERSCAN_API_KEY}`;
+    // Etherscan API works without key but has strict rate limits (5 calls/sec)
+    const balanceUrl = `https://api.etherscan.io/api?module=account&action=tokennftbalance&contractaddress=${lawbsters.address}&address=${walletAddress}&tag=latest${ETHERSCAN_API_KEY ? `&apikey=${ETHERSCAN_API_KEY}` : ''}`;
     const balanceResponse = await fetch(balanceUrl);
     
     if (balanceResponse.ok) {
@@ -376,7 +381,8 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
           }
         } else {
           // Get token IDs from transaction history using tokennfttx
-          const txUrl = `https://api.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${lawbsters.address}&address=${walletAddress}&startblock=0&endblock=99999999&sort=asc&apikey=${ETHERSCAN_API_KEY}`;
+          // This endpoint returns all NFT transfers for the address, allowing us to track ownership
+          const txUrl = `https://api.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${lawbsters.address}&address=${walletAddress}&startblock=0&endblock=99999999&sort=asc${ETHERSCAN_API_KEY ? `&apikey=${ETHERSCAN_API_KEY}` : ''}`;
           const txResponse = await fetch(txUrl);
           
           if (txResponse.ok) {
