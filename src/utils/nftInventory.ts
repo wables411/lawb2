@@ -360,7 +360,14 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
     
     // Alchemy getNFTs endpoint - returns current holdings, can filter by contract
-    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY || 'demo'}/getNFTs?owner=${walletAddress}&contractAddresses[]=${lawbsters.address}&withMetadata=false&pageSize=100`;
+    // Use URLSearchParams for proper array encoding
+    const params = new URLSearchParams({
+      owner: walletAddress,
+      'contractAddresses[]': lawbsters.address,
+      withMetadata: 'false',
+      pageSize: '100'
+    });
+    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY || 'demo'}/getNFTs?${params.toString()}`;
     const alchemyResponse = await fetch(alchemyUrl);
     
     if (alchemyResponse.ok) {
