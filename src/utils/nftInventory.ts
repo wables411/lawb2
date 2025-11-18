@@ -360,7 +360,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
     
     // Alchemy getNFTs endpoint - returns current holdings, can filter by contract
-    // Note: Demo key may not work for NFT API - requires real API key
+    // Requires VITE_ALCHEMY_API_KEY environment variable (set in Netlify)
     // Format: contractAddresses as array parameter (multiple values allowed)
     const apiKey = ALCHEMY_API_KEY || 'demo';
     const baseUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${apiKey}/getNFTs`;
