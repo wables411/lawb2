@@ -180,6 +180,10 @@ function App() {
   };
 
   const minimizeMemeGenerator = () => {
+    setShowMemeGenerator(false);
+    setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
+  };
+
   const openPublicChat = useCallback(() => {
     setActivePopup('chat-popup');
     setMinimizedPopups(prev => {
@@ -189,10 +193,6 @@ function App() {
     });
     setShowWalletMenu(false);
   }, []);
-
-    setShowMemeGenerator(false);
-    setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
-  };
 
 
 
