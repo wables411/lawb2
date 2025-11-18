@@ -52,8 +52,8 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Call Alchemy NFT API
-    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTs?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=false&pageSize=100`;
+    // Call Alchemy NFT API v3 - correct endpoint is getNFTsForOwner, not getNFTs
+    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=false&pageSize=100`;
     
     const response = await fetch(alchemyUrl);
     
