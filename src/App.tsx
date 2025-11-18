@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
 import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
@@ -180,6 +180,16 @@ function App() {
   };
 
   const minimizeMemeGenerator = () => {
+  const openPublicChat = useCallback(() => {
+    setActivePopup('chat-popup');
+    setMinimizedPopups(prev => {
+      const newSet = new Set(prev);
+      newSet.delete('chat-popup');
+      return newSet;
+    });
+    setShowWalletMenu(false);
+  }, []);
+
     setShowMemeGenerator(false);
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
   };
@@ -346,6 +356,7 @@ function App() {
           address: address,
           ens: undefined
         }}
+        onOpenPublicChat={openPublicChat}
       />
 
       <Popup id="chat-popup" isOpen={activePopup === 'chat-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>

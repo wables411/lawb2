@@ -110,9 +110,10 @@ interface TaskbarProps {
     address?: string;
     ens?: string;
   };
+  onOpenPublicChat?: () => void;
 }
 
-const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, walletButton, connectionStatus }) => {
+const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, walletButton, connectionStatus, onOpenPublicChat }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const classes = useStyles({ isOpen: isMenuOpen });
@@ -255,13 +256,19 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Lawb.Shop
           </a>
-          <a
-            href="/chess"
+          <button
+            type="button"
             className={classes.menuLink}
-            onClick={handleMenuLinkClick}
+            style={{ width: '100%', border: 'none', textAlign: 'left' }}
+            onClick={() => {
+              handleMenuLinkClick();
+              if (onOpenPublicChat) {
+                onOpenPublicChat();
+              }
+            }}
           >
             Public Chat
-          </a>
+          </button>
         </div>
       )}
     </div>

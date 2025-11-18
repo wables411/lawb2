@@ -252,6 +252,7 @@ const Mobile = () => {
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [showPublicChat, setShowPublicChat] = useState(false);
 
   const icons = [
     { label: 'Chess', icon: '/assets/chessicon.png', action: () => window.location.href = '/chess' },
@@ -410,6 +411,16 @@ const Mobile = () => {
             <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
             <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
             <button className={classes.menuLink} onClick={() => { setMenuOpen(false); setShowMemeGenerator(true); }} style={{ border: 'none', cursor: 'pointer', width: '90%', margin: '0 auto', display: 'block' }}>Meme Generator</button>
+            <button
+              className={classes.menuLink}
+              onClick={() => {
+                setMenuOpen(false);
+                setShowPublicChat(true);
+              }}
+              style={{ border: 'none', cursor: 'pointer', width: '90%', margin: '4px auto 0', display: 'block' }}
+            >
+              Public Chat
+            </button>
           </div>
         </div>
       )}
@@ -492,6 +503,15 @@ const Mobile = () => {
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
       </MobilePopup98>
+      <MobilePopup98 isOpen={showPublicChat} onClose={() => setShowPublicChat(false)} title="Public Chat">
+        <p style={{ marginBottom: '10px' }}>
+          join the chat, there is no meme we lawb you{' '}
+          <a href="https://boards.miladychan.org/milady/33793" target="_blank" rel="noopener noreferrer" style={{ color: '#ff0000', textDecoration: 'underline' }}>
+            /milady/33793
+          </a>
+        </p>
+        <img src="/assets/miladychanfaq.png" alt="Milady Chan FAQ" style={{ maxWidth: '100%', marginTop: '10px' }} />
+      </MobilePopup98>
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
         <button className={classes.menuButton} onClick={() => setMenuOpen(true)}>Menu</button>
@@ -520,13 +540,6 @@ const Mobile = () => {
           {isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
         </div>
         <span className={classes.clock}>{clock}</span>
-        <button 
-          className={classes.menuButton} 
-          onClick={() => window.location.href = '/chess'}
-          style={{ marginLeft: '8px' }}
-        >
-          Public Chat
-        </button>
       </div>
     </div>
   );
