@@ -350,74 +350,118 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       }
     }
 
-  // Fetch Lawbsters (Ethereum) - Prioritize direct contract calls via RPC (most accurate)
-  // Fallback to OpenSea API only if contract calls fail
+  // Fetch Lawbsters (Ethereum) - Use Etherscan tokennfttx API to get token IDs from transaction history
+  // This is more reliable than RPC calls or OpenSea for contracts that don't support enumeration
   try {
     const lawbsters = NFT_COLLECTIONS.lawbsters;
+    const ETHERSCAN_API_KEY = process.env.REACT_APP_ETHERSCAN_API_KEY || "";
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'via direct contract call');
+      window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from Etherscan transaction history');
     }
     
-    const { balance, tokenIds } = await fetchNFTsFromContract(
-      lawbsters.address,
-      walletAddress,
-      'Lawbsters'
-    );
+    // First check balance
+    const balanceUrl = `https://api.etherscan.io/api?module=account&action=tokennftbalance&contractaddress=${lawbsters.address}&address=${walletAddress}&tag=latest&apikey=${ETHERSCAN_API_KEY}`;
+    const balanceResponse = await fetch(balanceUrl);
     
-    if (balance === 0n) {
-      inventory.lawbsters = [];
-    } else if (tokenIds.length > 0) {
-      // Successfully got token IDs from contract
-      inventory.lawbsters = tokenIds;
-    } else {
-      // Contract call worked but tokenOfOwnerByIndex failed
-      // This means we have NFTs but can't enumerate them via contract
-      // Fall back to OpenSea API
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Contract doesn\'t support tokenOfOwnerByIndex, trying OpenSea API for Lawbsters');
-      }
-      throw new Error('Contract does not support tokenOfOwnerByIndex');
-    }
-  } catch (contractError) {
-    // Fallback to OpenSea API if contract calls fail
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.warn('[NFT] Direct contract call failed for Lawbsters, trying OpenSea API:', contractError);
-    }
-    try {
-      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-      const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
-      // Use account endpoint with contract_address filter
-      const response = await fetch(
-        `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
-        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const nfts = data.nfts || [];
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] OpenSea account endpoint response:', JSON.stringify(data, null, 2));
-          window.console.log('[NFT] OpenSea returned', nfts.length, 'NFTs from account endpoint');
-        }
-        // Filter by contract address - OpenSea API doesn't always respect the contract_address filter
-        const lawbstersAddressLower = lawbstersAddress.toLowerCase();
-        const filteredNFTs = nfts.filter((nft: any) => 
-          nft.contract?.toLowerCase() === lawbstersAddressLower
-        );
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Filtered to', filteredNFTs.length, 'Lawbsters (contract:', lawbstersAddressLower, ')');
-        }
-        inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (fallback, filtered by contract)');
+    if (balanceResponse.ok) {
+      const balanceData = await balanceResponse.json();
+      if (balanceData.status === '1' && balanceData.result) {
+        const balanceStr = Array.isArray(balanceData.result) ? balanceData.result[0] : balanceData.result;
+        const balance = BigInt(balanceStr || '0');
+        
+        if (balance === 0n) {
+          inventory.lawbsters = [];
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[NFT] No Lawbsters found (balance is 0)');
+          }
+        } else {
+          // Get token IDs from transaction history using tokennfttx
+          const txUrl = `https://api.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${lawbsters.address}&address=${walletAddress}&startblock=0&endblock=99999999&sort=asc&apikey=${ETHERSCAN_API_KEY}`;
+          const txResponse = await fetch(txUrl);
+          
+          if (txResponse.ok) {
+            const txData = await txResponse.json();
+            if (txData.status === '1' && txData.result && Array.isArray(txData.result)) {
+              // Extract unique token IDs from transactions
+              // Transactions where 'to' is our wallet are incoming, 'from' is outgoing
+              const tokenIds = new Set<string>();
+              
+              for (const tx of txData.result) {
+                const tokenId = tx.tokenID;
+                const toAddress = tx.to?.toLowerCase();
+                const fromAddress = tx.from?.toLowerCase();
+                const walletLower = walletAddress.toLowerCase();
+                
+                if (toAddress === walletLower) {
+                  // Incoming transfer - add token ID
+                  tokenIds.add(tokenId);
+                } else if (fromAddress === walletLower) {
+                  // Outgoing transfer - remove token ID
+                  tokenIds.delete(tokenId);
+                }
+              }
+              
+              inventory.lawbsters = Array.from(tokenIds);
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from Etherscan transaction history');
+              }
+            } else {
+              // If transaction history fails, try contract call as fallback
+              throw new Error('Etherscan transaction history returned no results');
+            }
+          } else {
+            throw new Error(`Etherscan HTTP error: ${txResponse.status}`);
+          }
         }
       } else {
+        throw new Error(`Etherscan API error: ${balanceData.message || 'Unknown error'}`);
+      }
+    } else {
+      throw new Error(`Etherscan HTTP error: ${balanceResponse.status}`);
+    }
+  } catch (etherscanError) {
+    // Fallback to contract call if Etherscan fails
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.warn('[NFT] Etherscan transaction history failed for Lawbsters, trying contract call:', etherscanError);
+    }
+    try {
+      const { balance, tokenIds } = await fetchNFTsFromContract(
+        lawbsters.address,
+        walletAddress,
+        'Lawbsters'
+      );
+      
+      if (balance === 0n) {
+        inventory.lawbsters = [];
+      } else if (tokenIds.length > 0) {
+        inventory.lawbsters = tokenIds;
+      } else {
+        // Last resort: try OpenSea API
         if (typeof window !== 'undefined' && window.console) {
-          window.console.error('[NFT] OpenSea API error for Lawbsters:', response.status, response.statusText);
+          window.console.warn('[NFT] Contract enumeration failed, trying OpenSea API as last resort');
+        }
+        const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+        const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
+        const response = await fetch(
+          `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
+          { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const nfts = data.nfts || [];
+          const lawbstersAddressLower = lawbstersAddress.toLowerCase();
+          const filteredNFTs = nfts.filter((nft: any) => 
+            nft.contract?.toLowerCase() === lawbstersAddressLower
+          );
+          inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (last resort)');
+          }
         }
       }
-    } catch (apiError) {
+    } catch (fallbackError) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.error('[NFT] Error fetching Lawbsters from OpenSea API:', apiError);
+        window.console.error('[NFT] All methods failed for Lawbsters:', fallbackError);
       }
     }
   }
