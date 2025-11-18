@@ -352,8 +352,8 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
 
   // Fetch Lawbsters (Ethereum) - Use Etherscan tokennfttx API to get token IDs from transaction history
   // This is more reliable than RPC calls or OpenSea for contracts that don't support enumeration
+  const lawbsters = NFT_COLLECTIONS.lawbsters;
   try {
-    const lawbsters = NFT_COLLECTIONS.lawbsters;
     const ETHERSCAN_API_KEY = process.env.REACT_APP_ETHERSCAN_API_KEY || "";
     if (typeof window !== 'undefined' && window.console) {
       window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from Etherscan transaction history');
