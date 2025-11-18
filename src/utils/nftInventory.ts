@@ -61,17 +61,47 @@ async function fetchTokenIdsFromTransferEvents(
     // Format: 0x + 64 hex characters (32 bytes)
     const walletAddressPadded = '0x' + walletAddress.toLowerCase().slice(2).padStart(64, '0');
     
+    // Get a recent block number to limit the query (some RPCs don't like fromBlock: 0)
+    // Query from 1 year ago (approximately 2.5M blocks) or use earliest if that's too much
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 2500000); // ~1 year of blocks
+    
     // Query Transfer events where 'to' is the wallet address
-    const logs = await provider.getLogs({
-      address: contractAddress,
-      topics: [
-        TRANSFER_EVENT_SIGNATURE,
-        null, // from (any address)
-        walletAddressPadded // to (our wallet)
-      ],
-      fromBlock: 0,
-      toBlock: 'latest'
-    });
+    // Some RPCs don't accept null in topics, so we'll query all Transfer events and filter client-side
+    let logs;
+    try {
+      // Try with null topics first (most efficient)
+      logs = await provider.getLogs({
+        address: contractAddress,
+        topics: [
+          TRANSFER_EVENT_SIGNATURE,
+          null, // from (any address)
+          walletAddressPadded // to (our wallet)
+        ],
+        fromBlock: fromBlock,
+        toBlock: 'latest'
+      });
+    } catch (nullError) {
+      // If null topics fail, query all Transfer events and filter client-side
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.warn(`[NFT] RPC doesn't support null topics, querying all Transfer events for ${collectionName}`);
+      }
+      const allLogs = await provider.getLogs({
+        address: contractAddress,
+        topics: [TRANSFER_EVENT_SIGNATURE],
+        fromBlock: fromBlock,
+        toBlock: 'latest'
+      });
+      
+      // Filter logs where 'to' is our wallet address
+      logs = allLogs.filter(log => {
+        if (log.topics.length >= 3) {
+          // topics[2] is the 'to' address
+          return log.topics[2]?.toLowerCase() === walletAddressPadded.toLowerCase();
+        }
+        return false;
+      });
+    }
     
     if (typeof window !== 'undefined' && window.console) {
       window.console.log(`[NFT] Found ${logs.length} Transfer events to ${walletAddress} for ${collectionName}`);
@@ -91,16 +121,36 @@ async function fetchTokenIdsFromTransferEvents(
     }
     
     // Also check for Transfer events where 'from' is the wallet (to handle transfers out)
-    const fromLogs = await provider.getLogs({
-      address: contractAddress,
-      topics: [
-        TRANSFER_EVENT_SIGNATURE,
-        walletAddressPadded, // from (our wallet)
-        null // to (any address)
-      ],
-      fromBlock: 0,
-      toBlock: 'latest'
-    });
+    let fromLogs;
+    try {
+      fromLogs = await provider.getLogs({
+        address: contractAddress,
+        topics: [
+          TRANSFER_EVENT_SIGNATURE,
+          walletAddressPadded, // from (our wallet)
+          null // to (any address)
+        ],
+        fromBlock: fromBlock,
+        toBlock: 'latest'
+      });
+    } catch (nullError) {
+      // If null topics fail, query all Transfer events and filter client-side
+      const allLogs = await provider.getLogs({
+        address: contractAddress,
+        topics: [TRANSFER_EVENT_SIGNATURE],
+        fromBlock: fromBlock,
+        toBlock: 'latest'
+      });
+      
+      // Filter logs where 'from' is our wallet address
+      fromLogs = allLogs.filter(log => {
+        if (log.topics.length >= 2) {
+          // topics[1] is the 'from' address
+          return log.topics[1]?.toLowerCase() === walletAddressPadded.toLowerCase();
+        }
+        return false;
+      });
+    }
     
     // Remove token IDs that were transferred out
     for (const log of fromLogs) {
