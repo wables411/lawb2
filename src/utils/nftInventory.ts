@@ -392,12 +392,24 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       }
     } else {
       // Alchemy failed, log the error response for debugging
-      const errorText = await alchemyResponse.text();
+      let errorText = '';
+      try {
+        const contentType = alchemyResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await alchemyResponse.json();
+          errorText = JSON.stringify(errorData);
+        } else {
+          errorText = await alchemyResponse.text();
+        }
+      } catch (e) {
+        errorText = `Failed to read error response: ${e}`;
+      }
+      
       if (typeof window !== 'undefined' && window.console) {
-        window.console.warn('[NFT] Alchemy API error response:', errorText);
+        window.console.warn('[NFT] Alchemy proxy error:', alchemyResponse.status, errorText.substring(0, 300));
       }
       // Alchemy failed, try contract enumeration
-      throw new Error(`Alchemy API error: ${alchemyResponse.status} - ${errorText.substring(0, 100)}`);
+      throw new Error(`Alchemy proxy error: ${alchemyResponse.status}`);
     }
   } catch (alchemyError) {
     // Fallback to contract enumeration if Alchemy fails
