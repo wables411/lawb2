@@ -2331,6 +2331,13 @@ body, html {
   user-select: none;
 }
 
+/* Mobile viewport optimization */
+.chess-game {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: pan-x pan-y;
+}
+
 /* Mobile-specific media queries */
 @media (max-width: 768px) {
   .chess-game.mobile .game-stable-layout {

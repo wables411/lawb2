@@ -11,6 +11,10 @@
   overflow: hidden;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
   padding: 0;
+  /* Mobile viewport optimization */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: pan-x pan-y;
 }
 
 /* Custom transparent scrollbars for all elements */
@@ -2188,10 +2192,12 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   cursor: pointer;
   border-radius: 0;
   min-width: 80px;
+  min-height: 44px;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: background 0.2s;
+  touch-action: manipulation;
 }
 
 .mode-btn-compact:hover {
@@ -2222,6 +2228,8 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: background 0.2s;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .start-btn-compact:hover {
@@ -2826,20 +2834,21 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     max-height: 50vh;
   }
 
-  /* Smaller touch targets for very small screens */
+  /* Maintain minimum touch targets even on small screens */
   .square {
-    min-height: 40px;
-    min-width: 40px;
+    min-height: 44px;
+    min-width: 44px;
   }
 
   .game-controls-compact button,
   .mode-btn-compact,
   .start-btn-compact,
   .sidebar-toggle-btn {
-    min-height: 40px;
-    min-width: 40px;
-    padding: 8px 12px;
-    font-size: 14px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    touch-action: manipulation;
   }
 
   .chessboard-container,
@@ -2880,6 +2889,64 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   .mode-selection-compact {
     gap: 12px;
     margin-bottom: 16px;
+  }
+  
+  /* Mobile menu popup */
+  .chess-menu-popup {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    right: auto !important;
+    width: 90vw !important;
+    max-width: 300px !important;
+    min-width: 200px !important;
+  }
+  
+  .chess-menu-popup button {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    touch-action: manipulation;
+  }
+  
+  /* Mobile-optimized header */
+  .chess-header {
+    padding: 8px 4px;
+  }
+  
+  .chess-header h2 {
+    font-size: 14px;
+  }
+  
+  .chess-controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    font-size: 18px;
+    touch-action: manipulation;
+  }
+  
+  /* Mobile game mode buttons */
+  .mode-btn-compact {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .start-btn-compact {
+    width: 100%;
+    margin-top: 12px;
+  }
+  
+  /* Mobile help section */
+  .help-content {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  
+  .help-content p,
+  .help-content li {
+    margin-bottom: 8px;
   }
 }
 

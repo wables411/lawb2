@@ -2146,23 +2146,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
-            {!isMobile && (
-              <button 
-                className="menu-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (typeof window !== 'undefined' && window.console) {
-                    window.console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
-                  }
-                  setIsMenuOpen(prev => !prev);
-                }}
-                title="Menu"
-                type="button"
-              >
-                ☰
-              </button>
-            )}
+            <button 
+              className="menu-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
+                }
+                setIsMenuOpen(prev => !prev);
+              }}
+              title="Menu"
+              type="button"
+            >
+              ☰
+            </button>
             {isMobile && isChatMinimized && onChatToggle && (
               <button 
                 className="chat-bubble-btn"
@@ -2331,9 +2329,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </div>
         </div>
 
-        {/* Desktop Menu Popup - Home View */}
+        {/* Menu Popup - Home View (Desktop and Mobile) */}
         {(() => {
-          const shouldRender = !isMobile && isMenuOpen && !showGame;
+          const shouldRender = isMenuOpen && !showGame;
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[MENU RENDER] Home view menu check:', JSON.stringify({
               isMobile,
@@ -2381,31 +2379,43 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               Menu
             </div>
                 <button
-              onClick={() => openWindow('leaderboard')}
+              onClick={() => {
+                openWindow('leaderboard');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '8px',
+                padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
                 background: '#c0c0c0',
                 border: '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                minHeight: isMobile ? '44px' : 'auto',
+                fontSize: isMobile ? '16px' : '14px',
+                touchAction: 'manipulation'
               }}
             >
               Leaderboard
             </button>
                 <button
-              onClick={() => openWindow('gallery')}
+              onClick={() => {
+                openWindow('gallery');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '8px',
+                padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
                 background: '#c0c0c0',
                 border: '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                minHeight: isMobile ? '44px' : 'auto',
+                fontSize: isMobile ? '16px' : '14px',
+                touchAction: 'manipulation'
               }}
             >
               Gallery
@@ -2420,12 +2430,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '8px',
+                padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
                 background: '#c0c0c0',
                 border: '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                minHeight: isMobile ? '44px' : 'auto',
+                fontSize: isMobile ? '16px' : '14px',
+                touchAction: 'manipulation'
               }}
             >
               Chat
@@ -2443,12 +2456,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '8px',
+                padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
                 background: '#c0c0c0',
                 border: '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                minHeight: isMobile ? '44px' : 'auto',
+                fontSize: isMobile ? '16px' : '14px',
+                touchAction: 'manipulation'
               }}
             >
               Profile
