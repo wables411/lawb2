@@ -2574,6 +2574,32 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <PlayerProfile isMobile={false} />
         </Popup>
         )}
+        
+        {/* Profile popup from leaderboard - rendered in home view */}
+        {!isMobile && viewingProfileAddress && (
+          <Popup
+            id="view-profile-window"
+            isOpen={true}
+            onClose={() => {
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
+              }
+              setViewingProfileAddress(null);
+            }}
+            title="Player Profile"
+            initialPosition={{ x: 100, y: 100 }}
+            initialSize={{ width: 400, height: 500 }}
+            zIndex={10000}
+          >
+            {(() => {
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[LEADERBOARD] Rendering profile popup for:', viewingProfileAddress);
+              }
+              return null;
+            })()}
+            <PlayerProfile isMobile={false} address={viewingProfileAddress} />
+          </Popup>
+        )}
       </div>
     );
   }
