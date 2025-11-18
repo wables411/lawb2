@@ -359,7 +359,8 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
     
     // Use Netlify function proxy to keep API key server-side
-    const proxyUrl = `/api/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(lawbsters.address)}`;
+    // Try direct function path first, then fallback to /api route
+    const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(lawbsters.address)}`;
     const alchemyResponse = await fetch(proxyUrl);
     
     if (alchemyResponse.ok) {
