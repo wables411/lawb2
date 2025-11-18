@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Draggable from 'react-draggable';
-import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs } from '../mint';
+import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getAlchemyNFTsForOwner } from '../mint';
+import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
 import NFTDetailPopup from './NFTDetailPopup';
 import { useAppKit } from '@reown/appkit/react';

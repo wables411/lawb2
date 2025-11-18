@@ -172,6 +172,76 @@ export async function mintNFT(walletAddress: string, selectedLists: Array<{id: s
   };
 }
 
+// Fetch NFTs from Alchemy API for EVM collections (Ethereum only for now)
+export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
+  try {
+    // Use Netlify function proxy to keep API key server-side
+    const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(ownerAddress)}&contractAddress=${encodeURIComponent(contractAddress)}`;
+    const response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Alchemy API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.ownedNfts || !Array.isArray(data.ownedNfts)) {
+      return {
+        page: 1,
+        pageSize: pageSize,
+        totalCount: 0,
+        totalPages: 1,
+        data: []
+      };
+    }
+    
+    // Transform Alchemy response to NFT format
+    const transformedNfts: NFT[] = data.ownedNfts.map((nft: any): NFT => {
+      const tokenId = nft.id?.tokenId || nft.tokenId || '0';
+      const tokenIdNum = typeof tokenId === 'string' ? parseInt(tokenId, 16) || parseInt(tokenId, 10) : tokenId;
+      
+      return {
+        id: `${contractAddress}-${tokenIdNum}`,
+        address: contractAddress,
+        token_id: tokenIdNum,
+        attributes: JSON.stringify(nft.metadata?.attributes || []),
+        name: nft.metadata?.name || nft.title || `#${tokenIdNum}`,
+        image_url: nft.metadata?.image || nft.media?.[0]?.gateway || nft.media?.[0]?.raw || '',
+        owner_of: ownerAddress,
+        block_minted: 0,
+        contract_type: 'ERC721',
+        description: nft.metadata?.description || '',
+        image: nft.metadata?.image || nft.media?.[0]?.gateway || nft.media?.[0]?.raw || '',
+        image_url_shrunk: nft.metadata?.image || nft.media?.[0]?.gateway || nft.media?.[0]?.raw || '',
+        animation_url: nft.metadata?.animation_url || '',
+        metadata: JSON.stringify(nft.metadata || {}),
+        chain_id: 1, // Ethereum mainnet
+        old_image_url: '',
+        old_token_uri: nft.tokenUri?.raw || '',
+        token_uri: nft.tokenUri?.raw || '',
+        log_index: 0,
+        transaction_index: 0,
+        collection_id: contractAddress,
+        num_items: 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        owners: [{ owner_of: ownerAddress, quantity: 1 }]
+      };
+    });
+    
+    return {
+      page: 1,
+      pageSize: pageSize,
+      totalCount: transformedNfts.length,
+      totalPages: 1,
+      data: transformedNfts
+    };
+  } catch (error) {
+    console.error('Error getting Alchemy NFTs:', error);
+    throw error;
+  }
+}
+
 export async function getOpenSeaNFTs(collectionSlug: string, pageSize: number = 50, ownerAddress?: string): Promise<NFTResponse> {
   const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
   let url = `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?limit=${pageSize}`;
