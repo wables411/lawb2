@@ -350,99 +350,66 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       }
     }
 
-  // Fetch Lawbsters (Ethereum) - Check current balance and get token IDs if contract supports enumeration
-  // Priority: Contract enumeration > Etherscan balance check (for count only)
+  // Fetch Lawbsters (Ethereum) - Use Alchemy NFT API (most reliable for current holdings)
+  // Alchemy's getNFTs endpoint returns current holdings directly, no transaction parsing needed
   const lawbsters = NFT_COLLECTIONS.lawbsters;
   try {
-    // Try direct contract call first (most accurate for current holdings)
-    const { balance, tokenIds } = await fetchNFTsFromContract(
-      lawbsters.address,
-      walletAddress,
-      'Lawbsters'
-    );
-    
-    if (balance === 0n) {
-      inventory.lawbsters = [];
-    } else if (tokenIds.length > 0) {
-      // Successfully got token IDs from contract
-      inventory.lawbsters = tokenIds;
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from contract (current holdings)');
-      }
-    } else {
-      // Contract doesn't support enumeration but balance > 0
-      // Use Etherscan tokennfttx to get current token IDs (only way to get them)
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Contract doesn\'t support enumeration, using Etherscan to get current token IDs');
-      }
-      throw new Error('Contract enumeration not supported, need Etherscan');
-    }
-  } catch (contractError) {
-    // Contract call failed or doesn't support enumeration - use Etherscan tokennfttx
+    const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || "";
     if (typeof window !== 'undefined' && window.console) {
-      window.console.warn('[NFT] Contract call failed for Lawbsters, using Etherscan:', contractError);
+      window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from Alchemy NFT API');
     }
-    try {
-      const ETHERSCAN_API_KEY = import.meta.env.VITE_ETHERSCAN_API_KEY || process.env.REACT_APP_ETHERSCAN_API_KEY || "";
-      
-      // Get current token IDs from Etherscan transaction history
-      // We only need to process transfers to determine current ownership
-      const txUrl = `https://api.etherscan.io/api?module=account&action=tokennfttx&contractaddress=${lawbsters.address}&address=${walletAddress}&startblock=0&endblock=99999999&sort=desc${ETHERSCAN_API_KEY ? `&apikey=${ETHERSCAN_API_KEY}` : ''}`;
-      const txResponse = await fetch(txUrl);
-      
-      if (txResponse.ok) {
-        const txData = await txResponse.json();
-        if (txData.status === '1' && txData.result && Array.isArray(txData.result)) {
-          // Process transactions to determine current ownership
-          // Sort desc to process most recent first, then track ownership changes
-          const tokenOwnership = new Map<string, boolean>(); // tokenId -> isOwned
-          
-          for (const tx of txData.result) {
-            const tokenId = tx.tokenID;
-            const toAddress = tx.to?.toLowerCase();
-            const fromAddress = tx.from?.toLowerCase();
-            const walletLower = walletAddress.toLowerCase();
-            
-            // Only process if we haven't seen this token yet (most recent transaction wins)
-            if (!tokenOwnership.has(tokenId)) {
-              if (toAddress === walletLower) {
-                // Most recent transfer was TO our wallet - we own it
-                tokenOwnership.set(tokenId, true);
-              } else if (fromAddress === walletLower) {
-                // Most recent transfer was FROM our wallet - we don't own it
-                tokenOwnership.set(tokenId, false);
-              }
-            }
-          }
-          
-          // Get all token IDs we currently own
-          const ownedTokenIds = Array.from(tokenOwnership.entries())
-            .filter(([_, isOwned]) => isOwned)
-            .map(([tokenId, _]) => tokenId);
-          
-          inventory.lawbsters = ownedTokenIds;
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from Etherscan (current holdings)');
-          }
-        } else {
-          // Etherscan returned no results or error
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.warn('[NFT] Etherscan returned no transaction history for Lawbsters');
-          }
-          inventory.lawbsters = [];
+    
+    // Alchemy getNFTs endpoint - returns current holdings, can filter by contract
+    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY || 'demo'}/getNFTs?owner=${walletAddress}&contractAddresses[]=${lawbsters.address}&withMetadata=false&pageSize=100`;
+    const alchemyResponse = await fetch(alchemyUrl);
+    
+    if (alchemyResponse.ok) {
+      const alchemyData = await alchemyResponse.json();
+      if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
+        // Extract token IDs from Alchemy response
+        inventory.lawbsters = alchemyData.ownedNfts.map((nft: any) => {
+          // Alchemy returns tokenId as hex string or number, convert to string
+          const tokenId = nft.id?.tokenId || nft.tokenId;
+          return typeof tokenId === 'string' ? tokenId : tokenId.toString();
+        });
+        
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from Alchemy API (current holdings)');
         }
       } else {
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.error('[NFT] Etherscan HTTP error for Lawbsters:', txResponse.status);
-        }
         inventory.lawbsters = [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] No Lawbsters found from Alchemy');
+        }
       }
-    } catch (etherscanError) {
-      // Last resort: try OpenSea API
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.warn('[NFT] Etherscan failed, trying OpenSea API as last resort:', etherscanError);
-      }
-      try {
+    } else {
+      // Alchemy failed, try contract enumeration
+      throw new Error(`Alchemy API error: ${alchemyResponse.status}`);
+    }
+  } catch (alchemyError) {
+    // Fallback to contract enumeration if Alchemy fails
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.warn('[NFT] Alchemy API failed for Lawbsters, trying contract enumeration:', alchemyError);
+    }
+    try {
+      const { balance, tokenIds } = await fetchNFTsFromContract(
+        lawbsters.address,
+        walletAddress,
+        'Lawbsters'
+      );
+      
+      if (balance === 0n) {
+        inventory.lawbsters = [];
+      } else if (tokenIds.length > 0) {
+        inventory.lawbsters = tokenIds;
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from contract enumeration');
+        }
+      } else {
+        // Contract doesn't support enumeration - last resort: OpenSea
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn('[NFT] Contract enumeration not supported, trying OpenSea API');
+        }
         const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
         const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
         const response = await fetch(
@@ -463,12 +430,12 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         } else {
           inventory.lawbsters = [];
         }
-      } catch (openseaError) {
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.error('[NFT] All methods failed for Lawbsters:', openseaError);
-        }
-        inventory.lawbsters = [];
       }
+    } catch (fallbackError) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('[NFT] All methods failed for Lawbsters:', fallbackError);
+      }
+      inventory.lawbsters = [];
     }
   }
 
