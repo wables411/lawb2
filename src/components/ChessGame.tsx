@@ -3451,6 +3451,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       )}
     </div>
   );
+};
 
 // Utility to switch player color
 function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
