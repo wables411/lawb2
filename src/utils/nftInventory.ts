@@ -350,29 +350,17 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       }
     }
 
-  // Fetch Lawbsters (Ethereum) - Use Alchemy NFT API (most reliable for current holdings)
+  // Fetch Lawbsters (Ethereum) - Use Alchemy NFT API via Netlify proxy (keeps API key server-side)
   // Alchemy's getNFTs endpoint returns current holdings directly, no transaction parsing needed
   const lawbsters = NFT_COLLECTIONS.lawbsters;
   try {
-    const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || "";
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from Alchemy NFT API');
+      window.console.log('[NFT] Fetching Lawbsters for', walletAddress, 'from Alchemy NFT API (via proxy)');
     }
     
-    // Alchemy getNFTs endpoint - returns current holdings, can filter by contract
-    // Requires VITE_ALCHEMY_API_KEY environment variable (set in Netlify)
-    // Format: contractAddresses as array parameter (multiple values allowed)
-    const apiKey = ALCHEMY_API_KEY || 'demo';
-    const baseUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${apiKey}/getNFTs`;
-    const params = new URLSearchParams({
-      owner: walletAddress,
-      withMetadata: 'false',
-      pageSize: '100'
-    });
-    // Add contractAddresses as array parameter (Alchemy expects multiple values)
-    params.append('contractAddresses[]', lawbsters.address);
-    const alchemyUrl = `${baseUrl}?${params.toString()}`;
-    const alchemyResponse = await fetch(alchemyUrl);
+    // Use Netlify function proxy to keep API key server-side
+    const proxyUrl = `/api/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(lawbsters.address)}`;
+    const alchemyResponse = await fetch(proxyUrl);
     
     if (alchemyResponse.ok) {
       const alchemyData = await alchemyResponse.json();

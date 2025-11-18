@@ -21,6 +21,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/alchemy-nft"
+  to = "/.netlify/functions/alchemy-nft"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
