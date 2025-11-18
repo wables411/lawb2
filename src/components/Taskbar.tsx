@@ -255,6 +255,13 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Lawb.Shop
           </a>
+          <a
+            href="/chess"
+            className={classes.menuLink}
+            onClick={handleMenuLinkClick}
+          >
+            Public Chat
+          </a>
         </div>
       )}
     </div>

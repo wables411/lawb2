@@ -8,6 +8,8 @@ import {
   removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
+import { getDisplayName } from '../utils/displayName';
+import { firebaseProfiles } from '../firebaseProfiles';
 // Removed blocking connection test - loading data directly with timeout
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
@@ -284,6 +286,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardDisplayNames, setLeaderboardDisplayNames] = useState<Record<string, string>>({});
+  const [viewingProfileAddress, setViewingProfileAddress] = useState<string | null>(null);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
@@ -543,6 +547,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         clearTimeout(timeout);
         setLeaderboardData(data || []);
         setLeaderboardLoading(false);
+        
+        // Fetch display names for all leaderboard entries
+        const displayNames: Record<string, string> = {};
+        await Promise.all((data || []).map(async (entry) => {
+          try {
+            const displayName = await getDisplayName(entry.username);
+            displayNames[entry.username] = displayName;
+          } catch (error) {
+            // Fallback to truncated address if profile fetch fails
+            displayNames[entry.username] = formatLeaderboardAddress(entry.username);
+          }
+        }));
+        setLeaderboardDisplayNames(displayNames);
         
         // If no data, that's fine - just show empty state
       }
@@ -2486,10 +2503,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {leaderboardData.slice(0, 20).map((entry, index: number) => {
                       if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
                         const typedEntry = entry as LeaderboardEntry;
+                        const displayName = leaderboardDisplayNames[typedEntry.username] || formatAddress(typedEntry.username);
                         return (
                           <tr key={typedEntry.username}>
                             <td>{index + 1}</td>
-                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td 
+                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                              onClick={() => setViewingProfileAddress(typedEntry.username)}
+                            >
+                              {displayName}
+                            </td>
                             <td>{typedEntry.points}</td>
                           </tr>
                         );
@@ -2735,10 +2758,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                           {leaderboardData.slice(0, 10).map((entry, index: number) => {
                             if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
                               const typedEntry = entry as LeaderboardEntry;
+                              const displayName = leaderboardDisplayNames[typedEntry.username] || formatAddress(typedEntry.username);
                               return (
                                 <tr key={typedEntry.username}>
                                   <td>{index + 1}</td>
-                                  <td>{formatAddress(typedEntry.username)}</td>
+                                  <td 
+                                    style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                                    onClick={() => setViewingProfileAddress(typedEntry.username)}
+                                  >
+                                    {displayName}
+                                  </td>
                                   <td>{typedEntry.points}</td>
                                 </tr>
                               );
@@ -2830,6 +2859,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               {sidebarView === 'profile' && (
                 <div className="profile-compact mobile-content-view">
                   <PlayerProfile isMobile={true} />
+                </div>
+              )}
+              
+              {viewingProfileAddress && (
+                <div className="profile-compact mobile-content-view" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: '#fff' }}>
+                  <button onClick={() => setViewingProfileAddress(null)} style={{ margin: '10px', padding: '5px 10px' }}>Close</button>
+                  <PlayerProfile isMobile={true} address={viewingProfileAddress} />
                 </div>
               )}
             </div>
@@ -3240,10 +3276,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {leaderboardData.slice(0, 20).map((entry, index: number) => {
                       if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
                         const typedEntry = entry as LeaderboardEntry;
+                        const displayName = leaderboardDisplayNames[typedEntry.username] || formatAddress(typedEntry.username);
                         return (
                           <tr key={typedEntry.username}>
                             <td>{index + 1}</td>
-                            <td>{formatAddress(typedEntry.username)}</td>
+                            <td 
+                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                              onClick={() => setViewingProfileAddress(typedEntry.username)}
+                            >
+                              {displayName}
+                            </td>
                             <td>{typedEntry.points}</td>
                           </tr>
                         );
@@ -3321,6 +3363,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           zIndex={1000}
         >
           <PlayerProfile isMobile={false} />
+        </Popup>
+      )}
+      
+      {!isMobile && viewingProfileAddress && (
+        <Popup
+          id="view-profile-window"
+          isOpen={true}
+          onClose={() => setViewingProfileAddress(null)}
+          title="Player Profile"
+          initialPosition={{ x: 100, y: 100 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <PlayerProfile isMobile={false} address={viewingProfileAddress} />
         </Popup>
       )}
     </div>

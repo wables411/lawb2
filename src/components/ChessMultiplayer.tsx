@@ -8,6 +8,7 @@ import {
   removeZeroAddressEntry,
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
+import { getDisplayName } from '../utils/displayName';
 import { firebaseChess } from '../firebaseChess';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
@@ -942,6 +943,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     lastPawnDoubleMove: null as { row: number; col: number } | null
   });
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardDisplayNames, setLeaderboardDisplayNames] = useState<Record<string, string>>({});
+  const [viewingProfileAddress, setViewingProfileAddress] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // Refs
@@ -1764,6 +1767,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const data = await getTopLeaderboardEntries(20);
       setLeaderboard(data);
       console.log('Leaderboard data loaded:', data);
+      
+      // Fetch display names for all leaderboard entries
+      const displayNames: Record<string, string> = {};
+      await Promise.all(data.map(async (entry) => {
+        try {
+          const displayName = await getDisplayName(entry.username);
+          displayNames[entry.username] = displayName;
+        } catch (error) {
+          // Fallback to truncated address if profile fetch fails
+          displayNames[entry.username] = formatLeaderboardAddress(entry.username);
+        }
+      }));
+      setLeaderboardDisplayNames(displayNames);
       
       // If no data, set empty array explicitly
       if (!data || data.length === 0) {
@@ -6251,13 +6267,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           <div className="leaderboard-compact">
             {leaderboard.length > 0 ? (
               <div className="leaderboard-list">
-                {leaderboard.slice(0, 20).map((entry, index) => (
-                  <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                    <span className="rank">#{index + 1}</span>
-                    <span className="player">{formatLeaderboardAddress(entry.username)}</span>
-                    <span className="score">{entry.points}</span>
-                  </div>
-                ))}
+                {leaderboard.slice(0, 20).map((entry, index) => {
+                  const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
+                  return (
+                    <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span className="rank">#{index + 1}</span>
+                      <span 
+                        className="player" 
+                        style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                        onClick={() => setViewingProfileAddress(entry.username)}
+                      >
+                        {displayName}
+                      </span>
+                      <span className="score">{entry.points}</span>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
@@ -6357,6 +6382,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         >
           <PlayerProfile isMobile={false} />
         </Popup>
+      )}
+      
+      {!isMobile && viewingProfileAddress && (
+        <Popup
+          id="view-profile-window"
+          isOpen={true}
+          onClose={() => setViewingProfileAddress(null)}
+          title="Player Profile"
+          initialPosition={{ x: 100, y: 100 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <PlayerProfile isMobile={false} address={viewingProfileAddress} />
+        </Popup>
+      )}
+      
+      {isMobile && viewingProfileAddress && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: '#fff' }}>
+          <button onClick={() => setViewingProfileAddress(null)} style={{ margin: '10px', padding: '5px 10px' }}>Close</button>
+          <PlayerProfile isMobile={true} address={viewingProfileAddress} />
+        </div>
       )}
     </div>
   );

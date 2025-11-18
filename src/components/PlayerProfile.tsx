@@ -8,10 +8,12 @@ import { getUserLeaderboardEntry } from '../firebaseLeaderboard';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
+  address?: string; // Optional: view a specific user's profile instead of connected wallet
 }
 
-export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false }) => {
-  const { address } = useAccount();
+export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
+  const { address: connectedAddress } = useAccount();
+  const address = viewAddress || connectedAddress; // Use provided address or fallback to connected wallet
   const [profile, setProfile] = useState<PlayerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [usernameInput, setUsernameInput] = useState('');

@@ -1,16 +1,26 @@
 import { getEnsName } from '@wagmi/core';
 import { config } from '../wagmi';
+import { firebaseProfiles } from '../firebaseProfiles';
 
 export async function getDisplayName(walletAddress: string): Promise<string> {
   if (!walletAddress) return '';
   
-  // Try to get username from Firebase (will be implemented in profile component)
-  // For now, try ENS
+  // Try to get username from Firebase profile
+  try {
+    const profile = await firebaseProfiles.getProfile(walletAddress);
+    if (profile?.username && profile.username.trim() !== '') {
+      return profile.username;
+    }
+  } catch (error) {
+    // Silently fail - fallback to other methods
+  }
+  
+  // Try ENS
   try {
     const ensName = await getEnsName(config, { address: walletAddress as `0x${string}` });
     if (ensName) return ensName;
   } catch (error) {
-    console.error('Error fetching ENS name:', error);
+    // Silently fail - fallback to address
   }
   
   // Fallback to truncated address
@@ -19,7 +29,7 @@ export async function getDisplayName(walletAddress: string): Promise<string> {
 
 export function getDisplayNameSync(walletAddress: string, username?: string, ensName?: string): string {
   if (!walletAddress) return '';
-  if (username) return username;
+  if (username && username.trim() !== '') return username;
   if (ensName) return ensName;
   return `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
 }

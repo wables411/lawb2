@@ -31,8 +31,11 @@ function App() {
   const classes = useStyles();
   const { open } = useAppKit();
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
+  const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   
   // Debug: log activePopup changes
   useEffect(() => {
@@ -183,33 +186,86 @@ function App() {
 
 
   const walletButton = (
-    <div 
-      onClick={() => {
-        if (!isConnected) {
-          // Open wallet connection modal
-          void open({ view: 'Connect' });
-        } else {
-          // Automatically disconnect when connected
-          void open({ view: 'Account' });
-        }
-      }} 
-      style={{ 
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        color: isConnected ? 'limegreen' : 'red',
-        fontWeight: 'bold'
-      }}
-    >
-      <span style={{
-        height: '10px',
-        width: '10px',
-        borderRadius: '50%',
-        backgroundColor: isConnected ? 'limegreen' : 'red',
-        marginRight: '8px',
-        border: '1px solid black'
-      }}></span>
-              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Disconnected'}
+    <div style={{ position: 'relative' }}>
+      <div 
+        onClick={() => {
+          if (!isConnected) {
+            // Open wallet connection modal
+            void open({ view: 'Connect' });
+          } else {
+            // Toggle wallet menu
+            setShowWalletMenu(!showWalletMenu);
+          }
+        }} 
+        style={{ 
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          color: isConnected ? 'limegreen' : 'red',
+          fontWeight: 'bold'
+        }}
+      >
+        <span style={{
+          height: '10px',
+          width: '10px',
+          borderRadius: '50%',
+          backgroundColor: isConnected ? 'limegreen' : 'red',
+          marginRight: '8px',
+          border: '1px solid black'
+        }}></span>
+        {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Disconnected'}
+      </div>
+      {isConnected && showWalletMenu && (
+        <div style={{
+          position: 'absolute',
+          bottom: '100%',
+          right: 0,
+          marginBottom: '4px',
+          background: '#c0c0c0',
+          border: '2px outset #fff',
+          padding: '4px',
+          zIndex: 10000,
+          minWidth: '120px'
+        }}>
+          <button
+            onClick={() => {
+              setShowProfile(true);
+              setShowWalletMenu(false);
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '4px 8px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              cursor: 'pointer',
+              fontSize: '12px',
+              textAlign: 'left',
+              marginBottom: '2px'
+            }}
+          >
+            Profile
+          </button>
+          <button
+            onClick={() => {
+              disconnect();
+              setShowWalletMenu(false);
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '4px 8px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              cursor: 'pointer',
+              fontSize: '12px',
+              textAlign: 'left'
+            }}
+          >
+            Disconnect
+          </button>
+        </div>
+      )}
     </div>
   );
 

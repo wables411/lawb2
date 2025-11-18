@@ -520,6 +520,13 @@ const Mobile = () => {
           {isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
         </div>
         <span className={classes.clock}>{clock}</span>
+        <button 
+          className={classes.menuButton} 
+          onClick={() => window.location.href = '/chess'}
+          style={{ marginLeft: '8px' }}
+        >
+          Public Chat
+        </button>
       </div>
     </div>
   );

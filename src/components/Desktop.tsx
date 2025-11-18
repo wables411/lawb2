@@ -44,7 +44,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'lawbstation', image: '/assets/lawbstation.GIF', label: 'Lawbstation', action: 'popup', popupId: 'lawbstation-popup', row: -1, col: -1 },
   { id: 'nexus', image: '/assets/nexus.gif', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
   // Row 4
-  { id: 'chat', image: '/assets/miladychan.png', label: 'Chat', action: 'popup', popupId: 'chat-popup', row: 3, col: 0 },
+  { id: 'chat', image: '/assets/miladychan.png', label: 'Miladychan', action: 'popup', popupId: 'chat-popup', row: 3, col: 0 },
   { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
 ];
 
