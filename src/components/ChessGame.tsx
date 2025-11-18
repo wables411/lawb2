@@ -2509,7 +2509,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                             <td>{index + 1}</td>
                             <td 
                               style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
-                              onClick={() => setViewingProfileAddress(typedEntry.username)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (typeof window !== 'undefined' && window.console) {
+                                  window.console.log('[LEADERBOARD] Clicked profile:', typedEntry.username);
+                                }
+                                setViewingProfileAddress(typedEntry.username);
+                              }}
                             >
                               {displayName}
                             </td>
@@ -3282,7 +3289,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                             <td>{index + 1}</td>
                             <td 
                               style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
-                              onClick={() => setViewingProfileAddress(typedEntry.username)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (typeof window !== 'undefined' && window.console) {
+                                  window.console.log('[LEADERBOARD] Clicked profile:', typedEntry.username);
+                                }
+                                setViewingProfileAddress(typedEntry.username);
+                              }}
                             >
                               {displayName}
                             </td>
@@ -3370,12 +3384,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <Popup
           id="view-profile-window"
           isOpen={true}
-          onClose={() => setViewingProfileAddress(null)}
+          onClose={() => {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
+            }
+            setViewingProfileAddress(null);
+          }}
           title="Player Profile"
           initialPosition={{ x: 100, y: 100 }}
           initialSize={{ width: 400, height: 500 }}
-          zIndex={1000}
+          zIndex={10000}
         >
+          {(() => {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[LEADERBOARD] Rendering profile popup for:', viewingProfileAddress);
+            }
+            return null;
+          })()}
           <PlayerProfile isMobile={false} address={viewingProfileAddress} />
         </Popup>
       )}

@@ -6275,7 +6275,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       <span 
                         className="player" 
                         style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
-                        onClick={() => setViewingProfileAddress(entry.username)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (typeof window !== 'undefined' && window.console) {
+                            window.console.log('[LEADERBOARD] Clicked profile:', entry.username);
+                          }
+                          setViewingProfileAddress(entry.username);
+                        }}
                       >
                         {displayName}
                       </span>
@@ -6388,12 +6395,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <Popup
           id="view-profile-window"
           isOpen={true}
-          onClose={() => setViewingProfileAddress(null)}
+          onClose={() => {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
+            }
+            setViewingProfileAddress(null);
+          }}
           title="Player Profile"
           initialPosition={{ x: 100, y: 100 }}
           initialSize={{ width: 400, height: 500 }}
-          zIndex={1000}
+          zIndex={10000}
         >
+          {(() => {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[LEADERBOARD] Rendering profile popup for:', viewingProfileAddress);
+            }
+            return null;
+          })()}
           <PlayerProfile isMobile={false} address={viewingProfileAddress} />
         </Popup>
       )}
