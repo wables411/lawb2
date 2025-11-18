@@ -1,5 +1,6 @@
 // Netlify serverless function to proxy Alchemy NFT API calls
 // This keeps the API key server-side and prevents it from being exposed in client code
+// Requires ALCHEMY_API_KEY environment variable (set in Netlify, NOT VITE_ALCHEMY_API_KEY)
 
 exports.handler = async (event, context) => {
   // Set CORS headers for all responses
