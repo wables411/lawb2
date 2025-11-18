@@ -289,6 +289,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [leaderboardDisplayNames, setLeaderboardDisplayNames] = useState<Record<string, string>>({});
   const [viewingProfileAddress, setViewingProfileAddress] = useState<string | null>(null);
   const [legalMoves, setLegalMoves] = useState<{ row: number; col: number }[]>([]);
+  
+  // Debug: log when viewingProfileAddress changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[LEADERBOARD] viewingProfileAddress changed to:', viewingProfileAddress);
+    }
+  }, [viewingProfileAddress]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // UI state
@@ -3380,6 +3387,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
       )}
       
+      {(() => {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[LEADERBOARD] Checking popup render condition:', {
+            isMobile,
+            viewingProfileAddress,
+            shouldRender: !isMobile && !!viewingProfileAddress
+          });
+        }
+        return null;
+      })()}
+      
+      {/* Profile popup - rendered in home view */}
       {!isMobile && viewingProfileAddress && (
         <Popup
           id="view-profile-window"
@@ -3406,7 +3425,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       )}
     </div>
   );
-}; 
 
 // Utility to switch player color
 function switchPlayer(player: 'blue' | 'red'): 'blue' | 'red' {
