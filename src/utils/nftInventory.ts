@@ -363,6 +363,15 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     const alchemyResponse = await fetch(proxyUrl);
     
     if (alchemyResponse.ok) {
+      const contentType = alchemyResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await alchemyResponse.text();
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[NFT] Alchemy proxy returned non-JSON response:', text.substring(0, 200));
+        }
+        throw new Error('Alchemy proxy returned invalid response');
+      }
+      
       const alchemyData = await alchemyResponse.json();
       if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
         // Extract token IDs from Alchemy response
