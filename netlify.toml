@@ -16,13 +16,13 @@
   status = 200
 
 [[redirects]]
-  from = "/api/game-monitor-simple"
-  to = "/.netlify/functions/game-monitor-simple"
+  from = "/api/alchemy-nft"
+  to = "/.netlify/functions/alchemy-nft"
   status = 200
 
 [[redirects]]
-  from = "/api/alchemy-nft"
-  to = "/.netlify/functions/alchemy-nft"
+  from = "/api/game-monitor-simple"
+  to = "/.netlify/functions/game-monitor-simple"
   status = 200
 
 [[redirects]]
