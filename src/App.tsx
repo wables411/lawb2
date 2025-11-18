@@ -5,7 +5,7 @@ import Taskbar from './components/Taskbar';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 const MintPopup = lazy(() => import('./components/MintPopup'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
+const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 
 const useStyles = createUseStyles({
   body: {
@@ -353,6 +354,14 @@ function App() {
         </p>
         <img src="/assets/miladychanfaq.png" alt="Milady Chan FAQ" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
+
+      {showProfile && (
+        <Popup id="profile-popup" isOpen={true} onClose={() => setShowProfile(false)} onMinimize={() => setShowProfile(false)} zIndex={2000}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <PlayerProfile isMobile={false} />
+          </Suspense>
+        </Popup>
+      )}
 
       <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
         <p style={{marginBottom: '10px'}}>
