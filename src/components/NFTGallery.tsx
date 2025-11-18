@@ -163,11 +163,12 @@ const COLLECTIONS: Collection[] = [
   { slug: 'lawbnexus', name: 'Nexus', api: 'opensea-solana', chain: 'solana' },
 ];
 
-// Map collection slugs to contract addresses for Alchemy API
-const COLLECTION_CONTRACT_MAP: Record<string, string> = {
-  'lawbsters': NFT_COLLECTIONS.lawbsters.address,
-  'lawbstarz': NFT_COLLECTIONS.lawbstarz.address,
-  'pixelawbs': NFT_COLLECTIONS.pixelawbs.address,
+// Map collection slugs to contract addresses and chain IDs for Alchemy API
+const COLLECTION_CONTRACT_MAP: Record<string, { address: string; chainId: number }> = {
+  'lawbsters': { address: NFT_COLLECTIONS.lawbsters.address, chainId: NFT_COLLECTIONS.lawbsters.chainId },
+  'lawbstarz': { address: NFT_COLLECTIONS.lawbstarz.address, chainId: NFT_COLLECTIONS.lawbstarz.chainId },
+  'pixelawbs': { address: NFT_COLLECTIONS.pixelawbs.address, chainId: NFT_COLLECTIONS.pixelawbs.chainId },
+  'a-lawbster-halloween': { address: NFT_COLLECTIONS.halloween_lawbsters.address, chainId: NFT_COLLECTIONS.halloween_lawbsters.chainId },
 };
 
 declare global {
@@ -286,17 +287,17 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
           }
         } else if (currentCollection.api === 'opensea') {
           // For "MY NFTs" view with EVM collections, use Alchemy API for accurate ownership
-          if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug] && currentCollection.chain === 'ethereum') {
-            const contractAddress = COLLECTION_CONTRACT_MAP[currentCollection.slug];
-            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50);
+          if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
+            const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
+            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
           } else {
             response = await getOpenSeaNFTs(currentCollection.slug, 50, walletAddressToFetch);
           }
         } else {
           // For "MY NFTs" view with Scatter collections (Pixelawbs, Lawbstarz), use Alchemy if on Ethereum
           if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
-            const contractAddress = COLLECTION_CONTRACT_MAP[currentCollection.slug];
-            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50);
+            const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
+            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
           } else {
             response = await getCollectionNFTs(currentCollection.slug, currentPage, 50, walletAddressToFetch);
           }

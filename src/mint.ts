@@ -172,11 +172,14 @@ export async function mintNFT(walletAddress: string, selectedLists: Array<{id: s
   };
 }
 
-// Fetch NFTs from Alchemy API for EVM collections (Ethereum only for now)
-export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
+// Fetch NFTs from Alchemy API for EVM collections (supports Ethereum and Base)
+export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddress: string, pageSize: number = 50, chainId: number = 1): Promise<NFTResponse> {
   try {
+    // Determine chain parameter (1 = Ethereum, 8453 = Base)
+    const chain = chainId === 8453 ? 'base' : 'ethereum';
+    
     // Use Netlify function proxy to keep API key server-side
-    const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(ownerAddress)}&contractAddress=${encodeURIComponent(contractAddress)}`;
+    const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(ownerAddress)}&contractAddress=${encodeURIComponent(contractAddress)}&chain=${chain}`;
     const response = await fetch(proxyUrl);
     
     if (!response.ok) {
@@ -196,35 +199,54 @@ export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddre
     }
     
     // Transform Alchemy response to NFT format
+    // Based on Alchemy API docs: https://www.alchemy.com/docs/reference/nft-api-quickstart
     const transformedNfts: NFT[] = data.ownedNfts.map((nft: any): NFT => {
-      const tokenId = nft.id?.tokenId || nft.tokenId || '0';
-      const tokenIdNum = typeof tokenId === 'string' ? parseInt(tokenId, 16) || parseInt(tokenId, 10) : tokenId;
+      // Parse tokenId - can be hex string or number
+      const tokenId = nft.tokenId || '0';
+      const tokenIdNum = typeof tokenId === 'string' 
+        ? (tokenId.startsWith('0x') ? parseInt(tokenId, 16) : parseInt(tokenId, 10))
+        : tokenId;
+      
+      // Get image URL - Alchemy provides image.cachedUrl, image.originalUrl, or raw.metadata.image
+      const imageUrl = nft.image?.cachedUrl 
+        || nft.image?.originalUrl 
+        || nft.raw?.metadata?.image 
+        || '';
+      
+      // Get attributes from raw.metadata.attributes (Alchemy API format)
+      const attributes = nft.raw?.metadata?.attributes || [];
+      
+      // Get name from name field or raw.metadata.name
+      const name = nft.name || nft.raw?.metadata?.name || `#${tokenIdNum}`;
+      
+      // Get description
+      const description = nft.description || nft.raw?.metadata?.description || '';
       
       return {
         id: `${contractAddress}-${tokenIdNum}`,
         address: contractAddress,
         token_id: tokenIdNum,
-        attributes: JSON.stringify(nft.metadata?.attributes || []),
-        name: nft.metadata?.name || nft.title || `#${tokenIdNum}`,
-        image_url: nft.metadata?.image || nft.media?.[0]?.gateway || nft.media?.[0]?.raw || '',
+        attributes: JSON.stringify(attributes),
+        name: name,
+        image_url: imageUrl,
         owner_of: ownerAddress,
         block_minted: 0,
         contract_type: 'ERC721',
-        description: nft.metadata?.description || '',
-        image: nft.metadata?.image || nft.media?.[0]?.gateway || nft.media?.[0]?.raw || '',
-        image_url_shrunk: nft.metadata?.image || nft.media?.[0]?.gateway || nft.media?.[0]?.raw || '',
-        animation_url: nft.metadata?.animation_url || '',
-        metadata: JSON.stringify(nft.metadata || {}),
-        chain_id: 1, // Ethereum mainnet
+        description: description,
+        image: imageUrl,
+        image_url_shrunk: imageUrl,
+        animation_url: nft.raw?.metadata?.animation_url || '',
+        metadata: JSON.stringify(nft.raw?.metadata || {}),
+        chain_id: chainId,
         old_image_url: '',
-        old_token_uri: nft.tokenUri?.raw || '',
-        token_uri: nft.tokenUri?.raw || '',
+        old_token_uri: nft.tokenUri?.raw || nft.tokenUri || '',
+        token_uri: nft.tokenUri?.raw || nft.tokenUri || '',
         log_index: 0,
         transaction_index: 0,
         collection_id: contractAddress,
         num_items: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: nft.timeLastUpdated || new Date().toISOString(),
+        updated_at: nft.timeLastUpdated || new Date().toISOString(),
         owners: [{ owner_of: ownerAddress, quantity: 1 }]
       };
     });

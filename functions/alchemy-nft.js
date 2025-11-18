@@ -41,7 +41,7 @@ exports.handler = async (event, context) => {
   }
 
   // Get query parameters
-  const { owner, contractAddress } = event.queryStringParameters || {};
+  const { owner, contractAddress, chain } = event.queryStringParameters || {};
   
   if (!owner || !contractAddress) {
     return {
@@ -52,8 +52,14 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Call Alchemy NFT API v3 - correct endpoint is getNFTsForOwner, not getNFTs
-    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=false&pageSize=100`;
+    // Determine the correct Alchemy endpoint based on chain (default to Ethereum)
+    const chainId = chain || 'ethereum';
+    const baseUrl = chainId === 'base' 
+      ? `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`
+      : `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
+    
+    // Call Alchemy NFT API v3 - use withMetadata=true to get image and trait data
+    const alchemyUrl = `${baseUrl}/getNFTsForOwner?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=true&pageSize=100`;
     
     const response = await fetch(alchemyUrl);
     
