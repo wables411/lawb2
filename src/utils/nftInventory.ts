@@ -360,14 +360,18 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
     
     // Alchemy getNFTs endpoint - returns current holdings, can filter by contract
-    // Use URLSearchParams for proper array encoding
+    // Note: Demo key may not work for NFT API - requires real API key
+    // Format: contractAddresses as array parameter (multiple values allowed)
+    const apiKey = ALCHEMY_API_KEY || 'demo';
+    const baseUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${apiKey}/getNFTs`;
     const params = new URLSearchParams({
       owner: walletAddress,
-      'contractAddresses[]': lawbsters.address,
       withMetadata: 'false',
       pageSize: '100'
     });
-    const alchemyUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY || 'demo'}/getNFTs?${params.toString()}`;
+    // Add contractAddresses as array parameter (Alchemy expects multiple values)
+    params.append('contractAddresses[]', lawbsters.address);
+    const alchemyUrl = `${baseUrl}?${params.toString()}`;
     const alchemyResponse = await fetch(alchemyUrl);
     
     if (alchemyResponse.ok) {
@@ -390,8 +394,13 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         }
       }
     } else {
+      // Alchemy failed, log the error response for debugging
+      const errorText = await alchemyResponse.text();
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.warn('[NFT] Alchemy API error response:', errorText);
+      }
       // Alchemy failed, try contract enumeration
-      throw new Error(`Alchemy API error: ${alchemyResponse.status}`);
+      throw new Error(`Alchemy API error: ${alchemyResponse.status} - ${errorText.substring(0, 100)}`);
     }
   } catch (alchemyError) {
     // Fallback to contract enumeration if Alchemy fails
