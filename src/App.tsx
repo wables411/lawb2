@@ -14,6 +14,7 @@ const MintPopup = lazy(() => import('./components/MintPopup'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
+const ChessChat = lazy(() => import('./components/ChessChat').then(m => ({ default: m.ChessChat })));
 
 const useStyles = createUseStyles({
   body: {
@@ -46,6 +47,7 @@ function App() {
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [showPublicChat, setShowPublicChat] = useState(false);
 
 
   const [showChessLoading, setShowChessLoading] = useState(false);
@@ -154,7 +156,8 @@ function App() {
       setShowNFTGallery(true);
     } else if (popupId === 'meme-generator-popup') {
       setShowMemeGenerator(true);
-
+    } else if (popupId === 'chat-popup') {
+      setShowPublicChat(true);
     } else {
       setActivePopup(popupId);
     }
@@ -184,13 +187,13 @@ function App() {
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
   };
 
+  const minimizePublicChat = () => {
+    setShowPublicChat(false);
+    setMinimizedPopups(prev => new Set(prev).add('chat-popup'));
+  };
+
   const openPublicChat = useCallback(() => {
-    setActivePopup('chat-popup');
-    setMinimizedPopups(prev => {
-      const newSet = new Set(prev);
-      newSet.delete('chat-popup');
-      return newSet;
-    });
+    setShowPublicChat(true);
     setShowWalletMenu(false);
   }, []);
 
@@ -359,12 +362,17 @@ function App() {
         onOpenPublicChat={openPublicChat}
       />
 
-      <Popup id="chat-popup" isOpen={activePopup === 'chat-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
-        <p style={{marginBottom: '10px'}}>
-          join the chat, there is no meme we lawb you <a href="https://boards.miladychan.org/milady/33793" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>/milady/33793</a>
-        </p>
-        <img src="/assets/miladychanfaq.png" alt="Milady Chan FAQ" style={{ maxWidth: '100%', marginTop: '10px' }} />
-      </Popup>
+      {/* Public Chat - Functional Firebase Chat Component */}
+      <Suspense fallback={<div>Loading chat...</div>}>
+        <ChessChat
+          isOpen={showPublicChat}
+          onMinimize={minimizePublicChat}
+          currentInviteCode={undefined}
+          isDraggable={true}
+          isResizable={true}
+          isMobile={false}
+        />
+      </Suspense>
 
       {showProfile && (
         <Popup id="profile-popup" isOpen={true} onClose={() => setShowProfile(false)} onMinimize={() => setShowProfile(false)} zIndex={2000}>

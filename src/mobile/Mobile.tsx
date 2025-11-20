@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
@@ -6,6 +6,8 @@ import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
+
+const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -506,15 +508,17 @@ const Mobile = () => {
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
       </MobilePopup98>
-      <MobilePopup98 isOpen={showPublicChat} onClose={() => setShowPublicChat(false)} title="Public Chat">
-        <p style={{ marginBottom: '10px' }}>
-          join the chat, there is no meme we lawb you{' '}
-          <a href="https://boards.miladychan.org/milady/33793" target="_blank" rel="noopener noreferrer" style={{ color: '#ff0000', textDecoration: 'underline' }}>
-            /milady/33793
-          </a>
-        </p>
-        <img src="/assets/miladychanfaq.png" alt="Milady Chan FAQ" style={{ maxWidth: '100%', marginTop: '10px' }} />
-      </MobilePopup98>
+      {/* Public Chat - Functional Firebase Chat Component */}
+      <Suspense fallback={<div>Loading chat...</div>}>
+        <ChessChat
+          isOpen={showPublicChat}
+          onMinimize={() => setShowPublicChat(false)}
+          currentInviteCode={undefined}
+          isDraggable={false}
+          isResizable={false}
+          isMobile={true}
+        />
+      </Suspense>
       {/* Bottom Taskbar */}
       <div className={classes.taskbar}>
         <button className={classes.menuButton} onClick={() => setMenuOpen(true)}>Menu</button>
