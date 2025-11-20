@@ -412,8 +412,11 @@ const Mobile = () => {
             <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
             <button className={classes.menuLink} onClick={() => { setMenuOpen(false); setShowMemeGenerator(true); }} style={{ border: 'none', cursor: 'pointer', width: '90%', margin: '0 auto', display: 'block' }}>Meme Generator</button>
             <button
+              type="button"
               className={classes.menuLink}
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 setMenuOpen(false);
                 setShowPublicChat(true);
               }}
