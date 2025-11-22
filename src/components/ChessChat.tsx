@@ -356,12 +356,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       ref={chatRef}
       className={`chess-chat-window ${isMobile ? 'mobile' : 'desktop'}`}
       style={isMobile ? {
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        width: '100vw',
-        height: '100vh',
-        zIndex: 10001
+        // Let CSS handle mobile positioning
       } : {
         position: 'fixed',
         left: position.x,

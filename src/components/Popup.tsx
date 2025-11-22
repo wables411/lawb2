@@ -16,7 +16,21 @@ const useStyles = createUseStyles({
     resize: 'both',
     overflow: 'auto',
     top: 0,
-    left: 0
+    left: 0,
+    '@media (max-width: 768px)': {
+      width: 'calc(100vw - 16px) !important',
+      height: 'calc(100vh - 16px) !important',
+      maxWidth: 'calc(100vw - 16px) !important',
+      maxHeight: 'calc(100vh - 16px) !important',
+      minWidth: '0 !important',
+      minHeight: '0 !important',
+      left: '8px !important',
+      top: '8px !important',
+      right: '8px !important',
+      bottom: '8px !important',
+      resize: 'none !important',
+      boxSizing: 'border-box !important',
+    }
   },
   header: {
     background: 'navy',
@@ -28,7 +42,13 @@ const useStyles = createUseStyles({
     cursor: 'move',
     fontSize: '12px',
     fontWeight: 'bold',
-    userSelect: 'none'
+    userSelect: 'none',
+    '@media (max-width: 768px)': {
+      padding: '12px 16px',
+      fontSize: '16px',
+      minHeight: '50px',
+      cursor: 'default',
+    }
   },
   titleBarButtons: {
     display: 'flex',
@@ -47,13 +67,26 @@ const useStyles = createUseStyles({
     color: 'black',
     '&:active': {
       border: '1px inset #c0c0c0'
+    },
+    '@media (max-width: 768px)': {
+      width: '44px',
+      height: '44px',
+      fontSize: '18px',
+      minWidth: '44px',
+      minHeight: '44px',
     }
   },
   content: {
     padding: '15px',
     height: 'calc(100% - 30px)',
     overflow: 'auto',
-    background: 'transparent'
+    background: 'transparent',
+    '@media (max-width: 768px)': {
+      padding: '16px',
+      height: 'calc(100% - 50px)',
+      fontSize: '16px',
+      '-webkit-overflow-scrolling': 'touch',
+    }
   },
   resizeHandle: {
     position: 'absolute',
@@ -77,6 +110,9 @@ const useStyles = createUseStyles({
       borderStyle: 'solid',
       borderWidth: '0 0 8px 8px',
       borderColor: 'transparent transparent rgba(0, 0, 0, 0.3) transparent'
+    },
+    '@media (max-width: 768px)': {
+      display: 'none !important',
     }
   }
 });
@@ -189,6 +225,9 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     }
   }, [isOpen, id, position]);
 
+  // Detect mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  
   return (
     <Draggable 
       nodeRef={nodeRef} 
@@ -197,7 +236,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       position={isOpen ? position : undefined}
       onDrag={handleDrag}
       key={id}
-      disabled={!isOpen}
+      disabled={!isOpen || isMobile}
     >
       <div 
         ref={nodeRef} 
