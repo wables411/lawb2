@@ -121,6 +121,8 @@
   margin: 4px;
   min-height: 200px;
   max-height: 300px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-loading,
@@ -287,14 +289,14 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .chess-chat-window {
+  .chess-chat-window:not(.mobile) {
     width: 90vw !important;
     height: 60vh !important;
     left: 5vw !important;
     top: 20vh !important;
   }
   
-  .chat-messages {
+  .chess-chat-window:not(.mobile) .chat-messages {
     min-height: 150px;
     max-height: 200px;
   }
@@ -366,12 +368,21 @@
   border-radius: 0 !important;
   resize: none !important;
   z-index: 10001 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .chess-chat-window.mobile .chat-header {
   padding: 12px 16px;
   font-size: 16px;
-  min-height: 60px;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+
+.chess-chat-window.mobile .chat-tabs {
+  flex-shrink: 0;
 }
 
 .chess-chat-window.mobile .chat-btn {
@@ -382,9 +393,15 @@
 }
 
 .chess-chat-window.mobile .chat-messages {
-  padding: 16px;
+  flex: 1 !important;
+  padding: 16px !important;
   font-size: 16px;
   line-height: 1.4;
+  margin: 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chess-chat-window.mobile .chat-message {
@@ -394,9 +411,11 @@
   line-height: 1.4;
 }
 
-.chess-chat-window.mobile .chat-input-container {
-  padding: 16px;
+.chess-chat-window.mobile .chat-input-area {
+  flex-shrink: 0;
+  padding: 12px 16px;
   gap: 12px;
+  border-top: 2px solid #808080;
 }
 
 .chess-chat-window.mobile .chat-input {
@@ -410,17 +429,6 @@
   min-height: 44px;
   font-size: 16px;
   padding: 12px 16px;
-}
-
-.chess-chat-window.mobile .chat-room-selector {
-  padding: 12px 16px;
-  gap: 8px;
-}
-
-.chess-chat-window.mobile .chat-room-btn {
-  padding: 12px 16px;
-  font-size: 16px;
-  min-height: 44px;
 }
 
 /* Mobile floating chat button */
