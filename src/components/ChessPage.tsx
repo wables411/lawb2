@@ -24,16 +24,31 @@ const ChessPage: React.FC = () => {
 
   // Call SDK ready() when ChessPage loads (backup call for /chess route)
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      try {
-        await sdk.actions.ready();
-        console.log('[MINIAPP] ✅ ChessPage: SDK ready() called - splash screen hidden');
-      } catch (error) {
-        // SDK not available (not in Farcaster context) - that's okay
-        console.log('[MINIAPP] ChessPage: SDK not available (not in Farcaster context):', error);
+    const callReady = async () => {
+      console.log('[MINIAPP] ChessPage: Attempting to call ready()...');
+      
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          if (sdk && sdk.actions && typeof sdk.actions.ready === 'function') {
+            await sdk.actions.ready();
+            console.log('[MINIAPP] ✅ ChessPage: SDK ready() called successfully on attempt', attempt + 1);
+            return;
+          } else {
+            console.log(`[MINIAPP] ChessPage: Attempt ${attempt + 1}/5: SDK not ready yet`);
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (error) {
+          console.error(`[MINIAPP] ChessPage: Attempt ${attempt + 1}/5 failed:`, error);
+          if (attempt < 4) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
       }
-    }, 200);
+      
+      console.error('[MINIAPP] ❌ ChessPage: Failed to call ready() after all attempts');
+    };
     
+    const timer = setTimeout(callReady, 200);
     return () => clearTimeout(timer);
   }, []);
   const isMobile = useMediaQuery('(max-width: 768px)');

@@ -30,23 +30,39 @@ const Root = () => {
   
   // Call SDK ready() when interface is ready to be displayed
   // Per Farcaster docs: https://miniapps.farcaster.xyz/docs/getting-started
+  // Per agents checklist: https://miniapps.farcaster.xyz/docs/guides/agents-checklist
   useEffect(() => {
-    // Wait a brief moment to ensure React has rendered the initial UI
-    // This prevents jitter and content reflows
-    const timer = setTimeout(async () => {
-      try {
-        // Check if SDK is available (it's injected by Farcaster clients)
-        if (sdk && sdk.actions && sdk.actions.ready) {
-          await sdk.actions.ready();
-          console.log('[MINIAPP] ✅ SDK ready() called - splash screen hidden');
-        } else {
-          console.warn('[MINIAPP] SDK not available - sdk:', sdk, 'sdk.actions:', sdk?.actions);
+    const callReady = async () => {
+      console.log('[MINIAPP] Attempting to call ready()...');
+      console.log('[MINIAPP] SDK object:', sdk);
+      console.log('[MINIAPP] SDK.actions:', sdk?.actions);
+      console.log('[MINIAPP] SDK.actions.ready:', sdk?.actions?.ready);
+      
+      // Try multiple times - SDK might not be injected immediately
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          if (sdk && sdk.actions && typeof sdk.actions.ready === 'function') {
+            await sdk.actions.ready();
+            console.log('[MINIAPP] ✅ SDK ready() called successfully on attempt', attempt + 1);
+            return; // Success!
+          } else {
+            console.log(`[MINIAPP] Attempt ${attempt + 1}/5: SDK not ready yet, waiting...`);
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (error) {
+          console.error(`[MINIAPP] Attempt ${attempt + 1}/5 failed:`, error);
+          if (attempt < 4) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
         }
-      } catch (error) {
-        // SDK not available (not in Farcaster context) - that's okay
-        console.error('[MINIAPP] Error calling ready():', error);
       }
-    }, 100);
+      
+      console.error('[MINIAPP] ❌ Failed to call ready() after all attempts');
+      console.error('[MINIAPP] Final SDK state:', { sdk, hasActions: !!sdk?.actions, hasReady: !!sdk?.actions?.ready });
+    };
+    
+    // Wait a brief moment to ensure React has rendered the initial UI
+    const timer = setTimeout(callReady, 100);
     
     return () => clearTimeout(timer);
   }, []); // Empty deps - only call once when component mounts
