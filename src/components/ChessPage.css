@@ -29,6 +29,8 @@
 .chess-content {
   height: 100vh;
   width: 100vw;
+  /* Ensure content starts at top */
+  scroll-behavior: auto;
 }
 
 /* Mobile-specific styles */

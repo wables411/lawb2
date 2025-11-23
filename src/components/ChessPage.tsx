@@ -12,6 +12,7 @@ const ChessPage: React.FC = () => {
   useEffect(() => {
     const scrollToTop = () => {
       try {
+        console.log('[SCROLL] Attempting to scroll to top');
         // Try multiple methods to ensure scrolling works in all contexts (including iframes)
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         window.scrollTo(0, 0);
@@ -21,42 +22,57 @@ const ChessPage: React.FC = () => {
         const root = document.getElementById('root');
         if (root) {
           root.scrollTop = 0;
+          root.scrollIntoView({ behavior: 'instant', block: 'start' });
         }
         // Try scrolling the chess-page element
         const chessPage = document.querySelector('.chess-page');
         if (chessPage) {
           (chessPage as HTMLElement).scrollTop = 0;
+          chessPage.scrollIntoView({ behavior: 'instant', block: 'start' });
         }
         // Try scrolling chess-content element
         const chessContent = document.querySelector('.chess-content');
         if (chessContent) {
           (chessContent as HTMLElement).scrollTop = 0;
+          chessContent.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+        // Try scrolling the first child of chess-content (the actual game component)
+        const firstChild = chessContent?.firstElementChild as HTMLElement;
+        if (firstChild) {
+          firstChild.scrollIntoView({ behavior: 'instant', block: 'start' });
         }
         // In iframe contexts, try to scroll parent if possible
         if (window.parent !== window) {
           try {
             window.parent.scrollTo(0, 0);
+            console.log('[SCROLL] Scrolled parent window');
           } catch (e) {
             // Cross-origin, expected
+            console.log('[SCROLL] Cannot scroll parent (cross-origin)');
           }
         }
+        console.log('[SCROLL] Scroll to top completed');
       } catch (error) {
-        // Silently handle cross-origin frame access errors (expected in iframe contexts)
-        // This is normal when embedded in Farcaster/Base apps
+        console.error('[SCROLL] Error scrolling to top:', error);
       }
     };
     
+    // Immediate scroll
     scrollToTop();
     // Also scroll after multiple delays to ensure DOM is ready and any iframe context is loaded
-    const timeout1 = setTimeout(scrollToTop, 100);
-    const timeout2 = setTimeout(scrollToTop, 300);
-    const timeout3 = setTimeout(scrollToTop, 500);
-    const timeout4 = setTimeout(scrollToTop, 1000); // Extra delay for iframe contexts
+    const timeout1 = setTimeout(scrollToTop, 50);
+    const timeout2 = setTimeout(scrollToTop, 100);
+    const timeout3 = setTimeout(scrollToTop, 300);
+    const timeout4 = setTimeout(scrollToTop, 500);
+    const timeout5 = setTimeout(scrollToTop, 1000); // Extra delay for iframe contexts
+    const timeout6 = setTimeout(scrollToTop, 2000); // Even more delay for slow iframe loads
     return () => {
       clearTimeout(timeout1);
       clearTimeout(timeout2);
       clearTimeout(timeout3);
       clearTimeout(timeout4);
+      clearTimeout(timeout5);
+      clearTimeout(timeout6);
     };
   }, []);
 

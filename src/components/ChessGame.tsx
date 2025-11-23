@@ -417,9 +417,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       platform: platformInfo.platform,
       label: platformLabel,
       freePlayMode,
-      isMiniApp: platformInfo.isMiniApp
+      isMiniApp: platformInfo.isMiniApp,
+      isMobile,
+      userAgent: navigator.userAgent,
+      referrer: document.referrer,
+      isInIframe: window.self !== window.top
     });
-  }, [platformInfo, platformLabel, freePlayMode]);
+  }, [platformInfo, platformLabel, freePlayMode, isMobile]);
 
   // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {
@@ -2454,7 +2458,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </div>
                 <button
               onClick={() => {
-                openWindow('leaderboard');
+                if (isMobile) {
+                  console.log('[MENU] Leaderboard button clicked (home view mobile), setting sidebarView');
+                  setSidebarView('leaderboard');
+                } else {
+                  openWindow('leaderboard');
+                }
                 setIsMenuOpen(false);
               }}
               style={{
@@ -2475,7 +2484,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </button>
                 <button
               onClick={() => {
-                openWindow('gallery');
+                if (isMobile) {
+                  console.log('[MENU] Gallery button clicked (home view mobile), setting sidebarView');
+                  setSidebarView('gallery');
+                } else {
+                  openWindow('gallery');
+                }
                 setIsMenuOpen(false);
               }}
               style={{
@@ -2522,9 +2536,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 e.preventDefault();
                 e.stopPropagation();
                 if (typeof window !== 'undefined' && window.console) {
-                  window.console.log('[MENU] Profile button clicked (home view)');
+                  window.console.log('[MENU] Profile button clicked (home view)', { isMobile });
                 }
-                openWindow('profile');
+                if (isMobile) {
+                  console.log('[MENU] Setting sidebarView to profile (mobile)');
+                  setSidebarView('profile');
+                } else {
+                  openWindow('profile');
+                }
                 setIsMenuOpen(false);
               }}
               style={{
