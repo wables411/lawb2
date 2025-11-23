@@ -2,10 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+    <link rel="apple-touch-icon" href="/assets/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000080" />
     <title>there is no meme we $LAWB you</title>
-    <meta name="description" content="there is no meme we $LAWB you" />
+    <meta name="description" content="there is no meme we lawb you" />
     
     <!-- Resource hints for better performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,34 +16,39 @@
     <link rel="dns-prefetch" href="https://www.tiktok.com" />
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/stockfish.js" as="script" />
+    <!-- Stockfish WASM preload removed - using API endpoint instead -->
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://lawb.xyz/" />
     <meta property="og:title" content="there is no meme we $LAWB you" />
-    <meta property="og:description" content="there is no meme we $LAWB you" />
-    <meta property="og:image" content="https://lawb.xyz/assets/lawbstation_dtg1_v2.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="there is no meme we lawb you" />
+    <meta property="og:image" content="https://lawb.xyz/assets/favicon.ico" />
+    <meta property="og:image:type" content="image/x-icon" />
     
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:card" content="summary" />
     <meta property="twitter:url" content="https://lawb.xyz/" />
     <meta property="twitter:title" content="there is no meme we $LAWB you" />
-    <meta property="twitter:description" content="there is no meme we $LAWB you" />
-    <meta property="twitter:image" content="https://lawb.xyz/assets/lawbstation_dtg1_v2.png" />
+    <meta property="twitter:description" content="there is no meme we lawb you" />
+    <meta property="twitter:image" content="https://lawb.xyz/assets/favicon.ico" />
     
     <!-- Force cache refresh -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     
-    <!-- Stockfish WASM for chess AI -->
-    <script src="/stockfish.js"></script>
-    <script type="module" crossorigin src="/assets/index-BnysZL_a.js"></script>
+    <!-- Stockfish WASM removed - using API endpoint (chess.lawb.xyz) instead -->
+    <!-- This avoids SharedArrayBuffer/COEP issues with wallet connections -->
+    
+    <!-- Farcaster Mini App Embed Metadata -->
+    <meta name="fc:miniapp" content='{"version":"next","imageUrl":"https://lawb.xyz/assets/favicon.ico","button":{"title":"Play Lawb Chess","action":{"type":"launch_miniapp","name":"Lawb Chess","url":"https://lawb.xyz/chess","splashImageUrl":"https://lawb.xyz/assets/favicon.ico","splashBackgroundColor":"#000080"}}}' />
+    
+    <!-- Preconnect to Quick Auth Server for better performance -->
+    <link rel="preconnect" href="https://auth.farcaster.xyz" />
+    <script type="module" crossorigin src="/assets/index-CtoPJthF.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
-    <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-CHW5eFys.js">
+    <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-CmeBlSFu.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
     <link rel="modulepreload" crossorigin href="/assets/ui-vendor-BgPmeekb.js">
     <link rel="stylesheet" crossorigin href="/assets/index-DCUXUex1.css">

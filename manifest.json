@@ -1,0 +1,17 @@
+{
+  "name": "Lawb.xyz",
+  "short_name": "Lawb",
+  "description": "there is no meme we lawb you",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000080",
+  "icons": [
+    {
+      "src": "/assets/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
+
