@@ -3169,7 +3169,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     width: 100vw !important;
     height: 100vh !important;
     background: rgba(0, 0, 0, 0.5) !important;
-    z-index: 9998 !important;
+    z-index: 10002 !important;
     pointer-events: all !important;
   }
   
@@ -3181,7 +3181,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     width: 100vw !important;
     max-width: 100vw !important;
     max-height: 70vh !important;
-    z-index: 9999 !important;
+    z-index: 10003 !important;
     background: #c0c0c0 !important;
     border: 2px outset #fff !important;
     border-radius: 12px 12px 0 0 !important;
