@@ -78,18 +78,41 @@ export function detectPlatform(): PlatformInfo {
     });
   }
 
-  // Check for Farcaster context
+  // Check for Farcaster context - more comprehensive detection
   const isFarcaster = 
     embedParam === 'farcaster' ||
     parentParam === 'farcaster' ||
-    window.location.search.includes('farcaster') ||
-    window.location.hash.includes('farcaster') ||
-    navigator.userAgent.includes('Farcaster') ||
-    (window.parent !== window && (document.referrer.includes('farcaster.xyz') || document.referrer.includes('warpcast.com'))) ||
+    window.location.search.toLowerCase().includes('farcaster') ||
+    window.location.hash.toLowerCase().includes('farcaster') ||
+    userAgent.includes('farcaster') ||
+    referrer.includes('farcaster.xyz') ||
+    referrer.includes('warpcast.com') ||
+    referrer.includes('farcaster') ||
+    (topOrigin && typeof topOrigin === 'string' && (topOrigin.includes('farcaster') || topOrigin.includes('warpcast'))) ||
     // Check for Farcaster SDK context
     (window as any).farcaster !== undefined ||
     (window as any).__FARCASTER_SDK__ !== undefined ||
-    (window as any).__farcasterSDK !== undefined;
+    (window as any).__farcasterSDK !== undefined ||
+    (window as any).__FARCASTER__ !== undefined ||
+    // Check window.name
+    (window.name && window.name.toLowerCase().includes('farcaster')) ||
+    // Check if we're in an iframe and referrer suggests Farcaster
+    (isInIframe && (referrer.includes('farcaster') || referrer.includes('warpcast')));
+  
+  // Debug logging for Farcaster
+  if (typeof window !== 'undefined' && window.console) {
+    console.log('[PLATFORM_DETECT] Farcaster detection:', {
+      embedParam,
+      parentParam,
+      userAgent,
+      isInIframe,
+      topOrigin,
+      referrer,
+      windowName: window.name,
+      isFarcaster,
+      hasFarcasterSDK: !!(window as any).farcaster || !!(window as any).__FARCASTER_SDK__
+    });
+  }
 
   // Determine platform (Farcaster takes precedence if both detected)
   if (isFarcaster) {

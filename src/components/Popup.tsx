@@ -227,7 +227,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
 
   // Detect mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  
+
   return (
     <Draggable 
       nodeRef={nodeRef} 

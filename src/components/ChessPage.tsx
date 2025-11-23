@@ -27,6 +27,19 @@ const ChessPage: React.FC = () => {
         if (chessPage) {
           (chessPage as HTMLElement).scrollTop = 0;
         }
+        // Try scrolling chess-content element
+        const chessContent = document.querySelector('.chess-content');
+        if (chessContent) {
+          (chessContent as HTMLElement).scrollTop = 0;
+        }
+        // In iframe contexts, try to scroll parent if possible
+        if (window.parent !== window) {
+          try {
+            window.parent.scrollTo(0, 0);
+          } catch (e) {
+            // Cross-origin, expected
+          }
+        }
       } catch (error) {
         // Silently handle cross-origin frame access errors (expected in iframe contexts)
         // This is normal when embedded in Farcaster/Base apps
@@ -38,10 +51,12 @@ const ChessPage: React.FC = () => {
     const timeout1 = setTimeout(scrollToTop, 100);
     const timeout2 = setTimeout(scrollToTop, 300);
     const timeout3 = setTimeout(scrollToTop, 500);
+    const timeout4 = setTimeout(scrollToTop, 1000); // Extra delay for iframe contexts
     return () => {
       clearTimeout(timeout1);
       clearTimeout(timeout2);
       clearTimeout(timeout3);
+      clearTimeout(timeout4);
     };
   }, []);
 

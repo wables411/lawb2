@@ -1,0 +1,61 @@
+/* Compact wallet modal styles for Farcaster/Base mini apps */
+/* Make wallet modal more compact and ensure it's not cut off */
+
+/* Target Reown/AppKit modal elements */
+w3m-modal,
+w3m-container {
+  z-index: 10001 !important;
+  max-height: 90vh !important;
+  max-width: 90vw !important;
+}
+
+/* Make wallet modal content more compact */
+w3m-modal w3m-header {
+  padding: 12px 16px !important;
+  min-height: auto !important;
+}
+
+w3m-modal w3m-content {
+  padding: 8px 16px !important;
+  max-height: calc(90vh - 100px) !important;
+  overflow-y: auto !important;
+}
+
+/* Reduce wallet button sizes */
+w3m-modal w3m-wallet-button {
+  padding: 8px 12px !important;
+  min-height: 48px !important;
+  font-size: 14px !important;
+}
+
+/* Ensure close button is visible and accessible */
+w3m-modal w3m-header button {
+  z-index: 10002 !important;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+}
+
+/* On mobile/Farcaster, make modal even more compact */
+@media (max-width: 768px) {
+  w3m-modal,
+  w3m-container {
+    max-height: 85vh !important;
+    max-width: 95vw !important;
+    margin: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    position: fixed !important;
+  }
+  
+  w3m-modal w3m-content {
+    max-height: calc(85vh - 80px) !important;
+    padding: 4px 8px !important;
+  }
+  
+  /* Ensure modal backdrop doesn't block close button */
+  w3m-modal::part(overlay) {
+    z-index: 10000 !important;
+  }
+}
+

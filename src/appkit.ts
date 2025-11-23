@@ -51,7 +51,7 @@ export const appKit = createAppKit({
   enableWallets: true,
   themeMode: 'light',
   themeVariables: {
-    '--w3m-z-index': 9999,
+    '--w3m-z-index': 10001, // Higher than mobile popups (9999) to ensure wallet modal is on top
     '--w3m-accent': '#000080',
     '--w3m-border-radius-master': '0px',
     '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
