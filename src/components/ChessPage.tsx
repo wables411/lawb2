@@ -3,6 +3,7 @@ import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { sdk } from '@farcaster/miniapp-sdk';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
@@ -25,13 +26,11 @@ const ChessPage: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(async () => {
       try {
-        // Import SDK dynamically at runtime - it will be available in Farcaster context
-        const { sdk: farcasterSDK } = await import('@farcaster/miniapp-sdk');
-        await farcasterSDK.actions.ready();
+        await sdk.actions.ready();
         console.log('[MINIAPP] ✅ ChessPage: SDK ready() called - splash screen hidden');
       } catch (error) {
         // SDK not available (not in Farcaster context) - that's okay
-        console.log('[MINIAPP] ChessPage: SDK not available (not in Farcaster context)');
+        console.log('[MINIAPP] ChessPage: SDK not available (not in Farcaster context):', error);
       }
     }, 200);
     
