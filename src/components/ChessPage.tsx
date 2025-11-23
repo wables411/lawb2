@@ -10,15 +10,53 @@ const ChessPage: React.FC = () => {
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
     const scrollToTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+      try {
+        // Try multiple methods to ensure scrolling works in all contexts
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        
+        // Also try scrolling the root element
+        const root = document.getElementById('root');
+        if (root) {
+          root.scrollTop = 0;
+          root.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+        
+        // Try scrolling the chess-page element
+        const chessPage = document.querySelector('.chess-page');
+        if (chessPage) {
+          (chessPage as HTMLElement).scrollTop = 0;
+          chessPage.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+        
+        // Try scrolling chess-content element
+        const chessContent = document.querySelector('.chess-content');
+        if (chessContent) {
+          (chessContent as HTMLElement).scrollTop = 0;
+          chessContent.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+      } catch (error) {
+        // Silently handle any errors
+      }
     };
     
+    // Immediate scroll
     scrollToTop();
-    // Also scroll after a brief delay to ensure DOM is ready
-    const timeout = setTimeout(scrollToTop, 100);
-    return () => clearTimeout(timeout);
+    // Also scroll after multiple delays to ensure DOM is ready
+    const timeout1 = setTimeout(scrollToTop, 50);
+    const timeout2 = setTimeout(scrollToTop, 100);
+    const timeout3 = setTimeout(scrollToTop, 300);
+    const timeout4 = setTimeout(scrollToTop, 500);
+    const timeout5 = setTimeout(scrollToTop, 1000);
+    return () => {
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearTimeout(timeout3);
+      clearTimeout(timeout4);
+      clearTimeout(timeout5);
+    };
   }, []);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
