@@ -11,6 +11,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 
 // Import Farcaster SDK directly - per docs: https://miniapps.farcaster.xyz/docs/getting-started
+// The SDK is injected by Farcaster clients at runtime
 import { sdk } from '@farcaster/miniapp-sdk';
 
 // Lazy load the chess page to reduce initial bundle size
@@ -34,11 +35,16 @@ const Root = () => {
     // This prevents jitter and content reflows
     const timer = setTimeout(async () => {
       try {
-        await sdk.actions.ready();
-        console.log('[MINIAPP] ✅ SDK ready() called - splash screen hidden');
+        // Check if SDK is available (it's injected by Farcaster clients)
+        if (sdk && sdk.actions && sdk.actions.ready) {
+          await sdk.actions.ready();
+          console.log('[MINIAPP] ✅ SDK ready() called - splash screen hidden');
+        } else {
+          console.warn('[MINIAPP] SDK not available - sdk:', sdk, 'sdk.actions:', sdk?.actions);
+        }
       } catch (error) {
         // SDK not available (not in Farcaster context) - that's okay
-        console.log('[MINIAPP] SDK not available (not in Farcaster context):', error);
+        console.error('[MINIAPP] Error calling ready():', error);
       }
     }, 100);
     
