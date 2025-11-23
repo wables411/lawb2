@@ -2132,9 +2132,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Debug menu state
   useEffect(() => {
     if (isMobile) {
-      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
+      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView, isMobile });
       if (isSidebarOpen) {
         console.log('[MENU RENDER] Menu is open, rendering buttons');
+      }
+      if (sidebarView) {
+        console.log('[POPUP] SidebarView is set, should render popup:', sidebarView);
       }
     }
   }, [isMobile, isSidebarOpen, sidebarView]);
