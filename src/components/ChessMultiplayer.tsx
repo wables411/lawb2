@@ -2241,7 +2241,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameStatus('Joining free play game...');
         
         // Join game directly in Firebase (no contract call needed)
-        await firebaseChess.joinGame(inviteCode, address || '0x0000000000000000000000000000000000000000');
+        const redPlayerAddress = address || '0x0000000000000000000000000000000000000000';
+        await firebaseChess.updateGame(inviteCode, {
+          red_player: redPlayerAddress,
+          game_state: 'active'
+        });
         setGameStatus('Joined free play game! Waiting for game to start...');
         return;
       }
