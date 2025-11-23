@@ -2847,7 +2847,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         {/* Mobile Content Popup - Shows content when a menu button is clicked */}
         {isMobile && sidebarView && (
           <>
-            {console.log('[POPUP] Rendering mobile popup, sidebarView:', sidebarView, 'isMobile:', isMobile)}
             {/* Overlay */}
             <div 
               className="mobile-content-overlay"
