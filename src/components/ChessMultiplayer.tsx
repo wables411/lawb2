@@ -5823,7 +5823,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     textTransform: 'uppercase',
                     textAlign: 'center'
                   }}>
-                    {platformLabel} {freePlayMode ? 'Free Play' : 'Paid Play'}
+                    {platformLabel}
                   </div>
                   <div className="status-bar" style={{ marginBottom: '20px', color: '#ff0000' }}>
                     Connected: {formatAddress(address!)}

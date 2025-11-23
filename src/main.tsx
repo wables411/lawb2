@@ -20,40 +20,30 @@ import { getAppKit } from '@reown/appkit/react';
 getAppKit(appKit);
 const queryClient = new QueryClient();
 
-// Initialize Farcaster Mini App SDK (always available, will work in preview tool)
+// Import Farcaster SDK statically (will work in Farcaster context)
 let sdkInstance: any = null;
-let sdkInitPromise: Promise<any> | null = null;
-
-async function initializeMiniAppSDK() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    // Always try to import SDK - it will work in Farcaster context
-    const { sdk } = await import('@farcaster/miniapp-sdk');
-    sdkInstance = sdk;
-    console.log('[MINIAPP] Farcaster SDK initialized');
-    return sdk;
-  } catch (error) {
-    // SDK import failed - not in Farcaster context, that's okay
-    console.log('[MINIAPP] SDK not available (not in Farcaster context)');
-    return null;
+try {
+  // Try to import SDK - it will be available in Farcaster context
+  const farcasterSDK = require('@farcaster/miniapp-sdk');
+  sdkInstance = farcasterSDK.sdk;
+  console.log('[MINIAPP] Farcaster SDK imported successfully');
+} catch (error) {
+  // SDK not available - try dynamic import as fallback
+  console.log('[MINIAPP] Static import failed, will try dynamic import');
+  if (typeof window !== 'undefined') {
+    import('@farcaster/miniapp-sdk')
+      .then(({ sdk }) => {
+        sdkInstance = sdk;
+        console.log('[MINIAPP] Farcaster SDK loaded via dynamic import');
+      })
+      .catch((err) => {
+        console.log('[MINIAPP] SDK not available (not in Farcaster context):', err);
+      });
   }
 }
 
-// Initialize SDK immediately and store the promise
-sdkInitPromise = initializeMiniAppSDK().catch(console.error);
-
-// Export function to get SDK instance (waits for initialization if needed)
-export async function getSDKInstance() {
-  if (sdkInstance) {
-    return sdkInstance;
-  }
-  // Wait for initialization to complete
-  if (sdkInitPromise) {
-    await sdkInitPromise;
-  }
+// Export function to get SDK instance
+export function getSDKInstance() {
   return sdkInstance;
 }
 
@@ -66,23 +56,39 @@ const Root = () => {
   // Following Farcaster guide: https://miniapps.farcaster.xyz/docs/guides/loading
   useEffect(() => {
     const callReady = async () => {
-      try {
-        // Wait for SDK to initialize (it might still be loading)
-        const sdk = await getSDKInstance();
-        
-        if (sdk && sdk.actions && sdk.actions.ready) {
-          // Wait a brief moment to ensure React has rendered the initial UI
-          // This prevents jitter and content reflows
-          await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('[MINIAPP] Attempting to call ready()...');
+      
+      // Try multiple times with delays in case SDK loads asynchronously
+      for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+          let sdk = getSDKInstance();
           
-          await sdk.actions.ready();
-          console.log('[MINIAPP] SDK ready() called - splash screen hidden');
-        } else {
-          console.warn('[MINIAPP] SDK not available or ready() method missing');
+          // If SDK not available yet, wait a bit and try again
+          if (!sdk) {
+            console.log(`[MINIAPP] SDK not available yet, attempt ${attempt + 1}/10`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            continue;
+          }
+          
+          if (sdk && sdk.actions && sdk.actions.ready) {
+            // Wait a brief moment to ensure React has rendered the initial UI
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            await sdk.actions.ready();
+            console.log('[MINIAPP] ✅ SDK ready() called successfully - splash screen hidden');
+            return; // Success, exit loop
+          } else {
+            console.warn('[MINIAPP] SDK available but ready() method missing', sdk);
+          }
+        } catch (error) {
+          console.warn(`[MINIAPP] Attempt ${attempt + 1} failed:`, error);
         }
-      } catch (error) {
-        console.warn('[MINIAPP] Failed to call SDK ready():', error);
+        
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
+      
+      console.error('[MINIAPP] ❌ Failed to call ready() after all attempts');
     };
     
     callReady();

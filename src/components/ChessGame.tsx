@@ -414,12 +414,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (freePlayMode) {
       // Free play mode: wallet connection optional, no chain requirement
       if (!isConnected || !walletAddress) {
-        setStatus(`Connect wallet to play (${platformLabel} Free Play)`);
+        setStatus(`Connect wallet to play (${platformLabel})`);
         setShowGame(false);
         setShowDifficulty(false);
         // Don't auto-trigger popup in free play mode - let user connect manually if they want
       } else {
-        setStatus(`Select chess mode (${platformLabel} Free Play)`);
+        setStatus(`Select chess mode (${platformLabel})`);
       }
     } else {
       // Sanko mode: require wallet and Sanko mainnet
@@ -2225,7 +2225,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   marginBottom: '8px',
                   textTransform: 'uppercase'
                 }}>
-                  {platformLabel} {freePlayMode ? 'Free Play' : 'Paid Play'}
+                  {platformLabel}
                 </div>
                 <div style={{ 
                   color: '#ff0000', 

@@ -25,20 +25,34 @@ const ChessPage: React.FC = () => {
   // Call SDK ready() when ChessPage loads (backup call for /chess route)
   useEffect(() => {
     const callReady = async () => {
-      try {
-        // Wait for SDK to initialize
-        const sdk = await getSDKInstance();
-        
-        if (sdk && sdk.actions && sdk.actions.ready) {
-          // Wait a brief moment to ensure React has rendered
-          await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('[MINIAPP] ChessPage: Attempting to call ready()...');
+      
+      // Try multiple times with delays
+      for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+          const sdk = getSDKInstance();
           
-          await sdk.actions.ready();
-          console.log('[MINIAPP] SDK ready() called from ChessPage - splash screen hidden');
+          if (!sdk) {
+            console.log(`[MINIAPP] ChessPage: SDK not available yet, attempt ${attempt + 1}/10`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            continue;
+          }
+          
+          if (sdk && sdk.actions && sdk.actions.ready) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            await sdk.actions.ready();
+            console.log('[MINIAPP] ✅ ChessPage: SDK ready() called successfully');
+            return;
+          }
+        } catch (error) {
+          console.warn(`[MINIAPP] ChessPage: Attempt ${attempt + 1} failed:`, error);
         }
-      } catch (error) {
-        console.warn('[MINIAPP] Failed to call SDK ready() from ChessPage:', error);
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
+      
+      console.error('[MINIAPP] ❌ ChessPage: Failed to call ready() after all attempts');
     };
     
     callReady();

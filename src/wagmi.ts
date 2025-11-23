@@ -1,5 +1,5 @@
 import { createConfig, http } from 'wagmi';
-import { mainnet, arbitrum } from 'wagmi/chains';
+import { mainnet, arbitrum, base } from 'wagmi/chains';
 
 // Custom Sanko networks
 export const sankoTestnet = {
@@ -54,14 +54,15 @@ export const sankoMainnet = {
 
 // Create wagmi config with Sanko networks
 export const config = createConfig({
-  chains: [mainnet, arbitrum, sankoTestnet, sankoMainnet],
+  chains: [mainnet, arbitrum, base, sankoTestnet, sankoMainnet],
   transports: {
     [mainnet.id]: http(),
     [arbitrum.id]: http(),
+    [base.id]: http(),
     [sankoTestnet.id]: http('https://sanko-arb-sepolia.rpc.caldera.xyz/http'),
     [sankoMainnet.id]: http('https://mainnet.sanko.xyz'),
   },
 });
 
 // Export all chains for use in appkit
-export const allChains = [mainnet, arbitrum, sankoTestnet, sankoMainnet]; 
+export const allChains = [mainnet, arbitrum, base, sankoTestnet, sankoMainnet]; 
