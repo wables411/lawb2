@@ -33,7 +33,14 @@ export function detectPlatform(): PlatformInfo {
   // Check for Base app context - Base app may inject context in various ways
   const userAgent = navigator.userAgent.toLowerCase();
   const isInIframe = window.self !== window.top;
-  const topOrigin = isInIframe && window.top ? window.top.location?.origin : null;
+  let topOrigin: string | null = null;
+  try {
+    // Try to access top origin, but catch cross-origin errors (expected in iframe contexts)
+    topOrigin = isInIframe && window.top ? window.top.location?.origin : null;
+  } catch (error) {
+    // Cross-origin frame access is expected when embedded in Farcaster/Base apps
+    // Use referrer as fallback
+  }
   const referrer = document.referrer.toLowerCase();
   
   const isBaseApp = 
@@ -47,7 +54,7 @@ export function detectPlatform(): PlatformInfo {
     referrer.includes('base.org') ||
     referrer.includes('base.xyz') ||
     referrer.includes('base.org') ||
-    (topOrigin && topOrigin.includes('base')) ||
+    (topOrigin && typeof topOrigin === 'string' && topOrigin.includes('base')) ||
     // Check for Base-specific context variables
     (window as any).__BASE_APP__ !== undefined ||
     (window as any).base !== undefined ||

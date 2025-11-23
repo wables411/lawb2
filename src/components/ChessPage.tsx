@@ -11,20 +11,25 @@ const ChessPage: React.FC = () => {
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
     const scrollToTop = () => {
-      // Try multiple methods to ensure scrolling works in all contexts (including iframes)
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      // Also try scrolling the root element
-      const root = document.getElementById('root');
-      if (root) {
-        root.scrollTop = 0;
-      }
-      // Try scrolling the chess-page element
-      const chessPage = document.querySelector('.chess-page');
-      if (chessPage) {
-        (chessPage as HTMLElement).scrollTop = 0;
+      try {
+        // Try multiple methods to ensure scrolling works in all contexts (including iframes)
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        // Also try scrolling the root element
+        const root = document.getElementById('root');
+        if (root) {
+          root.scrollTop = 0;
+        }
+        // Try scrolling the chess-page element
+        const chessPage = document.querySelector('.chess-page');
+        if (chessPage) {
+          (chessPage as HTMLElement).scrollTop = 0;
+        }
+      } catch (error) {
+        // Silently handle cross-origin frame access errors (expected in iframe contexts)
+        // This is normal when embedded in Farcaster/Base apps
       }
     };
     
