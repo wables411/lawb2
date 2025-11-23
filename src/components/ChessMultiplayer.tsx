@@ -23,6 +23,7 @@ import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '..
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
+import { isFreePlayMode, getPlatformLabel } from '../utils/platformDetection';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -116,6 +117,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   const { address, isConnected, chainId } = useAccount();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
+  
+  // Platform detection
+  const platformLabel = getPlatformLabel();
+  const freePlayMode = isFreePlayMode();
   
   // Smart contract integration
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
@@ -1994,13 +1999,44 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   const createGame = async () => {
-    if (!address || gameWager <= 0) {
+    // In free play mode, address is optional and wager is 0
+    if (!freePlayMode && (!address || gameWager <= 0)) {
       return;
     }
     
     setIsGameCreationInProgress(true);
     
     try {
+      // Free play mode: create game directly in Firebase, skip all contract calls
+      if (freePlayMode) {
+        const newInviteCode = generateBytes6InviteCode();
+        const gameData = {
+          invite_code: newInviteCode,
+          game_title: `Free Play Chess ${newInviteCode.slice(-6)}`,
+          bet_amount: '0',
+          bet_token: 'FREE',
+          blue_player: address || '0x0000000000000000000000000000000000000000',
+          game_state: 'waiting_for_join',
+          winner: null,
+          board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
+          current_player: 'blue',
+          chain: 'free_play',
+          contract_address: '',
+          is_public: true,
+          created_at: new Date().toISOString(),
+          piece_set: selectedPieceSet.id,
+          is_free_play: true
+        };
+        
+        console.log('[CREATE] Creating free play game:', gameData);
+        await firebaseChess.createGame(gameData);
+        setInviteCode(newInviteCode);
+        setGameStatus(`Free play game created! Invite code: ${newInviteCode}`);
+        setIsGameCreationInProgress(false);
+        return;
+      }
+      
+      // Sanko mode: proceed with contract-based game creation
       // Validate sufficient token balance before proceeding
       const tokenConfig = SUPPORTED_TOKENS[selectedToken];
       const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, tokenConfig.decimals)));
@@ -2182,7 +2218,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Join game
   const joinGame = async (inviteCode: string) => {
-    if (!address) return;
+    // In free play mode, address is optional
+    if (!freePlayMode && !address) return;
     try {
       const gameData = await firebaseChess.getGame(inviteCode);
       if (!gameData || gameData.game_state !== 'waiting_for_join') {
@@ -2190,6 +2227,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
+      // Check if this is a free play game
+      const isFreePlayGame = gameData.is_free_play || gameData.bet_token === 'FREE' || gameData.chain === 'free_play';
+      
+      // Free play mode: skip token balance checks and contract calls
+      if (isFreePlayGame || freePlayMode) {
+        const wagerAmountTDMT = 0; // Free play has no wager
+        setInviteCode(inviteCode);
+        setIsJoiningFromLobby(true);
+        setPlayerColor('red');
+        setGameWager(wagerAmountTDMT);
+        setSelectedToken('FREE' as TokenSymbol);
+        setGameStatus('Joining free play game...');
+        
+        // Join game directly in Firebase (no contract call needed)
+        await firebaseChess.joinGame(inviteCode, address || '0x0000000000000000000000000000000000000000');
+        setGameStatus('Joined free play game! Waiting for game to start...');
+        return;
+      }
+      
+      // Sanko mode: validate token balance and proceed with contract
       // Validate sufficient token balance before proceeding
       const tokenSymbol = gameData.bet_token as TokenSymbol;
       const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
@@ -5753,6 +5810,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </div>
               ) : (
                 <>
+                  {/* Platform Label */}
+                  <div style={{ 
+                    color: freePlayMode ? '#00ff00' : '#32CD32', 
+                    fontSize: '14px', 
+                    fontWeight: 'bold',
+                    marginBottom: '10px',
+                    textTransform: 'uppercase',
+                    textAlign: 'center'
+                  }}>
+                    {platformLabel} {freePlayMode ? 'Free Play' : 'Paid Play'}
+                  </div>
                   <div className="status-bar" style={{ marginBottom: '20px', color: '#ff0000' }}>
                     Connected: {formatAddress(address!)}
                   </div>
@@ -5809,43 +5877,66 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         <h3 style={{ color: '#ff0000' }}>Create New Match</h3>
                         
                         {/* Game Creation Flow Explanation */}
-                        <div style={{ 
-                          background: 'rgba(255, 0, 0, 0.1)', 
-                          border: '1px solid #ff0000', 
-                          padding: '12px', 
-                          marginBottom: '15px',
-                          borderRadius: '4px',
-                          fontSize: '13px',
-                          lineHeight: '1.4',
-                          color: '#ff0000'
-                        }}>
-                          <strong>📋 Game Creation Flow:</strong><br/>
-                          1️⃣ <strong>Select Token</strong> - Choose DMT or other supported Sanko tokens<br/>
-                          2️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
-                          3️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
-                          4️⃣ <strong>Click "Create Game"</strong> - This will trigger two transactions:<br/>
-                          &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your tokens<br/>
-                          &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
-                          <br/>
-                          <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
-                        </div>
+                        {freePlayMode ? (
+                          <div style={{ 
+                            background: 'rgba(0, 255, 0, 0.1)', 
+                            border: '1px solid #00ff00', 
+                            padding: '12px', 
+                            marginBottom: '15px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                            color: '#00ff00'
+                          }}>
+                            <strong>📋 Free Play Mode:</strong><br/>
+                            • No wagering required - play for fun!<br/>
+                            • Select your preferred chess piece style<br/>
+                            • Create or join games instantly<br/>
+                            • All games tracked on leaderboard<br/>
+                            <br/>
+                            <strong>💡 Note:</strong> Wallet connection is optional for free play.
+                          </div>
+                        ) : (
+                          <div style={{ 
+                            background: 'rgba(255, 0, 0, 0.1)', 
+                            border: '1px solid #ff0000', 
+                            padding: '12px', 
+                            marginBottom: '15px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                            color: '#ff0000'
+                          }}>
+                            <strong>📋 Game Creation Flow:</strong><br/>
+                            1️⃣ <strong>Select Token</strong> - Choose DMT or other supported Sanko tokens<br/>
+                            2️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
+                            3️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
+                            4️⃣ <strong>Click "Create Game"</strong> - This will trigger two transactions:<br/>
+                            &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your tokens<br/>
+                            &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
+                            <br/>
+                            <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
+                          </div>
+                        )}
                         
-                        <TokenSelector
-                          selectedToken={selectedToken}
-                          onTokenSelect={setSelectedToken}
-                          wagerAmount={gameWager}
-                          onWagerChange={setGameWager}
-                          disabled={isGameCreationInProgress}
-                        />
+                        {!freePlayMode && (
+                          <TokenSelector
+                            selectedToken={selectedToken}
+                            onTokenSelect={setSelectedToken}
+                            wagerAmount={gameWager}
+                            onWagerChange={setGameWager}
+                            disabled={isGameCreationInProgress}
+                          />
+                        )}
                         <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
                           <button 
                             className="create-confirm-btn"
                             onClick={() => {
-                              if (gameWager > 0 && !isGameCreationInProgress) {
+                              if ((freePlayMode || gameWager > 0) && !isGameCreationInProgress) {
                                 setShowPieceSetSelector(true);
                               }
                             }}
-                            disabled={gameWager <= 0 || isGameCreationInProgress}
+                            disabled={(!freePlayMode && gameWager <= 0) || isGameCreationInProgress}
                             style={{
                               padding: '8px 16px',
                               backgroundColor: '#ff0000',

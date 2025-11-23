@@ -1,0 +1,33 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "baseBuilder": {
+    "ownerAddress": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Lawb Chess",
+    "homeUrl": "https://lawb.xyz",
+    "iconUrl": "https://lawb.xyz/assets/favicon.ico",
+    "splashImageUrl": "https://lawb.xyz/assets/favicon.ico",
+    "splashBackgroundColor": "#000080",
+    "webhookUrl": "",
+    "subtitle": "there is no meme we lawb you",
+    "description": "Play chess on Sanko mainnet or free play in Base/Farcaster apps. Challenge friends, play vs AI, and compete on the leaderboard.",
+    "screenshotUrls": [
+      "https://lawb.xyz/assets/chessicon.png"
+    ],
+    "primaryCategory": "games",
+    "tags": ["chess", "gaming", "sanko", "lawb"],
+    "heroImageUrl": "https://lawb.xyz/assets/favicon.ico",
+    "tagline": "Play chess instantly",
+    "ogTitle": "Lawb Chess",
+    "ogDescription": "Play chess on Sanko mainnet or free play in Base/Farcaster apps",
+    "ogImageUrl": "https://lawb.xyz/assets/favicon.ico",
+    "noindex": false
+  }
+}
+

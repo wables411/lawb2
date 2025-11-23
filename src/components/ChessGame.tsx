@@ -15,6 +15,7 @@ import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
+import { isFreePlayMode, getPlatformLabel } from '../utils/platformDetection';
 
 import './ChessGame.css';
 
@@ -404,23 +405,40 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     ];
   }, [selectedPieceSet]);
 
+  // Get platform info
+  const platformLabel = getPlatformLabel();
+  const freePlayMode = isFreePlayMode();
+
   // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {
-    if (!isConnected || !walletAddress) {
-      setStatus('Connect wallet to play');
-      setShowGame(false);
-      setShowDifficulty(false);
-      // Trigger Reown appkit popup for wallet connection
-      void open();
-    } else if (chainId !== SANKO_CHAIN_ID) {
-      setStatus('Switch to Sanko Mainnet to play');
-      setShowGame(false);
-      setShowDifficulty(false);
-      // Don't auto-trigger popup for chain switching - let user do it manually
+    if (freePlayMode) {
+      // Free play mode: wallet connection optional, no chain requirement
+      if (!isConnected || !walletAddress) {
+        setStatus(`Connect wallet to play (${platformLabel} Free Play)`);
+        setShowGame(false);
+        setShowDifficulty(false);
+        // Don't auto-trigger popup in free play mode - let user connect manually if they want
+      } else {
+        setStatus(`Select chess mode (${platformLabel} Free Play)`);
+      }
     } else {
-      setStatus('Select chess mode');
+      // Sanko mode: require wallet and Sanko mainnet
+      if (!isConnected || !walletAddress) {
+        setStatus('Connect wallet to play');
+        setShowGame(false);
+        setShowDifficulty(false);
+        // Trigger Reown appkit popup for wallet connection
+        void open();
+      } else if (chainId !== SANKO_CHAIN_ID) {
+        setStatus('Switch to Sanko Mainnet to play');
+        setShowGame(false);
+        setShowDifficulty(false);
+        // Don't auto-trigger popup for chain switching - let user do it manually
+      } else {
+        setStatus('Select chess mode');
+      }
     }
-  }, [isConnected, walletAddress, chainId, open]);
+  }, [isConnected, walletAddress, chainId, open, freePlayMode, platformLabel]);
 
   // Handle switching to Sanko mainnet
   const handleSwitchToSanko = async () => {
@@ -2199,6 +2217,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 border: '2px outset #fff',
                 borderRadius: '4px'
               }}>
+                {/* Platform Label */}
+                <div style={{ 
+                  color: freePlayMode ? '#00ff00' : '#32CD32', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold',
+                  marginBottom: '8px',
+                  textTransform: 'uppercase'
+                }}>
+                  {platformLabel} {freePlayMode ? 'Free Play' : 'Paid Play'}
+                </div>
                 <div style={{ 
                   color: '#ff0000', 
                   fontSize: '14px', 
@@ -2218,7 +2246,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </div>
                 )}
-                {chainId !== SANKO_CHAIN_ID && isConnected && (
+                {!freePlayMode && chainId !== SANKO_CHAIN_ID && isConnected && (
                   <button 
                     onClick={handleSwitchToSanko}
                     style={{
@@ -2260,8 +2288,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {isOnline && (
                 <div className="pvp-info">
-                  <p>Challenge other players with tDMT wagers</p>
-                  <p>Create or join matches instantly</p>
+                  {freePlayMode ? (
+                    <>
+                      <p>Challenge other players (Free Play)</p>
+                      <p>Create or join matches instantly - no wagering</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>Challenge other players with tDMT wagers</p>
+                      <p>Create or join matches instantly</p>
+                    </>
+                  )}
                 </div>
               )}
               {/* Updated Help Section */}
@@ -2289,25 +2326,46 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p><strong>Match Modes:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
-                    <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
+                    {freePlayMode ? (
+                      <li><strong>Multiplayer:</strong> Challenge other players in free play mode. No wagering required. All matches tracked on leaderboard.</li>
+                    ) : (
+                      <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
+                    )}
                   </ul>
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    <li>Connect your wallet to Sanko mainnet</li>
-                    <li>Create a match and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
-                    <li>Share your invite code with an opponent</li>
-                    <li>Opponent joins and matches your wager</li>
-                    <li>Match begins automatically - Blue (Player 1) moves first</li>
-                    <li>Winner claims the pot minus 5% house fee</li>
+                    {freePlayMode ? (
+                      <>
+                        <li>Connect your wallet (optional for free play)</li>
+                        <li>Create a match or join an existing one</li>
+                        <li>Share your invite code with an opponent</li>
+                        <li>Opponent joins the match</li>
+                        <li>Match begins automatically - Blue (Player 1) moves first</li>
+                        <li>Winner is recorded on the leaderboard</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Connect your wallet to Sanko mainnet</li>
+                        <li>Create a match and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
+                        <li>Share your invite code with an opponent</li>
+                        <li>Opponent joins and matches your wager</li>
+                        <li>Match begins automatically - Blue (Player 1) moves first</li>
+                        <li>Winner claims the pot minus 5% house fee</li>
+                      </>
+                    )}
                   </ol>
                   <p><strong>Leaderboard:</strong> All matches are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
-                  <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
-                  <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
-                  </div>
+                  {!freePlayMode && (
+                    <>
+                      <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
+                      <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
+                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               {/* Chessboards GIF */}
@@ -3033,8 +3091,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {isOnline && (
                 <div className="pvp-info">
-                  <p>Challenge other players with tDMT wagers</p>
-                  <p>Create or join games instantly</p>
+                  {freePlayMode ? (
+                    <>
+                      <p>Challenge other players (Free Play)</p>
+                      <p>Create or join games instantly - no wagering</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>Challenge other players with tDMT wagers</p>
+                      <p>Create or join games instantly</p>
+                    </>
+                  )}
                 </div>
               )}
               {/* Updated Help Section */}
