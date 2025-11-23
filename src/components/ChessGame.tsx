@@ -2101,9 +2101,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Debug menu state
   useEffect(() => {
     if (isMobile) {
-      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
+      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView, isMobile });
       if (isSidebarOpen) {
         console.log('[MENU RENDER] Menu is open, rendering buttons');
+      }
+      if (sidebarView) {
+        console.log('[POPUP] SidebarView is set, should render popup:', sidebarView);
       }
     }
   }, [isMobile, isSidebarOpen, sidebarView]);
@@ -2705,8 +2708,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('[MENU] Leaderboard button clicked, setting sidebarView to leaderboard');
                     setSidebarView('leaderboard');
                     setIsSidebarOpen(false);
+                    console.log('[MENU] After setting, sidebarView should be:', 'leaderboard');
                   }}
                 >
                   Leaderboard
@@ -2716,8 +2721,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('[MENU] Gallery button clicked, setting sidebarView to gallery');
                     setSidebarView('gallery');
                     setIsSidebarOpen(false);
+                    console.log('[MENU] After setting, sidebarView should be:', 'gallery');
                   }}
                 >
                   Gallery
@@ -2743,9 +2750,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[MENU] Profile button clicked');
+                    console.log('[MENU] Profile button clicked, setting sidebarView to profile');
                     setSidebarView('profile');
                     setIsSidebarOpen(false);
+                    console.log('[MENU] After setting, sidebarView should be:', 'profile');
                   }}
                 >
                   Profile
@@ -2769,7 +2777,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         )}
         
         {/* Mobile Content Popup - Shows content when a menu button is clicked */}
-        {isMobile && sidebarView && (
+        {(() => {
+          const shouldRender = isMobile && sidebarView;
+          if (shouldRender) {
+            console.log('[POPUP] Rendering mobile popup, sidebarView:', sidebarView, 'isMobile:', isMobile);
+          }
+          return shouldRender;
+        })() && (
           <>
             {/* Overlay */}
             <div 
@@ -2777,6 +2791,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[POPUP] Overlay clicked, closing popup');
                 setSidebarView(null);
               }}
             />

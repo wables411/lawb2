@@ -3182,10 +3182,10 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     max-width: 100vw !important;
     max-height: 70vh !important;
     z-index: 9999 !important;
-    background: rgba(0, 255, 0, 0.9) !important;
-    border: 2px solid #00ff00 !important;
+    background: #c0c0c0 !important;
+    border: 2px outset #fff !important;
     border-radius: 12px 12px 0 0 !important;
-    box-shadow: 0 -8px 32px rgba(0, 255, 0, 0.5) !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5) !important;
     padding: 16px !important;
     overflow-y: auto !important;
     box-sizing: border-box !important;
@@ -3234,18 +3234,18 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
-    color: #00ff00 !important;
+    color: #000 !important;
   }
   
   .mobile-content-view .leaderboard-title,
   .mobile-content-view .move-history-title,
   .mobile-content-view .gallery-title {
-    color: #00ff00 !important;
+    color: #000 !important;
     font-weight: 600 !important;
     font-size: 16px !important;
     margin-bottom: 12px !important;
     text-align: center !important;
-    border-bottom: 1px solid rgba(0, 255, 0, 0.5) !important;
+    border-bottom: 1px solid #808080 !important;
     padding-bottom: 8px !important;
   }
   
@@ -3267,19 +3267,19 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     width: 100% !important;
     border-collapse: collapse !important;
     font-size: 12px !important;
-    color: #00ff00 !important;
+    color: #000 !important;
   }
   
   .mobile-content-popup .leaderboard-table-compact th,
   .mobile-content-popup .leaderboard-table-compact td {
     padding: 8px 4px !important;
     text-align: left !important;
-    border-bottom: 1px solid rgba(0, 255, 0, 0.3) !important;
+    border-bottom: 1px solid #808080 !important;
   }
   
   .mobile-content-popup .leaderboard-table-compact th {
     font-weight: bold !important;
-    background: rgba(0, 255, 0, 0.1) !important;
+    background: #e0e0e0 !important;
   }
 }
 
