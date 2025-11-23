@@ -3,6 +3,7 @@ import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { getSDKInstance } from '../main';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
@@ -19,6 +20,28 @@ const ChessPage: React.FC = () => {
     // Also scroll after a brief delay to ensure DOM is ready
     const timeout = setTimeout(scrollToTop, 100);
     return () => clearTimeout(timeout);
+  }, []);
+
+  // Call SDK ready() when ChessPage loads (backup call for /chess route)
+  useEffect(() => {
+    const callReady = async () => {
+      try {
+        // Wait for SDK to initialize
+        const sdk = await getSDKInstance();
+        
+        if (sdk && sdk.actions && sdk.actions.ready) {
+          // Wait a brief moment to ensure React has rendered
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          await sdk.actions.ready();
+          console.log('[MINIAPP] SDK ready() called from ChessPage - splash screen hidden');
+        }
+      } catch (error) {
+        console.warn('[MINIAPP] Failed to call SDK ready() from ChessPage:', error);
+      }
+    };
+    
+    callReady();
   }, []);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
