@@ -15,7 +15,6 @@ import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
-import { isFreePlayMode, getPlatformLabel, getPlatformInfo } from '../utils/platformDetection';
 
 import './ChessGame.css';
 
@@ -405,57 +404,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     ];
   }, [selectedPieceSet]);
 
-  // Get platform info - call dynamically to catch Base app context
-  // Base app might inject context after initial load, so we check on each render
-  const platformInfo = getPlatformInfo();
-  const platformLabel = platformInfo.label;
-  const freePlayMode = platformInfo.isFreePlayMode;
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('[CHESS_GAME] Platform detection:', {
-      platform: platformInfo.platform,
-      label: platformLabel,
-      freePlayMode,
-      isMiniApp: platformInfo.isMiniApp,
-      isMobile,
-      userAgent: navigator.userAgent,
-      referrer: document.referrer,
-      isInIframe: window.self !== window.top
-    });
-  }, [platformInfo, platformLabel, freePlayMode, isMobile]);
-
   // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {
-    if (freePlayMode) {
-      // Free play mode: wallet REQUIRED (for leaderboard/chat), but no chain requirement and no waging
-      if (!isConnected || !walletAddress) {
-        setStatus(`Connect wallet to play (${platformLabel})`);
-        setShowGame(false);
-        setShowDifficulty(false);
-        // Trigger Reown appkit popup for wallet connection (wallet required for leaderboard/chat)
-        void open();
-      } else {
-        setStatus(`Select chess mode (${platformLabel})`);
-      }
+    if (!isConnected || !walletAddress) {
+      setStatus('Connect wallet to play');
+      setShowGame(false);
+      setShowDifficulty(false);
+      // Trigger Reown appkit popup for wallet connection
+      void open();
+    } else if (chainId !== SANKO_CHAIN_ID) {
+      setStatus('Switch to Sanko Mainnet to play');
+      setShowGame(false);
+      setShowDifficulty(false);
+      // Don't auto-trigger popup for chain switching - let user do it manually
     } else {
-      // Sanko mode: require wallet and Sanko mainnet (with waging)
-      if (!isConnected || !walletAddress) {
-        setStatus('Connect wallet to play');
-        setShowGame(false);
-        setShowDifficulty(false);
-        // Trigger Reown appkit popup for wallet connection
-        void open();
-      } else if (chainId !== SANKO_CHAIN_ID) {
-        setStatus('Switch to Sanko Mainnet to play');
-        setShowGame(false);
-        setShowDifficulty(false);
-        // Don't auto-trigger popup for chain switching - let user do it manually
-      } else {
-        setStatus('Select chess mode');
-      }
+      setStatus('Select chess mode');
     }
-  }, [isConnected, walletAddress, chainId, open, freePlayMode, platformLabel]);
+  }, [isConnected, walletAddress, chainId, open]);
 
   // Handle switching to Sanko mainnet
   const handleSwitchToSanko = async () => {
@@ -2136,12 +2101,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Debug menu state
   useEffect(() => {
     if (isMobile) {
-      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView, isMobile });
+      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView });
       if (isSidebarOpen) {
         console.log('[MENU RENDER] Menu is open, rendering buttons');
-      }
-      if (sidebarView) {
-        console.log('[POPUP] SidebarView is set, should render popup:', sidebarView);
       }
     }
   }, [isMobile, isSidebarOpen, sidebarView]);
@@ -2237,16 +2199,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 border: '2px outset #fff',
                 borderRadius: '4px'
               }}>
-                {/* Platform Label */}
-                <div style={{ 
-                  color: freePlayMode ? '#00ff00' : '#32CD32', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold',
-                  marginBottom: '8px',
-                  textTransform: 'uppercase'
-                }}>
-                  {platformLabel}
-                </div>
                 <div style={{ 
                   color: '#ff0000', 
                   fontSize: '14px', 
@@ -2266,7 +2218,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </div>
                 )}
-                {!freePlayMode && chainId !== SANKO_CHAIN_ID && isConnected && (
+                {chainId !== SANKO_CHAIN_ID && isConnected && (
                   <button 
                     onClick={handleSwitchToSanko}
                     style={{
@@ -2308,17 +2260,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {isOnline && (
                 <div className="pvp-info">
-                  {freePlayMode ? (
-                    <>
-                      <p>Challenge other players (Free Play)</p>
-                      <p>Create or join matches instantly - no wagering</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>Challenge other players with tDMT wagers</p>
-                      <p>Create or join matches instantly</p>
-                    </>
-                  )}
+                  <p>Challenge other players with tDMT wagers</p>
+                  <p>Create or join matches instantly</p>
                 </div>
               )}
               {/* Updated Help Section */}
@@ -2346,46 +2289,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p><strong>Match Modes:</strong></p>
                   <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
-                    {freePlayMode ? (
-                      <li><strong>Multiplayer:</strong> Challenge other players in free play mode. No wagering required. All matches tracked on leaderboard.</li>
-                    ) : (
-                      <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
-                    )}
+                    <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
                   </ul>
                   <p><strong>Multiplayer Flow:</strong></p>
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    {freePlayMode ? (
-                      <>
-                        <li>Connect your wallet (required for leaderboard/chat, no waging in free play)</li>
-                        <li>Create a match or join an existing one</li>
-                        <li>Share your invite code with an opponent</li>
-                        <li>Opponent joins the match</li>
-                        <li>Match begins automatically - Blue (Player 1) moves first</li>
-                        <li>Winner is recorded on the leaderboard</li>
-                      </>
-                    ) : (
-                      <>
-                        <li>Connect your wallet to Sanko mainnet</li>
-                        <li>Create a match and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
-                        <li>Share your invite code with an opponent</li>
-                        <li>Opponent joins and matches your wager</li>
-                        <li>Match begins automatically - Blue (Player 1) moves first</li>
-                        <li>Winner claims the pot minus 5% house fee</li>
-                      </>
-                    )}
+                    <li>Connect your wallet to Sanko mainnet</li>
+                    <li>Create a match and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
+                    <li>Share your invite code with an opponent</li>
+                    <li>Opponent joins and matches your wager</li>
+                    <li>Match begins automatically - Blue (Player 1) moves first</li>
+                    <li>Winner claims the pot minus 5% house fee</li>
                   </ol>
                   <p><strong>Leaderboard:</strong> All matches are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
-                  {!freePlayMode && (
-                    <>
-                      <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
-                      <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
-                        <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
-                      </div>
-                    </>
-                  )}
+                  <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
+                  <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
+                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
+                  </div>
                 </div>
               </div>
               {/* Chessboards GIF */}
@@ -2458,12 +2380,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </div>
                 <button
               onClick={() => {
-                if (isMobile) {
-                  console.log('[MENU] Leaderboard button clicked (home view mobile), setting sidebarView');
-                  setSidebarView('leaderboard');
-                } else {
-                  openWindow('leaderboard');
-                }
+                openWindow('leaderboard');
                 setIsMenuOpen(false);
               }}
               style={{
@@ -2484,12 +2401,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </button>
                 <button
               onClick={() => {
-                if (isMobile) {
-                  console.log('[MENU] Gallery button clicked (home view mobile), setting sidebarView');
-                  setSidebarView('gallery');
-                } else {
-                  openWindow('gallery');
-                }
+                openWindow('gallery');
                 setIsMenuOpen(false);
               }}
               style={{
@@ -2536,14 +2448,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 e.preventDefault();
                 e.stopPropagation();
                 if (typeof window !== 'undefined' && window.console) {
-                  window.console.log('[MENU] Profile button clicked (home view)', { isMobile });
+                  window.console.log('[MENU] Profile button clicked (home view)');
                 }
-                if (isMobile) {
-                  console.log('[MENU] Setting sidebarView to profile (mobile)');
-                  setSidebarView('profile');
-                } else {
-                  openWindow('profile');
-                }
+                openWindow('profile');
                 setIsMenuOpen(false);
               }}
               style={{
@@ -2798,7 +2705,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[MENU] Leaderboard button clicked, setting sidebarView to leaderboard');
                     setSidebarView('leaderboard');
                     setIsSidebarOpen(false);
                   }}
@@ -2810,7 +2716,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[MENU] Gallery button clicked, setting sidebarView to gallery');
                     setSidebarView('gallery');
                     setIsSidebarOpen(false);
                   }}
@@ -2872,13 +2777,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[POPUP] Overlay clicked, closing popup');
                 setSidebarView(null);
               }}
             />
             
             {/* Content Popup */}
-            <div className="mobile-content-popup" style={{ zIndex: 9999 }}>
+            <div className="mobile-content-popup">
               {/* Close button */}
               <button
                 className="mobile-content-close-btn"
@@ -3129,17 +3033,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {isOnline && (
                 <div className="pvp-info">
-                  {freePlayMode ? (
-                    <>
-                      <p>Challenge other players (Free Play)</p>
-                      <p>Create or join games instantly - no wagering</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>Challenge other players with tDMT wagers</p>
-                      <p>Create or join games instantly</p>
-                    </>
-                  )}
+                  <p>Challenge other players with tDMT wagers</p>
+                  <p>Create or join games instantly</p>
                 </div>
               )}
               {/* Updated Help Section */}

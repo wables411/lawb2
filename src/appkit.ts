@@ -1,5 +1,5 @@
 import { createAppKit } from '@reown/appkit/react';
-import { mainnet, arbitrum, base, solana } from '@reown/appkit/networks';
+import { mainnet, arbitrum, solana } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { sankoMainnet } from './wagmi';
 
@@ -23,7 +23,6 @@ export const wagmiAdapter = new WagmiAdapter({
     // WagmiAdapter is EVM-only. Do not include Solana here.
     mainnet,
     arbitrum,
-    base,
     sankoMainnet
   ],
   pendingTransactionsFilter: {
@@ -39,7 +38,6 @@ export const appKit = createAppKit({
   networks: [
     mainnet,
     arbitrum,
-    base,
     solana,
     sankoMainnet
   ],
@@ -51,7 +49,7 @@ export const appKit = createAppKit({
   enableWallets: true,
   themeMode: 'light',
   themeVariables: {
-    '--w3m-z-index': 10001, // Higher than mobile popups (9999) to ensure wallet modal is on top
+    '--w3m-z-index': 9999,
     '--w3m-accent': '#000080',
     '--w3m-border-radius-master': '0px',
     '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'

@@ -40,13 +40,6 @@
     
     <!-- Stockfish WASM removed - using API endpoint (chess.lawb.xyz) instead -->
     <!-- This avoids SharedArrayBuffer/COEP issues with wallet connections -->
-    
-    <!-- Farcaster Mini App Embed Metadata -->
-    <!-- Per agents checklist: version must be "1" not "next", action type must be "launch_frame" -->
-    <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://lawb.xyz/assets/favicon.ico","button":{"title":"Play Lawb Chess","action":{"type":"launch_frame","name":"Lawb Chess","url":"https://lawb.xyz/chess","splashImageUrl":"https://lawb.xyz/assets/favicon.ico","splashBackgroundColor":"#000080"}}}' />
-    
-    <!-- Preconnect to Quick Auth Server for better performance -->
-    <link rel="preconnect" href="https://auth.farcaster.xyz" />
   </head>
   <body>
     <div id="root"></div>
