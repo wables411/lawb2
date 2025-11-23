@@ -15,7 +15,7 @@ import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
-import { isFreePlayMode, getPlatformLabel } from '../utils/platformDetection';
+import { isFreePlayMode, getPlatformLabel, getPlatformInfo } from '../utils/platformDetection';
 
 import './ChessGame.css';
 
@@ -405,9 +405,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     ];
   }, [selectedPieceSet]);
 
-  // Get platform info
-  const platformLabel = getPlatformLabel();
-  const freePlayMode = isFreePlayMode();
+  // Get platform info - call dynamically to catch Base app context
+  // Base app might inject context after initial load, so we check on each render
+  const platformInfo = getPlatformInfo();
+  const platformLabel = platformInfo.label;
+  const freePlayMode = platformInfo.isFreePlayMode;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[CHESS_GAME] Platform detection:', {
+      platform: platformInfo.platform,
+      label: platformLabel,
+      freePlayMode,
+      isMiniApp: platformInfo.isMiniApp
+    });
+  }, [platformInfo, platformLabel, freePlayMode]);
 
   // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {

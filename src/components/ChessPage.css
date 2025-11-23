@@ -6,6 +6,15 @@
   overflow: hidden;
 }
 
+/* Allow scrolling on mobile */
+@media (max-width: 768px) {
+  .chess-page {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 .chess-content {
   height: 100vh;
   width: 100vw;

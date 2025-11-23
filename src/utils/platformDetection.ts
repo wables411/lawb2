@@ -30,17 +30,46 @@ export function detectPlatform(): PlatformInfo {
   const embedParam = urlParams.get('embed');
   const parentParam = urlParams.get('parent');
   
-  // Check for Base app context
+  // Check for Base app context - Base app may inject context in various ways
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isInIframe = window.self !== window.top;
+  const topOrigin = isInIframe && window.top ? window.top.location?.origin : null;
+  const referrer = document.referrer.toLowerCase();
+  
   const isBaseApp = 
     embedParam === 'base' ||
     parentParam === 'base' ||
-    window.location.search.includes('base') ||
-    window.location.hash.includes('base') ||
-    navigator.userAgent.includes('Base') ||
-    (window.parent !== window && (document.referrer.includes('base.org') || document.referrer.includes('base.xyz'))) ||
-    // Check for Base-specific context
+    window.location.search.toLowerCase().includes('base') ||
+    window.location.hash.toLowerCase().includes('base') ||
+    userAgent.includes('base') ||
+    userAgent.includes('baseapp') ||
+    userAgent.includes('base mobile') ||
+    referrer.includes('base.org') ||
+    referrer.includes('base.xyz') ||
+    referrer.includes('base.org') ||
+    (topOrigin && topOrigin.includes('base')) ||
+    // Check for Base-specific context variables
     (window as any).__BASE_APP__ !== undefined ||
-    (window as any).base !== undefined;
+    (window as any).base !== undefined ||
+    (window as any).__BASE__ !== undefined ||
+    (window as any).Base !== undefined ||
+    (window as any).__base__ !== undefined ||
+    // Check window.name (sometimes used by iframes)
+    (window.name && window.name.toLowerCase().includes('base'));
+  
+  // Debug logging
+  if (typeof window !== 'undefined' && window.console) {
+    console.log('[PLATFORM_DETECT] Base detection:', {
+      embedParam,
+      parentParam,
+      userAgent,
+      isInIframe,
+      topOrigin,
+      referrer,
+      windowName: window.name,
+      isBaseApp
+    });
+  }
 
   // Check for Farcaster context
   const isFarcaster = 
@@ -84,15 +113,11 @@ export function detectPlatform(): PlatformInfo {
 }
 
 /**
- * Get platform info (cached)
+ * Get platform info (re-detect on each call to catch dynamic changes)
+ * Note: We don't cache this because Base/Farcaster context might be injected after initial load
  */
-let cachedPlatformInfo: PlatformInfo | null = null;
-
 export function getPlatformInfo(): PlatformInfo {
-  if (!cachedPlatformInfo) {
-    cachedPlatformInfo = detectPlatform();
-  }
-  return cachedPlatformInfo;
+  return detectPlatform();
 }
 
 /**
