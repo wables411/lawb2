@@ -1999,8 +1999,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   const createGame = async () => {
-    // In free play mode, address is optional and wager is 0
-    if (!freePlayMode && (!address || gameWager <= 0)) {
+    // Wallet is REQUIRED in all modes (for leaderboard/chat in free play, for waging in paid play)
+    if (!address) {
+      setGameStatus('Please connect your wallet to create a game');
+      return;
+    }
+    
+    // In paid play mode, wager must be > 0
+    if (!freePlayMode && gameWager <= 0) {
+      setGameStatus('Please set a wager amount to create a game');
       return;
     }
     
@@ -2015,7 +2022,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           game_title: `Free Play Chess ${newInviteCode.slice(-6)}`,
           bet_amount: '0',
           bet_token: 'FREE',
-          blue_player: address || '0x0000000000000000000000000000000000000000',
+          blue_player: address, // Wallet is required, so address should always be present
           game_state: 'waiting_for_join',
           winner: null,
           board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
@@ -2218,8 +2225,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Join game
   const joinGame = async (inviteCode: string) => {
-    // In free play mode, address is optional
-    if (!freePlayMode && !address) return;
+    // Wallet is REQUIRED in all modes (for leaderboard/chat in free play, for waging in paid play)
+    if (!address) {
+      setGameStatus('Please connect your wallet to join a game');
+      return;
+    }
     try {
       const gameData = await firebaseChess.getGame(inviteCode);
       if (!gameData || gameData.game_state !== 'waiting_for_join') {
@@ -2241,7 +2251,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameStatus('Joining free play game...');
         
         // Join game directly in Firebase (no contract call needed)
-        const redPlayerAddress = address || '0x0000000000000000000000000000000000000000';
+        const redPlayerAddress = address; // Wallet is required, so address should always be present
         await firebaseChess.updateGame(inviteCode, {
           red_player: redPlayerAddress,
           game_state: 'active'
@@ -5898,7 +5908,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             • Create or join games instantly<br/>
                             • All games tracked on leaderboard<br/>
                             <br/>
-                            <strong>💡 Note:</strong> Wallet connection is optional for free play.
+                            <strong>💡 Note:</strong> Wallet connection is required (for leaderboard/chat), but no waging in free play mode.
                           </div>
                         ) : (
                           <div style={{ 

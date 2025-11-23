@@ -424,17 +424,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Check wallet connection and chain - trigger popup for connection, but not for chain switching
   useEffect(() => {
     if (freePlayMode) {
-      // Free play mode: wallet connection optional, no chain requirement
+      // Free play mode: wallet REQUIRED (for leaderboard/chat), but no chain requirement and no waging
       if (!isConnected || !walletAddress) {
         setStatus(`Connect wallet to play (${platformLabel})`);
         setShowGame(false);
         setShowDifficulty(false);
-        // Don't auto-trigger popup in free play mode - let user connect manually if they want
+        // Trigger Reown appkit popup for wallet connection (wallet required for leaderboard/chat)
+        void open();
       } else {
         setStatus(`Select chess mode (${platformLabel})`);
       }
     } else {
-      // Sanko mode: require wallet and Sanko mainnet
+      // Sanko mode: require wallet and Sanko mainnet (with waging)
       if (!isConnected || !walletAddress) {
         setStatus('Connect wallet to play');
         setShowGame(false);
@@ -2348,7 +2349,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
                     {freePlayMode ? (
                       <>
-                        <li>Connect your wallet (optional for free play)</li>
+                        <li>Connect your wallet (required for leaderboard/chat, no waging in free play)</li>
                         <li>Create a match or join an existing one</li>
                         <li>Share your invite code with an opponent</li>
                         <li>Opponent joins the match</li>
