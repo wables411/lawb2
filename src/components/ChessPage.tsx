@@ -3,7 +3,6 @@ import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { getSDKInstance } from '../main';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
@@ -24,38 +23,19 @@ const ChessPage: React.FC = () => {
 
   // Call SDK ready() when ChessPage loads (backup call for /chess route)
   useEffect(() => {
-    const callReady = async () => {
-      console.log('[MINIAPP] ChessPage: Attempting to call ready()...');
-      
-      // Try multiple times with delays
-      for (let attempt = 0; attempt < 10; attempt++) {
-        try {
-          const sdk = getSDKInstance();
-          
-          if (!sdk) {
-            console.log(`[MINIAPP] ChessPage: SDK not available yet, attempt ${attempt + 1}/10`);
-            await new Promise(resolve => setTimeout(resolve, 200));
-            continue;
-          }
-          
-          if (sdk && sdk.actions && sdk.actions.ready) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            await sdk.actions.ready();
-            console.log('[MINIAPP] ✅ ChessPage: SDK ready() called successfully');
-            return;
-          }
-        } catch (error) {
-          console.warn(`[MINIAPP] ChessPage: Attempt ${attempt + 1} failed:`, error);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 200));
+    const timer = setTimeout(async () => {
+      try {
+        // Import SDK dynamically at runtime - it will be available in Farcaster context
+        const { sdk: farcasterSDK } = await import('@farcaster/miniapp-sdk');
+        await farcasterSDK.actions.ready();
+        console.log('[MINIAPP] ✅ ChessPage: SDK ready() called - splash screen hidden');
+      } catch (error) {
+        // SDK not available (not in Farcaster context) - that's okay
+        console.log('[MINIAPP] ChessPage: SDK not available (not in Farcaster context)');
       }
-      
-      console.error('[MINIAPP] ❌ ChessPage: Failed to call ready() after all attempts');
-    };
+    }, 200);
     
-    callReady();
+    return () => clearTimeout(timer);
   }, []);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');

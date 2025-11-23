@@ -55,43 +55,21 @@ const Root = () => {
   // Call SDK ready() when interface is ready to be displayed
   // Following Farcaster guide: https://miniapps.farcaster.xyz/docs/guides/loading
   useEffect(() => {
-    const callReady = async () => {
-      console.log('[MINIAPP] Attempting to call ready()...');
-      
-      // Try multiple times with delays in case SDK loads asynchronously
-      for (let attempt = 0; attempt < 10; attempt++) {
-        try {
-          let sdk = getSDKInstance();
-          
-          // If SDK not available yet, wait a bit and try again
-          if (!sdk) {
-            console.log(`[MINIAPP] SDK not available yet, attempt ${attempt + 1}/10`);
-            await new Promise(resolve => setTimeout(resolve, 200));
-            continue;
-          }
-          
-          if (sdk && sdk.actions && sdk.actions.ready) {
-            // Wait a brief moment to ensure React has rendered the initial UI
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            await sdk.actions.ready();
-            console.log('[MINIAPP] ✅ SDK ready() called successfully - splash screen hidden');
-            return; // Success, exit loop
-          } else {
-            console.warn('[MINIAPP] SDK available but ready() method missing', sdk);
-          }
-        } catch (error) {
-          console.warn(`[MINIAPP] Attempt ${attempt + 1} failed:`, error);
-        }
-        
-        // Wait before next attempt
-        await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait a brief moment to ensure React has rendered the initial UI
+    // This prevents jitter and content reflows
+    const timer = setTimeout(async () => {
+      try {
+        // Import SDK dynamically at runtime - it will be available in Farcaster context
+        const { sdk: farcasterSDK } = await import('@farcaster/miniapp-sdk');
+        await farcasterSDK.actions.ready();
+        console.log('[MINIAPP] ✅ SDK ready() called - splash screen hidden');
+      } catch (error) {
+        // SDK not available (not in Farcaster context) - that's okay
+        console.log('[MINIAPP] SDK not available (not in Farcaster context)');
       }
-      
-      console.error('[MINIAPP] ❌ Failed to call ready() after all attempts');
-    };
+    }, 100);
     
-    callReady();
+    return () => clearTimeout(timer);
   }, []); // Empty deps - only call once when component mounts
 
   return isMobile ? <Mobile /> : <App />;
