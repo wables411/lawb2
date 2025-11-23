@@ -1,4 +1,4 @@
-import{a5 as e,aC as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M as d,F as u,_ as p,f as h,v as m,z as g,Y as w,am as b,ab as f,E as y,a1 as v,J as k,s as x,S as $,a7 as C,aj as S,Z as R,U as P,aD as I}from"./index-CtoPJthF.js";import"./index-BnGBIk-E.js";import{S as O}from"./SwapController-B0ru795R.js";import"./wagmi-vendor-CmeBlSFu.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const W={isUnsupportedChainView:()=>"UnsupportedChain"===o.state.view||"SwitchNetwork"===o.state.view&&o.state.history.includes("UnsupportedChain"),async safeClose(){if(this.isUnsupportedChainView())return void e.shake();await t.isSIWXCloseDisabled()?e.shake():("DataCapture"!==o.state.view&&"DataCaptureOtpConfirm"!==o.state.view||i.disconnect(),e.close())}},E=r`
+import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M as d,F as u,_ as p,f as h,v as m,z as g,Y as w,am as b,ab as f,E as y,a1 as v,J as k,s as x,S as $,a7 as C,aj as S,Z as R,U as P,aB as I}from"./index-C5Pe0CJJ.js";import"./index-D8FzWYyn.js";import{S as O}from"./SwapController-DKqcBlfk.js";import"./wagmi-vendor-CmeBlSFu.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const W={isUnsupportedChainView:()=>"UnsupportedChain"===o.state.view||"SwitchNetwork"===o.state.view&&o.state.history.includes("UnsupportedChain"),async safeClose(){if(this.isUnsupportedChainView())return void e.shake();await t.isSIWXCloseDisabled()?e.shake():("DataCapture"!==o.state.view&&"DataCaptureOtpConfirm"!==o.state.view||i.disconnect(),e.close())}},E=r`
   :host {
     display: block;
     border-radius: clamp(0px, ${({borderRadius:e})=>e[8]}, 44px);
@@ -82,7 +82,7 @@ import{a5 as e,aC as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
     border-radius: ${({borderRadius:e})=>e[2]};
     background-color: var(--local-icon-bg-value);
   }
-`;var N=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};const D={info:"info",success:"checkmark",warning:"warningCircle",error:"warning"};let T=class extends s{constructor(){super(...arguments),this.message="",this.type="info"}render(){return l`
+`;var N=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};const T={info:"info",success:"checkmark",warning:"warningCircle",error:"warning"};let D=class extends s{constructor(){super(...arguments),this.message="",this.type="info"}render(){return l`
       <wui-flex
         data-type=${d(this.type)}
         flexDirection="row"
@@ -97,7 +97,7 @@ import{a5 as e,aC as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
             justifyContent="center"
             class="icon-box"
           >
-            <wui-icon color="inherit" size="md" name=${D[this.type]}></wui-icon>
+            <wui-icon color="inherit" size="md" name=${T[this.type]}></wui-icon>
           </wui-flex>
           <wui-text variant="md-medium" color="inherit" data-testid="wui-alertbar-text"
             >${this.message}</wui-text
@@ -111,7 +111,7 @@ import{a5 as e,aC as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
           @click=${this.onClose}
         ></wui-icon>
       </wui-flex>
-    `}onClose(){u.close()}};T.styles=[a,A],N([c()],T.prototype,"message",void 0),N([c()],T.prototype,"type",void 0),T=N([n("wui-alertbar")],T);const j=r`
+    `}onClose(){u.close()}};D.styles=[a,A],N([c()],D.prototype,"message",void 0),N([c()],D.prototype,"type",void 0),D=N([n("wui-alertbar")],D);const j=r`
   :host {
     display: block;
     position: absolute;
