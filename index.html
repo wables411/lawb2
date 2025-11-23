@@ -42,13 +42,12 @@
     <!-- This avoids SharedArrayBuffer/COEP issues with wallet connections -->
     
     <!-- Farcaster Mini App Embed Metadata -->
-    <meta name="fc:miniapp" content='{"version":"next","imageUrl":"https://lawb.xyz/assets/favicon.ico","button":{"title":"Play Lawb Chess","action":{"type":"launch_miniapp","name":"Lawb Chess","url":"https://lawb.xyz/chess","splashImageUrl":"https://lawb.xyz/assets/favicon.ico","splashBackgroundColor":"#000080"}}}' />
-    <!-- Legacy fc:frame support for backward compatibility -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://lawb.xyz/assets/favicon.ico","button":{"title":"Play Lawb Chess","action":{"type":"launch_miniapp","name":"Lawb Chess","url":"https://lawb.xyz/chess","splashImageUrl":"https://lawb.xyz/assets/favicon.ico","splashBackgroundColor":"#000080"}}}' />
+    <!-- Per agents checklist: version must be "1" not "next", action type must be "launch_frame" -->
+    <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://lawb.xyz/assets/favicon.ico","button":{"title":"Play Lawb Chess","action":{"type":"launch_frame","name":"Lawb Chess","url":"https://lawb.xyz/chess","splashImageUrl":"https://lawb.xyz/assets/favicon.ico","splashBackgroundColor":"#000080"}}}' />
     
     <!-- Preconnect to Quick Auth Server for better performance -->
     <link rel="preconnect" href="https://auth.farcaster.xyz" />
-    <script type="module" crossorigin src="/assets/index-Bf7YCmes.js"></script>
+    <script type="module" crossorigin src="/assets/index-DU44RiV9.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-ZyuiJZO_.js">
     <link rel="modulepreload" crossorigin href="/assets/wagmi-vendor-BOLjgord.js">
     <link rel="modulepreload" crossorigin href="/assets/chess-vendor-JTxzwGi1.js">
