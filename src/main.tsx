@@ -20,43 +20,49 @@ import { getAppKit } from '@reown/appkit/react';
 getAppKit(appKit);
 const queryClient = new QueryClient();
 
-// Conditionally initialize Farcaster Mini App SDK
+// Initialize Farcaster Mini App SDK (always available, will work in preview tool)
 let sdkInitialized = false;
+let sdkInstance: any = null;
+
 async function initializeMiniAppSDK() {
-  if (typeof window === 'undefined' || !isMiniAppContext()) {
+  if (typeof window === 'undefined') {
     return;
   }
 
   try {
-    // Dynamically import SDK only in mini app context
+    // Always try to import SDK - it will work in Farcaster context
     const { sdk } = await import('@farcaster/miniapp-sdk');
-    
-    // Call ready() after app loads
-    // This will be called from the App component after React renders
-    (window as any).__farcasterSDK = sdk;
+    sdkInstance = sdk;
     sdkInitialized = true;
     console.log('[MINIAPP] Farcaster SDK initialized');
+    
+    // Call ready() immediately after initialization
+    // This is critical - without it, users see infinite loading screen
+    try {
+      await sdk.actions.ready();
+      console.log('[MINIAPP] SDK ready() called successfully');
+    } catch (readyError) {
+      console.warn('[MINIAPP] ready() called but may not be in Farcaster context:', readyError);
+    }
   } catch (error) {
-    console.warn('[MINIAPP] Failed to initialize Farcaster SDK:', error);
+    // SDK import failed - not in Farcaster context, that's okay
+    console.log('[MINIAPP] SDK not available (not in Farcaster context)');
   }
 }
 
-// Initialize SDK if in mini app context
-if (isMiniAppContext()) {
-  initializeMiniAppSDK().catch(console.error);
-}
+// Initialize SDK immediately
+initializeMiniAppSDK().catch(console.error);
 
-// Export function to call ready() from App component
+// Export function to call ready() from components (backup)
 export async function callSDKReady() {
-  if (!sdkInitialized || typeof window === 'undefined') {
+  if (!sdkInitialized || !sdkInstance || typeof window === 'undefined') {
     return;
   }
 
   try {
-    const sdk = (window as any).__farcasterSDK;
-    if (sdk && sdk.actions && sdk.actions.ready) {
-      await sdk.actions.ready();
-      console.log('[MINIAPP] SDK ready() called successfully');
+    if (sdkInstance && sdkInstance.actions && sdkInstance.actions.ready) {
+      await sdkInstance.actions.ready();
+      console.log('[MINIAPP] SDK ready() called successfully (backup call)');
     }
   } catch (error) {
     console.warn('[MINIAPP] Failed to call SDK ready():', error);
@@ -68,15 +74,13 @@ const isChessSubdomain = typeof window !== 'undefined' && window.location.hostna
 const Root = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // Call SDK ready() when app loads in mini app context
+  // Call SDK ready() when app loads (backup call in case initial call didn't work)
   useEffect(() => {
-    if (isMiniAppContext()) {
-      // Small delay to ensure app is fully rendered
-      const timer = setTimeout(() => {
-        callSDKReady();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+    // Small delay to ensure app is fully rendered, then call ready()
+    const timer = setTimeout(() => {
+      callSDKReady();
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   return isMobile ? <Mobile /> : <App />;
