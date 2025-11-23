@@ -2776,6 +2776,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('[MENU] Leaderboard button clicked, setting sidebarView to leaderboard');
                     setSidebarView('leaderboard');
                     setIsSidebarOpen(false);
                   }}
@@ -2787,6 +2788,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('[MENU] Gallery button clicked, setting sidebarView to gallery');
                     setSidebarView('gallery');
                     setIsSidebarOpen(false);
                   }}
@@ -2842,18 +2844,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         {/* Mobile Content Popup - Shows content when a menu button is clicked */}
         {isMobile && sidebarView && (
           <>
+            {console.log('[POPUP] Rendering mobile popup, sidebarView:', sidebarView, 'isMobile:', isMobile)}
             {/* Overlay */}
             <div 
               className="mobile-content-overlay"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[POPUP] Overlay clicked, closing popup');
                 setSidebarView(null);
               }}
             />
             
             {/* Content Popup */}
-            <div className="mobile-content-popup">
+            <div className="mobile-content-popup" style={{ zIndex: 9999 }}>
               {/* Close button */}
               <button
                 className="mobile-content-close-btn"
