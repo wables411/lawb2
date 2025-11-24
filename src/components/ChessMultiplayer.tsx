@@ -23,6 +23,7 @@ import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '..
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
+import { HowToContent } from './HowToContent';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -721,19 +722,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile'>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
+  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
     setOpenWindows(prev => new Set(prev).add(windowType));
     setIsMenuOpen(false);
     // Set default position if not set - position windows to avoid covering chessboard
     if (!windowPositions[windowType]) {
-      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : windowType === 'profile' ? 400 : 400;
-      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : windowType === 'profile' ? 500 : 500;
+      const windowWidth =
+        windowType === 'gallery' ? 380 :
+        windowType === 'moves' ? 300 :
+        windowType === 'profile' ? 400 :
+        windowType === 'howto' ? 420 : 400;
+      const windowHeight =
+        windowType === 'gallery' ? 480 :
+        windowType === 'moves' ? 400 :
+        windowType === 'profile' ? 500 :
+        windowType === 'howto' ? 520 : 500;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
@@ -757,7 +766,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
+  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
@@ -765,8 +774,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     });
   };
   
+  const openHowToGuide = useCallback(() => {
+    if (isMobile) {
+      setSidebarView('howto');
+      setIsSidebarOpen(false);
+    } else {
+      openWindow('howto');
+    }
+  }, [isMobile, openWindow]);
+
   // Mobile sidebar state (unchanged)
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | 'profile' | null>(isMobile ? null : null);
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -5479,6 +5497,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    openHowToGuide();
+                  }}
+                >
+                  How To
+                </button>
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setIsSidebarOpen(false);
                     // Open chat window on mobile
                     if (onChatToggle) {
@@ -5699,6 +5727,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           {sidebarView === 'profile' && (
             <div className="profile-compact mobile-content-view">
               <PlayerProfile isMobile={true} />
+            </div>
+          )}
+
+          {sidebarView === 'howto' && (
+            <div className="how-to-compact mobile-content-view">
+              <HowToContent variant="mobile" />
             </div>
           )}
         </div>
@@ -6172,6 +6206,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               Gallery
             </button>
             <button
+              onClick={() => openWindow('howto')}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              How To
+            </button>
+            <button
               onClick={() => {
                 if (onChatToggle) {
                   onChatToggle();
@@ -6388,6 +6437,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           zIndex={1000}
         >
           <PlayerProfile isMobile={false} />
+        </Popup>
+      )}
+
+      {!isMobile && openWindows.has('howto') && (
+        <Popup
+          id="howto-window"
+          isOpen={true}
+          onClose={() => closeWindow('howto')}
+          title="How To Play"
+          initialPosition={windowPositions['howto'] ? { x: windowPositions['howto'].x, y: windowPositions['howto'].y } : { x: 40, y: 160 }}
+          initialSize={{ width: 420, height: 520 }}
+          zIndex={1000}
+        >
+          <HowToContent />
         </Popup>
       )}
       

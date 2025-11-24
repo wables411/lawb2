@@ -15,6 +15,7 @@ import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
+import { HowToContent } from './HowToContent';
 
 import './ChessGame.css';
 
@@ -2024,13 +2025,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile'>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
+  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
     if (typeof window !== 'undefined' && window.console) {
       window.console.log('[OPEN WINDOW] Opening window:', windowType);
     }
@@ -2038,8 +2039,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Set default position if not set - position windows to avoid covering chessboard
     // Calculate position BEFORE opening window to ensure it's available on first render
     if (!windowPositions[windowType]) {
-      const windowWidth = windowType === 'gallery' ? 380 : windowType === 'moves' ? 300 : windowType === 'profile' ? 400 : 400;
-      const windowHeight = windowType === 'gallery' ? 480 : windowType === 'moves' ? 400 : windowType === 'profile' ? 500 : 500;
+      const windowWidth =
+        windowType === 'gallery' ? 380 :
+        windowType === 'moves' ? 300 :
+        windowType === 'profile' ? 400 :
+        windowType === 'howto' ? 420 : 400;
+      const windowHeight =
+        windowType === 'gallery' ? 480 :
+        windowType === 'moves' ? 400 :
+        windowType === 'profile' ? 500 :
+        windowType === 'howto' ? 520 : 500;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
@@ -2086,16 +2095,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile') => {
+  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
       return newSet;
     });
   };
+
+  const openHowToGuide = useCallback(() => {
+    if (isMobile) {
+      setSidebarView('howto');
+      setIsSidebarOpen(false);
+    } else {
+      openWindow('howto');
+    }
+  }, [isMobile, openWindow]);
   
   // Mobile sidebar state (unchanged)
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | 'profile' | null>(isMobile ? null : null);
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Debug menu state
@@ -2178,7 +2196,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             <button onClick={onClose}>×</button>
           </div>
         </div>
-        <div className="game-stable-layout">
+        <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="center-area">
             <div className="game-mode-panel-streamlined">
@@ -2269,51 +2287,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p>Create or join matches instantly</p>
                 </div>
               )}
-              {/* Updated Help Section */}
-              <div className="help-section-compact">
-                <h4>How to Play Lawb Chess Beta 3000 on Sanko</h4>
-                <div className="help-content">
-                  <p><strong>Objective:</strong> Checkmate your opponent's king by placing it under attack with no legal moves to escape.</p>
-                  <p><strong>Match Setup:</strong> Blue pieces start at the bottom, Red pieces at the top. Blue always moves first.</p>
-                  <p><strong>Piece Movements:</strong></p>
-                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    <li><strong>Pawn:</strong> Moves forward one square (or two on first move), captures diagonally</li>
-                    <li><strong>Knight:</strong> Moves in L-shape: 2 squares in one direction, then 1 square perpendicular</li>
-                    <li><strong>Bishop:</strong> Moves any number of squares diagonally</li>
-                    <li><strong>Rook:</strong> Moves any number of squares horizontally or vertically</li>
-                    <li><strong>Queen:</strong> Moves any number of squares in any one direction</li>
-                    <li><strong>King:</strong> Moves one square in any direction</li>
-                  </ul>
-                  <p><strong>Special Rules:</strong></p>
-                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    <li><strong>Check:</strong> When your king is under attack - you must move to escape</li>
-                    <li><strong>Checkmate:</strong> When your king is under attack with no legal moves to escape. endGame.</li>
-                    <li><strong>Stalemate:</strong> When you have no legal moves but your king is not in check (draw). endGame.</li>
-                    <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of chess board, Player chooses which chess piece to swap pawn out for.</li>
-                  </ul>
-                  <p><strong>Match Modes:</strong></p>
-                  <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
-                    <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee. Each match smokes the ticker.</li>
-                  </ul>
-                  <p><strong>Multiplayer Flow:</strong></p>
-                  <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-                    <li>Connect your wallet to Sanko mainnet</li>
-                    <li>Create a match and set your wager amount in $DMT, $LAWB, $GOLD or $MOSS</li>
-                    <li>Share your invite code with an opponent</li>
-                    <li>Opponent joins and matches your wager</li>
-                    <li>Match begins automatically - Blue (Player 1) moves first</li>
-                    <li>Winner claims the pot minus 5% house fee</li>
-                  </ol>
-                  <p><strong>Leaderboard:</strong> All matches are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
-                  <p><strong>Lawb Chess Mainnet Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
-                  <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Sanko Mainnet</p>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.sanko.xyz</p>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 1996</p>
-                    <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> DMT</p>
-                  </div>
-                </div>
+              <div className="how-to-card">
+                <p>Need a refresher on the rules or multiplayer flow?</p>
+                <button className="how-to-btn" onClick={openHowToGuide}>
+                  Open How To Guide
+                </button>
               </div>
               {/* Chessboards GIF */}
               <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
@@ -2424,6 +2402,27 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               }}
             >
               Gallery
+            </button>
+            <button
+              onClick={() => {
+                openWindow('howto');
+                setIsMenuOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: isMobile ? '12px 16px' : '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left',
+                minHeight: isMobile ? '44px' : 'auto',
+                fontSize: isMobile ? '16px' : '14px',
+                touchAction: 'manipulation'
+              }}
+            >
+              How To
             </button>
             <button
               onClick={() => {
@@ -2596,6 +2595,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
         )}
         
+        {!isMobile && openWindows.has('howto') && (
+        <Popup
+          id="howto-window"
+          isOpen={true}
+          onClose={() => closeWindow('howto')}
+          title="How To Play"
+          initialPosition={windowPositions['howto'] ? { x: windowPositions['howto'].x, y: windowPositions['howto'].y } : { x: 40, y: 160 }}
+          initialSize={{ width: 420, height: 520 }}
+          zIndex={1000}
+        >
+          <HowToContent />
+        </Popup>
+        )}
+
         {/* Profile popup from leaderboard - rendered in home view */}
         {!isMobile && viewingProfileAddress && (
           <Popup
@@ -2750,6 +2763,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   }}
                 >
                   Gallery
+                </button>
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openHowToGuide();
+                  }}
+                >
+                  How To
                 </button>
                 {onChatToggle && (
                   <button 
@@ -2952,6 +2975,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               {sidebarView === 'profile' && (
                 <div className="profile-compact mobile-content-view">
                   <PlayerProfile isMobile={true} />
+                </div>
+              )}
+
+              {sidebarView === 'howto' && (
+                <div className="how-to-compact mobile-content-view">
+                  <HowToContent variant="mobile" />
                 </div>
               )}
               
@@ -3463,6 +3492,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           zIndex={1000}
         >
           <PlayerProfile isMobile={false} />
+        </Popup>
+      )}
+
+      {!isMobile && openWindows.has('howto') && (
+        <Popup
+          id="howto-window"
+          isOpen={true}
+          onClose={() => closeWindow('howto')}
+          title="How To Play"
+          initialPosition={windowPositions['howto'] ? { x: windowPositions['howto'].x, y: windowPositions['howto'].y } : { x: 40, y: 160 }}
+          initialSize={{ width: 420, height: 520 }}
+          zIndex={1000}
+        >
+          <HowToContent />
         </Popup>
       )}
       

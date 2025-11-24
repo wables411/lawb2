@@ -1,14 +1,43 @@
+.mobile-content-overlay {
+  z-index: 10002 !important;
+}
+.mobile-menu-popup {
+  background: #c0c0c0 !important;
+  border: 2px outset #fff !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.mobile-menu-btn {
+  background: #c0c0c0 !important;
+  border: 2px outset #fff !important;
+  color: #000 !important;
+  border-radius: 0 !important;
+  font-family: 'MS Sans Serif', Arial, sans-serif !important;
+}
+
+.mobile-menu-btn:active {
+  background: #a0a0a0 !important;
+  border: 2px inset #fff !important;
+}
+
+.mobile-content-popup {
+  background: #c0c0c0 !important;
+  border: 2px outset #fff !important;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 12px 12px 0 0 !important;
+}
 /* Chess Multiplayer Styles - Identical to Single Player */
 .chess-game {
   width: 100vw;
   min-height: 100vh;
-  height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: stretch;
+  justify-content: flex-start;
   background: #c0c0c0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
   padding: 0;
 }
