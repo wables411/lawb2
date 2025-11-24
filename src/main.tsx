@@ -5,6 +5,7 @@ import App from './App.tsx';
 import Mobile from './mobile/Mobile.tsx';
 import { useMediaQuery } from './hooks/useMediaQuery.ts';
 import './index.css';
+import './walletModal.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';

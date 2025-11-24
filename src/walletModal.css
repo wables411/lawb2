@@ -1,0 +1,43 @@
+@media (max-width: 768px) {
+  w3m-modal {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  w3m-modal > div {
+    width: 100% !important;
+    margin: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  w3m-modal > div > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    bottom: 0 !important;
+    animation: walletBottomSheetSlideUp 0.25s ease !important;
+  }
+
+  w3m-modal > div > div > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  w3m-modal::part(backdrop) {
+    align-items: flex-end !important;
+  }
+
+  @keyframes walletBottomSheetSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0%);
+    }
+  }
+}
+
