@@ -1525,7 +1525,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 
 .game-stable-layout.home-view .center-area {
   width: 100%;
-  max-width: 640px;
+  max-width: 100%;
   overflow-x: hidden;
   box-sizing: border-box;
 }
@@ -2234,7 +2234,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background: #000000;
   border-radius: 8px;
   margin: 20px;
-  max-width: 400px;
+  max-width: 600px;
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;

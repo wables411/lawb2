@@ -679,6 +679,17 @@ button.sidebar-menu-btn,
   padding: 0;
 }
 
+@media (max-width: 768px) {
+  .center-area {
+    padding: 0 !important;
+  }
+  
+  .chess-multiplayer-lobby {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+}
+
 .chessboard-container {
   width: 100%;
   height: 100%;

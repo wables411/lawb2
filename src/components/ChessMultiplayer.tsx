@@ -5752,15 +5752,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <div className={`center-area ${isGameLoading ? 'loading' : ''}`}>
           {/* Lobby Mode */}
           {gameMode === GameMode.LOBBY && (
-            <div className="chess-multiplayer-lobby"             style={{
+            <div className="chess-multiplayer-lobby" style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'flex-start',
               textAlign: 'center',
-              padding: isMobile ? '0 12px' : '20px',
+              padding: isMobile ? '0' : '20px',
               marginTop: isMobile ? '0' : '20px',
-              paddingTop: isMobile ? '4px' : undefined
+              paddingTop: isMobile ? '0' : undefined,
+              paddingLeft: isMobile ? '12px' : undefined,
+              paddingRight: isMobile ? '12px' : undefined
             }}>
               <h2 style={{
                 color: '#ff0000',
