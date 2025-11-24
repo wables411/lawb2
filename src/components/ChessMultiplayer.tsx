@@ -5416,12 +5416,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setIsSidebarOpen(prev => !prev);
+                console.log('[PVP MENU] Button clicked, current isSidebarOpen:', isSidebarOpen);
+                setIsSidebarOpen(prev => {
+                  console.log('[PVP MENU] Setting isSidebarOpen to:', !prev);
+                  return !prev;
+                });
               }}
               onTouchStart={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setIsSidebarOpen(prev => !prev);
+                console.log('[PVP MENU] TouchStart, current isSidebarOpen:', isSidebarOpen);
+                setIsSidebarOpen(prev => {
+                  console.log('[PVP MENU] TouchStart setting isSidebarOpen to:', !prev);
+                  return !prev;
+                });
               }}
               title="Toggle Menu"
               type="button"
@@ -5453,7 +5461,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             
             <div 
               className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}
-              style={{ display: isSidebarOpen ? 'flex' : 'none' }}
             >
               {/* Close button */}
               <button
@@ -5751,17 +5758,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               alignItems: 'center',
               justifyContent: 'flex-start',
               textAlign: 'center',
-              padding: isMobile ? '8px 12px' : '20px',
-              marginTop: isMobile ? '4px' : '20px'
+              padding: isMobile ? '0 12px' : '20px',
+              marginTop: isMobile ? '0' : '20px',
+              paddingTop: isMobile ? '4px' : undefined
             }}>
               <h2 style={{
                 color: '#ff0000',
                 fontFamily: 'Impact, Charcoal, sans-serif',
-                fontSize: isMobile ? '32px' : '48px',
+                fontSize: isMobile ? '28px' : '48px',
                 fontWeight: 'bold',
                 textShadow: '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
                 marginBottom: isMobile ? '4px' : '10px',
                 marginTop: isMobile ? '0' : undefined,
+                paddingTop: isMobile ? '0' : undefined,
                 textTransform: 'uppercase'
               }}>PVP CHESS LAWBY</h2>
               
