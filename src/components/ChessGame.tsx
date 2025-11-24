@@ -2219,19 +2219,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="center-area">
             <div className="game-mode-panel-streamlined">
-              {/* Lawbstation Game Image */}
-              <div style={{textAlign: 'center', marginBottom: '20px'}}>
-                <img 
-                  src="/assets/lawbstationgame.png" 
-                  alt="Lawbstation Chess" 
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    borderRadius: '0px',
-                    boxShadow: 'none'
-                  }}
-                />
-              </div>
               {/* Status Display and Network Switching */}
               <div style={{ 
                 textAlign: 'center', 
@@ -3308,19 +3295,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             renderDifficultySelection()
           ) : (
             <div className="game-mode-panel-streamlined">
-              {/* Lawbstation Game Image */}
-              <div style={{textAlign: 'center', marginBottom: '20px'}}>
-                <img 
-                  src="/assets/lawbstationgame.png" 
-                  alt="Lawbstation Chess" 
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    borderRadius: '0px',
-                    boxShadow: 'none'
-                  }}
-                />
-              </div>
               <div className="mode-selection-compact">
                 <button 
                   className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}

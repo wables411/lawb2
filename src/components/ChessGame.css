@@ -2231,7 +2231,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: #000000;
+  background: #000000 url('/assets/lawbstationprint.png') center center / cover no-repeat;
   border-radius: 8px;
   margin: 20px;
   max-width: 600px;
