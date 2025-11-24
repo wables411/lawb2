@@ -2951,7 +2951,28 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   
   /* Better mobile spacing */
   .game-mode-panel-streamlined {
-    padding: 16px 12px;
+    padding: 4px 12px !important;
+    padding-top: 4px !important;
+    margin-top: 0 !important;
+  }
+  
+  .game-mode-panel-streamlined h2,
+  .game-mode-panel-streamlined h4 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  
+  /* Reduce padding on mobile for piece set and difficulty selectors */
+  .piece-set-selection-panel,
+  .difficulty-selection-panel {
+    padding-top: 4px !important;
+    margin-top: 0 !important;
+  }
+  
+  .piece-set-selection-panel h2,
+  .difficulty-selection-panel h2 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
   
   .mode-selection-compact {
