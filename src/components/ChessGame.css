@@ -1526,6 +1526,8 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 .game-stable-layout.home-view .center-area {
   width: 100%;
   max-width: 640px;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .game-stable-layout.home-view.mobile {
@@ -2234,6 +2236,8 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   margin: 20px;
   max-width: 400px;
   width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .mode-selection-compact {
@@ -2951,16 +2955,9 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     margin-bottom: 16px;
   }
   
-  /* Mobile menu popup */
+  /* Desktop menu popup should NOT show on mobile - use mobile-menu-popup instead */
   .chess-menu-popup {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    right: auto !important;
-    width: 90vw !important;
-    max-width: 300px !important;
-    min-width: 200px !important;
+    display: none !important;
   }
   
   .chess-menu-popup button {

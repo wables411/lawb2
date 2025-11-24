@@ -2167,31 +2167,42 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
-            <button 
-              className="menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (isMobile) {
-                  setIsSidebarOpen(prev => !prev);
-                } else {
+            {/* Desktop menu button */}
+            {!isMobile && (
+              <button 
+                className="menu-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsMenuOpen(prev => !prev);
-                }
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (isMobile) {
+                }}
+                title="Menu"
+                type="button"
+              >
+                ☰
+              </button>
+            )}
+            {/* Mobile menu button */}
+            {isMobile && (
+              <button 
+                className="sidebar-menu-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsSidebarOpen(prev => !prev);
-                } else {
-                  setIsMenuOpen(prev => !prev);
-                }
-              }}
-              title="Menu"
-              type="button"
-            >
-              ☰
-            </button>
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(prev => !prev);
+                }}
+                title="Toggle Menu"
+                type="button"
+                aria-label="Toggle Menu"
+              >
+                ☰
+              </button>
+            )}
             {isMobile && isChatMinimized && onChatToggle && (
               <button 
                 className="chat-bubble-btn"
@@ -2302,10 +2313,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   alt="Chessboards Animation" 
                   style={{
                     maxWidth: '100%',
-                    width: '300px',
+                    width: '100%',
                     height: 'auto',
                     borderRadius: '0px',
-                    boxShadow: 'none'
+                    boxShadow: 'none',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -2314,8 +2326,237 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </div>
         </div>
 
-        {/* Menu Popup - Home View (Desktop and Mobile) */}
-        {(() => {
+        {/* Mobile Sidebar Popup - Home View */}
+        {isMobile && (
+          <>
+            {/* Mobile Popup Overlay */}
+            {isSidebarOpen && (
+              <div 
+                className="sidebar-popup-overlay"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(false);
+                }}
+              />
+            )}
+            
+            <div 
+              className={`mobile-menu-popup ${isSidebarOpen ? 'popup-open' : 'popup-closed'}`}
+              style={{ display: isSidebarOpen ? 'flex' : 'none' }}
+            >
+              {/* Close button */}
+              <button
+                className="mobile-menu-close-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(false);
+                }}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            
+              {/* Simple button menu */}
+              <div className="mobile-menu-buttons">
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('leaderboard');
+                    setTimeout(() => { setIsSidebarOpen(false); }, 50);
+                  }}
+                >
+                  Leaderboard
+                </button>
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('gallery');
+                    setTimeout(() => { setIsSidebarOpen(false); }, 50);
+                  }}
+                >
+                  Gallery
+                </button>
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('howto');
+                    setTimeout(() => { setIsSidebarOpen(false); }, 50);
+                  }}
+                >
+                  How To
+                </button>
+                {onChatToggle && (
+                  <button 
+                    className="mobile-menu-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsSidebarOpen(false);
+                      if (onChatToggle) {
+                        onChatToggle();
+                      }
+                    }}
+                  >
+                    Chat
+                  </button>
+                )}
+                <button 
+                  className="mobile-menu-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarView('profile');
+                    setTimeout(() => { setIsSidebarOpen(false); }, 50);
+                  }}
+                >
+                  Profile
+                </button>
+                {onBackToModeSelect && (
+                  <button 
+                    className="mobile-menu-btn"
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      onBackToModeSelect();
+                    }}
+                  >
+                    Chess Home
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Mobile Content Popup - Home View */}
+        {isMobile && sidebarView && (
+          <>
+            {/* Overlay */}
+            <div 
+              className="mobile-content-overlay"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSidebarView(null);
+              }}
+            />
+            
+            {/* Content Popup */}
+            <div className="mobile-content-popup">
+              {/* Close button */}
+              <button
+                className="mobile-content-close-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSidebarView(null);
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              
+              {/* Content */}
+              {sidebarView === 'leaderboard' && (
+                <div className="leaderboard-compact mobile-content-view">
+                  <div className="leaderboard-title">Leaderboard</div>
+                  {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
+                    <div className="leaderboard-table-compact">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leaderboardData.slice(0, 10).map((entry, index: number) => {
+                            if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                              const typedEntry = entry as LeaderboardEntry;
+                              const displayName = leaderboardDisplayNames[typedEntry.username] || formatAddress(typedEntry.username);
+                              return (
+                                <tr key={typedEntry.username}>
+                                  <td>{index + 1}</td>
+                                  <td 
+                                    style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                                    onClick={() => setViewingProfileAddress(typedEntry.username)}
+                                  >
+                                    {displayName}
+                                  </td>
+                                  <td>{typedEntry.points}</td>
+                                </tr>
+                              );
+                            }
+                            return null;
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="mobile-empty-state" style={{ padding: '20px', textAlign: 'center' }}>
+                      {leaderboardLoading ? (
+                        <div>Loading leaderboard...</div>
+                      ) : leaderboardError ? (
+                        <div style={{ padding: '15px', background: '#fee', border: '1px solid #fcc', borderRadius: '4px' }}>
+                          <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#d00' }}>{leaderboardError}</div>
+                          <button
+                            onClick={() => void loadLeaderboard()}
+                            style={{
+                              padding: '8px 16px',
+                              background: '#4CAF50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : leaderboardData.length === 0 ? (
+                        <div>No leaderboard entries yet</div>
+                      ) : (
+                        <div>Loading leaderboard...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {sidebarView === 'gallery' && (
+                <div className="piece-gallery-compact mobile-content-view">
+                  <div className="gallery-title">Piece Gallery</div>
+                  {renderPieceGallery(true, 'Click pieces to learn more')}
+                </div>
+              )}
+              
+              {sidebarView === 'profile' && (
+                <div className="profile-compact mobile-content-view">
+                  <PlayerProfile isMobile={true} />
+                </div>
+              )}
+
+              {sidebarView === 'howto' && (
+                <div className="how-to-compact mobile-content-view">
+                  <HowToContent variant="mobile" />
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Menu Popup - Home View (Desktop Only) */}
+        {!isMobile && (() => {
           const shouldRender = isMenuOpen && !showGame;
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[MENU RENDER] Home view menu check:', JSON.stringify({
@@ -3158,10 +3399,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   alt="Chessboards Animation" 
                   style={{
                     maxWidth: '100%',
-                    width: '300px',
+                    width: '100%',
                     height: 'auto',
                     borderRadius: '0px',
-                    boxShadow: 'none'
+                    boxShadow: 'none',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>

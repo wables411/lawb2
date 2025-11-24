@@ -1576,26 +1576,28 @@ body, html {
   }
   
   .mobile-menu-btn {
-    background: rgba(0, 0, 0, 0.3) !important;
-    border: 1px solid rgba(0, 255, 0, 0.5) !important;
-    color: #00ff00 !important;
+    background: #c0c0c0 !important;
+    border: 2px outset #fff !important;
+    color: #000 !important;
     padding: 12px 16px !important;
-    border-radius: 4px !important;
+    border-radius: 0 !important;
     cursor: pointer !important;
     font-size: 14px !important;
     font-weight: 600 !important;
     text-align: center !important;
     width: 100% !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
+    font-family: 'MS Sans Serif', Arial, sans-serif !important;
     transition: all 0.2s ease !important;
     touch-action: manipulation !important;
     -webkit-tap-highlight-color: rgba(0, 255, 0, 0.2) !important;
   }
   
-  .mobile-menu-btn:hover,
   .mobile-menu-btn:active {
-    background: rgba(0, 255, 0, 0.2) !important;
-    border-color: rgba(0, 255, 0, 0.8) !important;
-    transform: scale(1.02) !important;
+    background: #a0a0a0 !important;
+    border: 2px inset #fff !important;
+    transform: scale(0.98) !important;
   }
   
   @keyframes slideDown {
