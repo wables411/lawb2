@@ -2192,6 +2192,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   e.stopPropagation();
                   setIsSidebarOpen(prev => !prev);
                 }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(prev => !prev);
+                }}
                 title="Toggle Menu"
                 type="button"
                 aria-label="Toggle Menu"
@@ -2302,12 +2307,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   <p>Create or join matches instantly</p>
                 </div>
               )}
-              <div className="how-to-card">
-                <p>Need a refresher on the rules or multiplayer flow?</p>
-                <button className="how-to-btn" onClick={openHowToGuide}>
-                  Open How To Guide
-                </button>
-              </div>
               {/* Chessboards GIF */}
               <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
                 <img 

@@ -1508,38 +1508,6 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   font-weight: bold;
 }
 
-.how-to-card {
-  width: 100%;
-  max-width: 480px;
-  margin: 16px auto 0;
-  padding: 16px;
-  background: #f8f8f8;
-  border: 2px inset #c0c0c0;
-  border-radius: 4px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.how-to-card p {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  color: #333;
-}
-
-.how-to-btn {
-  background: #c0c0c0;
-  border: 2px outset #fff;
-  padding: 10px 18px;
-  font-weight: bold;
-  cursor: pointer;
-  width: 100%;
-  font-size: 14px;
-}
-
-.how-to-btn:active {
-  border: 2px inset #fff;
-}
-
 .how-to-section.mobile {
   max-height: 60vh;
   overflow-y: auto;
