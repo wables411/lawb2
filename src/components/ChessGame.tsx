@@ -2149,21 +2149,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
-            <button 
-              className="menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof window !== 'undefined' && window.console) {
-                  window.console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
-                }
-                setIsMenuOpen(prev => !prev);
-              }}
-              title="Menu"
-              type="button"
-            >
-              ☰
-            </button>
+            {!isMobile && (
+              <button 
+                className="menu-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (typeof window !== 'undefined' && window.console) {
+                    window.console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
+                  }
+                  setIsMenuOpen(prev => !prev);
+                }}
+                title="Menu"
+                type="button"
+              >
+                ☰
+              </button>
+            )}
             {isMobile && isChatMinimized && onChatToggle && (
               <button 
                 className="chat-bubble-btn"
@@ -2649,6 +2651,22 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </button>
           )}
           {/* Menu button - shown on mobile, hidden on desktop */}
+          {!isMobile && (
+            <button 
+              className="menu-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[MENU BUTTON] Home view toggle, current:', isMenuOpen);
+                setIsMenuOpen(prev => !prev);
+              }}
+              title="Toggle Menu"
+              type="button"
+              aria-label="Toggle Menu"
+            >
+              ☰
+            </button>
+          )}
           {isMobile && (
             <button 
               className="sidebar-menu-btn"
