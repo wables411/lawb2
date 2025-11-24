@@ -2167,43 +2167,31 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
-            {!isMobile && (
-              <button 
-                className="menu-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (typeof window !== 'undefined' && window.console) {
-                    window.console.log('Menu button clicked, current isMenuOpen:', isMenuOpen);
-                  }
+            <button 
+              className="menu-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isMobile) {
+                  setIsSidebarOpen(prev => !prev);
+                } else {
                   setIsMenuOpen(prev => !prev);
-                }}
-                title="Menu"
-                type="button"
-              >
-                ☰
-              </button>
-            )}
-            {isMobile && (
-              <button 
-                className="sidebar-menu-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+                }
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isMobile) {
                   setIsSidebarOpen(prev => !prev);
-                }}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsSidebarOpen(prev => !prev);
-                }}
-                title="Toggle Menu"
-                type="button"
-                aria-label="Toggle Menu"
-              >
-                ☰
-              </button>
-            )}
+                } else {
+                  setIsMenuOpen(prev => !prev);
+                }
+              }}
+              title="Menu"
+              type="button"
+            >
+              ☰
+            </button>
             {isMobile && isChatMinimized && onChatToggle && (
               <button 
                 className="chat-bubble-btn"
