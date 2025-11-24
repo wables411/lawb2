@@ -5745,22 +5745,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         <div className={`center-area ${isGameLoading ? 'loading' : ''}`}>
           {/* Lobby Mode */}
           {gameMode === GameMode.LOBBY && (
-            <div className="chess-multiplayer-lobby" style={{
+            <div className="chess-multiplayer-lobby"             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'flex-start',
               textAlign: 'center',
-              padding: '20px',
-              marginTop: '20px'
+              padding: isMobile ? '8px 12px' : '20px',
+              marginTop: isMobile ? '4px' : '20px'
             }}>
               <h2 style={{
                 color: '#ff0000',
                 fontFamily: 'Impact, Charcoal, sans-serif',
-                fontSize: '48px',
+                fontSize: isMobile ? '32px' : '48px',
                 fontWeight: 'bold',
                 textShadow: '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
-                marginBottom: '10px',
+                marginBottom: isMobile ? '4px' : '10px',
+                marginTop: isMobile ? '0' : undefined,
                 textTransform: 'uppercase'
               }}>PVP CHESS LAWBY</h2>
               
