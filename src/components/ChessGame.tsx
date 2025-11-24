@@ -2184,6 +2184,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 ☰
               </button>
             )}
+            {isMobile && (
+              <button 
+                className="sidebar-menu-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSidebarOpen(prev => !prev);
+                }}
+                title="Toggle Menu"
+                type="button"
+                aria-label="Toggle Menu"
+              >
+                ☰
+              </button>
+            )}
             {isMobile && isChatMinimized && onChatToggle && (
               <button 
                 className="chat-bubble-btn"

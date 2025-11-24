@@ -67,34 +67,37 @@ const ChessPage: React.FC = () => {
   const mediaQueryMatch = useMediaQuery('(max-width: 768px)');
   const capabilities = useMobileCapabilities();
 
-  const [viewportWidth, setViewportWidth] = useState(() => (
-    typeof window !== 'undefined' ? window.innerWidth : 1024
-  ));
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   const isMobile = useMemo(() => {
-    const widthMatch = viewportWidth <= 900;
-    const detected = mediaQueryMatch || capabilities.isMobile || widthMatch;
-    if (typeof window !== 'undefined') {
-      console.log('[CHESS_PAGE] Mobile detection', {
-        mediaQueryMatch,
-        capabilities,
-        viewportWidth,
-        detected
-      });
+    if (typeof navigator === 'undefined') {
+      return mediaQueryMatch;
     }
+
+    const ua = navigator.userAgent || '';
+    const uaMobile =
+      /Android|iPhone|iPad|iPod|Windows Phone|Mobile|BlackBerry/i.test(ua) ||
+      ((navigator as any).userAgentData?.mobile ?? false);
+
+    const detected =
+      uaMobile ||
+      (capabilities.isTouchDevice && (mediaQueryMatch || capabilities.screenWidth <= 1024));
+
+    console.log('[CHESS_PAGE] Mobile detection', {
+      mediaQueryMatch,
+      capabilities,
+      uaMobile,
+      detected
+    });
+
     return detected;
-  }, [mediaQueryMatch, capabilities, viewportWidth]);
+  }, [mediaQueryMatch, capabilities]);
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
   const [isInGame, setIsInGame] = useState(false);
-  const [isChatVisible, setIsChatVisible] = useState(!isMobile); // Hide chat by default on mobile
+  const [isChatVisible, setIsChatVisible] = useState(false);
+
+  useEffect(() => {
+    setIsChatVisible(false);
+  }, [isMobile]);
 
   const handleClose = () => {
     // Navigate back to main site
