@@ -146,6 +146,23 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
         
         try {
           console.log('Sending transaction to wallet...');
+          console.log('Transaction details:', {
+            to: result.mintTransaction.to,
+            value: result.mintTransaction.value,
+            dataLength: result.mintTransaction.data.length
+          });
+          
+          // Warn if transaction is going to a different address than expected
+          const EXPECTED_COLLECTION = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
+          if (result.mintTransaction.to.toLowerCase() !== EXPECTED_COLLECTION.toLowerCase()) {
+            console.warn(`⚠️ Transaction is going to ${result.mintTransaction.to} instead of collection contract ${EXPECTED_COLLECTION}`);
+            const proceed = confirm(`Warning: This transaction is going to a different address (${result.mintTransaction.to}) than the Pixelawbs collection contract.\n\nThis might be a proxy/router contract. Do you want to proceed?`);
+            if (!proceed) {
+              setMinting(false);
+              return;
+            }
+          }
+          
           const txHash = await walletClient.sendTransaction({
             to: result.mintTransaction.to as `0x${string}`,
             value: BigInt(result.mintTransaction.value),
@@ -160,7 +177,7 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
           // Auto-close after 15 seconds with success message
           revealTimeoutRef.current = setTimeout(() => {
             handleCloseReveal();
-            alert(`NFT Minted Successfully!\n\nTransaction Hash: ${txHash}\n\nYour Pixelawb is revealing soon. Please check your wallet in a few moments.`);
+            alert(`Transaction Submitted!\n\nTransaction Hash: ${txHash}\n\nPlease verify on Etherscan that the NFT was minted. If no NFT appears, contact Scatter support.\n\nView: https://etherscan.io/tx/${txHash}`);
           }, 15000); // Show for 15 seconds
         } catch (txError) {
           console.error('Transaction sending failed:', txError);

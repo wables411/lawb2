@@ -246,6 +246,13 @@ export async function mintNFT(walletAddress: string, selectedLists: Array<{id: s
   const COLLECTION_ADDRESS = '0x2d278e95b2fC67D4b27a276807e24E479D9707F6';
   const CHAIN_ID = 1;
 
+  console.log('Minting request:', {
+    collectionAddress: COLLECTION_ADDRESS,
+    chainId: CHAIN_ID,
+    minterAddress: walletAddress,
+    lists: selectedLists
+  });
+
   const response = await fetch(`${SCATTER_API_URL}/mint`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -259,9 +266,22 @@ export async function mintNFT(walletAddress: string, selectedLists: Array<{id: s
   
   const result = await response.json() as MintNFTResponse;
   
+  console.log('Scatter API Response:', JSON.stringify(result, null, 2));
+  
   if (!response.ok) {
     console.error('Scatter API Error:', JSON.stringify(result, null, 2));
     throw new Error(result.message || 'Minting failed');
+  }
+  
+  // Validate transaction address - warn if it's not the collection contract
+  if (result.mintTransaction?.to) {
+    const txTo = result.mintTransaction.to.toLowerCase();
+    const collectionAddr = COLLECTION_ADDRESS.toLowerCase();
+    
+    if (txTo !== collectionAddr) {
+      console.warn(`⚠️ WARNING: Transaction is going to ${txTo} instead of collection contract ${collectionAddr}`);
+      console.warn('This might be a proxy/router contract. Verify the transaction on Etherscan.');
+    }
   }
   
   return {

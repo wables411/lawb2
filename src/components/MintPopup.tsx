@@ -360,6 +360,23 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
         
         try {
           console.log('Sending transaction to wallet...');
+          console.log('Transaction details:', {
+            to: result.mintTransaction.to,
+            value: result.mintTransaction.value,
+            dataLength: result.mintTransaction.data.length
+          });
+          
+          // Warn if transaction is going to a different address than expected
+          const EXPECTED_COLLECTION = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
+          if (result.mintTransaction.to.toLowerCase() !== EXPECTED_COLLECTION.toLowerCase()) {
+            console.warn(`⚠️ Transaction is going to ${result.mintTransaction.to} instead of collection contract ${EXPECTED_COLLECTION}`);
+            const proceed = confirm(`Warning: This transaction is going to a different address (${result.mintTransaction.to}) than the Pixelawbs collection contract.\n\nThis might be a proxy/router contract. Do you want to proceed?`);
+            if (!proceed) {
+              setMinting(false);
+              return;
+            }
+          }
+          
           const txHash = await walletClient.sendTransaction({
             to: result.mintTransaction.to as `0x${string}`,
             value: BigInt(result.mintTransaction.value),
