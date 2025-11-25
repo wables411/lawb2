@@ -273,32 +273,6 @@ export async function mintNFT(walletAddress: string, selectedLists: Array<{id: s
     throw new Error(result.message || 'Minting failed');
   }
   
-  // Validate transaction address - REJECT if it's not the collection contract
-  if (result.mintTransaction?.to) {
-    const txTo = result.mintTransaction.to.toLowerCase();
-    const collectionAddr = COLLECTION_ADDRESS.toLowerCase();
-    
-    if (txTo !== collectionAddr) {
-      console.error(`❌ ERROR: Transaction is going to ${txTo} instead of collection contract ${collectionAddr}`);
-      console.error('Scatter API returned a proxy/router transaction. This will not mint correctly.');
-      throw new Error(`Invalid transaction: Scatter API returned a transaction to ${txTo} instead of the collection contract. Please try again or contact Scatter support.`);
-    }
-    
-    // Also validate the function signature - should be mint (0x4a21a2df), not batch (0x47e1da2a)
-    const mintFunctionSig = '0x4a21a2df';
-    const batchFunctionSig = '0x47e1da2a';
-    const txData = result.mintTransaction.data.toLowerCase();
-    
-    if (txData.startsWith(batchFunctionSig)) {
-      console.error(`❌ ERROR: Transaction is calling batch function instead of mint function`);
-      throw new Error(`Invalid transaction: Scatter API returned a batch transaction instead of a direct mint. Please try again or contact Scatter support.`);
-    }
-    
-    if (!txData.startsWith(mintFunctionSig)) {
-      console.warn(`⚠️ WARNING: Transaction function signature is ${txData.slice(0, 10)}, expected ${mintFunctionSig}`);
-    }
-  }
-  
   return {
     success: true,
     mintTransaction: result.mintTransaction,

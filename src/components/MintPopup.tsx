@@ -367,11 +367,6 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
             dataLength: result.mintTransaction.data.length
           });
           
-          // Log transaction address (proxy/router is expected for Scatter API)
-          const EXPECTED_COLLECTION = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
-          if (result.mintTransaction.to.toLowerCase() !== EXPECTED_COLLECTION.toLowerCase()) {
-            console.log(`ℹ️ Transaction going to Scatter proxy/router: ${result.mintTransaction.to} (this is expected)`);
-          }
           
           const hash = await walletClient.sendTransaction({
             to: result.mintTransaction.to as `0x${string}`,
