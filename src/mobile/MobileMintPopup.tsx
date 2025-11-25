@@ -185,12 +185,12 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
               
               // Check for Transfer events (ERC-721 mint)
               const COLLECTION_ADDRESS = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
-              const transferEvents = receipt.logs.filter(log => {
+              const transferEvents = (receipt.logs || []).filter(log => {
                 // Check if this is a Transfer event to the user's address
                 return log.address.toLowerCase() === COLLECTION_ADDRESS.toLowerCase() &&
-                       log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' && // Transfer event signature
-                       log.topics.length >= 3 &&
-                       log.topics[2].toLowerCase() === `0x${'0'.repeat(24)}${walletAddress.slice(2).toLowerCase()}`; // To address
+                       log.topics?.[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' && // Transfer event signature
+                       (log.topics?.length || 0) >= 3 &&
+                       log.topics?.[2]?.toLowerCase() === `0x${'0'.repeat(24)}${walletAddress.slice(2).toLowerCase()}`; // To address
               });
               
               if (transferEvents.length > 0) {
