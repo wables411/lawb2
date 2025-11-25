@@ -2893,23 +2893,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               ☰
             </button>
           )}
-          {/* Menu button - shown on mobile, hidden on desktop */}
-          {!isMobile && (
-            <button 
-              className="menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[MENU BUTTON] Home view toggle, current:', isMenuOpen);
-                setIsMenuOpen(prev => !prev);
-              }}
-              title="Toggle Menu"
-              type="button"
-              aria-label="Toggle Menu"
-            >
-              ☰
-            </button>
-          )}
           {isMobile && (
             <button 
               className="sidebar-menu-btn"

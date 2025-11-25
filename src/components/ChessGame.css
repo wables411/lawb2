@@ -2236,12 +2236,33 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background-position: center center;
   background-size: cover;
   background-repeat: no-repeat;
-  border-radius: 8px;
+  border-radius: 0;
   margin: 20px;
   max-width: 600px;
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .game-stable-layout.home-view .center-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 120px);
+  }
+  
+  .game-mode-panel-streamlined {
+    background-image: none !important;
+    background-color: transparent !important;
+    justify-content: center;
+    align-items: center;
+    min-height: auto;
+    margin: 0 auto;
+    padding: 4px 12px !important;
+    padding-top: 4px !important;
+    border-radius: 0 !important;
+  }
 }
 
 .mode-selection-compact {
