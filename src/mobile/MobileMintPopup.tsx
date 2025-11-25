@@ -46,14 +46,9 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
   const [recentlyMinted, setRecentlyMinted] = useState<NFT[]>([]);
   const [revealedNFT, setRevealedNFT] = useState<NFT | null>(null);
   const [showVideo, setShowVideo] = useState(false);
-  const [nftReady, setNftReady] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const revealTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -160,68 +155,13 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
           
           // Show video immediately and start looping
           setShowVideo(true);
-          setNftReady(false);
           setRevealedNFT({} as NFT); // Placeholder to show overlay
           
-          // Poll for the newly minted NFT
-          let attempts = 0;
-          const maxAttempts = 20; // Poll for up to 20 attempts (60 seconds)
-          
-          pollingIntervalRef.current = setInterval(async () => {
-            attempts++;
-            try {
-              const recent = await getRecentlyMintedNFTsGlobal('pixelawbs', 1);
-              if (recent.length > 0) {
-                const newNFT = recent[0];
-                // Check if this NFT was minted recently (within last 5 minutes)
-                const mintTime = new Date(newNFT.created_at || newNFT.updated_at || 0).getTime();
-                const now = Date.now();
-                const fiveMinutesAgo = now - 5 * 60 * 1000;
-                
-                if (mintTime > fiveMinutesAgo) {
-                  // Found the newly minted NFT!
-                  if (pollingIntervalRef.current) {
-                    clearInterval(pollingIntervalRef.current);
-                    pollingIntervalRef.current = null;
-                  }
-                  // Stop video loop
-                  if (videoRef.current) {
-                    videoRef.current.pause();
-                  }
-                  setRevealedNFT(newNFT);
-                  setNftReady(true);
-                  setShowVideo(false);
-                  
-                  // Auto-close after showing NFT for 5 seconds
-                  setTimeout(() => {
-                    handleCloseReveal();
-                  }, 5000);
-                  return;
-                }
-              }
-              
-              // If max attempts reached, stop polling
-              if (attempts >= maxAttempts) {
-                if (pollingIntervalRef.current) {
-                  clearInterval(pollingIntervalRef.current);
-                  pollingIntervalRef.current = null;
-                }
-                alert(`NFT Minted Successfully: Transaction Hash - ${txHash}\n\nThe NFT may take a moment to appear. Please check your wallet.`);
-                handleCloseReveal();
-              }
-            } catch (err) {
-              console.error('Error fetching revealed NFT:', err);
-              // Continue polling on error
-              if (attempts >= maxAttempts) {
-                if (pollingIntervalRef.current) {
-                  clearInterval(pollingIntervalRef.current);
-                  pollingIntervalRef.current = null;
-                }
-                alert(`NFT Minted Successfully: Transaction Hash - ${txHash}\n\nThere was an error fetching the NFT details. Please check your wallet.`);
-                handleCloseReveal();
-              }
-            }
-          }, 3000); // Poll every 3 seconds
+          // Auto-close after 15 seconds with success message
+          revealTimeoutRef.current = setTimeout(() => {
+            handleCloseReveal();
+            alert(`NFT Minted Successfully!\n\nTransaction Hash: ${txHash}\n\nYour Pixelawb is revealing soon. Please check your wallet in a few moments.`);
+          }, 15000); // Show for 15 seconds
         } catch (txError) {
           console.error('Transaction sending failed:', txError);
           setError('Transaction failed: ' + (txError as Error).message);
@@ -248,79 +188,42 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-    // Clear polling interval
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
+    // Clear timeout
+    if (revealTimeoutRef.current) {
+      clearTimeout(revealTimeoutRef.current);
+      revealTimeoutRef.current = null;
     }
     // Reset states
     setRevealedNFT(null);
     setShowVideo(false);
-    setNftReady(false);
-    setImageLoaded(false);
-    setImageError(false);
-    setImageUrl(null);
   };
 
-  // Preload image function
-  const preloadImage = (url: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        console.log('Image preloaded successfully:', url);
-        resolve();
-      };
-      img.onerror = () => {
-        console.error('Image preload failed:', url);
-        reject(new Error('Failed to load image'));
-      };
-      img.src = url;
-    });
-  };
-
-  // Effect to preload image when NFT is ready
+  // Effect to ensure video plays on mobile
   useEffect(() => {
-    if (nftReady && revealedNFT && revealedNFT.token_id) {
-      const url = revealedNFT.image_url || revealedNFT.image || revealedNFT.image_url_shrunk;
-      if (url) {
-        setImageUrl(url);
-        setImageLoaded(false);
-        setImageError(false);
-        
-        // Preload the image with retry logic
-        const loadImage = async (retries = 3) => {
-          try {
-            await preloadImage(url);
-            setImageLoaded(true);
-            setImageError(false);
-          } catch (err) {
-            console.error('Image preload error, retries left:', retries - 1);
-            if (retries > 1) {
-              // Wait 2 seconds before retrying
-              setTimeout(() => {
-                loadImage(retries - 1);
-              }, 2000);
-            } else {
-              // All retries failed, show error state
-              setImageError(true);
-              setImageLoaded(false);
+    if (showVideo && videoRef.current) {
+      // Force play on mobile
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('Video play error:', error);
+          // If autoplay fails, try again after user interaction
+          const tryPlay = () => {
+            if (videoRef.current) {
+              videoRef.current.play().catch(console.error);
             }
-          }
-        };
-        
-        // Add a small delay before starting preload to ensure URL is available
-        setTimeout(() => {
-          loadImage();
-        }, 500);
+          };
+          document.addEventListener('touchstart', tryPlay, { once: true });
+          document.addEventListener('click', tryPlay, { once: true });
+        });
       }
     }
-  }, [nftReady, revealedNFT]);
+  }, [showVideo]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+      if (revealTimeoutRef.current) {
+        clearTimeout(revealTimeoutRef.current);
       }
     };
   }, []);
@@ -453,7 +356,7 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
             ✕ Close
           </button>
           
-          {showVideo && !nftReady ? (
+          {showVideo && (
             <>
               <div style={{ 
                 color: '#fff', 
@@ -463,7 +366,7 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
                 textAlign: 'center',
                 padding: '0 10px'
               }}>
-                🎉 Revealing Your NFT! 🎉
+                🎉 Minting Your Pixelawb! 🎉
               </div>
               <video
                 ref={videoRef}
@@ -474,137 +377,42 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
                   width: '100%',
                   height: 'auto',
                   border: '4px solid #fff',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  backgroundColor: '#000'
                 }}
                 autoPlay
                 loop
                 muted
                 playsInline
+                preload="auto"
+                onLoadedData={() => {
+                  // Ensure video plays when loaded
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(console.error);
+                  }
+                }}
+                onCanPlay={() => {
+                  // Force play when video can play
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(console.error);
+                  }
+                }}
                 onError={(e) => {
                   console.error('Video playback error:', e);
-                  // Fallback to image if video fails
-                  setShowVideo(false);
                 }}
               />
               <div style={{ 
                 color: '#fff', 
-                fontSize: '12px', 
-                marginTop: '16px', 
-                opacity: 0.8,
-                textAlign: 'center',
-                padding: '0 10px'
-              }}>
-                Waiting for your NFT to be revealed...
-              </div>
-            </>
-          ) : nftReady && revealedNFT.token_id ? (
-            <>
-              <div style={{ 
-                color: '#fff', 
-                fontSize: '20px', 
+                fontSize: '18px', 
+                marginTop: '20px', 
                 fontWeight: 'bold',
                 textAlign: 'center',
-                padding: '0 10px',
-                marginBottom: '12px'
-              }}>
-                🎉 Your NFT Has Been Revealed! 🎉
-              </div>
-              {imageUrl ? (
-                <div style={{ 
-                  position: 'relative', 
-                  minHeight: '200px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  width: '100%',
-                  padding: '0 10px'
-                }}>
-                  {!imageLoaded && !imageError && (
-                    <div style={{ 
-                      position: 'absolute',
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      color: '#fff',
-                      zIndex: 1
-                    }}>
-                      <div style={{ fontSize: '16px', marginBottom: '10px' }}>Loading your NFT image...</div>
-                      <div style={{ fontSize: '12px', opacity: 0.8 }}>Please wait...</div>
-                    </div>
-                  )}
-                  {imageError && (
-                    <div style={{ 
-                      position: 'absolute',
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      color: '#fff',
-                      zIndex: 1
-                    }}>
-                      <div style={{ fontSize: '16px', marginBottom: '10px' }}>⚠️ Image loading...</div>
-                      <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                        The image may take a moment to appear.
-                      </div>
-                    </div>
-                  )}
-                  <img 
-                    ref={imageRef}
-                    src={imageUrl} 
-                    alt={revealedNFT.name || `#${revealedNFT.token_id}`}
-                    onLoad={() => {
-                      console.log('Image loaded successfully in img tag');
-                      setImageLoaded(true);
-                      setImageError(false);
-                    }}
-                    onError={(e) => {
-                      console.error('Image load error in img tag, trying fallback');
-                      setImageError(true);
-                      // Try fallback image if not already using it
-                      if (imageUrl !== '/assets/pixelawb.png') {
-                        setTimeout(() => {
-                          setImageUrl('/assets/pixelawb.png');
-                          setImageError(false);
-                          setImageLoaded(false);
-                        }, 1000);
-                      }
-                    }}
-                    style={{ 
-                      opacity: imageLoaded ? 1 : 0, 
-                      transition: 'opacity 0.5s ease-in-out',
-                      maxWidth: '100%',
-                      maxHeight: '60vh',
-                      width: '100%',
-                      height: 'auto',
-                      border: '4px solid #fff',
-                      borderRadius: '8px'
-                    }}
-                  />
-                </div>
-              ) : (
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  minHeight: '300px',
-                  color: '#fff'
-                }}>
-                  <div style={{ fontSize: '16px' }}>Preparing your NFT...</div>
-                </div>
-              )}
-              <div style={{ 
-                color: '#fff', 
-                fontSize: '16px', 
-                marginTop: '12px',
-                textAlign: 'center',
                 padding: '0 10px'
               }}>
-                {revealedNFT.name || `Pixelawb #${revealedNFT.token_id}`}
+                Your Pixelawb is revealing soon. . .
               </div>
             </>
-          ) : null}
+          )}
         </div>
       )}
 
