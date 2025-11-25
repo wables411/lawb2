@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Draggable from 'react-draggable';
-import { getEligibleInviteLists, mintNFT, getCollectionStats, getRecentlyMintedNFTsGlobal, type NFT } from '../mint';
+import { getEligibleInviteLists, mintNFT, getCollectionStats, getCollectionData, getRecentlyMintedNFTsGlobal, type NFT, type CollectionData } from '../mint';
 import { createUseStyles } from 'react-jss';
-import { useChainId, useSwitchChain, useWalletClient } from 'wagmi';
+import { useChainId, useSwitchChain, useWalletClient, useReadContract } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
+import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 
 const useStyles = createUseStyles({
   popup: {
@@ -19,7 +20,23 @@ const useStyles = createUseStyles({
     display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
     overflow: 'auto',
-    zIndex: 5000
+    zIndex: 5000,
+    '@media (max-width: 768px)': {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      width: '100vw',
+      height: '100vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      minWidth: '100vw',
+      minHeight: '100vh',
+      border: 'none',
+      borderRadius: '0',
+      resize: 'none'
+    }
   },
   header: {
     background: 'navy',
@@ -55,20 +72,36 @@ const useStyles = createUseStyles({
   content: {
     padding: '10px',
     height: 'calc(100% - 30px)',
-    overflow: 'auto'
+    overflow: 'auto',
+    '@media (max-width: 768px)': {
+      padding: '12px',
+      height: 'calc(100% - 40px)',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch'
+    }
   },
   statsContainer: {
     display: 'flex',
     gap: '10px',
     marginBottom: '15px',
     flexWrap: 'wrap',
-    fontSize: '11px'
+    fontSize: '11px',
+    '@media (max-width: 768px)': {
+      gap: '8px',
+      marginBottom: '12px',
+      fontSize: '12px'
+    }
   },
   statBox: {
     border: '1px solid #808080',
     padding: '8px',
     backgroundColor: '#ffffff',
-    minWidth: '100px'
+    minWidth: '100px',
+    '@media (max-width: 768px)': {
+      padding: '10px',
+      minWidth: '80px',
+      flex: '1 1 calc(50% - 4px)'
+    }
   },
   statLabel: {
     fontWeight: 'bold',
@@ -83,7 +116,11 @@ const useStyles = createUseStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
     gap: '10px',
-    marginTop: '10px'
+    marginTop: '10px',
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))',
+      gap: '8px'
+    }
   },
   nftItem: {
     border: '1px solid #808080',
@@ -113,7 +150,13 @@ const useStyles = createUseStyles({
     justifyContent: 'center',
     zIndex: 10000,
     flexDirection: 'column',
-    gap: '20px'
+    gap: '20px',
+    '@media (max-width: 768px)': {
+      padding: '20px',
+      gap: '16px',
+      paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))'
+    }
   },
   revealVideo: {
     maxWidth: '600px',
@@ -121,14 +164,26 @@ const useStyles = createUseStyles({
     width: 'auto',
     height: 'auto',
     border: '4px solid #fff',
-    borderRadius: '8px'
+    borderRadius: '8px',
+    '@media (max-width: 768px)': {
+      maxWidth: '90vw',
+      maxHeight: '50vh',
+      width: '100%',
+      height: 'auto'
+    }
   },
   revealImage: {
     maxWidth: '400px',
     maxHeight: '400px',
     border: '4px solid #fff',
     borderRadius: '8px',
-    animation: '$fadeIn 0.5s ease-in'
+    animation: '$fadeIn 0.5s ease-in',
+    '@media (max-width: 768px)': {
+      maxWidth: '90vw',
+      maxHeight: '60vh',
+      width: '100%',
+      height: 'auto'
+    }
   },
   '@keyframes fadeIn': {
     '0%': {
@@ -158,6 +213,13 @@ interface InviteList {
   unit_size: number;
   created_at: string;
   updated_at: string;
+  // Scatter API may return these fields with different names
+  minted?: number;
+  minted_count?: number;
+  mintedCount?: number;
+  remaining?: number;
+  remaining_count?: number;
+  [key: string]: any; // Allow any additional fields from API
 }
 
 interface MintPopupProps {
@@ -168,6 +230,18 @@ interface MintPopupProps {
 }
 
 const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, walletAddress }) => {
+  const mediaQueryMatch = useMediaQuery('(max-width: 768px)');
+  const capabilities = useMobileCapabilities();
+  
+  const isMobile = useMemo(() => {
+    if (typeof navigator === 'undefined') {
+      return mediaQueryMatch;
+    }
+    const ua = navigator.userAgent || '';
+    const uaMobile = /Android|iPhone|iPad|iPod|Windows Phone|Mobile|BlackBerry/i.test(ua);
+    return uaMobile || (capabilities.isTouchDevice && (mediaQueryMatch || capabilities.screenWidth <= 768));
+  }, [mediaQueryMatch, capabilities]);
+  
   const classes = useStyles({ isOpen });
   const nodeRef = useRef(null);
   const [inviteLists, setInviteLists] = useState<InviteList[]>([]);
@@ -176,6 +250,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [collectionStats, setCollectionStats] = useState<any>(null);
+  const [collectionData, setCollectionData] = useState<CollectionData | null>(null);
   const [recentlyMinted, setRecentlyMinted] = useState<NFT[]>([]);
   const [revealedNFT, setRevealedNFT] = useState<NFT | null>(null);
   const [showVideo, setShowVideo] = useState(false);
@@ -201,10 +276,12 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const loadCollectionData = async () => {
     setLoadingStats(true);
     try {
-      const [stats, recent] = await Promise.all([
+      const [collection, stats, recent] = await Promise.all([
+        getCollectionData('pixelawbs'),
         getCollectionStats('pixelawbs'),
         getRecentlyMintedNFTsGlobal('pixelawbs', 6)
       ]);
+      setCollectionData(collection);
       setCollectionStats(stats);
       setRecentlyMinted(recent);
     } catch (err) {
@@ -374,6 +451,74 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
     return `${numPrice} ${symbol}`;
   };
 
+  // Component to display list info with contract-read minted count
+  const ListMintInfo: React.FC<{
+    list: InviteList;
+    collectionData: CollectionData | null;
+    chainId: number;
+    isMobile: boolean;
+    selectedQuantity: number;
+    onQuantityChange: (qty: number) => void;
+    walletLimit: number;
+  }> = ({ list, collectionData, chainId, isMobile, selectedQuantity, onQuantityChange, walletLimit }) => {
+    // Read listSupply from contract to get how many have been minted from this list
+    const { data: listMinted } = useReadContract({
+      abi: collectionData?.abi,
+      address: collectionData?.address as `0x${string}` | undefined,
+      functionName: 'listSupply',
+      chainId: collectionData?.chain_id,
+      args: [list.root as `0x${string}`],
+      query: {
+        enabled: !!collectionData && !!collectionData.abi && !!collectionData.address && chainId === collectionData.chain_id
+      }
+    }) as { data: bigint | undefined };
+
+    const totalAvailable = list.list_limit;
+    const minted = listMinted ? Number(listMinted) : 0;
+    const remaining = Math.max(0, totalAvailable - minted);
+
+    return (
+      <div style={{
+        border: '1px solid #808080',
+        padding: isMobile ? '12px' : '10px',
+        marginBottom: isMobile ? '12px' : '10px',
+        backgroundColor: '#ffffff',
+        borderRadius: isMobile ? '4px' : '0'
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: isMobile ? '16px' : '14px' }}>
+          {list.name}
+        </div>
+        <div style={{ fontSize: isMobile ? '14px' : '12px', marginBottom: '5px' }}>
+          Price: {formatPrice(list.token_price, list.currency_symbol)}
+        </div>
+        <div style={{ fontSize: isMobile ? '14px' : '12px', marginBottom: '5px' }}>
+          {minted.toLocaleString()} minted / {totalAvailable.toLocaleString()} total ({remaining.toLocaleString()} remaining)
+        </div>
+        <div style={{ fontSize: isMobile ? '14px' : '12px', marginBottom: '10px' }}>
+          Limit: {walletLimit === 4294967295 ? 'Unlimited' : walletLimit} per wallet
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <label style={{ fontSize: isMobile ? '14px' : '12px' }}>Quantity:</label>
+          <input
+            type="number"
+            min="0"
+            max={walletLimit === 4294967295 ? 999 : walletLimit}
+            value={selectedQuantity}
+            onChange={(e) => onQuantityChange(parseInt(e.target.value) || 0)}
+            style={{
+              width: isMobile ? '80px' : '60px',
+              padding: isMobile ? '8px 5px' : '2px 5px',
+              border: '1px solid #808080',
+              fontSize: isMobile ? '16px' : '12px',
+              minHeight: isMobile ? '44px' : 'auto',
+              touchAction: 'manipulation'
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   const handleMinimize = () => {
     if (onMinimize) {
       onMinimize();
@@ -465,8 +610,8 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
 
   if (!isOpen) return null;
 
-  return (
-    <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
+  const popupContent = (
+    <>
       <div ref={nodeRef} className={classes.popup}>
         <div className={classes.header}>
           <span>Mint Pixelawbster</span>
@@ -526,16 +671,18 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                 onClick={handleCloseReveal}
                 style={{
                   position: 'absolute',
-                  top: '20px',
-                  right: '20px',
+                  top: isMobile ? 'max(20px, env(safe-area-inset-top, 0px))' : '20px',
+                  right: isMobile ? 'max(20px, env(safe-area-inset-right, 0px))' : '20px',
                   background: '#c0c0c0',
                   border: '2px outset #fff',
-                  padding: '8px 16px',
+                  padding: isMobile ? '12px 20px' : '8px 16px',
                   cursor: 'pointer',
-                  fontSize: '14px',
+                  fontSize: isMobile ? '16px' : '14px',
                   fontWeight: 'bold',
                   color: '#000',
-                  zIndex: 10001
+                  zIndex: 10001,
+                  minHeight: isMobile ? '44px' : 'auto',
+                  touchAction: 'manipulation'
                 }}
                 title="Close"
               >
@@ -544,7 +691,14 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
               
               {showVideo && !nftReady ? (
                 <>
-                  <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+                  <div style={{ 
+                    color: '#fff', 
+                    fontSize: isMobile ? '20px' : '24px', 
+                    fontWeight: 'bold', 
+                    marginBottom: isMobile ? '16px' : '20px',
+                    textAlign: 'center',
+                    padding: isMobile ? '0 10px' : '0'
+                  }}>
                     🎉 Revealing Your NFT! 🎉
                   </div>
                   <video
@@ -561,15 +715,39 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                       setShowVideo(false);
                     }}
                   />
-                  <div style={{ color: '#fff', fontSize: '14px', marginTop: '20px', opacity: 0.8 }}>
+                  <div style={{ 
+                    color: '#fff', 
+                    fontSize: isMobile ? '12px' : '14px', 
+                    marginTop: isMobile ? '16px' : '20px', 
+                    opacity: 0.8,
+                    textAlign: 'center',
+                    padding: isMobile ? '0 10px' : '0'
+                  }}>
                     Waiting for your NFT to be revealed...
                   </div>
                 </>
               ) : nftReady && revealedNFT.token_id ? (
                 <>
-                  <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold' }}>🎉 Your NFT Has Been Revealed! 🎉</div>
+                  <div style={{ 
+                    color: '#fff', 
+                    fontSize: isMobile ? '20px' : '24px', 
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    padding: isMobile ? '0 10px' : '0',
+                    marginBottom: isMobile ? '12px' : '0'
+                  }}>
+                    🎉 Your NFT Has Been Revealed! 🎉
+                  </div>
                   {imageUrl ? (
-                    <div style={{ position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ 
+                      position: 'relative', 
+                      minHeight: isMobile ? '200px' : '300px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      width: '100%',
+                      padding: isMobile ? '0 10px' : '0'
+                    }}>
                       {!imageLoaded && !imageError && (
                         <div style={{ 
                           position: 'absolute',
@@ -580,8 +758,8 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                           color: '#fff',
                           zIndex: 1
                         }}>
-                          <div style={{ fontSize: '18px', marginBottom: '10px' }}>Loading your NFT image...</div>
-                          <div style={{ fontSize: '14px', opacity: 0.8 }}>Please wait...</div>
+                          <div style={{ fontSize: isMobile ? '16px' : '18px', marginBottom: '10px' }}>Loading your NFT image...</div>
+                          <div style={{ fontSize: isMobile ? '12px' : '14px', opacity: 0.8 }}>Please wait...</div>
                         </div>
                       )}
                       {imageError && (
@@ -594,8 +772,8 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                           color: '#fff',
                           zIndex: 1
                         }}>
-                          <div style={{ fontSize: '18px', marginBottom: '10px' }}>⚠️ Image loading...</div>
-                          <div style={{ fontSize: '14px', opacity: 0.8 }}>
+                          <div style={{ fontSize: isMobile ? '16px' : '18px', marginBottom: '10px' }}>⚠️ Image loading...</div>
+                          <div style={{ fontSize: isMobile ? '12px' : '14px', opacity: 0.8 }}>
                             The image may take a moment to appear.
                           </div>
                         </div>
@@ -626,7 +804,9 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                           opacity: imageLoaded ? 1 : 0, 
                           transition: 'opacity 0.5s ease-in-out',
                           maxWidth: '100%',
-                          maxHeight: '400px'
+                          maxHeight: isMobile ? '60vh' : '400px',
+                          width: isMobile ? '100%' : 'auto',
+                          height: 'auto'
                         }}
                       />
                     </div>
@@ -639,10 +819,16 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                       minHeight: '300px',
                       color: '#fff'
                     }}>
-                      <div style={{ fontSize: '18px' }}>Preparing your NFT...</div>
+                      <div style={{ fontSize: isMobile ? '16px' : '18px' }}>Preparing your NFT...</div>
                     </div>
                   )}
-                  <div style={{ color: '#fff', fontSize: '18px', marginTop: '10px' }}>
+                  <div style={{ 
+                    color: '#fff', 
+                    fontSize: isMobile ? '16px' : '18px', 
+                    marginTop: isMobile ? '12px' : '10px',
+                    textAlign: 'center',
+                    padding: isMobile ? '0 10px' : '0'
+                  }}>
                     {revealedNFT.name || `Pixelawb #${revealedNFT.token_id}`}
                   </div>
                 </>
@@ -654,23 +840,27 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
             <div style={{ 
               backgroundColor: '#ffcccc', 
               border: '1px solid #ff0000', 
-              padding: '10px', 
-              marginBottom: '10px',
-              color: '#cc0000'
+              padding: isMobile ? '12px' : '10px', 
+              marginBottom: isMobile ? '12px' : '10px',
+              color: '#cc0000',
+              fontSize: isMobile ? '14px' : '12px',
+              borderRadius: isMobile ? '4px' : '0'
             }}>
               {error}
               {chainId !== mainnet.id && (
-                <div style={{ marginTop: '10px' }}>
+                <div style={{ marginTop: isMobile ? '12px' : '10px' }}>
                   <button 
                     onClick={() => switchChain({ chainId: mainnet.id })}
                     style={{
                       backgroundColor: '#008000',
                       color: 'white',
                       border: 'none',
-                      padding: '8px 16px',
+                      padding: isMobile ? '12px 20px' : '8px 16px',
                       borderRadius: '4px',
                       cursor: 'pointer',
-                      fontSize: '12px'
+                      fontSize: isMobile ? '14px' : '12px',
+                      minHeight: isMobile ? '44px' : 'auto',
+                      touchAction: 'manipulation'
                     }}
                   >
                     Switch to Ethereum
@@ -681,45 +871,28 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           )}
 
           {loading ? (
-            <div>Loading eligible invite lists...</div>
+            <div style={{ fontSize: isMobile ? '16px' : '14px', textAlign: 'center', padding: isMobile ? '20px' : '10px' }}>
+              Loading eligible invite lists...
+            </div>
           ) : inviteLists.length === 0 ? (
-            <div>No eligible invite lists found for your wallet.</div>
+            <div style={{ fontSize: isMobile ? '16px' : '14px', textAlign: 'center', padding: isMobile ? '20px' : '10px' }}>
+              No eligible invite lists found for your wallet.
+            </div>
           ) : (
             <>
-              <div style={{ marginBottom: '20px' }}>
-                <h3>Available Lists:</h3>
+              <div style={{ marginBottom: isMobile ? '16px' : '20px' }}>
+                <h3 style={{ fontSize: isMobile ? '18px' : '16px', marginBottom: isMobile ? '12px' : '10px' }}>Pixelawb Mint Tiers:</h3>
                 {inviteLists.map(list => (
-                  <div key={list.id} style={{
-                    border: '1px solid #808080',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#ffffff'
-                  }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                      {list.name}
-                    </div>
-                    <div style={{ fontSize: '12px', marginBottom: '5px' }}>
-                      Price: {formatPrice(list.token_price, list.currency_symbol)}
-                    </div>
-                    <div style={{ fontSize: '12px', marginBottom: '10px' }}>
-                      Limit: {list.wallet_limit === 4294967295 ? 'Unlimited' : list.wallet_limit} per wallet
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <label style={{ fontSize: '12px' }}>Quantity:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max={list.wallet_limit === 4294967295 ? 999 : list.wallet_limit}
-                        value={selectedQuantities[list.id] || 0}
-                        onChange={(e) => handleQuantityChange(list.id, parseInt(e.target.value) || 0)}
-                        style={{
-                          width: '60px',
-                          padding: '2px 5px',
-                          border: '1px solid #808080'
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <ListMintInfo
+                    key={list.id}
+                    list={list}
+                    collectionData={collectionData}
+                    chainId={chainId}
+                    isMobile={isMobile}
+                    selectedQuantity={selectedQuantities[list.id] || 0}
+                    onQuantityChange={(qty) => handleQuantityChange(list.id, qty)}
+                    walletLimit={list.wallet_limit}
+                  />
                 ))}
               </div>
               <button
@@ -728,10 +901,14 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                 style={{
                   background: '#c0c0c0',
                   border: '2px outset #c0c0c0',
-                  padding: '10px 20px',
+                  padding: isMobile ? '14px 24px' : '10px 20px',
                   cursor: minting ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 'bold'
+                  fontSize: isMobile ? '16px' : '14px',
+                  fontWeight: 'bold',
+                  minHeight: isMobile ? '48px' : 'auto',
+                  width: isMobile ? '100%' : 'auto',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
               >
                 {minting ? 'Minting...' : 'Mint Selected NFTs'}
@@ -742,7 +919,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           {/* Recently Minted NFTs */}
           {recentlyMinted.length > 0 && (
             <div className={classes.recentlyMinted}>
-              <h3 style={{ marginBottom: '10px', fontSize: '14px' }}>Recently Minted</h3>
+              <h3 style={{ marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px' }}>Recently Minted</h3>
               <div className={classes.nftGrid}>
                 {recentlyMinted.map((nft) => (
                   <div key={nft.id} className={classes.nftItem}>
@@ -764,6 +941,16 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           )}
         </div>
       </div>
+    </>
+  );
+
+  if (isMobile) {
+    return popupContent;
+  }
+
+  return (
+    <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
+      {popupContent}
     </Draggable>
   );
 };

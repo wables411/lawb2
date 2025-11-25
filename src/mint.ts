@@ -28,6 +28,13 @@ interface InviteList {
   unit_size: number;
   created_at: string;
   updated_at: string;
+  // Scatter API may return these fields with different names
+  minted?: number;
+  minted_count?: number;
+  mintedCount?: number;
+  remaining?: number;
+  remaining_count?: number;
+  [key: string]: any; // Allow any additional fields from API
 }
 
 export interface NFT {
@@ -98,6 +105,10 @@ export async function getEligibleInviteLists(walletAddress: string): Promise<Inv
     if (response.ok) {
       const lists = await response.json() as InviteList[];
       console.log(`Lists found:`, lists);
+      // Log first list structure to see actual fields
+      if (lists.length > 0) {
+        console.log('Sample list structure:', JSON.stringify(lists[0], null, 2));
+      }
       return lists;
     } else {
       console.log(`Failed to get lists:`, response.status, response.statusText);
@@ -150,6 +161,41 @@ interface CollectionStats {
   uniqueOwners?: number;
 }
 
+export interface CollectionData {
+  address: string;
+  chain_id: number;
+  abi: any;
+  max_items?: number;
+  num_items?: number;
+  total_supply?: number;
+  minted_count?: number;
+  floor_price?: number;
+  total_volume?: number;
+  unique_owners?: number;
+}
+
+export async function getCollectionData(collectionSlug: string): Promise<CollectionData | null> {
+  const SCATTER_API_URL = 'https://api.scatter.art/v1';
+  
+  try {
+    const response = await fetch(`${SCATTER_API_URL}/collection/${collectionSlug}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      // ABI comes back as a string, parse it here
+      return {
+        ...data,
+        abi: typeof data.abi === 'string' ? JSON.parse(data.abi) : data.abi
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting collection data:', error);
+    return null;
+  }
+}
+
 export async function getCollectionStats(collectionSlug: string): Promise<CollectionStats> {
   const SCATTER_API_URL = 'https://api.scatter.art/v1';
   
@@ -160,8 +206,8 @@ export async function getCollectionStats(collectionSlug: string): Promise<Collec
     if (response.ok) {
       const data = await response.json();
       return {
-        totalSupply: data.total_supply || data.totalSupply,
-        mintedCount: data.minted_count || data.mintedCount || data.totalCount,
+        totalSupply: data.total_supply || data.totalSupply || data.max_items,
+        mintedCount: data.minted_count || data.mintedCount || data.num_items || data.totalCount,
         floorPrice: data.floor_price || data.floorPrice,
         totalVolume: data.total_volume || data.totalVolume,
         uniqueOwners: data.unique_owners || data.uniqueOwners
