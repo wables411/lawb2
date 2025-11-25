@@ -105,14 +105,25 @@ function App() {
     if (action === 'url' && url) {
       window.open(url, '_blank');
     } else if (action === 'popup' && popupId) {
-      console.log('[APP] Setting active popup to:', popupId);
-      setActivePopup(popupId);
-      setMinimizedPopups(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(popupId);
-        return newSet;
-      });
-      void document.body.offsetWidth;
+      // Special handling for chat-popup - use showPublicChat instead of activePopup
+      if (popupId === 'chat-popup') {
+        console.log('[APP] Opening public chat');
+        setShowPublicChat(true);
+        setMinimizedPopups(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(popupId);
+          return newSet;
+        });
+      } else {
+        console.log('[APP] Setting active popup to:', popupId);
+        setActivePopup(popupId);
+        setMinimizedPopups(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(popupId);
+          return newSet;
+        });
+        void document.body.offsetWidth;
+      }
     } else if (action === 'wallet') {
       if (!isConnected) {
         // Open wallet connection modal

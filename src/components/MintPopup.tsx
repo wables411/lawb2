@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Draggable from 'react-draggable';
-import { getEligibleInviteLists, mintNFT } from '../mint';
+import { getEligibleInviteLists, mintNFT, getCollectionStats, getRecentlyMintedNFTsGlobal, type NFT } from '../mint';
 import { createUseStyles } from 'react-jss';
-import { useChainId, useSwitchChain } from 'wagmi';
+import { useChainId, useSwitchChain, useWalletClient } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 
 const useStyles = createUseStyles({
@@ -56,6 +56,89 @@ const useStyles = createUseStyles({
     padding: '10px',
     height: 'calc(100% - 30px)',
     overflow: 'auto'
+  },
+  statsContainer: {
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '15px',
+    flexWrap: 'wrap',
+    fontSize: '11px'
+  },
+  statBox: {
+    border: '1px solid #808080',
+    padding: '8px',
+    backgroundColor: '#ffffff',
+    minWidth: '100px'
+  },
+  statLabel: {
+    fontWeight: 'bold',
+    marginBottom: '4px'
+  },
+  recentlyMinted: {
+    marginTop: '20px',
+    borderTop: '2px solid #808080',
+    paddingTop: '15px'
+  },
+  nftGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+    gap: '10px',
+    marginTop: '10px'
+  },
+  nftItem: {
+    border: '1px solid #808080',
+    padding: '5px',
+    backgroundColor: '#ffffff',
+    textAlign: 'center',
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: '#f0f0f0'
+    }
+  },
+  nftImage: {
+    width: '100%',
+    height: '80px',
+    objectFit: 'cover',
+    marginBottom: '5px'
+  },
+  revealOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  revealVideo: {
+    maxWidth: '600px',
+    maxHeight: '600px',
+    width: 'auto',
+    height: 'auto',
+    border: '4px solid #fff',
+    borderRadius: '8px'
+  },
+  revealImage: {
+    maxWidth: '400px',
+    maxHeight: '400px',
+    border: '4px solid #fff',
+    borderRadius: '8px',
+    animation: '$fadeIn 0.5s ease-in'
+  },
+  '@keyframes fadeIn': {
+    '0%': {
+      opacity: 0,
+      transform: 'scale(0.9)'
+    },
+    '100%': {
+      opacity: 1,
+      transform: 'scale(1)'
+    }
   }
 });
 
@@ -92,15 +175,40 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const [minting, setMinting] = useState(false);
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
-  const [walletClient, setWalletClient] = useState<any>(null);
+  const [collectionStats, setCollectionStats] = useState<any>(null);
+  const [recentlyMinted, setRecentlyMinted] = useState<NFT[]>([]);
+  const [revealedNFT, setRevealedNFT] = useState<NFT | null>(null);
+  const [showVideo, setShowVideo] = useState(false);
+  const [nftReady, setNftReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
     if (isOpen && walletAddress) {
       void loadEligibleLists();
+      void loadCollectionData();
     }
   }, [isOpen, walletAddress]);
+
+  const loadCollectionData = async () => {
+    setLoadingStats(true);
+    try {
+      const [stats, recent] = await Promise.all([
+        getCollectionStats('pixelawbs'),
+        getRecentlyMintedNFTsGlobal('pixelawbs', 6)
+      ]);
+      setCollectionStats(stats);
+      setRecentlyMinted(recent);
+    } catch (err) {
+      console.error('Error loading collection data:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const loadEligibleLists = async () => {
     setLoading(true);
@@ -177,8 +285,71 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
             data: result.mintTransaction.data as `0x${string}`,
           });
           console.log('Transaction sent successfully:', txHash);
-          alert(`NFT Minted Successfully: Transaction Hash - ${txHash}`);
-          onClose();
+          
+          // Show video immediately and start looping
+          setShowVideo(true);
+          setNftReady(false);
+          setRevealedNFT({} as NFT); // Placeholder to show overlay
+          
+          // Poll for the newly minted NFT
+          let attempts = 0;
+          const maxAttempts = 20; // Poll for up to 20 attempts (60 seconds)
+          
+          pollingIntervalRef.current = setInterval(async () => {
+            attempts++;
+            try {
+              const recent = await getRecentlyMintedNFTsGlobal('pixelawbs', 1);
+              if (recent.length > 0) {
+                const newNFT = recent[0];
+                // Check if this NFT was minted recently (within last 5 minutes)
+                const mintTime = new Date(newNFT.created_at || newNFT.updated_at || 0).getTime();
+                const now = Date.now();
+                const fiveMinutesAgo = now - 5 * 60 * 1000;
+                
+                if (mintTime > fiveMinutesAgo) {
+                  // Found the newly minted NFT!
+                  if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                    pollingIntervalRef.current = null;
+                  }
+                  // Stop video loop
+                  if (videoRef.current) {
+                    videoRef.current.pause();
+                  }
+                  setRevealedNFT(newNFT);
+                  setNftReady(true);
+                  setShowVideo(false);
+                  
+                  // Auto-close after showing NFT for 5 seconds
+                  setTimeout(() => {
+                    handleCloseReveal();
+                  }, 5000);
+                  return;
+                }
+              }
+              
+              // If max attempts reached, stop polling
+              if (attempts >= maxAttempts) {
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current);
+                  pollingIntervalRef.current = null;
+                }
+                alert(`NFT Minted Successfully: Transaction Hash - ${txHash}\n\nThe NFT may take a moment to appear. Please check your wallet.`);
+                handleCloseReveal();
+              }
+            } catch (err) {
+              console.error('Error fetching revealed NFT:', err);
+              // Continue polling on error
+              if (attempts >= maxAttempts) {
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current);
+                  pollingIntervalRef.current = null;
+                }
+                alert(`NFT Minted Successfully: Transaction Hash - ${txHash}\n\nThere was an error fetching the NFT details. Please check your wallet.`);
+                handleCloseReveal();
+              }
+            }
+          }, 3000); // Poll every 3 seconds
         } catch (txError) {
           console.error('Transaction sending failed:', txError);
           setError('Transaction failed: ' + (txError as Error).message);
@@ -205,6 +376,32 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
     }
   };
 
+  const handleCloseReveal = () => {
+    // Stop video if playing
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+    // Clear polling interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    // Reset states
+    setRevealedNFT(null);
+    setShowVideo(false);
+    setNftReady(false);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -230,6 +427,99 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           </div>
         </div>
         <div className={classes.content}>
+          {/* Collection Stats */}
+          {collectionStats && (
+            <div className={classes.statsContainer}>
+              {collectionStats.mintedCount !== undefined && (
+                <div className={classes.statBox}>
+                  <div className={classes.statLabel}>Minted</div>
+                  <div>{collectionStats.mintedCount.toLocaleString()}</div>
+                </div>
+              )}
+              {collectionStats.totalSupply !== undefined && (
+                <div className={classes.statBox}>
+                  <div className={classes.statLabel}>Total Supply</div>
+                  <div>{collectionStats.totalSupply.toLocaleString()}</div>
+                </div>
+              )}
+              {collectionStats.uniqueOwners !== undefined && (
+                <div className={classes.statBox}>
+                  <div className={classes.statLabel}>Owners</div>
+                  <div>{collectionStats.uniqueOwners.toLocaleString()}</div>
+                </div>
+              )}
+              {collectionStats.floorPrice !== undefined && (
+                <div className={classes.statBox}>
+                  <div className={classes.statLabel}>Floor Price</div>
+                  <div>{collectionStats.floorPrice} ETH</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reveal Animation Overlay */}
+          {revealedNFT && (
+            <div className={classes.revealOverlay}>
+              {/* Close Button */}
+              <button
+                onClick={handleCloseReveal}
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  color: '#000',
+                  zIndex: 10001
+                }}
+                title="Close"
+              >
+                ✕ Close
+              </button>
+              
+              {showVideo && !nftReady ? (
+                <>
+                  <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+                    🎉 Revealing Your NFT! 🎉
+                  </div>
+                  <video
+                    ref={videoRef}
+                    src="/assets/pixelawbmint.mp4"
+                    className={classes.revealVideo}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    onError={(e) => {
+                      console.error('Video playback error:', e);
+                      // Fallback to image if video fails
+                      setShowVideo(false);
+                    }}
+                  />
+                  <div style={{ color: '#fff', fontSize: '14px', marginTop: '20px', opacity: 0.8 }}>
+                    Waiting for your NFT to be revealed...
+                  </div>
+                </>
+              ) : nftReady && revealedNFT.token_id ? (
+                <>
+                  <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold' }}>🎉 Your NFT Has Been Revealed! 🎉</div>
+                  <img 
+                    src={revealedNFT.image_url || revealedNFT.image || revealedNFT.image_url_shrunk} 
+                    alt={revealedNFT.name || `#${revealedNFT.token_id}`}
+                    className={classes.revealImage}
+                  />
+                  <div style={{ color: '#fff', fontSize: '18px' }}>
+                    {revealedNFT.name || `Pixelawb #${revealedNFT.token_id}`}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+
           {error && (
             <div style={{ 
               backgroundColor: '#ffcccc', 
@@ -317,6 +607,30 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                 {minting ? 'Minting...' : 'Mint Selected NFTs'}
               </button>
             </>
+          )}
+
+          {/* Recently Minted NFTs */}
+          {recentlyMinted.length > 0 && (
+            <div className={classes.recentlyMinted}>
+              <h3 style={{ marginBottom: '10px', fontSize: '14px' }}>Recently Minted</h3>
+              <div className={classes.nftGrid}>
+                {recentlyMinted.map((nft) => (
+                  <div key={nft.id} className={classes.nftItem}>
+                    <img 
+                      src={nft.image_url || nft.image || nft.image_url_shrunk || '/assets/pixelawb.png'} 
+                      alt={nft.name || `#${nft.token_id}`}
+                      className={classes.nftImage}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/assets/pixelawb.png';
+                      }}
+                    />
+                    <div style={{ fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {nft.name || `#${nft.token_id}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

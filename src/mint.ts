@@ -30,7 +30,7 @@ interface InviteList {
   updated_at: string;
 }
 
-interface NFT {
+export interface NFT {
   id: string;
   address: string;
   token_id: number;
@@ -136,6 +136,59 @@ export async function getRecentlyMintedNFTs(ownerAddress: string, limit: number 
   try {
     const response = await getCollectionNFTs('pixelawbs', 1, limit, ownerAddress);
     return response.data;
+  } catch (error) {
+    console.error('Error getting recently minted NFTs:', error);
+    return [];
+  }
+}
+
+interface CollectionStats {
+  totalSupply?: number;
+  mintedCount?: number;
+  floorPrice?: number;
+  totalVolume?: number;
+  uniqueOwners?: number;
+}
+
+export async function getCollectionStats(collectionSlug: string): Promise<CollectionStats> {
+  const SCATTER_API_URL = 'https://api.scatter.art/v1';
+  
+  try {
+    // Try to get collection info - this endpoint may vary, checking common patterns
+    const response = await fetch(`${SCATTER_API_URL}/collection/${collectionSlug}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        totalSupply: data.total_supply || data.totalSupply,
+        mintedCount: data.minted_count || data.mintedCount || data.totalCount,
+        floorPrice: data.floor_price || data.floorPrice,
+        totalVolume: data.total_volume || data.totalVolume,
+        uniqueOwners: data.unique_owners || data.uniqueOwners
+      };
+    }
+    
+    // Fallback: calculate from NFT response
+    const nftResponse = await getCollectionNFTs(collectionSlug, 1, 1);
+    return {
+      mintedCount: nftResponse.totalCount
+    };
+  } catch (error) {
+    console.error('Error getting collection stats:', error);
+    return {};
+  }
+}
+
+export async function getRecentlyMintedNFTsGlobal(collectionSlug: string, limit: number = 10): Promise<NFT[]> {
+  try {
+    // Get recently minted NFTs from the collection (not filtered by owner)
+    const response = await getCollectionNFTs(collectionSlug, 1, limit);
+    // Sort by created_at descending (most recent first)
+    return response.data.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.updated_at || 0).getTime();
+      const dateB = new Date(b.created_at || b.updated_at || 0).getTime();
+      return dateB - dateA;
+    });
   } catch (error) {
     console.error('Error getting recently minted NFTs:', error);
     return [];
