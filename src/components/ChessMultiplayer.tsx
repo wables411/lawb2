@@ -782,7 +782,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       openWindow('howto');
     }
   }, [isMobile, openWindow]);
-
+  
   // Mobile sidebar state (unchanged)
   const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)

@@ -180,7 +180,11 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const [revealedNFT, setRevealedNFT] = useState<NFT | null>(null);
   const [showVideo, setShowVideo] = useState(false);
   const [nftReady, setNftReady] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const chainId = useChainId();
@@ -391,7 +395,64 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
     setRevealedNFT(null);
     setShowVideo(false);
     setNftReady(false);
+    setImageLoaded(false);
+    setImageError(false);
+    setImageUrl(null);
   };
+
+  // Preload image function
+  const preloadImage = (url: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        console.log('Image preloaded successfully:', url);
+        resolve();
+      };
+      img.onerror = () => {
+        console.error('Image preload failed:', url);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = url;
+    });
+  };
+
+  // Effect to preload image when NFT is ready
+  useEffect(() => {
+    if (nftReady && revealedNFT && revealedNFT.token_id) {
+      const url = revealedNFT.image_url || revealedNFT.image || revealedNFT.image_url_shrunk;
+      if (url) {
+        setImageUrl(url);
+        setImageLoaded(false);
+        setImageError(false);
+        
+        // Preload the image with retry logic
+        const loadImage = async (retries = 3) => {
+          try {
+            await preloadImage(url);
+            setImageLoaded(true);
+            setImageError(false);
+          } catch (err) {
+            console.error('Image preload error, retries left:', retries - 1);
+            if (retries > 1) {
+              // Wait 2 seconds before retrying
+              setTimeout(() => {
+                loadImage(retries - 1);
+              }, 2000);
+            } else {
+              // All retries failed, show error state
+              setImageError(true);
+              setImageLoaded(false);
+            }
+          }
+        };
+        
+        // Add a small delay before starting preload to ensure URL is available
+        setTimeout(() => {
+          loadImage();
+        }, 500);
+      }
+    }
+  }, [nftReady, revealedNFT]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -507,12 +568,81 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
               ) : nftReady && revealedNFT.token_id ? (
                 <>
                   <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold' }}>🎉 Your NFT Has Been Revealed! 🎉</div>
-                  <img 
-                    src={revealedNFT.image_url || revealedNFT.image || revealedNFT.image_url_shrunk} 
-                    alt={revealedNFT.name || `#${revealedNFT.token_id}`}
-                    className={classes.revealImage}
-                  />
-                  <div style={{ color: '#fff', fontSize: '18px' }}>
+                  {imageUrl ? (
+                    <div style={{ position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {!imageLoaded && !imageError && (
+                        <div style={{ 
+                          position: 'absolute',
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          color: '#fff',
+                          zIndex: 1
+                        }}>
+                          <div style={{ fontSize: '18px', marginBottom: '10px' }}>Loading your NFT image...</div>
+                          <div style={{ fontSize: '14px', opacity: 0.8 }}>Please wait...</div>
+                        </div>
+                      )}
+                      {imageError && (
+                        <div style={{ 
+                          position: 'absolute',
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          color: '#fff',
+                          zIndex: 1
+                        }}>
+                          <div style={{ fontSize: '18px', marginBottom: '10px' }}>⚠️ Image loading...</div>
+                          <div style={{ fontSize: '14px', opacity: 0.8 }}>
+                            The image may take a moment to appear.
+                          </div>
+                        </div>
+                      )}
+                      <img 
+                        ref={imageRef}
+                        src={imageUrl} 
+                        alt={revealedNFT.name || `#${revealedNFT.token_id}`}
+                        className={classes.revealImage}
+                        onLoad={() => {
+                          console.log('Image loaded successfully in img tag');
+                          setImageLoaded(true);
+                          setImageError(false);
+                        }}
+                        onError={(e) => {
+                          console.error('Image load error in img tag, trying fallback');
+                          setImageError(true);
+                          // Try fallback image if not already using it
+                          if (imageUrl !== '/assets/pixelawb.png') {
+                            setTimeout(() => {
+                              setImageUrl('/assets/pixelawb.png');
+                              setImageError(false);
+                              setImageLoaded(false);
+                            }, 1000);
+                          }
+                        }}
+                        style={{ 
+                          opacity: imageLoaded ? 1 : 0, 
+                          transition: 'opacity 0.5s ease-in-out',
+                          maxWidth: '100%',
+                          maxHeight: '400px'
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      minHeight: '300px',
+                      color: '#fff'
+                    }}>
+                      <div style={{ fontSize: '18px' }}>Preparing your NFT...</div>
+                    </div>
+                  )}
+                  <div style={{ color: '#fff', fontSize: '18px', marginTop: '10px' }}>
                     {revealedNFT.name || `Pixelawb #${revealedNFT.token_id}`}
                   </div>
                 </>

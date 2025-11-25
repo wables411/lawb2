@@ -114,6 +114,16 @@ function App() {
           newSet.delete(popupId);
           return newSet;
         });
+      } else if (popupId === 'miladychan-popup') {
+        // Miladychan window - open as a popup
+        console.log('[APP] Opening Miladychan window');
+        setActivePopup(popupId);
+        setMinimizedPopups(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(popupId);
+          return newSet;
+        });
+        void document.body.offsetWidth;
       } else {
         console.log('[APP] Setting active popup to:', popupId);
         setActivePopup(popupId);
@@ -392,6 +402,27 @@ function App() {
           </Suspense>
         </Popup>
       )}
+
+      <Popup id="miladychan-popup" isOpen={activePopup === 'miladychan-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
+        <p style={{marginBottom: '10px'}}>
+          miladychan is a realtime imageboard inspired by the early 00's anonymous imageboard and its culture - embracing the loosely organized discussion & light-hearted funposting enabled by anonymity and transciency. Click(button) to be lawbed.
+        </p>
+        <button
+          onClick={() => window.open('https://boards.miladychan.org/milady/33793', '_blank', 'noopener,noreferrer')}
+          style={{
+            background: '#c0c0c0',
+            border: '2px outset #fff',
+            padding: '8px 16px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#000',
+            marginTop: '10px'
+          }}
+        >
+          Click
+        </button>
+      </Popup>
 
       <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
         <p style={{marginBottom: '10px'}}>

@@ -12,10 +12,10 @@ const ChessPage: React.FC = () => {
     const scrollToTop = () => {
       try {
         // Try multiple methods to ensure scrolling works in all contexts
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
         if (document.documentElement) {
           document.documentElement.style.overflowX = 'hidden';
           document.documentElement.style.overflowY = 'auto';

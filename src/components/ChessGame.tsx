@@ -2169,18 +2169,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             {onMinimize && <button onClick={onMinimize}>_</button>}
             {/* Desktop menu button */}
             {!isMobile && (
-              <button 
-                className="menu-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsMenuOpen(prev => !prev);
-                }}
-                title="Menu"
-                type="button"
-              >
-                ☰
-              </button>
+            <button 
+              className="menu-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsMenuOpen(prev => !prev);
+              }}
+              title="Menu"
+              type="button"
+            >
+              ☰
+            </button>
             )}
             {/* Mobile menu button */}
             {isMobile && (
@@ -2838,7 +2838,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <HowToContent />
         </Popup>
         )}
-
+        
         {/* Profile popup from leaderboard - rendered in home view */}
         {!isMobile && viewingProfileAddress && (
           <Popup
@@ -2956,7 +2956,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     setSidebarView('leaderboard');
                     // Use setTimeout to ensure state update happens before closing menu
                     setTimeout(() => {
-                      setIsSidebarOpen(false);
+                    setIsSidebarOpen(false);
                     }, 50);
                   }}
                 >
@@ -2971,7 +2971,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     setSidebarView('gallery');
                     // Use setTimeout to ensure state update happens before closing menu
                     setTimeout(() => {
-                      setIsSidebarOpen(false);
+                    setIsSidebarOpen(false);
                     }, 50);
                   }}
                 >
@@ -3012,7 +3012,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     setSidebarView('profile');
                     // Use setTimeout to ensure state update happens before closing menu
                     setTimeout(() => {
-                      setIsSidebarOpen(false);
+                    setIsSidebarOpen(false);
                     }, 50);
                   }}
                 >
@@ -3028,7 +3028,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       setSidebarView('moves');
                       // Use setTimeout to ensure state update happens before closing menu
                       setTimeout(() => {
-                        setIsSidebarOpen(false);
+                      setIsSidebarOpen(false);
                       }, 50);
                     }}
                   >
