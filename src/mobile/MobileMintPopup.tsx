@@ -405,31 +405,21 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
           
           {showVideo && (
             <>
-              <div style={{ 
-                color: '#fff', 
-                fontSize: '20px', 
-                fontWeight: 'bold', 
-                marginBottom: '16px',
-                textAlign: 'center',
-                padding: '0 10px'
-              }}>
-                🎉 Minting Your Pixelawb! 🎉
-              </div>
               <video
                 ref={videoRef}
                 src="/assets/pixelawbmint.mp4"
                 style={{
-                  maxWidth: '90vw',
-                  maxHeight: '50vh',
-                  width: '100%',
-                  height: 'auto',
-                  border: '4px solid #fff',
-                  borderRadius: '8px',
-                  backgroundColor: '#000'
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  objectFit: 'cover',
+                  backgroundColor: '#000',
+                  zIndex: 1
                 }}
                 autoPlay
                 loop
-                muted
                 playsInline
                 preload="auto"
                 onLoadedData={() => {
@@ -448,15 +438,31 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
                   console.error('Video playback error:', e);
                 }}
               />
-              <div style={{ 
-                color: '#fff', 
-                fontSize: '18px', 
-                marginTop: '20px', 
-                fontWeight: 'bold',
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 2,
                 textAlign: 'center',
-                padding: '0 10px'
+                color: '#fff',
+                pointerEvents: 'none'
               }}>
-                Your Pixelawb is revealing soon. . .
+                <div style={{ 
+                  fontSize: '24px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '20px',
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                }}>
+                  🎉 Minting Your Pixelawb! 🎉
+                </div>
+                <div style={{ 
+                  fontSize: '20px', 
+                  fontWeight: 'bold',
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                }}>
+                  Your Pixelawb is revealing soon. . .
+                </div>
               </div>
             </>
           )}
