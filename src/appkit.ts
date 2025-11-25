@@ -1,5 +1,5 @@
 import { createAppKit } from '@reown/appkit/react';
-import { mainnet, arbitrum, solana } from '@reown/appkit/networks';
+import { mainnet, arbitrum, base, solana } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { sankoMainnet } from './wagmi';
 
@@ -23,6 +23,7 @@ export const wagmiAdapter = new WagmiAdapter({
     // WagmiAdapter is EVM-only. Do not include Solana here.
     mainnet,
     arbitrum,
+    base,
     sankoMainnet
   ],
   pendingTransactionsFilter: {
@@ -38,6 +39,7 @@ export const appKit = createAppKit({
   networks: [
     mainnet,
     arbitrum,
+    base,
     solana,
     sankoMainnet
   ],
