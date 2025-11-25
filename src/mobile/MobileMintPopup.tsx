@@ -385,17 +385,17 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
             onClick={handleCloseReveal}
             style={{
               position: 'absolute',
-              top: 'max(20px, env(safe-area-inset-top, 0px))',
-              right: 'max(20px, env(safe-area-inset-right, 0px))',
+              top: 'max(10px, env(safe-area-inset-top, 0px))',
+              right: 'max(10px, env(safe-area-inset-right, 0px))',
               background: '#c0c0c0',
               border: '2px outset #fff',
-              padding: '12px 20px',
+              padding: '6px 12px',
               cursor: 'pointer',
-              fontSize: '16px',
+              fontSize: '12px',
               fontWeight: 'bold',
               color: '#000',
               zIndex: 10001,
-              minHeight: '44px',
+              minHeight: '32px',
               touchAction: 'manipulation'
             }}
             title="Close"
@@ -404,67 +404,39 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
           </button>
           
           {showVideo && (
-            <>
-              <video
-                ref={videoRef}
-                src="/assets/pixelawbmint.mp4"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100vw',
-                  height: '100vh',
-                  objectFit: 'cover',
-                  backgroundColor: '#000',
-                  zIndex: 1
-                }}
-                autoPlay
-                loop
-                playsInline
-                preload="auto"
-                onLoadedData={() => {
-                  // Ensure video plays when loaded
-                  if (videoRef.current) {
-                    videoRef.current.play().catch(console.error);
-                  }
-                }}
-                onCanPlay={() => {
-                  // Force play when video can play
-                  if (videoRef.current) {
-                    videoRef.current.play().catch(console.error);
-                  }
-                }}
-                onError={(e) => {
-                  console.error('Video playback error:', e);
-                }}
-              />
-              <div style={{
+            <video
+              ref={videoRef}
+              src="/assets/pixelawbmint.mp4"
+              style={{
                 position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                zIndex: 2,
-                textAlign: 'center',
-                color: '#fff',
-                pointerEvents: 'none'
-              }}>
-                <div style={{ 
-                  fontSize: '24px', 
-                  fontWeight: 'bold', 
-                  marginBottom: '20px',
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
-                }}>
-                  🎉 Minting Your Pixelawb! 🎉
-                </div>
-                <div style={{ 
-                  fontSize: '20px', 
-                  fontWeight: 'bold',
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
-                }}>
-                  Your Pixelawb is revealing soon. . .
-                </div>
-              </div>
-            </>
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                objectFit: 'cover',
+                backgroundColor: '#000',
+                zIndex: 1
+              }}
+              autoPlay
+              loop
+              playsInline
+              preload="auto"
+              onLoadedData={() => {
+                // Ensure video plays when loaded
+                if (videoRef.current) {
+                  videoRef.current.play().catch(console.error);
+                }
+              }}
+              onCanPlay={() => {
+                // Force play when video can play
+                if (videoRef.current) {
+                  videoRef.current.play().catch(console.error);
+                }
+              }}
+              onError={(e) => {
+                console.error('Video playback error:', e);
+              }}
+            />
           )}
         </div>
       )}
