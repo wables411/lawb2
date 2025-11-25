@@ -1,4 +1,4 @@
-import{c as t,e,f as o,n as i,h as r,i as a,M as n,x as d}from"./index-C6rbIeSh.js";const s=t`
+import{f as t,h as o,i as e,n as i,j as r,k as a,P as n,x as d}from"./index-CVeJVV4C.js";const s=t`
   :host {
     position: relative;
   }
@@ -119,7 +119,7 @@ import{c as t,e,f as o,n as i,h as r,i as a,M as n,x as d}from"./index-C6rbIeSh.
     opacity: 0.5;
     cursor: not-allowed;
   }
-`;var c=function(t,e,o,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPropertyDescriptor(e,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(t,e,o,i);else for(var d=t.length-1;d>=0;d--)(r=t[d])&&(n=(a<3?r(n):a>3?r(e,o,n):r(e,o))||n);return a>3&&n&&Object.defineProperty(e,o,n),n};let u=class extends a{constructor(){super(...arguments),this.icon="card",this.variant="primary",this.type="accent",this.size="md",this.iconSize=void 0,this.fullWidth=!1,this.disabled=!1}render(){return d`<button
+`;var c=function(t,o,e,i){var r,a=arguments.length,n=a<3?o:null===i?i=Object.getOwnPropertyDescriptor(o,e):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(t,o,e,i);else for(var d=t.length-1;d>=0;d--)(r=t[d])&&(n=(a<3?r(n):a>3?r(o,e,n):r(o,e))||n);return a>3&&n&&Object.defineProperty(o,e,n),n};let u=class extends a{constructor(){super(...arguments),this.icon="card",this.variant="primary",this.type="accent",this.size="md",this.iconSize=void 0,this.fullWidth=!1,this.disabled=!1}render(){return d`<button
       data-variant=${this.variant}
       data-type=${this.type}
       data-size=${this.size}
@@ -127,4 +127,4 @@ import{c as t,e,f as o,n as i,h as r,i as a,M as n,x as d}from"./index-C6rbIeSh.
       ?disabled=${this.disabled}
     >
       <wui-icon color="inherit" name=${this.icon} size=${n(this.iconSize)}></wui-icon>
-    </button>`}};u.styles=[e,o,s],c([i()],u.prototype,"icon",void 0),c([i()],u.prototype,"variant",void 0),c([i()],u.prototype,"type",void 0),c([i()],u.prototype,"size",void 0),c([i()],u.prototype,"iconSize",void 0),c([i({type:Boolean})],u.prototype,"fullWidth",void 0),c([i({type:Boolean})],u.prototype,"disabled",void 0),u=c([r("wui-icon-button")],u);
+    </button>`}};u.styles=[o,e,s],c([i()],u.prototype,"icon",void 0),c([i()],u.prototype,"variant",void 0),c([i()],u.prototype,"type",void 0),c([i()],u.prototype,"size",void 0),c([i()],u.prototype,"iconSize",void 0),c([i({type:Boolean})],u.prototype,"fullWidth",void 0),c([i({type:Boolean})],u.prototype,"disabled",void 0),u=c([r("wui-icon-button")],u);

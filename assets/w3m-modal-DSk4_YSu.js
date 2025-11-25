@@ -1,4 +1,4 @@
-import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M as d,F as u,_ as p,f as h,v as m,z as g,Y as w,am as b,ab as f,E as y,a1 as v,J as k,s as x,S as $,a7 as C,aj as S,Z as R,U as P,aB as I}from"./index-C6rbIeSh.js";import"./index-BrHvE021.js";import{S as O}from"./SwapController-BaTWEd2H.js";import"./wagmi-vendor-D-SPk46n.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const W={isUnsupportedChainView:()=>"UnsupportedChain"===o.state.view||"SwitchNetwork"===o.state.view&&o.state.history.includes("UnsupportedChain"),async safeClose(){if(this.isUnsupportedChainView())return void e.shake();await t.isSIWXCloseDisabled()?e.shake():("DataCapture"!==o.state.view&&"DataCaptureOtpConfirm"!==o.state.view||i.disconnect(),e.close())}},E=r`
+import{a7 as e,aC as t,R as o,C as i,f as r,h as a,j as n,k as s,x as l,n as c,P as d,H as u,a0 as p,i as h,v as m,B as g,_ as w,ao as b,ad as f,E as y,a3 as v,L as k,u as x,S as $,a9 as C,al as S,$ as R,U as P,aD as I}from"./index-CVeJVV4C.js";import"./index-k1OQPUFE.js";import{S as O}from"./SwapController-Ba6IEfSA.js";import"./wagmi-vendor-DI5-0FB7.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const W={isUnsupportedChainView:()=>"UnsupportedChain"===o.state.view||"SwitchNetwork"===o.state.view&&o.state.history.includes("UnsupportedChain"),async safeClose(){if(this.isUnsupportedChainView())return void e.shake();await t.isSIWXCloseDisabled()?e.shake():("DataCapture"!==o.state.view&&"DataCaptureOtpConfirm"!==o.state.view||i.disconnect(),e.close())}},E=r`
   :host {
     display: block;
     border-radius: clamp(0px, ${({borderRadius:e})=>e[8]}, 44px);
@@ -82,7 +82,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
     border-radius: ${({borderRadius:e})=>e[2]};
     background-color: var(--local-icon-bg-value);
   }
-`;var N=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};const T={info:"info",success:"checkmark",warning:"warningCircle",error:"warning"};let D=class extends s{constructor(){super(...arguments),this.message="",this.type="info"}render(){return l`
+`;var N=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};const D={info:"info",success:"checkmark",warning:"warningCircle",error:"warning"};let T=class extends s{constructor(){super(...arguments),this.message="",this.type="info"}render(){return l`
       <wui-flex
         data-type=${d(this.type)}
         flexDirection="row"
@@ -97,7 +97,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
             justifyContent="center"
             class="icon-box"
           >
-            <wui-icon color="inherit" size="md" name=${T[this.type]}></wui-icon>
+            <wui-icon color="inherit" size="md" name=${D[this.type]}></wui-icon>
           </wui-flex>
           <wui-text variant="md-medium" color="inherit" data-testid="wui-alertbar-text"
             >${this.message}</wui-text
@@ -111,7 +111,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
           @click=${this.onClose}
         ></wui-icon>
       </wui-flex>
-    `}onClose(){u.close()}};D.styles=[a,A],N([c()],D.prototype,"message",void 0),N([c()],D.prototype,"type",void 0),D=N([n("wui-alertbar")],D);const j=r`
+    `}onClose(){u.close()}};T.styles=[a,A],N([c()],T.prototype,"message",void 0),N([c()],T.prototype,"type",void 0),T=N([n("wui-alertbar")],T);const j=r`
   :host {
     display: block;
     position: absolute;
@@ -129,7 +129,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
         icon=${null==o?void 0:o.icon}
         type=${t}
       ></wui-alertbar>
-    `}onOpen(e){this.open?(this.animate([{opacity:0,transform:"scale(0.85)"},{opacity:1,transform:"scale(1)"}],{duration:150,fill:"forwards",easing:"ease"}),this.style.cssText="pointer-events: auto"):e||(this.animate([{opacity:1,transform:"scale(1)"},{opacity:0,transform:"scale(0.85)"}],{duration:150,fill:"forwards",easing:"ease"}),this.style.cssText="pointer-events: none")}};H.styles=j,B([p()],H.prototype,"open",void 0),H=B([n("w3m-alertbar")],H);const F=r`
+    `}onOpen(e){this.open?(this.animate([{opacity:0,transform:"scale(0.85)"},{opacity:1,transform:"scale(1)"}],{duration:150,fill:"forwards",easing:"ease"}),this.style.cssText="pointer-events: auto"):e||(this.animate([{opacity:1,transform:"scale(1)"},{opacity:0,transform:"scale(0.85)"}],{duration:150,fill:"forwards",easing:"ease"}),this.style.cssText="pointer-events: none")}};H.styles=j,B([p()],H.prototype,"open",void 0),H=B([n("w3m-alertbar")],H);const V=r`
   button {
     display: block;
     display: flex;
@@ -232,14 +232,14 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
     background-color: ${({tokens:e})=>e.theme.foregroundSecondary};
     opacity: 0.5;
   }
-`;var V=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};const U={lg:"lg-regular",md:"md-regular",sm:"sm-regular"},K={lg:"lg",md:"md",sm:"sm"};let Y=class extends s{constructor(){super(...arguments),this.imageSrc="",this.text="",this.size="lg",this.type="text-dropdown",this.disabled=!1}render(){return l`<button ?disabled=${this.disabled} data-size=${this.size} data-type=${this.type}>
+`;var F=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};const U={lg:"lg-regular",md:"md-regular",sm:"sm-regular"},K={lg:"lg",md:"md",sm:"sm"};let Y=class extends s{constructor(){super(...arguments),this.imageSrc="",this.text="",this.size="lg",this.type="text-dropdown",this.disabled=!1}render(){return l`<button ?disabled=${this.disabled} data-size=${this.size} data-type=${this.type}>
       ${this.imageTemplate()} ${this.textTemplate()}
       <wui-flex class="right-icon-container">
         <wui-icon name="chevronBottom"></wui-icon>
       </wui-flex>
     </button>`}textTemplate(){const e=U[this.size];return this.text?l`<wui-text color="primary" variant=${e}>${this.text}</wui-text>`:null}imageTemplate(){if(this.imageSrc)return l`<wui-image src=${this.imageSrc} alt="select visual"></wui-image>`;const e=K[this.size];return l` <wui-flex class="left-icon-container">
       <wui-icon size=${e} name="networkPlaceholder"></wui-icon>
-    </wui-flex>`}};Y.styles=[a,h,F],V([c()],Y.prototype,"imageSrc",void 0),V([c()],Y.prototype,"text",void 0),V([c()],Y.prototype,"size",void 0),V([c()],Y.prototype,"type",void 0),V([c({type:Boolean})],Y.prototype,"disabled",void 0),Y=V([n("wui-select")],Y);const X=r`
+    </wui-flex>`}};Y.styles=[a,h,V],F([c()],Y.prototype,"imageSrc",void 0),F([c()],Y.prototype,"text",void 0),F([c()],Y.prototype,"size",void 0),F([c()],Y.prototype,"type",void 0),F([c({type:Boolean})],Y.prototype,"disabled",void 0),Y=F([n("wui-select")],Y);const X=r`
   :host {
     height: 60px;
   }
@@ -390,7 +390,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
       type="neutral"
       variant="primary"
       @click=${this.onWalletHelp.bind(this)}
-    ></wui-icon-button>`}onNetworks(){this.isAllowedNetworkSwitch()&&(y.sendEvent({type:"track",event:"CLICK_NETWORKS"}),o.push("Networks"))}isAllowedNetworkSwitch(){const e=g.getAllRequestedCaipNetworks(),t=!!e&&e.length>1,o=null==e?void 0:e.find(({id:e})=>{var t;return e===(null==(t=this.network)?void 0:t.id)});return t||!o}onViewChange(){const{history:e}=o.state;let t=f.VIEW_DIRECTION.Next;e.length<this.prevHistoryLength&&(t=f.VIEW_DIRECTION.Prev),this.prevHistoryLength=e.length,this.viewDirection=t}async onHistoryChange(){var e;const{history:t}=o.state,i=null==(e=this.shadowRoot)?void 0:e.querySelector("#dynamic");t.length>1&&!this.showBack&&i?(await i.animate([{opacity:1},{opacity:0}],{duration:200,fill:"forwards",easing:"ease"}).finished,this.showBack=!0,i.animate([{opacity:0},{opacity:1}],{duration:200,fill:"forwards",easing:"ease"})):t.length<=1&&this.showBack&&i&&(await i.animate([{opacity:1},{opacity:0}],{duration:200,fill:"forwards",easing:"ease"}).finished,this.showBack=!1,i.animate([{opacity:0},{opacity:1}],{duration:200,fill:"forwards",easing:"ease"}))}onGoBack(){o.goBack()}};J.styles=X,M([p()],J.prototype,"heading",void 0),M([p()],J.prototype,"network",void 0),M([p()],J.prototype,"networkImage",void 0),M([p()],J.prototype,"showBack",void 0),M([p()],J.prototype,"prevHistoryLength",void 0),M([p()],J.prototype,"view",void 0),M([p()],J.prototype,"viewDirection",void 0),J=M([n("w3m-header")],J);const Z=r`
+    ></wui-icon-button>`}onNetworks(){this.isAllowedNetworkSwitch()&&(y.sendEvent({type:"track",event:"CLICK_NETWORKS"}),o.push("Networks"))}isAllowedNetworkSwitch(){const e=g.getAllRequestedCaipNetworks(),t=!!e&&e.length>1,o=null==e?void 0:e.find(({id:e})=>{var t;return e===(null==(t=this.network)?void 0:t.id)});return t||!o}onViewChange(){const{history:e}=o.state;let t=f.VIEW_DIRECTION.Next;e.length<this.prevHistoryLength&&(t=f.VIEW_DIRECTION.Prev),this.prevHistoryLength=e.length,this.viewDirection=t}async onHistoryChange(){var e;const{history:t}=o.state,i=null==(e=this.shadowRoot)?void 0:e.querySelector("#dynamic");t.length>1&&!this.showBack&&i?(await i.animate([{opacity:1},{opacity:0}],{duration:200,fill:"forwards",easing:"ease"}).finished,this.showBack=!0,i.animate([{opacity:0},{opacity:1}],{duration:200,fill:"forwards",easing:"ease"})):t.length<=1&&this.showBack&&i&&(await i.animate([{opacity:1},{opacity:0}],{duration:200,fill:"forwards",easing:"ease"}).finished,this.showBack=!1,i.animate([{opacity:0},{opacity:1}],{duration:200,fill:"forwards",easing:"ease"}))}onGoBack(){o.goBack()}};J.styles=X,M([p()],J.prototype,"heading",void 0),M([p()],J.prototype,"network",void 0),M([p()],J.prototype,"networkImage",void 0),M([p()],J.prototype,"showBack",void 0),M([p()],J.prototype,"prevHistoryLength",void 0),M([p()],J.prototype,"view",void 0),M([p()],J.prototype,"viewDirection",void 0),J=M([n("w3m-header")],J);const Q=r`
   :host {
     display: flex;
     align-items: center;
@@ -415,7 +415,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
     background-color: ${({tokens:e})=>e.core.foregroundAccent010};
     border-radius: ${({borderRadius:e})=>e.round} !important;
   }
-`;var Q=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};let ee=class extends s{constructor(){super(...arguments),this.message="",this.variant="success"}render(){return l`
+`;var Z=function(e,t,o,i){var r,a=arguments.length,n=a<3?t:null===i?i=Object.getOwnPropertyDescriptor(t,o):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,o,i);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(n=(a<3?r(n):a>3?r(t,o,n):r(t,o))||n);return a>3&&n&&Object.defineProperty(t,o,n),n};let ee=class extends s{constructor(){super(...arguments),this.message="",this.variant="success"}render(){return l`
       ${this.templateIcon()}
       <wui-text variant="lg-regular" color="primary" data-testid="wui-snackbar-message"
         >${this.message}</wui-text
@@ -424,7 +424,7 @@ import{a5 as e,aA as t,R as o,C as i,c as r,e as a,h as n,i as s,x as l,n as c,M
       size="md"
       color=${{success:"success",error:"error",warning:"warning",info:"default"}[this.variant]}
       icon=${{success:"checkmark",error:"warning",warning:"warningCircle",info:"info"}[this.variant]}
-    ></wui-icon-box>`}};ee.styles=[a,Z],Q([c()],ee.prototype,"message",void 0),Q([c()],ee.prototype,"variant",void 0),ee=Q([n("wui-snackbar")],ee);const te=x`
+    ></wui-icon-box>`}};ee.styles=[a,Q],Z([c()],ee.prototype,"message",void 0),Z([c()],ee.prototype,"variant",void 0),ee=Z([n("wui-snackbar")],ee);const te=x`
   :host {
     display: block;
     position: absolute;
