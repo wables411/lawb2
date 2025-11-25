@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getEligibleInviteLists, mintNFT, getCollectionStats, getCollectionData, getRecentlyMintedNFTsGlobal, type NFT, type CollectionData } from '../mint';
-import { useWalletClient, useChainId, useSwitchChain, useReadContract } from 'wagmi';
+import { useWalletClient, useChainId, useSwitchChain, useReadContract, usePublicClient, useWaitForTransactionReceipt } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import MobilePopup98 from './MobilePopup98';
 
@@ -50,8 +50,16 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
   const videoRef = useRef<HTMLVideoElement>(null);
   const revealTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
+  const { data: receipt, isLoading: isConfirming } = useWaitForTransactionReceipt({
+    hash: txHash || undefined,
+    query: {
+      enabled: !!txHash
+    }
+  });
 
   useEffect(() => {
     if (isOpen && walletAddress) {
@@ -152,33 +160,60 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
             dataLength: result.mintTransaction.data.length
           });
           
-          // Warn if transaction is going to a different address than expected
+          // Log transaction address (proxy/router is expected for Scatter API)
           const EXPECTED_COLLECTION = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
           if (result.mintTransaction.to.toLowerCase() !== EXPECTED_COLLECTION.toLowerCase()) {
-            console.warn(`⚠️ Transaction is going to ${result.mintTransaction.to} instead of collection contract ${EXPECTED_COLLECTION}`);
-            const proceed = confirm(`Warning: This transaction is going to a different address (${result.mintTransaction.to}) than the Pixelawbs collection contract.\n\nThis might be a proxy/router contract. Do you want to proceed?`);
-            if (!proceed) {
-              setMinting(false);
-              return;
-            }
+            console.log(`ℹ️ Transaction going to Scatter proxy/router: ${result.mintTransaction.to} (this is expected)`);
           }
           
-          const txHash = await walletClient.sendTransaction({
+          const hash = await walletClient.sendTransaction({
             to: result.mintTransaction.to as `0x${string}`,
             value: BigInt(result.mintTransaction.value),
             data: result.mintTransaction.data as `0x${string}`,
           });
-          console.log('Transaction sent successfully:', txHash);
+          console.log('Transaction sent successfully:', hash);
+          setTxHash(hash);
           
           // Show video immediately and start looping
           setShowVideo(true);
           setRevealedNFT({} as NFT); // Placeholder to show overlay
           
-          // Auto-close after 15 seconds with success message
-          revealTimeoutRef.current = setTimeout(() => {
-            handleCloseReveal();
-            alert(`Transaction Submitted!\n\nTransaction Hash: ${txHash}\n\nPlease verify on Etherscan that the NFT was minted. If no NFT appears, contact Scatter support.\n\nView: https://etherscan.io/tx/${txHash}`);
-          }, 15000); // Show for 15 seconds
+          // Wait for transaction confirmation and verify NFT was minted
+          if (publicClient) {
+            publicClient.waitForTransactionReceipt({ hash }).then(async (receipt) => {
+              console.log('Transaction confirmed:', receipt);
+              
+              // Check for Transfer events (ERC-721 mint)
+              const COLLECTION_ADDRESS = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
+              const transferEvents = receipt.logs.filter(log => {
+                // Check if this is a Transfer event to the user's address
+                return log.address.toLowerCase() === COLLECTION_ADDRESS.toLowerCase() &&
+                       log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' && // Transfer event signature
+                       log.topics.length >= 3 &&
+                       log.topics[2].toLowerCase() === `0x${'0'.repeat(24)}${walletAddress.slice(2).toLowerCase()}`; // To address
+              });
+              
+              if (transferEvents.length > 0) {
+                console.log('✅ NFT Transfer events found:', transferEvents.length);
+                handleCloseReveal();
+                alert(`✅ NFT Minted Successfully!\n\nTransaction Hash: ${hash}\n\n${transferEvents.length} NFT(s) minted. Check your wallet!\n\nView: https://etherscan.io/tx/${hash}`);
+              } else {
+                console.warn('⚠️ No Transfer events found - NFT may not have been minted');
+                handleCloseReveal();
+                alert(`⚠️ Transaction Confirmed but No NFT Found\n\nTransaction Hash: ${hash}\n\nStatus: ${receipt.status === 'success' ? 'Success' : 'Failed'}\n\nNo Transfer events detected. Please check:\n1. Your wallet for the NFT\n2. Etherscan for details\n3. Contact Scatter support if no NFT appears\n\nView: https://etherscan.io/tx/${hash}`);
+              }
+            }).catch((error) => {
+              console.error('Error waiting for transaction:', error);
+              handleCloseReveal();
+              alert(`Transaction Submitted (verification failed)\n\nTransaction Hash: ${hash}\n\nPlease verify on Etherscan.\n\nView: https://etherscan.io/tx/${hash}`);
+            });
+          } else {
+            // Fallback if publicClient not available
+            revealTimeoutRef.current = setTimeout(() => {
+              handleCloseReveal();
+              alert(`Transaction Submitted!\n\nTransaction Hash: ${hash}\n\nPlease verify on Etherscan that the NFT was minted.\n\nView: https://etherscan.io/tx/${hash}`);
+            }, 15000);
+          }
         } catch (txError) {
           console.error('Transaction sending failed:', txError);
           setError('Transaction failed: ' + (txError as Error).message);
