@@ -1754,6 +1754,16 @@ body, html {
     background: rgba(0, 0, 0, 0.3) !important;
   }
   
+  .mobile-content-popup .leaderboard-table-compact td {
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+  }
+  
+  .mobile-content-popup .leaderboard-table-compact td[style*="cursor: pointer"] {
+    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.3) !important;
+    touch-action: manipulation !important;
+  }
+  
   .mobile-content-popup .leaderboard-table-compact th {
     background: rgba(0, 255, 0, 0.1) !important;
     font-weight: bold !important;
@@ -1865,6 +1875,60 @@ body, html {
     background: rgba(0, 255, 0, 0.2) !important;
     border: 1px solid rgba(0, 255, 0, 0.4) !important;
     color: #00ff00 !important;
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Profile card mobile optimizations */
+  .mobile-content-popup .profile-compact {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px !important;
+    overflow-y: auto !important;
+    max-height: calc(100vh - 200px) !important;
+  }
+  
+  .mobile-content-popup .profile-compact > div:first-child {
+    width: 100% !important;
+    max-width: 350px !important;
+    margin: 0 auto !important;
+  }
+  
+  /* Ensure profile card is touch-friendly */
+  .mobile-content-popup .profile-compact [style*="cursor: pointer"] {
+    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.3) !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Chat input mobile optimization */
+  .mobile-content-popup .chat-compact-input {
+    min-height: 60px !important;
+    padding: 8px !important;
+  }
+  
+  .mobile-content-popup .chat-compact-input-field {
+    min-height: 44px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    touch-action: manipulation !important;
+  }
+  
+  /* Chat messages mobile optimization */
+  .mobile-content-popup .chat-compact-messages {
+    max-height: calc(100vh - 300px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .mobile-content-popup .chat-compact-message {
+    min-height: 44px !important;
+    padding: 10px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .mobile-content-popup .chat-compact-tab {
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.3) !important;
   }
   
   /* Only show when explicitly opened */

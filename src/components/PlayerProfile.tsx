@@ -23,6 +23,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [refreshingInventory, setRefreshingInventory] = useState(false);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
   const [profileImageSize, setProfileImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [statsVisible, setStatsVisible] = useState(true);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -62,13 +63,40 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           window.console.log('[PROFILE] Leaderboard rank:', rank);
         }
         
+        const isOwnProfile = address?.toLowerCase() === connectedAddress?.toLowerCase();
+        
         if (!profileData) {
-          // Create profile if it doesn't exist
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] Creating new profile...');
+          // Only create profile if it's the user's own profile
+          if (isOwnProfile) {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.log('[PROFILE] Creating new profile for own account...');
+            }
+            await firebaseProfiles.upsertProfile(address, {});
+            profileData = await firebaseProfiles.getProfile(address);
+          } else {
+            // For viewing other users, create a minimal profile object with default values
+            profileData = {
+              wallet_address: address.toLowerCase(),
+              nft_inventory: {
+                lawbsters: [],
+                lawbstarz: [],
+                halloween_lawbsters: [],
+                pixelawbs: []
+              },
+              game_stats: {
+                total_games: 0,
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                total_points: 0,
+                win_rate: 0,
+                last_match_timestamp: null,
+                last_match_invite_code: null
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } as PlayerProfileData;
           }
-          await firebaseProfiles.upsertProfile(address, {});
-          profileData = await firebaseProfiles.getProfile(address);
         }
         
         // Ensure profileData has required fields
@@ -120,10 +148,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           }
           // Always use leaderboard data for display (it's the source of truth)
           profileData.game_stats = leaderboardStats;
-          // Also sync to Firebase profile - use update() to preserve username
-          await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
-          const updated = await firebaseProfiles.getProfile(address);
-          if (updated) profileData = updated;
+          // Only sync to Firebase profile if it's the user's own profile
+          if (isOwnProfile) {
+            await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
+            const updated = await firebaseProfiles.getProfile(address);
+            if (updated) profileData = updated;
+          }
         } else {
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[PROFILE] No leaderboard entry found. Leaderboard entry:', leaderboardEntry, 'Profile data:', profileData);
@@ -131,7 +161,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         }
         
         // Always refresh NFT inventory to ensure accuracy (Etherscan/contract data is source of truth)
-        if (profileData) {
+        // Only refresh for own profile to avoid unnecessary API calls
+        if (profileData && isOwnProfile) {
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[PROFILE] Refreshing NFT inventory to ensure accuracy...');
           }
@@ -327,6 +358,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     );
   }
 
+  // Determine if this is own profile
+  const isOwnProfile = address?.toLowerCase() === connectedAddress?.toLowerCase();
+
   const displayName = profile?.username 
     ? profile.username 
     : `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -375,7 +409,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
   // Get profile image URL or default
   const profileImageUrl = profile?.profile_picture?.image_url || '/images/sticker4.png';
-  const isOwnProfile = address?.toLowerCase() === connectedAddress?.toLowerCase();
 
   // Handle image load to get dimensions
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -397,7 +430,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       {/* Pokemon Card Style Profile */}
       <div style={{
         position: 'relative',
-        width: profileImageSize ? `${Math.min(profileImageSize.width, 600)}px` : '100%',
+        width: profileImageSize ? `${Math.min(profileImageSize.width, isMobile ? 350 : 600)}px` : '100%',
         maxWidth: '100%',
         boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)',
         borderRadius: '12px',
@@ -405,15 +438,27 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         border: `4px solid ${getBorderColor()}`,
         transform: 'perspective(1000px) rotateX(2deg)',
         transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        background: '#fff'
+        background: '#fff',
+        cursor: !isOwnProfile ? 'pointer' : 'default'
+      }}
+      onClick={(e) => {
+        if (!isOwnProfile) {
+          e.preventDefault();
+          e.stopPropagation();
+          setStatsVisible(prev => !prev);
+        }
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) scale(1.02)';
-        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.3)';
+        if (!isMobile) {
+          e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) scale(1.02)';
+          e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.3)';
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'perspective(1000px) rotateX(2deg)';
-        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)';
+        if (!isMobile) {
+          e.currentTarget.style.transform = 'perspective(1000px) rotateX(2deg)';
+          e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)';
+        }
       }}
       >
         {/* Profile Image as Background */}
@@ -437,14 +482,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         />
         
         {/* Stats Overlay at Bottom */}
+        {statsVisible && (
         <div style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
           background: 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%)',
-          padding: '16px 12px 12px 12px',
-          color: '#fff'
+          padding: isMobile ? '12px 8px 8px 8px' : '16px 12px 12px 12px',
+          color: '#fff',
+          pointerEvents: 'none'
         }}>
           <div style={{ 
             fontSize: isMobile ? '14px' : '16px', 
@@ -502,6 +549,22 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             </div>
           )}
         </div>
+        )}
+        {!isOwnProfile && (
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            background: 'rgba(0, 0, 0, 0.6)',
+            color: '#fff',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: isMobile ? '10px' : '11px',
+            pointerEvents: 'none'
+          }}>
+            {statsVisible ? 'Tap to hide stats' : 'Tap to show stats'}
+          </div>
+        )}
       </div>
 
       {/* Editing Features - Only show when viewing own profile */}

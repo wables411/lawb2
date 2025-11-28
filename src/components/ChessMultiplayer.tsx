@@ -5664,13 +5664,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       </tr>
                     </thead>
                     <tbody>
-                      {leaderboard.slice(0, 10).map((entry, index) => (
-                        <tr key={entry.username}>
-                          <td>{index + 1}</td>
-                          <td>{formatLeaderboardAddress(entry.username)}</td>
-                          <td>{entry.points}</td>
-                        </tr>
-                      ))}
+                      {leaderboard.slice(0, 10).map((entry, index) => {
+                        const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
+                        return (
+                          <tr key={entry.username}>
+                            <td>{index + 1}</td>
+                            <td 
+                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', touchAction: 'manipulation' }}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setViewingProfileAddress(entry.username);
+                                setSidebarView('profile');
+                              }}
+                              onTouchStart={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              {displayName}
+                            </td>
+                            <td>{entry.points}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -5789,7 +5805,31 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           {sidebarView === 'profile' && (
             <div className="profile-compact mobile-content-view">
-              <PlayerProfile isMobile={true} />
+              {viewingProfileAddress && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setViewingProfileAddress(null);
+                    setSidebarView('leaderboard');
+                  }}
+                  style={{
+                    marginBottom: '12px',
+                    padding: '8px 16px',
+                    background: '#000080',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    touchAction: 'manipulation',
+                    minHeight: '44px'
+                  }}
+                >
+                  ← Back to Leaderboard
+                </button>
+              )}
+              <PlayerProfile isMobile={true} address={viewingProfileAddress || undefined} />
             </div>
           )}
 
@@ -6547,12 +6587,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         </Popup>
       )}
       
-      {isMobile && viewingProfileAddress && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: '#fff' }}>
-          <button onClick={() => setViewingProfileAddress(null)} style={{ margin: '10px', padding: '5px 10px' }}>Close</button>
-          <PlayerProfile isMobile={true} address={viewingProfileAddress} />
-        </div>
-      )}
     </div>
   );
 };
