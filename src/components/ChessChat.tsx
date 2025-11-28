@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast, get } from 'firebase/database';
 import { getDisplayName as getDisplayNameUtil } from '../utils/displayName';
+import { firebaseProfiles } from '../firebaseProfiles';
 // Removed blocking connection test - loading data directly with timeout
 import './ChessChat.css';
 
@@ -44,6 +45,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [displayNameMap, setDisplayNameMap] = useState<Record<string, string>>({});
+  const [profilePictureMap, setProfilePictureMap] = useState<Record<string, string>>({});
   
   // Draggable/Resizable state
   const [position, setPosition] = useState({ x: 20, y: 20 });
@@ -358,11 +360,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     scrollToBottom();
   }, [messages]);
   
-  // Fetch display names for all unique wallet addresses in messages
+  // Fetch display names and profile pictures for all unique wallet addresses in messages
   useEffect(() => {
     if (messages.length === 0) return;
     
-    const fetchDisplayNames = async () => {
+    const fetchDisplayNamesAndPictures = async () => {
       const uniqueAddresses = new Set<string>();
       messages.forEach(msg => {
         if (msg.walletAddress) {
@@ -377,22 +379,37 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       if (addressesToFetch.length === 0) return;
       
       const newDisplayNameMap: Record<string, string> = {};
+      const newProfilePictureMap: Record<string, string> = {};
       const promises = addressesToFetch.map(async (addr) => {
         fetchedAddressesRef.current.add(addr);
         try {
           const displayName = await getDisplayNameUtil(addr);
           newDisplayNameMap[addr] = displayName;
+          
+          // Fetch profile picture
+          try {
+            const profile = await firebaseProfiles.getProfile(addr);
+            if (profile?.profile_picture?.image_url) {
+              newProfilePictureMap[addr] = profile.profile_picture.image_url;
+            } else {
+              newProfilePictureMap[addr] = '/images/sticker4.png';
+            }
+          } catch (profileError) {
+            newProfilePictureMap[addr] = '/images/sticker4.png';
+          }
         } catch (error) {
           console.error(`Error fetching display name for ${addr}:`, error);
           newDisplayNameMap[addr] = formatAddress(addr);
+          newProfilePictureMap[addr] = '/images/sticker4.png';
         }
       });
       
       await Promise.all(promises);
       setDisplayNameMap(prev => ({ ...prev, ...newDisplayNameMap }));
+      setProfilePictureMap(prev => ({ ...prev, ...newProfilePictureMap }));
     };
     
-    void fetchDisplayNames();
+    void fetchDisplayNamesAndPictures();
   }, [messages, displayNameMap]);
   
   // Auto-switch to private chat when in a game
@@ -511,9 +528,28 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         {messages.map((message) => {
           const walletAddr = message.walletAddress?.toLowerCase() || '';
           const displayName = displayNameMap[walletAddr] || message.displayName;
+          const profilePicture = profilePictureMap[walletAddr] || '/images/sticker4.png';
           return (
             <div key={message.id} className="chat-message">
               <div className="message-header">
+                {!isMobile && (
+                  <img 
+                    src={profilePicture}
+                    alt=""
+                    onError={(e) => {
+                      e.currentTarget.src = '/images/sticker4.png';
+                    }}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '1px solid rgba(0, 0, 0, 0.2)',
+                      marginRight: '8px',
+                      flexShrink: 0
+                    }}
+                  />
+                )}
                 <span className="message-author">
                   {displayName}
                 </span>

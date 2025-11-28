@@ -324,7 +324,7 @@ button.sidebar-menu-btn,
 }
 
 .leaderboard-entry {
-  display: flex;
+  display: flex !important;
   justify-content: space-between;
   align-items: center;
   padding: 4px 6px;
@@ -343,12 +343,14 @@ button.sidebar-menu-btn,
 }
 
 .leaderboard-entry img {
-  width: 24px;
-  height: 24px;
+  width: 24px !important;
+  height: 24px !important;
   border-radius: 4px;
   object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
+  display: block !important;
+  visibility: visible !important;
 }
 
 .leaderboard-entry .player {
