@@ -1869,6 +1869,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }));
       setLeaderboardDisplayNames(displayNames);
       setLeaderboardProfilePictures(profilePictures);
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[LEADERBOARD] Profile pictures loaded:', profilePictures);
+      }
       
       // If no data, set empty array explicitly
       if (!data || data.length === 0) {
@@ -6449,24 +6452,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   return (
                     <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', gap: '8px' }}>
                       <span className="rank">#{index + 1}</span>
-                      <img 
-                        src={profilePicture}
-                        alt=""
-                        onError={(e) => {
-                          e.currentTarget.src = '/images/sticker4.png';
-                        }}
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '4px',
-                          objectFit: 'cover',
-                          border: '1px solid rgba(0, 0, 0, 0.2)',
-                          flexShrink: 0
-                        }}
-                      />
+                      <div style={{ width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img 
+                          src={profilePicture}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.src = '/images/sticker4.png';
+                          }}
+                          onLoad={() => {
+                            if (typeof window !== 'undefined' && window.console) {
+                              window.console.log('[LEADERBOARD] Profile picture loaded:', profilePicture);
+                            }
+                          }}
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            minWidth: '24px',
+                            minHeight: '24px',
+                            borderRadius: '4px',
+                            objectFit: 'cover',
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                            display: 'block',
+                            visibility: 'visible',
+                            opacity: 1
+                          }}
+                        />
+                      </div>
                       <span 
                         className="player" 
-                        style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', flex: 1 }}
+                        style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', flex: 1, marginLeft: '8px' }}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();

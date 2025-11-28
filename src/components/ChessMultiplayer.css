@@ -345,12 +345,17 @@ button.sidebar-menu-btn,
 .leaderboard-entry img {
   width: 24px !important;
   height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
   border-radius: 4px;
   object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
   display: block !important;
   visibility: visible !important;
+  opacity: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .leaderboard-entry .player {
