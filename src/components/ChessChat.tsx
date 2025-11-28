@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast, get } from 'firebase/database';
+import { getDisplayName as getDisplayNameUtil } from '../utils/displayName';
 // Removed blocking connection test - loading data directly with timeout
 import './ChessChat.css';
 
@@ -42,6 +43,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [displayNameMap, setDisplayNameMap] = useState<Record<string, string>>({});
   
   // Draggable/Resizable state
   const [position, setPosition] = useState({ x: 20, y: 20 });
@@ -55,6 +57,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const chatRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fetchedAddressesRef = useRef<Set<string>>(new Set());
   
   // Format wallet address for display
   const formatAddress = (address: string) => {
@@ -62,9 +65,14 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   };
   
   // Get display name for current user
-  const getDisplayName = () => {
+  const getDisplayName = async () => {
     if (!walletAddress) return 'Anonymous';
-    return formatAddress(walletAddress);
+    try {
+      return await getDisplayNameUtil(walletAddress);
+    } catch (error) {
+      console.error('Error getting display name:', error);
+      return formatAddress(walletAddress);
+    }
   };
   
   // Scroll to bottom of messages
@@ -209,10 +217,12 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const sendMessage = async () => {
     if (!newMessage.trim() || !isConnected || !walletAddress) return;
     
+    const displayName = await getDisplayName();
+    
     const messageData = {
       userId: walletAddress,
       walletAddress: walletAddress,
-      displayName: getDisplayName(),
+      displayName: displayName,
       message: newMessage.trim(),
       timestamp: Date.now(),
       room: currentRoom,
@@ -229,6 +239,12 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       
       setNewMessage('');
       inputRef.current?.focus();
+      
+      // Update display name map for current user
+      setDisplayNameMap(prev => ({
+        ...prev,
+        [walletAddress.toLowerCase()]: displayName
+      }));
       
     } catch (err) {
       console.error('Error sending message:', err);
@@ -341,6 +357,43 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // Fetch display names for all unique wallet addresses in messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const fetchDisplayNames = async () => {
+      const uniqueAddresses = new Set<string>();
+      messages.forEach(msg => {
+        if (msg.walletAddress) {
+          uniqueAddresses.add(msg.walletAddress.toLowerCase());
+        }
+      });
+      
+      const addressesToFetch = Array.from(uniqueAddresses).filter(addr => 
+        !fetchedAddressesRef.current.has(addr) && !displayNameMap[addr]
+      );
+      
+      if (addressesToFetch.length === 0) return;
+      
+      const newDisplayNameMap: Record<string, string> = {};
+      const promises = addressesToFetch.map(async (addr) => {
+        fetchedAddressesRef.current.add(addr);
+        try {
+          const displayName = await getDisplayNameUtil(addr);
+          newDisplayNameMap[addr] = displayName;
+        } catch (error) {
+          console.error(`Error fetching display name for ${addr}:`, error);
+          newDisplayNameMap[addr] = formatAddress(addr);
+        }
+      });
+      
+      await Promise.all(promises);
+      setDisplayNameMap(prev => ({ ...prev, ...newDisplayNameMap }));
+    };
+    
+    void fetchDisplayNames();
+  }, [messages, displayNameMap]);
   
   // Auto-switch to private chat when in a game
   useEffect(() => {
@@ -455,21 +508,25 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           </div>
         )}
         
-        {messages.map((message) => (
-          <div key={message.id} className="chat-message">
-            <div className="message-header">
-              <span className="message-author">
-                {message.displayName}
-              </span>
-              <span className="message-time">
-                {new Date(message.timestamp).toLocaleTimeString()}
-              </span>
+        {messages.map((message) => {
+          const walletAddr = message.walletAddress?.toLowerCase() || '';
+          const displayName = displayNameMap[walletAddr] || message.displayName;
+          return (
+            <div key={message.id} className="chat-message">
+              <div className="message-header">
+                <span className="message-author">
+                  {displayName}
+                </span>
+                <span className="message-time">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+              <div className="message-content">
+                {message.message}
+              </div>
             </div>
-            <div className="message-content">
-              {message.message}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         
         <div ref={messagesEndRef} />
       </div>

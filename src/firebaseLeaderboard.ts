@@ -207,7 +207,9 @@ export const getUserRank = async (walletAddress: string): Promise<number | null>
     if (!walletAddress) return null;
 
     const entries = await getTopLeaderboardEntries(1000); // Get all entries to find rank
-    const userIndex = entries.findIndex(entry => entry.username === walletAddress);
+    const userIndex = entries.findIndex(entry => 
+      entry.username?.toLowerCase() === walletAddress.toLowerCase()
+    );
     
     return userIndex >= 0 ? userIndex + 1 : null;
   } catch (error) {

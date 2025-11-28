@@ -4,7 +4,7 @@ import { firebaseProfiles, type PlayerProfile as PlayerProfileData } from '../fi
 import { fetchNFTInventory } from '../utils/nftInventory';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
-import { getUserLeaderboardEntry } from '../firebaseLeaderboard';
+import { getUserLeaderboardEntry, getUserRank } from '../firebaseLeaderboard';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -21,6 +21,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [usernameSuccess, setUsernameSuccess] = useState(false);
   const [refreshingInventory, setRefreshingInventory] = useState(false);
+  const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
+  const [profileImageSize, setProfileImageSize] = useState<{ width: number; height: number } | null>(null);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -51,6 +53,13 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         const leaderboardEntry = await getUserLeaderboardEntry(address);
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[PROFILE] Leaderboard entry:', leaderboardEntry);
+        }
+        
+        // Get leaderboard rank for border color
+        const rank = await getUserRank(address);
+        setLeaderboardRank(rank);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[PROFILE] Leaderboard rank:', rank);
         }
         
         if (!profileData) {
@@ -355,54 +364,152 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const totalNFTs = (inventory.lawbsters?.length || 0) + (inventory.lawbstarz?.length || 0) + 
                     (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0);
 
+  // Determine border color based on leaderboard rank
+  const getBorderColor = () => {
+    if (!leaderboardRank) return '#ff0000'; // Default red
+    if (leaderboardRank === 1) return '#ffd700'; // Gold
+    if (leaderboardRank === 2) return '#c0c0c0'; // Silver
+    if (leaderboardRank >= 3 && leaderboardRank <= 10) return '#4169e1'; // Blue
+    return '#ff0000'; // Red for below 10th place
+  };
+
+  // Get profile image URL or default
+  const profileImageUrl = profile?.profile_picture?.image_url || '/images/sticker4.png';
+  const isOwnProfile = address?.toLowerCase() === connectedAddress?.toLowerCase();
+
+  // Handle image load to get dimensions
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setProfileImageSize({ width: img.naturalWidth, height: img.naturalHeight });
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[PROFILE] Image loaded, dimensions:', img.naturalWidth, 'x', img.naturalHeight);
+    }
+  };
+
   return (
-    <div className="profile-compact" style={{ padding: isMobile ? '16px' : '20px', fontSize: isMobile ? '12px' : '14px' }}>
-      {/* Profile Header */}
-      <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-        {(() => {
-          if (!profile?.profile_picture?.image_url) return false;
-          const totalNFTs = (profile?.nft_inventory?.lawbsters?.length || 0) + 
-                           (profile?.nft_inventory?.lawbstarz?.length || 0) + 
-                           (profile?.nft_inventory?.halloween_lawbsters?.length || 0) + 
-                           (profile?.nft_inventory?.pixelawbs?.length || 0);
-          return totalNFTs > 0;
-        })() && profile?.profile_picture?.image_url && (
-          <img 
-            src={profile.profile_picture.image_url} 
-            alt="Profile"
-            onError={(e) => {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.error('[PROFILE] Failed to load profile picture:', profile.profile_picture?.image_url);
-              }
-              e.currentTarget.style.display = 'none';
-            }}
-            onLoad={() => {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.log('[PROFILE] Profile picture loaded successfully:', profile.profile_picture?.image_url);
-              }
-            }}
-            style={{ 
-              width: isMobile ? '60px' : '80px', 
-              height: isMobile ? '60px' : '80px', 
-              borderRadius: '50%', 
-              border: '2px solid #000',
-              marginBottom: '10px',
-              objectFit: 'cover',
-              backgroundColor: '#f0f0f0'
-            }} 
-          />
-        )}
-        <h3 style={{ margin: '8px 0', fontSize: isMobile ? '16px' : '18px' }}>{displayName}</h3>
-        {profile?.username && (
-          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>@{profile.username}</div>
-        )}
-        <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#888', marginTop: '4px' }}>
-          {address.slice(0, 6)}...{address.slice(-4)}
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center',
+      padding: isMobile ? '16px' : '20px',
+      gap: '20px'
+    }}>
+      {/* Pokemon Card Style Profile */}
+      <div style={{
+        position: 'relative',
+        width: profileImageSize ? `${Math.min(profileImageSize.width, 600)}px` : '100%',
+        maxWidth: '100%',
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        border: `4px solid ${getBorderColor()}`,
+        transform: 'perspective(1000px) rotateX(2deg)',
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        background: '#fff'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) scale(1.02)';
+        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.3)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'perspective(1000px) rotateX(2deg)';
+        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)';
+      }}
+      >
+        {/* Profile Image as Background */}
+        <img 
+          src={profileImageUrl}
+          alt="Profile"
+          onError={(e) => {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.error('[PROFILE] Failed to load profile picture:', profileImageUrl);
+            }
+            // Fallback to default
+            e.currentTarget.src = '/images/sticker4.png';
+          }}
+          onLoad={handleImageLoad}
+          style={{ 
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            objectFit: 'contain'
+          }} 
+        />
+        
+        {/* Stats Overlay at Bottom */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%)',
+          padding: '16px 12px 12px 12px',
+          color: '#fff'
+        }}>
+          <div style={{ 
+            fontSize: isMobile ? '14px' : '16px', 
+            fontWeight: 'bold', 
+            marginBottom: '8px',
+            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
+          }}>
+            {displayName}
+          </div>
+          {profile?.username && (
+            <div style={{ 
+              fontSize: isMobile ? '10px' : '11px', 
+              color: '#ccc',
+              marginBottom: '8px',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
+              @{profile.username}
+            </div>
+          )}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '6px',
+            fontSize: isMobile ? '10px' : '11px',
+            marginTop: '8px'
+          }}>
+            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+              Games: <strong>{stats.total_games}</strong>
+            </div>
+            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+              Wins: <strong>{stats.wins}</strong>
+            </div>
+            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+              Losses: <strong>{stats.losses}</strong>
+            </div>
+            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+              Draws: <strong>{stats.draws}</strong>
+            </div>
+            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+              Win Rate: <strong>{(stats.win_rate * 100).toFixed(1)}%</strong>
+            </div>
+            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+              Points: <strong>{stats.total_points}</strong>
+            </div>
+          </div>
+          {leaderboardRank && (
+            <div style={{ 
+              fontSize: isMobile ? '9px' : '10px', 
+              color: '#aaa',
+              marginTop: '6px',
+              textAlign: 'center',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
+              Rank: #{leaderboardRank}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Username Section */}
-      <div style={{ marginBottom: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
+      {/* Editing Features - Only show when viewing own profile */}
+      {isOwnProfile && (
+        <>
+
+          {/* Username Section */}
+          <div style={{ marginBottom: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px', width: '100%', maxWidth: '600px' }}>
         {!profile?.username ? (
           <>
             <h4 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '13px' : '14px' }}>Create Username</h4>
@@ -486,21 +593,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         )}
       </div>
 
-      {/* Game Stats */}
-      <div style={{ marginBottom: '20px' }}>
-        <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Game Statistics</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: isMobile ? '11px' : '12px' }}>
-          <div>Total Games: <strong>{stats.total_games}</strong></div>
-          <div>Wins: <strong>{stats.wins}</strong></div>
-          <div>Losses: <strong>{stats.losses}</strong></div>
-          <div>Draws: <strong>{stats.draws}</strong></div>
-          <div>Win Rate: <strong>{(stats.win_rate * 100).toFixed(1)}%</strong></div>
-          <div>Points: <strong>{stats.total_points}</strong></div>
-        </div>
-      </div>
-
-      {/* NFT Inventory */}
-      <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px' }}>NFT Inventory ({totalNFTs})</h4>
           <button
@@ -533,8 +626,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         )}
       </div>
 
-      {/* Profile Picture Selection */}
-      <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
+          {/* Profile Picture Selection */}
+          <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px', width: '100%', maxWidth: '600px' }}>
         <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Profile Picture</h4>
         {(() => {
           if (!profile) return false;
@@ -699,7 +792,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             No NFTs found. Click "Refresh" above to check your wallet.
           </div>
         )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

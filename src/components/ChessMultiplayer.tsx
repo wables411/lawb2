@@ -801,12 +801,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   }>>([]);
   const [chatNewMessage, setChatNewMessage] = useState('');
   const [chatCurrentRoom, setChatCurrentRoom] = useState<'public' | 'private'>(inviteCode ? 'private' : 'public');
+  const [displayNameMap, setDisplayNameMap] = useState<Record<string, string>>({});
   
   // Chat helper functions
   const formatChatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  const getChatDisplayName = () => {
+  const getChatDisplayName = async () => {
     if (!address) return 'Anonymous';
-    return formatChatAddress(address);
+    try {
+      return await getDisplayName(address);
+    } catch (error) {
+      console.error('Error getting display name:', error);
+      return formatChatAddress(address);
+    }
   };
   
   // Load chat messages
@@ -837,6 +843,43 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       unsubscribe();
     };
   }, [sidebarView, chatCurrentRoom, inviteCode]);
+
+  // Fetch display names for all unique wallet addresses in messages
+  useEffect(() => {
+    if (chatMessages.length === 0) return;
+    
+    const fetchDisplayNames = async () => {
+      const uniqueAddresses = new Set<string>();
+      chatMessages.forEach(msg => {
+        if (msg.walletAddress) {
+          uniqueAddresses.add(msg.walletAddress.toLowerCase());
+        }
+      });
+      
+      const addressesToFetch = Array.from(uniqueAddresses).filter(addr => 
+        !fetchedChatAddressesRef.current.has(addr) && !displayNameMap[addr]
+      );
+      
+      if (addressesToFetch.length === 0) return;
+      
+      const newDisplayNameMap: Record<string, string> = {};
+      const promises = addressesToFetch.map(async (addr) => {
+        fetchedChatAddressesRef.current.add(addr);
+        try {
+          const displayName = await getDisplayName(addr);
+          newDisplayNameMap[addr] = displayName;
+        } catch (error) {
+          console.error(`Error fetching display name for ${addr}:`, error);
+          newDisplayNameMap[addr] = formatChatAddress(addr);
+        }
+      });
+      
+      await Promise.all(promises);
+      setDisplayNameMap(prev => ({ ...prev, ...newDisplayNameMap }));
+    };
+    
+    void fetchDisplayNames();
+  }, [chatMessages, displayNameMap]);
   
   // Auto-switch to private chat when in a game
   useEffect(() => {
@@ -849,10 +892,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const sendChatMessage = async () => {
     if (!chatNewMessage.trim() || !isConnected || !address) return;
     
+    const displayName = await getChatDisplayName();
+    
     const messageData = {
       userId: address,
       walletAddress: address,
-      displayName: getChatDisplayName(),
+      displayName: displayName,
       message: chatNewMessage.trim(),
       timestamp: Date.now(),
       room: chatCurrentRoom,
@@ -866,6 +911,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       await push(ref(database, roomPath), messageData);
       setChatNewMessage('');
+      
+      // Update display name map for current user
+      setDisplayNameMap(prev => ({
+        ...prev,
+        [address.toLowerCase()]: displayName
+      }));
     } catch (err) {
       console.error('Error sending chat message:', err);
     }
@@ -968,6 +1019,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Refs
   const gameChannel = useRef<any>(null);
   const celebrationTimeout = useRef<NodeJS.Timeout | null>(null);
+  const fetchedChatAddressesRef = useRef<Set<string>>(new Set());
 
   // Add after address is defined
   const addressRef = useRef(address);
@@ -5692,17 +5744,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     Connect wallet to chat
                   </div>
                 )}
-                {chatMessages.map((message) => (
-                  <div key={message.id} className="chat-compact-message">
-                    <div className="chat-compact-message-header">
-                      <span className="chat-compact-author">{message.displayName}</span>
-                      <span className="chat-compact-time">
-                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                {chatMessages.map((message) => {
+                  const walletAddr = message.walletAddress?.toLowerCase() || '';
+                  const displayName = displayNameMap[walletAddr] || message.displayName;
+                  return (
+                    <div key={message.id} className="chat-compact-message">
+                      <div className="chat-compact-message-header">
+                        <span className="chat-compact-author">{displayName}</span>
+                        <span className="chat-compact-time">
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="chat-compact-content">{message.message}</div>
                     </div>
-                    <div className="chat-compact-content">{message.message}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="chat-compact-input">
