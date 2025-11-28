@@ -332,18 +332,28 @@ button.sidebar-menu-btn,
   border: 1px solid rgba(0, 255, 0, 0.2);
   border-radius: 3px;
   font-size: 11px;
+  gap: 8px;
 }
 
 .leaderboard-entry .rank {
   color: #00ff00;
   font-weight: 600;
-  min-width: 25px;
+  min-width: 30px;
+  flex-shrink: 0;
+}
+
+.leaderboard-entry img {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .leaderboard-entry .player {
   color: #00ff00;
   flex: 1;
-  margin: 0 6px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -355,6 +365,7 @@ button.sidebar-menu-btn,
   font-weight: 600;
   min-width: 30px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 /* Piece Gallery Content Styling */

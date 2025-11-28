@@ -10,6 +10,7 @@ import {
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
 import { firebaseChess } from '../firebaseChess';
+import { firebaseProfiles } from '../firebaseProfiles';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
 import './ChessMultiplayer.css';
@@ -1013,6 +1014,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   });
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardDisplayNames, setLeaderboardDisplayNames] = useState<Record<string, string>>({});
+  const [leaderboardProfilePictures, setLeaderboardProfilePictures] = useState<Record<string, string>>({});
   const [viewingProfileAddress, setViewingProfileAddress] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
@@ -1838,18 +1840,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setLeaderboard(data);
       console.log('Leaderboard data loaded:', data);
       
-      // Fetch display names for all leaderboard entries
+      // Fetch display names and profile pictures for all leaderboard entries
       const displayNames: Record<string, string> = {};
+      const profilePictures: Record<string, string> = {};
       await Promise.all(data.map(async (entry) => {
         try {
           const displayName = await getDisplayName(entry.username);
           displayNames[entry.username] = displayName;
+          
+          // Fetch profile picture
+          try {
+            const profile = await firebaseProfiles.getProfile(entry.username);
+            if (profile?.profile_picture?.image_url) {
+              profilePictures[entry.username] = profile.profile_picture.image_url;
+            } else {
+              // Use default image if no profile picture
+              profilePictures[entry.username] = '/images/sticker4.png';
+            }
+          } catch (profileError) {
+            // Use default image on error
+            profilePictures[entry.username] = '/images/sticker4.png';
+          }
         } catch (error) {
           // Fallback to truncated address if profile fetch fails
           displayNames[entry.username] = formatLeaderboardAddress(entry.username);
+          profilePictures[entry.username] = '/images/sticker4.png';
         }
       }));
       setLeaderboardDisplayNames(displayNames);
+      setLeaderboardProfilePictures(profilePictures);
       
       // If no data, set empty array explicitly
       if (!data || data.length === 0) {
@@ -6426,12 +6445,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               <div className="leaderboard-list">
                 {leaderboard.slice(0, 20).map((entry, index) => {
                   const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
+                  const profilePicture = leaderboardProfilePictures[entry.username] || '/images/sticker4.png';
                   return (
-                    <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', gap: '8px' }}>
                       <span className="rank">#{index + 1}</span>
+                      <img 
+                        src={profilePicture}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.src = '/images/sticker4.png';
+                        }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '4px',
+                          objectFit: 'cover',
+                          border: '1px solid rgba(0, 0, 0, 0.2)',
+                          flexShrink: 0
+                        }}
+                      />
                       <span 
                         className="player" 
-                        style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                        style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', flex: 1 }}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
