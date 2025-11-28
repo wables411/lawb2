@@ -540,13 +540,14 @@ export const ChessChat: React.FC<ChessChatProps> = ({
                       e.currentTarget.src = '/images/sticker4.png';
                     }}
                     style={{
-                      width: '20px',
-                      height: '20px',
+                      width: '28px',
+                      height: '28px',
                       borderRadius: '50%',
                       objectFit: 'cover',
-                      border: '1px solid rgba(0, 0, 0, 0.2)',
-                      marginRight: '8px',
-                      flexShrink: 0
+                      border: '2px solid rgba(0, 0, 0, 0.3)',
+                      marginRight: '10px',
+                      flexShrink: 0,
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
                     }}
                   />
                 )}

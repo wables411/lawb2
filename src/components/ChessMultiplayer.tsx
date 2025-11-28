@@ -1016,6 +1016,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [leaderboardDisplayNames, setLeaderboardDisplayNames] = useState<Record<string, string>>({});
   const [leaderboardProfilePictures, setLeaderboardProfilePictures] = useState<Record<string, string>>({});
   const [viewingProfileAddress, setViewingProfileAddress] = useState<string | null>(null);
+
+  // Debug: Log when profile pictures change
+  useEffect(() => {
+    if (Object.keys(leaderboardProfilePictures).length > 0 && typeof window !== 'undefined' && window.console) {
+      window.console.log('[LEADERBOARD] Profile pictures state updated:', leaderboardProfilePictures);
+    }
+  }, [leaderboardProfilePictures]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // Refs
@@ -6449,35 +6456,40 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 {leaderboard.slice(0, 20).map((entry, index) => {
                   const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
                   const profilePicture = leaderboardProfilePictures[entry.username] || '/images/sticker4.png';
+                  if (typeof window !== 'undefined' && window.console && index === 0) {
+                    window.console.log('[LEADERBOARD] Rendering entry:', entry.username, 'Profile picture:', profilePicture, 'State:', leaderboardProfilePictures);
+                  }
                   return (
                     <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', gap: '8px' }}>
                       <span className="rank">#{index + 1}</span>
-                      <div style={{ width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img 
-                          src={profilePicture}
-                          alt=""
-                          onError={(e) => {
-                            e.currentTarget.src = '/images/sticker4.png';
-                          }}
-                          onLoad={() => {
-                            if (typeof window !== 'undefined' && window.console) {
-                              window.console.log('[LEADERBOARD] Profile picture loaded:', profilePicture);
-                            }
-                          }}
-                          style={{
-                            width: '24px',
-                            height: '24px',
-                            minWidth: '24px',
-                            minHeight: '24px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
-                            border: '1px solid rgba(0, 0, 0, 0.2)',
-                            display: 'block',
-                            visibility: 'visible',
-                            opacity: 1
-                          }}
-                        />
-                      </div>
+                      <img 
+                        src={profilePicture}
+                        alt={`${displayName} profile`}
+                        onError={(e) => {
+                          if (typeof window !== 'undefined' && window.console) {
+                            window.console.log('[LEADERBOARD] Image error, using fallback:', profilePicture);
+                          }
+                          e.currentTarget.src = '/images/sticker4.png';
+                        }}
+                        onLoad={() => {
+                          if (typeof window !== 'undefined' && window.console && index === 0) {
+                            window.console.log('[LEADERBOARD] Profile picture loaded successfully:', profilePicture);
+                          }
+                        }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          minWidth: '24px',
+                          minHeight: '24px',
+                          borderRadius: '4px',
+                          objectFit: 'cover',
+                          border: '1px solid rgba(0, 0, 0, 0.2)',
+                          display: 'block',
+                          visibility: 'visible',
+                          opacity: 1,
+                          flexShrink: 0
+                        }}
+                      />
                       <span 
                         className="player" 
                         style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', flex: 1, marginLeft: '8px' }}

@@ -114,8 +114,8 @@
 /* Messages Area */
 .chat-messages {
   flex: 1;
-  background: #fff;
-  padding: 8px;
+  background: #f5f5f5;
+  padding: 12px;
   overflow-y: auto;
   border: 1px inset #808080;
   margin: 4px;
@@ -123,6 +123,25 @@
   max-height: 300px;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f5f5f5;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
 }
 
 .chat-loading,
@@ -151,29 +170,37 @@
 /* Individual Messages */
 .chat-message {
   margin-bottom: 12px;
-  padding: 8px;
-  background: #f8f8f8;
-  border: 1px solid #ddd;
-  border-radius: 2px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px outset #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
+}
+
+.chat-message:hover {
+  background: #f5f5f5;
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
-  font-size: 10px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  gap: 8px;
 }
 
 .message-header img {
-  width: 20px !important;
-  height: 20px !important;
+  width: 28px !important;
+  height: 28px !important;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  margin-right: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.3) !important;
+  margin-right: 10px;
   flex-shrink: 0;
   display: block !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
 .message-author {
@@ -181,6 +208,7 @@
   color: #000080;
   display: flex;
   align-items: center;
+  font-size: 12px;
 }
 
 .message-time {
@@ -190,8 +218,10 @@
 
 .message-content {
   color: #000;
-  line-height: 1.3;
+  line-height: 1.4;
   word-wrap: break-word;
+  font-size: 13px;
+  padding-left: 38px; /* Align with profile picture */
 }
 
 /* Input Area */
