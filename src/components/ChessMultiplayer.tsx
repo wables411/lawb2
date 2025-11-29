@@ -1024,12 +1024,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   }, [leaderboardProfilePictures]);
 
-  // Reload leaderboard when window opens
+  // Reload leaderboard when window opens (desktop) or sidebar view changes (mobile)
   useEffect(() => {
     if (!isMobile && openWindows.has('leaderboard')) {
       void loadLeaderboard();
     }
   }, [openWindows, isMobile]);
+  
+  // Reload leaderboard when mobile sidebar view changes to leaderboard
+  useEffect(() => {
+    if (isMobile && sidebarView === 'leaderboard') {
+      void loadLeaderboard();
+    }
+  }, [sidebarView, isMobile]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // Refs
@@ -5699,10 +5706,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     </thead>
                     <tbody>
                       {leaderboard.slice(0, 10).map((entry, index) => {
+                        if (!entry || !entry.username) {
+                          return null;
+                        }
                         const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
                         const profilePicture = leaderboardProfilePictures[entry.username] || '/images/sticker4.png';
                         return (
-                          <tr key={entry.username}>
+                          <tr key={entry.username || index}>
                             <td>{index + 1}</td>
                             <td 
                               style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', touchAction: 'manipulation', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -5735,7 +5745,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               )}
                               {displayName}
                             </td>
-                            <td>{entry.points}</td>
+                            <td>{entry.points || 0}</td>
                           </tr>
                         );
                       })}
