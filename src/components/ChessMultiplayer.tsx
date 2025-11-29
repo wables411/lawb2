@@ -1023,6 +1023,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       window.console.log('[LEADERBOARD] Profile pictures state updated:', leaderboardProfilePictures);
     }
   }, [leaderboardProfilePictures]);
+
+  // Reload leaderboard when window opens
+  useEffect(() => {
+    if (!isMobile && openWindows.has('leaderboard')) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[LEADERBOARD] Window opened, reloading leaderboard...');
+      }
+      void loadLeaderboard();
+    }
+  }, [openWindows, isMobile]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // Refs
@@ -1850,6 +1860,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Fetch display names and profile pictures for all leaderboard entries
       const displayNames: Record<string, string> = {};
       const profilePictures: Record<string, string> = {};
+      
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[LEADERBOARD] Starting to fetch profile pictures for', data.length, 'entries');
+      }
+      
       await Promise.all(data.map(async (entry) => {
         try {
           const displayName = await getDisplayName(entry.username);
@@ -1860,15 +1875,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             const profile = await firebaseProfiles.getProfile(entry.username);
             if (profile?.profile_picture?.image_url) {
               profilePictures[entry.username] = profile.profile_picture.image_url;
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[LEADERBOARD] Found profile picture for', entry.username, ':', profile.profile_picture.image_url);
+              }
             } else {
               // Use default image if no profile picture
               profilePictures[entry.username] = '/images/sticker4.png';
             }
           } catch (profileError) {
+            if (typeof window !== 'undefined' && window.console) {
+              window.console.error('[LEADERBOARD] Error fetching profile for', entry.username, ':', profileError);
+            }
             // Use default image on error
             profilePictures[entry.username] = '/images/sticker4.png';
           }
         } catch (error) {
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.error('[LEADERBOARD] Error fetching display name for', entry.username, ':', error);
+          }
           // Fallback to truncated address if profile fetch fails
           displayNames[entry.username] = formatLeaderboardAddress(entry.username);
           profilePictures[entry.username] = '/images/sticker4.png';
@@ -1878,6 +1902,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setLeaderboardProfilePictures(profilePictures);
       if (typeof window !== 'undefined' && window.console) {
         window.console.log('[LEADERBOARD] Profile pictures loaded:', profilePictures);
+        window.console.log('[LEADERBOARD] Profile pictures count:', Object.keys(profilePictures).length);
+        window.console.log('[LEADERBOARD] First entry profile picture:', data[0]?.username, profilePictures[data[0]?.username]);
       }
       
       // If no data, set empty array explicitly
@@ -6456,24 +6482,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 {leaderboard.slice(0, 20).map((entry, index) => {
                   const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
                   const profilePicture = leaderboardProfilePictures[entry.username] || '/images/sticker4.png';
-                  if (typeof window !== 'undefined' && window.console && index === 0) {
-                    window.console.log('[LEADERBOARD] Rendering entry:', entry.username, 'Profile picture:', profilePicture, 'State:', leaderboardProfilePictures);
-                  }
                   return (
                     <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', gap: '8px' }}>
                       <span className="rank">#{index + 1}</span>
                       <img 
+                        key={`img-${entry.username}-${profilePicture}`}
                         src={profilePicture}
                         alt={`${displayName} profile`}
                         onError={(e) => {
                           if (typeof window !== 'undefined' && window.console) {
-                            window.console.log('[LEADERBOARD] Image error, using fallback:', profilePicture);
+                            window.console.log('[LEADERBOARD] Image error for', entry.username, 'src was:', profilePicture);
                           }
                           e.currentTarget.src = '/images/sticker4.png';
                         }}
                         onLoad={() => {
-                          if (typeof window !== 'undefined' && window.console && index === 0) {
-                            window.console.log('[LEADERBOARD] Profile picture loaded successfully:', profilePicture);
+                          if (typeof window !== 'undefined' && window.console && index < 3) {
+                            window.console.log('[LEADERBOARD] Image loaded for', entry.username, ':', profilePicture);
                           }
                         }}
                         style={{
@@ -6481,13 +6505,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           height: '24px',
                           minWidth: '24px',
                           minHeight: '24px',
+                          maxWidth: '24px',
+                          maxHeight: '24px',
                           borderRadius: '4px',
                           objectFit: 'cover',
-                          border: '1px solid rgba(0, 0, 0, 0.2)',
+                          border: '2px solid rgba(0, 255, 0, 0.5)',
                           display: 'block',
                           visibility: 'visible',
                           opacity: 1,
-                          flexShrink: 0
+                          flexShrink: 0,
+                          backgroundColor: '#e0e0e0',
+                          boxShadow: '0 0 2px rgba(0, 255, 0, 0.3)'
                         }}
                       />
                       <span 
