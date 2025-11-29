@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 const useStyles = createUseStyles({
   container: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 0,
+    flexDirection: 'row',
+    gap: 8,
     padding: 8,
     background: '#8b956d', // Game Boy green
     border: '4px solid #000',
@@ -15,75 +15,82 @@ const useStyles = createUseStyles({
     maxWidth: '100%',
     width: '100%',
     fontFamily: 'monospace',
-    fontSize: 11,
+    fontSize: 10,
     boxSizing: 'border-box',
     height: '100%',
     overflow: 'hidden',
   },
   header: {
     textAlign: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   subtitle: {
-    color: '#000',
-    fontSize: '10px',
+    color: '#0f380f',
+    fontSize: '7px',
     textAlign: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
     lineHeight: 1.1,
   },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2,
+    gap: 4,
     flexShrink: 0,
+    width: '200px',
+    minWidth: '180px',
+    maxHeight: '100%',
+    overflowY: 'auto',
+    paddingRight: 4,
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 1,
+    gap: 2,
+    marginBottom: 4,
   },
   sectionTitle: {
     fontWeight: 'bold',
     color: '#0f380f',
-    fontSize: 10,
-    borderBottom: '2px solid #0f380f',
-    paddingBottom: 2,
+    fontSize: 9,
+    borderBottom: '1px solid #0f380f',
+    paddingBottom: 1,
     marginBottom: 2,
   },
   row: {
     display: 'flex',
-    alignItems: 'center',
-    gap: 3,
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    gap: 2,
+    marginBottom: 2,
   },
   label: {
-    minWidth: 55,
-    color: '#000',
+    color: '#0f380f',
     fontWeight: 'bold',
-    fontSize: 10,
+    fontSize: 8,
+    marginBottom: 1,
   },
   input: {
-    flex: 1,
-    minWidth: 70,
-    padding: '3px 4px',
+    width: '100%',
+    padding: '2px 4px',
     border: '2px inset #8b956d',
     background: '#c4cfa1',
-    fontSize: 9,
+    fontSize: 8,
     fontFamily: 'monospace',
     color: '#0f380f',
     textTransform: 'uppercase',
+    boxSizing: 'border-box',
   },
   button: {
-    padding: '4px 10px',
+    padding: '3px 6px',
     background: '#c4cfa1', // Game Boy button color
     border: '2px outset #8b956d',
     borderBottom: '2px solid #5a5a5a',
     borderRight: '2px solid #5a5a5a',
     cursor: 'pointer',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#0f380f',
     borderRadius: 2,
+    width: '100%',
     '&:hover': {
       background: '#d4dfb1',
     },
@@ -94,16 +101,17 @@ const useStyles = createUseStyles({
     },
   },
   effectButton: {
-    padding: '3px 8px',
+    padding: '2px 4px',
     background: '#c4cfa1',
     border: '2px outset #8b956d',
     borderBottom: '2px solid #5a5a5a',
     borderRight: '2px solid #5a5a5a',
     cursor: 'pointer',
-    fontSize: 9,
+    fontSize: 7,
     fontWeight: 'bold',
     color: '#0f380f',
     borderRadius: 2,
+    flex: 1,
     '&:hover': {
       background: '#d4dfb1',
     },
@@ -118,13 +126,13 @@ const useStyles = createUseStyles({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginTop: 4,
     flex: 1,
     minHeight: 0,
+    minWidth: 0,
     background: '#0f380f', // Dark Game Boy screen
     border: '3px inset #000',
     borderRadius: 4,
-    padding: 4,
+    padding: 8,
   },
   canvas: {
     border: '2px inset #000',
@@ -641,17 +649,16 @@ function MemeGenerator() {
   };
 
   return (
-    <div className={classes.container} ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className={classes.header}>
-        <h2 style={{ color: '#0f380f', textShadow: '1px 1px 0 #c4cfa1', marginBottom: 4, fontSize: '14px', textAlign: 'center' }}>LAWB MEME MAKER</h2>
-        <p className={classes.subtitle} style={{ fontSize: '8px', marginBottom: 4 }}>
-          <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#0f380f', textDecoration: 'underline' }}>
-            MEME DEPOT
-          </a>
-        </p>
-      </div>
-      
-    <div className={classes.content}>
+    <div className={classes.container} ref={containerRef} style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
+      <div className={classes.content}>
+        <div className={classes.header}>
+          <h2 style={{ color: '#0f380f', textShadow: '1px 1px 0 #c4cfa1', marginBottom: 2, fontSize: '11px', textAlign: 'center' }}>LAWB MEME MAKER</h2>
+          <p className={classes.subtitle}>
+            <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#0f380f', textDecoration: 'underline' }}>
+              MEME DEPOT
+            </a>
+          </p>
+        </div>
         <div className={classes.section}>
           <div className={classes.sectionTitle}>Collections</div>
           <div className={classes.row}>
@@ -681,14 +688,18 @@ function MemeGenerator() {
           <div className={classes.row}>
             <span className={classes.label}>Top Text:</span>
             <input className={classes.input} type="text" value={topText} onChange={e => setTopText(e.target.value)} placeholder="Enter top text..." />
-            <span className={classes.label}>Size:</span>
-            <input className={classes.input} type="number" min={10} max={100} value={topFontSize} onChange={e => setTopFontSize(Number(e.target.value))} style={{ width: 60, textAlign: 'center' }} />
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2 }}>
+              <span className={classes.label} style={{ marginBottom: 0, minWidth: '30px' }}>Size:</span>
+              <input className={classes.input} type="number" min={10} max={100} value={topFontSize} onChange={e => setTopFontSize(Number(e.target.value))} style={{ width: '60px', textAlign: 'center' }} />
+            </div>
           </div>
           <div className={classes.row}>
             <span className={classes.label}>Bottom Text:</span>
             <input className={classes.input} type="text" value={bottomText} onChange={e => setBottomText(e.target.value)} placeholder="Enter bottom text..." />
-            <span className={classes.label}>Size:</span>
-            <input className={classes.input} type="number" min={10} max={100} value={bottomFontSize} onChange={e => setBottomFontSize(Number(e.target.value))} style={{ width: 60, textAlign: 'center' }} />
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2 }}>
+              <span className={classes.label} style={{ marginBottom: 0, minWidth: '30px' }}>Size:</span>
+              <input className={classes.input} type="number" min={10} max={100} value={bottomFontSize} onChange={e => setBottomFontSize(Number(e.target.value))} style={{ width: '60px', textAlign: 'center' }} />
+            </div>
           </div>
         </div>
         <div className={classes.section}>
@@ -702,9 +713,11 @@ function MemeGenerator() {
         <div className={classes.section}>
           <div className={classes.sectionTitle}>Stickers</div>
           <div className={classes.row}>
-            {STOCK_STICKERS.map((src, i) => (
-              <img key={src} src={src} alt={`sticker${i+1}`} style={{ width: 32, height: 32, cursor: 'pointer', border: '1px solid #888', marginRight: 4 }} onClick={() => addSticker(src)} />
-            ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, marginBottom: 4 }}>
+              {STOCK_STICKERS.map((src, i) => (
+                <img key={src} src={src} alt={`sticker${i+1}`} style={{ width: '100%', aspectRatio: '1', cursor: 'pointer', border: '1px solid #0f380f', borderRadius: 2 }} onClick={() => addSticker(src)} />
+              ))}
+            </div>
             <label className={classes.button} style={{ marginBottom: 0 }}>
               Upload Sticker
               <input type="file" accept="image/*" style={{ display: 'none' }} ref={stickerInputRef} onChange={handleStickerUpload} />
