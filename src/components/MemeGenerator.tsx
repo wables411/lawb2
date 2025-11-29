@@ -20,6 +20,9 @@ const useStyles = createUseStyles({
     height: '100%',
     overflow: 'hidden',
     boxShadow: 'inset 1px 1px 0 #fff, inset -1px -1px 0 #000',
+    '@media (max-width: 768px)': {
+      flexDirection: 'column',
+    },
   },
   header: {
     textAlign: 'center',
@@ -49,6 +52,13 @@ const useStyles = createUseStyles({
     background: 'linear-gradient(180deg, #e0e0e0 0%, #c0c0c0 100%)',
     borderRight: '2px inset #808080',
     boxShadow: 'inset 1px 1px 0 #fff',
+    '@media (max-width: 768px)': {
+      width: '100%',
+      minWidth: 'auto',
+      maxHeight: '45%',
+      borderRight: 'none',
+      borderBottom: '2px inset #808080',
+    },
   },
   section: {
     display: 'flex',
@@ -138,7 +148,10 @@ const useStyles = createUseStyles({
     flex: 1,
     minHeight: 0,
     minWidth: 0,
-    background: 'linear-gradient(180deg, #000 0%, #1a1a1a 100%)',
+    backgroundImage: 'url("/assets/background.gif")',
+    backgroundRepeat: 'repeat',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
     border: '2px inset #808080',
     borderRadius: 0,
     padding: '12px',
@@ -289,8 +302,48 @@ function MemeGenerator() {
         img.src = nftImage;
       });
     } else {
-      ctx.fillStyle = '#9bbc0f'; // Game Boy screen green
+      // Placeholder canvas when no image selected
+      ctx.fillStyle = '#8b0000'; // dark red
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const message = 'ADD IMAGE OR SELECT RANDOM LAWB FROM COLLECTIONS';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 4;
+      ctx.fillStyle = 'white';
+
+      const fontSize = Math.max(18, Math.floor(canvas.width * 0.06));
+      ctx.font = `${fontSize}px Impact`;
+
+      const maxWidth = canvas.width - 40;
+      const words = message.split(' ');
+      const lines: string[] = [];
+      let currentLine = words[0] || '';
+
+      for (let i = 1; i < words.length; i++) {
+        const word = words[i];
+        const testLine = `${currentLine} ${word}`;
+        const width = ctx.measureText(testLine).width;
+        if (width < maxWidth) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      const totalHeight = lines.length * fontSize * 1.2;
+      const startY = (canvas.height - totalHeight) / 2 + fontSize;
+
+      lines.forEach((line, index) => {
+        const y = startY + index * fontSize * 1.2;
+        ctx.strokeText(line, canvas.width / 2, y);
+        ctx.fillText(line, canvas.width / 2, y);
+      });
+
+      // No image yet, so we don't draw top/bottom text or stickers
+      return;
     }
     // Draw text
     const drawText = (ctx: CanvasRenderingContext2D) => {
@@ -302,19 +355,20 @@ function MemeGenerator() {
       const wrapText = (text: string, maxWidth: number) => {
         const words = text.toUpperCase().split(' '); // Convert to uppercase
         const lines: string[] = [];
-        let currentLine = words[0];
+        let currentLine = words[0] || '';
         
         for (let i = 1; i < words.length; i++) {
           const word = words[i];
-          const width = ctx.measureText(currentLine + ' ' + word).width;
+          const testLine = `${currentLine} ${word}`.trim();
+          const width = ctx.measureText(testLine).width;
           if (width < maxWidth) {
-            currentLine += ' ' + word;
+            currentLine = testLine;
           } else {
-            lines.push(currentLine);
+            if (currentLine) lines.push(currentLine);
             currentLine = word;
           }
         }
-        lines.push(currentLine);
+        if (currentLine) lines.push(currentLine);
         return lines;
       };
       
@@ -590,39 +644,69 @@ function MemeGenerator() {
     
     const shareText = 'there is no meme i lawb you';
     const file = new File([blob], 'meme.png', { type: 'image/png' });
+    const imageUrl = URL.createObjectURL(blob);
+    const nav: any = navigator;
+
+    // Best case: native share with image (mainly mobile)
+    if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+      try {
+        await nav.share({
+          title: 'Lawb Meme',
+          text: shareText,
+          files: [file],
+        });
+        URL.revokeObjectURL(imageUrl);
+        return;
+      } catch {
+        // fall through to web fallbacks
+      }
+    }
+
+    // Helper: copy text and open image in new tab
+    const prepareClipboardAndImage = async () => {
+      try {
+        if (navigator.clipboard && (navigator.clipboard as any).writeText) {
+          await navigator.clipboard.writeText(shareText);
+        }
+      } catch {
+        // ignore clipboard errors
+      }
+      window.open(imageUrl, '_blank');
+    };
     
     let url = '';
     
     switch (platform) {
       case 'x':
-        // Twitter/X share - use intent URL with text
         url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+        await prepareClipboardAndImage();
         window.open(url, '_blank', 'width=550,height=420');
-        // Note: X doesn't support file uploads via URL, user will need to attach manually
+        alert('Text copied to clipboard and image opened in a new tab. Attach the image in the X composer.');
         break;
         
       case 'telegram':
-        // Telegram share - use t.me/share URL
         url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
+        await prepareClipboardAndImage();
         window.open(url, '_blank');
+        alert('Text copied to clipboard and image opened in a new tab. Attach the image in Telegram.');
         break;
         
       case 'base':
-        // Base app - open in new tab (user can paste image)
-        url = 'https://base.org';
+        await prepareClipboardAndImage();
+        url = 'https://www.base.org/';
         window.open(url, '_blank');
-        // Show message to copy image
-        alert('Image ready! Copy it and paste in Base app.');
+        alert('Text copied to clipboard and image opened in a new tab. Post it from your Base-connected app.');
         break;
         
       case 'farcaster':
-        // Farcaster - open warpcast or similar
-        url = 'https://warpcast.com';
+        await prepareClipboardAndImage();
+        url = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`;
         window.open(url, '_blank');
-        // Show message to copy image
-        alert('Image ready! Copy it and paste in Farcaster.');
+        alert('Text copied to clipboard and image opened in a new tab. Attach the image in Farcaster.');
         break;
     }
+
+    URL.revokeObjectURL(imageUrl);
   };
 
   // Fetch a random NFT image from a collection
@@ -770,7 +854,7 @@ function MemeGenerator() {
                 </div>
               )}
             </div>
-            <label className={classes.button} style={{ marginBottom: 0 }}>
+            <label className={classes.button} style={{ marginBottom: 0, width: 'auto', alignSelf: 'flex-start', padding: '2px 6px' }}>
               Upload Image
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
             </label>
