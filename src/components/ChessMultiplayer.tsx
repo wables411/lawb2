@@ -1027,9 +1027,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Reload leaderboard when window opens
   useEffect(() => {
     if (!isMobile && openWindows.has('leaderboard')) {
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[LEADERBOARD] Window opened, reloading leaderboard...');
-      }
       void loadLeaderboard();
     }
   }, [openWindows, isMobile]);
@@ -1861,10 +1858,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       const displayNames: Record<string, string> = {};
       const profilePictures: Record<string, string> = {};
       
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[LEADERBOARD] Starting to fetch profile pictures for', data.length, 'entries');
-      }
-      
       await Promise.all(data.map(async (entry) => {
         try {
           const displayName = await getDisplayName(entry.username);
@@ -1875,24 +1868,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             const profile = await firebaseProfiles.getProfile(entry.username);
             if (profile?.profile_picture?.image_url) {
               profilePictures[entry.username] = profile.profile_picture.image_url;
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.log('[LEADERBOARD] Found profile picture for', entry.username, ':', profile.profile_picture.image_url);
-              }
             } else {
               // Use default image if no profile picture
               profilePictures[entry.username] = '/images/sticker4.png';
             }
           } catch (profileError) {
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.error('[LEADERBOARD] Error fetching profile for', entry.username, ':', profileError);
-            }
             // Use default image on error
             profilePictures[entry.username] = '/images/sticker4.png';
           }
         } catch (error) {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.error('[LEADERBOARD] Error fetching display name for', entry.username, ':', error);
-          }
           // Fallback to truncated address if profile fetch fails
           displayNames[entry.username] = formatLeaderboardAddress(entry.username);
           profilePictures[entry.username] = '/images/sticker4.png';
@@ -1900,11 +1884,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }));
       setLeaderboardDisplayNames(displayNames);
       setLeaderboardProfilePictures(profilePictures);
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[LEADERBOARD] Profile pictures loaded:', profilePictures);
-        window.console.log('[LEADERBOARD] Profile pictures count:', Object.keys(profilePictures).length);
-        window.console.log('[LEADERBOARD] First entry profile picture:', data[0]?.username, profilePictures[data[0]?.username]);
-      }
       
       // If no data, set empty array explicitly
       if (!data || data.length === 0) {
@@ -6506,14 +6485,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       <span 
                         className="player" 
                         style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', flex: 1, marginLeft: '8px' }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (typeof window !== 'undefined' && window.console) {
-                            window.console.log('[LEADERBOARD] Clicked profile:', entry.username);
-                          }
-                          setViewingProfileAddress(entry.username);
-                        }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setViewingProfileAddress(entry.username);
+                          }}
                       >
                         {displayName}
                       </span>
