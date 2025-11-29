@@ -7,54 +7,66 @@ const useStyles = createUseStyles({
   container: {
     display: 'flex',
     flexDirection: 'row',
-    gap: 8,
-    padding: 8,
-    background: '#8b956d', // Game Boy green
-    border: '4px solid #000',
-    borderRadius: 12,
+    gap: 0,
+    padding: 0,
+    background: 'linear-gradient(180deg, #c0c0c0 0%, #808080 100%)', // Winamp metallic gradient
+    border: '2px outset #c0c0c0',
+    borderRadius: 0,
     maxWidth: '100%',
     width: '100%',
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: 'MS Sans Serif, Arial, sans-serif',
+    fontSize: 11,
     boxSizing: 'border-box',
     height: '100%',
     overflow: 'hidden',
+    boxShadow: 'inset 1px 1px 0 #fff, inset -1px -1px 0 #000',
   },
   header: {
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    padding: '4px',
+    background: 'linear-gradient(180deg, #000080 0%, #000060 100%)',
+    border: '1px inset #000',
+    color: '#fff',
   },
   subtitle: {
-    color: '#0f380f',
-    fontSize: '7px',
+    color: '#fff',
+    fontSize: '8px',
     textAlign: 'center',
-    marginBottom: 4,
-    lineHeight: 1.1,
+    marginBottom: 0,
+    lineHeight: 1.2,
   },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
+    gap: 2,
     flexShrink: 0,
-    width: '200px',
-    minWidth: '180px',
+    width: '220px',
+    minWidth: '200px',
     maxHeight: '100%',
     overflowY: 'auto',
-    paddingRight: 4,
+    padding: '8px',
+    background: 'linear-gradient(180deg, #e0e0e0 0%, #c0c0c0 100%)',
+    borderRight: '2px inset #808080',
+    boxShadow: 'inset 1px 1px 0 #fff',
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2,
-    marginBottom: 4,
+    gap: 3,
+    marginBottom: 6,
+    padding: '4px',
+    background: 'linear-gradient(180deg, #f0f0f0 0%, #e0e0e0 100%)',
+    border: '1px inset #808080',
   },
   sectionTitle: {
     fontWeight: 'bold',
-    color: '#0f380f',
-    fontSize: 9,
-    borderBottom: '1px solid #0f380f',
-    paddingBottom: 1,
-    marginBottom: 2,
+    color: '#000',
+    fontSize: 10,
+    borderBottom: '1px solid #808080',
+    paddingBottom: 2,
+    marginBottom: 3,
+    textTransform: 'uppercase',
   },
   row: {
     display: 'flex',
@@ -63,62 +75,59 @@ const useStyles = createUseStyles({
     marginBottom: 2,
   },
   label: {
-    color: '#0f380f',
+    color: '#000',
     fontWeight: 'bold',
-    fontSize: 8,
-    marginBottom: 1,
+    fontSize: 9,
+    marginBottom: 2,
   },
   input: {
     width: '100%',
-    padding: '2px 4px',
-    border: '2px inset #8b956d',
-    background: '#c4cfa1',
-    fontSize: 8,
-    fontFamily: 'monospace',
-    color: '#0f380f',
+    padding: '3px 4px',
+    border: '2px inset #808080',
+    background: '#fff',
+    fontSize: 9,
+    fontFamily: 'MS Sans Serif, Arial, sans-serif',
+    color: '#000',
     textTransform: 'uppercase',
     boxSizing: 'border-box',
   },
   button: {
-    padding: '3px 6px',
-    background: '#c4cfa1', // Game Boy button color
-    border: '2px outset #8b956d',
-    borderBottom: '2px solid #5a5a5a',
-    borderRight: '2px solid #5a5a5a',
+    padding: '4px 8px',
+    background: 'linear-gradient(180deg, #e0e0e0 0%, #c0c0c0 100%)',
+    border: '2px outset #c0c0c0',
     cursor: 'pointer',
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#0f380f',
-    borderRadius: 2,
+    fontSize: 9,
+    fontWeight: 'normal',
+    color: '#000',
+    borderRadius: 0,
     width: '100%',
+    fontFamily: 'MS Sans Serif, Arial, sans-serif',
+    textAlign: 'center',
     '&:hover': {
-      background: '#d4dfb1',
+      background: 'linear-gradient(180deg, #f0f0f0 0%, #e0e0e0 100%)',
     },
     '&:active': {
-      border: '2px inset #8b956d',
-      borderTop: '2px solid #5a5a5a',
-      borderLeft: '2px solid #5a5a5a',
+      border: '2px inset #808080',
+      background: 'linear-gradient(180deg, #c0c0c0 0%, #a0a0a0 100%)',
     },
   },
   effectButton: {
-    padding: '2px 4px',
-    background: '#c4cfa1',
-    border: '2px outset #8b956d',
-    borderBottom: '2px solid #5a5a5a',
-    borderRight: '2px solid #5a5a5a',
+    padding: '3px 6px',
+    background: 'linear-gradient(180deg, #e0e0e0 0%, #c0c0c0 100%)',
+    border: '2px outset #c0c0c0',
     cursor: 'pointer',
-    fontSize: 7,
-    fontWeight: 'bold',
-    color: '#0f380f',
-    borderRadius: 2,
+    fontSize: 8,
+    fontWeight: 'normal',
+    color: '#000',
+    borderRadius: 0,
     flex: 1,
+    fontFamily: 'MS Sans Serif, Arial, sans-serif',
     '&:hover': {
-      background: '#d4dfb1',
+      background: 'linear-gradient(180deg, #f0f0f0 0%, #e0e0e0 100%)',
     },
     '&:active': {
-      border: '2px inset #8b956d',
-      borderTop: '2px solid #5a5a5a',
-      borderLeft: '2px solid #5a5a5a',
+      border: '2px inset #808080',
+      background: 'linear-gradient(180deg, #c0c0c0 0%, #a0a0a0 100%)',
     },
   },
   memeArea: {
@@ -129,19 +138,21 @@ const useStyles = createUseStyles({
     flex: 1,
     minHeight: 0,
     minWidth: 0,
-    background: '#0f380f', // Dark Game Boy screen
-    border: '3px inset #000',
-    borderRadius: 4,
-    padding: 8,
+    background: 'linear-gradient(180deg, #000 0%, #1a1a1a 100%)',
+    border: '2px inset #808080',
+    borderRadius: 0,
+    padding: '12px',
+    boxShadow: 'inset 1px 1px 0 #000',
   },
   canvas: {
     border: '2px inset #000',
-    background: '#9bbc0f', // Game Boy screen green
+    background: '#000',
     maxWidth: '100%',
     maxHeight: '100%',
     width: 'auto',
     height: 'auto',
     objectFit: 'contain',
+    boxShadow: '0 0 10px rgba(0, 0, 0, 0.8)',
   },
   dropdown: {
     position: 'relative',
@@ -555,6 +566,65 @@ function MemeGenerator() {
     document.body.removeChild(link);
   };
 
+  const getMemeBlob = async (): Promise<Blob | null> => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    
+    const SAVE_RESOLUTION = 1080;
+    const saveCanvas = document.createElement('canvas');
+    saveCanvas.width = SAVE_RESOLUTION;
+    saveCanvas.height = SAVE_RESOLUTION;
+    
+    await drawMemeToCanvas(saveCanvas);
+    
+    return new Promise((resolve) => {
+      saveCanvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png');
+    });
+  };
+
+  const handleShare = async (platform: 'x' | 'telegram' | 'base' | 'farcaster') => {
+    const blob = await getMemeBlob();
+    if (!blob) return;
+    
+    const shareText = 'there is no meme i lawb you';
+    const file = new File([blob], 'meme.png', { type: 'image/png' });
+    
+    let url = '';
+    
+    switch (platform) {
+      case 'x':
+        // Twitter/X share - use intent URL with text
+        url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank', 'width=550,height=420');
+        // Note: X doesn't support file uploads via URL, user will need to attach manually
+        break;
+        
+      case 'telegram':
+        // Telegram share - use t.me/share URL
+        url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
+        window.open(url, '_blank');
+        break;
+        
+      case 'base':
+        // Base app - open in new tab (user can paste image)
+        url = 'https://base.org';
+        window.open(url, '_blank');
+        // Show message to copy image
+        alert('Image ready! Copy it and paste in Base app.');
+        break;
+        
+      case 'farcaster':
+        // Farcaster - open warpcast or similar
+        url = 'https://warpcast.com';
+        window.open(url, '_blank');
+        // Show message to copy image
+        alert('Image ready! Copy it and paste in Farcaster.');
+        break;
+    }
+  };
+
   // Fetch a random NFT image from a collection
   const handlePickRandomNft = async (collection: typeof NFT_COLLECTIONS[0]) => {
     setLoadingNft(true);
@@ -676,9 +746,9 @@ function MemeGenerator() {
     <div className={classes.container} ref={containerRef} style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
       <div className={classes.content}>
         <div className={classes.header}>
-          <h2 style={{ color: '#0f380f', textShadow: '1px 1px 0 #c4cfa1', marginBottom: 2, fontSize: '11px', textAlign: 'center' }}>LAWB MEME MAKER</h2>
+          <h2 style={{ color: '#fff', marginBottom: 2, fontSize: '12px', textAlign: 'center', fontWeight: 'bold' }}>LAWB MEME MAKER</h2>
           <p className={classes.subtitle}>
-            <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#0f380f', textDecoration: 'underline' }}>
+            <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>
               MEME DEPOT
             </a>
           </p>
@@ -729,9 +799,9 @@ function MemeGenerator() {
         <div className={classes.section}>
           <div className={classes.sectionTitle}>Effects</div>
           <div className={classes.row}>
-            <button className={classes.effectButton} style={{ background: deepFry ? '#0f380f' : undefined, color: deepFry ? '#c4cfa1' : undefined }} onClick={() => setDeepFry(v => !v)}>Deep Fry</button>
-            <button className={classes.effectButton} style={{ background: pixelate ? '#0f380f' : undefined, color: pixelate ? '#c4cfa1' : undefined }} onClick={() => setPixelate(v => !v)}>Pixelate</button>
-            <button className={classes.effectButton} style={{ background: grain ? '#0f380f' : undefined, color: grain ? '#c4cfa1' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
+            <button className={classes.effectButton} style={{ background: deepFry ? 'linear-gradient(180deg, #000080 0%, #000060 100%)' : undefined, color: deepFry ? '#fff' : undefined }} onClick={() => setDeepFry(v => !v)}>Deep Fry</button>
+            <button className={classes.effectButton} style={{ background: pixelate ? 'linear-gradient(180deg, #000080 0%, #000060 100%)' : undefined, color: pixelate ? '#fff' : undefined }} onClick={() => setPixelate(v => !v)}>Pixelate</button>
+            <button className={classes.effectButton} style={{ background: grain ? 'linear-gradient(180deg, #000080 0%, #000060 100%)' : undefined, color: grain ? '#fff' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
           </div>
         </div>
         <div className={classes.section}>
@@ -739,7 +809,7 @@ function MemeGenerator() {
           <div className={classes.row}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, marginBottom: 4 }}>
               {STOCK_STICKERS.map((src, i) => (
-                <img key={src} src={src} alt={`sticker${i+1}`} style={{ width: '100%', aspectRatio: '1', cursor: 'pointer', border: '1px solid #0f380f', borderRadius: 2 }} onClick={() => addSticker(src)} />
+                <img key={src} src={src} alt={`sticker${i+1}`} style={{ width: '100%', aspectRatio: '1', cursor: 'pointer', border: '1px inset #808080', borderRadius: 0 }} onClick={() => addSticker(src)} />
               ))}
             </div>
             <label className={classes.button} style={{ marginBottom: 0 }}>
@@ -751,6 +821,15 @@ function MemeGenerator() {
         <div className={classes.actions}>
           <button className={classes.button} onClick={handleSave}>Save Image</button>
           <button className={classes.button} onClick={handleRestart}>Restart</button>
+        </div>
+        <div className={classes.section}>
+          <div className={classes.sectionTitle}>Share</div>
+          <div className={classes.row} style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+            <button className={classes.button} onClick={() => handleShare('x')} style={{ flex: '1 1 45%', minWidth: '90px' }}>X.com</button>
+            <button className={classes.button} onClick={() => handleShare('telegram')} style={{ flex: '1 1 45%', minWidth: '90px' }}>Telegram</button>
+            <button className={classes.button} onClick={() => handleShare('base')} style={{ flex: '1 1 45%', minWidth: '90px' }}>Base</button>
+            <button className={classes.button} onClick={() => handleShare('farcaster')} style={{ flex: '1 1 45%', minWidth: '90px' }}>Farcaster</button>
+          </div>
         </div>
       </div>
 
