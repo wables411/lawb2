@@ -5700,11 +5700,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     <tbody>
                       {leaderboard.slice(0, 10).map((entry, index) => {
                         const displayName = leaderboardDisplayNames[entry.username] || formatLeaderboardAddress(entry.username);
+                        const profilePicture = leaderboardProfilePictures[entry.username] || '/images/sticker4.png';
                         return (
                           <tr key={entry.username}>
                             <td>{index + 1}</td>
                             <td 
-                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', touchAction: 'manipulation' }}
+                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', touchAction: 'manipulation', display: 'flex', alignItems: 'center', gap: '6px' }}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -5715,6 +5716,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                 e.stopPropagation();
                               }}
                             >
+                              {!isMobile && (
+                                <img 
+                                  src={profilePicture}
+                                  alt=""
+                                  onError={(e) => {
+                                    e.currentTarget.src = '/images/sticker4.png';
+                                  }}
+                                  style={{
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '4px',
+                                    objectFit: 'cover',
+                                    border: '1px solid rgba(0, 0, 0, 0.2)',
+                                    flexShrink: 0
+                                  }}
+                                />
+                              )}
                               {displayName}
                             </td>
                             <td>{entry.points}</td>
