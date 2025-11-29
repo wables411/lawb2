@@ -6485,39 +6485,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   return (
                     <div key={entry.username} className="leaderboard-entry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', gap: '8px' }}>
                       <span className="rank">#{index + 1}</span>
-                      <img 
-                        key={`img-${entry.username}-${profilePicture}`}
-                        src={profilePicture}
-                        alt={`${displayName} profile`}
-                        onError={(e) => {
-                          if (typeof window !== 'undefined' && window.console) {
-                            window.console.log('[LEADERBOARD] Image error for', entry.username, 'src was:', profilePicture);
-                          }
-                          e.currentTarget.src = '/images/sticker4.png';
-                        }}
-                        onLoad={() => {
-                          if (typeof window !== 'undefined' && window.console && index < 3) {
-                            window.console.log('[LEADERBOARD] Image loaded for', entry.username, ':', profilePicture);
-                          }
-                        }}
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          minWidth: '24px',
-                          minHeight: '24px',
-                          maxWidth: '24px',
-                          maxHeight: '24px',
-                          borderRadius: '4px',
-                          objectFit: 'cover',
-                          border: '2px solid rgba(0, 255, 0, 0.5)',
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: 1,
-                          flexShrink: 0,
-                          backgroundColor: '#e0e0e0',
-                          boxShadow: '0 0 2px rgba(0, 255, 0, 0.3)'
-                        }}
-                      />
+                      {!isMobile && (
+                        <img 
+                          src={profilePicture}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.src = '/images/sticker4.png';
+                          }}
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            objectFit: 'cover',
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                            flexShrink: 0,
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                      )}
                       <span 
                         className="player" 
                         style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', flex: 1, marginLeft: '8px' }}
