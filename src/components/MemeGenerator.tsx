@@ -536,10 +536,20 @@ function MemeGenerator() {
   const handleSave = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    await drawMemeToCanvas(canvas);
+    
+    // Create a high-resolution canvas for saving (2000x2000 for good quality)
+    const SAVE_RESOLUTION = 2000;
+    const saveCanvas = document.createElement('canvas');
+    saveCanvas.width = SAVE_RESOLUTION;
+    saveCanvas.height = SAVE_RESOLUTION;
+    
+    // Draw the meme to the high-res canvas
+    await drawMemeToCanvas(saveCanvas);
+    
+    // Save the high-resolution image
     const link = document.createElement('a');
     link.download = 'meme.png';
-    link.href = canvas.toDataURL('image/png');
+    link.href = saveCanvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
