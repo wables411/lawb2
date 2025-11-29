@@ -537,8 +537,8 @@ function MemeGenerator() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Create a high-resolution canvas for saving (2000x2000 for good quality)
-    const SAVE_RESOLUTION = 2000;
+    // Create a high-resolution canvas for saving (1080x1080)
+    const SAVE_RESOLUTION = 1080;
     const saveCanvas = document.createElement('canvas');
     saveCanvas.width = SAVE_RESOLUTION;
     saveCanvas.height = SAVE_RESOLUTION;
