@@ -7,15 +7,18 @@ const useStyles = createUseStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
-    padding: 4,
-    background: '#c0c0c0',
-    border: '2px outset #fff',
-    borderRadius: 8,
-    maxWidth: 500,
+    gap: 0,
+    padding: 8,
+    background: '#8b956d', // Game Boy green
+    border: '4px solid #000',
+    borderRadius: 12,
+    maxWidth: '100%',
     width: '100%',
     fontFamily: 'monospace',
     fontSize: 11,
+    boxSizing: 'border-box',
+    height: '100%',
+    overflow: 'hidden',
   },
   header: {
     textAlign: 'center',
@@ -32,6 +35,7 @@ const useStyles = createUseStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: 2,
+    flexShrink: 0,
   },
   section: {
     display: 'flex',
@@ -40,10 +44,11 @@ const useStyles = createUseStyles({
   },
   sectionTitle: {
     fontWeight: 'bold',
-    color: '#000',
-    fontSize: 11,
-    borderBottom: '1px solid #888',
-    paddingBottom: 0,
+    color: '#0f380f',
+    fontSize: 10,
+    borderBottom: '2px solid #0f380f',
+    paddingBottom: 2,
+    marginBottom: 2,
   },
   row: {
     display: 'flex',
@@ -60,55 +65,75 @@ const useStyles = createUseStyles({
   input: {
     flex: 1,
     minWidth: 70,
-    padding: '2px 3px',
-    border: '2px inset #fff',
-    background: '#fff',
-    fontSize: 10,
+    padding: '3px 4px',
+    border: '2px inset #8b956d',
+    background: '#c4cfa1',
+    fontSize: 9,
     fontFamily: 'monospace',
-    color: '#000',
+    color: '#0f380f',
     textTransform: 'uppercase',
   },
   button: {
-    padding: '3px 8px',
-    background: '#c0c0c0',
-    border: '2px outset #fff',
+    padding: '4px 10px',
+    background: '#c4cfa1', // Game Boy button color
+    border: '2px outset #8b956d',
+    borderBottom: '2px solid #5a5a5a',
+    borderRight: '2px solid #5a5a5a',
     cursor: 'pointer',
     fontSize: 10,
     fontWeight: 'bold',
     color: '#000',
+    borderRadius: 2,
     '&:hover': {
-      background: '#d0d0d0',
+      background: '#d4dfb1',
     },
     '&:active': {
-      border: '2px inset #fff',
+      border: '2px inset #8b956d',
+      borderTop: '2px solid #5a5a5a',
+      borderLeft: '2px solid #5a5a5a',
     },
   },
   effectButton: {
-    padding: '2px 5px',
-    background: '#c0c0c0',
-    border: '2px outset #fff',
+    padding: '3px 8px',
+    background: '#c4cfa1',
+    border: '2px outset #8b956d',
+    borderBottom: '2px solid #5a5a5a',
+    borderRight: '2px solid #5a5a5a',
     cursor: 'pointer',
     fontSize: 9,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#0f380f',
+    borderRadius: 2,
     '&:hover': {
-      background: '#d0d0d0',
+      background: '#d4dfb1',
     },
     '&:active': {
-      border: '2px inset #fff',
+      border: '2px inset #8b956d',
+      borderTop: '2px solid #5a5a5a',
+      borderLeft: '2px solid #5a5a5a',
     },
   },
   memeArea: {
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
-    marginTop: 1,
+    marginTop: 4,
+    flex: 1,
+    minHeight: 0,
+    background: '#0f380f', // Dark Game Boy screen
+    border: '3px inset #000',
+    borderRadius: 4,
+    padding: 4,
   },
   canvas: {
-    border: '2px inset #fff',
-    background: '#333',
+    border: '2px inset #000',
+    background: '#9bbc0f', // Game Boy screen green
     maxWidth: '100%',
+    maxHeight: '100%',
+    width: 'auto',
     height: 'auto',
+    objectFit: 'contain',
   },
   dropdown: {
     position: 'relative',
@@ -170,12 +195,14 @@ const STOCK_STICKERS = [
   '/images/sticker5.png',
 ];
 
-// Update canvas size constants
-const CANVAS_SIZE = 500;
+// Canvas size will be dynamic based on container
+const DEFAULT_CANVAS_SIZE = 400;
 
 function MemeGenerator() {
   const classes = useStyles();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState(DEFAULT_CANVAS_SIZE);
   // State for image
   const [nftImage, setNftImage] = useState<string | null>(null);
   // State for text
@@ -195,6 +222,26 @@ function MemeGenerator() {
   const stickerInputRef = useRef<HTMLInputElement>(null);
   // Add placing state
   const [placingStickerId, setPlacingStickerId] = useState<string | null>(null);
+  
+  // Calculate canvas size based on container
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const memeArea = container.querySelector('[class*="memeArea"]') as HTMLElement;
+        if (memeArea) {
+          const availableWidth = memeArea.clientWidth - 16; // padding
+          const availableHeight = memeArea.clientHeight - 16; // padding
+          const size = Math.min(availableWidth, availableHeight, DEFAULT_CANVAS_SIZE);
+          setCanvasSize(size);
+        }
+      }
+    };
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
 
   // drawText and applyEffectsSafely moved inside drawMeme
   const drawMemeToCanvas = async (canvas: HTMLCanvasElement) => {
@@ -217,7 +264,7 @@ function MemeGenerator() {
         img.src = nftImage;
       });
     } else {
-      ctx.fillStyle = '#333';
+      ctx.fillStyle = '#9bbc0f'; // Game Boy screen green
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     // Draw text
@@ -249,22 +296,22 @@ function MemeGenerator() {
       // Top text
       if (topText) {
         ctx.font = `${topFontSize}px Impact`;
-        const lines = wrapText(topText, CANVAS_SIZE - 20);
+        const lines = wrapText(topText, canvas.width - 20);
         lines.forEach((line, index) => {
           const y = topFontSize + (index * topFontSize * 1.2);
-          ctx.strokeText(line, CANVAS_SIZE / 2, y);
-          ctx.fillText(line, CANVAS_SIZE / 2, y);
+          ctx.strokeText(line, canvas.width / 2, y);
+          ctx.fillText(line, canvas.width / 2, y);
         });
       }
       
       // Bottom text
       if (bottomText) {
         ctx.font = `${bottomFontSize}px Impact`;
-        const lines = wrapText(bottomText, CANVAS_SIZE - 20);
+        const lines = wrapText(bottomText, canvas.width - 20);
         lines.forEach((line, index) => {
-          const y = CANVAS_SIZE - (lines.length - index) * bottomFontSize * 1.2 + bottomFontSize; // Position from bottom edge
-          ctx.strokeText(line, CANVAS_SIZE / 2, y);
-          ctx.fillText(line, CANVAS_SIZE / 2, y);
+          const y = canvas.height - (lines.length - index) * bottomFontSize * 1.2 + bottomFontSize; // Position from bottom edge
+          ctx.strokeText(line, canvas.width / 2, y);
+          ctx.fillText(line, canvas.width / 2, y);
         });
       }
     };
@@ -275,10 +322,13 @@ function MemeGenerator() {
       img.src = sticker.src;
       img.onload = () => {
         ctx.save();
+        const stickerSize = 80 * sticker.scale;
+        ctx.save();
         ctx.translate(sticker.x, sticker.y);
         ctx.rotate((sticker.rotation * Math.PI) / 180);
         ctx.scale(sticker.scale, sticker.scale);
         ctx.drawImage(img, -40, -40, 80, 80);
+        ctx.restore();
         ctx.restore();
         resolve();
       };
@@ -549,36 +599,28 @@ function MemeGenerator() {
       addSticker(url);
     }
   };
-  // Adjust drag sensitivity for more natural movement
-  const handleStickerDrag = (id: string, dx: number, dy: number) => {
-    setStickers(stickers => stickers.map(s => {
-      if (s.id !== id) return s;
-      let newX = s.x + dx / 1.2; // Slightly less slow
-      let newY = s.y + dy / 1.2;
-      const halfW = 40 * s.scale;
-      const halfH = 40 * s.scale;
-      newX = Math.max(halfW, Math.min(CANVAS_SIZE - halfW, newX));
-      newY = Math.max(halfH, Math.min(CANVAS_SIZE - halfH, newY));
-      return { ...s, x: newX, y: newY };
-    }));
-  };
   // Less sensitive rotation
-  const handleStickerRotate = (id: string, startAngle: number, startRotation: number, mouseX: number, mouseY: number) => {
+  const handleStickerRotate = (id: string, startAngle: number, startRotation: number, clientX: number, clientY: number) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const canvasX = (clientX - rect.left) * scaleX;
+    const canvasY = (clientY - rect.top) * scaleY;
+    
     setStickers(stickers => stickers.map(s => {
       if (s.id !== id) return s;
       const centerX = s.x;
       const centerY = s.y;
-      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * 180 / Math.PI;
+      const angle = Math.atan2(canvasY - centerY, canvasX - centerX) * 180 / Math.PI;
       return { ...s, rotation: startRotation + (angle - startAngle) * 0.5 }; // Slow down rotation
     }));
   };
-  // Place sticker mode logic
+  // Place sticker mode logic - activate sticker when clicked
   const handleStickerClick = (id: string) => {
-    if (placingStickerId === id) {
-      setPlacingStickerId(null); // Place sticker
-    } else {
-      setPlacingStickerId(id); // Activate sticker for moving
-    }
+    setPlacingStickerId(id); // Always activate when clicked
   };
   // Remove sticker
   const removeSticker = (id: string) => {
@@ -586,18 +628,25 @@ function MemeGenerator() {
   };
 
   // Less sensitive resize
-  const handleStickerResize = (id: string, scaleDelta: number) => {
-    setStickers(stickers => stickers.map(s => s.id === id ? { ...s, scale: Math.max(0.2, s.scale * (1 + (scaleDelta - 1) * 0.2)) } : s));
+  const handleStickerResize = (id: string, clientX: number, startX: number, startScale: number) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    
+    const delta = (clientX - startX) * scaleX / 80;
+    setStickers(stickers => stickers.map(s => 
+      s.id === id ? { ...s, scale: Math.max(0.2, Math.min(3, startScale + delta * 0.2)) } : s
+    ));
   };
 
   return (
-    <div className={classes.container}>
+    <div className={classes.container} ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className={classes.header}>
-        <h2 style={{ color: '#00ffff', textShadow: '1px 1px 0 #000', marginBottom: 8, fontSize: '16px' }}>Lawb Meme Maker</h2>
-        <p className={classes.subtitle}>
-          find memes or upload your own on{' '}
-          <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#ff0000', textDecoration: 'underline' }}>
-            Meme Depot
+        <h2 style={{ color: '#0f380f', textShadow: '1px 1px 0 #c4cfa1', marginBottom: 4, fontSize: '14px', textAlign: 'center' }}>LAWB MEME MAKER</h2>
+        <p className={classes.subtitle} style={{ fontSize: '8px', marginBottom: 4 }}>
+          <a href="https://memedepot.com/d/lawb" target="_blank" rel="noopener noreferrer" style={{ color: '#0f380f', textDecoration: 'underline' }}>
+            MEME DEPOT
           </a>
         </p>
       </div>
@@ -645,9 +694,9 @@ function MemeGenerator() {
         <div className={classes.section}>
           <div className={classes.sectionTitle}>Effects</div>
           <div className={classes.row}>
-            <button className={classes.effectButton} style={{ background: deepFry ? '#00ffff' : undefined }} onClick={() => setDeepFry(v => !v)}>Deep Fry</button>
-            <button className={classes.effectButton} style={{ background: pixelate ? '#00ffff' : undefined }} onClick={() => setPixelate(v => !v)}>Pixelate</button>
-            <button className={classes.effectButton} style={{ background: grain ? '#00ffff' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
+            <button className={classes.effectButton} style={{ background: deepFry ? '#0f380f' : undefined, color: deepFry ? '#c4cfa1' : undefined }} onClick={() => setDeepFry(v => !v)}>Deep Fry</button>
+            <button className={classes.effectButton} style={{ background: pixelate ? '#0f380f' : undefined, color: pixelate ? '#c4cfa1' : undefined }} onClick={() => setPixelate(v => !v)}>Pixelate</button>
+            <button className={classes.effectButton} style={{ background: grain ? '#0f380f' : undefined, color: grain ? '#c4cfa1' : undefined }} onClick={() => setGrain(v => !v)}>Grain</button>
           </div>
         </div>
         <div className={classes.section}>
@@ -668,95 +717,125 @@ function MemeGenerator() {
         </div>
       </div>
 
-      <div className={classes.memeArea}>
+      <div className={classes.memeArea} style={{ position: 'relative' }}>
         <canvas 
           ref={canvasRef} 
-          width={CANVAS_SIZE} 
-          height={CANVAS_SIZE} 
+          width={canvasSize} 
+          height={canvasSize} 
           className={classes.canvas}
           onTouchStart={handleCanvasTouchStart}
           onTouchEnd={handleCanvasTouchEnd}
           onTouchMove={handleCanvasTouchMove}
           onContextMenu={handleCanvasContextMenu}
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: 'none', width: `${canvasSize}px`, height: `${canvasSize}px` }}
         />
-      </div>
-
-      {/* Overlay stickers for manipulation */}
-      <div style={{ position: 'absolute', left: 0, top: 0, width: CANVAS_SIZE, height: CANVAS_SIZE, pointerEvents: 'none' }}>
-        {stickers.map(sticker => (
-          placingStickerId === sticker.id ? (
+        
+        {/* Overlay stickers for manipulation */}
+        {canvasRef.current && stickers.map(sticker => {
+          const rect = canvasRef.current!.getBoundingClientRect();
+          const scale = rect.width / canvasSize;
+          const stickerSize = 80 * sticker.scale * scale;
+          
+          return (
             <div
               key={sticker.id}
               style={{
                 position: 'absolute',
-                left: sticker.x,
-                top: sticker.y,
-                width: 80 * sticker.scale,
-                height: 80 * sticker.scale,
-                transform: `rotate(${sticker.rotation}deg)`,
-                cursor: 'move',
+                left: `${(sticker.x / canvasSize) * 100}%`,
+                top: `${(sticker.y / canvasSize) * 100}%`,
+                width: `${(80 * sticker.scale / canvasSize) * 100}%`,
+                height: `${(80 * sticker.scale / canvasSize) * 100}%`,
+                transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`,
+                cursor: placingStickerId === sticker.id ? 'move' : 'pointer',
                 pointerEvents: 'auto',
                 zIndex: 10,
-                border: '2px solid #00f',
-                boxShadow: '0 0 8px #00f',
+                border: placingStickerId === sticker.id ? '2px solid #0f380f' : 'none',
+                boxShadow: placingStickerId === sticker.id ? '0 0 8px #0f380f' : 'none',
               }}
+              onClick={() => handleStickerClick(sticker.id)}
               onMouseDown={e => {
-                setActiveStickerId(sticker.id);
-                e.stopPropagation();
-              }}
-              onMouseUp={() => setActiveStickerId(null)}
-              onMouseMove={e => {
-                if (activeStickerId === sticker.id && e.buttons === 1) {
-                  handleStickerDrag(sticker.id, e.movementX, e.movementY);
+                if (placingStickerId === sticker.id) {
+                  e.stopPropagation();
+                  setActiveStickerId(sticker.id);
+                  const rect = canvasRef.current!.getBoundingClientRect();
+                  const startCanvasX = sticker.x;
+                  const startCanvasY = sticker.y;
+                  const startMouseX = e.clientX;
+                  const startMouseY = e.clientY;
+                  const onMove = (moveEvent: MouseEvent) => {
+                    const scaleX = canvasSize / rect.width;
+                    const scaleY = canvasSize / rect.height;
+                    const deltaX = (moveEvent.clientX - startMouseX) * scaleX;
+                    const deltaY = (moveEvent.clientY - startMouseY) * scaleY;
+                    const newX = startCanvasX + deltaX;
+                    const newY = startCanvasY + deltaY;
+                    const halfW = 40 * sticker.scale;
+                    const halfH = 40 * sticker.scale;
+                    setStickers(stickers => stickers.map(s => 
+                      s.id === sticker.id ? { 
+                        ...s, 
+                        x: Math.max(halfW, Math.min(canvasSize - halfW, newX)),
+                        y: Math.max(halfH, Math.min(canvasSize - halfH, newY))
+                      } : s
+                    ));
+                  };
+                  const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                    setActiveStickerId(null);
+                  };
+                  window.addEventListener('mousemove', onMove);
+                  window.addEventListener('mouseup', onUp);
                 }
               }}
             >
               <img src={sticker.src} alt="sticker" style={{ width: '100%', height: '100%', userSelect: 'none', pointerEvents: 'none' }} draggable={false} />
-              {/* Rotate handle */}
-              <div style={{ position: 'absolute', right: -12, top: '40%', width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'grab', zIndex: 11 }}
-                onMouseDown={e => {
-                  e.stopPropagation();
-                  const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                  const centerX = rect ? rect.left + rect.width / 2 : 0;
-                  const centerY = rect ? rect.top + rect.height / 2 : 0;
-                  const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
-                  const startRotation = sticker.rotation;
-                  const onMove = (moveEvent: MouseEvent) => {
-                    handleStickerRotate(sticker.id, startAngle, startRotation, moveEvent.clientX, moveEvent.clientY);
-                  };
-                  const onUp = () => {
-                    window.removeEventListener('mousemove', onMove);
-                    window.removeEventListener('mouseup', onUp);
-                  };
-                  window.addEventListener('mousemove', onMove);
-                  window.addEventListener('mouseup', onUp);
-                }}
-              />
-              {/* Resize handle */}
-              <div style={{ position: 'absolute', bottom: -12, right: -12, width: 16, height: 16, background: '#fff', borderRadius: '50%', border: '1px solid #888', cursor: 'nwse-resize', zIndex: 11 }}
-                onMouseDown={e => {
-                  e.stopPropagation();
-                  const startX = e.clientX;
-                  const onMove = (moveEvent: MouseEvent) => {
-                    const delta = (moveEvent.clientX - startX) / 80;
-                    handleStickerResize(sticker.id, 1 + delta);
-                  };
-                  const onUp = () => {
-                    window.removeEventListener('mousemove', onMove);
-                    window.removeEventListener('mouseup', onUp);
-                  };
-                  window.addEventListener('mousemove', onMove);
-                  window.addEventListener('mouseup', onUp);
-                }}
-              />
-              {/* Remove sticker button */}
-              <button style={{ position: 'absolute', top: -12, left: -12, width: 16, height: 16, background: '#f00', color: '#fff', border: 'none', borderRadius: '50%', fontSize: 10, cursor: 'pointer', zIndex: 12 }} onClick={() => removeSticker(sticker.id)}>×</button>
-              {/* Place sticker button */}
-              <button style={{ position: 'absolute', bottom: -12, left: '50%', transform: 'translateX(-50%)', width: 40, height: 18, background: '#0f0', color: '#000', border: '1px solid #888', borderRadius: 4, fontSize: 8, cursor: 'pointer', zIndex: 12 }} onClick={() => setPlacingStickerId(null)}>Place</button>
+              {placingStickerId === sticker.id && (
+                <>
+                  {/* Rotate handle */}
+                  <div style={{ position: 'absolute', right: '-20px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', background: '#c4cfa1', borderRadius: '50%', border: '2px solid #0f380f', cursor: 'grab', zIndex: 11 }}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      const rect = canvasRef.current!.getBoundingClientRect();
+                      const centerX = rect.left + rect.width * (sticker.x / canvasSize);
+                      const centerY = rect.top + rect.height * (sticker.y / canvasSize);
+                      const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+                      const startRotation = sticker.rotation;
+                      const onMove = (moveEvent: MouseEvent) => {
+                        handleStickerRotate(sticker.id, startAngle, startRotation, moveEvent.clientX, moveEvent.clientY);
+                      };
+                      const onUp = () => {
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                      };
+                      window.addEventListener('mousemove', onMove);
+                      window.addEventListener('mouseup', onUp);
+                    }}
+                  />
+                  {/* Resize handle */}
+                  <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', width: '20px', height: '20px', background: '#c4cfa1', borderRadius: '50%', border: '2px solid #0f380f', cursor: 'nwse-resize', zIndex: 11 }}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startScale = sticker.scale;
+                      const onMove = (moveEvent: MouseEvent) => {
+                        handleStickerResize(sticker.id, moveEvent.clientX, startX, startScale);
+                      };
+                      const onUp = () => {
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                      };
+                      window.addEventListener('mousemove', onMove);
+                      window.addEventListener('mouseup', onUp);
+                    }}
+                  />
+                  {/* Remove sticker button */}
+                  <button style={{ position: 'absolute', top: '-20px', left: '-20px', width: '20px', height: '20px', background: '#8b956d', color: '#0f380f', border: '2px solid #0f380f', borderRadius: '50%', fontSize: '12px', cursor: 'pointer', zIndex: 12, fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); removeSticker(sticker.id); }}>×</button>
+                </>
+              )}
             </div>
-          ) : null
-        ))}
+          );
+        })}
       </div>
     </div>
   );
