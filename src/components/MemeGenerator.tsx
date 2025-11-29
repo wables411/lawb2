@@ -231,24 +231,32 @@ function MemeGenerator() {
   // Add placing state
   const [placingStickerId, setPlacingStickerId] = useState<string | null>(null);
   
-  // Calculate canvas size based on container
+  // Calculate canvas size based on container - use full available space
   useEffect(() => {
     const updateCanvasSize = () => {
-      if (containerRef.current) {
+      if (containerRef.current && canvasRef.current) {
         const container = containerRef.current;
         const memeArea = container.querySelector('[class*="memeArea"]') as HTMLElement;
         if (memeArea) {
           const availableWidth = memeArea.clientWidth - 16; // padding
           const availableHeight = memeArea.clientHeight - 16; // padding
-          const size = Math.min(availableWidth, availableHeight, DEFAULT_CANVAS_SIZE);
-          setCanvasSize(size);
+          // Use the smaller dimension to keep it square, but use full available space
+          const size = Math.min(availableWidth, availableHeight);
+          if (size > 0) {
+            setCanvasSize(size);
+          }
         }
       }
     };
     
+    // Use a small delay to ensure DOM is ready
+    const timeoutId = setTimeout(updateCanvasSize, 100);
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateCanvasSize);
+    };
   }, []);
 
   // drawText and applyEffectsSafely moved inside drawMeme
