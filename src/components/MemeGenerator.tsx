@@ -256,16 +256,14 @@ function MemeGenerator() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw background image
+    // Draw background image - fill entire canvas
     if (nftImage) {
       await new Promise<void>((resolve) => {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-          const x = (canvas.width - img.width * scale) / 2;
-          const y = (canvas.height - img.height * scale) / 2;
-          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          // Stretch image to fill entire canvas (match width and height exactly)
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           resolve();
         };
         img.onerror = () => resolve();
@@ -301,25 +299,33 @@ function MemeGenerator() {
         return lines;
       };
       
-      // Top text
+      // Top text - constrained to image (canvas)
       if (topText) {
         ctx.font = `${topFontSize}px Impact`;
-        const lines = wrapText(topText, canvas.width - 20);
+        const maxWidth = canvas.width - 20; // Padding from edges
+        const lines = wrapText(topText, maxWidth);
         lines.forEach((line, index) => {
           const y = topFontSize + (index * topFontSize * 1.2);
-          ctx.strokeText(line, canvas.width / 2, y);
-          ctx.fillText(line, canvas.width / 2, y);
+          // Ensure text stays within canvas bounds
+          if (y <= canvas.height - 10) { // Leave space for bottom text
+            ctx.strokeText(line, canvas.width / 2, y);
+            ctx.fillText(line, canvas.width / 2, y);
+          }
         });
       }
       
-      // Bottom text
+      // Bottom text - constrained to image (canvas)
       if (bottomText) {
         ctx.font = `${bottomFontSize}px Impact`;
-        const lines = wrapText(bottomText, canvas.width - 20);
+        const maxWidth = canvas.width - 20; // Padding from edges
+        const lines = wrapText(bottomText, maxWidth);
         lines.forEach((line, index) => {
           const y = canvas.height - (lines.length - index) * bottomFontSize * 1.2 + bottomFontSize; // Position from bottom edge
-          ctx.strokeText(line, canvas.width / 2, y);
-          ctx.fillText(line, canvas.width / 2, y);
+          // Ensure text stays within canvas bounds
+          if (y >= 10) { // Leave space for top text
+            ctx.strokeText(line, canvas.width / 2, y);
+            ctx.fillText(line, canvas.width / 2, y);
+          }
         });
       }
     };
