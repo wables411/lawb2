@@ -5715,7 +5715,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           <tr key={entry.username || index}>
                             <td>{index + 1}</td>
                             <td 
-                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', touchAction: 'manipulation', display: 'flex', alignItems: 'center', gap: '6px' }}
+                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline', touchAction: 'manipulation' }}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -5726,24 +5726,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                 e.stopPropagation();
                               }}
                             >
-                              {!isMobile && (
-                                <img 
-                                  src={profilePicture}
-                                  alt=""
-                                  onError={(e) => {
-                                    e.currentTarget.src = '/images/sticker4.png';
-                                  }}
-                                  style={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '4px',
-                                    objectFit: 'cover',
-                                    border: '1px solid rgba(0, 0, 0, 0.2)',
-                                    flexShrink: 0
-                                  }}
-                                />
-                              )}
-                              {displayName}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                                {!isMobile && (
+                                  <img 
+                                    src={profilePicture}
+                                    alt=""
+                                    onError={(e) => {
+                                      e.currentTarget.src = '/images/sticker4.png';
+                                    }}
+                                    style={{
+                                      width: '20px',
+                                      height: '20px',
+                                      borderRadius: '4px',
+                                      objectFit: 'cover',
+                                      border: '1px solid rgba(0, 0, 0, 0.2)',
+                                      flexShrink: 0,
+                                      display: 'block'
+                                    }}
+                                  />
+                                )}
+                                <span>{displayName}</span>
+                              </div>
                             </td>
                             <td>{entry.points || 0}</td>
                           </tr>

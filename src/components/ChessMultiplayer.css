@@ -1211,6 +1211,14 @@ body, html {
   min-width: 60px; max-width: 80px; 
 }
 
+.leaderboard-table-compact td img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 20px !important;
+  height: 20px !important;
+}
+
 .leaderboard-table-compact th:nth-child(3), .leaderboard-table-compact td:nth-child(3) { 
   min-width: 40px; max-width: 50px; 
 }
