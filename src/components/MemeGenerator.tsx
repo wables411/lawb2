@@ -262,8 +262,8 @@ function MemeGenerator() {
         const container = containerRef.current;
         const memeArea = container.querySelector('[class*="memeArea"]') as HTMLElement;
         if (memeArea) {
-          const availableWidth = memeArea.clientWidth - 16; // padding
-          const availableHeight = memeArea.clientHeight - 16; // padding
+          const availableWidth = memeArea.clientWidth - 24; // padding (12px * 2)
+          const availableHeight = memeArea.clientHeight - 24; // padding (12px * 2)
           // Use the smaller dimension to keep it square, but use full available space
           const size = Math.min(availableWidth, availableHeight);
           if (size > 0) {
@@ -276,10 +276,24 @@ function MemeGenerator() {
     // Use a small delay to ensure DOM is ready
     const timeoutId = setTimeout(updateCanvasSize, 100);
     updateCanvasSize();
+    
+    // Watch for layout changes (especially important for mobile)
+    const memeArea = containerRef.current?.querySelector('[class*="memeArea"]') as HTMLElement;
+    let resizeObserver: ResizeObserver | null = null;
+    if (memeArea && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        updateCanvasSize();
+      });
+      resizeObserver.observe(memeArea);
+    }
+    
     window.addEventListener('resize', updateCanvasSize);
     return () => {
       clearTimeout(timeoutId);
       window.removeEventListener('resize', updateCanvasSize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
     };
   }, []);
 
@@ -374,11 +388,13 @@ function MemeGenerator() {
       
       // Top text - constrained to image (canvas)
       if (topText) {
-        ctx.font = `${topFontSize}px Impact`;
+        // Scale font size based on canvas size to ensure it fits
+        const scaledFontSize = Math.min(topFontSize, canvas.width * 0.15, canvas.height * 0.15);
+        ctx.font = `${scaledFontSize}px Impact`;
         const maxWidth = canvas.width - 20; // Padding from edges
         const lines = wrapText(topText, maxWidth);
         lines.forEach((line, index) => {
-          const y = topFontSize + (index * topFontSize * 1.2);
+          const y = scaledFontSize + (index * scaledFontSize * 1.2);
           // Ensure text stays within canvas bounds
           if (y <= canvas.height - 10) { // Leave space for bottom text
             ctx.strokeText(line, canvas.width / 2, y);
@@ -389,11 +405,13 @@ function MemeGenerator() {
       
       // Bottom text - constrained to image (canvas)
       if (bottomText) {
-        ctx.font = `${bottomFontSize}px Impact`;
+        // Scale font size based on canvas size to ensure it fits
+        const scaledFontSize = Math.min(bottomFontSize, canvas.width * 0.15, canvas.height * 0.15);
+        ctx.font = `${scaledFontSize}px Impact`;
         const maxWidth = canvas.width - 20; // Padding from edges
         const lines = wrapText(bottomText, maxWidth);
         lines.forEach((line, index) => {
-          const y = canvas.height - (lines.length - index) * bottomFontSize * 1.2 + bottomFontSize; // Position from bottom edge
+          const y = canvas.height - (lines.length - index) * scaledFontSize * 1.2 + scaledFontSize; // Position from bottom edge
           // Ensure text stays within canvas bounds
           if (y >= 10) { // Leave space for top text
             ctx.strokeText(line, canvas.width / 2, y);
@@ -827,7 +845,7 @@ function MemeGenerator() {
   };
 
   return (
-    <div className={classes.container} ref={containerRef} style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
+    <div className={classes.container} ref={containerRef} style={{ height: '100%' }}>
       <div className={classes.content}>
         <div className={classes.header}>
           <h2 style={{ color: '#fff', marginBottom: 2, fontSize: '12px', textAlign: 'center', fontWeight: 'bold' }}>LAWB MEME MAKER</h2>
