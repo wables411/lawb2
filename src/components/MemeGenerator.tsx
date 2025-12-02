@@ -548,6 +548,12 @@ function MemeGenerator() {
   const longPressDelay = 500; // 500ms for long press
 
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    // Check if touch is on a sticker - if so, don't prevent default
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-sticker-overlay]')) {
+      return; // Let sticker handle the touch
+    }
+    
     e.preventDefault();
     
     // Start long press timer
@@ -586,7 +592,13 @@ function MemeGenerator() {
     }
   };
 
-  const handleCanvasTouchMove = () => {
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    // Check if touch is on a sticker - if so, don't clear timer
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-sticker-overlay]')) {
+      return; // Let sticker handle the touch
+    }
+    
     // Clear the timer if finger moves (prevents accidental long press)
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -776,11 +788,14 @@ function MemeGenerator() {
 
   // Improved addSticker: use functional setStickers, prevent duplicates, and set placingStickerId
   const addSticker = (src: string) => {
+    // Center the sticker on the canvas
+    const centerX = canvasSize / 2;
+    const centerY = canvasSize / 2;
     const newSticker = {
       id: uuidv4(),
       src,
-      x: 80,
-      y: 80,
+      x: centerX,
+      y: centerY,
       scale: 1,
       rotation: 0,
     };
@@ -793,6 +808,7 @@ function MemeGenerator() {
         newSticker,
       ];
     });
+    // Auto-activate the sticker so it's immediately draggable
     setPlacingStickerId(newSticker.id as string);
   };
   // Upload sticker handler
@@ -957,6 +973,7 @@ function MemeGenerator() {
           return (
             <div
               key={sticker.id}
+              data-sticker-overlay
               style={{
                 position: 'absolute',
                 left: `${(sticker.x / canvasSize) * 100}%`,
@@ -969,6 +986,7 @@ function MemeGenerator() {
                 zIndex: 10,
                 border: placingStickerId === sticker.id ? '2px solid #0f380f' : 'none',
                 boxShadow: placingStickerId === sticker.id ? '0 0 8px #0f380f' : 'none',
+                touchAction: 'none',
               }}
               onClick={() => handleStickerClick(sticker.id)}
               onMouseDown={e => {
@@ -1006,12 +1024,53 @@ function MemeGenerator() {
                   window.addEventListener('mouseup', onUp);
                 }
               }}
+              onTouchStart={e => {
+                e.stopPropagation();
+                if (placingStickerId === sticker.id) {
+                  const touch = e.touches[0];
+                  setActiveStickerId(sticker.id);
+                  const rect = canvasRef.current!.getBoundingClientRect();
+                  const startCanvasX = sticker.x;
+                  const startCanvasY = sticker.y;
+                  const startTouchX = touch.clientX;
+                  const startTouchY = touch.clientY;
+                  const onMove = (moveEvent: TouchEvent) => {
+                    if (moveEvent.touches.length === 0) return;
+                    const touch = moveEvent.touches[0];
+                    const scaleX = canvasSize / rect.width;
+                    const scaleY = canvasSize / rect.height;
+                    const deltaX = (touch.clientX - startTouchX) * scaleX;
+                    const deltaY = (touch.clientY - startTouchY) * scaleY;
+                    const newX = startCanvasX + deltaX;
+                    const newY = startCanvasY + deltaY;
+                    const halfW = 40 * sticker.scale;
+                    const halfH = 40 * sticker.scale;
+                    setStickers(stickers => stickers.map(s => 
+                      s.id === sticker.id ? { 
+                        ...s, 
+                        x: Math.max(halfW, Math.min(canvasSize - halfW, newX)),
+                        y: Math.max(halfH, Math.min(canvasSize - halfH, newY))
+                      } : s
+                    ));
+                  };
+                  const onEnd = () => {
+                    window.removeEventListener('touchmove', onMove);
+                    window.removeEventListener('touchend', onEnd);
+                    setActiveStickerId(null);
+                  };
+                  window.addEventListener('touchmove', onMove, { passive: false });
+                  window.addEventListener('touchend', onEnd);
+                } else {
+                  // Activate sticker on first touch
+                  handleStickerClick(sticker.id);
+                }
+              }}
             >
               <img src={sticker.src} alt="sticker" style={{ width: '100%', height: '100%', userSelect: 'none', pointerEvents: 'none' }} draggable={false} />
               {placingStickerId === sticker.id && (
                 <>
                   {/* Rotate handle */}
-                  <div style={{ position: 'absolute', right: '-20px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', background: '#c4cfa1', borderRadius: '50%', border: '2px solid #0f380f', cursor: 'grab', zIndex: 11 }}
+                  <div style={{ position: 'absolute', right: '-20px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', background: '#c4cfa1', borderRadius: '50%', border: '2px solid #0f380f', cursor: 'grab', zIndex: 11, touchAction: 'none' }}
                     onMouseDown={e => {
                       e.stopPropagation();
                       const rect = canvasRef.current!.getBoundingClientRect();
@@ -1029,9 +1088,29 @@ function MemeGenerator() {
                       window.addEventListener('mousemove', onMove);
                       window.addEventListener('mouseup', onUp);
                     }}
+                    onTouchStart={e => {
+                      e.stopPropagation();
+                      const touch = e.touches[0];
+                      const rect = canvasRef.current!.getBoundingClientRect();
+                      const centerX = rect.left + rect.width * (sticker.x / canvasSize);
+                      const centerY = rect.top + rect.height * (sticker.y / canvasSize);
+                      const startAngle = Math.atan2(touch.clientY - centerY, touch.clientX - centerX) * 180 / Math.PI;
+                      const startRotation = sticker.rotation;
+                      const onMove = (moveEvent: TouchEvent) => {
+                        if (moveEvent.touches.length === 0) return;
+                        const touch = moveEvent.touches[0];
+                        handleStickerRotate(sticker.id, startAngle, startRotation, touch.clientX, touch.clientY);
+                      };
+                      const onEnd = () => {
+                        window.removeEventListener('touchmove', onMove);
+                        window.removeEventListener('touchend', onEnd);
+                      };
+                      window.addEventListener('touchmove', onMove, { passive: false });
+                      window.addEventListener('touchend', onEnd);
+                    }}
                   />
                   {/* Resize handle */}
-                  <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', width: '20px', height: '20px', background: '#c4cfa1', borderRadius: '50%', border: '2px solid #0f380f', cursor: 'nwse-resize', zIndex: 11 }}
+                  <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', width: '20px', height: '20px', background: '#c4cfa1', borderRadius: '50%', border: '2px solid #0f380f', cursor: 'nwse-resize', zIndex: 11, touchAction: 'none' }}
                     onMouseDown={e => {
                       e.stopPropagation();
                       const startX = e.clientX;
@@ -1045,6 +1124,23 @@ function MemeGenerator() {
                       };
                       window.addEventListener('mousemove', onMove);
                       window.addEventListener('mouseup', onUp);
+                    }}
+                    onTouchStart={e => {
+                      e.stopPropagation();
+                      const touch = e.touches[0];
+                      const startX = touch.clientX;
+                      const startScale = sticker.scale;
+                      const onMove = (moveEvent: TouchEvent) => {
+                        if (moveEvent.touches.length === 0) return;
+                        const touch = moveEvent.touches[0];
+                        handleStickerResize(sticker.id, touch.clientX, startX, startScale);
+                      };
+                      const onEnd = () => {
+                        window.removeEventListener('touchmove', onMove);
+                        window.removeEventListener('touchend', onEnd);
+                      };
+                      window.addEventListener('touchmove', onMove, { passive: false });
+                      window.addEventListener('touchend', onEnd);
                     }}
                   />
                   {/* Remove sticker button */}
