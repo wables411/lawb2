@@ -1,11 +1,13 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createUseStyles } from 'react-jss';
-import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useEnsName, useChainId } from 'wagmi';
+import { mainnet } from 'wagmi/chains';
 import { useAppKit } from '@reown/appkit/react';
 import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
+import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { playIconClickSound } from '../utils/sound';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
@@ -40,11 +42,13 @@ const useStyles = createUseStyles({
     textTransform: 'uppercase',
   },
   iconGrid: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
     gap: '1.5rem',
     marginBottom: '80px', // space for bottom taskbar
+    padding: '0 1rem',
+    justifyContent: 'center',
+    alignItems: 'start',
   },
   icon: {
     display: 'flex',
@@ -210,6 +214,7 @@ const EVM_NFTS = [
   { id: 'lawbstarz', name: 'Lawbstarz', image: '/assets/lawbstarz.gif', description: '666 Lawbstarz. ETH.' },
   { id: 'halloween', name: 'Halloween', image: '/assets/lawbsterhalloween.gif', description: 'Halloween Lawbsters. BASE.' },
   { id: 'pixelawbs', name: 'Pixelawbs', image: '/assets/pixelawb.png', description: '2222 Pixelawbs. ETH.' },
+  { id: 'asciilawbs', name: 'ASCII Lawbsters', image: '/assets/asciilawb.GIF', description: '420 ASCII Lawbsters. BASE.' },
 ];
 const SOL_NFTS = [
   { id: 'lawbstation', name: 'Lawbstation', image: '/assets/lawbstation.GIF', description: 'Lawbstation. SOL.' },
@@ -230,6 +235,7 @@ const Mobile = () => {
   const { isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
+  const chainId = useChainId();
   
   // Simple wallet connection
   const handleWalletConnection = async () => {
@@ -252,14 +258,16 @@ const Mobile = () => {
   const [showLawbstarz, setShowLawbstarz] = useState(false);
   const [showPixelawbs, setShowPixelawbs] = useState(false);
   const [showHalloween, setShowHalloween] = useState(false);
+  const [showAsciilawbs, setShowAsciilawbs] = useState(false);
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
+  const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   const icons = [
     { label: 'Chess', icon: '/assets/chessicon.png', action: () => window.location.href = '/chess' },
-    { label: 'Mint', icon: '/assets/mint.gif', action: () => setShowMintPopup(true) },
+    { label: 'Mint', icon: '/assets/mint.gif', action: () => { setMintPopupType('selection'); setShowMintPopup(true); } },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
@@ -312,6 +320,7 @@ const Mobile = () => {
         case 'lawbstarz': setShowLawbstarz(true); break;
         case 'pixelawbs': setShowPixelawbs(true); break;
         case 'halloween': setShowHalloween(true); break;
+        case 'asciilawbs': setShowAsciilawbs(true); break;
         case 'lawbstation': setShowLawbstation(true); break;
         case 'nexus': setShowNexus(true); break;
         default: break;
@@ -433,7 +442,98 @@ const Mobile = () => {
         </div>
       )}
       {/* Mobile Mint Popup */}
-      <MobileMintPopup isOpen={showMintPopup} onClose={() => setShowMintPopup(false)} walletAddress={address || ''} />
+      {mintPopupType === 'selection' && (
+        <MobilePopup98 
+          isOpen={showMintPopup} 
+          onClose={() => setShowMintPopup(false)} 
+          title="Select Mint Type"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px' }}>
+            <button
+              onClick={() => {
+                setMintPopupType('pixelawbs');
+                if (chainId !== mainnet.id) {
+                  alert('Please switch to Ethereum mainnet to mint Pixelawbs');
+                }
+              }}
+              style={{
+                background: '#00ffff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '16px 24px',
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                boxShadow: '1px 1px 0 #aaa',
+                minHeight: '48px',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              PIXELAWBS (ETH)
+            </button>
+            <button
+              onClick={() => setMintPopupType('asciilawbs')}
+              style={{
+                background: '#00ffff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '16px 24px',
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                boxShadow: '1px 1px 0 #aaa',
+                minHeight: '48px',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ASCIILAWBS (BASE)
+            </button>
+          </div>
+        </MobilePopup98>
+      )}
+      {mintPopupType === 'pixelawbs' && (
+        <>
+          <MobileMintPopup 
+            isOpen={showMintPopup} 
+            onClose={() => { setShowMintPopup(false); setMintPopupType('selection'); }} 
+            walletAddress={address || ''} 
+          />
+        </>
+      )}
+      {mintPopupType === 'asciilawbs' && (
+        <MobilePopup98 
+          isOpen={showMintPopup} 
+          onClose={() => { setShowMintPopup(false); setMintPopupType('selection'); }} 
+          title="Mint ASCII Lawbsters"
+        >
+          <button
+            onClick={() => setMintPopupType('selection')}
+            style={{
+              background: '#c0c0c0',
+              color: '#000',
+              border: '2px outset #fff',
+              borderRadius: '4px',
+              padding: '8px 16px',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              cursor: 'pointer',
+              marginBottom: '12px',
+              minHeight: '44px',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
+            ← Back
+          </button>
+          <div style={{ padding: '10px', maxHeight: '70vh', overflowY: 'auto' }}>
+            <AsciiLawbsterMint walletAddress={address || ''} />
+          </div>
+        </MobilePopup98>
+      )}
       
       {/* EVM Folder Popup */}
       <FolderPopup open={showEvmFolder} onClose={() => setShowEvmFolder(false)} title="EVM NFT'S FOLDER" nfts={EVM_NFTS} />
@@ -486,6 +586,57 @@ const Mobile = () => {
           Collect on <a href="https://magiceden.us/collections/base/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97" target="_blank" rel="noopener noreferrer" style={{color: '#ff0000', textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
+      </MobilePopup98>
+      {/* ASCII Lawbsters Popup */}
+      <MobilePopup98 isOpen={showAsciilawbs} onClose={() => setShowAsciilawbs(false)} title="ASCII Lawbsters">
+        <h3 style={{marginBottom: '10px', fontSize: '16px'}}>
+          MINT ASCIILAWBS <span 
+            style={{
+              color: 'blue', 
+              textDecoration: 'underline', 
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              padding: '4px 8px',
+              display: 'inline-block',
+              minHeight: '44px',
+              lineHeight: '44px'
+            }} 
+            onClick={() => {
+              setShowAsciilawbs(false);
+              if (!address) {
+                alert('Please connect your wallet first!');
+                return;
+              }
+              setMintPopupType('asciilawbs');
+              setShowMintPopup(true);
+            }}
+          >*HERE*</span>
+        </h3>
+        <p style={{marginBottom: '10px', fontSize: '14px', lineHeight: '1.5'}}>
+          420 ascii lawbsters inspired by ascii milady, milady, cigawrette packs, allstarz and rusty rollers. brought to you in part by portion club.
+        </p>
+        <p style={{marginBottom: '10px', fontSize: '14px'}}>Chain: Base</p>
+        <p style={{marginBottom: '10px', fontSize: '14px'}}>
+          Collect on <a 
+            href="https://opensea.io/collection/asciilawbs" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{
+              color: 'blue', 
+              textDecoration: 'underline',
+              touchAction: 'manipulation',
+              padding: '4px 8px',
+              display: 'inline-block',
+              minHeight: '44px',
+              lineHeight: '44px'
+            }}
+          >Secondary</a>
+        </p>
+        <img 
+          src="/assets/asciilawb.GIF" 
+          alt="ASCII Lawbsters" 
+          style={{ width: '100%', marginTop: '16px', height: 'auto' }} 
+        />
       </MobilePopup98>
       {/* Lawbstation Popup */}
       <MobilePopup98 isOpen={showLawbstation} onClose={() => setShowLawbstation(false)} title="Lawbstation">
