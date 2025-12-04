@@ -26,6 +26,13 @@ export const NFT_COLLECTIONS = {
     chainId: 8453, // Base chain
     api: 'opensea' as const,
     slug: 'a-lawbster-halloween'
+  },
+  asciilawbs: {
+    address: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2',
+    name: 'ASCII Lawbsters',
+    chainId: 8453, // Base chain
+    api: 'opensea' as const,
+    slug: 'asciilawbs'
   }
 } as const;
 

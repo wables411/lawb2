@@ -8,6 +8,7 @@ import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
+import { PlayerProfile } from '../components/PlayerProfile';
 import { playIconClickSound } from '../utils/sound';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
@@ -263,6 +264,7 @@ const Mobile = () => {
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   const icons = [
@@ -661,6 +663,12 @@ const Mobile = () => {
       {/* Meme Generator Popup */}
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
+      </MobilePopup98>
+      {/* Profile Popup */}
+      <MobilePopup98 isOpen={showProfile} onClose={() => setShowProfile(false)} title="Profile">
+        <div style={{ padding: '10px', maxHeight: '70vh', overflowY: 'auto' }}>
+          <PlayerProfile isMobile={true} />
+        </div>
       </MobilePopup98>
       {/* Public Chat - Functional Firebase Chat Component */}
       <Suspense fallback={<div>Loading chat...</div>}>

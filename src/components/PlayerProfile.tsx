@@ -380,7 +380,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     lawbsters: profile?.nft_inventory?.lawbsters || [],
     lawbstarz: profile?.nft_inventory?.lawbstarz || [],
     halloween_lawbsters: profile?.nft_inventory?.halloween_lawbsters || [],
-    pixelawbs: profile?.nft_inventory?.pixelawbs || []
+    pixelawbs: profile?.nft_inventory?.pixelawbs || [],
+    asciilawbs: profile?.nft_inventory?.asciilawbs || []
   };
 
   // Debug logging
@@ -391,12 +392,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       lawbsters: inventory.lawbsters?.length || 0,
       lawbstarz: inventory.lawbstarz?.length || 0,
       halloween_lawbsters: inventory.halloween_lawbsters?.length || 0,
-      pixelawbs: inventory.pixelawbs?.length || 0
+      pixelawbs: inventory.pixelawbs?.length || 0,
+      asciilawbs: inventory.asciilawbs?.length || 0
     });
   }
 
   const totalNFTs = (inventory.lawbsters?.length || 0) + (inventory.lawbstarz?.length || 0) + 
-                    (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0);
+                    (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0) +
+                    (inventory.asciilawbs?.length || 0);
 
   // Determine border color based on leaderboard rank
   const getBorderColor = () => {
@@ -681,6 +684,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           <div>Lawbstarz: {inventory.lawbstarz?.length || 0}</div>
           <div>Halloween Lawbsters: {inventory.halloween_lawbsters?.length || 0}</div>
           <div>Pixelawbs: {inventory.pixelawbs?.length || 0}</div>
+          <div>ASCII Lawbsters: {inventory.asciilawbs?.length || 0}</div>
         </div>
         {totalNFTs === 0 && (
           <div style={{ marginTop: '8px', fontSize: isMobile ? '11px' : '12px', color: '#888', fontStyle: 'italic' }}>
@@ -697,7 +701,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           const totalNFTs = (profile?.nft_inventory?.lawbsters?.length || 0) + 
                            (profile?.nft_inventory?.lawbstarz?.length || 0) + 
                            (profile?.nft_inventory?.halloween_lawbsters?.length || 0) + 
-                           (profile?.nft_inventory?.pixelawbs?.length || 0);
+                           (profile?.nft_inventory?.pixelawbs?.length || 0) +
+                           (profile?.nft_inventory?.asciilawbs?.length || 0);
           // Clear profile picture if no NFTs owned
           if (totalNFTs === 0 && profile?.profile_picture) {
             // Clear profile picture asynchronously
@@ -836,6 +841,30 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                         padding: '4px 8px',
                         background: profile?.profile_picture?.collection === 'halloween_lawbsters' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
                         color: profile?.profile_picture?.collection === 'halloween_lawbsters' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      #{tokenId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(inventory.asciilawbs?.length || 0) > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>ASCII Lawbsters:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {(inventory.asciilawbs || []).slice(0, 10).map(tokenId => (
+                    <button
+                      key={`asciilawbs-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('asciilawbs', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'asciilawbs' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'asciilawbs' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
