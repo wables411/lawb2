@@ -299,7 +299,7 @@ function MemeGenerator() {
   }, []);
 
   // drawText and applyEffectsSafely moved inside drawMeme
-  const drawMemeToCanvas = async (canvas: HTMLCanvasElement) => {
+  const drawMemeToCanvas = async (canvas: HTMLCanvasElement, scaleFactor: number = 1, baseCanvasSize: number = canvasSize) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -389,15 +389,16 @@ function MemeGenerator() {
       
       // Top text - constrained to image (canvas)
       if (topText) {
-        // Scale font size based on canvas size to ensure it fits
-        const scaledFontSize = Math.min(topFontSize, canvas.width * 0.15, canvas.height * 0.15);
+        // Calculate font size based on BASE canvas size (display canvas), then scale for target canvas
+        const baseScaledFontSize = Math.min(topFontSize, baseCanvasSize * 0.15);
+        const scaledFontSize = baseScaledFontSize * scaleFactor;
         ctx.font = `${scaledFontSize}px Impact`;
-        const maxWidth = canvas.width - 20; // Padding from edges
+        const maxWidth = canvas.width - (20 * scaleFactor); // Padding from edges, scaled
         const lines = wrapText(topText, maxWidth);
         lines.forEach((line, index) => {
-          const y = scaledFontSize + (index * scaledFontSize * 1.2);
+          const y = (scaledFontSize + (index * scaledFontSize * 1.2));
           // Ensure text stays within canvas bounds
-          if (y <= canvas.height - 10) { // Leave space for bottom text
+          if (y <= canvas.height - (10 * scaleFactor)) { // Leave space for bottom text
             ctx.strokeText(line, canvas.width / 2, y);
             ctx.fillText(line, canvas.width / 2, y);
           }
@@ -406,15 +407,16 @@ function MemeGenerator() {
       
       // Bottom text - constrained to image (canvas)
       if (bottomText) {
-        // Scale font size based on canvas size to ensure it fits
-        const scaledFontSize = Math.min(bottomFontSize, canvas.width * 0.15, canvas.height * 0.15);
+        // Calculate font size based on BASE canvas size (display canvas), then scale for target canvas
+        const baseScaledFontSize = Math.min(bottomFontSize, baseCanvasSize * 0.15);
+        const scaledFontSize = baseScaledFontSize * scaleFactor;
         ctx.font = `${scaledFontSize}px Impact`;
-        const maxWidth = canvas.width - 20; // Padding from edges
+        const maxWidth = canvas.width - (20 * scaleFactor); // Padding from edges, scaled
         const lines = wrapText(bottomText, maxWidth);
         lines.forEach((line, index) => {
           const y = canvas.height - (lines.length - index) * scaledFontSize * 1.2 + scaledFontSize; // Position from bottom edge
           // Ensure text stays within canvas bounds
-          if (y >= 10) { // Leave space for top text
+          if (y >= 10 * scaleFactor) { // Leave space for top text
             ctx.strokeText(line, canvas.width / 2, y);
             ctx.fillText(line, canvas.width / 2, y);
           }
@@ -428,11 +430,11 @@ function MemeGenerator() {
       img.src = sticker.src;
       img.onload = () => {
         ctx.save();
-        const stickerSize = 80 * sticker.scale;
+        const stickerSize = 80 * sticker.scale * scaleFactor;
         ctx.save();
-        ctx.translate(sticker.x, sticker.y);
+        ctx.translate(sticker.x * scaleFactor, sticker.y * scaleFactor);
         ctx.rotate((sticker.rotation * Math.PI) / 180);
-        ctx.scale(sticker.scale, sticker.scale);
+        ctx.scale(sticker.scale * scaleFactor, sticker.scale * scaleFactor);
         ctx.drawImage(img, -40, -40, 80, 80);
         ctx.restore();
         ctx.restore();
@@ -639,8 +641,12 @@ function MemeGenerator() {
     saveCanvas.width = SAVE_RESOLUTION;
     saveCanvas.height = SAVE_RESOLUTION;
     
-    // Draw the meme to the high-res canvas
-    await drawMemeToCanvas(saveCanvas);
+    // Calculate scale factor: save canvas size / display canvas size
+    const scaleFactor = SAVE_RESOLUTION / canvasSize;
+    
+    // Draw the meme to the high-res canvas with proper scaling
+    // Pass baseCanvasSize so font size is calculated from display canvas, not save canvas
+    await drawMemeToCanvas(saveCanvas, scaleFactor, canvasSize);
     
     // Save the high-resolution image
     const link = document.createElement('a');
@@ -660,7 +666,11 @@ function MemeGenerator() {
     saveCanvas.width = SAVE_RESOLUTION;
     saveCanvas.height = SAVE_RESOLUTION;
     
-    await drawMemeToCanvas(saveCanvas);
+    // Calculate scale factor: save canvas size / display canvas size
+    const scaleFactor = SAVE_RESOLUTION / canvasSize;
+    
+    // Pass baseCanvasSize so font size is calculated from display canvas, not save canvas
+    await drawMemeToCanvas(saveCanvas, scaleFactor, canvasSize);
     
     return new Promise((resolve) => {
       saveCanvas.toBlob((blob) => {
