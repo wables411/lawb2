@@ -282,6 +282,8 @@ const Mobile = () => {
         void open({ view: 'Account' });
       }
     }, disabled: isPending },
+    { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
+    { label: 'Profile', icon: '/assets/wallet.png', action: () => setShowProfile(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
