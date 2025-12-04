@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
 import { createUseStyles } from 'react-jss';
+import { playIconClickSound } from '../utils/sound';
 
 const useStyles = createUseStyles({
   icon: {
@@ -52,6 +53,7 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    playIconClickSound();
     onClick(action, popupId, url, folderId);
   };
 
@@ -91,6 +93,7 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
     if (!hasDragged.current) {
       clickTimeoutRef.current = setTimeout(() => {
         console.log('[ICON] Click detected, calling onClick with:', { action, popupId, url, folderId });
+        playIconClickSound();
         onClick(action, popupId, url, folderId);
         clickTimeoutRef.current = null;
       }, 50);

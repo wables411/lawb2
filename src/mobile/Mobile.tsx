@@ -6,6 +6,7 @@ import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
+import { playIconClickSound } from '../utils/sound';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
@@ -275,6 +276,7 @@ const Mobile = () => {
 
   const handleIconClick = (icon: typeof icons[0]) => {
     if (icon.disabled) return;
+    playIconClickSound();
     icon.action();
   };
 
@@ -304,6 +306,7 @@ const Mobile = () => {
 
   function FolderPopup({ open, onClose, title, nfts }: FolderPopupProps) {
     const handleIconClick = (id: string) => {
+      playIconClickSound();
       switch (id) {
         case 'lawbsters': setShowLawbsters(true); break;
         case 'lawbstarz': setShowLawbstarz(true); break;

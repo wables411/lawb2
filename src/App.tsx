@@ -8,6 +8,7 @@ import { useAppKit } from '@reown/appkit/react';
 import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
+import { initBaseMiniApp } from './utils/baseMiniapp';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
@@ -39,6 +40,11 @@ function App() {
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
+  // Initialize Base Mini App SDK if running as Base Mini App (doesn't affect regular web app)
+  useEffect(() => {
+    void initBaseMiniApp();
+  }, []);
+
   // Debug: log activePopup changes
   useEffect(() => {
     console.log('[APP] activePopup changed to:', activePopup);
@@ -145,10 +151,6 @@ function App() {
     } else if (action === 'mint') {
       if (!address) {
         alert('Please connect your wallet first!');
-        return;
-      }
-      if (chainId !== mainnet.id) {
-        alert('Please switch to Ethereum mainnet to mint Pixelawbs. Current network: ' + chainId);
         return;
       }
       setShowMintPopup(true);

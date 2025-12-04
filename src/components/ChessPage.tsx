@@ -3,10 +3,16 @@ import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
+import { initBaseMiniApp } from '../utils/baseMiniapp';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
+  // Initialize Base Mini App SDK if running as Base Mini App (doesn't affect regular web app)
+  useEffect(() => {
+    void initBaseMiniApp();
+  }, []);
+
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
     const scrollToTop = () => {

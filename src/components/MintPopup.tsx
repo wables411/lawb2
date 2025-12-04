@@ -5,6 +5,7 @@ import { createUseStyles } from 'react-jss';
 import { useChainId, useSwitchChain, useWalletClient, useReadContract, usePublicClient } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
+import AsciiLawbsterMint from './AsciiLawbsterMint';
 
 const useStyles = createUseStyles({
   popup: {
@@ -194,6 +195,70 @@ const useStyles = createUseStyles({
       opacity: 1,
       transform: 'scale(1)'
     }
+  },
+  selectionContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '20px',
+    padding: '40px 20px',
+    minHeight: '300px',
+    '@media (max-width: 768px)': {
+      padding: '60px 20px',
+      gap: '24px'
+    }
+  },
+  selectionTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    marginBottom: '10px',
+    textAlign: 'center',
+    '@media (max-width: 768px)': {
+      fontSize: '20px',
+      marginBottom: '12px'
+    }
+  },
+  selectionButton: {
+    background: '#c0c0c0',
+    border: '2px outset #c0c0c0',
+    padding: '12px 24px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    minWidth: '200px',
+    width: '100%',
+    maxWidth: '300px',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    '&:active': {
+      border: '2px inset #c0c0c0'
+    },
+    '@media (max-width: 768px)': {
+      minWidth: '250px',
+      padding: '16px 32px',
+      fontSize: '16px',
+      minHeight: '48px'
+    }
+  },
+  backButton: {
+    background: '#c0c0c0',
+    border: '2px outset #c0c0c0',
+    padding: '6px 12px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    marginBottom: '10px',
+    touchAction: 'manipulation',
+    '&:active': {
+      border: '2px inset #c0c0c0'
+    },
+    '@media (max-width: 768px)': {
+      padding: '10px 20px',
+      fontSize: '14px',
+      minHeight: '44px',
+      marginBottom: '12px'
+    }
   }
 });
 
@@ -244,6 +309,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   
   const classes = useStyles({ isOpen });
   const nodeRef = useRef(null);
+  const [mintType, setMintType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
   const [inviteLists, setInviteLists] = useState<InviteList[]>([]);
   const [loading, setLoading] = useState(false);
   const [minting, setMinting] = useState(false);
@@ -267,12 +333,19 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
 
+  // Reset to selection screen when popup opens
   useEffect(() => {
-    if (isOpen && walletAddress) {
+    if (isOpen) {
+      setMintType('selection');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && walletAddress && mintType === 'pixelawbs') {
       void loadEligibleLists();
       void loadCollectionData();
     }
-  }, [isOpen, walletAddress]);
+  }, [isOpen, walletAddress, mintType]);
 
   const loadCollectionData = async () => {
     setLoadingStats(true);
@@ -707,11 +780,352 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
 
   if (!isOpen) return null;
 
+  const getWindowTitle = () => {
+    if (mintType === 'selection') return 'Select Mint Type';
+    if (mintType === 'pixelawbs') return 'Mint Pixelawbster';
+    if (mintType === 'asciilawbs') return 'Mint ASCII Lawbsters';
+    return 'Mint';
+  };
+
+  const renderSelectionScreen = () => (
+    <div className={classes.selectionContainer}>
+      <div className={classes.selectionTitle}>Select Mint Type</div>
+      <button
+        className={classes.selectionButton}
+        onClick={() => {
+          setMintType('pixelawbs');
+          if (chainId !== mainnet.id) {
+            setError('Please switch to Ethereum mainnet to mint Pixelawbs');
+          }
+        }}
+      >
+        PIXELAWBS (ETH)
+      </button>
+      <button
+        className={classes.selectionButton}
+        onClick={() => setMintType('asciilawbs')}
+      >
+        ASCIILAWBS (BASE)
+      </button>
+    </div>
+  );
+
+  const renderPixelawbsContent = () => (
+    <>
+      {/* Collection Stats */}
+      {collectionStats && (
+        <div className={classes.statsContainer}>
+          {collectionStats.mintedCount !== undefined && (
+            <div className={classes.statBox}>
+              <div className={classes.statLabel}>Minted</div>
+              <div>{collectionStats.mintedCount.toLocaleString()}</div>
+            </div>
+          )}
+          {collectionStats.totalSupply !== undefined && (
+            <div className={classes.statBox}>
+              <div className={classes.statLabel}>Total Supply</div>
+              <div>{collectionStats.totalSupply.toLocaleString()}</div>
+            </div>
+          )}
+          {collectionStats.uniqueOwners !== undefined && (
+            <div className={classes.statBox}>
+              <div className={classes.statLabel}>Owners</div>
+              <div>{collectionStats.uniqueOwners.toLocaleString()}</div>
+            </div>
+          )}
+          {collectionStats.floorPrice !== undefined && (
+            <div className={classes.statBox}>
+              <div className={classes.statLabel}>Floor Price</div>
+              <div>{collectionStats.floorPrice} ETH</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Reveal Animation Overlay */}
+      {revealedNFT && (
+        <div className={classes.revealOverlay}>
+          {/* Close Button */}
+          <button
+            onClick={handleCloseReveal}
+            style={{
+              position: 'absolute',
+              top: isMobile ? 'max(20px, env(safe-area-inset-top, 0px))' : '20px',
+              right: isMobile ? 'max(20px, env(safe-area-inset-right, 0px))' : '20px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              padding: isMobile ? '12px 20px' : '8px 16px',
+              cursor: 'pointer',
+              fontSize: isMobile ? '16px' : '14px',
+              fontWeight: 'bold',
+              color: '#000',
+              zIndex: 10001,
+              minHeight: isMobile ? '44px' : 'auto',
+              touchAction: 'manipulation'
+            }}
+            title="Close"
+          >
+            ✕ Close
+          </button>
+          
+          {showVideo && !nftReady ? (
+            <>
+              <div style={{ 
+                color: '#fff', 
+                fontSize: isMobile ? '20px' : '24px', 
+                fontWeight: 'bold', 
+                marginBottom: isMobile ? '16px' : '20px',
+                textAlign: 'center',
+                padding: isMobile ? '0 10px' : '0'
+              }}>
+                🎉 Revealing Your NFT! 🎉
+              </div>
+              <video
+                ref={videoRef}
+                src="/assets/pixelawbmint.mp4"
+                className={classes.revealVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                onError={(e) => {
+                  console.error('Video playback error:', e);
+                  // Fallback to image if video fails
+                  setShowVideo(false);
+                }}
+              />
+              <div style={{ 
+                color: '#fff', 
+                fontSize: isMobile ? '12px' : '14px', 
+                marginTop: isMobile ? '16px' : '20px', 
+                opacity: 0.8,
+                textAlign: 'center',
+                padding: isMobile ? '0 10px' : '0'
+              }}>
+                Waiting for your NFT to be revealed...
+              </div>
+            </>
+          ) : nftReady && revealedNFT.token_id ? (
+            <>
+              <div style={{ 
+                color: '#fff', 
+                fontSize: isMobile ? '20px' : '24px', 
+                fontWeight: 'bold',
+                textAlign: 'center',
+                padding: isMobile ? '0 10px' : '0',
+                marginBottom: isMobile ? '12px' : '0'
+              }}>
+                🎉 Your NFT Has Been Revealed! 🎉
+              </div>
+              {imageUrl ? (
+                <div style={{ 
+                  position: 'relative', 
+                  minHeight: isMobile ? '200px' : '300px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  width: '100%',
+                  padding: isMobile ? '0 10px' : '0'
+                }}>
+                  {!imageLoaded && !imageError && (
+                    <div style={{ 
+                      position: 'absolute',
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      color: '#fff',
+                      zIndex: 1
+                    }}>
+                      <div style={{ fontSize: isMobile ? '16px' : '18px', marginBottom: '10px' }}>Loading your NFT image...</div>
+                      <div style={{ fontSize: isMobile ? '12px' : '14px', opacity: 0.8 }}>Please wait...</div>
+                    </div>
+                  )}
+                  {imageError && (
+                    <div style={{ 
+                      position: 'absolute',
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      color: '#fff',
+                      zIndex: 1
+                    }}>
+                      <div style={{ fontSize: isMobile ? '16px' : '18px', marginBottom: '10px' }}>⚠️ Image loading...</div>
+                      <div style={{ fontSize: isMobile ? '12px' : '14px', opacity: 0.8 }}>
+                        The image may take a moment to appear.
+                      </div>
+                    </div>
+                  )}
+                  <img 
+                    ref={imageRef}
+                    src={imageUrl} 
+                    alt={revealedNFT.name || `#${revealedNFT.token_id}`}
+                    className={classes.revealImage}
+                    onLoad={() => {
+                      console.log('Image loaded successfully in img tag');
+                      setImageLoaded(true);
+                      setImageError(false);
+                    }}
+                    onError={(e) => {
+                      console.error('Image load error in img tag, trying fallback');
+                      setImageError(true);
+                      // Try fallback image if not already using it
+                      if (imageUrl !== '/assets/pixelawb.png') {
+                        setTimeout(() => {
+                          setImageUrl('/assets/pixelawb.png');
+                          setImageError(false);
+                          setImageLoaded(false);
+                        }, 1000);
+                      }
+                    }}
+                    style={{ 
+                      opacity: imageLoaded ? 1 : 0, 
+                      transition: 'opacity 0.5s ease-in-out',
+                      maxWidth: '100%',
+                      maxHeight: isMobile ? '60vh' : '400px',
+                      width: isMobile ? '100%' : 'auto',
+                      height: 'auto'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  minHeight: '300px',
+                  color: '#fff'
+                }}>
+                  <div style={{ fontSize: isMobile ? '16px' : '18px' }}>Preparing your NFT...</div>
+                </div>
+              )}
+              <div style={{ 
+                color: '#fff', 
+                fontSize: isMobile ? '16px' : '18px', 
+                marginTop: isMobile ? '12px' : '10px',
+                textAlign: 'center',
+                padding: isMobile ? '0 10px' : '0'
+              }}>
+                {revealedNFT.name || `Pixelawb #${revealedNFT.token_id}`}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {error && (
+        <div style={{ 
+          backgroundColor: '#ffcccc', 
+          border: '1px solid #ff0000', 
+          padding: isMobile ? '12px' : '10px', 
+          marginBottom: isMobile ? '12px' : '10px',
+          color: '#cc0000',
+          fontSize: isMobile ? '14px' : '12px',
+          borderRadius: isMobile ? '4px' : '0'
+        }}>
+          {error}
+          {chainId !== mainnet.id && (
+            <div style={{ marginTop: isMobile ? '12px' : '10px' }}>
+              <button 
+                onClick={() => switchChain({ chainId: mainnet.id })}
+                style={{
+                  backgroundColor: '#008000',
+                  color: 'white',
+                  border: 'none',
+                  padding: isMobile ? '12px 20px' : '8px 16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: isMobile ? '14px' : '12px',
+                  minHeight: isMobile ? '44px' : 'auto',
+                  touchAction: 'manipulation'
+                }}
+              >
+                Switch to Ethereum
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ fontSize: isMobile ? '16px' : '14px', textAlign: 'center', padding: isMobile ? '20px' : '10px' }}>
+          Loading eligible invite lists...
+        </div>
+      ) : inviteLists.length === 0 ? (
+        <div style={{ fontSize: isMobile ? '16px' : '14px', textAlign: 'center', padding: isMobile ? '20px' : '10px' }}>
+          No eligible invite lists found for your wallet.
+        </div>
+      ) : (
+        <>
+          <div style={{ marginBottom: isMobile ? '16px' : '20px' }}>
+            <h3 style={{ fontSize: isMobile ? '18px' : '16px', marginBottom: isMobile ? '12px' : '10px' }}>Pixelawb Mint Tiers:</h3>
+            {inviteLists.map(list => (
+              <ListMintInfo
+                key={list.id}
+                list={list}
+                collectionData={collectionData}
+                chainId={chainId}
+                isMobile={isMobile}
+                selectedQuantity={selectedQuantities[list.id] || 0}
+                onQuantityChange={(qty) => handleQuantityChange(list.id, qty)}
+                walletLimit={list.wallet_limit}
+              />
+            ))}
+          </div>
+          <button
+            onClick={() => void handleMint()}
+            disabled={minting}
+            style={{
+              background: '#c0c0c0',
+              border: '2px outset #c0c0c0',
+              padding: isMobile ? '14px 24px' : '10px 20px',
+              cursor: minting ? 'not-allowed' : 'pointer',
+              fontSize: isMobile ? '16px' : '14px',
+              fontWeight: 'bold',
+              minHeight: isMobile ? '48px' : 'auto',
+              width: isMobile ? '100%' : 'auto',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
+            {minting ? 'Minting...' : 'Mint Selected NFTs'}
+          </button>
+        </>
+      )}
+
+      {/* Recently Minted NFTs */}
+      {recentlyMinted.length > 0 && (
+        <div className={classes.recentlyMinted}>
+          <h3 style={{ marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px' }}>Recently Minted</h3>
+          <div className={classes.nftGrid}>
+            {recentlyMinted.map((nft) => (
+              <div key={nft.id} className={classes.nftItem}>
+                <img 
+                  src={nft.image_url || nft.image || nft.image_url_shrunk || '/assets/pixelawb.png'} 
+                  alt={nft.name || `#${nft.token_id}`}
+                  className={classes.nftImage}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/assets/pixelawb.png';
+                  }}
+                />
+                <div style={{ fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {nft.name || `#${nft.token_id}`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   const popupContent = (
     <>
       <div ref={nodeRef} className={classes.popup}>
         <div className={classes.header}>
-          <span>Mint Pixelawbster</span>
+          <span>{getWindowTitle()}</span>
           <div className={classes.titleBarButtons}>
             <button
               className={classes.titleBarButton}
@@ -730,6 +1144,21 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           </div>
         </div>
         <div className={classes.content}>
+          {mintType !== 'selection' && (
+            <button
+              className={classes.backButton}
+              onClick={() => setMintType('selection')}
+            >
+              ← Back
+            </button>
+          )}
+          {mintType === 'selection' && renderSelectionScreen()}
+          {mintType === 'pixelawbs' && renderPixelawbsContent()}
+          {mintType === 'asciilawbs' && <AsciiLawbsterMint walletAddress={walletAddress} />}
+        </div>
+      </div>
+    </>
+  );
           {/* Collection Stats */}
           {collectionStats && (
             <div className={classes.statsContainer}>

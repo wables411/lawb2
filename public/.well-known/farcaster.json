@@ -1,0 +1,37 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "baseBuilder": {
+    "ownerAddress": "0x"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Lawb.xyz",
+    "homeUrl": "https://lawb.xyz",
+    "iconUrl": "https://lawb.xyz/assets/favicon.ico",
+    "splashImageUrl": "https://lawb.xyz/assets/lawbstarz.gif",
+    "splashBackgroundColor": "#000080",
+    "webhookUrl": "",
+    "subtitle": "there is no meme we lawb you",
+    "description": "Create memes, play chess, and connect with the Lawb community. Windows 98-style NFT platform with meme generator and multiplayer chess.",
+    "screenshotUrls": [
+      "https://lawb.xyz/assets/lawbstarz.gif",
+      "https://lawb.xyz/assets/lawbstation.GIF"
+    ],
+    "primaryCategory": "social",
+    "tags": ["meme", "chess", "nft", "base", "lawb"],
+    "heroImageUrl": "https://lawb.xyz/assets/lawbstarz.gif",
+    "tagline": "there is no meme we lawb you",
+    "ogTitle": "Lawb.xyz - there is no meme we lawb you",
+    "ogDescription": "Create memes, play chess, and connect with the Lawb community.",
+    "ogImageUrl": "https://lawb.xyz/assets/lawbstarz.gif",
+    "noindex": false
+  }
+}
+
+
+
+
