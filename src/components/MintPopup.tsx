@@ -888,20 +888,34 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
               }}>
                 🎉 Revealing Your NFT! 🎉
               </div>
-              <video
-                ref={videoRef}
-                src="/assets/pixelawbmint.mp4"
-                className={classes.revealVideo}
-                autoPlay
-                loop
-                muted
-                playsInline
-                onError={(e) => {
-                  console.error('Video playback error:', e);
-                  // Fallback to image if video fails
-                  setShowVideo(false);
-                }}
-              />
+              {mintType === 'asciilawbs' ? (
+                <img
+                  src="/assets/asciilawb.GIF"
+                  alt="ASCII Lawbster Preview"
+                  className={classes.revealImage}
+                  style={{
+                    maxWidth: '400px',
+                    maxHeight: '400px',
+                    border: '4px solid #fff',
+                    borderRadius: '8px',
+                  }}
+                />
+              ) : (
+                <video
+                  ref={videoRef}
+                  src="/assets/pixelawbmint.mp4"
+                  className={classes.revealVideo}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  onError={(e) => {
+                    console.error('Video playback error:', e);
+                    // Fallback to image if video fails
+                    setShowVideo(false);
+                  }}
+                />
+              )}
               <div style={{ 
                 color: '#fff', 
                 fontSize: isMobile ? '12px' : '14px', 
@@ -1016,7 +1030,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                 textAlign: 'center',
                 padding: isMobile ? '0 10px' : '0'
               }}>
-                {revealedNFT.name || `Pixelawb #${revealedNFT.token_id}`}
+                {revealedNFT.name || `${mintType === 'asciilawbs' ? 'ASCII Lawbster' : 'Pixelawb'} #${revealedNFT.token_id}`}
               </div>
             </>
           ) : null}
@@ -1130,42 +1144,98 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   );
 
   const popupContent = (
-    <>
-      <div ref={nodeRef} className={classes.popup}>
-        <div className={classes.header}>
-          <span>{getWindowTitle()}</span>
-          <div className={classes.titleBarButtons}>
-            <button
-              className={classes.titleBarButton}
-              onClick={handleMinimize}
-              title="Minimize"
-            >
-              _
-            </button>
-            <button
-              className={classes.titleBarButton}
-              onClick={onClose}
-              title="Close"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-        <div className={classes.content}>
-          {mintType !== 'selection' && (
-            <button
-              className={classes.backButton}
-              onClick={() => setMintType('selection')}
-            >
-              ← Back
-            </button>
-          )}
-          {mintType === 'selection' && renderSelectionScreen()}
-          {mintType === 'pixelawbs' && renderPixelawbsContent()}
-          {mintType === 'asciilawbs' && <AsciiLawbsterMint walletAddress={walletAddress} />}
+    <div ref={nodeRef} className={classes.popup}>
+      <div className={classes.header}>
+        <span>{getWindowTitle()}</span>
+        <div className={classes.titleBarButtons}>
+          <button
+            className={classes.titleBarButton}
+            onClick={handleMinimize}
+            title="Minimize"
+          >
+            _
+          </button>
+          <button
+            className={classes.titleBarButton}
+            onClick={onClose}
+            title="Close"
+          >
+            ✕
+          </button>
         </div>
       </div>
-    </>
+      <div className={classes.content}>
+        {mintType !== 'selection' && (
+          <button
+            className={classes.backButton}
+            onClick={() => setMintType('selection')}
+          >
+            ← Back
+          </button>
+        )}
+        {mintType === 'selection' && renderSelectionScreen()}
+        {mintType === 'pixelawbs' && renderPixelawbsContent()}
+          {mintType === 'asciilawbs' && (
+            <AsciiLawbsterMint 
+              walletAddress={walletAddress}
+              onMintSuccess={(hash: string) => {
+                // Show reveal overlay for ASCII Lawbsters
+                setShowVideo(true);
+                setRevealedNFT({} as NFT); // Placeholder
+                
+                // Poll for newly minted NFTs
+                if (publicClient) {
+                  publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` }).then(async (receipt) => {
+                    // Poll for the newly minted NFTs
+                    let attempts = 0;
+                    const maxAttempts = 20;
+                    
+                    pollingIntervalRef.current = setInterval(async () => {
+                      attempts++;
+                      try {
+                        const recent = await getRecentlyMintedNFTsGlobal('asciilawbs', 5);
+                        if (recent.length > 0) {
+                          const newNFT = recent[0];
+                          const mintTime = new Date(newNFT.created_at || newNFT.updated_at || 0).getTime();
+                          const now = Date.now();
+                          const fiveMinutesAgo = now - 5 * 60 * 1000;
+                          
+                          if (mintTime > fiveMinutesAgo) {
+                            if (pollingIntervalRef.current) {
+                              clearInterval(pollingIntervalRef.current);
+                              pollingIntervalRef.current = null;
+                            }
+                            setRevealedNFT(newNFT);
+                            setNftReady(true);
+                            setShowVideo(false);
+                            setTimeout(() => {
+                              handleCloseReveal();
+                            }, 5000);
+                            return;
+                          }
+                        }
+                        
+                        if (attempts >= maxAttempts) {
+                          if (pollingIntervalRef.current) {
+                            clearInterval(pollingIntervalRef.current);
+                            pollingIntervalRef.current = null;
+                          }
+                          alert(`NFT Minted Successfully: Transaction Hash - ${hash}\n\nThe NFT may take a moment to appear. Please check your wallet.`);
+                          handleCloseReveal();
+                        }
+                      } catch (err) {
+                        console.error('Error fetching revealed NFT:', err);
+                      }
+                    }, 3000);
+                  }).catch((error) => {
+                    console.error('Error waiting for transaction:', error);
+                  });
+                }
+              }}
+            />
+          )}
+      </div>
+    </div>
   );
 
   if (isMobile) {

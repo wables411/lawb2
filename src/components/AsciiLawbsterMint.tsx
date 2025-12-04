@@ -193,9 +193,10 @@ const useStyles = createUseStyles({
 
 interface AsciiLawbsterMintProps {
   walletAddress: string;
+  onMintSuccess?: (hash: string) => void;
 }
 
-const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) => {
+const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, onMintSuccess }) => {
   const classes = useStyles();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -318,10 +319,14 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
   }
 
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && hash) {
       handleTransactionSuccess();
+      // Notify parent component of successful mint
+      if (onMintSuccess) {
+        onMintSuccess(hash);
+      }
     }
-  }, [isSuccess]);
+  }, [isSuccess, hash, onMintSuccess]);
 
   async function handleMint() {
     if (!condition || !address || quantity <= 0) return;
