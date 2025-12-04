@@ -9,15 +9,15 @@ import AsciiLawbsterMint from './AsciiLawbsterMint';
 
 const useStyles = createUseStyles({
   popup: {
-    position: 'absolute',
+    position: 'fixed',
     background: '#c0c0c0',
     border: '2px outset #fff',
     width: '600px',
     height: '480px',
     minWidth: '360px',
     minHeight: '240px',
-    top: 'calc(50vh - 240px)',
-    left: 'calc(50vw - 300px)',
+    top: 0,
+    left: 0,
     display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
     overflow: 'auto',
@@ -311,6 +311,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const classes = useStyles({ isOpen });
   const nodeRef = useRef(null);
   const [mintType, setMintType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
+  const [position, setPosition] = useState({ x: 100, y: 100 });
   const [inviteLists, setInviteLists] = useState<InviteList[]>([]);
   const [loading, setLoading] = useState(false);
   const [minting, setMinting] = useState(false);
@@ -338,8 +339,14 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   useEffect(() => {
     if (isOpen) {
       setMintType(initialMintType);
+      // Reset position when opening
+      setPosition({ x: 100, y: 100 });
     }
   }, [isOpen, initialMintType]);
+
+  const handleDrag = (e: any, data: any) => {
+    setPosition({ x: data.x, y: data.y });
+  };
 
   useEffect(() => {
     if (isOpen && walletAddress && mintType === 'pixelawbs') {
@@ -1166,7 +1173,14 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   }
 
   return (
-    <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
+    <Draggable 
+      nodeRef={nodeRef} 
+      handle={`.${classes.header}`}
+      defaultPosition={{ x: 100, y: 100 }}
+      position={isOpen ? position : undefined}
+      onDrag={handleDrag}
+      disabled={!isOpen || isMobile}
+    >
       {popupContent}
     </Draggable>
   );
