@@ -21,7 +21,7 @@ export interface GameStats {
 }
 
 export interface ProfilePicture {
-  collection: 'pixelawbs' | 'lawbsters' | 'lawbstarz' | 'halloween_lawbsters';
+  collection: 'pixelawbs' | 'lawbsters' | 'lawbstarz' | 'halloween_lawbsters' | 'asciilawbs';
   token_id: string;
   image_url: string;
 }

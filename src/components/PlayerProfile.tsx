@@ -77,12 +77,13 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             // For viewing other users, create a minimal profile object with default values
             profileData = {
               wallet_address: address.toLowerCase(),
-              nft_inventory: {
-                lawbsters: [],
-                lawbstarz: [],
-                halloween_lawbsters: [],
-                pixelawbs: []
-              },
+          nft_inventory: {
+            lawbsters: [],
+            lawbstarz: [],
+            halloween_lawbsters: [],
+            pixelawbs: [],
+            asciilawbs: []
+          },
               game_stats: {
                 total_games: 0,
                 wins: 0,
@@ -106,7 +107,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               lawbsters: [],
               lawbstarz: [],
               halloween_lawbsters: [],
-              pixelawbs: []
+              pixelawbs: [],
+              asciilawbs: []
             };
           }
           if (!profileData.game_stats) {
@@ -857,7 +859,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>ASCII Lawbsters:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {(inventory.asciilawbs || []).slice(0, 10).map(tokenId => (
+                  {(inventory.asciilawbs || []).slice(0, 10).map((tokenId: string) => (
                     <button
                       key={`asciilawbs-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('asciilawbs', tokenId)}

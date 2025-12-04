@@ -256,6 +256,7 @@ export interface NFTInventory {
   lawbstarz: string[];
   halloween_lawbsters: string[];
   pixelawbs: string[];
+  asciilawbs: string[];
 }
 
 export async function fetchNFTInventory(walletAddress: string): Promise<NFTInventory> {
@@ -263,7 +264,8 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     lawbsters: [],
     lawbstarz: [],
     halloween_lawbsters: [],
-    pixelawbs: []
+    pixelawbs: [],
+    asciilawbs: []
   };
 
   // Fetch Pixelawbs (Ethereum) - Try Etherscan API first, then contract, then Scatter API
