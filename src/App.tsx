@@ -9,6 +9,7 @@ import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 import { initBaseMiniApp } from './utils/baseMiniapp';
+import { useMediaQuery } from './hooks/useMediaQuery';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
@@ -36,6 +37,7 @@ function App() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -519,25 +521,73 @@ function App() {
       </Popup>
 
       <Popup id="asciilawbs-popup" isOpen={activePopup === 'asciilawbs-popup'} onClose={closePopup} onMinimize={minimizePopup}>
-        <h3 style={{marginBottom: '10px'}}>
-          MINT ASCIILAWBS <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={() => {
-            setActivePopup(null);
-            if (!address) {
-              alert('Please connect your wallet first!');
-              return;
-            }
-            setMintPopupType('asciilawbs');
-            setShowMintPopup(true);
-          }}>*HERE*</span>
+        <h3 style={{
+          marginBottom: '10px',
+          fontSize: isMobile ? '18px' : '16px',
+          lineHeight: isMobile ? '1.4' : '1.2'
+        }}>
+          MINT ASCIILAWBS <span 
+            style={{
+              color: 'blue', 
+              textDecoration: 'underline', 
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              padding: isMobile ? '4px 8px' : '2px 4px',
+              display: 'inline-block',
+              minHeight: isMobile ? '44px' : 'auto',
+              lineHeight: isMobile ? '44px' : 'inherit'
+            }} 
+            onClick={() => {
+              setActivePopup(null);
+              if (!address) {
+                alert('Please connect your wallet first!');
+                return;
+              }
+              setMintPopupType('asciilawbs');
+              setShowMintPopup(true);
+            }}
+          >*HERE*</span>
         </h3>
-        <p style={{marginBottom: '10px'}}>
+        <p style={{
+          marginBottom: '10px',
+          fontSize: isMobile ? '14px' : '12px',
+          lineHeight: isMobile ? '1.5' : '1.4'
+        }}>
           420 ascii lawbsters inspired by ascii milady, milady, cigawrette packs, allstarz and rusty rollers. brought to you in part by portion club.
         </p>
-        <p style={{marginBottom: '10px'}}>Chain: Base</p>
-        <p style={{marginBottom: '10px'}}>
-          Collect on <a href="https://opensea.io/collection/asciilawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+        <p style={{
+          marginBottom: '10px',
+          fontSize: isMobile ? '14px' : '12px'
+        }}>Chain: Base</p>
+        <p style={{
+          marginBottom: '10px',
+          fontSize: isMobile ? '14px' : '12px'
+        }}>
+          Collect on <a 
+            href="https://opensea.io/collection/asciilawbs" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{
+              color: 'blue', 
+              textDecoration: 'underline',
+              touchAction: 'manipulation',
+              padding: isMobile ? '4px 8px' : '2px 4px',
+              display: 'inline-block',
+              minHeight: isMobile ? '44px' : 'auto',
+              lineHeight: isMobile ? '44px' : 'inherit'
+            }}
+          >Secondary</a>
         </p>
-        <img src="/assets/asciilawb.GIF" alt="ASCII Lawbsters" style={{ width: '100%', marginTop: '10px' }} />
+        <img 
+          src="/assets/asciilawb.GIF" 
+          alt="ASCII Lawbsters" 
+          style={{ 
+            width: '100%', 
+            marginTop: isMobile ? '16px' : '10px',
+            maxWidth: '100%',
+            height: 'auto'
+          }} 
+        />
       </Popup>
 
       <Popup id="halloween-popup" isOpen={activePopup === 'halloween-popup'} onClose={closePopup} onMinimize={minimizePopup}>

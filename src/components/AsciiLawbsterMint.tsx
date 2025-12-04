@@ -430,7 +430,12 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
                   <span>{claimed} / {condition.quantityLimit === 0 ? '∞' : condition.quantityLimit}</span>
                 </div>
                 {!canMint && (
-                  <div className={classes.error} style={{ marginTop: '8px', marginBottom: '0' }}>
+                  <div className={classes.error} style={{ 
+                    marginTop: isMobile ? '12px' : '8px', 
+                    marginBottom: '0',
+                    padding: isMobile ? '12px' : '10px',
+                    fontSize: isMobile ? '14px' : '12px'
+                  }}>
                     You have reached your mint limit for this condition
                   </div>
                 )}
@@ -487,39 +492,51 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
           {/* Recently Minted NFTs */}
           {recentlyMinted.length > 0 && (
             <div style={{
-              marginTop: '20px',
+              marginTop: isMobile ? '24px' : '20px',
               borderTop: '2px solid #808080',
-              paddingTop: '15px'
+              paddingTop: isMobile ? '16px' : '15px'
             }}>
-              <h3 style={{ marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px' }}>Recently Minted</h3>
+              <h3 style={{ 
+                marginBottom: isMobile ? '12px' : '10px', 
+                fontSize: isMobile ? '16px' : '14px',
+                fontWeight: 'bold'
+              }}>Recently Minted</h3>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                gap: '10px',
-                marginTop: '10px',
+                gridTemplateColumns: isMobile 
+                  ? 'repeat(auto-fill, minmax(70px, 1fr))' 
+                  : 'repeat(auto-fill, minmax(80px, 1fr))',
+                gap: isMobile ? '8px' : '10px',
+                marginTop: isMobile ? '12px' : '10px',
               }}>
                 {recentlyMinted.map((nft) => (
                   <div key={nft.id} style={{
                     border: '1px solid #808080',
-                    padding: '5px',
+                    padding: isMobile ? '6px' : '5px',
                     backgroundColor: '#ffffff',
                     textAlign: 'center',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    touchAction: 'manipulation'
                   }}>
                     <img 
                       src={nft.image_url || nft.image || nft.image_url_shrunk || '/assets/pixelawb.png'} 
                       alt={nft.name || `#${nft.token_id}`}
                       style={{
                         width: '100%',
-                        height: '80px',
+                        height: isMobile ? '70px' : '80px',
                         objectFit: 'cover',
-                        marginBottom: '5px'
+                        marginBottom: isMobile ? '6px' : '5px'
                       }}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/assets/pixelawb.png';
                       }}
                     />
-                    <div style={{ fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ 
+                      fontSize: isMobile ? '11px' : '10px', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
                       {nft.name || `#${nft.token_id}`}
                     </div>
                   </div>
