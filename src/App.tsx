@@ -430,6 +430,16 @@ function App() {
         >
           Click
         </button>
+        <img 
+          src="/assets/miladychanfaq.png" 
+          alt="Miladychan FAQ" 
+          style={{ 
+            width: '100%', 
+            marginTop: '10px',
+            maxWidth: '100%',
+            height: 'auto'
+          }} 
+        />
       </Popup>
 
       <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
