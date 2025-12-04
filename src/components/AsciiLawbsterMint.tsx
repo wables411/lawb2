@@ -524,7 +524,7 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
                     touchAction: 'manipulation'
                   }}>
                     <img 
-                      src={nft.image_url || nft.image || nft.image_url_shrunk || '/assets/pixelawb.png'} 
+                      src={nft.image_url || nft.image || nft.image_url_shrunk || '/assets/asciilawb.GIF'} 
                       alt={nft.name || `#${nft.token_id}`}
                       style={{
                         width: '100%',
@@ -533,7 +533,7 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
                         marginBottom: isMobile ? '6px' : '5px'
                       }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/pixelawb.png';
+                        (e.target as HTMLImageElement).src = '/assets/asciilawb.GIF';
                       }}
                     />
                     <div style={{ 
