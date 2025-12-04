@@ -292,9 +292,10 @@ interface MintPopupProps {
   onClose: () => void;
   onMinimize?: () => void;
   walletAddress: string;
+  initialMintType?: 'selection' | 'pixelawbs' | 'asciilawbs';
 }
 
-const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, walletAddress }) => {
+const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, walletAddress, initialMintType = 'selection' }) => {
   const mediaQueryMatch = useMediaQuery('(max-width: 768px)');
   const capabilities = useMobileCapabilities();
   
@@ -333,12 +334,12 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
 
-  // Reset to selection screen when popup opens
+  // Set initial mint type when popup opens
   useEffect(() => {
     if (isOpen) {
-      setMintType('selection');
+      setMintType(initialMintType);
     }
-  }, [isOpen]);
+  }, [isOpen, initialMintType]);
 
   useEffect(() => {
     if (isOpen && walletAddress && mintType === 'pixelawbs') {

@@ -51,6 +51,7 @@ function App() {
   }, [activePopup]);
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
+  const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
@@ -191,7 +192,10 @@ function App() {
     });
   };
 
-  const closeMintPopup = () => setShowMintPopup(false);
+  const closeMintPopup = () => {
+    setShowMintPopup(false);
+    setMintPopupType('selection'); // Reset to selection for next time
+  };
   const closeNFTGallery = () => setShowNFTGallery(false);
   const closeMemeGenerator = () => setShowMemeGenerator(false);
 
@@ -515,6 +519,17 @@ function App() {
       </Popup>
 
       <Popup id="asciilawbs-popup" isOpen={activePopup === 'asciilawbs-popup'} onClose={closePopup} onMinimize={minimizePopup}>
+        <h3 style={{marginBottom: '10px'}}>
+          MINT ASCIILAWBS <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={() => {
+            setActivePopup(null);
+            if (!address) {
+              alert('Please connect your wallet first!');
+              return;
+            }
+            setMintPopupType('asciilawbs');
+            setShowMintPopup(true);
+          }}>*HERE*</span>
+        </h3>
         <p style={{marginBottom: '10px'}}>
           420 ascii lawbsters inspired by ascii milady, milady, cigawrette packs, allstarz and rusty rollers. brought to you in part by portion club.
         </p>
@@ -522,6 +537,7 @@ function App() {
         <p style={{marginBottom: '10px'}}>
           Collect on <a href="https://opensea.io/collection/asciilawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
         </p>
+        <img src="/assets/asciilawb.GIF" alt="ASCII Lawbsters" style={{ width: '100%', marginTop: '10px' }} />
       </Popup>
 
       <Popup id="halloween-popup" isOpen={activePopup === 'halloween-popup'} onClose={closePopup} onMinimize={minimizePopup}>
@@ -592,7 +608,8 @@ function App() {
           isOpen={showMintPopup} 
           onClose={closeMintPopup} 
           onMinimize={minimizeMintPopup}
-          walletAddress={address || ''} 
+          walletAddress={address || ''}
+          initialMintType={mintPopupType}
         />
       </Suspense>
 
