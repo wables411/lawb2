@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createUseStyles } from 'react-jss';
-import { useAccount, useChainId, useSwitchChain, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useSwitchChain, usePublicClient, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { getClaimConditionForUser, getClaimedAmount, getRemainingSupply, type ClaimCondition } from '../utils/asciiLawbsterClaimConditions';
 import { createMintCalls } from '../utils/asciiLawbsterCalls';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
+import { ASCII_LAWBSTER_CONTRACT_ADDRESS, ASCII_LAWBSTER_CONTRACT_ABI } from '../utils/asciiLawbsterContract';
+import { getOpenSeaNFTs, type NFT } from '../mint';
 
 const useStyles = createUseStyles({
   container: {
@@ -210,6 +212,30 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
   const [remaining, setRemaining] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recentlyMinted, setRecentlyMinted] = useState<NFT[]>([]);
+  const [totalMinted, setTotalMinted] = useState<number>(0);
+  const [maxSupply, setMaxSupply] = useState<number>(420);
+
+  // Read total minted and max supply from contract
+  const { data: totalMintedData } = useReadContract({
+    address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+    abi: ASCII_LAWBSTER_CONTRACT_ABI,
+    functionName: 'totalMinted',
+    chainId: base.id,
+    query: {
+      enabled: chainId === base.id,
+    },
+  });
+
+  const { data: maxSupplyData } = useReadContract({
+    address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+    abi: ASCII_LAWBSTER_CONTRACT_ABI,
+    functionName: 'maxTotalSupply',
+    chainId: base.id,
+    query: {
+      enabled: chainId === base.id,
+    },
+  });
 
   const mediaQueryMatch = useMediaQuery('(max-width: 768px)');
   const capabilities = useMobileCapabilities();
@@ -226,8 +252,36 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
   useEffect(() => {
     if (isConnected && address && publicClient && chainId === base.id) {
       void loadClaimCondition();
+      void loadRecentlyMinted();
     }
   }, [isConnected, address, publicClient, chainId]);
+
+  useEffect(() => {
+    if (totalMintedData !== undefined) {
+      setTotalMinted(Number(totalMintedData));
+    }
+  }, [totalMintedData]);
+
+  useEffect(() => {
+    if (maxSupplyData !== undefined) {
+      setMaxSupply(Number(maxSupplyData) || 420);
+    }
+  }, [maxSupplyData]);
+
+  async function loadRecentlyMinted() {
+    try {
+      const response = await getOpenSeaNFTs('asciilawbs', 5);
+      // Sort by token_id descending (most recent first)
+      const sorted = response.data.sort((a, b) => {
+        const idA = parseInt(a.token_id?.toString() || '0', 10);
+        const idB = parseInt(b.token_id?.toString() || '0', 10);
+        return idB - idA;
+      });
+      setRecentlyMinted(sorted.slice(0, 5));
+    } catch (err) {
+      console.error('Error loading recently minted NFTs:', err);
+    }
+  }
 
   async function loadClaimCondition() {
     if (!address || !publicClient) return;
@@ -255,9 +309,10 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
   }
 
   function handleTransactionSuccess() {
-    // Reload claim condition after successful mint
+    // Reload claim condition and recently minted after successful mint
     if (address) {
       void loadClaimCondition();
+      void loadRecentlyMinted();
     }
     setQuantity(1); // Reset quantity
   }
@@ -358,32 +413,30 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
         <div className={classes.loading}>Loading claim status...</div>
       ) : (
         <>
-          {condition && (
-            <div className={classes.claimStatusSection}>
-              <div className={classes.claimStatusTitle}>Your Mint Status</div>
-              <div className={classes.claimStatusRow}>
-                <span className={classes.claimStatusLabel}>Condition:</span>
-                <span>{condition.name}</span>
-              </div>
-              <div className={classes.claimStatusRow}>
-                <span className={classes.claimStatusLabel}>Price:</span>
-                <span>Free</span>
-              </div>
-              <div className={classes.claimStatusRow}>
-                <span className={classes.claimStatusLabel}>Claimed:</span>
-                <span>{claimed} / {condition.quantityLimit === 0 ? '∞' : condition.quantityLimit}</span>
-              </div>
-              <div className={classes.claimStatusRow}>
-                <span className={classes.claimStatusLabel}>Remaining:</span>
-                <span>{remainingForUser} available</span>
-              </div>
-              {!canMint && (
-                <div className={classes.error} style={{ marginTop: '8px', marginBottom: '0' }}>
-                  You have reached your mint limit for this condition
-                </div>
-              )}
+          <div className={classes.claimStatusSection}>
+            <div className={classes.claimStatusTitle}>Mint Status</div>
+            <div className={classes.claimStatusRow}>
+              <span className={classes.claimStatusLabel}>Max Quantity:</span>
+              <span>{maxSupply}</span>
             </div>
-          )}
+            <div className={classes.claimStatusRow}>
+              <span className={classes.claimStatusLabel}>Currently Minted:</span>
+              <span>{totalMinted}</span>
+            </div>
+            {condition && (
+              <>
+                <div className={classes.claimStatusRow}>
+                  <span className={classes.claimStatusLabel}>Your Claimed:</span>
+                  <span>{claimed} / {condition.quantityLimit === 0 ? '∞' : condition.quantityLimit}</span>
+                </div>
+                {!canMint && (
+                  <div className={classes.error} style={{ marginTop: '8px', marginBottom: '0' }}>
+                    You have reached your mint limit for this condition
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {condition && canMint && (
             <div className={classes.mintSection}>
@@ -428,6 +481,50 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress }) 
           {!condition && !loading && (
             <div className={classes.error}>
               Unable to load claim condition
+            </div>
+          )}
+
+          {/* Recently Minted NFTs */}
+          {recentlyMinted.length > 0 && (
+            <div style={{
+              marginTop: '20px',
+              borderTop: '2px solid #808080',
+              paddingTop: '15px'
+            }}>
+              <h3 style={{ marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px' }}>Recently Minted</h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                gap: '10px',
+                marginTop: '10px',
+              }}>
+                {recentlyMinted.map((nft) => (
+                  <div key={nft.id} style={{
+                    border: '1px solid #808080',
+                    padding: '5px',
+                    backgroundColor: '#ffffff',
+                    textAlign: 'center',
+                    cursor: 'pointer'
+                  }}>
+                    <img 
+                      src={nft.image_url || nft.image || nft.image_url_shrunk || '/assets/pixelawb.png'} 
+                      alt={nft.name || `#${nft.token_id}`}
+                      style={{
+                        width: '100%',
+                        height: '80px',
+                        objectFit: 'cover',
+                        marginBottom: '5px'
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/assets/pixelawb.png';
+                      }}
+                    />
+                    <div style={{ fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {nft.name || `#${nft.token_id}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>

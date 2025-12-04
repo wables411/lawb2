@@ -514,6 +514,16 @@ function App() {
         })()}
       </Popup>
 
+      <Popup id="asciilawbs-popup" isOpen={activePopup === 'asciilawbs-popup'} onClose={closePopup} onMinimize={minimizePopup}>
+        <p style={{marginBottom: '10px'}}>
+          420 ascii lawbsters inspired by ascii milady, milady, cigawrette packs, allstarz and rusty rollers. brought to you in part by portion club.
+        </p>
+        <p style={{marginBottom: '10px'}}>Chain: Base</p>
+        <p style={{marginBottom: '10px'}}>
+          Collect on <a href="https://opensea.io/collection/asciilawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+        </p>
+      </Popup>
+
       <Popup id="halloween-popup" isOpen={activePopup === 'halloween-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <h3 style={{marginBottom: '10px'}}>A LAWBSTER HALLOWEEN</h3>
         <p style={{marginBottom: '10px'}}>
