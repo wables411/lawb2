@@ -372,9 +372,12 @@ export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddre
   }
 }
 
-export async function getOpenSeaNFTs(collectionSlug: string, pageSize: number = 50, ownerAddress?: string): Promise<NFTResponse> {
+export async function getOpenSeaNFTs(collectionSlug: string, pageSize: number = 50, ownerAddress?: string, chain?: 'ethereum' | 'base'): Promise<NFTResponse> {
   const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-  let url = `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?limit=${pageSize}`;
+  // For Base chain, use the chain-specific endpoint
+  let url = chain === 'base' 
+    ? `https://api.opensea.io/api/v2/chain/base/collection/${collectionSlug}/nfts?limit=${pageSize}`
+    : `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?limit=${pageSize}`;
   
   if (ownerAddress) {
     console.warn("Owner filtering is not supported for OpenSea collections in this view.");
@@ -388,32 +391,43 @@ export async function getOpenSeaNFTs(collectionSlug: string, pageSize: number = 
 
     const data = await response.json() as OpenSeaApiResponse;
     
-    const transformedNfts: NFT[] = data.nfts.map((nft): NFT => ({
-      id: nft.identifier,
-      address: nft.contract,
-      token_id: parseInt(nft.identifier, 10),
-      attributes: JSON.stringify(nft.traits || []),
-      name: nft.name || `#${nft.identifier}`,
-      image_url: nft.image_url,
-      owner_of: nft.owners?.[0]?.address || '',
-      block_minted: 0,
-      contract_type: 'ERC721',
-      description: nft.description || '',
-      image: nft.image_url,
-      image_url_shrunk: nft.image_url,
-      animation_url: nft.animation_url,
-      metadata: '',
-      chain_id: 1,
-      old_image_url: '',
-      old_token_uri: '',
-      token_uri: '',
-      log_index: 0,
-      transaction_index: 0,
-      collection_id: collectionSlug,
-      num_items: 1,
-      created_at: nft.updated_at || new Date().toISOString(),
-      updated_at: nft.updated_at || new Date().toISOString(),
-      owners: nft.owners?.map((o) => ({ owner_of: o.address, quantity: o.quantity })) || []
+    // Import IPFS utility
+    const { ipfsToHttp } = await import('../utils/ipfs');
+    
+    const transformedNfts: NFT[] = await Promise.all(data.nfts.map(async (nft): Promise<NFT> => {
+      // Convert IPFS URLs to HTTP gateway URLs
+      let imageUrl = nft.image_url || '';
+      if (imageUrl && (imageUrl.startsWith('ipfs://') || !imageUrl.startsWith('http'))) {
+        imageUrl = ipfsToHttp(imageUrl);
+      }
+      
+      return {
+        id: nft.identifier,
+        address: nft.contract,
+        token_id: parseInt(nft.identifier, 10),
+        attributes: JSON.stringify(nft.traits || []),
+        name: nft.name || `#${nft.identifier}`,
+        image_url: imageUrl,
+        owner_of: nft.owners?.[0]?.address || '',
+        block_minted: 0,
+        contract_type: 'ERC721',
+        description: nft.description || '',
+        image: imageUrl,
+        image_url_shrunk: imageUrl,
+        animation_url: nft.animation_url ? ipfsToHttp(nft.animation_url) : '',
+        metadata: '',
+        chain_id: 1,
+        old_image_url: '',
+        old_token_uri: '',
+        token_uri: '',
+        log_index: 0,
+        transaction_index: 0,
+        collection_id: collectionSlug,
+        num_items: 1,
+        created_at: nft.updated_at || new Date().toISOString(),
+        updated_at: nft.updated_at || new Date().toISOString(),
+        owners: nft.owners?.map((o) => ({ owner_of: o.address, quantity: o.quantity })) || []
+      };
     }));
 
     return {

@@ -271,14 +271,40 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
 
   async function loadRecentlyMinted() {
     try {
-      const response = await getOpenSeaNFTs('asciilawbs', 5);
+      const response = await getOpenSeaNFTs('asciilawbs', 5, undefined, 'base');
       // Sort by token_id descending (most recent first)
       const sorted = response.data.sort((a, b) => {
         const idA = parseInt(a.token_id?.toString() || '0', 10);
         const idB = parseInt(b.token_id?.toString() || '0', 10);
         return idB - idA;
       });
-      setRecentlyMinted(sorted.slice(0, 5));
+      
+      // For NFTs without images, try fetching from contract
+      const nftsWithMetadata = await Promise.all(sorted.slice(0, 5).map(async (nft) => {
+        // If image is missing or invalid, fetch from contract
+        if (!nft.image_url || nft.image_url === '' || nft.image_url.includes('invalid') || nft.image_url.includes('placeholder')) {
+          if (publicClient && chainId === base.id) {
+            try {
+              const { fetchAsciiLawbsterMetadata } = await import('../utils/asciiLawbsterMetadata');
+              const metadata = await fetchAsciiLawbsterMetadata(publicClient, Number(nft.token_id));
+              if (metadata && metadata.image_url) {
+                return {
+                  ...nft,
+                  image_url: metadata.image_url,
+                  image: metadata.image_url,
+                  image_url_shrunk: metadata.image_url,
+                  name: metadata.name || nft.name,
+                };
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch metadata for token ${nft.token_id}:`, err);
+            }
+          }
+        }
+        return nft;
+      }));
+      
+      setRecentlyMinted(nftsWithMetadata);
     } catch (err) {
       console.error('Error loading recently minted NFTs:', err);
     }
