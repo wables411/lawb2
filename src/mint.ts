@@ -1,3 +1,5 @@
+import { ipfsToHttp } from './utils/ipfs';
+
 interface MintNFTResponse {
   success: boolean;
   mintTransaction?: {
@@ -390,9 +392,6 @@ export async function getOpenSeaNFTs(collectionSlug: string, pageSize: number = 
     }
 
     const data = await response.json() as OpenSeaApiResponse;
-    
-    // Import IPFS utility
-    const { ipfsToHttp } = await import('../utils/ipfs');
     
     const transformedNfts: NFT[] = await Promise.all(data.nfts.map(async (nft): Promise<NFT> => {
       // Convert IPFS URLs to HTTP gateway URLs
