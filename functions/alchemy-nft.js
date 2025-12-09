@@ -41,13 +41,14 @@ exports.handler = async (event, context) => {
   }
 
   // Get query parameters
-  const { owner, contractAddress, chain } = event.queryStringParameters || {};
+  const { owner, contractAddress, chain, pageSize = '100', pageKey } = event.queryStringParameters || {};
   
-  if (!owner || !contractAddress) {
+  // Support both getNFTsForOwner (requires owner) and getNFTsForContract (requires contractAddress only)
+  if (!contractAddress) {
     return {
       statusCode: 400,
       headers,
-      body: JSON.stringify({ error: 'Missing required parameters: owner, contractAddress' })
+      body: JSON.stringify({ error: 'Missing required parameter: contractAddress' })
     };
   }
 
@@ -58,8 +59,18 @@ exports.handler = async (event, context) => {
       ? `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`
       : `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
     
-    // Call Alchemy NFT API v3 - use withMetadata=true to get image and trait data
-    const alchemyUrl = `${baseUrl}/getNFTsForOwner?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=true&pageSize=100`;
+    let alchemyUrl;
+    // If owner is provided, use getNFTsForOwner, otherwise use getNFTsForContract
+    if (owner) {
+      alchemyUrl = `${baseUrl}/getNFTsForOwner?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=true&pageSize=${pageSize}`;
+    } else {
+      // Get NFTs for collection (recent mints)
+      let url = `${baseUrl}/getNFTsForContract?contractAddress=${encodeURIComponent(contractAddress)}&withMetadata=true&pageSize=${pageSize}`;
+      if (pageKey) {
+        url += `&pageKey=${encodeURIComponent(pageKey)}`;
+      }
+      alchemyUrl = url;
+    }
     
     const response = await fetch(alchemyUrl);
     

@@ -6,7 +6,7 @@ import { getClaimConditionForUser, getClaimedAmount, getRemainingSupply, type Cl
 import { createMintCalls } from '../utils/asciiLawbsterCalls';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import { ASCII_LAWBSTER_CONTRACT_ADDRESS, ASCII_LAWBSTER_CONTRACT_ABI } from '../utils/asciiLawbsterContract';
-import { getOpenSeaNFTs, type NFT } from '../mint';
+import { getAlchemyNFTsForCollection, type NFT } from '../mint';
 
 const useStyles = createUseStyles({
   container: {
@@ -271,16 +271,11 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
 
   async function loadRecentlyMinted() {
     try {
-      const response = await getOpenSeaNFTs('asciilawbs', 5, undefined, 'base');
-      // Sort by token_id descending (most recent first)
-      const sorted = response.data.sort((a, b) => {
-        const idA = parseInt(a.token_id?.toString() || '0', 10);
-        const idB = parseInt(b.token_id?.toString() || '0', 10);
-        return idB - idA;
-      });
+      // Use Alchemy API to get recent NFTs from the collection (Base chain)
+      const response = await getAlchemyNFTsForCollection(ASCII_LAWBSTER_CONTRACT_ADDRESS, 5, 8453);
       
       // For NFTs without images, try fetching from contract
-      const nftsWithMetadata = await Promise.all(sorted.slice(0, 5).map(async (nft) => {
+      const nftsWithMetadata = await Promise.all(response.data.slice(0, 5).map(async (nft) => {
         // If image is missing or invalid, fetch from contract
         if (!nft.image_url || nft.image_url === '' || nft.image_url.includes('invalid') || nft.image_url.includes('placeholder')) {
           if (publicClient && chainId === base.id) {
@@ -307,6 +302,7 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
       setRecentlyMinted(nftsWithMetadata);
     } catch (err) {
       console.error('Error loading recently minted NFTs:', err);
+      setRecentlyMinted([]);
     }
   }
 

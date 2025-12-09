@@ -283,6 +283,106 @@ export async function mintNFT(walletAddress: string, selectedLists: Array<{id: s
 }
 
 // Fetch NFTs from Alchemy API for EVM collections (supports Ethereum and Base)
+// Fetch NFTs from a collection using Alchemy API (for recent mints, not filtered by owner)
+export async function getAlchemyNFTsForCollection(contractAddress: string, pageSize: number = 50, chainId: number = 1): Promise<NFTResponse> {
+  try {
+    // Determine chain parameter (1 = Ethereum, 8453 = Base)
+    const chain = chainId === 8453 ? 'base' : 'ethereum';
+    
+    // Use Netlify function proxy to keep API key server-side (no owner parameter = getNFTsForContract)
+    const proxyUrl = `/.netlify/functions/alchemy-nft?contractAddress=${encodeURIComponent(contractAddress)}&chain=${chain}&pageSize=${pageSize}`;
+    const response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Alchemy API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Alchemy getNFTsForContract returns nfts array (not ownedNfts)
+    const nftsArray = data.nfts || data.ownedNfts || [];
+    
+    if (!Array.isArray(nftsArray) || nftsArray.length === 0) {
+      return {
+        page: 1,
+        pageSize: pageSize,
+        totalCount: 0,
+        totalPages: 1,
+        data: []
+      };
+    }
+    
+    // Transform Alchemy response to NFT format
+    const transformedNfts: NFT[] = nftsArray.map((nft: any): NFT => {
+      // Parse tokenId - can be hex string or number
+      const tokenId = nft.tokenId || nft.id?.tokenId || '0';
+      const tokenIdNum = typeof tokenId === 'string' 
+        ? (tokenId.startsWith('0x') ? parseInt(tokenId, 16) : parseInt(tokenId, 10))
+        : tokenId;
+      
+      // Get image URL - Alchemy provides image.cachedUrl, image.originalUrl, or raw.metadata.image
+      const imageUrl = nft.image?.cachedUrl 
+        || nft.image?.originalUrl 
+        || nft.raw?.metadata?.image 
+        || '';
+      
+      // Get attributes from raw.metadata.attributes (Alchemy API format)
+      const attributes = nft.raw?.metadata?.attributes || [];
+      
+      // Get name from name field or raw.metadata.name
+      const name = nft.name || nft.raw?.metadata?.name || `#${tokenIdNum}`;
+      
+      // Get description
+      const description = nft.description || nft.raw?.metadata?.description || '';
+      
+      // Get owner if available
+      const owner = nft.owners?.[0]?.address || nft.owner || '';
+      
+      return {
+        id: `${contractAddress}-${tokenIdNum}`,
+        address: contractAddress,
+        token_id: tokenIdNum,
+        attributes: JSON.stringify(attributes),
+        name: name,
+        image_url: imageUrl,
+        owner_of: owner,
+        block_minted: 0,
+        contract_type: 'ERC721',
+        description: description,
+        image: imageUrl,
+        image_url_shrunk: imageUrl,
+        animation_url: nft.raw?.metadata?.animation_url || '',
+        metadata: JSON.stringify(nft.raw?.metadata || {}),
+        chain_id: chainId,
+        old_image_url: '',
+        old_token_uri: nft.tokenUri?.raw || nft.tokenUri || '',
+        token_uri: nft.tokenUri?.raw || nft.tokenUri || '',
+        log_index: 0,
+        transaction_index: 0,
+        collection_id: contractAddress,
+        num_items: 1,
+        created_at: nft.timeLastUpdated || new Date().toISOString(),
+        updated_at: nft.timeLastUpdated || new Date().toISOString(),
+        owners: owner ? [{ owner_of: owner, quantity: 1 }] : []
+      };
+    });
+    
+    // Sort by token_id descending (most recent/highest token IDs first)
+    transformedNfts.sort((a, b) => b.token_id - a.token_id);
+    
+    return {
+      page: 1,
+      pageSize: pageSize,
+      totalCount: transformedNfts.length,
+      totalPages: 1,
+      data: transformedNfts
+    };
+  } catch (error) {
+    console.error('Error getting Alchemy NFTs for collection:', error);
+    throw error;
+  }
+}
+
 export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddress: string, pageSize: number = 50, chainId: number = 1): Promise<NFTResponse> {
   try {
     // Determine chain parameter (1 = Ethereum, 8453 = Base)
