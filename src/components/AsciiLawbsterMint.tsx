@@ -329,22 +329,30 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
       // Get top 6 most recent mints
       const recentTokenIds = mintEvents.slice(0, 6).map(e => e.tokenId);
       
-      // Fetch metadata for each using Alchemy or contract
-      const { fetchAsciiLawbsterMetadata } = await import('../utils/asciiLawbsterMetadata');
-      const nftsWithMetadata = await Promise.all(recentTokenIds.map(async (tokenId) => {
-        try {
-          const metadata = await fetchAsciiLawbsterMetadata(publicClient, Number(tokenId));
-          if (!metadata) {
-            return null;
+      // Fetch metadata for each using Alchemy API (more reliable than IPFS)
+      // Get all NFTs from Alchemy and match by token ID
+      try {
+        const response = await getAlchemyNFTsForCollection(ASCII_LAWBSTER_CONTRACT_ADDRESS, 100, 8453);
+        const alchemyNftsMap = new Map(response.data.map(nft => [nft.token_id, nft]));
+        
+        const nftsWithMetadata = recentTokenIds.map((tokenId) => {
+          const tokenIdNum = Number(tokenId);
+          const alchemyNft = alchemyNftsMap.get(tokenIdNum);
+          
+          // If Alchemy has it, use that (most reliable)
+          if (alchemyNft) {
+            return alchemyNft;
           }
+          
+          // Otherwise create a placeholder NFT (token exists, metadata fetch just failed)
           return {
             id: `${ASCII_LAWBSTER_CONTRACT_ADDRESS}-${tokenId}`,
             address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
-            token_id: Number(tokenId),
-            name: metadata.name || `#${tokenId}`,
-            image_url: metadata.image_url || '',
-            image: metadata.image_url || '',
-            image_url_shrunk: metadata.image_url || '',
+            token_id: tokenIdNum,
+            name: `ASCII Lawbster #${tokenId}`,
+            image_url: '/assets/asciilawb.GIF',
+            image: '/assets/asciilawb.GIF',
+            image_url_shrunk: '/assets/asciilawb.GIF',
             attributes: '',
             owner_of: '',
             block_minted: 0,
@@ -364,14 +372,41 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
             updated_at: new Date().toISOString(),
             owners: []
           } as NFT;
-        } catch (err) {
-          console.warn(`Failed to fetch metadata for token ${tokenId}:`, err);
-          return null;
-        }
-      }));
-      
-      const validNfts = nftsWithMetadata.filter((nft): nft is NFT => nft !== null);
-      setRecentlyMinted(validNfts);
+        });
+        
+        setRecentlyMinted(nftsWithMetadata);
+      } catch (alchemyErr) {
+        console.error('Failed to fetch from Alchemy, using placeholders:', alchemyErr);
+        // Fallback: create placeholder NFTs for each token ID
+        const placeholderNfts = recentTokenIds.map((tokenId) => ({
+          id: `${ASCII_LAWBSTER_CONTRACT_ADDRESS}-${tokenId}`,
+          address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+          token_id: Number(tokenId),
+          name: `ASCII Lawbster #${tokenId}`,
+          image_url: '/assets/asciilawb.GIF',
+          image: '/assets/asciilawb.GIF',
+          image_url_shrunk: '/assets/asciilawb.GIF',
+          attributes: '',
+          owner_of: '',
+          block_minted: 0,
+          contract_type: 'ERC721',
+          description: '',
+          animation_url: '',
+          metadata: '',
+          chain_id: 8453,
+          old_image_url: '',
+          old_token_uri: '',
+          token_uri: '',
+          log_index: 0,
+          transaction_index: 0,
+          collection_id: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+          num_items: 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          owners: []
+        } as NFT));
+        setRecentlyMinted(placeholderNfts);
+      }
     } catch (err) {
       console.error('Error loading recently minted NFTs:', err);
       // Fallback: try Alchemy API with large page size
