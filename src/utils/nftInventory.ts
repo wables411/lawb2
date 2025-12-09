@@ -648,40 +648,58 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
         window.console.log('[NFT] No ASCII Lawbsters found (balance is 0)');
       }
     } else {
-      // Get token IDs from Basescan API
-      const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
-      const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
-      const basescanResponse = await fetch(basescanUrl);
-      
-      if (basescanResponse.ok) {
-        const basescanData = await basescanResponse.json();
-        if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
-          // Extract unique token IDs from transfers where 'to' is the wallet
-          const tokenIds = new Set<string>();
-          for (const tx of basescanData.result) {
-            if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
-              tokenIds.add(tx.tokenID);
-            }
-          }
-          // Remove tokens that were transferred out
-          for (const tx of basescanData.result) {
-            if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
-              tokenIds.delete(tx.tokenID);
-            }
-          }
-          inventory.asciilawbs = Array.from(tokenIds);
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters (balance:', balance.toString(), 'token IDs from Basescan)');
-          }
-        } else {
-          // If Basescan fails but we have balance, return empty array (will be corrected on next refresh)
-          inventory.asciilawbs = [];
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.warn('[NFT] Basescan API returned no results but balance is', balance.toString());
-          }
+      // Get token IDs from Transfer events via RPC (more reliable than API)
+      try {
+        const tokenIds = await fetchTokenIdsFromTransferEvents(
+          asciilawbs.address,
+          walletAddress,
+          'ASCII Lawbsters',
+          baseProvider
+        );
+        inventory.asciilawbs = tokenIds;
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters (balance:', balance.toString(), 'token IDs from Transfer events)');
         }
-      } else {
-        throw new Error(`Basescan HTTP error: ${basescanResponse.status}`);
+      } catch (eventError) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn('[NFT] Failed to get token IDs from Transfer events, trying Basescan API:', eventError);
+        }
+        // Fallback to Basescan API if RPC fails
+        try {
+          const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
+          const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
+          const basescanResponse = await fetch(basescanUrl);
+          
+          if (basescanResponse.ok) {
+            const basescanData = await basescanResponse.json();
+            if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
+              const tokenIds = new Set<string>();
+              for (const tx of basescanData.result) {
+                if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
+                  tokenIds.add(tx.tokenID);
+                }
+              }
+              for (const tx of basescanData.result) {
+                if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
+                  tokenIds.delete(tx.tokenID);
+                }
+              }
+              inventory.asciilawbs = Array.from(tokenIds);
+              if (typeof window !== 'undefined' && window.console) {
+                window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Basescan API (fallback)');
+              }
+            } else {
+              inventory.asciilawbs = [];
+            }
+          } else {
+            inventory.asciilawbs = [];
+          }
+        } catch (apiError) {
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.error('[NFT] Both RPC and Basescan API failed:', apiError);
+          }
+          inventory.asciilawbs = [];
+        }
       }
     }
   } catch (error) {
