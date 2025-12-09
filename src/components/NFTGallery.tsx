@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Draggable from 'react-draggable';
-import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getAlchemyNFTsForOwner } from '../mint';
+import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
 import NFTDetailPopup from './NFTDetailPopup';
@@ -159,6 +159,7 @@ const COLLECTIONS: Collection[] = [
   { slug: 'lawbsters', name: 'Lawbsters', api: 'opensea', chain: 'ethereum' },
   { slug: 'lawbstarz', name: 'Lawbstarz', api: 'scatter' },
   { slug: 'a-lawbster-halloween', name: 'Halloween', api: 'opensea', chain: 'base' },
+  { slug: 'asciilawbs', name: 'ASCII Lawbs', api: 'opensea', chain: 'base' },
   { slug: 'lawbstation', name: 'Lawbstation', api: 'opensea-solana', chain: 'solana' },
   { slug: 'lawbnexus', name: 'Nexus', api: 'opensea-solana', chain: 'solana' },
 ];
@@ -169,6 +170,7 @@ const COLLECTION_CONTRACT_MAP: Record<string, { address: string; chainId: number
   'lawbstarz': { address: NFT_COLLECTIONS.lawbstarz.address, chainId: NFT_COLLECTIONS.lawbstarz.chainId },
   'pixelawbs': { address: NFT_COLLECTIONS.pixelawbs.address, chainId: NFT_COLLECTIONS.pixelawbs.chainId },
   'a-lawbster-halloween': { address: NFT_COLLECTIONS.halloween_lawbsters.address, chainId: NFT_COLLECTIONS.halloween_lawbsters.chainId },
+  'asciilawbs': { address: NFT_COLLECTIONS.asciilawbs.address, chainId: NFT_COLLECTIONS.asciilawbs.chainId },
 };
 
 declare global {
@@ -286,19 +288,33 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             }
           }
         } else if (currentCollection.api === 'opensea') {
-          // For "MY NFTs" view with EVM collections, use Alchemy API for accurate ownership
-          if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
+          // Use Alchemy API for all EVM collections when available (more reliable than OpenSea)
+          if (COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
             const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
-            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
+            if (viewMode === 'owned' && walletAddressToFetch) {
+              // For owned view, filter by owner
+              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
+            } else {
+              // For all/recent view, get all NFTs from collection
+              response = await getAlchemyNFTsForCollection(contractAddress, 50, chainId);
+            }
           } else {
+            // Fallback to OpenSea if not in contract map
             response = await getOpenSeaNFTs(currentCollection.slug, 50, walletAddressToFetch);
           }
         } else {
-          // For "MY NFTs" view with Scatter collections (Pixelawbs, Lawbstarz), use Alchemy if on Ethereum
-          if (viewMode === 'owned' && walletAddressToFetch && COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
+          // For Scatter collections (Pixelawbs, Lawbstarz), use Alchemy when available
+          if (COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
             const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
-            response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
+            if (viewMode === 'owned' && walletAddressToFetch) {
+              // For owned view, filter by owner
+              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
+            } else {
+              // For all/recent view, get all NFTs from collection
+              response = await getAlchemyNFTsForCollection(contractAddress, 50, chainId);
+            }
           } else {
+            // Fallback to Scatter API if not in contract map
             response = await getCollectionNFTs(currentCollection.slug, currentPage, 50, walletAddressToFetch);
           }
         }
