@@ -550,6 +550,17 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
     <div className={classes.container}>
       <h1 className={classes.title}>MINT ASCII LAWBSTERS</h1>
       <p className={classes.subtitle}>FOR THE LAWB OF THE GAME</p>
+      <p className={classes.subtitle} style={{ marginTop: '4px', fontSize: '11px' }}>
+        INSPIRED BY{' '}
+        <a 
+          href="https://www.scatter.art/ascii-milady" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ color: '#0000FF', textDecoration: 'underline' }}
+        >
+          ASCII MILADY
+        </a>
+      </p>
 
       {loading ? (
         <div className={classes.loading}>Loading claim status...</div>
