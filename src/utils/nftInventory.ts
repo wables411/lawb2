@@ -629,86 +629,66 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Fetch ASCII Lawbsters (Base chain) - Use Basescan API (like Etherscan for Ethereum)
+  // Fetch ASCII Lawbsters (Base chain) - Check balanceOf first, then get token IDs from Basescan
   try {
     const asciilawbs = NFT_COLLECTIONS.asciilawbs;
-    const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
+    const baseProvider = new JsonRpcProvider('https://mainnet.base.org');
+    const contract = new Contract(asciilawbs.address, ERC721_ABI, baseProvider);
+    
+    // First check balanceOf (source of truth)
+    const balance = await contract.balanceOf(walletAddress);
+    
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching ASCII Lawbsters for', walletAddress, 'from Basescan');
+      window.console.log('[NFT] ASCII Lawbsters balanceOf:', balance.toString());
     }
     
-    // Basescan API: Get NFT token transfers to get token IDs
-    const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
-    const basescanResponse = await fetch(basescanUrl);
-    
-    if (basescanResponse.ok) {
-      const basescanData = await basescanResponse.json();
-      if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
-        // Extract unique token IDs from transfers where 'to' is the wallet
-        const tokenIds = new Set<string>();
-        for (const tx of basescanData.result) {
-          if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
-            tokenIds.add(tx.tokenID);
-          }
-        }
-        // Remove tokens that were transferred out
-        for (const tx of basescanData.result) {
-          if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
-            tokenIds.delete(tx.tokenID);
-          }
-        }
-        inventory.asciilawbs = Array.from(tokenIds);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Basescan');
-        }
-      } else {
-        inventory.asciilawbs = [];
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] No ASCII Lawbsters found from Basescan');
-        }
+    if (balance === 0n) {
+      inventory.asciilawbs = [];
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] No ASCII Lawbsters found (balance is 0)');
       }
     } else {
-      throw new Error(`Basescan HTTP error: ${basescanResponse.status}`);
-    }
-  } catch (basescanError) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.warn('Error fetching ASCII Lawbsters from Basescan, trying OpenSea API:', basescanError);
-    }
-    // Fallback to OpenSea API - filter to ensure only NFTs owned by this wallet
-    try {
-      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-      const asciilawbsAddress = NFT_COLLECTIONS.asciilawbs.address;
-      const response = await fetch(
-        `https://api.opensea.io/api/v2/chain/base/account/${walletAddress}/nfts?contract_address=${asciilawbsAddress}&limit=100`,
-        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        // Filter to ensure NFTs are actually owned by this wallet
-        const walletAddressLower = walletAddress.toLowerCase();
-        const ownedNFTs = (data.nfts || []).filter((nft: any) => {
-          // Check if any owner matches the wallet address
-          if (nft.owners && Array.isArray(nft.owners)) {
-            return nft.owners.some((owner: any) => 
-              owner.address?.toLowerCase() === walletAddressLower
-            );
+      // Get token IDs from Basescan API
+      const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
+      const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
+      const basescanResponse = await fetch(basescanUrl);
+      
+      if (basescanResponse.ok) {
+        const basescanData = await basescanResponse.json();
+        if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
+          // Extract unique token IDs from transfers where 'to' is the wallet
+          const tokenIds = new Set<string>();
+          for (const tx of basescanData.result) {
+            if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
+              tokenIds.add(tx.tokenID);
+            }
           }
-          // Fallback: if no owners array, assume the account endpoint already filtered correctly
-          return true;
-        });
-        inventory.asciilawbs = ownedNFTs.map((nft: any) => nft.identifier);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from OpenSea (fallback, filtered by owner)');
+          // Remove tokens that were transferred out
+          for (const tx of basescanData.result) {
+            if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
+              tokenIds.delete(tx.tokenID);
+            }
+          }
+          inventory.asciilawbs = Array.from(tokenIds);
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters (balance:', balance.toString(), 'token IDs from Basescan)');
+          }
+        } else {
+          // If Basescan fails but we have balance, return empty array (will be corrected on next refresh)
+          inventory.asciilawbs = [];
+          if (typeof window !== 'undefined' && window.console) {
+            window.console.warn('[NFT] Basescan API returned no results but balance is', balance.toString());
+          }
         }
       } else {
-        inventory.asciilawbs = [];
+        throw new Error(`Basescan HTTP error: ${basescanResponse.status}`);
       }
-    } catch (apiError) {
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.error('Error fetching ASCII Lawbsters from OpenSea API:', apiError);
-      }
-      inventory.asciilawbs = [];
     }
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.error('Error fetching ASCII Lawbsters:', error);
+    }
+    inventory.asciilawbs = [];
   }
 
   return inventory;
