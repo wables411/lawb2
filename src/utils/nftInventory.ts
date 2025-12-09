@@ -674,7 +674,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     if (typeof window !== 'undefined' && window.console) {
       window.console.warn('Error fetching ASCII Lawbsters from Basescan, trying OpenSea API:', basescanError);
     }
-    // Fallback to OpenSea API
+    // Fallback to OpenSea API - filter to ensure only NFTs owned by this wallet
     try {
       const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
       const asciilawbsAddress = NFT_COLLECTIONS.asciilawbs.address;
@@ -684,9 +684,21 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       );
       if (response.ok) {
         const data = await response.json();
-        inventory.asciilawbs = data.nfts?.map((nft: any) => nft.identifier) || [];
+        // Filter to ensure NFTs are actually owned by this wallet
+        const walletAddressLower = walletAddress.toLowerCase();
+        const ownedNFTs = (data.nfts || []).filter((nft: any) => {
+          // Check if any owner matches the wallet address
+          if (nft.owners && Array.isArray(nft.owners)) {
+            return nft.owners.some((owner: any) => 
+              owner.address?.toLowerCase() === walletAddressLower
+            );
+          }
+          // Fallback: if no owners array, assume the account endpoint already filtered correctly
+          return true;
+        });
+        inventory.asciilawbs = ownedNFTs.map((nft: any) => nft.identifier);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from OpenSea (fallback)');
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from OpenSea (fallback, filtered by owner)');
         }
       } else {
         inventory.asciilawbs = [];
