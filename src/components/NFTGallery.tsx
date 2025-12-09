@@ -227,6 +227,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
   const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [hasMoreResults, setHasMoreResults] = useState(false);
   const [currentCollection, setCurrentCollection] = useState<Collection>(COLLECTIONS[0]);
   const [showSolanaPrompt, setShowSolanaPrompt] = useState(false);
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
@@ -277,7 +278,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
           walletAddressToFetch = solanaAddress || undefined;
           
           // Fetch all NFTs from collection (should now include owner data)
-          response = await getOpenSeaSolanaNFTs(currentCollection.slug, 50);
+          response = await getOpenSeaSolanaNFTs(currentCollection.slug, 100);
           console.log('Fetched Solana NFTs from collection:', response.data.length);
           
           // Filter by owner if needed
@@ -317,14 +318,14 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
             if (viewMode === 'owned' && walletAddressToFetch) {
               // For owned view, filter by owner
-              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
+              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 100, chainId);
             } else {
               // For all/recent view, get all NFTs from collection
-              response = await getAlchemyNFTsForCollection(contractAddress, 50, chainId);
+              response = await getAlchemyNFTsForCollection(contractAddress, 100, chainId);
             }
           } else {
             // Fallback to OpenSea if not in contract map
-            response = await getOpenSeaNFTs(currentCollection.slug, 50, walletAddressToFetch);
+            response = await getOpenSeaNFTs(currentCollection.slug, 100, walletAddressToFetch);
           }
         } else {
           // For Scatter collections (Pixelawbs, Lawbstarz), use Alchemy when available
@@ -332,19 +333,20 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
             if (viewMode === 'owned' && walletAddressToFetch) {
               // For owned view, filter by owner
-              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 50, chainId);
+              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 100, chainId);
             } else {
               // For all/recent view, get all NFTs from collection
-              response = await getAlchemyNFTsForCollection(contractAddress, 50, chainId);
+              response = await getAlchemyNFTsForCollection(contractAddress, 100, chainId);
             }
           } else {
             // Fallback to Scatter API if not in contract map
-            response = await getCollectionNFTs(currentCollection.slug, currentPage, 50, walletAddressToFetch);
+            response = await getCollectionNFTs(currentCollection.slug, currentPage, 100, walletAddressToFetch);
           }
         }
         setNfts(response.data);
         setTotalPages(response.totalPages);
         setTotalCount(response.totalCount);
+        setHasMoreResults(response.hasMore || false);
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -418,6 +420,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
     setCurrentCollection(collection);
     setCurrentPage(1);
     setSelectedNft(null); // Clear selected NFT when changing collection
+    setHasMoreResults(false); // Reset hasMore flag
   };
 
   const renderDetailView = () => {
@@ -603,7 +606,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             ) : (
               <>
                 <div style={{ marginBottom: '10px', fontSize: '14px' }}>
-                  {viewMode === 'all' && `Showing all NFTs (${totalCount} total)`}
+                  {viewMode === 'all' && `Showing ${hasMoreResults ? `${nfts.length}+` : nfts.length} NFT${nfts.length !== 1 ? 's' : ''}`}
                   {viewMode === 'recent' && `Recently minted NFTs by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
                   {viewMode === 'owned' && `NFTs owned by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
                 </div>

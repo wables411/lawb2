@@ -76,6 +76,7 @@ interface NFTResponse {
   totalCount: number;
   totalPages: number;
   data: NFT[];
+  hasMore?: boolean; // Indicates if there are more results available
 }
 
 interface OpenSeaNft {
@@ -301,6 +302,7 @@ export async function getAlchemyNFTsForCollection(contractAddress: string, pageS
     
     // Alchemy getNFTsForContract returns nfts array (not ownedNfts)
     const nftsArray = data.nfts || data.ownedNfts || [];
+    const hasMore = !!data.pageKey; // Check if there are more results
     
     if (!Array.isArray(nftsArray) || nftsArray.length === 0) {
       return {
@@ -370,12 +372,17 @@ export async function getAlchemyNFTsForCollection(contractAddress: string, pageS
     // Sort by token_id descending (most recent/highest token IDs first)
     transformedNfts.sort((a, b) => b.token_id - a.token_id);
     
+    // If there are more results (pageKey exists), indicate that in totalCount
+    // Otherwise, show the actual count
+    const displayCount = hasMore ? `${transformedNfts.length}+` : transformedNfts.length;
+    
     return {
       page: 1,
       pageSize: pageSize,
-      totalCount: transformedNfts.length,
+      totalCount: transformedNfts.length, // Show actual count fetched
       totalPages: 1,
-      data: transformedNfts
+      data: transformedNfts,
+      hasMore: hasMore // Add flag to indicate more results available
     };
   } catch (error) {
     console.error('Error getting Alchemy NFTs for collection:', error);
