@@ -334,6 +334,9 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
       const nftsWithMetadata = await Promise.all(recentTokenIds.map(async (tokenId) => {
         try {
           const metadata = await fetchAsciiLawbsterMetadata(publicClient, Number(tokenId));
+          if (!metadata) {
+            return null;
+          }
           return {
             id: `${ASCII_LAWBSTER_CONTRACT_ADDRESS}-${tokenId}`,
             address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
