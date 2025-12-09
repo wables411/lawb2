@@ -271,38 +271,115 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
 
   async function loadRecentlyMinted() {
     try {
-      // Use Alchemy API to get recent NFTs from the collection (Base chain)
-      const response = await getAlchemyNFTsForCollection(ASCII_LAWBSTER_CONTRACT_ADDRESS, 5, 8453);
+      if (!publicClient || chainId !== base.id) {
+        setRecentlyMinted([]);
+        return;
+      }
+
+      // Use Base RPC to query Transfer events to find most recently minted NFTs
+      // This is more accurate than relying on token ID order
+      const { JsonRpcProvider } = await import('ethers');
+      const BASE_RPC_ENDPOINTS = [
+        'https://mainnet.base.org',
+        'https://base.llamarpc.com',
+        'https://base-rpc.publicnode.com',
+      ];
       
-      // For NFTs without images, try fetching from contract
-      const nftsWithMetadata = await Promise.all(response.data.slice(0, 5).map(async (nft) => {
-        // If image is missing or invalid, fetch from contract
-        if (!nft.image_url || nft.image_url === '' || nft.image_url.includes('invalid') || nft.image_url.includes('placeholder')) {
-          if (publicClient && chainId === base.id) {
-            try {
-              const { fetchAsciiLawbsterMetadata } = await import('../utils/asciiLawbsterMetadata');
-              const metadata = await fetchAsciiLawbsterMetadata(publicClient, Number(nft.token_id));
-              if (metadata && metadata.image_url) {
-                return {
-                  ...nft,
-                  image_url: metadata.image_url,
-                  image: metadata.image_url,
-                  image_url_shrunk: metadata.image_url,
-                  name: metadata.name || nft.name,
-                };
-              }
-            } catch (err) {
-              console.warn(`Failed to fetch metadata for token ${nft.token_id}:`, err);
-            }
-          }
+      let provider;
+      for (const rpcUrl of BASE_RPC_ENDPOINTS) {
+        try {
+          provider = new JsonRpcProvider(rpcUrl);
+          await provider.getBlockNumber();
+          break;
+        } catch (e) {
+          continue;
         }
-        return nft;
+      }
+      
+      if (!provider) {
+        throw new Error('Failed to connect to Base RPC');
+      }
+
+      const TRANSFER_EVENT_SIGNATURE = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+      const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+      const zeroAddressPadded = '0x' + ZERO_ADDRESS.slice(2).padStart(64, '0');
+      
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - 100000); // Last ~100k blocks
+      
+      // Query Transfer events where from = zero address (mint events)
+      const logs = await provider.getLogs({
+        address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+        topics: [
+          TRANSFER_EVENT_SIGNATURE,
+          zeroAddressPadded, // from = zero address (mint)
+          null // to = any address
+        ],
+        fromBlock: fromBlock,
+        toBlock: 'latest'
+      });
+      
+      // Extract token IDs and block numbers, sort by block number descending (most recent first)
+      const mintEvents = logs.map(log => ({
+        tokenId: BigInt(log.topics[3] || '0').toString(),
+        blockNumber: log.blockNumber,
+        transactionHash: log.transactionHash
+      })).sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+      
+      // Get top 6 most recent mints
+      const recentTokenIds = mintEvents.slice(0, 6).map(e => e.tokenId);
+      
+      // Fetch metadata for each using Alchemy or contract
+      const { fetchAsciiLawbsterMetadata } = await import('../utils/asciiLawbsterMetadata');
+      const nftsWithMetadata = await Promise.all(recentTokenIds.map(async (tokenId) => {
+        try {
+          const metadata = await fetchAsciiLawbsterMetadata(publicClient, Number(tokenId));
+          return {
+            id: `${ASCII_LAWBSTER_CONTRACT_ADDRESS}-${tokenId}`,
+            address: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+            token_id: Number(tokenId),
+            name: metadata.name || `#${tokenId}`,
+            image_url: metadata.image_url || '',
+            image: metadata.image_url || '',
+            image_url_shrunk: metadata.image_url || '',
+            attributes: '',
+            owner_of: '',
+            block_minted: 0,
+            contract_type: 'ERC721',
+            description: '',
+            animation_url: '',
+            metadata: '',
+            chain_id: 8453,
+            old_image_url: '',
+            old_token_uri: '',
+            token_uri: '',
+            log_index: 0,
+            transaction_index: 0,
+            collection_id: ASCII_LAWBSTER_CONTRACT_ADDRESS,
+            num_items: 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            owners: []
+          } as NFT;
+        } catch (err) {
+          console.warn(`Failed to fetch metadata for token ${tokenId}:`, err);
+          return null;
+        }
       }));
       
-      setRecentlyMinted(nftsWithMetadata);
+      const validNfts = nftsWithMetadata.filter((nft): nft is NFT => nft !== null);
+      setRecentlyMinted(validNfts);
     } catch (err) {
       console.error('Error loading recently minted NFTs:', err);
-      setRecentlyMinted([]);
+      // Fallback: try Alchemy API with large page size
+      try {
+        const response = await getAlchemyNFTsForCollection(ASCII_LAWBSTER_CONTRACT_ADDRESS, 100, 8453);
+        const topRecent = response.data.slice(0, 6);
+        setRecentlyMinted(topRecent);
+      } catch (fallbackErr) {
+        console.error('Fallback to Alchemy also failed:', fallbackErr);
+        setRecentlyMinted([]);
+      }
     }
   }
 
