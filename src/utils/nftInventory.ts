@@ -629,34 +629,74 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Fetch ASCII Lawbsters (Base chain) - Use OpenSea API directly
+  // Fetch ASCII Lawbsters (Base chain) - Use Basescan API (like Etherscan for Ethereum)
   try {
-    const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-    const asciilawbsAddress = NFT_COLLECTIONS.asciilawbs.address;
+    const asciilawbs = NFT_COLLECTIONS.asciilawbs;
+    const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching ASCII Lawbsters for', walletAddress, 'from OpenSea Base');
+      window.console.log('[NFT] Fetching ASCII Lawbsters for', walletAddress, 'from Basescan');
     }
-    const response = await fetch(
-      `https://api.opensea.io/api/v2/chain/base/account/${walletAddress}/nfts?contract_address=${asciilawbsAddress}&limit=100`,
-      { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-    );
-    if (response.ok) {
-      const data = await response.json();
-      inventory.asciilawbs = data.nfts?.map((nft: any) => nft.identifier) || [];
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from OpenSea');
+    
+    // Basescan API: Get NFT token transfers to get token IDs
+    const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
+    const basescanResponse = await fetch(basescanUrl);
+    
+    if (basescanResponse.ok) {
+      const basescanData = await basescanResponse.json();
+      if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
+        // Extract unique token IDs from transfers where 'to' is the wallet
+        const tokenIds = new Set<string>();
+        for (const tx of basescanData.result) {
+          if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
+            tokenIds.add(tx.tokenID);
+          }
+        }
+        // Remove tokens that were transferred out
+        for (const tx of basescanData.result) {
+          if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
+            tokenIds.delete(tx.tokenID);
+          }
+        }
+        inventory.asciilawbs = Array.from(tokenIds);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Basescan');
+        }
+      } else {
+        inventory.asciilawbs = [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] No ASCII Lawbsters found from Basescan');
+        }
       }
     } else {
+      throw new Error(`Basescan HTTP error: ${basescanResponse.status}`);
+    }
+  } catch (basescanError) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.warn('Error fetching ASCII Lawbsters from Basescan, trying OpenSea API:', basescanError);
+    }
+    // Fallback to OpenSea API
+    try {
+      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
+      const asciilawbsAddress = NFT_COLLECTIONS.asciilawbs.address;
+      const response = await fetch(
+        `https://api.opensea.io/api/v2/chain/base/account/${walletAddress}/nfts?contract_address=${asciilawbsAddress}&limit=100`,
+        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        inventory.asciilawbs = data.nfts?.map((nft: any) => nft.identifier) || [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from OpenSea (fallback)');
+        }
+      } else {
+        inventory.asciilawbs = [];
+      }
+    } catch (apiError) {
       if (typeof window !== 'undefined' && window.console) {
-        window.console.error('[NFT] OpenSea API error for ASCII Lawbsters:', response.status, response.statusText);
+        window.console.error('Error fetching ASCII Lawbsters from OpenSea API:', apiError);
       }
       inventory.asciilawbs = [];
     }
-  } catch (apiError) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.error('Error fetching ASCII Lawbsters from OpenSea API:', apiError);
-    }
-    inventory.asciilawbs = [];
   }
 
   return inventory;
