@@ -1,4 +1,4 @@
-import{f as e,n as t,a8 as i,i as n,j as r,k as o,y as s,t as a,C as l,aM as c,x as u,l as d,R as h,N as p,U as f,af as m,S as g,G as w,F as k,a6 as v,r as x,h as b,L as y,aN as $,aO as A,q as T,E as C}from"./index-D0TM1btQ.js";import"./index-DRq3sgEW.js";import"./index-ClEdb7f0.js";import{S as R}from"./SwapController-CWGDdAPB.js";import"./wagmi-vendor-BlnX2Ri9.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const P=e`
+import{o as e,q as t,a8 as i,s as n,t as r,v as o,K as s,I as a,E as l,aM as c,x as u,y as d,R as h,B as p,U as f,af as m,S as g,P as w,O as k,a6 as v,r as x,p as b,Y as y,aN as $,aO as A,F as T,G as C}from"./index-DiXWnVRD.js";import"./index-D4XtLOn2.js";import"./index-wbfXWAvY.js";import{S as R}from"./SwapController-C5vMgNXL.js";import"./wagmi-vendor-BlnX2Ri9.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const P=e`
   :host {
     width: 100%;
     height: 100px;
@@ -360,8 +360,8 @@ ${this.value??""}</textarea
   wui-icon {
     border-radius: ${({borderRadius:e})=>e[16]};
   }
-`;var J=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let K=class extends r{constructor(){super(...arguments),this.text=""}render(){return u`<wui-text variant="lg-regular" color="primary">${this.text}</wui-text>
-      ${this.imageTemplate()}`}imageTemplate(){return this.address?u`<wui-avatar address=${this.address} .imageSrc=${this.imageSrc}></wui-avatar>`:this.imageSrc?u`<wui-image src=${this.imageSrc}></wui-image>`:u`<wui-icon size="lg" color="inverse" name="networkPlaceholder"></wui-icon>`}};K.styles=[x,b,Y],J([t({type:String})],K.prototype,"text",void 0),J([t({type:String})],K.prototype,"address",void 0),J([t({type:String})],K.prototype,"imageSrc",void 0),K=J([n("wui-preview-item")],K);const G=e`
+`;var K=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let J=class extends r{constructor(){super(...arguments),this.text=""}render(){return u`<wui-text variant="lg-regular" color="primary">${this.text}</wui-text>
+      ${this.imageTemplate()}`}imageTemplate(){return this.address?u`<wui-avatar address=${this.address} .imageSrc=${this.imageSrc}></wui-avatar>`:this.imageSrc?u`<wui-image src=${this.imageSrc}></wui-image>`:u`<wui-icon size="lg" color="inverse" name="networkPlaceholder"></wui-icon>`}};J.styles=[x,b,Y],K([t({type:String})],J.prototype,"text",void 0),K([t({type:String})],J.prototype,"address",void 0),K([t({type:String})],J.prototype,"imageSrc",void 0),J=K([n("wui-preview-item")],J);const G=e`
   :host {
     display: flex;
     padding: ${({spacing:e})=>e[4]} ${({spacing:e})=>e[3]};
@@ -380,12 +380,12 @@ ${this.value??""}</textarea
     width: 20px;
     height: 20px;
   }
-`;var Q=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let X=class extends r{constructor(){super(...arguments),this.imageSrc=void 0,this.textTitle="",this.textValue=void 0}render(){return u`
+`;var Q=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let Z=class extends r{constructor(){super(...arguments),this.imageSrc=void 0,this.textTitle="",this.textValue=void 0}render(){return u`
       <wui-flex justifyContent="space-between" alignItems="center">
         <wui-text variant="lg-regular" color="primary"> ${this.textTitle} </wui-text>
         ${this.templateContent()}
       </wui-flex>
-    `}templateContent(){return this.imageSrc?u`<wui-image src=${this.imageSrc} alt=${this.textTitle}></wui-image>`:this.textValue?u` <wui-text variant="md-regular" color="secondary"> ${this.textValue} </wui-text>`:u`<wui-icon size="inherit" color="default" name="networkPlaceholder"></wui-icon>`}};X.styles=[x,b,G],Q([t()],X.prototype,"imageSrc",void 0),Q([t()],X.prototype,"textTitle",void 0),Q([t()],X.prototype,"textValue",void 0),X=Q([n("wui-list-content")],X);const Z=e`
+    `}templateContent(){return this.imageSrc?u`<wui-image src=${this.imageSrc} alt=${this.textTitle}></wui-image>`:this.textValue?u` <wui-text variant="md-regular" color="secondary"> ${this.textValue} </wui-text>`:u`<wui-icon size="inherit" color="default" name="networkPlaceholder"></wui-icon>`}};Z.styles=[x,b,G],Q([t()],Z.prototype,"imageSrc",void 0),Q([t()],Z.prototype,"textTitle",void 0),Q([t()],Z.prototype,"textValue",void 0),Z=Q([n("wui-list-content")],Z);const X=e`
   :host {
     display: flex;
     width: auto;
@@ -444,7 +444,7 @@ ${this.value??""}</textarea
         class="network"
         textTitle="Network"
         imageSrc=${y(v.getNetworkImage(this.caipNetwork))}
-      ></wui-list-content>`:null}onNetworkClick(e){e&&!this.params&&h.push("Networks",{network:e})}};te.styles=Z,ee([t()],te.prototype,"receiverAddress",void 0),ee([t({type:Object})],te.prototype,"caipNetwork",void 0),ee([i()],te.prototype,"params",void 0),te=ee([n("w3m-wallet-send-details")],te);const ie=e`
+      ></wui-list-content>`:null}onNetworkClick(e){e&&!this.params&&h.push("Networks",{network:e})}};te.styles=X,ee([t()],te.prototype,"receiverAddress",void 0),ee([t({type:Object})],te.prototype,"caipNetwork",void 0),ee([i()],te.prototype,"params",void 0),te=ee([n("w3m-wallet-send-details")],te);const ie=e`
   wui-avatar,
   wui-image {
     display: ruby;
