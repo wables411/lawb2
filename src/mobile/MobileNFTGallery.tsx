@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTsByOwner } from '../mint';
+import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTsByOwner, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
+import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
 
@@ -45,19 +46,31 @@ const useStyles = createUseStyles({
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-    gap: '1rem',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+    gap: '0.75rem',
+    paddingBottom: '1rem',
   },
   gridItem: {
     border: '1px solid #808080',
-    padding: '10px',
+    padding: '8px',
     backgroundColor: '#ffffff',
     cursor: 'pointer',
     textAlign: 'center',
+    borderRadius: '4px',
+    transition: 'transform 0.1s ease',
+    '&:active': {
+      transform: 'scale(0.98)',
+    },
     '& img': {
       width: '100%',
       height: 'auto',
-      marginBottom: '8px',
+      marginBottom: '6px',
+      borderRadius: '2px',
+    },
+    '& span': {
+      fontSize: '0.75rem',
+      wordBreak: 'break-word',
+      display: 'block',
     },
   },
   detailView: {
@@ -73,19 +86,31 @@ const useStyles = createUseStyles({
   },
   collectionSelector: {
     display: 'flex',
-    gap: '10px',
-    padding: '10px',
+    gap: '8px',
+    padding: '8px',
     borderBottom: '2px inset #fff',
     flexWrap: 'wrap',
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    '&::-webkit-scrollbar': {
+      height: '4px',
+    },
   },
   collectionButton: {
-    padding: '5px 10px',
+    padding: '6px 12px',
     background: '#c0c0c0',
     border: '2px outset #fff',
     cursor: 'pointer',
+    fontSize: '0.85rem',
+    whiteSpace: 'nowrap',
+    minHeight: '36px',
+    touchAction: 'manipulation',
     '&.active': {
       borderStyle: 'inset',
       backgroundColor: '#e0e0e0',
+    },
+    '&:active': {
+      borderStyle: 'inset',
     }
   },
 });
@@ -124,9 +149,19 @@ const COLLECTIONS: Collection[] = [
   { slug: 'lawbsters', name: 'Lawbsters', api: 'opensea', chain: 'ethereum' },
   { slug: 'lawbstarz', name: 'Lawbstarz', api: 'scatter' },
   { slug: 'a-lawbster-halloween', name: 'Halloween', api: 'opensea', chain: 'base' },
+  { slug: 'asciilawbs', name: 'ASCII Lawbs', api: 'opensea', chain: 'base' },
   { slug: 'lawbstation', name: 'Lawbstation', api: 'opensea-solana', chain: 'solana' },
   { slug: 'lawbnexus', name: 'Nexus', api: 'opensea-solana', chain: 'solana' },
 ];
+
+// Map collection slugs to contract addresses and chain IDs for Alchemy API
+const COLLECTION_CONTRACT_MAP: Record<string, { address: string; chainId: number }> = {
+  'lawbsters': { address: NFT_COLLECTIONS.lawbsters.address, chainId: NFT_COLLECTIONS.lawbsters.chainId },
+  'lawbstarz': { address: NFT_COLLECTIONS.lawbstarz.address, chainId: NFT_COLLECTIONS.lawbstarz.chainId },
+  'pixelawbs': { address: NFT_COLLECTIONS.pixelawbs.address, chainId: NFT_COLLECTIONS.pixelawbs.chainId },
+  'a-lawbster-halloween': { address: NFT_COLLECTIONS.halloween_lawbsters.address, chainId: NFT_COLLECTIONS.halloween_lawbsters.chainId },
+  'asciilawbs': { address: NFT_COLLECTIONS.asciilawbs.address, chainId: NFT_COLLECTIONS.asciilawbs.chainId },
+};
 
 declare global {
   interface Window {
@@ -202,9 +237,35 @@ const MobileNFTGallery: React.FC<MobileNFTGalleryProps> = ({ onBack, walletAddre
           response = await getOpenSeaSolanaNFTsByOwner(solanaAddress, 100);
           console.log('Mobile: Fetched Solana NFTs by owner:', response.data.length);
         } else if (currentCollection.api === 'opensea') {
-          response = await getOpenSeaNFTs(currentCollection.slug, 100, walletAddressToFetch);
+          // Use Alchemy API for all EVM collections when available (more reliable than OpenSea)
+          if (COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
+            const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
+            if (viewMode === 'owned' && walletAddressToFetch) {
+              // For owned view, filter by owner
+              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 100, chainId);
+            } else {
+              // For all view, get all NFTs from collection
+              response = await getAlchemyNFTsForCollection(contractAddress, 100, chainId);
+            }
+          } else {
+            // Fallback to OpenSea if not in contract map
+            response = await getOpenSeaNFTs(currentCollection.slug, 100, walletAddressToFetch);
+          }
         } else {
-          response = await getCollectionNFTs(currentCollection.slug, 1, 100, walletAddressToFetch);
+          // For Scatter collections (Pixelawbs, Lawbstarz), use Alchemy when available
+          if (COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
+            const { address: contractAddress, chainId } = COLLECTION_CONTRACT_MAP[currentCollection.slug];
+            if (viewMode === 'owned' && walletAddressToFetch) {
+              // For owned view, filter by owner
+              response = await getAlchemyNFTsForOwner(contractAddress, walletAddressToFetch, 100, chainId);
+            } else {
+              // For all view, get all NFTs from collection
+              response = await getAlchemyNFTsForCollection(contractAddress, 100, chainId);
+            }
+          } else {
+            // Fallback to Scatter API if not in contract map
+            response = await getCollectionNFTs(currentCollection.slug, 1, 100, walletAddressToFetch);
+          }
         }
 
         // Filter by owner if needed

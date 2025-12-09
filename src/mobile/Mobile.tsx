@@ -273,17 +273,8 @@ const Mobile = () => {
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
-    { label: isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Wallet', icon: '/assets/wallet.png', action: () => {
-      if (!isConnected) {
-        // Open wallet connection modal with mobile debugging
-        handleWalletConnection();
-      } else {
-        // Open account management modal (chain selector/disconnect)
-        void open({ view: 'Account' });
-      }
-    }, disabled: isPending },
+    { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
-    { label: 'Profile', icon: '/assets/wallet.png', action: () => setShowProfile(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
@@ -428,7 +419,6 @@ const Mobile = () => {
             <a href="https://t.me/lawblawblawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Telegram</a>
             <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
             <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
-            <button className={classes.menuLink} onClick={() => { setMenuOpen(false); setShowMemeGenerator(true); }} style={{ border: 'none', cursor: 'pointer', width: '90%', margin: '0 auto', display: 'block' }}>Meme Generator</button>
             <button
               type="button"
               className={classes.menuLink}
