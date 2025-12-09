@@ -278,7 +278,6 @@ const Mobile = () => {
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
-    if (icon.disabled) return;
     playIconClickSound();
     icon.action();
   };
