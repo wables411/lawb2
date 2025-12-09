@@ -15,6 +15,16 @@ const ETHEREUM_RPC_ENDPOINTS = [
   'https://eth-mainnet.public.blastapi.io'
 ];
 
+// RPC endpoints for Base mainnet (with fallbacks)
+const BASE_RPC_ENDPOINTS = [
+  'https://mainnet.base.org',
+  'https://base.llamarpc.com',
+  'https://base-rpc.publicnode.com',
+  'https://base.gateway.tenderly.co',
+  'https://base.drpc.org',
+  'https://1rpc.io/base'
+];
+
 /**
  * Helper function to try multiple RPC endpoints with automatic fallback
  * Returns a provider that works, or throws if all endpoints fail
@@ -40,6 +50,32 @@ async function getEthereumProvider(): Promise<JsonRpcProvider> {
   }
   
   throw new Error(`All RPC endpoints failed. Last error: ${lastError?.message || 'Unknown error'}`);
+}
+
+/**
+ * Helper function to get a working Base RPC provider with automatic fallback
+ */
+async function getBaseProvider(): Promise<JsonRpcProvider> {
+  let lastError: Error | null = null;
+  
+  for (const rpcUrl of BASE_RPC_ENDPOINTS) {
+    try {
+      const provider = new JsonRpcProvider(rpcUrl);
+      // Test the connection by getting the latest block number
+      await provider.getBlockNumber();
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] Using Base RPC endpoint:', rpcUrl);
+      }
+      return provider;
+    } catch (error) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.warn(`[NFT] Base RPC endpoint failed (${rpcUrl}):`, error);
+      }
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+  
+  throw new Error(`All Base RPC endpoints failed. Last error: ${lastError?.message || 'Unknown error'}`);
 }
 
 /**
@@ -557,154 +593,78 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Fetch Halloween Lawbsters (Base chain) - Use contract directly for accurate count
+  // Fetch Halloween Lawbsters (Base chain) - Use Basescan API directly
   try {
     const halloween = NFT_COLLECTIONS.halloween_lawbsters;
-    const baseProvider = new JsonRpcProvider('https://mainnet.base.org');
-    const contract = new Contract(halloween.address, ERC721_ABI, baseProvider);
-    const balance = await contract.balanceOf(walletAddress);
+    const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
+    const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${halloween.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
+    const basescanResponse = await fetch(basescanUrl);
     
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Halloween Lawbsters contract balance:', balance.toString());
-    }
-    
-    // If balance is 0, skip fetching token IDs
-    if (balance === 0n) {
-      inventory.halloween_lawbsters = [];
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] No Halloween Lawbsters found (balance is 0)');
-      }
-    } else {
-      const tokenIds: string[] = [];
-      const balanceNum = Number(balance);
-      for (let i = 0; i < balanceNum; i++) {
-        try {
-          const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
-          tokenIds.push(tokenId.toString());
-        } catch (e) {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.warn(`Error fetching token ${i} for Halloween Lawbsters:`, e);
+    if (basescanResponse.ok) {
+      const basescanData = await basescanResponse.json();
+      if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
+        const tokenIds = new Set<string>();
+        for (const tx of basescanData.result) {
+          if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
+            tokenIds.add(tx.tokenID);
           }
-          break;
         }
-      }
-      inventory.halloween_lawbsters = tokenIds;
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from contract');
-      }
-    }
-  } catch (contractError) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.error('Error fetching Halloween Lawbsters from contract, trying OpenSea API:', contractError);
-    }
-    // Fallback to OpenSea API
-    try {
-      const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-      const halloweenAddress = NFT_COLLECTIONS.halloween_lawbsters.address;
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] Fetching Halloween Lawbsters for', walletAddress, 'from OpenSea Base');
-      }
-      const response = await fetch(
-        `https://api.opensea.io/api/v2/chain/base/account/${walletAddress}/nfts?contract_address=${halloweenAddress}&limit=100`,
-        { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Halloween Lawbsters OpenSea response:', data);
+        for (const tx of basescanData.result) {
+          if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
+            tokenIds.delete(tx.tokenID);
+          }
         }
-        inventory.halloween_lawbsters = data.nfts?.map((nft: any) => nft.identifier) || [];
+        inventory.halloween_lawbsters = Array.from(tokenIds);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from OpenSea');
+          window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from Basescan');
         }
       } else {
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.error('[NFT] OpenSea API error for Halloween Lawbsters:', response.status, response.statusText);
-        }
-      }
-    } catch (apiError) {
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.error('Error fetching Halloween Lawbsters from OpenSea API:', apiError);
-      }
-    }
-  }
-
-  // Fetch ASCII Lawbsters (Base chain) - Check balanceOf first, then get token IDs from Basescan
-  try {
-    const asciilawbs = NFT_COLLECTIONS.asciilawbs;
-    const baseProvider = new JsonRpcProvider('https://mainnet.base.org');
-    const contract = new Contract(asciilawbs.address, ERC721_ABI, baseProvider);
-    
-    // First check balanceOf (source of truth)
-    const balance = await contract.balanceOf(walletAddress);
-    
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] ASCII Lawbsters balanceOf:', balance.toString());
-    }
-    
-    if (balance === 0n) {
-      inventory.asciilawbs = [];
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[NFT] No ASCII Lawbsters found (balance is 0)');
+        inventory.halloween_lawbsters = [];
       }
     } else {
-      // Get token IDs from Transfer events via RPC (more reliable than API)
-      try {
-        const tokenIds = await fetchTokenIdsFromTransferEvents(
-          asciilawbs.address,
-          walletAddress,
-          'ASCII Lawbsters',
-          baseProvider
-        );
-        inventory.asciilawbs = tokenIds;
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters (balance:', balance.toString(), 'token IDs from Transfer events)');
-        }
-      } catch (eventError) {
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.warn('[NFT] Failed to get token IDs from Transfer events, trying Basescan API:', eventError);
-        }
-        // Fallback to Basescan API if RPC fails
-        try {
-          const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
-          const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
-          const basescanResponse = await fetch(basescanUrl);
-          
-          if (basescanResponse.ok) {
-            const basescanData = await basescanResponse.json();
-            if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
-              const tokenIds = new Set<string>();
-              for (const tx of basescanData.result) {
-                if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
-                  tokenIds.add(tx.tokenID);
-                }
-              }
-              for (const tx of basescanData.result) {
-                if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
-                  tokenIds.delete(tx.tokenID);
-                }
-              }
-              inventory.asciilawbs = Array.from(tokenIds);
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Basescan API (fallback)');
-              }
-            } else {
-              inventory.asciilawbs = [];
-            }
-          } else {
-            inventory.asciilawbs = [];
-          }
-        } catch (apiError) {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.error('[NFT] Both RPC and Basescan API failed:', apiError);
-          }
-          inventory.asciilawbs = [];
-        }
-      }
+      inventory.halloween_lawbsters = [];
     }
   } catch (error) {
     if (typeof window !== 'undefined' && window.console) {
-      window.console.error('Error fetching ASCII Lawbsters:', error);
+      window.console.error('Error fetching Halloween Lawbsters from Basescan:', error);
+    }
+    inventory.halloween_lawbsters = [];
+  }
+
+  // Fetch ASCII Lawbsters (Base chain) - Use Basescan API directly
+  try {
+    const asciilawbs = NFT_COLLECTIONS.asciilawbs;
+    const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
+    const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
+    const basescanResponse = await fetch(basescanUrl);
+    
+    if (basescanResponse.ok) {
+      const basescanData = await basescanResponse.json();
+      if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
+        const tokenIds = new Set<string>();
+        for (const tx of basescanData.result) {
+          if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
+            tokenIds.add(tx.tokenID);
+          }
+        }
+        for (const tx of basescanData.result) {
+          if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
+            tokenIds.delete(tx.tokenID);
+          }
+        }
+        inventory.asciilawbs = Array.from(tokenIds);
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Basescan');
+        }
+      } else {
+        inventory.asciilawbs = [];
+      }
+    } else {
+      inventory.asciilawbs = [];
+    }
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.error('Error fetching ASCII Lawbsters from Basescan:', error);
     }
     inventory.asciilawbs = [];
   }
