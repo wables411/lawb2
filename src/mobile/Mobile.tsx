@@ -275,6 +275,7 @@ const Mobile = () => {
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
+    { label: 'Profile', icon: '/assets/wallet.png', action: () => setShowProfile(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
