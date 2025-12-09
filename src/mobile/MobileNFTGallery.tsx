@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTsByOwner, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
+import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getOpenSeaSolanaNFTsByOwner, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
@@ -226,16 +226,21 @@ const MobileNFTGallery: React.FC<MobileNFTGalleryProps> = ({ onBack, walletAddre
         let response;
         let walletAddressToFetch: string | undefined = walletAddress || undefined;
         if (currentCollection.api === 'opensea-solana') {
-          if (!solanaAddress) {
-            setShowSolanaPrompt(true);
-            setLoading(false);
-            return;
+          if (viewMode === 'owned') {
+            // For owned view, require Solana wallet connection
+            if (!solanaAddress) {
+              setShowSolanaPrompt(true);
+              setLoading(false);
+              return;
+            }
+            // Use owner-specific endpoint for Solana NFTs
+            response = await getOpenSeaSolanaNFTsByOwner(solanaAddress, 100);
+            console.log('Mobile: Fetched Solana NFTs by owner:', response.data.length);
+          } else {
+            // For all view, get all NFTs from collection (no wallet needed)
+            response = await getOpenSeaSolanaNFTs(currentCollection.slug, 100);
+            console.log('Mobile: Fetched all Solana NFTs from collection:', response.data.length);
           }
-          walletAddressToFetch = solanaAddress;
-          
-          // Use owner-specific endpoint for Solana NFTs
-          response = await getOpenSeaSolanaNFTsByOwner(solanaAddress, 100);
-          console.log('Mobile: Fetched Solana NFTs by owner:', response.data.length);
         } else if (currentCollection.api === 'opensea') {
           // Use Alchemy API for all EVM collections when available (more reliable than OpenSea)
           if (COLLECTION_CONTRACT_MAP[currentCollection.slug]) {
