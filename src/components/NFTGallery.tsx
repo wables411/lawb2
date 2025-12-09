@@ -62,7 +62,7 @@ const useStyles = createUseStyles({
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '15px',
+    gap: '8px',
     marginBottom: '20px'
   },
   gridItem: {
@@ -402,7 +402,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
       <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
         <div ref={nodeRef} className={classes.popup}>
           <div className={classes.header}>
-            <span>LAWB NFT GALLERY</span>
+            <span>LAWB GALLERY</span>
             <div className={classes.titleBarButtons}>
               <button
                 className={classes.titleBarButton}
@@ -530,9 +530,9 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                 {nfts.length === 0 ? (
                   <div>No NFTs found.</div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginBottom: '20px' }}>
                     {nfts.map(nft => (
-                      <div key={nft.id} style={{ border: '1px solid #808080', padding: '10px', backgroundColor: '#ffffff', borderRadius: '4px', cursor: 'pointer' }} onClick={() => { void handleNftClick(nft); }}>
+                      <div key={nft.id} style={{ border: '1px solid #808080', padding: '6px', backgroundColor: '#ffffff', borderRadius: '4px', cursor: 'pointer' }} onClick={() => { void handleNftClick(nft); }}>
                         <CORSImage 
                           src={getImageUrl(nft)} 
                           alt={`NFT #${nft.token_id}`}
@@ -540,7 +540,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                             width: '100%', 
                             height: '150px', 
                             objectFit: 'cover', 
-                            marginBottom: '10px', 
+                            marginBottom: '6px', 
                             border: '1px solid #ccc',
                             backgroundColor: '#f0f0f0'
                           }}

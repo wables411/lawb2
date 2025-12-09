@@ -478,7 +478,7 @@ const MobileNFTGallery: React.FC<MobileNFTGalleryProps> = ({ onBack, walletAddre
           Back
         </button>
         <h2 className={classes.headerTitle}>
-            {selectedNft ? selectedNft.name : "LAWB NFT GALLERY"}
+            {selectedNft ? selectedNft.name : "LAWB GALLERY"}
         </h2>
       </header>
       <div className={classes.content}>
