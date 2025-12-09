@@ -213,6 +213,81 @@ async function fetchTokenIdsFromTransferEvents(
 }
 
 /**
+ * Fetch NFT balance and token IDs directly from contract using Base RPC calls
+ * Tries multiple Base RPC endpoints with automatic fallback
+ */
+async function fetchNFTsFromBaseContract(
+  contractAddress: string,
+  walletAddress: string,
+  collectionName: string
+): Promise<{ balance: bigint; tokenIds: string[] }> {
+  try {
+    const provider = await getBaseProvider();
+    const contract = new Contract(contractAddress, ERC721_ABI, provider);
+    
+    // Get balance
+    const balance = await contract.balanceOf(walletAddress);
+    
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log(`[NFT] ${collectionName} contract balance (Base):`, balance.toString());
+    }
+    
+    if (balance === 0n) {
+      return { balance: 0n, tokenIds: [] };
+    }
+    
+    // Try to get token IDs using tokenOfOwnerByIndex first
+    const tokenIds: string[] = [];
+    const balanceNum = Number(balance);
+    let enumerationFailed = false;
+    
+    for (let i = 0; i < balanceNum; i++) {
+      try {
+        const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+        tokenIds.push(tokenId.toString());
+      } catch (e) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn(`[NFT] Error fetching token ${i} for ${collectionName} (contract may not support tokenOfOwnerByIndex):`, e);
+        }
+        enumerationFailed = true;
+        break;
+      }
+    }
+    
+    // If enumeration failed but we have a balance, try using Transfer events
+    if (enumerationFailed && tokenIds.length === 0 && balance > 0n) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log(`[NFT] Contract doesn't support tokenOfOwnerByIndex, trying Transfer events for ${collectionName}`);
+      }
+      try {
+        const eventTokenIds = await fetchTokenIdsFromTransferEvents(
+          contractAddress,
+          walletAddress,
+          collectionName,
+          provider
+        );
+        tokenIds.push(...eventTokenIds);
+      } catch (eventError) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn(`[NFT] Failed to get token IDs from Transfer events for ${collectionName}:`, eventError);
+        }
+      }
+    }
+    
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log(`[NFT] Found ${tokenIds.length} ${collectionName} from Base contract (balance: ${balance.toString()})`);
+    }
+    
+    return { balance, tokenIds };
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.error(`[NFT] Error fetching ${collectionName} from Base contract:`, error);
+    }
+    throw error;
+  }
+}
+
+/**
  * Fetch NFT balance and token IDs directly from contract using RPC calls
  * Tries multiple RPC endpoints with automatic fallback
  */
@@ -593,80 +668,190 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Fetch Halloween Lawbsters (Base chain) - Use Basescan API directly
+  // Fetch Halloween Lawbsters (Base chain) - Use Alchemy NFT API via Netlify proxy (keeps API key server-side)
+  const halloween = NFT_COLLECTIONS.halloween_lawbsters;
   try {
-    const halloween = NFT_COLLECTIONS.halloween_lawbsters;
-    const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
-    const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${halloween.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
-    const basescanResponse = await fetch(basescanUrl);
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[NFT] Fetching Halloween Lawbsters for', walletAddress, 'from Alchemy NFT API (Base chain, via proxy)');
+    }
     
-    if (basescanResponse.ok) {
-      const basescanData = await basescanResponse.json();
-      if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
-        const tokenIds = new Set<string>();
-        for (const tx of basescanData.result) {
-          if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
-            tokenIds.add(tx.tokenID);
-          }
-        }
-        for (const tx of basescanData.result) {
-          if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
-            tokenIds.delete(tx.tokenID);
-          }
-        }
-        inventory.halloween_lawbsters = Array.from(tokenIds);
+    // Use Netlify function proxy to keep API key server-side, specify Base chain
+    const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(halloween.address)}&chain=base`;
+    const alchemyResponse = await fetch(proxyUrl);
+    
+    if (alchemyResponse.ok) {
+      const contentType = alchemyResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await alchemyResponse.text();
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from Basescan');
+          window.console.error('[NFT] Alchemy proxy returned non-JSON response for Halloween Lawbsters:', text.substring(0, 200));
+        }
+        throw new Error('Alchemy proxy returned invalid response');
+      }
+      
+      const alchemyData = await alchemyResponse.json();
+      if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
+        // Extract token IDs from Alchemy response
+        inventory.halloween_lawbsters = alchemyData.ownedNfts.map((nft: any) => {
+          // Alchemy returns tokenId as hex string or number, convert to string
+          const tokenId = nft.id?.tokenId || nft.tokenId;
+          return typeof tokenId === 'string' ? tokenId : tokenId.toString();
+        });
+        
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from Alchemy API (Base chain, current holdings)');
         }
       } else {
         inventory.halloween_lawbsters = [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] No Halloween Lawbsters found from Alchemy');
+        }
       }
     } else {
+      // Alchemy failed, log the error response for debugging
+      let errorText = '';
+      try {
+        const contentType = alchemyResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await alchemyResponse.json();
+          errorText = JSON.stringify(errorData);
+        } else {
+          errorText = await alchemyResponse.text();
+        }
+      } catch (e) {
+        errorText = `Failed to read error response: ${e}`;
+      }
+      
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.warn('[NFT] Alchemy proxy error for Halloween Lawbsters:', alchemyResponse.status, errorText.substring(0, 300));
+      }
+      // Alchemy failed, try contract enumeration
+      throw new Error(`Alchemy proxy error: ${alchemyResponse.status}`);
+    }
+  } catch (alchemyError) {
+    // Fallback to Base contract enumeration if Alchemy fails
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.warn('[NFT] Alchemy API failed for Halloween Lawbsters, trying Base contract enumeration:', alchemyError);
+    }
+    try {
+      const { balance, tokenIds } = await fetchNFTsFromBaseContract(
+        halloween.address,
+        walletAddress,
+        'Halloween Lawbsters'
+      );
+      
+      if (balance === 0n) {
+        inventory.halloween_lawbsters = [];
+      } else if (tokenIds.length > 0) {
+        inventory.halloween_lawbsters = tokenIds;
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from Base contract enumeration');
+        }
+      } else {
+        inventory.halloween_lawbsters = [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn('[NFT] Base contract enumeration returned no token IDs for Halloween Lawbsters');
+        }
+      }
+    } catch (fallbackError) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('[NFT] All methods failed for Halloween Lawbsters:', fallbackError);
+      }
       inventory.halloween_lawbsters = [];
     }
-  } catch (error) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.error('Error fetching Halloween Lawbsters from Basescan:', error);
-    }
-    inventory.halloween_lawbsters = [];
   }
 
-  // Fetch ASCII Lawbsters (Base chain) - Use Basescan API directly
+  // Fetch ASCII Lawbsters (Base chain) - Use Alchemy NFT API via Netlify proxy (keeps API key server-side)
+  const asciilawbs = NFT_COLLECTIONS.asciilawbs;
   try {
-    const asciilawbs = NFT_COLLECTIONS.asciilawbs;
-    const BASESCAN_API_KEY = process.env.REACT_APP_BASESCAN_API_KEY || "";
-    const basescanUrl = `https://api.basescan.org/api?module=account&action=tokennfttx&contractaddress=${asciilawbs.address}&address=${walletAddress}&page=1&offset=1000&startblock=0&endblock=99999999&sort=asc&apikey=${BASESCAN_API_KEY}`;
-    const basescanResponse = await fetch(basescanUrl);
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[NFT] Fetching ASCII Lawbsters for', walletAddress, 'from Alchemy NFT API (Base chain, via proxy)');
+    }
     
-    if (basescanResponse.ok) {
-      const basescanData = await basescanResponse.json();
-      if (basescanData.status === '1' && basescanData.result && Array.isArray(basescanData.result)) {
-        const tokenIds = new Set<string>();
-        for (const tx of basescanData.result) {
-          if (tx.to?.toLowerCase() === walletAddress.toLowerCase()) {
-            tokenIds.add(tx.tokenID);
-          }
-        }
-        for (const tx of basescanData.result) {
-          if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
-            tokenIds.delete(tx.tokenID);
-          }
-        }
-        inventory.asciilawbs = Array.from(tokenIds);
+    // Use Netlify function proxy to keep API key server-side, specify Base chain
+    const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(asciilawbs.address)}&chain=base`;
+    const alchemyResponse = await fetch(proxyUrl);
+    
+    if (alchemyResponse.ok) {
+      const contentType = alchemyResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await alchemyResponse.text();
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Basescan');
+          window.console.error('[NFT] Alchemy proxy returned non-JSON response for ASCII Lawbsters:', text.substring(0, 200));
+        }
+        throw new Error('Alchemy proxy returned invalid response');
+      }
+      
+      const alchemyData = await alchemyResponse.json();
+      if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
+        // Extract token IDs from Alchemy response
+        inventory.asciilawbs = alchemyData.ownedNfts.map((nft: any) => {
+          // Alchemy returns tokenId as hex string or number, convert to string
+          const tokenId = nft.id?.tokenId || nft.tokenId;
+          return typeof tokenId === 'string' ? tokenId : tokenId.toString();
+        });
+        
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Alchemy API (Base chain, current holdings)');
         }
       } else {
         inventory.asciilawbs = [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] No ASCII Lawbsters found from Alchemy');
+        }
       }
     } else {
+      // Alchemy failed, log the error response for debugging
+      let errorText = '';
+      try {
+        const contentType = alchemyResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await alchemyResponse.json();
+          errorText = JSON.stringify(errorData);
+        } else {
+          errorText = await alchemyResponse.text();
+        }
+      } catch (e) {
+        errorText = `Failed to read error response: ${e}`;
+      }
+      
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.warn('[NFT] Alchemy proxy error for ASCII Lawbsters:', alchemyResponse.status, errorText.substring(0, 300));
+      }
+      // Alchemy failed, try contract enumeration
+      throw new Error(`Alchemy proxy error: ${alchemyResponse.status}`);
+    }
+  } catch (alchemyError) {
+    // Fallback to Base contract enumeration if Alchemy fails
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.warn('[NFT] Alchemy API failed for ASCII Lawbsters, trying Base contract enumeration:', alchemyError);
+    }
+    try {
+      const { balance, tokenIds } = await fetchNFTsFromBaseContract(
+        asciilawbs.address,
+        walletAddress,
+        'ASCII Lawbsters'
+      );
+      
+      if (balance === 0n) {
+        inventory.asciilawbs = [];
+      } else if (tokenIds.length > 0) {
+        inventory.asciilawbs = tokenIds;
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Base contract enumeration');
+        }
+      } else {
+        inventory.asciilawbs = [];
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.warn('[NFT] Base contract enumeration returned no token IDs for ASCII Lawbsters');
+        }
+      }
+    } catch (fallbackError) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('[NFT] All methods failed for ASCII Lawbsters:', fallbackError);
+      }
       inventory.asciilawbs = [];
     }
-  } catch (error) {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.error('Error fetching ASCII Lawbsters from Basescan:', error);
-    }
-    inventory.asciilawbs = [];
   }
 
   return inventory;
