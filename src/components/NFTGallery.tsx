@@ -3,7 +3,6 @@ import Draggable from 'react-draggable';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
-import NFTDetailPopup from './NFTDetailPopup';
 import { useAppKit } from '@reown/appkit/react';
 import { CORSImage, getImageUrl } from './CORSImage';
 
@@ -61,26 +60,40 @@ const useStyles = createUseStyles({
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '8px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+    gap: '0',
     marginBottom: '20px'
   },
   gridItem: {
-    border: '1px solid #808080',
-    padding: '10px',
-    backgroundColor: '#ffffff',
-    borderRadius: '4px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    display: 'block',
+    width: '100%',
+    aspectRatio: '1',
+    overflow: 'hidden'
   },
   detailContent: {
     padding: '20px',
     color: '#000',
   },
-  detailImage: {
-    width: '100%',
-    height: 'auto',
-    marginBottom: '20px',
-    border: '1px solid #ccc'
+  detailView: {
+    padding: '20px',
+    color: '#000',
+    '& img': {
+      width: '100%',
+      maxWidth: '500px',
+      height: 'auto',
+      marginBottom: '20px',
+      border: '1px solid #ccc'
+    },
+    '& h2': {
+      marginBottom: '10px',
+      fontSize: '18px'
+    },
+    '& h3': {
+      marginTop: '20px',
+      marginBottom: '10px',
+      fontSize: '14px'
+    }
   },
   detailTraits: {
     listStyleType: 'none',
@@ -88,6 +101,17 @@ const useStyles = createUseStyles({
     '& li': {
       marginBottom: '5px'
     }
+  },
+  backButton: {
+    background: '#c0c0c0',
+    border: '2px outset #fff',
+    padding: '2px 8px',
+    cursor: 'pointer',
+    marginRight: '8px',
+    fontSize: '11px',
+    '&:active': {
+      borderStyle: 'inset',
+    },
   },
   collectionSelector: {
     display: 'flex',
@@ -200,9 +224,9 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
   const [currentCollection, setCurrentCollection] = useState<Collection>(COLLECTIONS[0]);
   const [showSolanaPrompt, setShowSolanaPrompt] = useState(false);
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
@@ -393,6 +417,48 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
   const handleCollectionChange = (collection: Collection) => {
     setCurrentCollection(collection);
     setCurrentPage(1);
+    setSelectedNft(null); // Clear selected NFT when changing collection
+  };
+
+  const renderDetailView = () => {
+    if (!selectedNft) return null;
+
+    let attributes: Array<{ trait_type: string; value: string | number }> = [];
+    try {
+      attributes = JSON.parse(selectedNft.attributes || '[]') as Array<{ trait_type: string; value: string | number }>;
+    } catch (e) {
+      console.error("Failed to parse NFT attributes:", e);
+    }
+
+    return (
+      <div className={classes.detailView}>
+        <CORSImage 
+          src={getImageUrl(selectedNft)} 
+          alt={selectedNft.name}
+          style={{ width: '100%', maxWidth: '500px', height: 'auto', marginBottom: '20px', border: '1px solid #ccc' }}
+        />
+        <h2>{selectedNft.name}</h2>
+        <div style={{ marginBottom: '10px', fontSize: '14px' }}>
+          <strong>Token ID:</strong> #{selectedNft.token_id}
+        </div>
+        <div style={{ marginBottom: '10px', fontSize: '14px' }}>
+          <strong>Owner:</strong> {getOwnerInfo(selectedNft)}
+        </div>
+        <div style={{ marginBottom: '10px', fontSize: '14px' }}>
+          <strong>Minted:</strong> {formatDate(selectedNft.created_at)}
+        </div>
+        {attributes.length > 0 && (
+          <>
+            <h3>Traits:</h3>
+            <ul className={classes.detailTraits}>
+              {attributes.map((attr, index) => (
+                <li key={index}><strong>{attr.trait_type}:</strong> {attr.value}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    );
   };
 
   if (!isOpen) return null;
@@ -402,7 +468,16 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
       <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
         <div ref={nodeRef} className={classes.popup}>
           <div className={classes.header}>
-            <span>LAWB GALLERY</span>
+            {selectedNft ? (
+              <>
+                <button className={classes.backButton} onClick={() => setSelectedNft(null)}>
+                  ← Back
+                </button>
+                <span>{selectedNft.name}</span>
+              </>
+            ) : (
+              <span>LAWB GALLERY</span>
+            )}
             <div className={classes.titleBarButtons}>
               <button
                 className={classes.titleBarButton}
@@ -420,18 +495,24 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
               </button>
             </div>
           </div>
-          <div className={classes.collectionSelector}>
-            {COLLECTIONS.map(col => (
-              <button 
-                key={col.slug} 
-                className={`${classes.collectionButton} ${currentCollection.slug === col.slug ? 'active' : ''}`}
-                onClick={() => handleCollectionChange(col)}
-              >
-                {col.name}
-              </button>
-            ))}
-          </div>
+          {!selectedNft && (
+            <div className={classes.collectionSelector}>
+              {COLLECTIONS.map(col => (
+                <button 
+                  key={col.slug} 
+                  className={`${classes.collectionButton} ${currentCollection.slug === col.slug ? 'active' : ''}`}
+                  onClick={() => handleCollectionChange(col)}
+                >
+                  {col.name}
+                </button>
+              ))}
+            </div>
+          )}
           <div className={classes.content}>
+            {selectedNft ? (
+              renderDetailView()
+            ) : (
+              <>
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setViewMode('all')}
@@ -530,24 +611,29 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                 {nfts.length === 0 ? (
                   <div>No NFTs found.</div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginBottom: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0', marginBottom: '20px' }}>
                     {nfts.map(nft => (
-                      <div key={nft.id} style={{ border: '1px solid #808080', padding: '6px', backgroundColor: '#ffffff', borderRadius: '4px', cursor: 'pointer' }} onClick={() => { void handleNftClick(nft); }}>
+                      <div 
+                        key={nft.id} 
+                        style={{ 
+                          cursor: 'pointer',
+                          display: 'block',
+                          width: '100%',
+                          aspectRatio: '1',
+                          overflow: 'hidden'
+                        }} 
+                        onClick={() => { void handleNftClick(nft); }}
+                      >
                         <CORSImage 
                           src={getImageUrl(nft)} 
                           alt={`NFT #${nft.token_id}`}
                           style={{ 
                             width: '100%', 
-                            height: '150px', 
-                            objectFit: 'cover', 
-                            marginBottom: '6px', 
-                            border: '1px solid #ccc',
-                            backgroundColor: '#f0f0f0'
+                            height: '100%', 
+                            objectFit: 'cover',
+                            display: 'block'
                           }}
                         />
-                        <div style={{ fontSize: '12px', marginBottom: '5px', color: '#000' }}><strong>#{nft.token_id}</strong></div>
-                        <div style={{ fontSize: '11px', marginBottom: '5px', color: '#000' }}>Owner: {getOwnerInfo(nft)}</div>
-                        <div style={{ fontSize: '11px', color: '#666' }}>Minted: {formatDate(nft.created_at)}</div>
                       </div>
                     ))}
                   </div>
@@ -586,16 +672,11 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                 )}
               </>
             )}
+              </>
+            )}
           </div>
         </div>
       </Draggable>
-
-      {selectedNft && (
-        <NFTDetailPopup
-          nft={selectedNft}
-          onClose={() => setSelectedNft(null)}
-        />
-      )}
     </>
   );
 };
