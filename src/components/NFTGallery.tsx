@@ -606,7 +606,16 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
             ) : (
               <>
                 <div style={{ marginBottom: '10px', fontSize: '14px' }}>
-                  {viewMode === 'all' && `Showing ${hasMoreResults ? `${nfts.length}+` : nfts.length} NFT${nfts.length !== 1 ? 's' : ''}`}
+                  {viewMode === 'all' && (() => {
+                    const collectionName = currentCollection.name || currentCollection.slug;
+                    if (hasMoreResults) {
+                      return `Displaying ${nfts.length}+ ${collectionName}`;
+                    } else if (totalCount > 0 && totalCount !== nfts.length) {
+                      return `Displaying ${nfts.length}/${totalCount} ${collectionName}`;
+                    } else {
+                      return `Displaying ${nfts.length} ${collectionName}`;
+                    }
+                  })()}
                   {viewMode === 'recent' && `Recently minted NFTs by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
                   {viewMode === 'owned' && `NFTs owned by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
                 </div>

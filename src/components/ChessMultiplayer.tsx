@@ -5737,7 +5737,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                     style={{
                                       width: '20px',
                                       height: '20px',
-                                      borderRadius: '4px',
+                                      borderRadius: '0',
                                       objectFit: 'cover',
                                       border: '1px solid rgba(0, 0, 0, 0.2)',
                                       flexShrink: 0,
@@ -6505,7 +6505,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           style={{
                             width: '24px',
                             height: '24px',
-                            borderRadius: '4px',
+                            borderRadius: '0',
                             objectFit: 'cover',
                             border: '1px solid rgba(0, 0, 0, 0.2)',
                             flexShrink: 0,

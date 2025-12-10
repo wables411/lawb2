@@ -542,7 +542,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
                     style={{
                       width: '28px',
                       height: '28px',
-                      borderRadius: '50%',
+                      borderRadius: '0',
                       objectFit: 'cover',
                       border: '2px solid rgba(0, 0, 0, 0.3)',
                       marginRight: '10px',
