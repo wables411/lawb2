@@ -19,17 +19,15 @@
     "description": "Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap.",
     "screenshotUrls": [
       "https://lawb.xyz/assets/appchess.jpg",
-      "https://lawb.xyz/assets/appchessmoves.jpg",
       "https://lawb.xyz/assets/apphome.jpg",
-      "https://lawb.xyz/assets/appmeme.PNG",
-      "https://lawb.xyz/assets/appmint.jpg"
+      "https://lawb.xyz/assets/appmeme.PNG"
     ],
     "primaryCategory": "social",
     "tags": ["meme", "chess", "nft", "base", "lawb"],
     "heroImageUrl": "https://lawb.xyz/assets/hero.png",
     "tagline": "there is no meme we lawb you",
-    "ogTitle": "Lawb.xyz - there is no meme we lawb you",
-    "ogDescription": "Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap.",
+    "ogTitle": "there is no meme we lawb you",
+    "ogDescription": "Lawbsters Headquaters",
     "ogImageUrl": "https://lawb.xyz/assets/hero.png",
     "noindex": false
   }
