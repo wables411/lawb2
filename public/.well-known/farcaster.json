@@ -12,6 +12,8 @@
     "name": "LAWB",
     "homeUrl": "https://lawb.xyz",
     "iconUrl": "https://lawb.xyz/assets/chessicon.png",
+    "imageUrl": "https://lawb.xyz/assets/hero.png",
+    "buttonTitle": "Launch LAWB",
     "splashImageUrl": "https://lawb.xyz/assets/splash.png",
     "splashBackgroundColor": "#000080",
     "subtitle": "there is no meme we lawb you",
