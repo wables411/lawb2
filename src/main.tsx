@@ -15,10 +15,15 @@ import { lazy, Suspense } from 'react';
 const ChessPage = lazy(() => import('./components/ChessPage'));
 import { appKit, wagmiAdapter } from './appkit.ts'; // Import the appKit instance and wagmi adapter
 import { getAppKit } from '@reown/appkit/react';
+import { initBaseMiniApp } from './utils/baseMiniapp';
 
 // Initialize AppKit singleton before any hooks are used
 getAppKit(appKit);
 const queryClient = new QueryClient();
+
+// Initialize Base Mini App SDK as early as possible (before rendering)
+// This ensures it's ready when embedded in Base app
+void initBaseMiniApp();
 
 const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
 
