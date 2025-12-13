@@ -60,6 +60,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Initialize Base Mini App SDK immediately - before React loads -->
+    <!-- This ensures ready() is called early enough for Farcaster validator -->
+    <script type="module">
+      // Try to call ready() as early as possible
+      (async () => {
+        try {
+          const { sdk } = await import('@farcaster/miniapp-sdk');
+          if (sdk && sdk.actions && sdk.actions.ready) {
+            await sdk.actions.ready();
+            console.log('[Base Mini App] ✅ ready() called from inline script');
+          }
+        } catch (error) {
+          // Silently fail - SDK might not be available in all contexts
+          console.log('[Base Mini App] Inline script: SDK not available (this is OK)');
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
