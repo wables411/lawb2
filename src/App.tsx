@@ -42,9 +42,15 @@ function App() {
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
-  // Initialize Base Mini App SDK if running as Base Mini App (doesn't affect regular web app)
+  // Initialize Base Mini App SDK when interface is ready
+  // Call ready() after component mounts to hide splash screen (per Farcaster docs)
   useEffect(() => {
-    void initBaseMiniApp();
+    // Use a small delay to ensure UI is fully rendered and avoid jitter
+    const timer = setTimeout(() => {
+      void initBaseMiniApp();
+    }, 0); // Use requestAnimationFrame or 0ms timeout to ensure render completes
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Debug: log activePopup changes

@@ -21,12 +21,8 @@ import { initBaseMiniApp } from './utils/baseMiniapp';
 getAppKit(appKit);
 const queryClient = new QueryClient();
 
-// Initialize Base Mini App SDK as early as possible (before rendering)
-// This ensures it's ready when embedded in Base app
-// Use .catch() to handle errors properly instead of void
-initBaseMiniApp().catch((error) => {
-  console.error('[Base Mini App] Initialization error:', error);
-});
+// Note: Base Mini App SDK ready() is called in React components (App.tsx, Mobile.tsx)
+// after the interface is ready, per Farcaster documentation best practices
 
 const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
 

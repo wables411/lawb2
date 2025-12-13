@@ -10,6 +10,7 @@ import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { playIconClickSound } from '../utils/sound';
+import { initBaseMiniApp } from '../utils/baseMiniapp';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
@@ -292,6 +293,17 @@ const Mobile = () => {
 
   useEffect(() => {
     setShowPixelawbsPopup(true);
+  }, []);
+
+  // Initialize Base Mini App SDK when interface is ready
+  // Call ready() after component mounts to hide splash screen (per Farcaster docs)
+  useEffect(() => {
+    // Use a small delay to ensure UI is fully rendered and avoid jitter
+    const timer = setTimeout(() => {
+      void initBaseMiniApp();
+    }, 0);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   if (activeView === 'gallery') {
