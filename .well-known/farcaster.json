@@ -5,32 +5,37 @@
     "signature": ""
   },
   "baseBuilder": {
-    "ownerAddress": "0x"
+    "ownerAddress": "0xb97f4b80bdB8b7722c53B17D17c994329E2767B6"
   },
   "miniapp": {
     "version": "1",
     "name": "Lawb.xyz",
     "homeUrl": "https://lawb.xyz",
-    "iconUrl": "https://lawb.xyz/assets/favicon.ico",
-    "splashImageUrl": "https://lawb.xyz/assets/lawbstarz.gif",
+    "iconUrl": "https://lawb.xyz/assets/chessicon.png",
+    "splashImageUrl": "https://lawb.xyz/assets/splash.png",
     "splashBackgroundColor": "#000080",
     "webhookUrl": "",
     "subtitle": "there is no meme we lawb you",
-    "description": "Create memes, play chess, and connect with the Lawb community. Windows 98-style NFT platform with meme generator and multiplayer chess.",
+    "description": "Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap.",
     "screenshotUrls": [
-      "https://lawb.xyz/assets/lawbstarz.gif",
-      "https://lawb.xyz/assets/lawbstation.GIF"
+      "https://lawb.xyz/assets/appchess.jpg",
+      "https://lawb.xyz/assets/appchessmoves.jpg",
+      "https://lawb.xyz/assets/apphome.jpg",
+      "https://lawb.xyz/assets/appmeme.PNG",
+      "https://lawb.xyz/assets/appmint.jpg"
     ],
     "primaryCategory": "social",
     "tags": ["meme", "chess", "nft", "base", "lawb"],
-    "heroImageUrl": "https://lawb.xyz/assets/lawbstarz.gif",
+    "heroImageUrl": "https://lawb.xyz/assets/hero.png",
     "tagline": "there is no meme we lawb you",
     "ogTitle": "Lawb.xyz - there is no meme we lawb you",
-    "ogDescription": "Create memes, play chess, and connect with the Lawb community.",
+    "ogDescription": "Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap.",
     "ogImageUrl": "https://lawb.xyz/assets/lawbstarz.gif",
     "noindex": false
   }
 }
+
+
 
 
 
