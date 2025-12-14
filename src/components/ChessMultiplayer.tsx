@@ -2300,15 +2300,30 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   const createGame = async () => {
+    console.log('[CREATE GAME] ========== START ==========');
+    console.log('[CREATE GAME] wagerType:', wagerType);
+    console.log('[CREATE GAME] address:', address);
+    console.log('[CREATE GAME] gameWager:', gameWager);
+    console.log('[CREATE GAME] selectedToken:', selectedToken);
+    console.log('[CREATE GAME] isCustomToken:', isCustomToken);
+    console.log('[CREATE GAME] chainId:', chainId);
+    console.log('[CREATE GAME] selectedChain:', selectedChain);
+    console.log('[CREATE GAME] chessContractAddress:', chessContractAddress);
+    console.log('[CREATE GAME] selectedNFT:', selectedNFT);
+    
     // Validate based on wager type
     if (wagerType === 'token' && (!address || gameWager <= 0)) {
+      console.error('[CREATE GAME] ❌ VALIDATION FAILED: wagerType=token but (!address || gameWager <= 0)');
+      console.error('[CREATE GAME]   address:', address, 'gameWager:', gameWager);
       return;
     }
     if (wagerType === 'nft' && (!address || !selectedNFT)) {
+      console.error('[CREATE GAME] ❌ VALIDATION FAILED: wagerType=nft but (!address || !selectedNFT)');
       setGameStatus('Please select an NFT to wager');
       return;
     }
     
+    console.log('[CREATE GAME] ✅ Validation passed, setting isGameCreationInProgress=true');
     setIsGameCreationInProgress(true);
     
     try {
@@ -2385,11 +2400,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       
       // Check token approval first
+      console.log('[CREATE GAME] Checking token approval...');
       const isApproved = await checkAndApproveToken();
+      console.log('[CREATE GAME] Token approval result:', isApproved);
       if (!isApproved) {
+        console.error('[CREATE GAME] ❌ Token approval failed or was rejected');
         setIsGameCreationInProgress(false);
         return;
       }
+      console.log('[CREATE GAME] ✅ Token approval successful');
       
       const newInviteCode = generateBytes6InviteCode();
       
