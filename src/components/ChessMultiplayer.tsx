@@ -16,9 +16,10 @@ import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'fireb
 import './ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from './TokenSelector';
+import { ChainSelector } from './ChainSelector';
 import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
 import { useMobileCapabilities } from '../hooks/useMediaQuery';
-import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol } from '../config/tokens';
+import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol, getTokenAddressForChain } from '../config/tokens';
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
@@ -31,6 +32,16 @@ const getContractAddress = (chainId: number) => {
   if (chainId === NETWORKS.testnet.chainId) {
     return CONTRACT_ADDRESSES.testnet.chess;
   }
+  if (chainId === NETWORKS.mainnet.chainId) {
+    return CONTRACT_ADDRESSES.mainnet.chess;
+  }
+  if (chainId === NETWORKS.base.chainId) {
+    return CONTRACT_ADDRESSES.base.chess;
+  }
+  if (chainId === NETWORKS.arbitrum.chainId) {
+    return CONTRACT_ADDRESSES.arbitrum.chess;
+  }
+  // Default to Sanko mainnet
   return CONTRACT_ADDRESSES.mainnet.chess;
 };
 
@@ -119,6 +130,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { address, isConnected, chainId } = useAccount();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
   
+  // Chain detection
+  const isBase = chainId === NETWORKS.base.chainId;
+  const isArbitrum = chainId === NETWORKS.arbitrum.chainId;
+  const isSanko = chainId === NETWORKS.mainnet.chainId || chainId === NETWORKS.testnet.chainId;
+  
   // Smart contract integration
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
   const [contractWinner, setContractWinner] = useState<string>('');
@@ -132,6 +148,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { writeContract: writeJoinGame, isPending: isJoiningGameContract, data: joinGameHash, error: joinGameError } = useWriteContract();
   const { writeContract: writeEndGame, isPending: isEndingGame, data: endGameHash } = useWriteContract();
   const { writeContract: writeCancelGame, isPending: isCancellingGame, data: cancelGameHash } = useWriteContract();
+  const { writeContract: writeContract } = useWriteContract(); // For custom token approvals
   
   // Token approval hooks
   const { approve: approveToken, isPending: isApproving, error: approveError, hash: approveHash } = useApproveToken();
@@ -662,8 +679,45 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [waitingForApproval, setWaitingForApproval] = useState<boolean>(false);
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
-  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('NATIVE_DMT');
-  const [currentGameToken, setCurrentGameToken] = useState<TokenSymbol>('NATIVE_DMT');
+  // selectedToken can be TokenSymbol (Sanko) or token address string (Base custom tokens)
+  const [selectedToken, setSelectedToken] = useState<TokenSymbol | string>('NATIVE_DMT');
+  const [currentGameToken, setCurrentGameToken] = useState<TokenSymbol | string>('NATIVE_DMT');
+  
+  // Selected chain for game creation (defaults to current chain)
+  const [selectedChain, setSelectedChain] = useState<'sanko' | 'base' | 'arbitrum' | null>(null);
+  
+  // Wager type: 'token' or 'nft' (NFT only on Base/Arbitrum)
+  const [wagerType, setWagerType] = useState<'token' | 'nft'>('token');
+  
+  // NFT wagering state (Base only)
+  const [selectedNFT, setSelectedNFT] = useState<{
+    contractAddress: string;
+    tokenId: string;
+    type: 'ERC721' | 'ERC1155';
+    quantity?: number;
+  } | null>(null);
+  
+  // Determine current chain from chainId
+  useEffect(() => {
+    if (chainId === NETWORKS.mainnet.chainId) {
+      setSelectedChain('sanko');
+      // Reset to token wager on Sanko (NFT not supported)
+      if (wagerType === 'nft') {
+        setWagerType('token');
+      }
+    } else if (chainId === NETWORKS.base.chainId) {
+      setSelectedChain('base');
+    } else if (chainId === NETWORKS.arbitrum.chainId) {
+      setSelectedChain('arbitrum');
+    }
+  }, [chainId]);
+  
+  // Reset NFT selection when switching to token wager
+  useEffect(() => {
+    if (wagerType === 'token') {
+      setSelectedNFT(null);
+    }
+  }, [wagerType]);
 
   // Debug logging for join transaction
   useEffect(() => {
@@ -698,12 +752,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   }, [isApproving, waitingForApproval, inviteCode, isJoiningFromLobby, joinGameHash, isJoiningGameContract]);
   
+  // Check if selectedToken is a custom address (Base) or TokenSymbol (Sanko)
+  const isCustomToken = typeof selectedToken === 'string' && 
+                        !Object.keys(SUPPORTED_TOKENS).includes(selectedToken) &&
+                        selectedToken.startsWith('0x');
+  
+  // Get token decimals - for custom tokens, we'll need to fetch from contract
+  const getTokenDecimals = (): number => {
+    if (isCustomToken) {
+      // For custom tokens, we'll need to fetch decimals from contract
+      // For now, default to 18 (most common)
+      return 18;
+    }
+    return SUPPORTED_TOKENS[selectedToken as TokenSymbol].decimals;
+  };
+  
   // Token balance for validation
-  const { balance } = useTokenBalance(selectedToken, address);
+  // For custom tokens, balance will be fetched separately in TokenSelector
+  const { balance } = useTokenBalance(
+    isCustomToken ? 'USDC' : (selectedToken as TokenSymbol), // Fallback for custom tokens
+    address
+  );
   
   // Token allowance for current wager
-  const currentWagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals)));
-  const { allowance } = useTokenAllowance(selectedToken, address, chessContractAddress);
+  const currentWagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, getTokenDecimals())));
+  const { allowance } = useTokenAllowance(
+    isCustomToken ? 'USDC' : (selectedToken as TokenSymbol), // Fallback for custom tokens
+    address,
+    chessContractAddress
+  );
   
   // UI state - always use dark mode for chess
   const [darkMode] = useState(true);
@@ -1786,7 +1863,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // CRITICAL FIX: Filter out finished games
       const activeGames = allGames.filter((game: any) => {
-        const isPlayerInGame = game.chain === 'sanko' && 
+        const isPlayerInGame = (game.chain === 'sanko' || game.chain === 'base' || game.chain === 'arbitrum' || !game.chain) && 
           (game.blue_player === address || game.red_player === address);
         const isActiveState = ['waiting', 'waiting_for_join', 'active'].includes(game.game_state);
         const isNotFinished = game.game_state !== 'finished' && game.game_state !== 'ended';
@@ -1992,7 +2069,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         
         try {
           console.log('[LOBBY] Loading open games...');
-          const games = await firebaseChess.getOpenGames();
+          const games = await firebaseChess.getOpenGames(filterChain);
           console.log('[LOBBY] Loaded open games:', games);
           console.log('[LOBBY] Number of open games:', games.length);
           
@@ -2105,28 +2182,52 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   const createGame = async () => {
-    if (!address || gameWager <= 0) {
+    // Validate based on wager type
+    if (wagerType === 'token' && (!address || gameWager <= 0)) {
+      return;
+    }
+    if (wagerType === 'nft' && (!address || !selectedNFT)) {
+      setGameStatus('Please select an NFT to wager');
       return;
     }
     
     setIsGameCreationInProgress(true);
     
     try {
-      // Validate sufficient token balance before proceeding
-      const tokenConfig = SUPPORTED_TOKENS[selectedToken];
-      const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, tokenConfig.decimals)));
+      // Handle NFT wagering (Base only)
+      if (wagerType === 'nft' && selectedNFT) {
+        if (chainId !== NETWORKS.base.chainId && chainId !== NETWORKS.arbitrum.chainId) {
+          setGameStatus('NFT wagering is only available on Base/Arbitrum');
+          setIsGameCreationInProgress(false);
+          return;
+        }
+        
+        // TODO: Implement NFT game creation
+        // For now, show message
+        setGameStatus('NFT wagering coming soon!');
+        setIsGameCreationInProgress(false);
+        return;
+      }
+      
+      // Token wagering (existing logic)
+      // Get token config or handle custom token
+      const tokenConfig = isCustomToken ? null : SUPPORTED_TOKENS[selectedToken as TokenSymbol];
+      const tokenDecimals = getTokenDecimals();
+      const wagerAmountWei = BigInt(Math.floor(gameWager * Math.pow(10, tokenDecimals)));
+      const tokenAddress = isCustomToken ? selectedToken : getTokenAddressForChain(selectedToken as TokenSymbol, chainId || NETWORKS.mainnet.chainId);
+      const isNative = tokenConfig?.isNative || (tokenAddress === '0x0000000000000000000000000000000000000000');
       
       // Check token balance
       if (publicClient) {
         try {
           let balance: bigint;
-          if (tokenConfig.isNative) {
-            // Check native DMT balance
+          if (isNative) {
+            // Check native balance (ETH on Base, DMT on Sanko)
             balance = await publicClient.getBalance({ address: address as `0x${string}` });
           } else {
-            // Check ERC-20 token balance
+            // Check ERC-20 token balance (works for both fixed and custom tokens)
             balance = await publicClient.readContract({
-              address: tokenConfig.address as `0x${string}`,
+              address: tokenAddress as `0x${string}`,
               abi: [
                 {
                   "constant": true,
@@ -2143,14 +2244,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           console.log('[CREATE] Token balance check:', {
             token: selectedToken,
+            tokenAddress,
+            isCustomToken,
             balance: balance.toString(),
             required: wagerAmountWei.toString(),
             sufficient: balance >= wagerAmountWei
           });
           
           if (balance < wagerAmountWei) {
-            const balanceFormatted = Number(balance) / Math.pow(10, tokenConfig.decimals);
-            setGameStatus(`Insufficient ${selectedToken} balance. You have ${balanceFormatted.toFixed(6)} ${selectedToken}, need ${gameWager} ${selectedToken}.`);
+            const balanceFormatted = Number(balance) / Math.pow(10, tokenDecimals);
+            const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
+            setGameStatus(`Insufficient ${tokenSymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenSymbol}, need ${gameWager} ${tokenSymbol}.`);
             setIsGameCreationInProgress(false);
             return;
           }
@@ -2171,8 +2275,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       const newInviteCode = generateBytes6InviteCode();
       
-      // Use selected token
-      const tokenAddress = SUPPORTED_TOKENS[selectedToken].address;
+      // Use selected token - get address for current chain (already computed above)
+      // tokenAddress is already set above
       // wagerAmountWei is already declared above, reuse it
       
       // Validate wager amount against contract limits
@@ -2199,15 +2303,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           });
           
           if (wagerAmountWei < minWager) {
-            const minWagerFormatted = Number(minWager) / Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals);
-            setGameStatus(`Wager too low. Minimum for ${selectedToken}: ${minWagerFormatted}`);
+            const minWagerFormatted = Number(minWager) / Math.pow(10, tokenDecimals);
+            const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
+            setGameStatus(`Wager too low. Minimum for ${tokenSymbol}: ${minWagerFormatted}`);
             setIsGameCreationInProgress(false);
             return;
           }
           
           if (wagerAmountWei > maxWager) {
-            const maxWagerFormatted = Number(maxWager) / Math.pow(10, SUPPORTED_TOKENS[selectedToken].decimals);
-            setGameStatus(`Wager too high. Maximum for ${selectedToken}: ${maxWagerFormatted}`);
+            const maxWagerFormatted = Number(maxWager) / Math.pow(10, tokenDecimals);
+            const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
+            setGameStatus(`Wager too high. Maximum for ${tokenSymbol}: ${maxWagerFormatted}`);
             setIsGameCreationInProgress(false);
             return;
           }
@@ -2218,17 +2324,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
+      // Determine chain for Firebase
+      const gameChain = selectedChain || (chainId === NETWORKS.mainnet.chainId ? 'sanko' : 
+                        chainId === NETWORKS.base.chainId ? 'base' : 
+                        chainId === NETWORKS.arbitrum.chainId ? 'arbitrum' : 'sanko');
+      
+      // Get token symbol for display (for custom tokens, use address or fetched symbol)
+      const tokenSymbol = isCustomToken ? (tokenAddress.slice(0, 6) + '...') : 
+                         (tokenConfig?.symbol || selectedToken);
+      
       const gameData = {
         invite_code: newInviteCode,
         game_title: `Chess Game ${newInviteCode.slice(-6)}`,
         bet_amount: wagerAmountWei.toString(),
-        bet_token: selectedToken,
+        bet_token: tokenSymbol, // Use symbol for display, address is in contract
+        bet_token_address: tokenAddress, // Store actual token address
         blue_player: address,
         game_state: 'waiting_for_join', // Changed: Only mark as waiting for join, not active
         winner: null, // Initialize winner field
         board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
         current_player: 'blue',
-        chain: 'sanko',
+        chain: gameChain, // Use selected or detected chain
         contract_address: chessContractAddress,
         is_public: true,
         created_at: new Date().toISOString(),
@@ -2301,21 +2417,53 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
-      // Validate sufficient token balance before proceeding
-      const tokenSymbol = gameData.bet_token as TokenSymbol;
-      const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+      // Detect game chain and ensure user is on correct chain
+      const gameChain = gameData.chain || 'sanko';
+      const gameChainId = gameChain === 'base' ? NETWORKS.base.chainId :
+                          gameChain === 'arbitrum' ? NETWORKS.arbitrum.chainId :
+                          NETWORKS.mainnet.chainId;
+      
+      // Check if user is on correct chain
+      if (chainId !== gameChainId) {
+        setGameStatus(`Please switch to ${gameChain} network to join this game`);
+        try {
+          await switchChain({ chainId: gameChainId });
+        } catch (error) {
+          console.error('[JOIN] Failed to switch chain:', error);
+        }
+        return;
+      }
+      
+      // Get contract address for game's chain
+      const gameContractAddress = gameChain === 'base' ? CONTRACT_ADDRESSES.base.chess :
+                                  gameChain === 'arbitrum' ? CONTRACT_ADDRESSES.arbitrum.chess :
+                                  CONTRACT_ADDRESSES.mainnet.chess;
+      
+      // Handle token - could be TokenSymbol (Sanko) or address (Base custom token)
+      const tokenSymbolOrAddress = gameData.bet_token_address || gameData.bet_token;
+      const isCustomToken = typeof tokenSymbolOrAddress === 'string' && 
+                           tokenSymbolOrAddress.startsWith('0x') &&
+                           !Object.keys(SUPPORTED_TOKENS).includes(tokenSymbolOrAddress);
+      
+      // Get token config or handle custom token
+      const tokenConfig = isCustomToken ? null : SUPPORTED_TOKENS[tokenSymbolOrAddress as TokenSymbol];
+      const tokenDecimals = isCustomToken ? 18 : (tokenConfig?.decimals || 18); // Default to 18 for custom tokens
+      const tokenAddress = isCustomToken ? tokenSymbolOrAddress : 
+                          (tokenConfig ? getTokenAddressForChain(tokenSymbolOrAddress as TokenSymbol, gameChainId) : '0x0000000000000000000000000000000000000000');
+      const isNative = tokenConfig?.isNative || (tokenAddress === '0x0000000000000000000000000000000000000000');
+      
       const wagerAmountWei = BigInt(gameData.bet_amount);
       
       if (publicClient) {
         try {
           let balance: bigint;
-          if (tokenConfig.isNative) {
-            // Check native DMT balance
+          if (isNative) {
+            // Check native balance (ETH on Base, DMT on Sanko)
             balance = await publicClient.getBalance({ address: address as `0x${string}` });
           } else {
-            // Check ERC-20 token balance
+            // Check ERC-20 token balance (works for both fixed and custom tokens)
             balance = await publicClient.readContract({
-              address: tokenConfig.address as `0x${string}`,
+              address: tokenAddress as `0x${string}`,
               abi: [
                 {
                   "constant": true,
@@ -2330,17 +2478,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             }) as bigint;
           }
           
+          const tokenDisplaySymbol = isCustomToken ? (gameData.bet_token || 'token') : (tokenConfig?.symbol || tokenSymbolOrAddress);
+          
           console.log('[JOIN] Token balance check:', {
-            token: tokenSymbol,
+            token: tokenSymbolOrAddress,
+            tokenAddress,
+            isCustomToken,
             balance: balance.toString(),
             required: wagerAmountWei.toString(),
             sufficient: balance >= wagerAmountWei
           });
           
           if (balance < wagerAmountWei) {
-            const balanceFormatted = Number(balance) / Math.pow(10, tokenConfig.decimals);
-            const wagerFormatted = Number(wagerAmountWei) / Math.pow(10, tokenConfig.decimals);
-            setGameStatus(`Insufficient ${tokenSymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenSymbol}, need ${wagerFormatted} ${tokenSymbol} to join this game.`);
+            const balanceFormatted = Number(balance) / Math.pow(10, tokenDecimals);
+            const wagerFormatted = Number(wagerAmountWei) / Math.pow(10, tokenDecimals);
+            setGameStatus(`Insufficient ${tokenDisplaySymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenDisplaySymbol}, need ${wagerFormatted} ${tokenDisplaySymbol} to join this game.`);
             return;
           }
         } catch (error) {
@@ -2374,9 +2526,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
-      // Check token approval for the game's token
-      const tokenAddress = SUPPORTED_TOKENS[gameData.bet_token as TokenSymbol]?.address;
-      if (tokenAddress && tokenAddress !== ('0x0000000000000000000000000000000000000000' as typeof tokenAddress) && publicClient) {
+      // Check token approval for the game's token (use tokenAddress already computed above)
+      if (tokenAddress && !isNative && publicClient) {
         try {
           const allowance = await publicClient.readContract({
             address: tokenAddress as `0x${string}`,
@@ -2393,25 +2544,47 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               }
             ],
             functionName: 'allowance',
-            args: [address as `0x${string}`, chessContractAddress as `0x${string}`]
+            args: [address as `0x${string}`, gameContractAddress as `0x${string}`]
           }) as bigint;
           
           const allowanceBigInt = allowance;
           const requiredAmountBigInt = BigInt(gameData.bet_amount);
           
           if (allowanceBigInt < requiredAmountBigInt) {
-            setGameStatus(`Approving ${gameData.bet_token} spending...`);
+            const tokenDisplaySymbol = isCustomToken ? (gameData.bet_token || 'token') : (tokenConfig?.symbol || tokenSymbolOrAddress);
+            setGameStatus(`Approving ${tokenDisplaySymbol} spending...`);
             setWaitingForApproval(true);
             
-            // Automatically approve the token
-            try {
-              approveToken(gameData.bet_token as TokenSymbol, chessContractAddress, requiredAmountBigInt);
-              return; // Exit early, the approval will trigger a re-render
-            } catch (error) {
-              console.error('[JOIN] Error approving token:', error);
-              setGameStatus(`Failed to approve ${gameData.bet_token}. Please try again.`);
-              setWaitingForApproval(false);
-            return;
+            // For custom tokens, we need to approve directly using the token address
+            // For fixed tokens, use the existing approveToken function
+            if (isCustomToken) {
+              // Custom token approval - need to call ERC20 approve directly
+              try {
+                writeContract({
+                  address: tokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: 'approve',
+                  args: [gameContractAddress as `0x${string}`, requiredAmountBigInt]
+                });
+                // Wait for approval transaction - the useEffect will handle auto-join
+                return;
+              } catch (error) {
+                console.error('[JOIN] Error approving custom token:', error);
+                setGameStatus(`Failed to approve token. Please try again.`);
+                setWaitingForApproval(false);
+                return;
+              }
+            } else {
+              // Fixed token approval
+              try {
+                approveToken(tokenSymbolOrAddress as TokenSymbol, gameContractAddress, requiredAmountBigInt);
+                return; // Exit early, the approval will trigger a re-render
+              } catch (error) {
+                console.error('[JOIN] Error approving token:', error);
+                setGameStatus(`Failed to approve ${tokenDisplaySymbol}. Please try again.`);
+                setWaitingForApproval(false);
+                return;
+              }
             }
           }
         } catch (error) {
@@ -2421,12 +2594,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       
-      // Estimate gas for joinGame function
+      // Estimate gas for joinGame function (use game's contract address)
       let gasLimit = 200000n; // Default gas limit for join
       try {
         if (publicClient) {
           const estimatedGas = await publicClient.estimateContractGas({
-            address: chessContractAddress as `0x${string}`,
+            address: gameContractAddress as `0x${string}`,
             abi: CHESS_CONTRACT_ABI,
             functionName: 'joinGame',
             args: [inviteCode as `0x${string}`],
@@ -2440,15 +2613,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
 
       try {
-        // Check if this is a native DMT game
-        const gameTokenConfig = SUPPORTED_TOKENS[gameData.bet_token as TokenSymbol];
-        const isNativeGame = gameTokenConfig?.isNative;
-        
-        if (isNativeGame) {
-          // Native DMT transaction - include value
-          console.log('[JOIN] Native DMT game - adding value:', gameData.bet_amount);
+        // Use game's contract address (may be different chain)
+        if (isNative) {
+          // Native token transaction - include value
+          console.log('[JOIN] Native token game - adding value:', gameData.bet_amount);
           const result = writeJoinGame({
-            address: chessContractAddress as `0x${string}`,
+            address: gameContractAddress as `0x${string}`,
             abi: CHESS_CONTRACT_ABI,
             functionName: 'joinGame',
             args: [inviteCode as `0x${string}`],
@@ -2458,7 +2628,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         } else {
           // ERC-20 token transaction - no value
           const result = writeJoinGame({
-            address: chessContractAddress as `0x${string}`,
+            address: gameContractAddress as `0x${string}`,
             abi: CHESS_CONTRACT_ABI,
             functionName: 'joinGame',
             args: [inviteCode as `0x${string}`],
@@ -4989,6 +5159,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             
             const [player1, player2, isActive, winner, inviteCode, wagerAmount] = gameData;
             
+            // Detect chain from contract address
+            const detectedChain = chessContractAddress === CONTRACT_ADDRESSES.base.chess ? 'base' :
+                                 chessContractAddress === CONTRACT_ADDRESSES.arbitrum.chess ? 'arbitrum' :
+                                 'sanko';
+            
             // Create Firebase game data
             const firebaseGameData = {
               invite_code: playerGameInviteCode,
@@ -5000,7 +5175,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               winner: null, // Initialize winner field
               board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
               current_player: 'blue',
-              chain: 'sanko',
+              chain: detectedChain,
               contract_address: chessContractAddress,
               is_public: true,
               created_at: new Date().toISOString()
@@ -6037,22 +6212,92 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
                         </div>
                         
-                        <TokenSelector
+                        {/* Chain Selector - Desktop only */}
+                        {!isMobile && (
+                          <ChainSelector
+                            selectedChain={selectedChain}
+                            onSelect={setSelectedChain}
+                            mode="desktop"
+                            disabled={isGameCreationInProgress}
+                          />
+                        )}
+                        
+                        {/* Wager Type Selector - Base/Arbitrum only */}
+                        {(isBase || isArbitrum) && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000', marginRight: '10px' }}>
+                              Wager Type:
+                            </label>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setWagerType('token')}
+                                disabled={isGameCreationInProgress}
+                                style={{
+                                  padding: '5px 10px',
+                                  border: wagerType === 'token' ? '2px solid #ff0000' : '2px outset #fff',
+                                  background: wagerType === 'token' ? '#333' : '#000000',
+                                  color: '#ff0000',
+                                  cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                Token
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setWagerType('nft')}
+                                disabled={isGameCreationInProgress}
+                                style={{
+                                  padding: '5px 10px',
+                                  border: wagerType === 'nft' ? '2px solid #ff0000' : '2px outset #fff',
+                                  background: wagerType === 'nft' ? '#333' : '#000000',
+                                  color: '#ff0000',
+                                  cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                NFT
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Token Selector - Show only for token wagers */}
+                        {wagerType === 'token' && (
+                          <TokenSelector
                           selectedToken={selectedToken}
                           onTokenSelect={setSelectedToken}
                           wagerAmount={gameWager}
                           onWagerChange={setGameWager}
                           disabled={isGameCreationInProgress}
                         />
+                        )}
+                        
+                        {/* NFT Selector - Show only for NFT wagers (Base/Arbitrum) */}
+                        {wagerType === 'nft' && (isBase || isArbitrum) && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000', marginRight: '10px' }}>
+                              NFT:
+                            </label>
+                            <div style={{ color: '#ff0000', fontSize: '12px' }}>
+                              NFT wagering coming soon! Select an NFT from your wallet.
+                            </div>
+                            {/* TODO: Add NFT selector component */}
+                          </div>
+                        )}
+                        
                         <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
                           <button 
                             className="create-confirm-btn"
                             onClick={() => {
-                              if (gameWager > 0 && !isGameCreationInProgress) {
-                                setShowPieceSetSelector(true);
+                              if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
+                                if (!isGameCreationInProgress) {
+                                  setShowPieceSetSelector(true);
+                                }
                               }
                             }}
-                            disabled={gameWager <= 0 || isGameCreationInProgress}
+                            disabled={(wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress}
                             style={{
                               padding: '8px 16px',
                               backgroundColor: '#ff0000',

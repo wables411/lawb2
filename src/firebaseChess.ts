@@ -166,7 +166,8 @@ export const firebaseChess = {
   },
 
   // Get open games (waiting for players to join)
-  async getOpenGames() {
+  // Optionally filter by chain
+  async getOpenGames(filterChain?: 'sanko' | 'base' | 'arbitrum') {
     try {
       const db = getDatabaseOrThrow();
       const gamesRef = ref(db, 'chess_games');
@@ -188,15 +189,18 @@ export const firebaseChess = {
         // Additional check: if game_state is undefined, treat as waiting_for_join
         const hasValidState = game.game_state === 'waiting_for_join' || game.game_state === 'waiting' || game.game_state === undefined;
         
-        return hasValidState && isPublic && noRedPlayer;
+        // Chain filter (if specified)
+        const matchesChain = !filterChain || !game.chain || game.chain === filterChain;
+        
+        return hasValidState && isPublic && noRedPlayer && matchesChain;
       });
       
       // Sort by creation date (newest first)
       openGames.sort((a: any, b: any) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
       );
       
-      console.log('[FIREBASE] Found', openGames.length, 'open games out of', totalGames, 'total games');
+      console.log('[FIREBASE] Found', openGames.length, 'open games out of', totalGames, 'total games', filterChain ? `(filtered by ${filterChain})` : '');
       return openGames;
     } catch (error) {
       console.error('[FIREBASE] Error getting open games:', error);
