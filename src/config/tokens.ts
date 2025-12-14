@@ -139,7 +139,7 @@ export const CONTRACT_ADDRESSES = {
     chess: '0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56' // Sanko Mainnet
   },
   base: {
-    chess: '0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11' // ✅ Base Mainnet
+    chess: '0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11' // ✅ Base Mainnet (Proxy - Implementation: 0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29)
   },
   arbitrum: {
     chess: '0x0000000000000000000000000000000000000000' // TODO: Deploy and update
