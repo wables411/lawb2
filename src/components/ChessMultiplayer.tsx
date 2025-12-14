@@ -2712,7 +2712,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             if (isCustomToken) {
               // Custom token approval - need to call ERC20 approve directly
               try {
-                writeContract({
+                writeContractApproval({
                   address: tokenAddress as `0x${string}`,
                   abi: ERC20_ABI,
                   functionName: 'approve',
