@@ -24,7 +24,7 @@ function areTokensAvailableOnNetwork(chainId: number): boolean {
 // Helper function to check if a specific token is available on current network
 function isTokenAvailableOnChain(tokenSymbol: TokenSymbol, chainId: number): boolean {
   const token = SUPPORTED_TOKENS[tokenSymbol];
-  return token.chains.includes(chainId);
+  return (token.chains as readonly number[]).includes(chainId);
 }
 
 export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useSwitchChain } from 'wagmi';
 import { 
   updateLeaderboardEntry, 
   updateBothPlayersScores, 
@@ -128,6 +128,7 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
 export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
 
   const { address, isConnected, chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
   
   // Chain detection
@@ -2069,7 +2070,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         
         try {
           console.log('[LOBBY] Loading open games...');
-          const games = await firebaseChess.getOpenGames(filterChain);
+          const games = await firebaseChess.getOpenGames();
           console.log('[LOBBY] Loaded open games:', games);
           console.log('[LOBBY] Number of open games:', games.length);
           
@@ -2120,8 +2121,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!address) return false;
     
     try {
-      // Check if this is a native token (like DMT)
-      const isNativeToken = SUPPORTED_TOKENS[selectedToken].isNative;
+      // Check if this is a native token (like DMT) - only for supported tokens
+      if (isCustomToken) {
+        // Custom tokens need approval check via direct contract call
+        return true; // Will be handled separately
+      }
+      const isNativeToken = SUPPORTED_TOKENS[selectedToken as TokenSymbol].isNative;
       
       if (isNativeToken) {
         console.log('[APPROVAL] Native token detected, skipping approval');
@@ -2164,8 +2169,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setTimeout(checkApprovalResult, 500);
           };
           
-          // Start the approval process
-          approveToken(selectedToken, chessContractAddress, currentWagerAmountWei);
+          // Start the approval process (only for supported tokens, not custom)
+          if (!isCustomToken) {
+            approveToken(selectedToken as TokenSymbol, chessContractAddress, currentWagerAmountWei);
+          }
           
           // Start checking for the result
           checkApprovalResult();
@@ -2373,7 +2380,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
       // Call contract to create game with token parameters and proper gas estimation
       let result;
-      if (SUPPORTED_TOKENS[selectedToken].isNative) {
+      if (isCustomToken) {
+        // Custom tokens are never native
+        result = writeCreateGame({
+          address: chessContractAddress as `0x${string}`,
+          abi: CHESS_CONTRACT_ABI,
+          functionName: 'createGame',
+          args: [newInviteCode as `0x${string}`, tokenAddress as `0x${string}`, wagerAmountWei],
+          gas: gasLimit,
+        });
+      } else if (SUPPORTED_TOKENS[selectedToken as TokenSymbol].isNative) {
         // Native DMT transaction - include value
         console.log('[CREATE] Native DMT transaction - adding value:', wagerAmountWei.toString());
         result = writeCreateGame({

@@ -57,7 +57,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   
   // Filter tokens available on current chain (for Sanko)
   const availableTokens = Object.entries(SUPPORTED_TOKENS).filter(([symbol, token]) => 
-    token.chains.includes(chainId)
+    (token.chains as readonly number[]).includes(chainId)
   ) as [string, typeof SUPPORTED_TOKENS[TokenSymbol]][];
   
   // Validate custom token address
