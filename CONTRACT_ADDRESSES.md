@@ -8,8 +8,10 @@
 - All contract calls should go to this address
 
 **Implementation Contract:** `0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29`
-- ✅ Verified on Sourcify
+- ✅ Verified on Sourcify: https://repo.sourcify.dev/8453/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29
+- Contract Name: `LAWBCHESS3000` (ChessGameUpgradable.sol)
 - Contains the actual chess game logic
+- Storage Layout: `allowAllTokens` is at slot 0, offset 20 (bool)
 - Do NOT use this address in frontend - use the proxy instead
 
 ## How Proxy Contracts Work

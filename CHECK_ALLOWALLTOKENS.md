@@ -16,7 +16,14 @@
 7. Click **"Query"** button
 8. Should return: `true` ✅
 
-## Method 2: Check Implementation Directly
+## Method 2: Check via Sourcify (Recommended Alternative)
+
+1. Go to: https://repo.sourcify.dev/8453/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29
+2. View the verified source code
+3. Check the **Storage Layout** section - you can see `allowAllTokens` at slot 0, offset 20
+4. To check the actual value, use BaseScan or a block explorer's "Read Contract" feature
+
+## Method 3: Check Implementation Directly on BaseScan
 
 1. Go to: https://basescan.org/address/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29#readContract
 2. Find `allowAllTokens` function in the list
