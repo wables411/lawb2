@@ -149,7 +149,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { writeContract: writeJoinGame, isPending: isJoiningGameContract, data: joinGameHash, error: joinGameError } = useWriteContract();
   const { writeContract: writeEndGame, isPending: isEndingGame, data: endGameHash } = useWriteContract();
   const { writeContract: writeCancelGame, isPending: isCancellingGame, data: cancelGameHash } = useWriteContract();
-  const { writeContract: writeContract } = useWriteContract(); // For custom token approvals
+  const { writeContract: writeContract, isPending: isApprovingCustomToken, data: customApprovalHash, error: customApprovalError } = useWriteContract(); // For custom token approvals
   
   // Token approval hooks
   const { approve: approveToken, isPending: isApproving, error: approveError, hash: approveHash } = useApproveToken();
@@ -758,12 +758,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         !Object.keys(SUPPORTED_TOKENS).includes(selectedToken) &&
                         selectedToken.startsWith('0x');
   
-  // Get token decimals - for custom tokens, we'll need to fetch from contract
+  // Get token decimals - for custom tokens, fetch from contract
+  const [customTokenDecimals, setCustomTokenDecimals] = useState<number | null>(null);
+  
+  // Fetch decimals for custom tokens
+  useEffect(() => {
+    if (isCustomToken && publicClient && selectedToken) {
+      const fetchDecimals = async () => {
+        try {
+          const decimals = await publicClient.readContract({
+            address: selectedToken as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: 'decimals'
+          }) as number;
+          setCustomTokenDecimals(decimals);
+          console.log('[TOKEN] Fetched decimals for custom token:', decimals);
+        } catch (error) {
+          console.error('[TOKEN] Error fetching decimals, defaulting to 18:', error);
+          setCustomTokenDecimals(18); // Default fallback
+        }
+      };
+      fetchDecimals();
+    } else {
+      setCustomTokenDecimals(null);
+    }
+  }, [isCustomToken, publicClient, selectedToken]);
+  
   const getTokenDecimals = (): number => {
     if (isCustomToken) {
-      // For custom tokens, we'll need to fetch decimals from contract
-      // For now, default to 18 (most common)
-      return 18;
+      return customTokenDecimals || 18; // Use fetched decimals or default to 18
     }
     return SUPPORTED_TOKENS[selectedToken as TokenSymbol].decimals;
   };
@@ -2118,65 +2141,153 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Create game with token support
   // Check and approve token spending
   const checkAndApproveToken = async () => {
-    if (!address) return false;
+    if (!address || !publicClient) return false;
     
     try {
-      // Check if this is a native token (like DMT) - only for supported tokens
-      if (isCustomToken) {
-        // Custom tokens need approval check via direct contract call
-        return true; // Will be handled separately
-      }
-      const isNativeToken = SUPPORTED_TOKENS[selectedToken as TokenSymbol].isNative;
+      const tokenAddress = isCustomToken ? selectedToken : getTokenAddressForChain(selectedToken as TokenSymbol, chainId || NETWORKS.mainnet.chainId);
+      const isNative = !isCustomToken && SUPPORTED_TOKENS[selectedToken as TokenSymbol]?.isNative;
       
-      if (isNativeToken) {
+      // Native tokens don't need approval
+      if (isNative) {
         console.log('[APPROVAL] Native token detected, skipping approval');
         return true;
       }
       
-      if (allowance < currentWagerAmountWei) {
-        console.log('[APPROVAL] Token approval needed, calling approveToken');
+      // Check current allowance
+      let currentAllowance: bigint;
+      if (isCustomToken) {
+        // For custom tokens, check allowance directly from contract
+        currentAllowance = await publicClient.readContract({
+          address: tokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: 'allowance',
+          args: [address as `0x${string}`, chessContractAddress as `0x${string}`]
+        }) as bigint;
+      } else {
+        currentAllowance = allowance;
+      }
+      
+      console.log('[APPROVAL] Current allowance:', currentAllowance.toString(), 'Required:', currentWagerAmountWei.toString());
+      
+      if (currentAllowance < currentWagerAmountWei) {
+        console.log('[APPROVAL] Token approval needed');
+        setGameStatus('Approving token... Please confirm in your wallet.');
         
-        // Call approveToken and wait for the result
-        return new Promise((resolve) => {
-          let attempts = 0;
-          const maxAttempts = 60; // 30 seconds max wait
-          
-          // Set up a one-time listener for the approval result
-          const checkApprovalResult = () => {
-            attempts++;
+        // Request approval
+        if (isCustomToken) {
+          // Custom token approval via direct contract call
+          try {
+            writeContractApproval({
+              address: tokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: 'approve',
+              args: [chessContractAddress as `0x${string}`, currentWagerAmountWei]
+            });
             
-            if (approveError) {
-              console.error('[APPROVAL] User denied approval or error occurred:', approveError);
-              setGameStatus('Token approval was cancelled. Please try again.');
-              resolve(false);
-              return;
-            }
-            
-            if (approveHash && !isApproving) {
-              console.log('[APPROVAL] Token approval successful, proceeding with game creation');
-              resolve(true);
-              return;
-            }
-            
-            if (attempts >= maxAttempts) {
-              console.error('[APPROVAL] Timeout waiting for approval result');
-              setGameStatus('Approval timeout. Please try again.');
-              resolve(false);
-              return;
-            }
-            
-            // Still pending, check again in a moment
-            setTimeout(checkApprovalResult, 500);
-          };
-          
-          // Start the approval process (only for supported tokens, not custom)
-          if (!isCustomToken) {
-            approveToken(selectedToken as TokenSymbol, chessContractAddress, currentWagerAmountWei);
+            // Wait for approval transaction
+            return new Promise((resolve) => {
+              let attempts = 0;
+              const maxAttempts = 60; // 30 seconds max wait
+              
+              const checkApprovalResult = () => {
+                attempts++;
+                
+                if (customApprovalError) {
+                  console.error('[APPROVAL] Custom token approval error:', customApprovalError);
+                  setGameStatus('Token approval was cancelled. Please try again.');
+                  resolve(false);
+                  return;
+                }
+                
+                // Check if transaction was confirmed by checking allowance
+                if (customApprovalHash && !isApprovingCustomToken) {
+                  // Transaction sent, wait a moment then check allowance
+                  setTimeout(async () => {
+                    try {
+                      const newAllowance = await publicClient.readContract({
+                        address: tokenAddress as `0x${string}`,
+                        abi: ERC20_ABI,
+                        functionName: 'allowance',
+                        args: [address as `0x${string}`, chessContractAddress as `0x${string}`]
+                      }) as bigint;
+                      
+                      if (newAllowance >= currentWagerAmountWei) {
+                        console.log('[APPROVAL] Custom token approval successful');
+                        resolve(true);
+                      } else {
+                        // Still waiting for confirmation, check again
+                        if (attempts < maxAttempts) {
+                          setTimeout(checkApprovalResult, 1000);
+                        } else {
+                          resolve(false);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('[APPROVAL] Error checking allowance:', error);
+                      if (attempts < maxAttempts) {
+                        setTimeout(checkApprovalResult, 1000);
+                      } else {
+                        resolve(false);
+                      }
+                    }
+                  }, 2000); // Wait 2 seconds after hash to allow confirmation
+                  return;
+                }
+                
+                if (attempts >= maxAttempts) {
+                  console.error('[APPROVAL] Timeout waiting for approval');
+                  setGameStatus('Approval timeout. Please try again.');
+                  resolve(false);
+                  return;
+                }
+                
+                // Still pending, check again
+                setTimeout(checkApprovalResult, 500);
+              };
+              
+              checkApprovalResult();
+            });
+          } catch (error) {
+            console.error('[APPROVAL] Error requesting custom token approval:', error);
+            setGameStatus('Failed to request approval. Please try again.');
+            return false;
           }
-          
-          // Start checking for the result
-          checkApprovalResult();
-        });
+        } else {
+          // Supported token approval using existing hook
+          return new Promise((resolve) => {
+            let attempts = 0;
+            const maxAttempts = 60; // 30 seconds max wait
+            
+            const checkApprovalResult = () => {
+              attempts++;
+              
+              if (approveError) {
+                console.error('[APPROVAL] User denied approval or error occurred:', approveError);
+                setGameStatus('Token approval was cancelled. Please try again.');
+                resolve(false);
+                return;
+              }
+              
+              if (approveHash && !isApproving) {
+                console.log('[APPROVAL] Token approval successful, proceeding with game creation');
+                resolve(true);
+                return;
+              }
+              
+              if (attempts >= maxAttempts) {
+                console.error('[APPROVAL] Timeout waiting for approval result');
+                setGameStatus('Approval timeout. Please try again.');
+                resolve(false);
+                return;
+              }
+              
+              setTimeout(checkApprovalResult, 500);
+            };
+            
+            approveToken(selectedToken as TokenSymbol, chessContractAddress, currentWagerAmountWei);
+            checkApprovalResult();
+          });
+        }
       }
       
       console.log('[APPROVAL] Token already approved, proceeding with game creation');
