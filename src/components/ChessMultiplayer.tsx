@@ -2546,9 +2546,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setPendingGameData(gameData);
       setGameStatus('Creating game... Please confirm transaction in your wallet.');
     } catch (error) {
-      console.error('[CREATE] Error creating game:', error);
-      setGameStatus('Failed to create game. Please try again.');
+      console.error('[CREATE GAME] ❌ ERROR creating game:', error);
+      console.error('[CREATE GAME] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
+      setGameStatus(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
+      console.log('[CREATE GAME] ========== END ==========');
       setIsGameCreationInProgress(false);
     }
   };

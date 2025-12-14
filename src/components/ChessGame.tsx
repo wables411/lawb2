@@ -1113,18 +1113,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Update board state IMMEDIATELY to ensure AI validation uses correct state
     setBoard(newBoard);
     
-    // Reset AI moving flag - CRITICAL: Only reset when player makes a move
-    // For AI moves, keep the flag true to prevent the useEffect from triggering again
-    // before the currentPlayer state actually updates (React state updates are async)
-    if (!isAIMove) {
+    // Reset AI moving flag - CRITICAL FIX for double AI moves
+    // When AI makes a move, setCurrentPlayer is async, so currentPlayer might still be 'red'
+    // when the useEffect runs again. We must keep isAIMovingRef=true to prevent double moves.
+    if (isAIMove) {
+      // AI just made a move - keep the flag TRUE until player makes their move
+      // This prevents the useEffect from triggering again before currentPlayer updates from 'red' to 'blue'
+      // The flag will be reset when the player makes their next move (isAIMove=false)
+      isAIMovingRef.current = true; // Keep true to block useEffect
+      lastAIMoveRef.current = true; // Also mark that we just made an AI move
+    } else {
       // Player made a move - reset flags so AI can move next
       isAIMovingRef.current = false;
       lastAIMoveRef.current = false;
-    } else {
-      // AI just made a move - keep isAIMovingRef true until state updates
-      // This prevents the useEffect from seeing currentPlayer='red' again before it updates to 'blue'
-      // The flag will be reset when the player makes their next move
-      lastAIMoveRef.current = true;
     }
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);
