@@ -149,7 +149,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { writeContract: writeJoinGame, isPending: isJoiningGameContract, data: joinGameHash, error: joinGameError } = useWriteContract();
   const { writeContract: writeEndGame, isPending: isEndingGame, data: endGameHash } = useWriteContract();
   const { writeContract: writeCancelGame, isPending: isCancellingGame, data: cancelGameHash } = useWriteContract();
-  const { writeContract: writeContract, isPending: isApprovingCustomToken, data: customApprovalHash, error: customApprovalError } = useWriteContract(); // For custom token approvals
+  const { writeContract: writeContractApproval, isPending: isApprovingCustomToken, data: customApprovalHash, error: customApprovalError } = useWriteContract(); // For custom token approvals
   
   // Token approval hooks
   const { approve: approveToken, isPending: isApproving, error: approveError, hash: approveHash } = useApproveToken();
