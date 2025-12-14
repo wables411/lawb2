@@ -142,9 +142,25 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   
   const handleCustomTokenInput = async (address: string) => {
     setCustomTokenAddress(address);
-    if (address && ethers.isAddress(address)) {
-      onTokenSelect(address);
+    
+    // Clear previous validation
+    if (!address) {
+      setCustomTokenValidation(null);
+      return;
     }
+    
+    // Basic format check
+    if (!ethers.isAddress(address)) {
+      setCustomTokenValidation({ 
+        valid: false, 
+        error: 'Invalid address format' 
+      });
+      return;
+    }
+    
+    // If valid format, select it and validate
+    onTokenSelect(address);
+    // Validation will happen in useEffect when selectedToken changes
   };
 
   const handleTokenSelect = (token: TokenSymbol | string) => {
@@ -306,17 +322,17 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
             </div>
           </div>
           
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px', flexWrap: 'wrap' }}>
             <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000', fontSize: '12px' }}>Or Custom:</label>
             <input
               type="text"
               value={isCustomToken ? selectedToken : customTokenAddress}
               onChange={(e) => handleCustomTokenInput(e.target.value)}
-              placeholder="0x..."
+              placeholder="Enter ERC20 contract address (0x...)"
               disabled={disabled}
               style={{
                 padding: '5px',
-                border: '2px inset #fff',
+                border: customTokenValidation && !customTokenValidation.valid && customTokenAddress ? '2px solid #ff0000' : '2px inset #fff',
                 background: '#000000',
                 color: '#ff0000',
                 width: '300px',
@@ -324,19 +340,27 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
               }}
             />
             {isValidating && (
-              <span style={{ color: '#ff0000', fontSize: '12px' }}>Validating...</span>
+              <span style={{ color: '#ff0000', fontSize: '12px' }}>⏳ Validating token...</span>
             )}
             {customTokenValidation && !isValidating && (
-              <span style={{ 
-                color: customTokenValidation.valid ? '#32CD32' : '#ff0000', 
-                fontSize: '12px' 
-              }}>
-                {customTokenValidation.valid 
-                  ? `$${customTokenValidation.symbol}` 
-                  : customTokenValidation.error}
-              </span>
+              <>
+                {customTokenValidation.valid ? (
+                  <span style={{ color: '#32CD32', fontSize: '12px', fontWeight: 'bold' }}>
+                    ✓ ${customTokenValidation.symbol}
+                  </span>
+                ) : (
+                  <span style={{ color: '#ff0000', fontSize: '12px' }}>
+                    ✗ {customTokenValidation.error || 'Invalid token'}
+                  </span>
+                )}
+              </>
             )}
           </div>
+          {customTokenValidation && !customTokenValidation.valid && customTokenAddress && !isValidating && (
+            <div style={{ color: '#ff0000', fontSize: '11px', marginLeft: '90px', marginTop: '-5px', marginBottom: '5px' }}>
+              💡 Make sure you're entering a valid ERC20 token address on {isBase ? 'Base' : 'Arbitrum'}
+            </div>
+          )}
           
           {isCustomToken && customTokenValidation?.valid && (
             <div style={{ color: '#32CD32', fontSize: '12px', marginLeft: '90px', marginBottom: '5px' }}>

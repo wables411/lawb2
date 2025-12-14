@@ -4,7 +4,7 @@
       ".read": true,
       ".write": true,
       "$inviteCode": {
-        ".validate": "newData.hasChildren(['invite_code', 'game_state']) && newData.child('invite_code').isString() && newData.child('game_state').isString() && (newData.child('game_state').val() === 'waiting' || newData.child('game_state').val() === 'waiting_for_join' || newData.child('game_state').val() === 'active' || newData.child('game_state').val() === 'finished')"
+        ".validate": "newData.hasChildren(['invite_code', 'game_state']) && newData.child('invite_code').isString() && newData.child('game_state').isString() && (newData.child('game_state').val() === 'waiting' || newData.child('game_state').val() === 'waiting_for_join' || newData.child('game_state').val() === 'active' || newData.child('game_state').val() === 'finished') && (!newData.hasChild('chain') || (newData.child('chain').isString() && (newData.child('chain').val() === 'sanko' || newData.child('chain').val() === 'base' || newData.child('chain').val() === 'arbitrum')))"
       }
     },
     "leaderboard": {
