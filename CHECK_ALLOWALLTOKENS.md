@@ -5,7 +5,18 @@
 - **Proxy Address:** `0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11` (use this in frontend)
 - **Implementation Address:** `0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29` (verified on Sourcify)
 
-## Method 1: Check via Proxy (Recommended)
+## Method 1: Check via OpenZeppelin Contract Builder
+
+1. Go to: https://builder.openzeppelin.com/
+2. Enter proxy address: `0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11` (⚠️ Use PROXY, not implementation!)
+3. Select network: **Base**
+4. Click "Read as Proxy" tab (if available)
+5. Find `allowAllTokens` function
+6. Click "Query" - should return `true` ✅
+
+**Note:** If you get rate limit errors (429), wait a few minutes or use Method 2 (script) instead.
+
+## Method 2: Check via BaseScan Proxy (Recommended)
 
 1. Go to: https://basescan.org/address/0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11
 2. Click **"More Options"** (top right of Contract tab)
@@ -16,7 +27,7 @@
 7. Click **"Query"** button
 8. Should return: `true` ✅
 
-## Method 2: Check via Script (Recommended - Verifies Actual Value)
+## Method 3: Check via Script (Recommended - Verifies Actual Value)
 
 Run the verification script:
 ```bash
@@ -30,14 +41,14 @@ This will:
 
 **Current Status:** ✅ `allowAllTokens = true` (verified on 2025-01-XX)
 
-## Method 3: Check via Sourcify (View Source Code Only)
+## Method 4: Check via Sourcify (View Source Code Only)
 
 1. Go to: https://repo.sourcify.dev/8453/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29
 2. View the verified source code
 3. Check the **Storage Layout** section - you can see `allowAllTokens` at slot 0, offset 20
 4. **Note:** Sourcify shows the contract structure, but NOT the runtime value. Use Method 1 or 2 to check the actual value.
 
-## Method 4: Check Implementation Directly on BaseScan
+## Method 5: Check Implementation Directly on BaseScan
 
 1. Go to: https://basescan.org/address/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29#readContract
 2. Find `allowAllTokens` function in the list
