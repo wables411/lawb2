@@ -9,12 +9,16 @@
 
 ## ⚠️ Important: Use the PROXY Address
 
-**Always use the PROXY contract address, NOT the implementation:**
+**Always use the PROXY contract address for interactions:**
 
 - ✅ **Correct (Proxy):** `0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11`
-- ❌ **Wrong (Implementation):** `0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29`
+- ℹ️ **Implementation (verified on Sourcify):** `0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29`
 
-**Why?** The proxy stores the actual state (including `allowAllTokens`). The implementation is just the code - its storage is empty/uninitialized.
+**Why?** 
+- The proxy stores the actual state (including `allowAllTokens`)
+- The implementation is verified on Sourcify but its storage is empty/uninitialized
+- BaseScan shows "Read as Proxy" / "Write as Proxy" because the proxy itself isn't verified, but it uses the implementation's ABI
+- When using BaseScan's "Read as Proxy", it reads from the proxy's storage using the implementation's verified ABI
 
 ## Rate Limit Errors (429)
 

@@ -4,7 +4,9 @@
 
 **Proxy Contract:** `0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11`
 - ✅ **Use this in frontend** (already configured)
-- This is the ERC1967Proxy that delegates to the implementation
+- This is the ERC1967Proxy (EIP-1967 Transparent Proxy pattern)
+- **Not verified on BaseScan** - shows "Source unverified (no ABI)"
+- BaseScan provides "Read as Proxy" / "Write as Proxy" tabs that use the implementation's ABI
 - All contract calls should go to this address
 
 **Implementation Contract:** `0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29`
@@ -32,12 +34,17 @@ To verify `allowAllTokens` is enabled:
 4. Find `allowAllTokens` function
 5. Click "Query" - should return `true`
 
-### Option 2: Direct Implementation Check
+### Option 2: View on Sourcify
+1. Go to: https://repo.sourcify.dev/8453/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29
+2. View verified source code and storage layout
+3. `allowAllTokens` is at slot 0, offset 20 in storage layout
+
+### Option 3: Direct Implementation Check on BaseScan
 1. Go to: https://basescan.org/address/0x7d287427EC6bBEF1f00e8d8f3300a9be18cF8f29#readContract
 2. Find `allowAllTokens` function
 3. Click "Query" - should return `true`
 
-**Note:** The value should be the same either way, but checking through the proxy (Option 1) is the correct way since that's what the frontend uses.
+**Note:** The value should be the same either way, but checking through the proxy (Option 1) is the correct way since that's what the frontend uses. Sourcify is great for viewing the verified source code and storage layout.
 
 ## Sanko Network
 
