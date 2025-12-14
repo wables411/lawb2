@@ -1114,16 +1114,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setBoard(newBoard);
     
     // Reset AI moving flag - CRITICAL FIX for double AI moves
-    // When AI makes a move, setCurrentPlayer is async, so currentPlayer might still be 'red'
-    // when the useEffect runs again. We must keep isAIMovingRef=true to prevent double moves.
+    // When AI makes a move, setCurrentPlayer is async, so the useEffect might run again
+    // before currentPlayer updates from 'red' to 'blue'. We use lastAIMoveRef to prevent this.
     if (isAIMove) {
-      // AI just made a move - keep the flag TRUE until player makes their move
-      // This prevents the useEffect from triggering again before currentPlayer updates from 'red' to 'blue'
-      // The flag will be reset when the player makes their next move (isAIMove=false)
-      isAIMovingRef.current = true; // Keep true to block useEffect
-      lastAIMoveRef.current = true; // Also mark that we just made an AI move
+      // AI just made a move - mark it with lastAIMoveRef to prevent useEffect from triggering again
+      // Reset isAIMovingRef immediately so player can make their move
+      lastAIMoveRef.current = true; // Block useEffect from triggering again
+      isAIMovingRef.current = false; // Allow player to move
     } else {
-      // Player made a move - reset flags so AI can move next
+      // Player made a move - reset all flags so AI can move next
       isAIMovingRef.current = false;
       lastAIMoveRef.current = false;
     }
@@ -1131,10 +1130,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setIsUpdatingBoard(false);
   }, [board, currentPlayer, moveHistory, getOpeningData]);
 
+  // Reset lastAIMoveRef when it becomes player's turn (blue)
+  // This ensures the flag is cleared after the state updates from AI move
+  useEffect(() => {
+    if (gameMode === 'ai' && currentPlayer === 'blue' && lastAIMoveRef.current) {
+      // Player's turn now - reset the flag that was blocking double AI moves
+      lastAIMoveRef.current = false;
+    }
+  }, [currentPlayer, gameMode]);
+
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
-    // Additional check: Don't trigger if we just made an AI move (prevent double moves)
-    // The isAIMovingRef should prevent this, but add extra safety
+    // CRITICAL: Check lastAIMoveRef to prevent double moves
+    // When AI moves, setCurrentPlayer is async. The useEffect might run again before
+    // currentPlayer updates from 'red' to 'blue'. lastAIMoveRef blocks this.
     if (!isAIMovingRef.current && gameMode === 'ai' && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
       isAIMovingRef.current = true;
       if (difficulty === 'easy') {
