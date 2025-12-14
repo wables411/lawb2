@@ -405,7 +405,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     ];
   }, [selectedPieceSet]);
 
-  // Check wallet connection and chain - trigger popup for connection, but not for chain switching
+  // Check wallet connection - any EVM chain is fine for single-player
+  // Chain switching is only required when joining multiplayer games on different chains
   useEffect(() => {
     if (!isConnected || !walletAddress) {
       setStatus('Connect wallet to play');
@@ -413,25 +414,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       setShowDifficulty(false);
       // Trigger Reown appkit popup for wallet connection
       void open();
-    } else if (chainId !== SANKO_CHAIN_ID) {
-      setStatus('Switch to Sanko Mainnet to play');
-      setShowGame(false);
-      setShowDifficulty(false);
-      // Don't auto-trigger popup for chain switching - let user do it manually
     } else {
       setStatus('Select chess mode');
     }
-  }, [isConnected, walletAddress, chainId, open]);
+  }, [isConnected, walletAddress, open]);
 
-  // Handle switching to Sanko mainnet
-  const handleSwitchToSanko = async () => {
-    try {
-      await switchChain({ chainId: SANKO_CHAIN_ID });
-    } catch (error) {
-      console.error('Failed to switch to Sanko mainnet:', error);
-      setStatus('Failed to switch network. Please switch manually to Sanko Mainnet.');
-    }
-  };
+  // Chain switching is no longer required for single-player mode
+  // It's only needed when joining multiplayer games on different chains (handled in ChessMultiplayer)
 
   // Function to randomly select a chessboard
   const selectRandomChessboard = () => {
@@ -2247,25 +2236,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </div>
                 )}
-                {chainId !== SANKO_CHAIN_ID && isConnected && (
-                  <button 
-                    onClick={handleSwitchToSanko}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#ff0000',
-                      color: '#000000',
-                      border: '2px outset #fff',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold',
-                      fontSize: '12px'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#cc0000'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff0000'}
-                  >
-                    Switch to Sanko Mainnet
-                  </button>
-                )}
+                {/* Chain switching no longer required for single-player - any EVM chain works */}
               </div>
               
               <div className="mode-selection-compact">
