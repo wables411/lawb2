@@ -12,8 +12,12 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Remove console.log in production
+        // Keep console.log statements that start with [AppKit], [CREATE], [PIECE SET], [Base Mini App]
+        // This allows us to debug issues in production
+        drop_console: false, // Keep console logs for debugging Base app issues
         drop_debugger: true,
+        // Alternative: Use pure_funcs to remove specific console methods while keeping others
+        // pure_funcs: ['console.info', 'console.debug'], // Remove info/debug but keep log/warn/error
       },
     },
     // Split chunks for better caching and loading
