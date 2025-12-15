@@ -21,10 +21,14 @@ const metadata = {
 // When in Base/Farcaster app, we'll use our wagmi config with Farcaster connector
 // Otherwise, WagmiAdapter will add its own connectors (WalletConnect, etc.)
 // Note: Don't create WagmiAdapter/AppKit in Base app to avoid WalletConnect CSP issues
+const isBase = isBaseMiniApp();
+console.log('[AppKit] isBaseMiniApp() =', isBase, 'window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR');
+
 let wagmiAdapter: WagmiAdapter | null = null;
 let appKit: ReturnType<typeof createAppKit> | null = null;
 
-if (!isBaseMiniApp()) {
+if (!isBase) {
+  console.log('[AppKit] Creating WagmiAdapter and AppKit (NOT in Base app)');
   wagmiAdapter = new WagmiAdapter({
     projectId,
     networks: [
@@ -65,6 +69,8 @@ if (!isBaseMiniApp()) {
       '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
     }
   });
+} else {
+  console.log('[AppKit] Skipping WagmiAdapter/AppKit creation (in Base app - using Farcaster connector)');
 }
 
 // Export with type assertions for TypeScript
