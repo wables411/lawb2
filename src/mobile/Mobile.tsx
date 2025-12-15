@@ -10,7 +10,7 @@ import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { playIconClickSound } from '../utils/sound';
-import { initBaseMiniApp } from '../utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
@@ -234,14 +234,36 @@ const Mobile = () => {
   const classes = useStyles();
   const { open } = useAppKit();
   const { address, isConnected } = useAccount();
-  const { isPending } = useConnect();
+  const { isPending, connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: ens } = useEnsName({ address });
   const chainId = useChainId();
   
+  // Auto-connect to Farcaster wallet when in Base app and not already connected
+  useEffect(() => {
+    if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
+      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+      if (farcasterConnector) {
+        console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
+        connect({ connector: farcasterConnector }).catch((error) => {
+          console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
+        });
+      }
+    }
+  }, [isConnected, connectors, connect]);
+  
   // Simple wallet connection
   const handleWalletConnection = async () => {
     try {
+      // In Base app, try to use Farcaster connector directly
+      if (isBaseMiniApp() && connectors.length > 0) {
+        const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+        if (farcasterConnector) {
+          await connect({ connector: farcasterConnector });
+          return;
+        }
+      }
+      // Fallback to AppKit modal for non-Base contexts
       await open({ view: 'Connect' });
     } catch (error) {
       console.error('Wallet connection error:', error);

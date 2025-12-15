@@ -5,10 +5,10 @@ import Taskbar from './components/Taskbar';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
 import { useAppKit } from '@reown/appkit/react';
-import { useAccount, useChainId, useDisconnect } from 'wagmi';
+import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
-import { initBaseMiniApp } from './utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
 import { useMediaQuery } from './hooks/useMediaQuery';
 
 // Lazy load heavy components to reduce initial bundle size
@@ -42,6 +42,10 @@ function App() {
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
+  const { connect, connectors } = useConnect();
+  
+  const { connect, connectors } = useConnect();
+  
   // Initialize Base Mini App SDK when interface is ready
   // Call ready() after component mounts to hide splash screen (per Farcaster docs)
   useEffect(() => {
@@ -52,6 +56,32 @@ function App() {
     
     return () => clearTimeout(timer);
   }, []);
+  
+  // Auto-connect to Farcaster wallet when in Base app and not already connected
+  useEffect(() => {
+    if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
+      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+      if (farcasterConnector) {
+        console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
+        connect({ connector: farcasterConnector }).catch((error) => {
+          console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
+        });
+      }
+    }
+  }, [isBaseMiniApp(), isConnected, connectors, connect]);
+  
+  // Auto-connect to Farcaster wallet when in Base app and not already connected
+  useEffect(() => {
+    if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
+      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+      if (farcasterConnector) {
+        console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
+        connect({ connector: farcasterConnector }).catch((error) => {
+          console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
+        });
+      }
+    }
+  }, [isBaseMiniApp(), isConnected, connectors, connect]);
 
   // Debug: log activePopup changes
   useEffect(() => {

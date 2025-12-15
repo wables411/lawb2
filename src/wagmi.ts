@@ -1,5 +1,7 @@
 import { createConfig, http } from 'wagmi';
 import { mainnet, arbitrum, base } from 'wagmi/chains';
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import { isBaseMiniApp } from './utils/baseMiniapp';
 
 // Custom Sanko networks
 export const sankoTestnet = {
@@ -64,8 +66,15 @@ const getRpcUrl = (chainId: number, defaultUrls: string[]): string => {
 };
 
 // Create wagmi config with Sanko networks
+// When in Base/Farcaster app, use Farcaster's native wallet connector
+// Otherwise, AppKit will handle connectors via WagmiAdapter
+const connectors = isBaseMiniApp() 
+  ? [farcasterMiniApp()] 
+  : []; // AppKit's WagmiAdapter will add its own connectors
+
 export const config = createConfig({
   chains: [mainnet, arbitrum, base, sankoTestnet, sankoMainnet],
+  connectors,
   transports: {
     [mainnet.id]: http(getRpcUrl(mainnet.id, ['https://eth.llamarpc.com', 'https://rpc.ankr.com/eth'])),
     [arbitrum.id]: http(getRpcUrl(arbitrum.id, ['https://arb1.arbitrum.io/rpc', 'https://rpc.ankr.com/arbitrum'])),

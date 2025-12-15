@@ -15,7 +15,8 @@ import { lazy, Suspense } from 'react';
 const ChessPage = lazy(() => import('./components/ChessPage'));
 import { appKit, wagmiAdapter } from './appkit.ts'; // Import the appKit instance and wagmi adapter
 import { getAppKit } from '@reown/appkit/react';
-import { initBaseMiniApp } from './utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
+import { config as wagmiConfig } from './wagmi';
 
 // Initialize AppKit singleton before any hooks are used
 getAppKit(appKit);
@@ -31,9 +32,13 @@ const Root = () => {
   return isMobile ? <Mobile /> : <App />;
 };
 
+// When in Base/Farcaster app, use our wagmi config with Farcaster connector
+// Otherwise, use WagmiAdapter's config with WalletConnect
+const wagmiConfigToUse = isBaseMiniApp() ? wagmiConfig : wagmiAdapter.wagmiConfig;
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+    <WagmiProvider config={wagmiConfigToUse}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
