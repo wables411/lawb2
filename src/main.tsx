@@ -19,7 +19,11 @@ import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
 import { config as wagmiConfig } from './wagmi';
 
 // Initialize AppKit singleton before any hooks are used
-getAppKit(appKit);
+// Skip AppKit initialization in Base app to avoid WalletConnect CSP issues
+// Farcaster connector will be used instead via wagmi config
+if (appKit) {
+  getAppKit(appKit);
+}
 const queryClient = new QueryClient();
 
 // Note: Base Mini App SDK ready() is called in React components (App.tsx, Mobile.tsx)
@@ -34,7 +38,9 @@ const Root = () => {
 
 // When in Base/Farcaster app, use our wagmi config with Farcaster connector
 // Otherwise, use WagmiAdapter's config with WalletConnect
-const wagmiConfigToUse = isBaseMiniApp() ? wagmiConfig : wagmiAdapter.wagmiConfig;
+const wagmiConfigToUse = isBaseMiniApp() 
+  ? wagmiConfig 
+  : (wagmiAdapter?.wagmiConfig || wagmiConfig); // Fallback to our config if wagmiAdapter is null
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

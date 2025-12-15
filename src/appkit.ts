@@ -20,45 +20,82 @@ const metadata = {
 // Create wagmi adapter with main networks
 // When in Base/Farcaster app, we'll use our wagmi config with Farcaster connector
 // Otherwise, WagmiAdapter will add its own connectors (WalletConnect, etc.)
-// Note: WagmiAdapter doesn't support disabling WalletConnect via options,
-// so we rely on using our own wagmi config in main.tsx when in Base app
-export const wagmiAdapter = new WagmiAdapter({
-  projectId,
-  networks: [
-    // WagmiAdapter is EVM-only. Do not include Solana here.
-    mainnet,
-    arbitrum,
-    base,
-    sankoMainnet
-  ],
-  pendingTransactionsFilter: {
-    enable: true,
-    pollingInterval: 1000
-  }
-});
+// Note: Don't create WagmiAdapter/AppKit in Base app to avoid WalletConnect CSP issues
+let wagmiAdapter: WagmiAdapter | null = null;
+let appKit: ReturnType<typeof createAppKit> | null = null;
 
-export const appKit = createAppKit({
-  projectId,
-  metadata,
-  adapters: [wagmiAdapter],
-  networks: [
-    mainnet,
-    arbitrum,
-    base,
-    solana,
-    sankoMainnet
-  ],
-  features: {
-    analytics: false,
-  },
-  // enableWallets is the only valid wallet option per Reown docs
-  // WagmiAdapter defaults enableWalletConnect and enableEIP6963 to true internally
-  enableWallets: true,
-  themeMode: 'light',
-  themeVariables: {
-    '--w3m-z-index': 9999,
-    '--w3m-accent': '#000080',
-    '--w3m-border-radius-master': '0px',
-    '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
-  }
-});
+if (!isBaseMiniApp()) {
+  wagmiAdapter = new WagmiAdapter({
+    projectId,
+    networks: [
+      // WagmiAdapter is EVM-only. Do not include Solana here.
+      mainnet,
+      arbitrum,
+      base,
+      sankoMainnet
+    ],
+    pendingTransactionsFilter: {
+      enable: true,
+      pollingInterval: 1000
+    }
+  });
+
+  appKit = createAppKit({
+    projectId,
+    metadata,
+    adapters: [wagmiAdapter],
+    networks: [
+      mainnet,
+      arbitrum,
+      base,
+      solana,
+      sankoMainnet
+    ],
+    features: {
+      analytics: false,
+    },
+    // enableWallets is the only valid wallet option per Reown docs
+    // WagmiAdapter defaults enableWalletConnect and enableEIP6963 to true internally
+    enableWallets: true,
+    themeMode: 'light',
+    themeVariables: {
+      '--w3m-z-index': 9999,
+      '--w3m-accent': '#000080',
+      '--w3m-border-radius-master': '0px',
+      '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
+    }
+  });
+}
+
+// Export with type assertions for TypeScript
+// Create a minimal AppKit instance in Base app to prevent useAppKit() errors
+// This instance won't have WalletConnect initialized
+if (isBaseMiniApp() && !appKit) {
+  // Create a minimal AppKit without adapters to avoid WalletConnect initialization
+  // Components using useAppKit() will still work, but wallet connection will use Farcaster connector
+  appKit = createAppKit({
+    projectId,
+    metadata,
+    adapters: [], // No adapters = no WalletConnect
+    networks: [
+      mainnet,
+      arbitrum,
+      base,
+      solana,
+      sankoMainnet
+    ],
+    features: {
+      analytics: false,
+    },
+    enableWallets: false, // Disable wallets to prevent any WalletConnect initialization
+    themeMode: 'light',
+    themeVariables: {
+      '--w3m-z-index': 9999,
+      '--w3m-accent': '#000080',
+      '--w3m-border-radius-master': '0px',
+      '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
+    }
+  });
+}
+
+export { wagmiAdapter, appKit };
