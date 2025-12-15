@@ -385,6 +385,7 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
         <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
         <p style={{marginBottom: '10px'}}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
+        <p style={{marginBottom: '10px'}}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
         <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
         <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
         <p style={{marginBottom: '10px'}}>
