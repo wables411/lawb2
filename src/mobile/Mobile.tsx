@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useAccount, useConnect, useDisconnect, useEnsName, useChainId } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 import MobileNFTGallery from './MobileNFTGallery';
 import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
@@ -716,12 +716,25 @@ const Mobile = () => {
         <div 
           className={classes.walletStatus}
           onClick={() => {
-            if (!isConnected) {
-              // Open wallet connection modal
-              void open({ view: 'Connect' });
+            if (isBaseMiniApp()) {
+              // In Base app, use Farcaster connector directly
+              if (!isConnected) {
+                const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+                if (farcasterConnector) {
+                  connect({ connector: farcasterConnector });
+                }
+              } else {
+                // In Base app, just disconnect using wagmi
+                disconnect();
+              }
             } else {
-              // Open account management modal (chain selector/disconnect)
-              void open({ view: 'Account' });
+              if (!isConnected) {
+                // Open wallet connection modal
+                void open({ view: 'Connect' });
+              } else {
+                // Open account management modal (chain selector/disconnect)
+                void open({ view: 'Account' });
+              }
             }
           }}
           style={{ cursor: 'pointer' }}

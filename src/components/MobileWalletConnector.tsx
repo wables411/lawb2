@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDisconnect } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 
 interface MobileWalletConnectorProps {
   onConnect?: () => void;

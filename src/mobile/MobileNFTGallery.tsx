@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getOpenSeaSolanaNFTsByOwner, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 
 const useStyles = createUseStyles({
   galleryContainer: {

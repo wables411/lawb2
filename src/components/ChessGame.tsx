@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 import { 
   updateLeaderboardEntry, 
   getTopLeaderboardEntries,

@@ -3,7 +3,7 @@ import Draggable from 'react-draggable';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSingleNFT, getOpenSeaSolanaNFTs, getAlchemyNFTsForOwner, getAlchemyNFTsForCollection } from '../mint';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 import { CORSImage, getImageUrl } from './CORSImage';
 
 const useStyles = createUseStyles({

@@ -68,34 +68,5 @@ if (!isBaseMiniApp()) {
 }
 
 // Export with type assertions for TypeScript
-// Create a minimal AppKit instance in Base app to prevent useAppKit() errors
-// This instance won't have WalletConnect initialized
-if (isBaseMiniApp() && !appKit) {
-  // Create a minimal AppKit without adapters to avoid WalletConnect initialization
-  // Components using useAppKit() will still work, but wallet connection will use Farcaster connector
-  appKit = createAppKit({
-    projectId,
-    metadata,
-    adapters: [], // No adapters = no WalletConnect
-    networks: [
-      mainnet,
-      arbitrum,
-      base,
-      solana,
-      sankoMainnet
-    ],
-    features: {
-      analytics: false,
-    },
-    enableWallets: false, // Disable wallets to prevent any WalletConnect initialization
-    themeMode: 'light',
-    themeVariables: {
-      '--w3m-z-index': 9999,
-      '--w3m-accent': '#000080',
-      '--w3m-border-radius-master': '0px',
-      '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
-    }
-  });
-}
-
+// In Base app, appKit will be null - useAppKitSafe hook will handle this gracefully
 export { wagmiAdapter, appKit };

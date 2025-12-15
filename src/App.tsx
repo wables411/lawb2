@@ -4,7 +4,7 @@ import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe as useAppKit } from './hooks/useAppKitSafe';
 import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
@@ -167,12 +167,25 @@ function App() {
         void document.body.offsetWidth;
       }
     } else if (action === 'wallet') {
-      if (!isConnected) {
-        // Open wallet connection modal
-        void open({ view: 'Connect' });
+      if (isBaseMiniApp()) {
+        // In Base app, use Farcaster connector directly
+        if (!isConnected) {
+          const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+          if (farcasterConnector) {
+            connect({ connector: farcasterConnector });
+          }
+        } else {
+          // Just toggle wallet menu for disconnect option
+          setShowWalletMenu(!showWalletMenu);
+        }
       } else {
-        // Open account management modal (chain selector/disconnect)
-        void open({ view: 'Account' });
+        if (!isConnected) {
+          // Open wallet connection modal
+          void open({ view: 'Connect' });
+        } else {
+          // Open account management modal (chain selector/disconnect)
+          void open({ view: 'Account' });
+        }
       }
     } else if (action === 'mint') {
       if (!address) {
@@ -255,12 +268,24 @@ function App() {
     <div style={{ position: 'relative' }}>
       <div 
         onClick={() => {
-          if (!isConnected) {
-            // Open wallet connection modal
-            void open({ view: 'Connect' });
+          if (isBaseMiniApp()) {
+            // In Base app, use Farcaster connector directly
+            if (!isConnected) {
+              const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
+              if (farcasterConnector) {
+                connect({ connector: farcasterConnector });
+              }
+            } else {
+              setShowWalletMenu(!showWalletMenu);
+            }
           } else {
-            // Toggle wallet menu
-            setShowWalletMenu(!showWalletMenu);
+            if (!isConnected) {
+              // Open wallet connection modal
+              void open({ view: 'Connect' });
+            } else {
+              // Toggle wallet menu
+              setShowWalletMenu(!showWalletMenu);
+            }
           }
         }} 
         style={{ 
