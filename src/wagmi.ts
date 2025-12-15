@@ -68,6 +68,7 @@ const getRpcUrl = (chainId: number, defaultUrls: string[]): string => {
 // Create wagmi config with Sanko networks
 // When in Base/Farcaster app, use Farcaster's native wallet connector
 // Otherwise, AppKit will handle connectors via WagmiAdapter
+// The Farcaster connector uses the transports from the wagmi config, so we don't need to pass RPC URLs here
 const connectors = isBaseMiniApp() 
   ? [farcasterMiniApp()] 
   : []; // AppKit's WagmiAdapter will add its own connectors
