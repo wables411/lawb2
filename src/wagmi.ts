@@ -76,6 +76,8 @@ const connectors = isBaseMiniApp()
 export const config = createConfig({
   chains: [mainnet, arbitrum, base, sankoTestnet, sankoMainnet],
   connectors,
+  // Disable EIP-6963 wallet discovery in Base app (Farcaster connector doesn't support it)
+  multiInjectedProviderDiscovery: !isBaseMiniApp(),
   transports: {
     [mainnet.id]: http(getRpcUrl(mainnet.id, ['https://eth.llamarpc.com', 'https://rpc.ankr.com/eth'])),
     [arbitrum.id]: http(getRpcUrl(arbitrum.id, ['https://arb1.arbitrum.io/rpc', 'https://rpc.ankr.com/arbitrum'])),

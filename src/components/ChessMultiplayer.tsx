@@ -2192,7 +2192,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             // Wait for approval transaction
             return new Promise((resolve) => {
               let attempts = 0;
-              const maxAttempts = 60; // 30 seconds max wait
+              const maxAttempts = 120; // 60 seconds max wait (longer for Farcaster)
               
               const checkApprovalResult = () => {
                 attempts++;
@@ -2315,6 +2315,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   const createGame = async () => {
     console.log('[CREATE GAME] ========== START ==========');
+    console.log('[CREATE GAME] Function called at:', new Date().toISOString());
+    console.log('[CREATE GAME] Stack trace:', new Error().stack);
     console.log('[CREATE GAME] wagerType:', wagerType);
     console.log('[CREATE GAME] address:', address);
     console.log('[CREATE GAME] gameWager:', gameWager);
