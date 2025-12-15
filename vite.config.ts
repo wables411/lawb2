@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
@@ -63,12 +64,10 @@ export default defineConfig({
       '@walletconnect/universal-provider',
     ],
   },
-  // Use resolve.alias to stub out AppKit modules when detected in Base app context
-  // This prevents them from being bundled at all
+  // Note: We can't use resolve.alias to conditionally stub modules at build time
+  // Instead, we rely on runtime checks and dynamic imports to prevent loading in Base app
+  // The optimizeDeps.exclude above prevents pre-bundling, which helps
   resolve: {
-    alias: {
-      // Note: We can't conditionally alias at build time, so we'll handle this at runtime
-      // The dynamic imports with proper guards should prevent loading
-    },
+    // No aliases - we handle exclusion at runtime via dynamic imports
   },
 });
