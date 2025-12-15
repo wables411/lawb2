@@ -1,4 +1,4 @@
-import{o as e,t,av as r,aw as i,ak as o,ab as n,Y as s,x as a,af as c,a8 as u,s as l,q as d,I as p,a6 as m,R as h,K as y,G as g,H as w,W as f,E as b,a7 as v,S as x}from"./index-CCNwZQK4.js";import"./wagmi-vendor-Dh6HrhN7.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const $=e`
+import{o as e,t,av as r,aw as i,ak as o,ab as n,Y as s,x as a,af as c,a8 as u,s as l,q as d,I as p,a6 as m,R as h,K as y,G as g,H as w,W as f,E as b,a7 as v,S as x}from"./index-BtM1UDYs.js";import"./wagmi-vendor-DSN9CS_k.js";import"./react-vendor-ZyuiJZO_.js";import"./chess-vendor-JTxzwGi1.js";import"./ui-vendor-BgPmeekb.js";const $=e`
   :host > wui-grid {
     max-height: 360px;
     overflow: auto;
