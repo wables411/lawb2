@@ -14,15 +14,19 @@ import { lazy, Suspense } from 'react';
 // Lazy load the chess page to reduce initial bundle size
 const ChessPage = lazy(() => import('./components/ChessPage'));
 import { appKit, wagmiAdapter } from './appkit.ts'; // Import the appKit instance and wagmi adapter
-import { getAppKit } from '@reown/appkit/react';
 import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
 import { config as wagmiConfig } from './wagmi';
 
 // Initialize AppKit singleton before any hooks are used
 // Skip AppKit initialization in Base app to avoid WalletConnect CSP issues
 // Farcaster connector will be used instead via wagmi config
-if (appKit) {
-  getAppKit(appKit);
+// Use dynamic import to avoid loading @reown/appkit/react in Base app
+if (appKit && typeof window !== 'undefined' && !isBaseMiniApp()) {
+  import('@reown/appkit/react').then(({ getAppKit }) => {
+    getAppKit(appKit);
+  }).catch((error) => {
+    console.warn('[main.tsx] Failed to load getAppKit:', error);
+  });
 }
 const queryClient = new QueryClient();
 

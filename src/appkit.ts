@@ -1,6 +1,7 @@
-import { createAppKit } from '@reown/appkit/react';
-import { mainnet, arbitrum, base, solana } from '@reown/appkit/networks';
-import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
+// CRITICAL: Do NOT import @reown/appkit modules at the top level
+// This causes WalletConnect to initialize even when we're in Base app
+// Instead, we'll use dynamic imports only when NOT in Base app
+
 import { sankoMainnet } from './wagmi';
 import { isBaseMiniApp } from './utils/baseMiniapp';
 
@@ -17,63 +18,100 @@ const metadata = {
   icons: [`${baseUrl}/assets/favicon.ico`]
 };
 
-// Create wagmi adapter with main networks
-// When in Base/Farcaster app, we'll use our wagmi config with Farcaster connector
-// Otherwise, WagmiAdapter will add its own connectors (WalletConnect, etc.)
-// Note: Don't create WagmiAdapter/AppKit in Base app to avoid WalletConnect CSP issues
 // Delay check until after window is available to ensure proper detection
-const isBase = typeof window !== 'undefined' ? isBaseMiniApp() : false;
+// Be very defensive - assume we're in Base app if ANY indicator suggests it
+let isBase = false;
 if (typeof window !== 'undefined') {
+  isBase = isBaseMiniApp();
   console.log('[AppKit] isBaseMiniApp() =', isBase, 'window.location:', window.location.href, 'hostname:', window.location.hostname);
+  
+  // Additional safety check: if we're in an iframe or on farcaster domain, definitely don't load WalletConnect
+  try {
+    const inIframe = window.self !== window.top;
+    const onFarcasterDomain = window.location.hostname.includes('farcaster.xyz') || window.location.hostname.includes('warpcast.com');
+    if (inIframe || onFarcasterDomain) {
+      isBase = true;
+      console.log('[AppKit] Additional safety check: inIframe=', inIframe, 'onFarcasterDomain=', onFarcasterDomain, '-> forcing isBase=true');
+    }
+  } catch (e) {
+    // Cross-origin iframe - definitely Base app
+    isBase = true;
+    console.log('[AppKit] Cross-origin iframe detected -> forcing isBase=true');
+  }
 }
 
-let wagmiAdapter: WagmiAdapter | null = null;
-let appKit: ReturnType<typeof createAppKit> | null = null;
+// Type definitions for when modules are loaded
+type WagmiAdapterType = typeof import('@reown/appkit-adapter-wagmi').WagmiAdapter;
+type CreateAppKitType = typeof import('@reown/appkit/react').createAppKit;
+type AppKitType = ReturnType<CreateAppKitType>;
 
-if (!isBase) {
-  console.log('[AppKit] Creating WagmiAdapter and AppKit (NOT in Base app)');
-  wagmiAdapter = new WagmiAdapter({
-    projectId,
-    networks: [
-      // WagmiAdapter is EVM-only. Do not include Solana here.
-      mainnet,
-      arbitrum,
-      base,
-      sankoMainnet
-    ],
-    pendingTransactionsFilter: {
-      enable: true,
-      pollingInterval: 1000
-    }
-  });
+let wagmiAdapter: WagmiAdapterType | null = null;
+let appKit: AppKitType | null = null;
 
-  appKit = createAppKit({
-    projectId,
-    metadata,
-    adapters: [wagmiAdapter],
-    networks: [
-      mainnet,
-      arbitrum,
-      base,
-      solana,
-      sankoMainnet
-    ],
-    features: {
-      analytics: false,
-    },
-    // enableWallets is the only valid wallet option per Reown docs
-    // WagmiAdapter defaults enableWalletConnect and enableEIP6963 to true internally
-    enableWallets: true,
-    themeMode: 'light',
-    themeVariables: {
-      '--w3m-z-index': 9999,
-      '--w3m-accent': '#000080',
-      '--w3m-border-radius-master': '0px',
-      '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
-    }
+// Only load AppKit modules if NOT in Base app
+// This prevents WalletConnect from initializing at all
+if (!isBase && typeof window !== 'undefined') {
+  console.log('[AppKit] Loading AppKit modules (NOT in Base app)');
+  
+  // Use dynamic imports to prevent WalletConnect from loading in Base app
+  Promise.all([
+    import('@reown/appkit/react'),
+    import('@reown/appkit/networks'),
+    import('@reown/appkit-adapter-wagmi')
+  ]).then(([appkitModule, networksModule, adapterModule]) => {
+    const { createAppKit } = appkitModule;
+    const { mainnet, arbitrum, base, solana } = networksModule;
+    const { WagmiAdapter } = adapterModule;
+    
+    console.log('[AppKit] Creating WagmiAdapter and AppKit (NOT in Base app)');
+    
+    wagmiAdapter = new WagmiAdapter({
+      projectId,
+      networks: [
+        // WagmiAdapter is EVM-only. Do not include Solana here.
+        mainnet,
+        arbitrum,
+        base,
+        sankoMainnet
+      ],
+      pendingTransactionsFilter: {
+        enable: true,
+        pollingInterval: 1000
+      }
+    });
+
+    appKit = createAppKit({
+      projectId,
+      metadata,
+      adapters: [wagmiAdapter],
+      networks: [
+        mainnet,
+        arbitrum,
+        base,
+        solana,
+        sankoMainnet
+      ],
+      features: {
+        analytics: false,
+      },
+      // enableWallets is the only valid wallet option per Reown docs
+      // WagmiAdapter defaults enableWalletConnect and enableEIP6963 to true internally
+      enableWallets: true,
+      themeMode: 'light',
+      themeVariables: {
+        '--w3m-z-index': 9999,
+        '--w3m-accent': '#000080',
+        '--w3m-border-radius-master': '0px',
+        '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
+      }
+    });
+    
+    console.log('[AppKit] AppKit initialized successfully');
+  }).catch((error) => {
+    console.error('[AppKit] Failed to load AppKit modules:', error);
   });
 } else {
-  console.log('[AppKit] Skipping WagmiAdapter/AppKit creation (in Base app - using Farcaster connector)');
+  console.log('[AppKit] Skipping AppKit module loading (in Base app - using Farcaster connector)');
 }
 
 // Export with type assertions for TypeScript

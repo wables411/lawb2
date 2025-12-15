@@ -3,28 +3,35 @@
  * to prevent WalletConnect initialization and CSP violations
  */
 import { isBaseMiniApp } from '../utils/baseMiniapp';
+import { useState, useEffect } from 'react';
 
-// Conditional import - only import useAppKit if NOT in Base app
-// This prevents WalletConnect from initializing in Base/Farcaster app
-let useAppKitHook: (() => ReturnType<typeof import('@reown/appkit/react').useAppKit>) | null = null;
+// Type for useAppKit return value
+type AppKitReturn = {
+  open: (options?: { view?: string }) => void;
+  close: () => void;
+  setThemeMode: (mode: 'light' | 'dark') => void;
+  setThemeVariables: (variables: Record<string, string>) => void;
+};
 
-// Check if we're in Base app BEFORE importing useAppKit
-// This prevents the import from happening at all in Base app
-const shouldUseAppKit = typeof window !== 'undefined' ? !isBaseMiniApp() : true;
-
-if (shouldUseAppKit) {
-  // Only import if NOT in Base app
-  // Use require to avoid static import that would trigger WalletConnect
-  try {
-    const appkitModule = require('@reown/appkit/react');
-    useAppKitHook = appkitModule.useAppKit;
-  } catch (e) {
-    console.warn('[useAppKitSafe] Failed to import useAppKit:', e);
-  }
-}
-
-export const useAppKitSafe = () => {
+export const useAppKitSafe = (): AppKitReturn => {
   const isBase = isBaseMiniApp();
+  const [appKitModule, setAppKitModule] = useState<typeof import('@reown/appkit/react') | null>(null);
+  
+  // Only load AppKit module if NOT in Base app
+  useEffect(() => {
+    if (isBase || typeof window === 'undefined') {
+      return;
+    }
+    
+    // Dynamic import to prevent WalletConnect from loading in Base app
+    import('@reown/appkit/react')
+      .then((module) => {
+        setAppKitModule(module);
+      })
+      .catch((error) => {
+        console.warn('[useAppKitSafe] Failed to load AppKit module:', error);
+      });
+  }, [isBase]);
   
   if (isBase) {
     // Return no-op functions in Base app to prevent WalletConnect initialization
@@ -40,15 +47,16 @@ export const useAppKitSafe = () => {
     };
   }
   
-  // Use AppKit normally when NOT in Base app
-  if (!useAppKitHook) {
-    // Fallback if import failed
+  // If module not loaded yet, return no-ops temporarily
+  if (!appKitModule) {
     return {
-      open: () => console.warn('[AppKit] useAppKit not available'),
+      open: () => console.warn('[AppKit] useAppKit module not loaded yet'),
       close: () => {},
       setThemeMode: () => {},
       setThemeVariables: () => {},
     };
   }
-  return useAppKitHook();
+  
+  // Use AppKit normally when NOT in Base app and module is loaded
+  return appKitModule.useAppKit();
 };
