@@ -41,12 +41,10 @@ if (typeof window !== 'undefined') {
 }
 
 // Type definitions for when modules are loaded
-type WagmiAdapterType = typeof import('@reown/appkit-adapter-wagmi').WagmiAdapter;
-type CreateAppKitType = typeof import('@reown/appkit/react').createAppKit;
-type AppKitType = ReturnType<CreateAppKitType>;
-
-let wagmiAdapter: WagmiAdapterType | null = null;
-let appKit: AppKitType | null = null;
+// Use any for dynamic imports to avoid type issues at compile time
+// These will be properly typed at runtime when modules are loaded
+let wagmiAdapter: any = null;
+let appKit: any = null;
 
 // Only load AppKit modules if NOT in Base app
 // This prevents WalletConnect from initializing at all

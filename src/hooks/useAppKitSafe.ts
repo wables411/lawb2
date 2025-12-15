@@ -6,9 +6,12 @@ import { isBaseMiniApp } from '../utils/baseMiniapp';
 import { useState, useEffect } from 'react';
 
 // Type for useAppKit return value
+// Note: useAppKit() only returns open and close
+// setThemeMode and setThemeVariables are on the AppKit instance, not the hook
+// We add them here for compatibility with code that expects them
 type AppKitReturn = {
-  open: (options?: { view?: string }) => void;
-  close: () => void;
+  open: (options?: any) => any;
+  close: () => any;
   setThemeMode: (mode: 'light' | 'dark') => void;
   setThemeVariables: (variables: Record<string, string>) => void;
 };
@@ -58,5 +61,14 @@ export const useAppKitSafe = (): AppKitReturn => {
   }
   
   // Use AppKit normally when NOT in Base app and module is loaded
-  return appKitModule.useAppKit();
+  const appKitHook = appKitModule.useAppKit();
+  
+  // useAppKit() returns { open, close }
+  // setThemeMode and setThemeVariables don't exist on the hook, so we add no-ops
+  return {
+    open: appKitHook.open,
+    close: appKitHook.close,
+    setThemeMode: () => {}, // Not available on hook, only on AppKit instance
+    setThemeVariables: () => {}, // Not available on hook, only on AppKit instance
+  };
 };

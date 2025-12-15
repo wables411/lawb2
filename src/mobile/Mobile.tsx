@@ -728,12 +728,12 @@ const Mobile = () => {
                 disconnect();
               }
             } else {
-              if (!isConnected) {
-                // Open wallet connection modal
-                void open({ view: 'Connect' });
-              } else {
-                // Open account management modal (chain selector/disconnect)
-                void open({ view: 'Account' });
+            if (!isConnected) {
+              // Open wallet connection modal
+              void open({ view: 'Connect' });
+            } else {
+              // Open account management modal (chain selector/disconnect)
+              void open({ view: 'Account' });
               }
             }
           }}

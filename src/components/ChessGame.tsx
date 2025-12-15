@@ -1123,8 +1123,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       isAIMovingRef.current = false; // Allow player to move
     } else {
       // Player made a move - reset all flags so AI can move next
-      isAIMovingRef.current = false;
-      lastAIMoveRef.current = false;
+    isAIMovingRef.current = false;
+    lastAIMoveRef.current = false;
     }
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);

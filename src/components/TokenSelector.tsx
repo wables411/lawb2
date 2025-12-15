@@ -54,7 +54,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   const [customTokenBalance, setCustomTokenBalance] = useState<number>(0);
   
   const [showDropdown, setShowDropdown] = useState(false);
-  
+
   // Filter tokens available on current chain (for Sanko)
   const availableTokens = Object.entries(SUPPORTED_TOKENS).filter(([symbol, token]) => 
     (token.chains as readonly number[]).includes(chainId)
@@ -210,83 +210,83 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
     <div style={{ marginBottom: '10px' }}>
       {/* Sanko: Fixed token dropdown */}
       {isSanko && (
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
-          <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000' }}>Token:</label>
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setShowDropdown(!showDropdown)}
-              disabled={disabled}
-              style={{
-                padding: '5px 10px',
-                border: '2px outset #fff',
-                background: '#000000',
-                color: '#ff0000',
-                cursor: disabled ? 'not-allowed' : 'pointer',
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
+        <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000' }}>Token:</label>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => setShowDropdown(!showDropdown)}
+            disabled={disabled}
+            style={{
+              padding: '5px 10px',
+              border: '2px outset #fff',
+              background: '#000000',
+              color: '#ff0000',
+              cursor: disabled ? 'not-allowed' : 'pointer',
                 minWidth: '120px',
-                textAlign: 'left',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <img 
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <img 
                 src={SUPPORTED_TOKENS[selectedToken as TokenSymbol]?.logo || '/images/dmt-logo.png'} 
                 alt={`${getTokenDisplayName(selectedToken as TokenSymbol)} logo`}
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  objectFit: 'contain'
-                }}
-              />
+              style={{
+                width: '16px',
+                height: '16px',
+                objectFit: 'contain'
+              }}
+            />
               {getTokenDisplayName(selectedToken as TokenSymbol)}
-              <span style={{ marginLeft: 'auto' }}>▲</span>
-            </button>
-            
-            {showDropdown && !disabled && (
-              <div style={{
-                position: 'absolute',
-                bottom: '100%',
-                left: 0,
-                background: '#000000',
-                border: '2px outset #fff',
-                zIndex: 10,
-                minWidth: '120px'
-              }}>
+            <span style={{ marginLeft: 'auto' }}>▲</span>
+          </button>
+          
+          {showDropdown && !disabled && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              background: '#000000',
+              border: '2px outset #fff',
+              zIndex: 10,
+              minWidth: '120px'
+            }}>
                 {availableTokens.map(([symbol, token]) => (
-                  <div
-                    key={symbol}
-                    onClick={() => handleTokenSelect(symbol as TokenSymbol)}
-                    style={{
-                      padding: '5px 10px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #333',
+                <div
+                  key={symbol}
+                  onClick={() => handleTokenSelect(symbol as TokenSymbol)}
+                  style={{
+                    padding: '5px 10px',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #333',
                       fontSize: '12px',
-                      color: '#ff0000',
-                      background: '#000000',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                    color: '#ff0000',
+                    background: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
+                >
+                  <img 
+                    src={token.logo} 
+                    alt={`${getTokenDisplayName(symbol as TokenSymbol)} logo`}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      objectFit: 'contain'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
-                  >
-                    <img 
-                      src={token.logo} 
-                      alt={`${getTokenDisplayName(symbol as TokenSymbol)} logo`}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        objectFit: 'contain'
-                      }}
-                    />
-                    {getTokenDisplayName(symbol as TokenSymbol)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  />
+                  {getTokenDisplayName(symbol as TokenSymbol)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      </div>
       )}
       
       {/* Base/Arbitrum: Quick-select buttons + custom input */}

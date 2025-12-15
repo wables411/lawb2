@@ -23,7 +23,9 @@ import { config as wagmiConfig } from './wagmi';
 // Use dynamic import to avoid loading @reown/appkit/react in Base app
 if (appKit && typeof window !== 'undefined' && !isBaseMiniApp()) {
   import('@reown/appkit/react').then(({ getAppKit }) => {
-    getAppKit(appKit);
+    if (appKit) {
+      getAppKit(appKit);
+    }
   }).catch((error) => {
     console.warn('[main.tsx] Failed to load getAppKit:', error);
   });
@@ -42,9 +44,12 @@ const Root = () => {
 
 // When in Base/Farcaster app, use our wagmi config with Farcaster connector
 // Otherwise, use WagmiAdapter's config with WalletConnect
+// Note: wagmiAdapter is loaded dynamically, so we need to handle it at runtime
 const wagmiConfigToUse = isBaseMiniApp() 
   ? wagmiConfig 
-  : (wagmiAdapter?.wagmiConfig || wagmiConfig); // Fallback to our config if wagmiAdapter is null
+  : ((wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) 
+      ? (wagmiAdapter as any).wagmiConfig 
+      : wagmiConfig); // Fallback to our config if wagmiAdapter is null or not loaded yet
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

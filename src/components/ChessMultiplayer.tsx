@@ -2268,39 +2268,39 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }
         } else {
           // Supported token approval using existing hook
-          return new Promise((resolve) => {
-            let attempts = 0;
-            const maxAttempts = 60; // 30 seconds max wait
+        return new Promise((resolve) => {
+          let attempts = 0;
+          const maxAttempts = 60; // 30 seconds max wait
+          
+          const checkApprovalResult = () => {
+            attempts++;
             
-            const checkApprovalResult = () => {
-              attempts++;
-              
-              if (approveError) {
-                console.error('[APPROVAL] User denied approval or error occurred:', approveError);
-                setGameStatus('Token approval was cancelled. Please try again.');
-                resolve(false);
-                return;
-              }
-              
-              if (approveHash && !isApproving) {
-                console.log('[APPROVAL] Token approval successful, proceeding with game creation');
-                resolve(true);
-                return;
-              }
-              
-              if (attempts >= maxAttempts) {
-                console.error('[APPROVAL] Timeout waiting for approval result');
-                setGameStatus('Approval timeout. Please try again.');
-                resolve(false);
-                return;
-              }
-              
-              setTimeout(checkApprovalResult, 500);
-            };
+            if (approveError) {
+              console.error('[APPROVAL] User denied approval or error occurred:', approveError);
+              setGameStatus('Token approval was cancelled. Please try again.');
+              resolve(false);
+              return;
+            }
             
+            if (approveHash && !isApproving) {
+              console.log('[APPROVAL] Token approval successful, proceeding with game creation');
+              resolve(true);
+              return;
+            }
+            
+            if (attempts >= maxAttempts) {
+              console.error('[APPROVAL] Timeout waiting for approval result');
+              setGameStatus('Approval timeout. Please try again.');
+              resolve(false);
+              return;
+            }
+            
+            setTimeout(checkApprovalResult, 500);
+          };
+          
             approveToken(selectedToken as TokenSymbol, chessContractAddress, currentWagerAmountWei);
-            checkApprovalResult();
-          });
+          checkApprovalResult();
+        });
         }
       }
       
@@ -2738,7 +2738,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             // For fixed tokens, use the existing approveToken function
             if (isCustomToken) {
               // Custom token approval - need to call ERC20 approve directly
-              try {
+            try {
                 writeContractApproval({
                   address: tokenAddress as `0x${string}`,
                   abi: ERC20_ABI,
@@ -2757,12 +2757,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               // Fixed token approval
               try {
                 approveToken(tokenSymbolOrAddress as TokenSymbol, gameContractAddress, requiredAmountBigInt);
-                return; // Exit early, the approval will trigger a re-render
-              } catch (error) {
-                console.error('[JOIN] Error approving token:', error);
+              return; // Exit early, the approval will trigger a re-render
+            } catch (error) {
+              console.error('[JOIN] Error approving token:', error);
                 setGameStatus(`Failed to approve ${tokenDisplaySymbol}. Please try again.`);
-                setWaitingForApproval(false);
-                return;
+              setWaitingForApproval(false);
+            return;
               }
             }
           }
@@ -5697,9 +5697,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               </div>
             )}
             
-                          <button 
-                            className={`piece-set-btn start-btn`}
-                            onClick={() => { 
+            <button 
+              className={`piece-set-btn start-btn`}
+              onClick={() => { 
                               console.log('[PIECE SET] ========== START BUTTON CLICKED ==========');
                               console.log('[PIECE SET] Start button clicked, calling createGame()');
                               console.log('[PIECE SET] Current state:', {
@@ -5711,15 +5711,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                 wagerType,
                                 selectedPieceSet
                               });
-                              setShowPieceSetSelector(false); 
+                setShowPieceSetSelector(false); 
                               console.log('[PIECE SET] About to call createGame()...');
                               try {
-                                createGame();
+                createGame();
                                 console.log('[PIECE SET] createGame() called successfully');
                               } catch (error) {
                                 console.error('[PIECE SET] ❌ Error calling createGame():', error);
                               }
-                            }}
+              }}
               style={{ 
                 background: 'transparent',
                 color: '#ff0000',
@@ -6461,7 +6461,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         
                         {/* Token Selector - Show only for token wagers */}
                         {wagerType === 'token' && (
-                          <TokenSelector
+                        <TokenSelector
                           selectedToken={selectedToken}
                           onTokenSelect={setSelectedToken}
                           wagerAmount={gameWager}
@@ -6503,7 +6503,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
                                 if (!isGameCreationInProgress) {
                                   console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
-                                  setShowPieceSetSelector(true);
+                                setShowPieceSetSelector(true);
                                 } else {
                                   console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
                                 }
