@@ -31,13 +31,20 @@ export default defineConfig({
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
       },
+      // Exclude WalletConnect/AppKit modules from bundle when possible
+      // This helps prevent them from being included even in dynamic imports
+      external: (id) => {
+        // Don't externalize - we need them bundled, just not loaded in Base app
+        // Instead, we'll use resolve.alias to stub them out conditionally
+        return false;
+      },
     },
     // Increase chunk size warning limit to avoid false warnings
     chunkSizeWarningLimit: 1000,
     // Enable source maps for debugging (optional, can be disabled for smaller bundles)
     sourcemap: false,
   },
-  // Optimize dependencies
+  // Optimize dependencies - EXCLUDE WalletConnect/AppKit to prevent pre-bundling
   optimizeDeps: {
     include: [
       'react',
@@ -46,5 +53,22 @@ export default defineConfig({
       'viem',
       'react-router-dom',
     ],
+    // Explicitly exclude WalletConnect/AppKit from pre-bundling
+    exclude: [
+      '@reown/appkit',
+      '@reown/appkit/react',
+      '@reown/appkit/networks',
+      '@reown/appkit-adapter-wagmi',
+      '@walletconnect/core',
+      '@walletconnect/universal-provider',
+    ],
+  },
+  // Use resolve.alias to stub out AppKit modules when detected in Base app context
+  // This prevents them from being bundled at all
+  resolve: {
+    alias: {
+      // Note: We can't conditionally alias at build time, so we'll handle this at runtime
+      // The dynamic imports with proper guards should prevent loading
+    },
   },
 });

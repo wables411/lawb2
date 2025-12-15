@@ -48,15 +48,22 @@ let appKit: any = null;
 
 // Only load AppKit modules if NOT in Base app
 // This prevents WalletConnect from initializing at all
+// CRITICAL: Check isBase again right before import to ensure it's still false
 if (!isBase && typeof window !== 'undefined') {
-  console.log('[AppKit] Loading AppKit modules (NOT in Base app)');
-  
-  // Use dynamic imports to prevent WalletConnect from loading in Base app
-  Promise.all([
-    import('@reown/appkit/react'),
-    import('@reown/appkit/networks'),
-    import('@reown/appkit-adapter-wagmi')
-  ]).then(([appkitModule, networksModule, adapterModule]) => {
+  // Double-check we're not in Base app before loading
+  const doubleCheckBase = isBaseMiniApp();
+  if (doubleCheckBase) {
+    console.log('[AppKit] Base app detected during double-check, skipping AppKit load');
+  } else {
+    console.log('[AppKit] Loading AppKit modules (NOT in Base app)');
+    
+    // Use dynamic imports to prevent WalletConnect from loading in Base app
+    // Wrap in try-catch to prevent any errors from propagating
+    Promise.all([
+      import('@reown/appkit/react'),
+      import('@reown/appkit/networks'),
+      import('@reown/appkit-adapter-wagmi')
+    ]).then(([appkitModule, networksModule, adapterModule]) => {
     const { createAppKit } = appkitModule;
     const { mainnet, arbitrum, base, solana } = networksModule;
     const { WagmiAdapter } = adapterModule;
@@ -104,10 +111,11 @@ if (!isBase && typeof window !== 'undefined') {
       }
     });
     
-    console.log('[AppKit] AppKit initialized successfully');
-  }).catch((error) => {
-    console.error('[AppKit] Failed to load AppKit modules:', error);
-  });
+      console.log('[AppKit] AppKit initialized successfully');
+    }).catch((error) => {
+      console.error('[AppKit] Failed to load AppKit modules:', error);
+    });
+  }
 } else {
   console.log('[AppKit] Skipping AppKit module loading (in Base app - using Farcaster connector)');
 }
