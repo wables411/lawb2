@@ -245,9 +245,11 @@ const Mobile = () => {
       const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
       if (farcasterConnector) {
         console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
-        connect({ connector: farcasterConnector }).catch((error) => {
+        try {
+          connect({ connector: farcasterConnector });
+        } catch (error) {
           console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
-        });
+        }
       }
     }
   }, [isConnected, connectors, connect]);
@@ -259,7 +261,7 @@ const Mobile = () => {
       if (isBaseMiniApp() && connectors.length > 0) {
         const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
         if (farcasterConnector) {
-          await connect({ connector: farcasterConnector });
+          connect({ connector: farcasterConnector });
           return;
         }
       }

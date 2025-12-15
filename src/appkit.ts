@@ -20,6 +20,8 @@ const metadata = {
 // Create wagmi adapter with main networks
 // When in Base/Farcaster app, we'll use our wagmi config with Farcaster connector
 // Otherwise, WagmiAdapter will add its own connectors (WalletConnect, etc.)
+// Note: WagmiAdapter doesn't support disabling WalletConnect via options,
+// so we rely on using our own wagmi config in main.tsx when in Base app
 export const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks: [
@@ -29,10 +31,6 @@ export const wagmiAdapter = new WagmiAdapter({
     base,
     sankoMainnet
   ],
-  // Conditionally disable WalletConnect when in Base app to avoid CSP issues
-  // The Farcaster connector in wagmi.ts will be used instead
-  enableWalletConnect: !isBaseMiniApp(),
-  enableEIP6963: !isBaseMiniApp(), // Also disable EIP-6963 wallet discovery in Base app
   pendingTransactionsFilter: {
     enable: true,
     pollingInterval: 1000

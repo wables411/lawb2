@@ -44,8 +44,6 @@ function App() {
   
   const { connect, connectors } = useConnect();
   
-  const { connect, connectors } = useConnect();
-  
   // Initialize Base Mini App SDK when interface is ready
   // Call ready() after component mounts to hide splash screen (per Farcaster docs)
   useEffect(() => {
@@ -63,22 +61,11 @@ function App() {
       const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
       if (farcasterConnector) {
         console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
-        connect({ connector: farcasterConnector }).catch((error) => {
+        try {
+          connect({ connector: farcasterConnector });
+        } catch (error) {
           console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
-        });
-      }
-    }
-  }, [isBaseMiniApp(), isConnected, connectors, connect]);
-  
-  // Auto-connect to Farcaster wallet when in Base app and not already connected
-  useEffect(() => {
-    if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
-      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-      if (farcasterConnector) {
-        console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
-        connect({ connector: farcasterConnector }).catch((error) => {
-          console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
-        });
+        }
       }
     }
   }, [isBaseMiniApp(), isConnected, connectors, connect]);
