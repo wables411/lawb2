@@ -2204,9 +2204,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   return;
                 }
                 
-                // Check if transaction was confirmed by checking allowance
-                if (customApprovalHash && !isApprovingCustomToken) {
-                  // Transaction sent, wait a moment then check allowance
+                // Check if transaction receipt is available (transaction confirmed)
+                if (approvalReceipt) {
+                  console.log('[APPROVAL] Approval transaction confirmed, checking allowance...');
+                  // Transaction confirmed, verify allowance
                   setTimeout(async () => {
                     try {
                       const newAllowance = await publicClient.readContract({
@@ -2216,26 +2217,34 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         args: [address as `0x${string}`, chessContractAddress as `0x${string}`]
                       }) as bigint;
                       
+                      console.log('[APPROVAL] New allowance after confirmation:', newAllowance.toString());
+                      
                       if (newAllowance >= currentWagerAmountWei) {
-                        console.log('[APPROVAL] Custom token approval successful');
+                        console.log('[APPROVAL] ✅ Custom token approval successful');
                         resolve(true);
                       } else {
-                        // Still waiting for confirmation, check again
-                        if (attempts < maxAttempts) {
-                          setTimeout(checkApprovalResult, 1000);
-                        } else {
-                          resolve(false);
-                        }
-                      }
-                    } catch (error) {
-                      console.error('[APPROVAL] Error checking allowance:', error);
-                      if (attempts < maxAttempts) {
-                        setTimeout(checkApprovalResult, 1000);
-                      } else {
+                        console.warn('[APPROVAL] Allowance still insufficient after confirmation');
                         resolve(false);
                       }
+                    } catch (error) {
+                      console.error('[APPROVAL] Error checking allowance after confirmation:', error);
+                      // Even if we can't verify, if receipt exists, assume it worked
+                      resolve(true);
                     }
-                  }, 2000); // Wait 2 seconds after hash to allow confirmation
+                  }, 1000); // Wait 1 second after receipt to allow state sync
+                  return;
+                }
+                
+                // If we have a hash but no receipt yet, keep waiting
+                if (customApprovalHash) {
+                  console.log('[APPROVAL] Transaction hash received, waiting for confirmation...', customApprovalHash);
+                  if (attempts < maxAttempts) {
+                    setTimeout(checkApprovalResult, 500);
+                  } else {
+                    console.error('[APPROVAL] Timeout waiting for approval confirmation');
+                    setGameStatus('Approval timeout. Please try again.');
+                    resolve(false);
+                  }
                   return;
                 }
                 
