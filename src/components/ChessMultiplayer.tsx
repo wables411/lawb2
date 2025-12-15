@@ -5700,16 +5700,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           <button 
                             className={`piece-set-btn start-btn`}
                             onClick={() => { 
+                              console.log('[PIECE SET] ========== START BUTTON CLICKED ==========');
                               console.log('[PIECE SET] Start button clicked, calling createGame()');
                               console.log('[PIECE SET] Current state:', {
                                 address,
                                 gameWager,
                                 selectedToken,
                                 chainId,
-                                isGameCreationInProgress
+                                isGameCreationInProgress,
+                                wagerType,
+                                selectedPieceSet
                               });
                               setShowPieceSetSelector(false); 
-                              createGame();
+                              console.log('[PIECE SET] About to call createGame()...');
+                              try {
+                                createGame();
+                                console.log('[PIECE SET] createGame() called successfully');
+                              } catch (error) {
+                                console.error('[PIECE SET] ❌ Error calling createGame():', error);
+                              }
                             }}
               style={{ 
                 background: 'transparent',
@@ -6478,27 +6487,33 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           <button 
                             className="create-confirm-btn"
                             onClick={() => {
+                              console.log('[CREATE BUTTON] ========== CLICKED ==========');
                               console.log('[CREATE BUTTON] Clicked with state:', {
                                 wagerType,
                                 gameWager,
                                 selectedNFT,
                                 isGameCreationInProgress,
                                 address,
-                                chainId
+                                chainId,
+                                isBase,
+                                isArbitrum
                               });
+                              const isDisabled = (wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress;
+                              console.log('[CREATE BUTTON] Button disabled?', isDisabled);
                               if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
                                 if (!isGameCreationInProgress) {
-                                  console.log('[CREATE BUTTON] Showing piece set selector');
+                                  console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
                                   setShowPieceSetSelector(true);
                                 } else {
-                                  console.log('[CREATE BUTTON] Game creation already in progress, ignoring click');
+                                  console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
                                 }
                               } else {
-                                console.warn('[CREATE BUTTON] Validation failed:', {
+                                console.warn('[CREATE BUTTON] ❌ Validation failed:', {
                                   wagerType,
                                   gameWager,
                                   selectedNFT,
-                                  canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)
+                                  canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT),
+                                  reason: wagerType === 'token' ? `gameWager is ${gameWager} (needs > 0)` : `selectedNFT is ${selectedNFT ? 'set' : 'not set'}`
                                 });
                               }
                             }}
