@@ -5670,12 +5670,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               </div>
             )}
             
-            <button 
-              className={`piece-set-btn start-btn`}
-              onClick={() => { 
-                setShowPieceSetSelector(false); 
-                createGame();
-              }}
+                          <button 
+                            className={`piece-set-btn start-btn`}
+                            onClick={() => { 
+                              console.log('[PIECE SET] Start button clicked, calling createGame()');
+                              console.log('[PIECE SET] Current state:', {
+                                address,
+                                gameWager,
+                                selectedToken,
+                                chainId,
+                                isGameCreationInProgress
+                              });
+                              setShowPieceSetSelector(false); 
+                              createGame();
+                            }}
               style={{ 
                 background: 'transparent',
                 color: '#ff0000',
@@ -6443,10 +6451,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           <button 
                             className="create-confirm-btn"
                             onClick={() => {
+                              console.log('[CREATE BUTTON] Clicked with state:', {
+                                wagerType,
+                                gameWager,
+                                selectedNFT,
+                                isGameCreationInProgress,
+                                address,
+                                chainId
+                              });
                               if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
                                 if (!isGameCreationInProgress) {
+                                  console.log('[CREATE BUTTON] Showing piece set selector');
                                   setShowPieceSetSelector(true);
+                                } else {
+                                  console.log('[CREATE BUTTON] Game creation already in progress, ignoring click');
                                 }
+                              } else {
+                                console.warn('[CREATE BUTTON] Validation failed:', {
+                                  wagerType,
+                                  gameWager,
+                                  selectedNFT,
+                                  canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)
+                                });
                               }
                             }}
                             disabled={(wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress}
