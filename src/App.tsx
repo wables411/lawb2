@@ -4,7 +4,7 @@ import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
-import { useAppKitSafe as useAppKit } from './hooks/useAppKitSafe';
+import { useAppKitSafe } from './hooks/useAppKitSafe';
 import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +33,7 @@ const useStyles = createUseStyles({
 
 function App() {
   const classes = useStyles();
-  const { open } = useAppKit();
+  const { open } = useAppKitSafe();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();

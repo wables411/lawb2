@@ -26,15 +26,33 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
-  // Check if we're running in an iframe (embedded in Base app)
+  // Check if we're running in an iframe (embedded in Base/Farcaster app)
   try {
     if (window.self !== window.top) {
-      // We're in an iframe - likely embedded in Base app
+      // We're in an iframe - likely embedded in Base/Farcaster app
       return true;
     }
   } catch (e) {
     // Cross-origin iframe - can't access window.top, but we're definitely in an iframe
+    // This is the case when embedded in Farcaster app
     return true;
+  }
+  
+  // Check for Farcaster-specific indicators
+  // Farcaster app uses wallet.farcaster.xyz domain
+  if (window.location.hostname.includes('farcaster.xyz') || 
+      window.location.hostname.includes('warpcast.com')) {
+    return true;
+  }
+  
+  // Check if Farcaster SDK is available (context is a Promise, so we check actions instead)
+  try {
+    if (sdk && sdk.actions) {
+      // SDK is available - likely in Base/Farcaster app
+      return true;
+    }
+  } catch (e) {
+    // SDK not available - not in Base app
   }
   
   return false;
