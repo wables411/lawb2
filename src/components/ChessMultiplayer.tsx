@@ -2409,8 +2409,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       console.log('[CREATE GAME] ✅ Token approval successful');
+      console.log('[CREATE GAME] Continuing to game creation...');
+      console.log('[CREATE GAME] Current state:', {
+        address,
+        chainId,
+        chessContractAddress,
+        publicClient: !!publicClient,
+        writeCreateGame: !!writeCreateGame
+      });
       
       const newInviteCode = generateBytes6InviteCode();
+      console.log('[CREATE GAME] Generated invite code:', newInviteCode);
       
       // Use selected token - get address for current chain (already computed above)
       // tokenAddress is already set above
@@ -2509,8 +2518,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
 
       // Call contract to create game with token parameters and proper gas estimation
+      console.log('[CREATE GAME] About to call writeCreateGame, isCustomToken:', isCustomToken);
       let result;
       if (isCustomToken) {
+        console.log('[CREATE GAME] Using custom token path');
         // Custom tokens are never native
         result = writeCreateGame({
           address: chessContractAddress as `0x${string}`,
