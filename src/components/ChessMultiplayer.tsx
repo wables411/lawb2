@@ -161,6 +161,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const { isLoading: isWaitingForCreateReceipt } = useWaitForTransactionReceipt({
     hash: createGameHash,
   });
+
+  // Wait for approval transaction receipt
+  const { isLoading: isWaitingForApprovalReceipt, data: approvalReceipt } = useWaitForTransactionReceipt({
+    hash: customApprovalHash,
+  });
   
   const { isLoading: isWaitingForJoinReceipt, data: joinReceipt } = useWaitForTransactionReceipt({
     hash: joinGameHash,
