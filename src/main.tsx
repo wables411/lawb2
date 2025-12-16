@@ -45,15 +45,54 @@ const Root = () => {
 // When in Base/Farcaster app, use our wagmi config with Farcaster connector
 // Otherwise, use WagmiAdapter's config with WalletConnect
 // Note: wagmiAdapter is loaded dynamically, so we need to handle it at runtime
-const wagmiConfigToUse = isBaseMiniApp() 
-  ? wagmiConfig 
-  : ((wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) 
-      ? (wagmiAdapter as any).wagmiConfig 
-      : wagmiConfig); // Fallback to our config if wagmiAdapter is null or not loaded yet
+// For regular users, we'll wait a bit for AppKit to load, then use its config
+const getWagmiConfig = () => {
+  if (isBaseMiniApp()) {
+    return wagmiConfig;
+  }
+  
+  // If wagmiAdapter is loaded and has wagmiConfig, use it
+  if (wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
+    return (wagmiAdapter as any).wagmiConfig;
+  }
+  
+  // Fallback: use our config (will have empty connectors until AppKit loads)
+  // The WagmiAdapter will add connectors when it loads, but we need to re-render
+  // For now, return the base config - AppKit should update it when loaded
+  return wagmiConfig;
+};
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <WagmiProvider config={wagmiConfigToUse}>
+// Component that handles dynamic config updates
+const AppWithWagmi = () => {
+  const [currentConfig, setCurrentConfig] = React.useState(getWagmiConfig());
+  const [configKey, setConfigKey] = React.useState(0);
+  
+  // Check if AppKit has loaded and update config if needed
+  React.useEffect(() => {
+    if (isBaseMiniApp()) return; // Base app uses wagmiConfig directly, no need to wait
+    
+    // Poll for AppKit loading
+    let attempts = 0;
+    const maxAttempts = 50; // Check for 5 seconds (50 * 100ms)
+    const interval = setInterval(() => {
+      attempts++;
+      if (wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
+        const adapterConfig = (wagmiAdapter as any).wagmiConfig;
+        console.log('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
+        setCurrentConfig(adapterConfig);
+        setConfigKey(prev => prev + 1); // Force WagmiProvider to re-initialize
+        clearInterval(interval);
+      } else if (attempts >= maxAttempts) {
+        console.warn('[main.tsx] AppKit did not load within timeout, using fallback config (connectors may be limited)');
+        clearInterval(interval);
+      }
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  return (
+    <WagmiProvider key={configKey} config={currentConfig}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
@@ -77,5 +116,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </QueryClientProvider>
     </WagmiProvider>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AppWithWagmi />
   </React.StrictMode>
 );

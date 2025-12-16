@@ -45,15 +45,10 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
-  // Check if Farcaster SDK is available (context is a Promise, so we check actions instead)
-  try {
-    if (sdk && sdk.actions) {
-      // SDK is available - likely in Base/Farcaster app
-      return true;
-    }
-  } catch (e) {
-    // SDK not available - not in Base app
-  }
+  // NOTE: We do NOT check SDK availability here because the SDK is statically imported
+  // and will always be available in the bundle, even when not in Base app context.
+  // The SDK being available doesn't mean we're in Base app - we rely on the other
+  // indicators above (iframe, domain, env vars) which are more reliable.
   
   return false;
 };

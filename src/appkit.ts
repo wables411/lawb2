@@ -19,24 +19,18 @@ const metadata = {
 };
 
 // Delay check until after window is available to ensure proper detection
-// Be very defensive - assume we're in Base app if ANY indicator suggests it
+// Use isBaseMiniApp() which has proper detection logic
 let isBase = false;
 if (typeof window !== 'undefined') {
   isBase = isBaseMiniApp();
   console.log('[AppKit] isBaseMiniApp() =', isBase, 'window.location:', window.location.href, 'hostname:', window.location.hostname);
   
-  // Additional safety check: if we're in an iframe or on farcaster domain, definitely don't load WalletConnect
-  try {
-    const inIframe = window.self !== window.top;
-    const onFarcasterDomain = window.location.hostname.includes('farcaster.xyz') || window.location.hostname.includes('warpcast.com');
-    if (inIframe || onFarcasterDomain) {
-      isBase = true;
-      console.log('[AppKit] Additional safety check: inIframe=', inIframe, 'onFarcasterDomain=', onFarcasterDomain, '-> forcing isBase=true');
-    }
-  } catch (e) {
-    // Cross-origin iframe - definitely Base app
+  // Additional safety check: if we're on farcaster domain, definitely don't load WalletConnect
+  // Note: isBaseMiniApp() already checks for iframes, so we don't need to duplicate that here
+  const onFarcasterDomain = window.location.hostname.includes('farcaster.xyz') || window.location.hostname.includes('warpcast.com');
+  if (onFarcasterDomain) {
     isBase = true;
-    console.log('[AppKit] Cross-origin iframe detected -> forcing isBase=true');
+    console.log('[AppKit] Additional safety check: onFarcasterDomain -> forcing isBase=true');
   }
 }
 
