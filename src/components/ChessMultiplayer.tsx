@@ -2442,9 +2442,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // wagerAmountWei is already declared above, reuse it
       
       // Validate wager amount against contract limits
+      // When allowAllTokens is enabled, unconfigured tokens return minWager: 0, maxWager: 0
+      // In this case, 0 means "no limit" (not "not allowed")
       console.log('[VALIDATION] Starting wager validation, publicClient:', !!publicClient);
       if (publicClient) {
         try {
+          // First check if allowAllTokens is enabled
+          console.log('[VALIDATION] Checking allowAllTokens status...');
+          const allowAllTokens = await publicClient.readContract({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'allowAllTokens'
+          }) as boolean;
+          
+          console.log('[VALIDATION] allowAllTokens:', allowAllTokens);
           console.log('[VALIDATION] Reading contract limits for token:', tokenAddress);
           const minWager = await publicClient.readContract({
             address: chessContractAddress as `0x${string}`,
@@ -2461,12 +2472,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           }) as bigint;
           
           console.log('[VALIDATION] Contract limits for', tokenAddress, ':', {
+            allowAllTokens,
             minWager: minWager.toString(),
             maxWager: maxWager.toString(),
             userWager: wagerAmountWei.toString()
           });
           
-          if (wagerAmountWei < minWager) {
+          // When allowAllTokens is true and limits are 0, it means "no limits"
+          // Only validate if limits are actually set (> 0) OR if allowAllTokens is false
+          const hasMinLimit = minWager > 0n;
+          const hasMaxLimit = maxWager > 0n;
+          
+          if (hasMinLimit && wagerAmountWei < minWager) {
             const minWagerFormatted = Number(minWager) / Math.pow(10, tokenDecimals);
             const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
             console.error('[VALIDATION] ❌ Wager too low:', wagerAmountWei.toString(), '<', minWager.toString());
@@ -2475,7 +2492,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             return;
           }
           
-          if (wagerAmountWei > maxWager) {
+          // Only check maxWager if it's actually set (> 0) OR if allowAllTokens is false
+          // When allowAllTokens is true and maxWager is 0, it means "no limit"
+          if (hasMaxLimit && wagerAmountWei > maxWager) {
             const maxWagerFormatted = Number(maxWager) / Math.pow(10, tokenDecimals);
             const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
             console.error('[VALIDATION] ❌ Wager too high:', wagerAmountWei.toString(), '>', maxWager.toString());
@@ -2484,7 +2503,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             return;
           }
           
-          console.log('[VALIDATION] ✅ Wager amount is within contract limits');
+          // If allowAllTokens is true and limits are 0, that means "no limits" - allow any wager
+          if (allowAllTokens && !hasMinLimit && !hasMaxLimit) {
+            console.log('[VALIDATION] ✅ allowAllTokens enabled and no limits set - allowing any wager amount');
+          } else {
+            console.log('[VALIDATION] ✅ Wager amount is within contract limits');
+          }
         } catch (error) {
           console.warn('[VALIDATION] ⚠️ Could not validate wager limits, proceeding anyway:', error);
         }
