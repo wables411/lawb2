@@ -2442,8 +2442,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // wagerAmountWei is already declared above, reuse it
       
       // Validate wager amount against contract limits
+      console.log('[VALIDATION] Starting wager validation, publicClient:', !!publicClient);
       if (publicClient) {
         try {
+          console.log('[VALIDATION] Reading contract limits for token:', tokenAddress);
           const minWager = await publicClient.readContract({
             address: chessContractAddress as `0x${string}`,
             abi: CHESS_CONTRACT_ABI,
@@ -2458,7 +2460,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             args: [tokenAddress as `0x${string}`]
           }) as bigint;
           
-          console.log('[VALIDATION] Contract limits for', selectedToken, ':', {
+          console.log('[VALIDATION] Contract limits for', tokenAddress, ':', {
             minWager: minWager.toString(),
             maxWager: maxWager.toString(),
             userWager: wagerAmountWei.toString()
@@ -2467,6 +2469,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (wagerAmountWei < minWager) {
             const minWagerFormatted = Number(minWager) / Math.pow(10, tokenDecimals);
             const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
+            console.error('[VALIDATION] ❌ Wager too low:', wagerAmountWei.toString(), '<', minWager.toString());
             setGameStatus(`Wager too low. Minimum for ${tokenSymbol}: ${minWagerFormatted}`);
             setIsGameCreationInProgress(false);
             return;
@@ -2475,16 +2478,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (wagerAmountWei > maxWager) {
             const maxWagerFormatted = Number(maxWager) / Math.pow(10, tokenDecimals);
             const tokenSymbol = isCustomToken ? 'token' : (tokenConfig?.symbol || selectedToken);
+            console.error('[VALIDATION] ❌ Wager too high:', wagerAmountWei.toString(), '>', maxWager.toString());
             setGameStatus(`Wager too high. Maximum for ${tokenSymbol}: ${maxWagerFormatted}`);
             setIsGameCreationInProgress(false);
             return;
           }
           
-          console.log('[VALIDATION] Wager amount is within contract limits');
+          console.log('[VALIDATION] ✅ Wager amount is within contract limits');
         } catch (error) {
-          console.warn('[VALIDATION] Could not validate wager limits, proceeding anyway:', error);
+          console.warn('[VALIDATION] ⚠️ Could not validate wager limits, proceeding anyway:', error);
         }
+      } else {
+        console.warn('[VALIDATION] ⚠️ No publicClient available, skipping validation');
       }
+      
+      console.log('[CREATE GAME] After validation, continuing to game data preparation...');
       
       // Determine chain for Firebase
       const gameChain = selectedChain || (chainId === NETWORKS.mainnet.chainId ? 'sanko' : 
@@ -2516,9 +2524,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CREATE] Calling contract with args:', [newInviteCode, tokenAddress, wagerAmountWei]);
       
       // Estimate gas for createGame function
+      console.log('[CREATE GAME] Starting gas estimation, publicClient:', !!publicClient);
       let gasLimit = 300000n;
       try {
         if (publicClient) {
+          console.log('[CREATE GAME] Estimating gas for createGame call...');
           const estimatedGas = await publicClient.estimateContractGas({
             address: chessContractAddress as `0x${string}`,
             abi: CHESS_CONTRACT_ABI,
@@ -2527,14 +2537,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             account: address as `0x${string}`,
           });
           gasLimit = estimatedGas;
-          console.log('[CREATE] Estimated gas:', estimatedGas.toString());
+          console.log('[CREATE] ✅ Estimated gas:', estimatedGas.toString());
+        } else {
+          console.warn('[CREATE GAME] ⚠️ No publicClient for gas estimation, using default:', gasLimit.toString());
         }
       } catch (error) {
-        console.warn('[CREATE] Gas estimation failed, using default:', error);
+        console.warn('[CREATE] ⚠️ Gas estimation failed, using default:', gasLimit.toString(), 'Error:', error);
       }
 
       // Call contract to create game with token parameters and proper gas estimation
+      console.log('[CREATE GAME] ========== ABOUT TO CALL CONTRACT ==========');
       console.log('[CREATE GAME] About to call writeCreateGame, isCustomToken:', isCustomToken);
+      console.log('[CREATE GAME] writeCreateGame function available:', typeof writeCreateGame === 'function');
+      console.log('[CREATE GAME] Contract address:', chessContractAddress);
+      console.log('[CREATE GAME] Args:', [newInviteCode, tokenAddress, wagerAmountWei.toString()]);
       let result;
       if (isCustomToken) {
         console.log('[CREATE GAME] Using custom token path');
@@ -2568,10 +2584,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         });
       }
       console.log('[CREATE] Contract call initiated, result:', result);
+      console.log('[CREATE] writeCreateGame returned:', result);
       console.log('[CREATE] createGameHash after writeCreateGame:', createGameHash);
+      console.log('[CREATE] isCreatingGameContract:', isCreatingGameContract);
       console.log('[CREATE] Pending game data being set:', gameData);
       setPendingGameData(gameData);
       setGameStatus('Creating game... Please confirm transaction in your wallet.');
+      console.log('[CREATE GAME] ✅ Contract call completed, waiting for user confirmation...');
     } catch (error) {
       console.error('[CREATE GAME] ❌ ERROR creating game:', error);
       console.error('[CREATE GAME] Error details:', {
@@ -2580,10 +2599,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         error
       });
       setGameStatus(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      console.log('[CREATE GAME] ========== END ==========');
       setIsGameCreationInProgress(false);
     }
+    // Note: Don't set isGameCreationInProgress to false in finally block
+    // It should remain true until transaction is confirmed or fails
+    console.log('[CREATE GAME] ========== END ==========');
   };
 
   // Join game
