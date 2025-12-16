@@ -19,6 +19,7 @@ export const TOKEN_ADDRESSES_BY_CHAIN: Record<number, Record<string, string>> = 
     USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base USDC
     GG: '0x000000000000a59351f61B598E8DA953b9e041Ec', // GunGame
     LAWB: '0x7e18298b46A1F2399617cde083Fe11415A2ad15B', // LAWB on Base
+    WABLES411: '0xb2ca7ab88b87bd20b81e95aa0135e2b72720f33d', // wables411 token
   },
   // Arbitrum One (42161)
   42161: {
@@ -113,9 +114,31 @@ export const SUPPORTED_TOKENS = {
     color: '#8B4513',
     chains: [8453] // Only on Base
   },
+  WABLES411: {
+    symbol: 'wables411',
+    name: 'wables411',
+    decimals: 18,
+    logo: '/images/dmt-logo.png', // TODO: Add wables411 logo if available
+    isNative: false,
+    color: '#FF6B35',
+    chains: [8453] // Only on Base
+  },
 } as const;
 
 export type TokenSymbol = keyof typeof SUPPORTED_TOKENS;
+
+// Helper to get default token for a chain
+export function getDefaultTokenForChain(chainId: number): TokenSymbol {
+  if (chainId === NETWORKS.mainnet.chainId || chainId === NETWORKS.testnet.chainId) {
+    return 'NATIVE_DMT';
+  } else if (chainId === NETWORKS.base.chainId) {
+    return 'ETH';
+  } else if (chainId === NETWORKS.arbitrum.chainId) {
+    return 'ETH';
+  }
+  // Default to NATIVE_DMT for unknown chains (will error if not Sanko, but better than nothing)
+  return 'NATIVE_DMT';
+}
 
 // Helper to get token address for a specific chain
 export function getTokenAddressForChain(tokenSymbol: TokenSymbol, chainId: number): string {

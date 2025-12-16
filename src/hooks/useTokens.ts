@@ -8,7 +8,11 @@ function getTokenAddress(tokenSymbol: TokenSymbol, chainId: number): string {
   try {
     return getTokenAddressForChain(tokenSymbol, chainId);
   } catch (error) {
-    console.error(`[TOKEN] Error getting address for ${tokenSymbol} on chain ${chainId}:`, error);
+    // Only log if it's not a "token not available on chain" error (expected behavior)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (!errorMessage.includes('not available on chain')) {
+      console.error(`[TOKEN] Error getting address for ${tokenSymbol} on chain ${chainId}:`, error);
+    }
     // Fallback to zero address if token not available on chain
     return '0x0000000000000000000000000000000000000000';
   }
@@ -71,8 +75,9 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
     },
   });
   
-  // Get token address for current chain
-  const tokenAddress = getTokenAddress(tokenSymbol, chainId);
+  // Get token address for current chain (only if token is available, to avoid errors)
+  // If token not available, use zero address to prevent contract calls
+  const tokenAddress = tokenAvailable ? getTokenAddress(tokenSymbol, chainId) : '0x0000000000000000000000000000000000000000';
   
   // For ERC20 tokens, use useReadContract
   const { data: erc20Balance, isLoading: erc20Loading, error: erc20Error } = useReadContract({
@@ -149,7 +154,6 @@ export function useTokenBalance(tokenSymbol: TokenSymbol, address?: string) {
 
 export function useTokenAllowance(tokenSymbol: TokenSymbol, spenderAddress?: string, ownerAddress?: string) {
   const chainId = useChainId();
-  const tokenAddress = getTokenAddress(tokenSymbol, chainId);
   
   // Check if we're on a supported network
   const isOnSankoMainnet = chainId === NETWORKS.mainnet.chainId;
@@ -158,6 +162,9 @@ export function useTokenAllowance(tokenSymbol: TokenSymbol, spenderAddress?: str
   const isOnArbitrum = chainId === NETWORKS.arbitrum.chainId;
   const isOnSupportedNetwork = isOnSankoMainnet || isOnBase || isOnArbitrum;
   const tokenAvailable = isTokenAvailableOnChain(tokenSymbol, chainId);
+  
+  // Get token address only if available (to avoid errors)
+  const tokenAddress = tokenAvailable ? getTokenAddress(tokenSymbol, chainId) : '0x0000000000000000000000000000000000000000';
   
   const { data: allowance, isLoading, error } = useReadContract({
     address: tokenAddress as `0x${string}`,

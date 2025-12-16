@@ -19,7 +19,7 @@ import { TokenSelector } from './TokenSelector';
 import { ChainSelector } from './ChainSelector';
 import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
 import { useMobileCapabilities } from '../hooks/useMediaQuery';
-import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, type TokenSymbol, getTokenAddressForChain } from '../config/tokens';
+import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, TOKEN_ADDRESSES_BY_CHAIN, type TokenSymbol, getTokenAddressForChain, getDefaultTokenForChain } from '../config/tokens';
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
@@ -309,14 +309,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   
   // Debug function to track wager changes
   // Helper function to convert wager amount from wei to token units
-  const convertWagerFromWei = (weiAmount: string | number, tokenSymbol: string = 'NATIVE_DMT'): number => {
-    const decimals = SUPPORTED_TOKENS[tokenSymbol as TokenSymbol]?.decimals || 18;
+  const convertWagerFromWei = (weiAmount: string | number, tokenSymbol?: string): number => {
+    // Use chain-aware default if no token provided
+    const defaultToken = tokenSymbol || (chainId ? getDefaultTokenForChain(chainId) : 'NATIVE_DMT');
+    const decimals = SUPPORTED_TOKENS[defaultToken as TokenSymbol]?.decimals || 18;
     return parseFloat(weiAmount.toString()) / Math.pow(10, decimals);
   };
 
   const debugSetWager = (newValue: number, source: string) => {
-    // Use the actual token from the game data instead of defaulting to NATIVE_DMT
-    const tokenSymbol = currentGameToken || selectedToken || 'NATIVE_DMT';
+    // Use the actual token from the game data, or chain-aware default
+    const defaultToken = chainId ? getDefaultTokenForChain(chainId) : 'NATIVE_DMT';
+    const tokenSymbol = currentGameToken || selectedToken || defaultToken;
     console.log(`[WAGER_DEBUG] Setting wager to ${newValue} ${tokenSymbol} from ${source}`);
     console.log(`[WAGER_DEBUG] Token breakdown - currentGameToken: ${currentGameToken}, selectedToken: ${selectedToken}, final: ${tokenSymbol}`);
     if (wager !== newValue) {
@@ -686,6 +689,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [gameTitle, setGameTitle] = useState('');
   const [gameWager, setGameWager] = useState<number>(0);
   // selectedToken can be TokenSymbol (Sanko) or token address string (Base custom tokens)
+  // Initialize with chain-aware default (will be updated in useEffect)
   const [selectedToken, setSelectedToken] = useState<TokenSymbol | string>('NATIVE_DMT');
   const [currentGameToken, setCurrentGameToken] = useState<TokenSymbol | string>('NATIVE_DMT');
   
@@ -703,7 +707,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     quantity?: number;
   } | null>(null);
   
-  // Determine current chain from chainId
+  // Determine current chain from chainId and set default token
   useEffect(() => {
     if (chainId === NETWORKS.mainnet.chainId) {
       setSelectedChain('sanko');
@@ -711,12 +715,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (wagerType === 'nft') {
         setWagerType('token');
       }
+      // Set default token for Sanko
+      if (selectedToken === 'NATIVE_DMT' || selectedToken === 'ETH') {
+        setSelectedToken('NATIVE_DMT');
+      }
     } else if (chainId === NETWORKS.base.chainId) {
       setSelectedChain('base');
+      // Set default token for Base (ETH instead of NATIVE_DMT)
+      if (selectedToken === 'NATIVE_DMT') {
+        setSelectedToken('ETH');
+      }
     } else if (chainId === NETWORKS.arbitrum.chainId) {
       setSelectedChain('arbitrum');
+      // Set default token for Arbitrum (ETH instead of NATIVE_DMT)
+      if (selectedToken === 'NATIVE_DMT') {
+        setSelectedToken('ETH');
+      }
     }
-  }, [chainId]);
+  }, [chainId, wagerType]);
   
   // Reset NFT selection when switching to token wager
   useEffect(() => {
@@ -1854,8 +1870,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Successfully synced game to Firebase:', gameData);
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
-            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'checkPlayerGameState sync');
-            setCurrentGameToken(gameData.bet_token as TokenSymbol || 'NATIVE_DMT');
+            const defaultTokenForGame = gameData.chain === 'base' ? 'ETH' : 
+                                       gameData.chain === 'arbitrum' ? 'ETH' : 'NATIVE_DMT';
+            debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || defaultTokenForGame), 'checkPlayerGameState sync');
+            setCurrentGameToken((gameData.bet_token as TokenSymbol) || defaultTokenForGame);
             setOpponent(opponent);
             if (isActive) {
               setGameMode(GameMode.ACTIVE);
@@ -2725,7 +2743,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      const wagerAmountTDMT = convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT');
+      const defaultTokenForGame = gameData.chain === 'base' ? 'ETH' : 
+                                 gameData.chain === 'arbitrum' ? 'ETH' : 'NATIVE_DMT';
+      const wagerAmountTDMT = convertWagerFromWei(gameData.bet_amount, gameData.bet_token || defaultTokenForGame);
       setInviteCode(inviteCode);
       setIsJoiningFromLobby(true);
       setPlayerColor('red');
@@ -3408,7 +3428,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       // Try to get wager from contract data if Firebase doesn't have it
       let wagerValue = 0;
-      const tokenSymbol = gameData.bet_token || 'NATIVE_DMT';
+      const defaultTokenForGame = gameData.chain === 'base' ? 'ETH' : 
+                                 gameData.chain === 'arbitrum' ? 'ETH' : 'NATIVE_DMT';
+      const tokenSymbol = gameData.bet_token || defaultTokenForGame;
       
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
         wagerValue = convertWagerFromWei(gameData.bet_amount, tokenSymbol);
@@ -5165,7 +5187,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     console.log('[RESUME] ✅ Game is active, resuming...');
     setPlayerColor(address === gameData.blue_player ? 'blue' : 'red');
-    debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || 'NATIVE_DMT'), 'resumeGame');
+    const defaultTokenForGame = gameData.chain === 'base' ? 'ETH' : 
+                               gameData.chain === 'arbitrum' ? 'ETH' : 'NATIVE_DMT';
+    debugSetWager(convertWagerFromWei(gameData.bet_amount, gameData.bet_token || defaultTokenForGame), 'resumeGame');
     setOpponent(address === gameData.blue_player ? gameData.red_player : gameData.blue_player);
     setGameMode(GameMode.ACTIVE);
     setGameStatus('Game resumed');
@@ -6611,14 +6635,40 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           
                           // Handle token - could be TokenSymbol (Sanko) or address (Base custom token)
                           const tokenSymbolOrAddress = game.bet_token_address || game.bet_token;
-                          const isCustomToken = typeof tokenSymbolOrAddress === 'string' && 
-                                               tokenSymbolOrAddress.startsWith('0x') &&
-                                               !Object.keys(SUPPORTED_TOKENS).includes(tokenSymbolOrAddress);
                           
-                          // Get token config or handle custom token
-                          const tokenConfig = isCustomToken ? null : SUPPORTED_TOKENS[tokenSymbolOrAddress as TokenSymbol];
-                          const tokenDecimals = isCustomToken ? 18 : (tokenConfig?.decimals || 18); // Default to 18 for custom tokens
-                          const tokenSymbol = isCustomToken 
+                          // Determine chain from game data (default to Base if not specified)
+                          const gameChainId = game.chain === 'base' ? 8453 : 
+                                            game.chain === 'arbitrum' ? 42161 :
+                                            game.chain === 'sanko' ? 1996 : 8453;
+                          
+                          // Try to find token symbol from address if it's an address
+                          let tokenSymbol: TokenSymbol | null = null;
+                          let tokenConfig = null;
+                          
+                          if (typeof tokenSymbolOrAddress === 'string' && tokenSymbolOrAddress.startsWith('0x')) {
+                            // It's an address - try to find matching symbol in TOKEN_ADDRESSES_BY_CHAIN
+                            const chainAddresses = TOKEN_ADDRESSES_BY_CHAIN[gameChainId];
+                            if (chainAddresses) {
+                              const foundSymbol = Object.keys(chainAddresses).find(
+                                key => chainAddresses[key as keyof typeof chainAddresses]?.toLowerCase() === tokenSymbolOrAddress.toLowerCase()
+                              ) as TokenSymbol | undefined;
+                              if (foundSymbol && SUPPORTED_TOKENS[foundSymbol]) {
+                                tokenSymbol = foundSymbol;
+                                tokenConfig = SUPPORTED_TOKENS[foundSymbol];
+                              }
+                            }
+                          } else {
+                            // It's a symbol - look it up directly
+                            if (Object.keys(SUPPORTED_TOKENS).includes(tokenSymbolOrAddress)) {
+                              tokenSymbol = tokenSymbolOrAddress as TokenSymbol;
+                              tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+                            }
+                          }
+                          
+                          // Determine if it's a custom token (not found in SUPPORTED_TOKENS)
+                          const isCustomToken = !tokenConfig;
+                          const tokenDecimals = isCustomToken ? 18 : (tokenConfig?.decimals || 18);
+                          const displaySymbol = isCustomToken 
                             ? (tokenSymbolOrAddress.slice(0, 6) + '...' + tokenSymbolOrAddress.slice(-4)) // Show truncated address
                             : (tokenConfig?.symbol || 'DMT');
                           
@@ -6636,7 +6686,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             <div className="game-details" style={{ textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px', color: '#ff0000' }}>
                               <div className="game-id" style={{ fontWeight: 'bold', color: '#ff0000' }}>{game.game_title || 'Untitled Game'}</div>
                               <div className="wager" style={{ color: '#ff0000' }}>
-                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, tokenDecimals)).toFixed(2)} {tokenSymbol}
+                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, tokenDecimals)).toFixed(2)} {displaySymbol}
                               </div>
                               <div className="creator" style={{ fontSize: '0.8rem', color: '#ff0000' }}>Created by: {formatAddress(game.blue_player)}</div>
                             </div>
