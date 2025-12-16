@@ -6608,6 +6608,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       <div className="games-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         {openGames.map(game => {
                           console.log('[RENDER LOBBY] Rendering game:', game);
+                          
+                          // Handle token - could be TokenSymbol (Sanko) or address (Base custom token)
+                          const tokenSymbolOrAddress = game.bet_token_address || game.bet_token;
+                          const isCustomToken = typeof tokenSymbolOrAddress === 'string' && 
+                                               tokenSymbolOrAddress.startsWith('0x') &&
+                                               !Object.keys(SUPPORTED_TOKENS).includes(tokenSymbolOrAddress);
+                          
+                          // Get token config or handle custom token
+                          const tokenConfig = isCustomToken ? null : SUPPORTED_TOKENS[tokenSymbolOrAddress as TokenSymbol];
+                          const tokenDecimals = isCustomToken ? 18 : (tokenConfig?.decimals || 18); // Default to 18 for custom tokens
+                          const tokenSymbol = isCustomToken 
+                            ? (tokenSymbolOrAddress.slice(0, 6) + '...' + tokenSymbolOrAddress.slice(-4)) // Show truncated address
+                            : (tokenConfig?.symbol || 'DMT');
+                          
                           return (
                           <div key={game.invite_code} className="game-item" style={{ 
                             display: 'flex', 
@@ -6622,7 +6636,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             <div className="game-details" style={{ textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px', color: '#ff0000' }}>
                               <div className="game-id" style={{ fontWeight: 'bold', color: '#ff0000' }}>{game.game_title || 'Untitled Game'}</div>
                               <div className="wager" style={{ color: '#ff0000' }}>
-                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT'].decimals)).toFixed(2)} {SUPPORTED_TOKENS[(game.bet_token as TokenSymbol) || 'DMT']?.symbol || 'DMT'}
+                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, tokenDecimals)).toFixed(2)} {tokenSymbol}
                               </div>
                               <div className="creator" style={{ fontSize: '0.8rem', color: '#ff0000' }}>Created by: {formatAddress(game.blue_player)}</div>
                             </div>
