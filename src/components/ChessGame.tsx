@@ -1086,6 +1086,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       });
     }
     
+    // CRITICAL FIX: Set lastAIMoveRef BEFORE updatePieceState to prevent race condition
+    // The AI useEffect depends on pieceState, so when updatePieceState triggers setPieceState,
+    // it can cause the useEffect to run. We must set the blocking flag FIRST.
+    if (isAIMove) {
+      lastAIMoveRef.current = true; // Block useEffect from triggering again
+      isAIMovingRef.current = false; // Allow player to move
+    } else {
+      // Player made a move - reset all flags so AI can move next
+      isAIMovingRef.current = false;
+      lastAIMoveRef.current = false;
+    }
+    
     // Update piece state
     updatePieceState(from, to, piece);
     
@@ -1112,20 +1124,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     // Update board state IMMEDIATELY to ensure AI validation uses correct state
     setBoard(newBoard);
-    
-    // Reset AI moving flag - CRITICAL FIX for double AI moves
-    // When AI makes a move, setCurrentPlayer is async, so the useEffect might run again
-    // before currentPlayer updates from 'red' to 'blue'. We use lastAIMoveRef to prevent this.
-    if (isAIMove) {
-      // AI just made a move - mark it with lastAIMoveRef to prevent useEffect from triggering again
-      // Reset isAIMovingRef immediately so player can make their move
-      lastAIMoveRef.current = true; // Block useEffect from triggering again
-      isAIMovingRef.current = false; // Allow player to move
-    } else {
-      // Player made a move - reset all flags so AI can move next
-    isAIMovingRef.current = false;
-    lastAIMoveRef.current = false;
-    }
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);
   }, [board, currentPlayer, moveHistory, getOpeningData]);

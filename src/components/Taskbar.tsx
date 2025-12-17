@@ -64,8 +64,8 @@ const useStyles = createUseStyles({
   menuLink: {
     display: 'block',
     padding: '6px 14px',
-    color: '#000',
-    textDecoration: 'none',
+    color: '#000 !important',
+    textDecoration: 'none !important',
     background: '#c0c0c0',
     border: 'none',
     borderBottom: '1px solid #808080',
@@ -82,12 +82,19 @@ const useStyles = createUseStyles({
     },
     '&:hover': {
       background: '#d4d0c8',
-      color: '#000'
+      color: '#000 !important'
     },
     '&:active': {
       background: '#a0a0a0',
       borderTop: '1px inset #808080',
-      borderBottom: '1px inset #808080'
+      borderBottom: '1px inset #808080',
+      color: '#000 !important'
+    },
+    '&:visited': {
+      color: '#000 !important'
+    },
+    '&:link': {
+      color: '#000 !important'
     }
   },
   themeMenuItem: {

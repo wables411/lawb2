@@ -51,7 +51,7 @@ const ICONS: DesktopIcon[] = [
 const ICON_WIDTH = 80;
 const ICON_HEIGHT = 80;
 const ICON_HGAP = 10;
-const ICON_VGAP = 10;
+const ICON_VGAP = 4;
 const START_LEFT = 10;
 const START_TOP = 10;
 

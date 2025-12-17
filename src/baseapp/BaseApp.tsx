@@ -3,7 +3,7 @@ import Desktop from '../components/Desktop';
 import Taskbar from '../components/Taskbar';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAccount } from 'wagmi';
-import { initBaseMiniApp } from '../utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
 import { lazy, Suspense } from 'react';
 import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
@@ -107,8 +107,8 @@ function BaseApp() {
           isOpen={showPublicChat}
           onMinimize={minimizePublicChat}
           currentInviteCode={undefined}
-          isDraggable={true}
-          isResizable={true}
+          isDraggable={!isBaseMiniApp()}
+          isResizable={!isBaseMiniApp()}
           isMobile={false}
         />
       </Suspense>

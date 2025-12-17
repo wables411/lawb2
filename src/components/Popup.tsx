@@ -32,6 +32,21 @@ const useStyles = createUseStyles({
       boxSizing: 'border-box !important',
     }
   },
+  popupBaseMiniApp: {
+    width: 'calc(100vw - 32px) !important',
+    height: 'calc(100vh - 80px) !important',
+    maxWidth: 'calc(100vw - 32px) !important',
+    maxHeight: 'calc(100vh - 80px) !important',
+    minWidth: '0 !important',
+    minHeight: '0 !important',
+    left: '16px !important',
+    top: '16px !important',
+    right: '16px !important',
+    bottom: '16px !important',
+    resize: 'none !important',
+    boxSizing: 'border-box !important',
+    position: 'fixed !important'
+  },
   header: {
     background: 'navy',
     color: '#fff',
@@ -225,25 +240,48 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     }
   }, [isOpen, id, position]);
 
-  // Detect mobile
+  // Detect mobile and Base Mini App (iframe)
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isBaseMiniApp = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true; // Cross-origin iframe = Base Mini App
+    }
+  })();
 
   return (
     <Draggable 
       nodeRef={nodeRef} 
       handle={`.${classes.header}`} 
       defaultPosition={defaultPos}
-      position={isOpen ? position : undefined}
+      position={isOpen && !isBaseMiniApp ? position : undefined}
       onDrag={handleDrag}
       key={id}
-      disabled={!isOpen || isMobile}
+      disabled={!isOpen || isMobile || isBaseMiniApp}
     >
       <div 
         ref={nodeRef} 
-        className={classes.popup} 
+        className={classes.popup}
         style={{ 
-          width: initialSize?.width, 
-          height: initialSize?.height, 
+          ...(isBaseMiniApp ? {
+            width: 'calc(100vw - 32px)',
+            height: 'calc(100vh - 80px)',
+            maxWidth: 'calc(100vw - 32px)',
+            maxHeight: 'calc(100vh - 80px)',
+            minWidth: '0',
+            minHeight: '0',
+            left: '16px',
+            top: '16px',
+            right: '16px',
+            bottom: '16px',
+            resize: 'none',
+            boxSizing: 'border-box',
+            position: 'fixed'
+          } : {
+            width: initialSize?.width,
+            height: initialSize?.height
+          }),
           zIndex: zIndex || 100
         }}
       >

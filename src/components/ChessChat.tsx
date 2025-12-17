@@ -37,6 +37,15 @@ export const ChessChat: React.FC<ChessChatProps> = ({
 }) => {
   const { address: walletAddress, isConnected } = useAccount();
   
+  // Detect Base Mini App (iframe)
+  const isBaseMiniApp = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true; // Cross-origin iframe = Base Mini App
+    }
+  })();
+  
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -264,7 +273,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   
   // Draggable functionality
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!isDraggable) return;
+    if (!isDraggable || isBaseMiniApp) return;
     
     e.preventDefault();
     setIsDragging(true);
@@ -436,9 +445,16 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   return (
     <div
       ref={chatRef}
-      className={`chess-chat-window ${isMobile ? 'mobile' : 'desktop'}`}
-      style={isMobile ? {
-        // Let CSS handle mobile positioning
+      className={`chess-chat-window ${isMobile || isBaseMiniApp ? 'mobile' : 'desktop'}`}
+      style={isMobile || isBaseMiniApp ? {
+        position: 'fixed',
+        left: '16px',
+        top: '16px',
+        right: '16px',
+        bottom: '80px',
+        width: 'auto',
+        height: 'auto',
+        zIndex: 10001
       } : {
         position: 'fixed',
         left: position.x,
@@ -602,7 +618,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       </div>
       
       {/* Resize Handle */}
-      {isResizable && (
+      {isResizable && !isBaseMiniApp && (
         <div
           className="chat-resize-handle"
           onMouseDown={handleResizeStart}
