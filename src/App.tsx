@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 
 import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
 import Taskbar from './components/Taskbar';
+import { ThemeToggle } from './components/ThemeToggle';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
 import { useAppKitSafe } from './hooks/useAppKitSafe';
@@ -428,6 +429,23 @@ function App() {
         </div>
       )}
       <Desktop onIconClick={handleIconClick} />
+
+      {/* Theme Toggle - Always visible in Base app */}
+      {baseAppDetected && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: 10000,
+          backgroundColor: 'rgba(192, 192, 192, 0.95)',
+          border: '2px outset #fff',
+          padding: '8px',
+          borderRadius: '4px',
+          boxShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+        }}>
+          <ThemeToggle />
+        </div>
+      )}
 
       <Taskbar
         minimizedWindows={Array.from(minimizedPopups)}
