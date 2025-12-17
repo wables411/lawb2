@@ -17,7 +17,7 @@ import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
 
-import './ChessGame.css';
+import '../components/ChessGame.css';
 
 // Game modes
 const GameMode = {

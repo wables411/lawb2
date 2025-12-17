@@ -13,7 +13,7 @@ import { firebaseChess } from '../firebaseChess';
 import { firebaseProfiles } from '../firebaseProfiles';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
-import './ChessMultiplayer.css';
+import '../components/ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from '../components/TokenSelector';
 import { ChainSelector } from '../components/ChainSelector';
