@@ -143,6 +143,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [canClaimWinnings, setCanClaimWinnings] = useState(false);
   const [isClaimingWinnings, setIsClaimingWinnings] = useState(false);
   const [hasLoadedGame, setHasLoadedGame] = useState(false); // Prevent duplicate game loading
+  const isJoiningGameRef = useRef(false); // Prevent duplicate joinGame calls
   
   // Contract write hooks for different operations
   const { writeContract: writeCreateGame, isPending: isCreatingGameContract, data: createGameHash } = useWriteContract();
@@ -752,11 +753,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       joinGameError,
       pendingJoinGameData
     });
+    
+    // Reset join ref when transaction is submitted or fails
+    if (joinGameHash || joinGameError) {
+      isJoiningGameRef.current = false;
+    }
   }, [joinGameHash, isJoiningGameContract, joinGameError, pendingJoinGameData]);
 
+  // Track if we've already initiated auto-join to prevent duplicate calls
+  const autoJoinInitiatedRef = useRef<string | null>(null);
+  
   // Handle token approval completion and auto-join
   useEffect(() => {
+    // Only proceed if all conditions are met AND we haven't already initiated for this invite code
     if (!isApproving && waitingForApproval && inviteCode && isJoiningFromLobby && !joinGameHash && !isJoiningGameContract) {
+      // Check if we've already initiated auto-join for this invite code
+      if (autoJoinInitiatedRef.current === inviteCode) {
+        console.log('[AUTO_JOIN] Already initiated auto-join for this invite code, skipping');
+        return;
+      }
+      
       console.log('[AUTO_JOIN] Token approval completed, attempting to auto-join');
       console.log('[AUTO_JOIN] isApproving:', isApproving);
       console.log('[AUTO_JOIN] waitingForApproval:', waitingForApproval);
@@ -765,12 +781,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[AUTO_JOIN] joinGameHash:', joinGameHash);
       console.log('[AUTO_JOIN] isJoiningGameContract:', isJoiningGameContract);
       
+      // Mark that we've initiated auto-join for this invite code
+      autoJoinInitiatedRef.current = inviteCode;
+      
       // Reset the waiting flag
       setWaitingForApproval(false);
       
       // Auto-join after token approval is completed
       console.log('[AUTO_JOIN] Calling joinGame automatically');
       joinGame(inviteCode);
+    }
+    
+    // Reset the ref when joinGameHash is set (transaction submitted) or if we're no longer waiting
+    if (joinGameHash || (!waitingForApproval && autoJoinInitiatedRef.current === inviteCode)) {
+      autoJoinInitiatedRef.current = null;
     }
   }, [isApproving, waitingForApproval, inviteCode, isJoiningFromLobby, joinGameHash, isJoiningGameContract]);
   
@@ -2651,10 +2675,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Join game
   const joinGame = async (inviteCode: string) => {
     if (!address) return;
+    
+    // Prevent duplicate calls
+    if (isJoiningGameRef.current) {
+      console.log('[JOIN] joinGame already in progress, skipping duplicate call');
+      return;
+    }
+    
+    // Check if we're already joining this game
+    if (isJoiningGameContract || joinGameHash) {
+      console.log('[JOIN] Already joining game, skipping duplicate call');
+      return;
+    }
+    
+    isJoiningGameRef.current = true;
+    
     try {
       const gameData = await firebaseChess.getGame(inviteCode);
       if (!gameData || gameData.game_state !== 'waiting_for_join') {
         setGameStatus('Game not found or already full');
+        isJoiningGameRef.current = false;
         return;
       }
       
@@ -2672,6 +2712,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         } catch (error) {
           console.error('[JOIN] Failed to switch chain:', error);
         }
+        isJoiningGameRef.current = false;
         return;
       }
       
@@ -2734,11 +2775,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             const balanceFormatted = Number(balance) / Math.pow(10, tokenDecimals);
             const wagerFormatted = Number(wagerAmountWei) / Math.pow(10, tokenDecimals);
             setGameStatus(`Insufficient ${tokenDisplaySymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenDisplaySymbol}, need ${wagerFormatted} ${tokenDisplaySymbol} to join this game.`);
+            isJoiningGameRef.current = false;
             return;
           }
         } catch (error) {
           console.error('[JOIN] Error checking token balance:', error);
           setGameStatus('Failed to check token balance. Please try again.');
+          isJoiningGameRef.current = false;
           return;
         }
       }
@@ -2759,6 +2802,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (address === gameData.blue_player) {
         console.error('[JOIN] Player cannot join their own game');
         setGameStatus('You cannot join your own game');
+        isJoiningGameRef.current = false;
         return;
       }
       
@@ -2766,6 +2810,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       if (playerGameInviteCode && playerGameInviteCode !== '0x000000000000') {
         console.error('[JOIN] Player already has an active game:', playerGameInviteCode);
         setGameStatus('You already have an active game');
+        isJoiningGameRef.current = false;
         return;
       }
       
@@ -2810,22 +2855,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   args: [gameContractAddress as `0x${string}`, requiredAmountBigInt]
                 });
                 // Wait for approval transaction - the useEffect will handle auto-join
+                // Don't reset ref here - we want auto-join to work after approval
                 return;
               } catch (error) {
                 console.error('[JOIN] Error approving custom token:', error);
                 setGameStatus(`Failed to approve token. Please try again.`);
                 setWaitingForApproval(false);
+                isJoiningGameRef.current = false; // Reset ref on error
                 return;
               }
             } else {
               // Fixed token approval
               try {
                 approveToken(tokenSymbolOrAddress as TokenSymbol, gameContractAddress, requiredAmountBigInt);
+              // Don't reset ref here - we want auto-join to work after approval
               return; // Exit early, the approval will trigger a re-render
             } catch (error) {
               console.error('[JOIN] Error approving token:', error);
                 setGameStatus(`Failed to approve ${tokenDisplaySymbol}. Please try again.`);
               setWaitingForApproval(false);
+              isJoiningGameRef.current = false; // Reset ref on error
             return;
               }
             }
@@ -2881,9 +2930,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         
         // Store game data for after transaction confirmation
         setPendingJoinGameData({ inviteCode, gameData, address });
+        // Reset the ref - transaction has been submitted
+        isJoiningGameRef.current = false;
       } catch (error) {
         console.error('[JOIN] Error calling writeJoinGame:', error);
         setGameStatus('Failed to send transaction. Please try again.');
+        // Reset the ref on error
+        isJoiningGameRef.current = false;
       }
     } catch (error) {
       console.error('[JOIN] Error joining game:', error);
@@ -2892,6 +2945,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       setPlayerColor(null);
       debugSetWager(0, 'join game error');
       setOpponent(null);
+      // Reset the ref on error
+      isJoiningGameRef.current = false;
     }
   };
 
