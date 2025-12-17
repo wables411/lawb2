@@ -9,9 +9,39 @@ import { isBaseMiniApp } from '../utils/baseMiniapp';
 export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
   // Check Base app detection - this is INDEPENDENT of mobile/desktop variant
   // variant is only for styling, NOT for determining Base app vs web app
-  const isBaseApp = isBaseMiniApp();
+  // Force check multiple ways to ensure we catch it
+  const checkIsBaseApp = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    
+    // Check iframe - PRIMARY method
+    try {
+      if (window.self !== window.top) return true;
+    } catch (e) {
+      // Cross-origin iframe = definitely Base app
+      return true;
+    }
+    
+    // Check URL/referrer for Base/Farcaster indicators
+    const hostname = window.location.hostname.toLowerCase();
+    const referrer = document.referrer.toLowerCase();
+    if (hostname.includes('farcaster') || hostname.includes('base') ||
+        referrer.includes('farcaster') || referrer.includes('base') ||
+        referrer.includes('warpcast')) {
+      return true;
+    }
+    
+    // Check user agent
+    const ua = navigator.userAgent?.toLowerCase() || '';
+    if (ua.includes('farcaster') || ua.includes('base')) {
+      return true;
+    }
+    
+    return isBaseMiniApp();
+  };
   
-  // Base App version - ONLY determined by isBaseMiniApp(), not by variant
+  const isBaseApp = checkIsBaseApp();
+  
+  // Base App version - ONLY determined by Base app detection, not by variant
   if (isBaseApp) {
     return (
       <div className={`how-to-section ${variant === 'mobile' ? 'mobile' : ''}`}>
