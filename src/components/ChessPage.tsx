@@ -2,12 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
+import Taskbar from './Taskbar';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
+import { useAccount } from 'wagmi';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
 const ChessPage: React.FC = () => {
+  const { address, isConnected } = useAccount();
+  
   // Initialize Base Mini App SDK if running as Base Mini App (doesn't affect regular web app)
   useEffect(() => {
     void initBaseMiniApp();
@@ -173,6 +177,17 @@ const ChessPage: React.FC = () => {
           isMobile={isMobile}
         />
       )}
+      
+      {/* Taskbar for theme toggle and menu access */}
+      <Taskbar
+        minimizedWindows={[]}
+        onRestoreWindow={() => {}}
+        connectionStatus={{
+          connected: isConnected,
+          address: address,
+          ens: undefined
+        }}
+      />
     </div>
   );
 };
