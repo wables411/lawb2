@@ -163,18 +163,14 @@ function BaseApp() {
 
       {/* Mint Popup */}
       {showMintPopup && (
-        <Popup
-          id="mint-popup"
-          isOpen={true}
-          onClose={() => setShowMintPopup(false)}
-          onMinimize={() => setShowMintPopup(false)}
-          zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
-        >
-          <Suspense fallback={<div>Loading...</div>}>
-            <MintPopup walletAddress={address || ''} onMintSuccess={() => setShowMintPopup(false)} />
-          </Suspense>
-        </Popup>
+        <Suspense fallback={<div>Loading...</div>}>
+          <MintPopup 
+            isOpen={true}
+            onClose={() => setShowMintPopup(false)}
+            onMinimize={() => setShowMintPopup(false)}
+            walletAddress={address || ''}
+          />
+        </Suspense>
       )}
 
       {/* Meme Generator Popup */}
