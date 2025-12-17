@@ -38,7 +38,16 @@ const queryClient = new QueryClient();
 const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
 
 const Root = () => {
+  const isBaseApp = isBaseMiniApp();
   const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // CRITICAL: If we're in Base/Farcaster app, ALWAYS use App.tsx regardless of screen size
+  // The media query is only for regular browser users, not Base app users
+  if (isBaseApp) {
+    return <App />;
+  }
+  
+  // For regular browser users, use media query to decide
   return isMobile ? <Mobile /> : <App />;
 };
 
