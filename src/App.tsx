@@ -38,7 +38,10 @@ function App() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const [activePopup, setActivePopup] = useState<string | null>('pixelawbs-popup');
+  // Base app: show mint popup, desktop/mobile: show pixelawbs popup
+  const [activePopup, setActivePopup] = useState<string | null>(
+    isBaseMiniApp() ? 'asciilawbs-popup' : 'pixelawbs-popup'
+  );
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   

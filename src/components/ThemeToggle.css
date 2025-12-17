@@ -1,0 +1,89 @@
+.lawb-theme-toggle {
+  background: rgba(255, 0, 0, 0.1);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  padding: 0;
+  margin: 0 8px;
+  box-shadow: 0 0 6px rgba(255, 0, 0, 0.3);
+}
+
+.lawb-theme-toggle:hover {
+  background: rgba(255, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+.lawb-theme-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Light Mode (default - underwater theme) */
+body:not(.lawb-app-dark-mode),
+html:not(.lawb-app-dark-mode) {
+  background: url('/assets/background.gif') no-repeat center center fixed !important;
+  background-size: cover !important;
+}
+
+/* Dark Mode */
+.lawb-app-dark-mode body,
+.lawb-app-dark-mode html {
+  background: #000000 !important;
+  background-image: none !important;
+}
+
+.lawb-app-dark-mode .chess-page,
+.lawb-app-dark-mode .chess-content,
+.lawb-app-dark-mode .chess-multiplayer-lobby,
+.lawb-app-dark-mode .create-form,
+.lawb-app-dark-mode .game-item,
+.lawb-app-dark-mode .chess-header {
+  background: rgba(0, 0, 0, 0.95) !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .chess-header h2 {
+  color: #00ff00 !important;
+  text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00 !important;
+}
+
+.lawb-app-dark-mode button {
+  background: rgba(0, 255, 0, 0.1) !important;
+  border-color: #00ff00 !important;
+  color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode button:hover {
+  background: rgba(0, 255, 0, 0.2) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5) !important;
+}
+
+.lawb-app-dark-mode .create-btn,
+.lawb-app-dark-mode .create-confirm-btn {
+  background: #00ff00 !important;
+  color: #000000 !important;
+}
+
+.lawb-app-dark-mode .create-btn:hover,
+.lawb-app-dark-mode .create-confirm-btn:hover {
+  background: #00cc00 !important;
+}
+
+.lawb-app-dark-mode h3,
+.lawb-app-dark-mode h4 {
+  color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .status-bar,
+.lawb-app-dark-mode .game-details {
+  color: #00ff00 !important;
+}

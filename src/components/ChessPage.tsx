@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
+import { ThemeToggle } from './ThemeToggle';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
-import { initBaseMiniApp } from '../utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
@@ -135,8 +136,23 @@ const ChessPage: React.FC = () => {
     setIsChatVisible(false);
   };
 
+  const isBaseApp = isBaseMiniApp();
+
   return (
     <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
+      {isBaseApp && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <ThemeToggle />
+        </div>
+      )}
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
           <ChessGame 
