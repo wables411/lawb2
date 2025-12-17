@@ -28,6 +28,18 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
+  // CRITICAL: Check if SDK is available - if SDK exists, we're likely in Base App
+  // The SDK is only loaded when actually in a miniapp context
+  try {
+    if (sdk && typeof sdk === 'object' && 'actions' in sdk) {
+      // SDK is available - we're in Base App
+      console.log('[Base Mini App Detection] ✅ Detected via SDK availability');
+      return true;
+    }
+  } catch (e) {
+    // SDK check failed, continue with other checks
+  }
+  
   // Check if we're running in an iframe (embedded in Base/Farcaster app)
   // This is a PRIMARY detection method for Farcaster apps
   try {
