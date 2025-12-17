@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChessGame } from '../components/ChessGame';
-import { ChessMultiplayer } from '../components/ChessMultiplayer';
+import { BaseAppChessGame } from './BaseAppChessGame';
+import { BaseAppChessMultiplayer } from './BaseAppChessMultiplayer';
 import { ChessChat } from '../components/ChessChat';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
@@ -88,17 +88,16 @@ const BaseAppChessPage: React.FC = () => {
 
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
-          <ChessGame 
+          <BaseAppChessGame 
             onClose={handleClose} 
             onBackToModeSelect={handleBackToModeSelect}
             onGameStart={handleGameStart}
             onChatToggle={handleChatToggle}
             isChatMinimized={!isChatVisible}
             isMobile={isMobile}
-            useBaseAppHowTo={true}
           />
         ) : (
-          <ChessMultiplayer 
+          <BaseAppChessMultiplayer 
             onClose={handleClose} 
             onMinimize={() => {}} 
             fullscreen={false} 
@@ -107,7 +106,6 @@ const BaseAppChessPage: React.FC = () => {
             onChatToggle={handleChatToggle}
             isChatMinimized={!isChatVisible}
             isMobile={isMobile}
-            useBaseAppHowTo={true}
           />
         )}
       </div>
