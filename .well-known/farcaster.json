@@ -10,7 +10,7 @@
   "miniapp": {
     "version": "2",
     "name": "LAWB",
-    "homeUrl": "https://lawb.xyz",
+    "homeUrl": "https://lawb.xyz?v=2",
     "iconUrl": "https://lawb.xyz/assets/chessicon.png",
     "imageUrl": "https://lawb.xyz/assets/hero.png",
     "buttonTitle": "Launch LAWB",
