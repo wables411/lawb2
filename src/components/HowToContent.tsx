@@ -7,7 +7,21 @@ interface HowToContentProps {
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
-  const isBaseApp = isBaseMiniApp();
+  // Check Base app detection - use state to ensure it's reactive
+  const [isBaseApp, setIsBaseApp] = React.useState(() => isBaseMiniApp());
+  
+  // Re-check on mount and after a delay to catch any timing issues
+  React.useEffect(() => {
+    const check = () => {
+      const detected = isBaseMiniApp();
+      if (detected !== isBaseApp) {
+        setIsBaseApp(detected);
+      }
+    };
+    check();
+    const timeout = setTimeout(check, 100);
+    return () => clearTimeout(timeout);
+  }, [isBaseApp]);
   
   // Base App version
   if (isBaseApp) {
