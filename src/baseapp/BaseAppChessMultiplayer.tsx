@@ -6754,10 +6754,6 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                     )}
 
                     {/* No separate piece set selector in Base App - it's inline */}
-                      <div style={{ order: 2, marginBottom: '20px' }}>
-                        {renderPieceSetSelector()}
-                      </div>
-                    )}
                     
                     <div className="open-games" style={{ order: 3 }}>
                       <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
