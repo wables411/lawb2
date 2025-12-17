@@ -50,6 +50,20 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
+  // Check document.referrer - if we were loaded from Base/Farcaster, referrer will contain those domains
+  try {
+    const referrer = document.referrer.toLowerCase();
+    if (referrer.includes('farcaster') || 
+        referrer.includes('warpcast') ||
+        referrer.includes('base.org') ||
+        referrer.includes('base.dev') ||
+        referrer.includes('wallet.farcaster')) {
+      return true;
+    }
+  } catch (e) {
+    // Referrer might not be accessible in some contexts
+  }
+  
   // Check user agent for Farcaster/Base app indicators
   const userAgent = navigator.userAgent?.toLowerCase() || '';
   if (userAgent.includes('farcaster') || userAgent.includes('base')) {
