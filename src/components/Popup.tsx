@@ -240,7 +240,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       nodeRef={nodeRef} 
       handle={`.${classes.header}`} 
       defaultPosition={defaultPos}
-      position={isOpen && !isBaseMiniApp ? position : undefined}
+      position={isOpen && !isBaseMiniApp ? position : { x: 0, y: 0 }}
       onDrag={handleDrag}
       key={id}
       disabled={!isOpen || isMobile || isBaseMiniApp}
@@ -256,13 +256,15 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
             maxHeight: 'calc(100vh - 80px)',
             minWidth: '0',
             minHeight: '0',
-            left: '16px',
-            top: '16px',
-            right: '16px',
-            bottom: '16px',
+            left: '50%',
+            top: '50%',
+            right: 'auto',
+            bottom: 'auto',
             resize: 'none',
             boxSizing: 'border-box',
-            position: 'fixed'
+            position: 'fixed',
+            transform: 'translate(-50%, -50%)',
+            margin: '0'
           } : {
             width: initialSize?.width,
             height: initialSize?.height

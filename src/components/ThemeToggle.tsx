@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 import './ThemeToggle.css';
 
-type ThemeMode = 'underwater' | 'light' | 'dark';
+type ThemeMode = 'light' | 'dark';
 
 export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = false }) => {
   // Force check Base app - same logic as HowToContent
@@ -37,9 +37,14 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
   
   const isBaseApp = checkIsBaseApp();
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === 'undefined' || !isBaseApp) return 'underwater';
-    const saved = localStorage.getItem('lawb-app-theme') as ThemeMode;
-    return saved && ['underwater', 'light', 'dark'].includes(saved) ? saved : 'underwater';
+    if (typeof window === 'undefined' || !isBaseApp) return 'light';
+    const saved = localStorage.getItem('lawb-app-theme');
+    // Migrate old 'underwater' to 'light'
+    if (saved === 'underwater') {
+      localStorage.setItem('lawb-app-theme', 'light');
+      return 'light';
+    }
+    return saved && ['light', 'dark'].includes(saved) ? saved as ThemeMode : 'light';
   });
 
   useEffect(() => {
@@ -59,7 +64,7 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
   }, [themeMode, isBaseApp]);
 
   const cycleTheme = () => {
-    const modes: ThemeMode[] = ['underwater', 'light', 'dark'];
+    const modes: ThemeMode[] = ['light', 'dark'];
     const currentIndex = modes.indexOf(themeMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     setThemeMode(modes[nextIndex]);
@@ -67,7 +72,6 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
 
   const getThemeLabel = () => {
     switch (themeMode) {
-      case 'underwater': return 'Underwater';
       case 'light': return 'Light';
       case 'dark': return 'Dark';
     }
@@ -75,7 +79,6 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
 
   const getThemeIcon = () => {
     switch (themeMode) {
-      case 'underwater': return '🌊';
       case 'light': return '☀️';
       case 'dark': return '🌙';
     }

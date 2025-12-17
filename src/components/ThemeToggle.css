@@ -26,31 +26,24 @@
   transform: scale(0.95);
 }
 
-/* Underwater Mode (default) */
-.lawb-app-underwater-mode body,
-.lawb-app-underwater-mode html,
+/* Light Mode - Stock colorway with animated background (formerly Underwater) */
+.lawb-app-light-mode body,
+.lawb-app-light-mode html,
 body:not(.lawb-app-dark-mode):not(.lawb-app-light-mode),
 html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background: url('/assets/background.gif') no-repeat center center fixed !important;
   background-size: cover !important;
+  color: #000000 !important;
 }
 
-.lawb-app-underwater-mode .popup-0-2-17,
-.lawb-app-underwater-mode [class*="popup"] {
+.lawb-app-light-mode .popup-0-2-17,
+.lawb-app-light-mode [class*="popup"] {
   background: #c0c0c0 !important;
   border-color: #fff !important;
 }
 
-.lawb-app-underwater-mode .chess-chat-window {
+.lawb-app-light-mode .chess-chat-window {
   background: #c0c0c0 !important;
-}
-
-/* Light Mode - Light backgrounds with dark/black text */
-.lawb-app-light-mode body,
-.lawb-app-light-mode html {
-  background: #f5f5f5 !important;
-  background-image: none !important;
-  color: #000000 !important;
 }
 
 .lawb-app-light-mode .popup-0-2-17,
@@ -141,47 +134,48 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   color: #000000 !important;
 }
 
-/* Dark Mode - Dark backgrounds with light/white text */
+/* Dark Mode - Black backgrounds with terminal green text */
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html {
-  background: #0a0a0a !important;
+  background: #000000 !important;
   background-image: none !important;
-  color: #e0e0e0 !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .popup-0-2-17,
 .lawb-app-dark-mode [class*="popup"] {
-  background: #1e1e1e !important;
-  border-color: #444444 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+  background: #000000 !important;
+  border-color: #00ff00 !important;
+  box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 .lawb-app-dark-mode .chess-chat-window {
-  background: #1e1e1e !important;
-  border-color: #444444 !important;
+  background: #000000 !important;
+  border-color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .chat-header {
-  background: #2a2a2a !important;
+  background: #000000 !important;
+  border-color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .taskbar {
-  background: #1a1a1a !important;
-  border-color: #333333 !important;
+  background: #000000 !important;
+  border-color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .menuLink,
 .lawb-app-dark-mode .menu,
 .lawb-app-dark-mode [class*="menuLink"],
 .lawb-app-dark-mode [class*="menu"] {
-  background: #2a2a2a !important;
-  color: #e0e0e0 !important;
-  border-color: #444444 !important;
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .menuLink:hover {
-  background: #3a3a3a !important;
-  color: #ffffff !important;
+  background: #001100 !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-light-mode .menuLink,
@@ -226,49 +220,50 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode .create-form,
 .lawb-app-dark-mode .game-item,
 .lawb-app-dark-mode .chess-header {
-  background: rgba(26, 26, 26, 0.95) !important;
-  color: #e0e0e0 !important;
-  border-color: #444444 !important;
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .chess-header h2 {
-  color: #ffffff !important;
-  text-shadow: none !important;
+  color: #00ff00 !important;
+  text-shadow: 0 0 5px #00ff00 !important;
 }
 
 .lawb-app-dark-mode button {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: #666666 !important;
-  color: #e0e0e0 !important;
+  background: #000000 !important;
+  border-color: #00ff00 !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode button:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3) !important;
+  background: #001100 !important;
+  box-shadow: 0 0 10px #00ff00 !important;
 }
 
 .lawb-app-dark-mode .create-btn,
 .lawb-app-dark-mode .create-confirm-btn {
-  background: #4a4a4a !important;
-  color: #ffffff !important;
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .create-btn:hover,
 .lawb-app-dark-mode .create-confirm-btn:hover {
-  background: #666666 !important;
+  background: #001100 !important;
 }
 
 .lawb-app-dark-mode h3,
 .lawb-app-dark-mode h4 {
-  color: #ffffff !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .status-bar,
 .lawb-app-dark-mode .game-details {
-  color: #e0e0e0 !important;
+  color: #00ff00 !important;
 }
 
-/* Dark mode for all text elements */
+/* Dark mode for all text elements - terminal green */
 .lawb-app-dark-mode p,
 .lawb-app-dark-mode span,
 .lawb-app-dark-mode div,
@@ -276,13 +271,25 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode input,
 .lawb-app-dark-mode select,
 .lawb-app-dark-mode textarea {
-  color: #e0e0e0 !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode a {
-  color: #90cdf4 !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode a:hover {
-  color: #ffffff !important;
+  color: #00ff00 !important;
+  text-shadow: 0 0 5px #00ff00 !important;
+}
+
+/* Dark mode - console grey elements become black */
+.lawb-app-dark-mode [class*="icon"],
+.lawb-app-dark-mode .iconLabel,
+.lawb-app-dark-mode [class*="taskbar"],
+.lawb-app-dark-mode [class*="menuBtn"],
+.lawb-app-dark-mode [class*="statusSection"] {
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
 }

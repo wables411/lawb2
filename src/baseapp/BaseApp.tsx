@@ -255,6 +255,64 @@ function BaseApp() {
         </Popup>
       )}
 
+      {/* Lawbstation Popup */}
+      {activePopup === 'lawbstation-popup' && (
+        <Popup
+          id="lawbstation-popup"
+          isOpen={true}
+          onClose={() => closePopup('lawbstation-popup')}
+          onMinimize={() => minimizePopup('lawbstation-popup')}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <div style={{ padding: '15px' }}>
+            <p style={{ marginBottom: '10px' }}>
+              Lawbstations: low poly Lawbsters viewed through various cathode-ray tubes built on <a href="https://www.miladystation2.net/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>MiladyStation</a> technology. Inspired by Milady, Allstarz, Rusty Rollers, Cigawrette Packs, SPX6900 and Radbro. Brought to you in part by PortionClub and Mony Corp Group. LawbStations seem nice but a lobster controlled by MiladyStation will never achieve anything without a roadmap.
+            </p>
+            <p style={{ marginBottom: '10px' }}>Chain: Solana</p>
+            <p style={{ marginBottom: '10px' }}>
+              <a href="https://magiceden.us/marketplace/lawbstation" target="_blank" rel="noopener noreferrer">Collect Lawbstations on Secondary</a>
+            </p>
+            <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
+            <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', marginTop: '10px' }} />
+          </div>
+        </Popup>
+      )}
+
+      {/* $LAWB Popup */}
+      {activePopup === 'lawb-popup' && (
+        <Popup
+          id="lawb-popup"
+          isOpen={true}
+          onClose={() => closePopup('lawb-popup')}
+          onMinimize={() => minimizePopup('lawb-popup')}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <div style={{ padding: '15px', overflow: 'auto', height: '100%' }}>
+            <h1 style={{ marginBottom: '10px' }}>
+              <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>🦞 $LAWB</a>
+            </h1>
+            <p style={{ marginBottom: '10px' }}>
+              $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>pump.fun</a>.
+            </p>
+            <p style={{ marginBottom: '10px' }}>$lawb airdropped to LawbStation holders 03.19.24</p>
+            <p style={{ marginBottom: '10px' }}>THERE IS NO MEME WE $LAWB YOU</p>
+            <p style={{ marginBottom: '10px' }}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
+            <p style={{ marginBottom: '10px' }}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
+            <p style={{ marginBottom: '10px' }}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
+            <p style={{ marginBottom: '10px' }}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
+            <p style={{ marginBottom: '10px' }}>
+              if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>https://portalbridge.com/</a>
+            </p>
+            <p style={{ marginBottom: '10px' }}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
+            <p style={{ marginBottom: '10px' }}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
+            <p style={{ marginBottom: '10px' }}>step 3. select token quantity, confirm transactions.</p>
+            <p style={{ marginBottom: '10px' }}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
+          </div>
+        </Popup>
+      )}
+
       {/* ASCII Lawbs Popup - Base app default */}
       {activePopup === 'asciilawbs-popup' && (
         <Popup
