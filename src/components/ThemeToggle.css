@@ -35,12 +35,43 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background-size: cover !important;
 }
 
+.lawb-app-underwater-mode .popup-0-2-17,
+.lawb-app-underwater-mode [class*="popup"] {
+  background: #c0c0c0 !important;
+  border-color: #fff !important;
+}
+
+.lawb-app-underwater-mode .chess-chat-window {
+  background: #c0c0c0 !important;
+}
+
 /* Light Mode - Light backgrounds with dark/black text */
 .lawb-app-light-mode body,
 .lawb-app-light-mode html {
-  background: #ffffff !important;
+  background: #f5f5f5 !important;
   background-image: none !important;
   color: #000000 !important;
+}
+
+.lawb-app-light-mode .popup-0-2-17,
+.lawb-app-light-mode [class*="popup"] {
+  background: #ffffff !important;
+  border-color: #cccccc !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.lawb-app-light-mode .chess-chat-window {
+  background: #ffffff !important;
+  border-color: #cccccc !important;
+}
+
+.lawb-app-light-mode .chat-header {
+  background: #0066cc !important;
+}
+
+.lawb-app-light-mode .taskbar {
+  background: #e0e0e0 !important;
+  border-color: #999999 !important;
 }
 
 .lawb-app-light-mode .chess-page,
@@ -113,9 +144,37 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 /* Dark Mode - Dark backgrounds with light/white text */
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html {
-  background: #1a1a1a !important;
+  background: #0a0a0a !important;
   background-image: none !important;
   color: #e0e0e0 !important;
+}
+
+.lawb-app-dark-mode .popup-0-2-17,
+.lawb-app-dark-mode [class*="popup"] {
+  background: #1e1e1e !important;
+  border-color: #444444 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.lawb-app-dark-mode .chess-chat-window {
+  background: #1e1e1e !important;
+  border-color: #444444 !important;
+}
+
+.lawb-app-dark-mode .chat-header {
+  background: #2a2a2a !important;
+}
+
+.lawb-app-dark-mode .taskbar {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+}
+
+.lawb-app-dark-mode .menuLink,
+.lawb-app-dark-mode .menu {
+  background: #2a2a2a !important;
+  color: #e0e0e0 !important;
+  border-color: #444444 !important;
 }
 
 .lawb-app-dark-mode .chess-page,

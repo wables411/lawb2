@@ -32,21 +32,6 @@ const useStyles = createUseStyles({
       boxSizing: 'border-box !important',
     }
   },
-  popupBaseMiniApp: {
-    width: 'calc(100vw - 32px) !important',
-    height: 'calc(100vh - 80px) !important',
-    maxWidth: 'calc(100vw - 32px) !important',
-    maxHeight: 'calc(100vh - 80px) !important',
-    minWidth: '0 !important',
-    minHeight: '0 !important',
-    left: '16px !important',
-    top: '16px !important',
-    right: '16px !important',
-    bottom: '16px !important',
-    resize: 'none !important',
-    boxSizing: 'border-box !important',
-    position: 'fixed !important'
-  },
   header: {
     background: 'navy',
     color: '#fff',

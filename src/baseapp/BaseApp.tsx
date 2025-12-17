@@ -14,6 +14,8 @@ const BaseAppChessPage = lazy(() => import('./BaseAppChessPage'));
 
 // Base app specific popups
 const AsciiLawbsterMint = lazy(() => import('../components/AsciiLawbsterMint'));
+const MintPopup = lazy(() => import('../components/MintPopup'));
+const MemeGenerator = lazy(() => import('../components/MemeGenerator'));
 
 function BaseApp() {
   const { address, isConnected } = useAccount();
@@ -21,6 +23,8 @@ function BaseApp() {
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showMintPopup, setShowMintPopup] = useState(false);
+  const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [windowSizes, setWindowSizes] = useState<Record<string, { width: number; height: number }>>({});
 
@@ -29,7 +33,13 @@ function BaseApp() {
     void initBaseMiniApp();
   }, []);
 
+  React.useEffect(() => {
+    console.log('[BaseApp] showPublicChat changed:', showPublicChat);
+  }, [showPublicChat]);
+
   const handleIconClick = (action: string, popupId?: string, url?: string) => {
+    console.log('[BaseApp] Icon clicked:', { action, popupId, url });
+    
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
@@ -42,6 +52,25 @@ function BaseApp() {
 
     if (action === 'wallet' || action === 'profile') {
       setShowProfile(true);
+      return;
+    }
+
+    if (action === 'mint') {
+      if (!address) {
+        alert('Please connect your wallet first!');
+        return;
+      }
+      setShowMintPopup(true);
+      return;
+    }
+
+    if (action === 'meme-generator') {
+      setShowMemeGenerator(true);
+      return;
+    }
+
+    if (action === 'nft-gallery') {
+      setActivePopup('nft-gallery-popup');
       return;
     }
 
@@ -78,6 +107,7 @@ function BaseApp() {
   };
 
   const openPublicChat = () => {
+    console.log('[BaseApp] Opening public chat');
     setShowPublicChat(true);
   };
 
@@ -102,22 +132,63 @@ function BaseApp() {
       />
 
       {/* Public Chat */}
-      <Suspense fallback={<div>Loading chat...</div>}>
-        <ChessChat
-          isOpen={showPublicChat}
-          onMinimize={minimizePublicChat}
-          currentInviteCode={undefined}
-          isDraggable={!isBaseMiniApp()}
-          isResizable={!isBaseMiniApp()}
-          isMobile={false}
-        />
-      </Suspense>
+      {showPublicChat && (
+        <Suspense fallback={<div>Loading chat...</div>}>
+          <ChessChat
+            isOpen={showPublicChat}
+            onMinimize={minimizePublicChat}
+            currentInviteCode={undefined}
+            isDraggable={!isBaseMiniApp()}
+            isResizable={!isBaseMiniApp()}
+            isMobile={isBaseMiniApp()}
+          />
+        </Suspense>
+      )}
 
       {/* Profile Popup */}
       {showProfile && (
-        <Popup id="profile-popup" isOpen={true} onClose={() => setShowProfile(false)} onMinimize={() => setShowProfile(false)} zIndex={2000}>
+        <Popup 
+          id="profile-popup" 
+          isOpen={true} 
+          onClose={() => setShowProfile(false)} 
+          onMinimize={() => setShowProfile(false)} 
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
           <Suspense fallback={<div>Loading...</div>}>
-            <PlayerProfile isMobile={false} />
+            <PlayerProfile isMobile={isBaseMiniApp()} />
+          </Suspense>
+        </Popup>
+      )}
+
+      {/* Mint Popup */}
+      {showMintPopup && (
+        <Popup
+          id="mint-popup"
+          isOpen={true}
+          onClose={() => setShowMintPopup(false)}
+          onMinimize={() => setShowMintPopup(false)}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <Suspense fallback={<div>Loading...</div>}>
+            <MintPopup walletAddress={address || ''} onMintSuccess={() => setShowMintPopup(false)} />
+          </Suspense>
+        </Popup>
+      )}
+
+      {/* Meme Generator Popup */}
+      {showMemeGenerator && (
+        <Popup
+          id="meme-generator-popup"
+          isOpen={true}
+          onClose={() => setShowMemeGenerator(false)}
+          onMinimize={() => setShowMemeGenerator(false)}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <Suspense fallback={<div>Loading...</div>}>
+            <MemeGenerator />
           </Suspense>
         </Popup>
       )}
@@ -130,6 +201,7 @@ function BaseApp() {
           onClose={() => closePopup('asciilawbs-popup')}
           onMinimize={() => minimizePopup('asciilawbs-popup')}
           zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
         >
           <Suspense fallback={<div>Loading...</div>}>
             <AsciiLawbsterMint walletAddress={address || ''} onMintSuccess={() => {}} />
