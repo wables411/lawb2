@@ -93,15 +93,29 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
         style={{
           width: '100%',
           border: 'none',
+          borderBottom: '1px solid #808080',
           textAlign: 'left',
-          background: 'transparent',
-          padding: '4px 12px',
+          background: '#c0c0c0',
+          padding: '6px 14px',
           color: '#000',
           cursor: 'pointer',
-          fontSize: '12px',
+          fontSize: '13px',
+          fontFamily: 'MS Sans Serif, sans-serif',
           display: 'flex',
           alignItems: 'center',
           gap: '8px'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#d4d0c8';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#c0c0c0';
+        }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.background = '#a0a0a0';
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.background = '#d4d0c8';
         }}
       >
         <span>{getThemeIcon()}</span>

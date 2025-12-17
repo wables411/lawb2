@@ -26,8 +26,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'evm-folder', image: '/assets/evmfolder.png', label: 'EVM NFTs', action: 'folder', folderId: 'evm-folder', row: 0, col: 3 },
   { id: 'sol-folder', image: '/assets/solfolder.png', label: 'SOL NFTs', action: 'folder', folderId: 'sol-folder', row: 1, col: 3 },
   // Row 1
-  { id: 'wallet', image: '/assets/wallet.png', label: 'Wallet', action: 'wallet', row: 0, col: 0 },
-  { id: 'mint', image: '/assets/mint.gif', label: 'Mint', action: 'mint', row: 0, col: 1 },
+  { id: 'mint', image: '/assets/mint.gif', label: 'Mint', action: 'mint', row: 0, col: 0 },
   { id: 'gallery', image: '/assets/lawbstarz.gif', label: 'LAWB Gallery', action: 'nft-gallery', row: 0, col: 2 },
   { id: 'meme-generator', image: '/assets/meme.gif', label: 'Meme Generator', action: 'meme-generator', row: 0, col: 4 },
   { id: 'chess', image: '/assets/chessicon.png', label: 'Chess', action: 'chess', row: 0, col: 5 },

@@ -40,6 +40,11 @@ function BaseApp() {
       return;
     }
 
+    if (action === 'wallet' || action === 'profile') {
+      setShowProfile(true);
+      return;
+    }
+
     if (popupId) {
       if (minimizedPopups.has(popupId)) {
         restorePopup(popupId);

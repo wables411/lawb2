@@ -52,30 +52,42 @@ const useStyles = createUseStyles({
     left: '5px',
     background: '#c0c0c0',
     border: '2px outset #fff',
-    padding: '5px',
+    padding: '2px',
     display: ({ isOpen }: TaskbarStyleProps) => (isOpen ? 'block' : 'none'),
     zIndex: 9999,
-    maxHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vh - 100px)' : '300px',
-    maxWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vw - 20px)' : 'auto',
+    maxHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vh - 100px)' : '400px',
+    maxWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vw - 20px)' : '220px',
     overflowY: 'auto',
-    minWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? '200px' : 'auto'
+    minWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? '200px' : '220px',
+    boxShadow: '2px 2px 4px rgba(0,0,0,0.3)'
   },
   menuLink: {
     display: 'block',
-    padding: '4px 12px',
+    padding: '6px 14px',
     color: '#000',
     textDecoration: 'none',
     background: '#c0c0c0',
-    border: '2px outset #fff',
-    marginBottom: '1px',
+    border: 'none',
+    borderBottom: '1px solid #808080',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '13px',
+    fontFamily: 'MS Sans Serif, sans-serif',
+    width: '100%',
+    textAlign: 'left',
+    '&:first-child': {
+      borderTop: 'none'
+    },
+    '&:last-child': {
+      borderBottom: 'none'
+    },
     '&:hover': {
-      background: '#d0d0d0',
-      border: '2px inset #fff'
+      background: '#d4d0c8',
+      color: '#000'
     },
     '&:active': {
-      border: '2px inset #c0c0c0'
+      background: '#a0a0a0',
+      borderTop: '1px inset #808080',
+      borderBottom: '1px inset #808080'
     }
   },
   themeMenuItem: {
@@ -214,6 +226,37 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
       
       {isMenuOpen && (
         <div className={classes.menu}>
+          {onOpenProfile && (
+            <button
+              type="button"
+              className={classes.menuLink}
+              onClick={() => {
+                handleMenuLinkClick();
+                onOpenProfile();
+              }}
+            >
+              Profile
+            </button>
+          )}
+          <button
+            type="button"
+            className={classes.menuLink}
+            onClick={() => {
+              handleMenuLinkClick();
+              if (onOpenPublicChat) {
+                onOpenPublicChat();
+              }
+            }}
+          >
+            Public Chat
+          </button>
+          <div style={{ 
+            height: '1px', 
+            background: '#808080', 
+            margin: '4px 0',
+            borderTop: '1px solid #fff',
+            borderBottom: '1px solid #808080'
+          }} />
           <a 
             href="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" 
             target="_blank" 
@@ -286,32 +329,13 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Lawb.Shop
           </a>
-          <button
-            type="button"
-            className={classes.menuLink}
-            style={{ width: '100%', border: 'none', textAlign: 'left' }}
-            onClick={() => {
-              handleMenuLinkClick();
-              if (onOpenPublicChat) {
-                onOpenPublicChat();
-              }
-            }}
-          >
-            Public Chat
-          </button>
-          {onOpenProfile && (
-            <button
-              type="button"
-              className={classes.menuLink}
-              style={{ width: '100%', border: 'none', textAlign: 'left' }}
-              onClick={() => {
-                handleMenuLinkClick();
-                onOpenProfile();
-              }}
-            >
-              Profile
-            </button>
-          )}
+          <div style={{ 
+            height: '1px', 
+            background: '#808080', 
+            margin: '4px 0',
+            borderTop: '1px solid #fff',
+            borderBottom: '1px solid #808080'
+          }} />
           <ThemeToggle asMenuItem={true} />
         </div>
       )}

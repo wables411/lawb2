@@ -412,15 +412,24 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     void fetchDisplayNamesAndPictures();
   }, [messages, displayNameMap]);
   
-  // Auto-switch to private chat when in a game
+  // Auto-switch to private chat when in a game, or ensure public when no invite code
   useEffect(() => {
     if (currentInviteCode && currentRoom === 'public') {
       setCurrentRoom('private');
-    } else if (!currentInviteCode && currentRoom === 'private') {
-      // If no invite code, switch back to public
+    } else if (!currentInviteCode) {
+      // Always default to public when there's no invite code
+      if (currentRoom !== 'public') {
+        setCurrentRoom('public');
+      }
+    }
+  }, [currentInviteCode]);
+  
+  // Reset to public room when chat opens without invite code
+  useEffect(() => {
+    if (isOpen && !currentInviteCode && currentRoom !== 'public') {
       setCurrentRoom('public');
     }
-  }, [currentInviteCode, currentRoom]);
+  }, [isOpen, currentInviteCode]);
   
   if (!isOpen) return null;
   
