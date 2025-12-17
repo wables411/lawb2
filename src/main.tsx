@@ -9,7 +9,7 @@ import './walletModal.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 // Lazy load the chess page to reduce initial bundle size
 const ChessPage = lazy(() => import('./components/ChessPage'));
@@ -39,6 +39,19 @@ const isChessSubdomain = typeof window !== 'undefined' && window.location.hostna
 
 const Root = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const isBaseApp = isBaseMiniApp();
+  
+  // Debug logging to see which component is rendering
+  useEffect(() => {
+    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
+    console.log('[Root] Version:', version);
+    console.log('[Root] isMobile (media query):', isMobile);
+    console.log('[Root] isBaseApp (detection):', isBaseApp);
+    console.log('[Root] Rendering:', isMobile ? 'Mobile.tsx' : 'App.tsx');
+    console.log('[Root] window.innerWidth:', window.innerWidth);
+    console.log('[Root] window.location.href:', window.location.href);
+  }, [isMobile, isBaseApp]);
+  
   return isMobile ? <Mobile /> : <App />;
 };
 
