@@ -7,23 +7,16 @@ interface HowToContentProps {
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
-  // Check Base app detection - use state to ensure it's reactive
-  const [isBaseApp, setIsBaseApp] = React.useState(() => isBaseMiniApp());
+  // ALWAYS check Base app detection directly - don't rely on state that might be stale
+  // Check multiple times to ensure we catch it even if iframe detection is delayed
+  const checkBaseApp = (): boolean => {
+    return isBaseMiniApp();
+  };
   
-  // Re-check on mount and after a delay to catch any timing issues
-  React.useEffect(() => {
-    const check = () => {
-      const detected = isBaseMiniApp();
-      if (detected !== isBaseApp) {
-        setIsBaseApp(detected);
-      }
-    };
-    check();
-    const timeout = setTimeout(check, 100);
-    return () => clearTimeout(timeout);
-  }, [isBaseApp]);
+  // Check immediately and use the result
+  const isBaseApp = checkBaseApp();
   
-  // Base App version
+  // Base App version - if ANY check returns true, show Base content
   if (isBaseApp) {
     return (
       <div className={`how-to-section ${variant === 'mobile' ? 'mobile' : ''}`}>
