@@ -7,16 +7,11 @@ interface HowToContentProps {
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
-  // ALWAYS check Base app detection directly - don't rely on state that might be stale
-  // Check multiple times to ensure we catch it even if iframe detection is delayed
-  const checkBaseApp = (): boolean => {
-    return isBaseMiniApp();
-  };
+  // Check Base app detection - this is INDEPENDENT of mobile/desktop variant
+  // variant is only for styling, NOT for determining Base app vs web app
+  const isBaseApp = isBaseMiniApp();
   
-  // Check immediately and use the result
-  const isBaseApp = checkBaseApp();
-  
-  // Base App version - if ANY check returns true, show Base content
+  // Base App version - ONLY determined by isBaseMiniApp(), not by variant
   if (isBaseApp) {
     return (
       <div className={`how-to-section ${variant === 'mobile' ? 'mobile' : ''}`}>
