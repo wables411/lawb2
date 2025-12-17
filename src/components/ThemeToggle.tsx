@@ -27,14 +27,36 @@ export const ThemeToggle: React.FC = () => {
     }
   }, [isDarkMode, isBaseApp]);
 
-  if (!isBaseApp) return null;
+  // Debug logging
+  useEffect(() => {
+    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
+    console.log('[ThemeToggle] Version:', version, 'Base App:', isBaseApp, 'Dark Mode:', isDarkMode);
+  }, [isBaseApp, isDarkMode]);
+
+  if (!isBaseApp) {
+    console.log('[ThemeToggle] Not rendering - not in Base app');
+    return null;
+  }
+
+  console.log('[ThemeToggle] Rendering toggle button');
 
   return (
     <button
       className="lawb-theme-toggle"
-      onClick={() => setIsDarkMode(!isDarkMode)}
+      onClick={() => {
+        console.log('[ThemeToggle] Toggle clicked, switching to:', !isDarkMode ? 'dark' : 'light');
+        setIsDarkMode(!isDarkMode);
+      }}
       title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
       aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      style={{
+        fontSize: '24px',
+        width: '48px',
+        height: '48px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
     >
       {isDarkMode ? '☀️' : '🌙'}
     </button>
