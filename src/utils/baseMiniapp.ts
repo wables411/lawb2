@@ -16,27 +16,31 @@ if (typeof window !== 'undefined' && sdk && sdk.actions && sdk.actions.ready) {
   });
 }
 
-// Check if we're running as a Base Mini App
+// Synchronous check if we're running as a Base Mini App
+// For async detection, use isBaseMiniAppAsync() which uses sdk.isInMiniApp()
 export const isBaseMiniApp = () => {
   if (typeof window === 'undefined') return false;
   
   // Check for environment variable or URL parameter (highest priority)
   if (import.meta.env.VITE_BASE_MINIAPP === 'true' || 
       new URLSearchParams(window.location.search).has('base_miniapp')) {
+    console.log('[Base Mini App Detection] ✅ Detected via env var or URL param');
     return true;
   }
   
   // Check if we're running in an iframe (embedded in Base/Farcaster app)
-  // This is the PRIMARY detection method for Farcaster apps
+  // This is a PRIMARY detection method for Farcaster apps
   try {
     if (window.self !== window.top) {
       // We're in an iframe - definitely embedded in Base/Farcaster app
+      console.log('[Base Mini App Detection] ✅ Detected via iframe (window.self !== window.top)');
       return true;
     }
   } catch (e) {
     // Cross-origin iframe - can't access window.top, but we're definitely in an iframe
     // This is the case when embedded in Farcaster app (most common scenario)
     // The exception is thrown because we can't access window.top from cross-origin iframe
+    console.log('[Base Mini App Detection] ✅ Detected via cross-origin iframe (exception accessing window.top)');
     return true;
   }
   
@@ -47,6 +51,7 @@ export const isBaseMiniApp = () => {
       hostname.includes('warpcast.com') ||
       hostname.includes('base.org') ||
       hostname.includes('base.dev')) {
+    console.log('[Base Mini App Detection] ✅ Detected via hostname:', hostname);
     return true;
   }
   
@@ -58,6 +63,7 @@ export const isBaseMiniApp = () => {
         referrer.includes('base.org') ||
         referrer.includes('base.dev') ||
         referrer.includes('wallet.farcaster')) {
+      console.log('[Base Mini App Detection] ✅ Detected via referrer:', referrer);
       return true;
     }
   } catch (e) {
@@ -67,15 +73,61 @@ export const isBaseMiniApp = () => {
   // Check user agent for Farcaster/Base app indicators
   const userAgent = navigator.userAgent?.toLowerCase() || '';
   if (userAgent.includes('farcaster') || userAgent.includes('base')) {
+    console.log('[Base Mini App Detection] ✅ Detected via user agent:', userAgent);
     return true;
   }
   
-  // NOTE: We do NOT check SDK availability here because the SDK is statically imported
-  // and will always be available in the bundle, even when not in Base app context.
-  // The SDK being available doesn't mean we're in Base app - we rely on the other
-  // indicators above (iframe, domain, env vars, user agent) which are more reliable.
+  // Additional check: if SDK context is available, we're definitely in Base App
+  // The SDK's context property is only populated when actually running in Base/Farcaster
+  try {
+    if (sdk && sdk.context) {
+      // SDK context exists - we're in Base App
+      console.log('[Base Mini App Detection] ✅ Detected via SDK context');
+      return true;
+    }
+  } catch (e) {
+    // SDK context check failed
+  }
   
+  // Log detection failure for debugging
+  console.log('[Base Mini App Detection] ❌ Not detected. hostname:', hostname, 'referrer:', document.referrer, 'userAgent:', userAgent);
   return false;
+};
+
+// Async check using SDK's built-in detection (more reliable)
+// Use this when you can handle async detection
+export const isBaseMiniAppAsync = async (): Promise<boolean> => {
+  if (typeof window === 'undefined') return false;
+  
+  // Check for environment variable or URL parameter (highest priority)
+  if (import.meta.env.VITE_BASE_MINIAPP === 'true' || 
+      new URLSearchParams(window.location.search).has('base_miniapp')) {
+    return true;
+  }
+  
+  // Use SDK's built-in detection method (most reliable)
+  try {
+    if (sdk && typeof sdk.isInMiniApp === 'function') {
+      const isInMiniApp = await sdk.isInMiniApp();
+      if (isInMiniApp) {
+        // Optionally check if it's specifically Base App (clientFid === 309857)
+        try {
+          const context = await sdk.context;
+          if (context?.client?.clientFid === 309857) {
+            return true; // Confirmed Base App
+          }
+          return true; // Any miniapp (including Base)
+        } catch (e) {
+          return isInMiniApp; // Fallback to miniapp detection
+        }
+      }
+    }
+  } catch (e) {
+    // SDK check failed, fall through to synchronous checks
+  }
+  
+  // Fallback to synchronous detection
+  return isBaseMiniApp();
 };
 
 // Initialize Base Mini App SDK if running as mini app
