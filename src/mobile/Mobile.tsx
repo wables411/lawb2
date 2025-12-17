@@ -315,33 +315,7 @@ const Mobile = () => {
     return () => window.clearInterval(interval);
   }, []);
 
-  // Show popup on load - ASCII Lawbs for Base app, Pixelawbs for desktop/mobile
-  useEffect(() => {
-    const isBaseApp = isBaseMiniApp();
-    if (isBaseApp) {
-      // Base app: show ASCII Lawbs
-      setShowAsciilawbs(true);
-      setShowPixelawbsPopup(false);
-    } else {
-      // Desktop/mobile: show Pixelawbs
-      setShowPixelawbsPopup(true);
-      setShowAsciilawbs(false);
-    }
-    
-    // Re-check once after a short delay in case iframe detection was delayed
-    const timeout = setTimeout(() => {
-      const recheck = isBaseMiniApp();
-      if (recheck) {
-        setShowAsciilawbs(true);
-        setShowPixelawbsPopup(false);
-      } else if (!recheck && !isBaseApp) {
-        setShowPixelawbsPopup(true);
-        setShowAsciilawbs(false);
-      }
-    }, 200);
-    
-    return () => clearTimeout(timeout);
-  }, []); // Only run on mount
+  // No auto-popup on load - user must click to open popups
 
   // Initialize Base Mini App SDK when interface is ready
   // Call ready() after component mounts to hide splash screen (per Farcaster docs)

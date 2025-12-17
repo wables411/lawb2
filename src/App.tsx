@@ -39,33 +39,8 @@ function App() {
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // Base app detection - check immediately
-  const baseAppDetected = isBaseMiniApp();
-  
-  // Base app: show ASCII Lawbs popup, desktop/mobile: show Pixelawbs popup
-  const [activePopup, setActivePopup] = useState<string | null>(() => {
-    return isBaseMiniApp() ? 'asciilawbs-popup' : 'pixelawbs-popup';
-  });
-  
-  // Ensure popup is correct for Base app - check once on mount and once after delay
-  useEffect(() => {
-    const detected = isBaseMiniApp();
-    if (detected && activePopup !== 'asciilawbs-popup') {
-      setActivePopup('asciilawbs-popup');
-    } else if (!detected && activePopup === 'asciilawbs-popup') {
-      setActivePopup('pixelawbs-popup');
-    }
-    
-    // Re-check once after a short delay in case iframe detection was delayed
-    const timeout = setTimeout(() => {
-      const recheck = isBaseMiniApp();
-      if (recheck && activePopup !== 'asciilawbs-popup') {
-        setActivePopup('asciilawbs-popup');
-      }
-    }, 200);
-    
-    return () => clearTimeout(timeout);
-  }, []); // Only run on mount
+  // No auto-popup on load - user must click to open popups
+  const [activePopup, setActivePopup] = useState<string | null>(null);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
