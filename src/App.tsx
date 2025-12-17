@@ -43,30 +43,29 @@ function App() {
   const baseAppDetected = isBaseMiniApp();
   
   // Base app: show ASCII Lawbs popup, desktop/mobile: show Pixelawbs popup
-  // ALWAYS check Base app detection for initial popup - don't rely on state
   const [activePopup, setActivePopup] = useState<string | null>(() => {
-    // Force check Base app detection at initialization
     return isBaseMiniApp() ? 'asciilawbs-popup' : 'pixelawbs-popup';
   });
   
-  // Continuously ensure popup is correct for Base app
-  // This runs on mount and whenever baseAppDetected might change
+  // Ensure popup is correct for Base app - check once on mount and once after delay
   useEffect(() => {
-    // Re-check detection in case iframe wasn't ready on first check
     const detected = isBaseMiniApp();
+    if (detected && activePopup !== 'asciilawbs-popup') {
+      setActivePopup('asciilawbs-popup');
+    } else if (!detected && activePopup === 'asciilawbs-popup') {
+      setActivePopup('pixelawbs-popup');
+    }
     
-    if (detected) {
-      // In Base app - MUST show ASCII Lawbs
-      if (activePopup !== 'asciilawbs-popup') {
+    // Re-check once after a short delay in case iframe detection was delayed
+    const timeout = setTimeout(() => {
+      const recheck = isBaseMiniApp();
+      if (recheck && activePopup !== 'asciilawbs-popup') {
         setActivePopup('asciilawbs-popup');
       }
-    } else {
-      // Not in Base app - show Pixelawbs (only if currently showing ASCII Lawbs)
-      if (activePopup === 'asciilawbs-popup') {
-        setActivePopup('pixelawbs-popup');
-      }
-    }
-  }, [activePopup]); // Run whenever activePopup changes, and on mount
+    }, 200);
+    
+    return () => clearTimeout(timeout);
+  }, []); // Only run on mount
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   

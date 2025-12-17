@@ -244,7 +244,7 @@ const Mobile = () => {
     if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
       const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
       if (farcasterConnector) {
-        console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
+        // Auto-connecting to Farcaster wallet in Base app
         try {
           connect({ connector: farcasterConnector });
         } catch (error) {
@@ -316,45 +316,32 @@ const Mobile = () => {
   }, []);
 
   // Show popup on load - ASCII Lawbs for Base app, Pixelawbs for desktop/mobile
-  // Continuously check and enforce correct popup based on Base app detection
   useEffect(() => {
-    const updatePopup = () => {
-      const isBaseApp = isBaseMiniApp();
-      if (isBaseApp) {
-        // Base app: MUST show ASCII Lawbs, hide Pixelawbs
-        if (!showAsciilawbs) {
-          setShowAsciilawbs(true);
-        }
-        if (showPixelawbsPopup) {
-          setShowPixelawbsPopup(false);
-        }
-      } else {
-        // Desktop/mobile: show Pixelawbs, hide ASCII Lawbs
-        if (!showPixelawbsPopup) {
-          setShowPixelawbsPopup(true);
-        }
-        if (showAsciilawbs) {
-          setShowAsciilawbs(false);
-        }
+    const isBaseApp = isBaseMiniApp();
+    if (isBaseApp) {
+      // Base app: show ASCII Lawbs
+      setShowAsciilawbs(true);
+      setShowPixelawbsPopup(false);
+    } else {
+      // Desktop/mobile: show Pixelawbs
+      setShowPixelawbsPopup(true);
+      setShowAsciilawbs(false);
+    }
+    
+    // Re-check once after a short delay in case iframe detection was delayed
+    const timeout = setTimeout(() => {
+      const recheck = isBaseMiniApp();
+      if (recheck) {
+        setShowAsciilawbs(true);
+        setShowPixelawbsPopup(false);
+      } else if (!recheck && !isBaseApp) {
+        setShowPixelawbsPopup(true);
+        setShowAsciilawbs(false);
       }
-    };
+    }, 200);
     
-    // Check immediately
-    updatePopup();
-    
-    // Check again after delays to catch any timing issues with iframe detection
-    const t1 = setTimeout(updatePopup, 50);
-    const t2 = setTimeout(updatePopup, 200);
-    const t3 = setTimeout(updatePopup, 500);
-    const t4 = setTimeout(updatePopup, 1000);
-    
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
-  }, [showAsciilawbs, showPixelawbsPopup]);
+    return () => clearTimeout(timeout);
+  }, []); // Only run on mount
 
   // Initialize Base Mini App SDK when interface is ready
   // Call ready() after component mounts to hide splash screen (per Farcaster docs)
