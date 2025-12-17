@@ -40,11 +40,14 @@ const useStyles = createUseStyles({
     height: 'calc(100% - 8px)',
   },
   menuBtn: {
-    marginLeft: '5px',
+    marginLeft: ({ isMobile }: TaskbarStyleProps) => isMobile ? '12px' : '5px',
     padding: '5px 10px',
     background: '#c0c0c0',
     border: '2px outset #fff',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontFamily: 'MS Sans Serif, sans-serif',
+    color: '#000'
   },
   menu: {
     position: 'absolute',
@@ -66,7 +69,7 @@ const useStyles = createUseStyles({
     padding: '6px 14px',
     color: '#000 !important',
     textDecoration: 'none !important',
-    background: '#c0c0c0',
+    background: '#c0c0c0 !important',
     border: 'none',
     borderBottom: '1px solid #808080',
     cursor: 'pointer',
@@ -81,11 +84,11 @@ const useStyles = createUseStyles({
       borderBottom: 'none'
     },
     '&:hover': {
-      background: '#d4d0c8',
+      background: '#d4d0c8 !important',
       color: '#000 !important'
     },
     '&:active': {
-      background: '#a0a0a0',
+      background: '#a0a0a0 !important',
       borderTop: '1px inset #808080',
       borderBottom: '1px inset #808080',
       color: '#000 !important'

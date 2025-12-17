@@ -7,7 +7,7 @@ import { isBaseMiniApp } from '../utils/baseMiniapp';
 const useStyles = createUseStyles({
   icon: {
     position: 'absolute',
-    width: '80px',
+    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '60px' : '80px',
     textAlign: 'center',
     cursor: 'pointer',
     zIndex: 3000,
@@ -15,8 +15,8 @@ const useStyles = createUseStyles({
     pointerEvents: 'auto'
   },
   iconImage: {
-    width: '48px',
-    height: '48px',
+    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '36px' : '48px',
+    height: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '36px' : '48px',
     display: 'block',
     margin: '0 auto'
   },
@@ -24,8 +24,8 @@ const useStyles = createUseStyles({
     display: 'block',
     background: '#c0c0c0',
     color: '#000',
-    fontSize: '12px',
-    padding: '2px 4px',
+    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '10px' : '12px',
+    padding: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '2px 2px' : '2px 4px',
     marginTop: '2px',
     border: '1px outset #fff'
   }
@@ -45,7 +45,8 @@ interface IconProps {
 }
 
 function Icon({ image, label, action, url, popupId, folderId, isInFolder = false, position, onDrag, onClick }: IconProps) {
-  const classes = useStyles();
+  const isBaseApp = isBaseMiniApp();
+  const classes = useStyles({ isBaseMiniApp: isBaseApp });
   const nodeRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);

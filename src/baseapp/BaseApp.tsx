@@ -189,6 +189,72 @@ function BaseApp() {
         </Popup>
       )}
 
+      {/* Purity Popup */}
+      {activePopup === 'purity-popup' && (
+        <Popup
+          id="purity-popup"
+          isOpen={true}
+          onClose={() => closePopup('purity-popup')}
+          onMinimize={() => minimizePopup('purity-popup')}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <div style={{ padding: '15px' }}>
+            <p style={{ marginBottom: '10px' }}>
+              purify your wallet and cleanse your soul with Purity Finance.
+            </p>
+            <p style={{ marginBottom: '10px' }}>
+              swap any sol token in your wallet directly for $LAWB
+            </p>
+            <a href="https://www.purity.finance/lawb" target="_blank" rel="noopener noreferrer" style={{ cursor: 'pointer', color: '#0066cc' }}>click to Purify</a>
+            <img src="/assets/puritylawb.png" alt="Purity Lawb" style={{ maxWidth: '100%', marginTop: '10px' }} />
+          </div>
+        </Popup>
+      )}
+
+      {/* Miladychan Popup */}
+      {activePopup === 'miladychan-popup' && (
+        <Popup
+          id="miladychan-popup"
+          isOpen={true}
+          onClose={() => closePopup('miladychan-popup')}
+          onMinimize={() => minimizePopup('miladychan-popup')}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <div style={{ padding: '15px' }}>
+            <p style={{ marginBottom: '10px' }}>
+              miladychan is a realtime imageboard inspired by the early 00's anonymous imageboard and its culture - embracing the loosely organized discussion & light-hearted funposting enabled by anonymity and transciency. Click(button) to be lawbed.
+            </p>
+            <button
+              onClick={() => window.open('https://boards.miladychan.org/milady/33793', '_blank', 'noopener,noreferrer')}
+              style={{
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#000',
+                marginTop: '10px'
+              }}
+            >
+              Click
+            </button>
+            <img 
+              src="/assets/miladychanfaq.png" 
+              alt="Miladychan FAQ" 
+              style={{ 
+                width: '100%', 
+                marginTop: '10px',
+                maxWidth: '100%',
+                height: 'auto'
+              }} 
+            />
+          </div>
+        </Popup>
+      )}
+
       {/* ASCII Lawbs Popup - Base app default */}
       {activePopup === 'asciilawbs-popup' && (
         <Popup

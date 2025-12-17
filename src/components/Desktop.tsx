@@ -8,6 +8,7 @@ import { ChessGame } from './ChessGame';
 import Taskbar from './Taskbar';
 import MediaGallery from './MediaGallery';
 import NFTDetailPopup from './NFTDetailPopup';
+import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 interface DesktopIcon {
   id: string;
@@ -48,10 +49,18 @@ const ICONS: DesktopIcon[] = [
   { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
 ];
 
-const ICON_WIDTH = 80;
-const ICON_HEIGHT = 80;
+// Icon sizing - smaller for Base Mini App
+const getIconSize = () => {
+  if (typeof window !== 'undefined' && isBaseMiniApp()) {
+    return { width: 60, height: 60 };
+  }
+  return { width: 80, height: 80 };
+};
+
+const ICON_WIDTH = getIconSize().width;
+const ICON_HEIGHT = getIconSize().height;
 const ICON_HGAP = 10;
-const ICON_VGAP = 4;
+const ICON_VGAP = isBaseMiniApp() ? 12 : 4; // More padding in Base Mini App
 const START_LEFT = 10;
 const START_TOP = 10;
 
