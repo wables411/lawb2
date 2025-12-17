@@ -27,7 +27,7 @@ if (typeof window !== 'undefined') {
   
   // Additional safety check: if we're on farcaster domain, definitely don't load WalletConnect
   // Note: isBaseMiniApp() already checks for iframes, so we don't need to duplicate that here
-  const onFarcasterDomain = window.location.hostname.includes('farcaster.xyz') || window.location.hostname.includes('warpcast.com');
+    const onFarcasterDomain = window.location.hostname.includes('farcaster.xyz') || window.location.hostname.includes('warpcast.com');
   if (onFarcasterDomain) {
     isBase = true;
     console.log('[AppKit] Additional safety check: onFarcasterDomain -> forcing isBase=true');

@@ -11,7 +11,7 @@ function getTokenAddress(tokenSymbol: TokenSymbol, chainId: number): string {
     // Only log if it's not a "token not available on chain" error (expected behavior)
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (!errorMessage.includes('not available on chain')) {
-      console.error(`[TOKEN] Error getting address for ${tokenSymbol} on chain ${chainId}:`, error);
+    console.error(`[TOKEN] Error getting address for ${tokenSymbol} on chain ${chainId}:`, error);
     }
     // Fallback to zero address if token not available on chain
     return '0x0000000000000000000000000000000000000000';

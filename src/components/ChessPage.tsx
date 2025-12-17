@@ -140,8 +140,10 @@ const ChessPage: React.FC = () => {
   
   // Debug logging for Base app detection
   useEffect(() => {
+    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
+    console.log('[ChessPage] Version:', version, 'Base App Detected:', isBaseApp);
     if (isBaseApp) {
-      console.log('[ChessPage] ✅ Base Mini App detected - Theme toggle should be visible');
+      console.log('[ChessPage] ✅ Base Mini App detected - Theme toggle should be visible (v2.0.0)');
     } else {
       console.log('[ChessPage] ⚠️ Not in Base Mini App - no theme toggle');
     }
@@ -157,7 +159,11 @@ const ChessPage: React.FC = () => {
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          padding: '8px',
+          borderRadius: '8px',
+          border: '2px solid #ff0000'
         }}>
           <ThemeToggle />
         </div>

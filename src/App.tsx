@@ -42,19 +42,26 @@ function App() {
   // Base app detection
   const baseAppDetected = isBaseMiniApp();
   
-  // Debug logging
+  // Debug logging with version check
   useEffect(() => {
+    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
+    console.log('[App] Version:', version, 'Base App Detected:', baseAppDetected);
     if (baseAppDetected) {
-      console.log('[App] ✅ Base Mini App detected - showing ASCII Lawbs popup');
+      console.log('[App] ✅ Base Mini App detected - showing ASCII Lawbs popup (v2.0.0)');
+      // Force set to ASCII Lawbs if in Base app
+      setActivePopup('asciilawbs-popup');
     } else {
       console.log('[App] ⚠️ Not in Base Mini App - showing Pixelawbs popup');
     }
   }, [baseAppDetected]);
   
   // Base app: show mint popup, desktop/mobile: show pixelawbs popup
-  const [activePopup, setActivePopup] = useState<string | null>(
-    baseAppDetected ? 'asciilawbs-popup' : 'pixelawbs-popup'
-  );
+  // Initialize based on detection, but useEffect will override if needed
+  const [activePopup, setActivePopup] = useState<string | null>(() => {
+    const detected = isBaseMiniApp();
+    console.log('[App] Initial popup state - Base detected:', detected, 'Setting to:', detected ? 'asciilawbs-popup' : 'pixelawbs-popup');
+    return detected ? 'asciilawbs-popup' : 'pixelawbs-popup';
+  });
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
