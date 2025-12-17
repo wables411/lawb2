@@ -9,8 +9,8 @@ import { isBaseMiniApp } from '../utils/baseMiniapp';
 export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
   // Check Base app detection - this is INDEPENDENT of mobile/desktop variant
   // variant is only for styling, NOT for determining Base app vs web app
-  // Force check multiple ways to ensure we catch it
-  const checkIsBaseApp = (): boolean => {
+  // Use state to force re-check on mount
+  const [isBaseApp, setIsBaseApp] = React.useState(() => {
     if (typeof window === 'undefined') return false;
     
     // Check iframe - PRIMARY method
@@ -23,11 +23,15 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
     
     // Check URL/referrer for Base/Farcaster indicators
     const hostname = window.location.hostname.toLowerCase();
-    const referrer = document.referrer.toLowerCase();
-    if (hostname.includes('farcaster') || hostname.includes('base') ||
-        referrer.includes('farcaster') || referrer.includes('base') ||
-        referrer.includes('warpcast')) {
-      return true;
+    try {
+      const referrer = document.referrer.toLowerCase();
+      if (hostname.includes('farcaster') || hostname.includes('base') ||
+          referrer.includes('farcaster') || referrer.includes('base') ||
+          referrer.includes('warpcast')) {
+        return true;
+      }
+    } catch (e) {
+      // Referrer might not be accessible
     }
     
     // Check user agent
@@ -37,9 +41,68 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
     }
     
     return isBaseMiniApp();
-  };
+  });
   
-  const isBaseApp = checkIsBaseApp();
+  // Re-check on mount and after delay to catch timing issues
+  React.useEffect(() => {
+    const check = () => {
+      if (typeof window === 'undefined') return;
+      
+      let detected = false;
+      
+      // Check iframe - PRIMARY method
+      try {
+        if (window.self !== window.top) {
+          detected = true;
+        }
+      } catch (e) {
+        // Cross-origin iframe = definitely Base app
+        detected = true;
+      }
+      
+      if (!detected) {
+        // Check URL/referrer for Base/Farcaster indicators
+        const hostname = window.location.hostname.toLowerCase();
+        try {
+          const referrer = document.referrer.toLowerCase();
+          if (hostname.includes('farcaster') || hostname.includes('base') ||
+              referrer.includes('farcaster') || referrer.includes('base') ||
+              referrer.includes('warpcast')) {
+            detected = true;
+          }
+        } catch (e) {
+          // Referrer might not be accessible
+        }
+      }
+      
+      if (!detected) {
+        // Check user agent
+        const ua = navigator.userAgent?.toLowerCase() || '';
+        if (ua.includes('farcaster') || ua.includes('base')) {
+          detected = true;
+        }
+      }
+      
+      if (!detected) {
+        detected = isBaseMiniApp();
+      }
+      
+      if (detected !== isBaseApp) {
+        setIsBaseApp(detected);
+      }
+    };
+    
+    check();
+    const t1 = setTimeout(check, 100);
+    const t2 = setTimeout(check, 500);
+    const t3 = setTimeout(check, 1000);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [isBaseApp]);
   
   // Base App version - ONLY determined by Base app detection, not by variant
   if (isBaseApp) {
