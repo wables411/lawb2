@@ -238,6 +238,67 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     }
   }, [isOpen, id, position]);
 
+  // Render popup content (extracted for reuse)
+  const renderPopupContent = () => (
+    <>
+      <div className={classes.header}>
+        <span>{title || id.replace('-popup', '')}</span>
+        <div className={classes.titleBarButtons}>
+          <button
+            className={classes.titleBarButton}
+            onClick={handleMinimize}
+            title="Minimize"
+          >
+            _
+          </button>
+          <button
+            className={classes.titleBarButton}
+            onClick={onClose}
+            title="Close"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      <div className={classes.content}>
+        {children}
+      </div>
+      {!isBaseMiniApp && (
+        <div className={classes.resizeHandle} />
+      )}
+    </>
+  );
+
+  // For Base Mini App, don't use Draggable at all - render directly
+  if (isBaseMiniApp && isOpen) {
+    return (
+      <div 
+        ref={nodeRef} 
+        className={classes.popup}
+        style={{ 
+          width: 'calc(100vw - 32px)',
+          height: 'calc(100vh - 80px)',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100vh - 80px)',
+          minWidth: '0',
+          minHeight: '0',
+          left: '50%',
+          top: '50%',
+          right: 'auto',
+          bottom: 'auto',
+          resize: 'none',
+          boxSizing: 'border-box',
+          position: 'fixed',
+          transform: 'translate(-50%, -50%) !important',
+          margin: '0',
+          zIndex: zIndex || 100
+        }}
+      >
+        {renderPopupContent()}
+      </div>
+    );
+  }
+
   return (
     <Draggable 
       nodeRef={nodeRef} 
@@ -267,7 +328,8 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
             boxSizing: 'border-box',
             position: 'fixed',
             transform: 'translate(-50%, -50%)',
-            margin: '0'
+            margin: '0',
+            inset: 'auto'
           } : {
             width: initialSize?.width,
             height: initialSize?.height
