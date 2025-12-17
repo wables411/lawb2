@@ -201,17 +201,30 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   // Store position state to persist drag position
   const [position, setPosition] = React.useState(defaultPos);
   
+  // Detect mobile and Base Mini App (iframe) - must be before useEffect
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isBaseMiniApp = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true; // Cross-origin iframe = Base Mini App
+    }
+  })();
+  
   // Update position when initialPosition changes or when popup opens
   React.useEffect(() => {
     if (isOpen) {
-      if (initialPosition) {
+      if (isBaseMiniApp) {
+        // Center popup in Base Mini App
+        setPosition({ x: 0, y: 0 });
+      } else if (initialPosition) {
         setPosition(initialPosition);
       } else {
         // Reset to default position when opening
         setPosition({ x: 100, y: 100 });
       }
     }
-  }, [isOpen, initialPosition]);
+  }, [isOpen, initialPosition, isBaseMiniApp]);
   
   const handleDrag = (e: any, data: any) => {
     setPosition({ x: data.x, y: data.y });
@@ -224,16 +237,6 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       console.log(`[POPUP] ${id} computed styles:`, window.getComputedStyle(nodeRef.current));
     }
   }, [isOpen, id, position]);
-
-  // Detect mobile and Base Mini App (iframe)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const isBaseMiniApp = typeof window !== 'undefined' && (() => {
-    try {
-      return window.self !== window.top;
-    } catch (e) {
-      return true; // Cross-origin iframe = Base Mini App
-    }
-  })();
 
   return (
     <Draggable 

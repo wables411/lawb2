@@ -286,9 +286,18 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 /* Dark mode - console grey elements become black */
 .lawb-app-dark-mode [class*="icon"],
 .lawb-app-dark-mode .iconLabel,
+.lawb-app-dark-mode [class*="iconLabel"],
 .lawb-app-dark-mode [class*="taskbar"],
 .lawb-app-dark-mode [class*="menuBtn"],
-.lawb-app-dark-mode [class*="statusSection"] {
+.lawb-app-dark-mode [class*="statusSection"],
+.lawb-app-dark-mode .lawb-theme-menu-item {
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
+/* Dark mode - icon labels specifically */
+.lawb-app-dark-mode [class*="iconLabel"] {
   background: #000000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;

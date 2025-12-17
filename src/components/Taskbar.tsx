@@ -10,9 +10,9 @@ interface TaskbarStyleProps {
 const useStyles = createUseStyles({
   taskbar: {
     position: 'fixed',
-    left: 0,
+    left: '10%',
     bottom: 0,
-    width: '90%',
+    width: '80%',
     height: 40,
     background: '#c0c0c0',
     borderTop: '2px outset #fff',
@@ -20,7 +20,6 @@ const useStyles = createUseStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 200,
-    marginLeft: '10%',
   },
   leftSection: {
     display: 'flex',
@@ -41,7 +40,7 @@ const useStyles = createUseStyles({
     height: 'calc(100% - 8px)',
   },
   menuBtn: {
-    marginLeft: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(10vw)' : '5px',
+    marginLeft: ({ isMobile }: TaskbarStyleProps) => isMobile ? '20px' : '5px',
     padding: '5px 10px',
     background: '#c0c0c0',
     border: '2px outset #fff',

@@ -59,8 +59,8 @@ const getIconSize = () => {
 
 const ICON_WIDTH = getIconSize().width;
 const ICON_HEIGHT = getIconSize().height;
-const ICON_HGAP = 10;
-const ICON_VGAP = isBaseMiniApp() ? 20 : 4; // Much more padding in Base Mini App to prevent overlap
+const ICON_HGAP = isBaseMiniApp() ? 15 : 10; // More horizontal spacing in Base Mini App
+const ICON_VGAP = isBaseMiniApp() ? 35 : 4; // Much more vertical padding in Base Mini App to prevent overlap
 const START_LEFT = 10;
 const START_TOP = 10;
 
