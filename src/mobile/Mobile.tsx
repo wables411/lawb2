@@ -10,7 +10,7 @@ import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { playIconClickSound } from '../utils/sound';
-import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
+import { initBaseMiniApp } from '../utils/baseMiniapp';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
@@ -257,15 +257,7 @@ const Mobile = () => {
   // Simple wallet connection
   const handleWalletConnection = async () => {
     try {
-      // In Base app, try to use Farcaster connector directly
-      if (isBaseMiniApp() && connectors.length > 0) {
-        const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-        if (farcasterConnector) {
-          connect({ connector: farcasterConnector });
-          return;
-        }
-      }
-      // Fallback to AppKit modal for non-Base contexts
+      // Web browser mobile - use AppKit modal
       await open({ view: 'Connect' });
     } catch (error) {
       console.error('Wallet connection error:', error);
@@ -714,7 +706,8 @@ const Mobile = () => {
         <div 
           className={classes.walletStatus}
           onClick={() => {
-            if (isBaseMiniApp()) {
+            // Web browser mobile - always show Pixelawbs
+            {
               // In Base app, use Farcaster connector directly
               if (!isConnected) {
                 const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));

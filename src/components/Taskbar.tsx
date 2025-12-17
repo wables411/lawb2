@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
-import { ThemeToggle } from './ThemeToggle';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 const useStyles = createUseStyles({
   taskbar: {
@@ -291,11 +289,6 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Public Chat
           </button>
-          {isBaseMiniApp() && (
-            <div style={{ marginTop: '1px' }} onClick={handleMenuLinkClick}>
-              <ThemeToggle asMenuItem={true} />
-            </div>
-          )}
         </div>
       )}
     </div>

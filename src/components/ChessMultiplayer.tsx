@@ -26,8 +26,6 @@ import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
-import { HowToContent as BaseAppHowToContent } from '../baseapp/HowToContent';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -82,7 +80,6 @@ interface ChessMultiplayerProps {
   onChatToggle?: () => void;
   isChatMinimized?: boolean;
   isMobile?: boolean;
-  useBaseAppHowTo?: boolean; // Force use Base app HowToContent
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -139,17 +136,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const isArbitrum = chainId === NETWORKS.arbitrum.chainId;
   const isSanko = chainId === NETWORKS.mainnet.chainId || chainId === NETWORKS.testnet.chainId;
   
-  // Base Mini App detection
-  const isBaseApp = isBaseMiniApp();
-  
-  // Debug logging for Base app detection
-  useEffect(() => {
-    if (isBaseApp) {
-      console.log('[ChessMultiplayer] ✅ Base Mini App detected - UI/UX changes active');
-    } else {
-      console.log('[ChessMultiplayer] ⚠️ Not in Base Mini App - using desktop/web UI');
-    }
-  }, [isBaseApp]);
   
   // Smart contract integration
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
@@ -5862,8 +5848,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 background: 'transparent',
                 color: '#ff0000',
                 fontWeight: 'bold',
-                fontSize: isBaseApp && isMobile ? '1.1em' : '1.3em',
-                padding: isBaseApp && isMobile ? '14px 36px' : '18px 48px',
+                fontSize: '1.3em',
+                padding: '18px 48px',
                 borderRadius: 0,
                 boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
                 border: '1px solid #ff0000',
@@ -5872,7 +5858,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 marginBottom: 8
               }}
             >
-              <span role="img" aria-label="chess">♟️🦞</span> {isBaseApp ? 'Create Match' : 'Continue'}
+              <span role="img" aria-label="chess">♟️🦞</span> Continue
             </button>
           </div>
         </div>
@@ -6409,7 +6395,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
           {sidebarView === 'howto' && (
             <div className="how-to-compact mobile-content-view">
-              {useBaseAppHowTo ? <BaseAppHowToContent variant="mobile" /> : (isBaseMiniApp() ? <BaseAppHowToContent variant="mobile" /> : <HowToContent variant="mobile" />)}
+              <HowToContent variant="mobile" />
             </div>
           )}
         </div>
@@ -6523,64 +6509,41 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     {isCreatingGame && (
                       <div className="create-form" style={{ 
                         order: 2, 
-                        marginBottom: isBaseApp && isMobile ? '10px' : '20px',
-                        maxHeight: isBaseApp && isMobile ? 'calc(100vh - 200px)' : 'none',
-                        overflowY: isBaseApp && isMobile ? 'auto' : 'visible',
-                        padding: isBaseApp && isMobile ? '8px' : undefined
+                        marginBottom: '20px',
+                        maxHeight: 'none',
+                        overflowY: 'visible',
+                        padding: undefined
                       }}>
                         <h3 style={{ 
                           color: '#ff0000',
-                          fontSize: isBaseApp && isMobile ? '18px' : undefined,
-                          marginBottom: isBaseApp && isMobile ? '8px' : undefined
+                          fontSize: undefined,
+                          marginBottom: undefined
                         }}>Create New Match</h3>
                         
-                        {/* Game Creation Flow Explanation - Base App specific */}
-                        {isBaseApp && (
-                          <div style={{ 
-                            background: 'rgba(255, 0, 0, 0.1)', 
-                            border: '1px solid #ff0000', 
-                            padding: isMobile ? '10px' : '12px', 
-                            marginBottom: isMobile ? '10px' : '15px',
-                            borderRadius: '4px',
-                            fontSize: isMobile ? '11px' : '13px',
-                            lineHeight: '1.4',
-                            color: '#ff0000'
-                          }}>
-                            <strong>📋 How to Create a Match on Base:</strong><br/>
-                            1️⃣ <strong>Select Token & Wager</strong> - Choose your token (ETH, USDC, etc.) and enter wager amount<br/>
-                            2️⃣ <strong>Select Chess Piece Set</strong> - Choose LawbStation or PixeLawbs (if you own the NFT)<br/>
-                            3️⃣ <strong>Create Match</strong> - Click "Create Match" to trigger wallet transaction<br/>
-                            <br/>
-                            <strong>💡 Note:</strong> You'll need to approve token spending first (if using ERC-20), then confirm the game creation transaction.
-                          </div>
-                        )}
-                        
                         {/* Game Creation Flow Explanation - Desktop/Web */}
-                        {!isBaseApp && (
-                          <div style={{ 
-                            background: 'rgba(255, 0, 0, 0.1)', 
-                            border: '1px solid #ff0000', 
-                            padding: '12px', 
-                            marginBottom: '15px',
-                            borderRadius: '4px',
-                            fontSize: '13px',
-                            lineHeight: '1.4',
-                            color: '#ff0000'
-                          }}>
-                            <strong>📋 Game Creation Flow:</strong><br/>
-                            1️⃣ <strong>Select Token</strong> - Choose DMT or other supported Sanko tokens<br/>
-                            2️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
-                            3️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
-                            4️⃣ <strong>Click "Create Game"</strong> - This will trigger two transactions:<br/>
-                            &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your tokens<br/>
-                            &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
-                            <br/>
-                            <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
-                          </div>
-                        )}
+                        <div style={{ 
+                          background: 'rgba(255, 0, 0, 0.1)', 
+                          border: '1px solid #ff0000', 
+                          padding: '12px', 
+                          marginBottom: '15px',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          lineHeight: '1.4',
+                          color: '#ff0000'
+                        }}>
+                          <strong>📋 Game Creation Flow:</strong><br/>
+                          1️⃣ <strong>Select Token</strong> - Choose DMT or other supported Sanko tokens<br/>
+                          2️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
+                          3️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
+                          4️⃣ <strong>Click "Create Game"</strong> - This will trigger two transactions:<br/>
+                          &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your tokens<br/>
+                          &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
+                          <br/>
+                          <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
+                        </div>
                         
-                        {/* Chain Selector - Desktop only, hidden in Base App */}
-                        {!isMobile && !isBaseApp && (
+                        {/* Chain Selector - Desktop only */}
+                        {!isMobile && (
                           <ChainSelector
                             selectedChain={selectedChain}
                             onSelect={setSelectedChain}
@@ -6654,8 +6617,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           </div>
                         )}
                         
-                        {/* Piece Set Selector - Inline for Base App, separate for Desktop/Web */}
-                        {isBaseApp && wagerType === 'token' && gameWager > 0 && (
+                        {/* Piece Set Selector - Desktop/Web uses separate selector */}
                           <div style={{ marginBottom: '15px', marginTop: '15px' }}>
                             <label style={{ fontWeight: 'bold', color: '#ff0000', marginBottom: '8px', display: 'block' }}>
                               Select Chess Piece Set:
@@ -6745,51 +6707,36 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               });
                               const isDisabled = (wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress;
                               console.log('[CREATE BUTTON] Button disabled?', isDisabled);
-                              if (isBaseApp) {
-                                // Base App: Directly create game (piece set already selected inline)
-                                if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
-                                  if (!isGameCreationInProgress) {
-                                    console.log('[CREATE BUTTON] ✅ Base App: Creating game directly');
-                                    createGame();
-                                  } else {
-                                    console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
-                                  }
+                              // Desktop/Web: Show piece set selector first
+                              if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
+                                if (!isGameCreationInProgress) {
+                                  console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
+                                  setShowPieceSetSelector(true);
                                 } else {
-                                  console.warn('[CREATE BUTTON] ❌ Validation failed');
+                                  console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
                                 }
                               } else {
-                                // Desktop/Web: Show piece set selector first
-                                if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
-                                  if (!isGameCreationInProgress) {
-                                    console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
-                                    setShowPieceSetSelector(true);
-                                  } else {
-                                    console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
-                                  }
-                                } else {
-                                  console.warn('[CREATE BUTTON] ❌ Validation failed:', {
-                                    wagerType,
-                                    gameWager,
-                                    selectedNFT,
-                                    canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT),
-                                    reason: wagerType === 'token' ? `gameWager is ${gameWager} (needs > 0)` : `selectedNFT is ${selectedNFT ? 'set' : 'not set'}`
-                                  });
-                                }
+                                console.warn('[CREATE BUTTON] ❌ Validation failed:', {
+                                  wagerType,
+                                  gameWager,
+                                  selectedNFT,
+                                  canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT),
+                                  reason: wagerType === 'token' ? `gameWager is ${gameWager} (needs > 0)` : `selectedNFT is ${selectedNFT ? 'set' : 'not set'}`
+                                });
                               }
                             }}
                             disabled={(wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress}
                             style={{
-                              padding: isBaseApp && isMobile ? '10px 16px' : '8px 16px',
+                              padding: '8px 16px',
                               backgroundColor: '#ff0000',
                               color: '#000000',
                               border: 'none',
                               borderRadius: '0px',
                               cursor: gameWager <= 0 || isGameCreationInProgress ? 'not-allowed' : 'pointer',
-                              fontWeight: 'bold',
-                              fontSize: isBaseApp && isMobile ? '14px' : undefined
+                              fontWeight: 'bold'
                             }}
                           >
-                            {isGameCreationInProgress ? 'Creating...' : isBaseApp ? 'Create Match' : 'Create Game'}
+                            {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
                           </button>
                           <button 
                             className="cancel-btn"
@@ -6814,8 +6761,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       </div>
                     )}
 
-                    {/* Piece Set Selector - Separate for Desktop/Web only */}
-                    {!isBaseApp && showPieceSetSelector && (
+                    {/* Piece Set Selector - Desktop/Web */}
+                    {showPieceSetSelector && (
                       <div style={{ order: 2, marginBottom: '20px' }}>
                         {renderPieceSetSelector()}
                       </div>
@@ -7406,7 +7353,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           initialSize={{ width: 420, height: 520 }}
           zIndex={1000}
         >
-          {useBaseAppHowTo ? <BaseAppHowToContent /> : (isBaseMiniApp() ? <BaseAppHowToContent /> : <HowToContent />)}
+          <HowToContent />
         </Popup>
       )}
       
