@@ -50,16 +50,18 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
       
       let detected = false;
       
-      // Check iframe - PRIMARY method
+      // Check iframe - PRIMARY method (most reliable)
       try {
         if (window.self !== window.top) {
           detected = true;
         }
       } catch (e) {
         // Cross-origin iframe = definitely Base app
+        // This exception is thrown when we can't access window.top from cross-origin iframe
         detected = true;
       }
       
+      // If not detected yet, check other indicators
       if (!detected) {
         // Check URL/referrer for Base/Farcaster indicators
         const hostname = window.location.hostname.toLowerCase();
@@ -67,7 +69,7 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
           const referrer = document.referrer.toLowerCase();
           if (hostname.includes('farcaster') || hostname.includes('base') ||
               referrer.includes('farcaster') || referrer.includes('base') ||
-              referrer.includes('warpcast')) {
+              referrer.includes('warpcast') || referrer.includes('wallet.farcaster')) {
             detected = true;
           }
         } catch (e) {
@@ -84,23 +86,31 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
       }
       
       if (!detected) {
+        // Final fallback - use the base function
         detected = isBaseMiniApp();
       }
       
+      // Force update if detection changed
       if (detected !== isBaseApp) {
         setIsBaseApp(detected);
       }
     };
     
+    // Check immediately
     check();
-    const t1 = setTimeout(check, 100);
-    const t2 = setTimeout(check, 500);
-    const t3 = setTimeout(check, 1000);
+    // Check again after delays to catch any timing issues
+    const t1 = setTimeout(check, 50);
+    const t2 = setTimeout(check, 100);
+    const t3 = setTimeout(check, 200);
+    const t4 = setTimeout(check, 500);
+    const t5 = setTimeout(check, 1000);
     
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
+      clearTimeout(t5);
     };
   }, [isBaseApp]);
   
