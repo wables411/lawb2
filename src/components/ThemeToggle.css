@@ -26,11 +26,68 @@
   transform: scale(0.95);
 }
 
-/* Light Mode (default - underwater theme) */
-body:not(.lawb-app-dark-mode),
-html:not(.lawb-app-dark-mode) {
+/* Underwater Mode (default) */
+.lawb-app-underwater-mode body,
+.lawb-app-underwater-mode html,
+body:not(.lawb-app-dark-mode):not(.lawb-app-light-mode),
+html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background: url('/assets/background.gif') no-repeat center center fixed !important;
   background-size: cover !important;
+}
+
+/* Light Mode */
+.lawb-app-light-mode body,
+.lawb-app-light-mode html {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+.lawb-app-light-mode .chess-page,
+.lawb-app-light-mode .chess-content,
+.lawb-app-light-mode .chess-multiplayer-lobby,
+.lawb-app-light-mode .create-form,
+.lawb-app-light-mode .game-item,
+.lawb-app-light-mode .chess-header {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.lawb-app-light-mode .chess-header h2 {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+.lawb-app-light-mode button {
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-color: #000000 !important;
+  color: #000000 !important;
+}
+
+.lawb-app-light-mode button:hover {
+  background: rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.lawb-app-light-mode .create-btn,
+.lawb-app-light-mode .create-confirm-btn {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.lawb-app-light-mode .create-btn:hover,
+.lawb-app-light-mode .create-confirm-btn:hover {
+  background: #333333 !important;
+}
+
+.lawb-app-light-mode h3,
+.lawb-app-light-mode h4 {
+  color: #000000 !important;
+}
+
+.lawb-app-light-mode .status-bar,
+.lawb-app-light-mode .game-details {
+  color: #000000 !important;
 }
 
 /* Dark Mode */

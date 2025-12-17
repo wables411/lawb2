@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
-import { ThemeToggle } from './ThemeToggle';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
 import './ChessMultiplayer.css';
@@ -136,38 +135,8 @@ const ChessPage: React.FC = () => {
     setIsChatVisible(false);
   };
 
-  const isBaseApp = isBaseMiniApp();
-  
-  // Debug logging for Base app detection
-  useEffect(() => {
-    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
-    console.log('[ChessPage] Version:', version, 'Base App Detected:', isBaseApp);
-    if (isBaseApp) {
-      console.log('[ChessPage] ✅ Base Mini App detected - Theme toggle should be visible (v2.0.0)');
-    } else {
-      console.log('[ChessPage] ⚠️ Not in Base Mini App - no theme toggle');
-    }
-  }, [isBaseApp]);
-
   return (
     <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
-      {isBaseApp && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          zIndex: 10000,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          padding: '8px',
-          borderRadius: '8px',
-          border: '2px solid #ff0000'
-        }}>
-          <ThemeToggle />
-        </div>
-      )}
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
           <ChessGame 

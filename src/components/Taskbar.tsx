@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
+import { ThemeToggle } from './ThemeToggle';
+import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 const useStyles = createUseStyles({
   taskbar: {
@@ -62,6 +64,26 @@ const useStyles = createUseStyles({
     marginBottom: '1px',
     cursor: 'pointer',
     fontSize: '12px',
+    '&:hover': {
+      background: '#d0d0d0',
+      border: '2px inset #fff'
+    },
+    '&:active': {
+      border: '2px inset #c0c0c0'
+    }
+  },
+  themeMenuItem: {
+    display: 'block',
+    padding: '4px 12px',
+    color: '#000',
+    textDecoration: 'none',
+    background: '#c0c0c0',
+    border: '2px outset #fff',
+    marginBottom: '1px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    width: '100%',
+    textAlign: 'left',
     '&:hover': {
       background: '#d0d0d0',
       border: '2px inset #fff'
@@ -269,6 +291,11 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Public Chat
           </button>
+          {isBaseMiniApp() && (
+            <div style={{ marginTop: '1px' }} onClick={handleMenuLinkClick}>
+              <ThemeToggle asMenuItem={true} />
+            </div>
+          )}
         </div>
       )}
     </div>

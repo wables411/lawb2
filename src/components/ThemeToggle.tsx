@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 import './ThemeToggle.css';
 
-export const ThemeToggle: React.FC = () => {
+type ThemeMode = 'underwater' | 'light' | 'dark';
+
+export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = false }) => {
   const isBaseApp = isBaseMiniApp();
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window === 'undefined' || !isBaseApp) return false;
-    const saved = localStorage.getItem('lawb-app-theme');
-    return saved === 'dark';
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined' || !isBaseApp) return 'underwater';
+    const saved = localStorage.getItem('lawb-app-theme') as ThemeMode;
+    return saved && ['underwater', 'light', 'dark'].includes(saved) ? saved : 'underwater';
   });
 
   useEffect(() => {
@@ -16,39 +18,75 @@ export const ThemeToggle: React.FC = () => {
     const root = document.documentElement;
     const body = document.body;
     
-    if (isDarkMode) {
-      root.classList.add('lawb-app-dark-mode');
-      body.classList.add('lawb-app-dark-mode');
-      localStorage.setItem('lawb-app-theme', 'dark');
-    } else {
-      root.classList.remove('lawb-app-dark-mode');
-      body.classList.remove('lawb-app-dark-mode');
-      localStorage.setItem('lawb-app-theme', 'light');
+    // Remove all theme classes first
+    root.classList.remove('lawb-app-dark-mode', 'lawb-app-light-mode', 'lawb-app-underwater-mode');
+    body.classList.remove('lawb-app-dark-mode', 'lawb-app-light-mode', 'lawb-app-underwater-mode');
+    
+    // Add the current theme class
+    root.classList.add(`lawb-app-${themeMode}-mode`);
+    body.classList.add(`lawb-app-${themeMode}-mode`);
+    localStorage.setItem('lawb-app-theme', themeMode);
+  }, [themeMode, isBaseApp]);
+
+  const cycleTheme = () => {
+    const modes: ThemeMode[] = ['underwater', 'light', 'dark'];
+    const currentIndex = modes.indexOf(themeMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    setThemeMode(modes[nextIndex]);
+  };
+
+  const getThemeLabel = () => {
+    switch (themeMode) {
+      case 'underwater': return 'Underwater';
+      case 'light': return 'Light';
+      case 'dark': return 'Dark';
     }
-  }, [isDarkMode, isBaseApp]);
+  };
 
-  // Debug logging
-  useEffect(() => {
-    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
-    console.log('[ThemeToggle] Version:', version, 'Base App:', isBaseApp, 'Dark Mode:', isDarkMode);
-  }, [isBaseApp, isDarkMode]);
+  const getThemeIcon = () => {
+    switch (themeMode) {
+      case 'underwater': return '🌊';
+      case 'light': return '☀️';
+      case 'dark': return '🌙';
+    }
+  };
 
-  if (!isBaseApp) {
-    console.log('[ThemeToggle] Not rendering - not in Base app');
-    return null;
+  if (!isBaseApp) return null;
+
+  // Render as menu item
+  if (asMenuItem) {
+    return (
+      <button
+        type="button"
+        className="lawb-theme-menu-item"
+        onClick={cycleTheme}
+        style={{
+          width: '100%',
+          border: 'none',
+          textAlign: 'left',
+          background: 'transparent',
+          padding: '4px 12px',
+          color: '#000',
+          cursor: 'pointer',
+          fontSize: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        <span>{getThemeIcon()}</span>
+        <span>Theme: {getThemeLabel()}</span>
+      </button>
+    );
   }
 
-  console.log('[ThemeToggle] Rendering toggle button');
-
+  // Render as standalone button (for backwards compatibility)
   return (
     <button
       className="lawb-theme-toggle"
-      onClick={() => {
-        console.log('[ThemeToggle] Toggle clicked, switching to:', !isDarkMode ? 'dark' : 'light');
-        setIsDarkMode(!isDarkMode);
-      }}
-      title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-      aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      onClick={cycleTheme}
+      title={`Current: ${getThemeLabel()} Mode - Click to cycle`}
+      aria-label={`Current: ${getThemeLabel()} Mode - Click to cycle`}
       style={{
         fontSize: '24px',
         width: '48px',
@@ -58,7 +96,7 @@ export const ThemeToggle: React.FC = () => {
         justifyContent: 'center'
       }}
     >
-      {isDarkMode ? '☀️' : '🌙'}
+      {getThemeIcon()}
     </button>
   );
 };
