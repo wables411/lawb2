@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 import { ThemeToggle } from './ThemeToggle';
 
+interface TaskbarStyleProps {
+  isOpen: boolean;
+  isMobile?: boolean;
+}
+
 const useStyles = createUseStyles({
   taskbar: {
     position: 'fixed',
@@ -48,10 +53,12 @@ const useStyles = createUseStyles({
     background: '#c0c0c0',
     border: '2px outset #fff',
     padding: '5px',
-    display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
+    display: ({ isOpen }: TaskbarStyleProps) => (isOpen ? 'block' : 'none'),
     zIndex: 9999,
-    maxHeight: '300px',
-    overflowY: 'auto'
+    maxHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vh - 100px)' : '300px',
+    maxWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vw - 20px)' : 'auto',
+    overflowY: 'auto',
+    minWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? '200px' : 'auto'
   },
   menuLink: {
     display: 'block',
@@ -132,12 +139,14 @@ interface TaskbarProps {
     ens?: string;
   };
   onOpenPublicChat?: () => void;
+  onOpenProfile?: () => void;
 }
 
-const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, walletButton, connectionStatus, onOpenPublicChat }) => {
+const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, walletButton, connectionStatus, onOpenPublicChat, onOpenProfile }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const classes = useStyles({ isOpen: isMenuOpen });
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const classes = useStyles({ isOpen: isMenuOpen, isMobile });
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -290,15 +299,20 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Public Chat
           </button>
-          <div style={{
-            padding: '4px 12px',
-            background: '#c0c0c0',
-            border: '2px outset #fff',
-            marginBottom: '1px',
-            width: '100%'
-          }}>
-            <ThemeToggle />
-          </div>
+          {onOpenProfile && (
+            <button
+              type="button"
+              className={classes.menuLink}
+              style={{ width: '100%', border: 'none', textAlign: 'left' }}
+              onClick={() => {
+                handleMenuLinkClick();
+                onOpenProfile();
+              }}
+            >
+              Profile
+            </button>
+          )}
+          <ThemeToggle asMenuItem={true} />
         </div>
       )}
     </div>

@@ -416,8 +416,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   useEffect(() => {
     if (currentInviteCode && currentRoom === 'public') {
       setCurrentRoom('private');
+    } else if (!currentInviteCode && currentRoom === 'private') {
+      // If no invite code, switch back to public
+      setCurrentRoom('public');
     }
-  }, [currentInviteCode]);
+  }, [currentInviteCode, currentRoom]);
   
   if (!isOpen) return null;
   

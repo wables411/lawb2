@@ -93,6 +93,7 @@ function BaseApp() {
           ens: undefined
         }}
         onOpenPublicChat={openPublicChat}
+        onOpenProfile={() => setShowProfile(true)}
       />
 
       {/* Public Chat */}
