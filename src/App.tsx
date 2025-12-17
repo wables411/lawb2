@@ -42,6 +42,9 @@ function App() {
   
   // No auto-popup on load - user must click to open popups
   const [activePopup, setActivePopup] = useState<string | null>(null);
+  
+  // Base app detection for theme toggle
+  const baseAppDetected = isBaseMiniApp();
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
