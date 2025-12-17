@@ -95,6 +95,7 @@ const BaseAppChessPage: React.FC = () => {
             onChatToggle={handleChatToggle}
             isChatMinimized={!isChatVisible}
             isMobile={isMobile}
+            useBaseAppHowTo={true}
           />
         ) : (
           <ChessMultiplayer 
@@ -106,6 +107,7 @@ const BaseAppChessPage: React.FC = () => {
             onChatToggle={handleChatToggle}
             isChatMinimized={!isChatVisible}
             isMobile={isMobile}
+            useBaseAppHowTo={true}
           />
         )}
       </div>

@@ -82,6 +82,7 @@ interface ChessMultiplayerProps {
   onChatToggle?: () => void;
   isChatMinimized?: boolean;
   isMobile?: boolean;
+  useBaseAppHowTo?: boolean; // Force use Base app HowToContent
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
@@ -127,7 +128,7 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
   }
 }
 
-export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
+export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false, useBaseAppHowTo = false }) => {
 
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -6408,7 +6409,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
           {sidebarView === 'howto' && (
             <div className="how-to-compact mobile-content-view">
-              {isBaseMiniApp() ? <BaseAppHowToContent variant="mobile" /> : <HowToContent variant="mobile" />}
+              {useBaseAppHowTo ? <BaseAppHowToContent variant="mobile" /> : (isBaseMiniApp() ? <BaseAppHowToContent variant="mobile" /> : <HowToContent variant="mobile" />)}
             </div>
           )}
         </div>
@@ -7405,7 +7406,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           initialSize={{ width: 420, height: 520 }}
           zIndex={1000}
         >
-          {isBaseMiniApp() ? <BaseAppHowToContent /> : <HowToContent />}
+          {useBaseAppHowTo ? <BaseAppHowToContent /> : (isBaseMiniApp() ? <BaseAppHowToContent /> : <HowToContent />)}
         </Popup>
       )}
       
