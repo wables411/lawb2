@@ -11,8 +11,11 @@ import { WagmiProvider } from 'wagmi';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 
-// Lazy load the chess page to reduce initial bundle size
+// Lazy load components - separate for Base app vs web browser
 const ChessPage = lazy(() => import('./components/ChessPage'));
+const BaseApp = lazy(() => import('./baseapp/BaseApp'));
+const BaseAppChessPage = lazy(() => import('./baseapp/BaseAppChessPage'));
+
 import { appKit, wagmiAdapter } from './appkit.ts'; // Import the appKit instance and wagmi adapter
 import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
 import { config as wagmiConfig } from './wagmi';
@@ -41,13 +44,16 @@ const Root = () => {
   const isBaseApp = isBaseMiniApp();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // CRITICAL: If we're in Base/Farcaster app, ALWAYS use App.tsx regardless of screen size
-  // The media query is only for regular browser users, not Base app users
+  // BASE APP: Use completely separate BaseApp component
   if (isBaseApp) {
-    return <App />;
+    return (
+      <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Base App...</div>}>
+        <BaseApp />
+      </Suspense>
+    );
   }
   
-  // For regular browser users, use media query to decide
+  // WEB BROWSER: Use regular App/Mobile components
   return isMobile ? <Mobile /> : <App />;
 };
 
@@ -107,17 +113,29 @@ const AppWithWagmi = () => {
           <Routes>
             {isChessSubdomain ? (
               <Route path="/*" element={
-                <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                  <ChessPage />
-                </Suspense>
+                isBaseMiniApp() ? (
+                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Base App Chess...</div>}>
+                    <BaseAppChessPage />
+                  </Suspense>
+                ) : (
+                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                    <ChessPage />
+                  </Suspense>
+                )
               } />
             ) : (
               <>
                 <Route path="/" element={<Root />} />
                 <Route path="/chess" element={
-                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                    <ChessPage />
-                  </Suspense>
+                  isBaseMiniApp() ? (
+                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Base App Chess...</div>}>
+                      <BaseAppChessPage />
+                    </Suspense>
+                  ) : (
+                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                      <ChessPage />
+                    </Suspense>
+                  )
                 } />
               </>
             )}

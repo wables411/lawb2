@@ -16,6 +16,8 @@ import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../con
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
+import { HowToContent as BaseAppHowToContent } from '../baseapp/HowToContent';
+import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 import './ChessGame.css';
 
@@ -2528,7 +2530,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
               {sidebarView === 'howto' && (
                 <div className="how-to-compact mobile-content-view">
-                  <HowToContent variant="mobile" />
+                  {isBaseMiniApp() ? <BaseAppHowToContent variant="mobile" /> : <HowToContent variant="mobile" />}
                 </div>
               )}
             </div>
@@ -2828,7 +2830,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 420, height: 520 }}
           zIndex={1000}
         >
-          <HowToContent />
+          {isBaseMiniApp() ? <BaseAppHowToContent /> : <HowToContent />}
         </Popup>
         )}
         
@@ -3186,7 +3188,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
               {sidebarView === 'howto' && (
                 <div className="how-to-compact mobile-content-view">
-                  <HowToContent variant="mobile" />
+                  {isBaseMiniApp() ? <BaseAppHowToContent variant="mobile" /> : <HowToContent variant="mobile" />}
                 </div>
               )}
               
@@ -3699,7 +3701,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 420, height: 520 }}
           zIndex={1000}
         >
-          <HowToContent />
+          {isBaseMiniApp() ? <BaseAppHowToContent /> : <HowToContent />}
         </Popup>
       )}
       

@@ -26,6 +26,8 @@ import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
+import { HowToContent as BaseAppHowToContent } from '../baseapp/HowToContent';
+import { isBaseMiniApp } from '../utils/baseMiniapp';
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 // Get contract address based on current network
@@ -6407,7 +6409,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
           {sidebarView === 'howto' && (
             <div className="how-to-compact mobile-content-view">
-              <HowToContent variant="mobile" />
+              {isBaseMiniApp() ? <BaseAppHowToContent variant="mobile" /> : <HowToContent variant="mobile" />}
             </div>
           )}
         </div>
@@ -7404,7 +7406,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           initialSize={{ width: 420, height: 520 }}
           zIndex={1000}
         >
-          <HowToContent />
+          {isBaseMiniApp() ? <BaseAppHowToContent /> : <HowToContent />}
         </Popup>
       )}
       
