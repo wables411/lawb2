@@ -6532,10 +6532,11 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                           lineHeight: '1.4',
                           color: '#ff0000'
                         }}>
-                          <strong>📋 How to Create a Match on Base:</strong><br/>
-                          1️⃣ <strong>Select Token & Wager</strong> - Choose your token (ETH, USDC, etc.) and enter wager amount<br/>
-                          2️⃣ <strong>Select Chess Piece Set</strong> - Choose LawbStation or PixeLawbs (if you own the NFT)<br/>
-                          3️⃣ <strong>Create Match</strong> - Click "Create Match" to trigger wallet transaction<br/>
+                          <strong>📋 How to Create a Match:</strong><br/>
+                          1️⃣ <strong>Select Token</strong> - Choose your token below (ETH, USDC, etc.)<br/>
+                          2️⃣ <strong>Enter Wager Amount</strong> - Set your wager amount<br/>
+                          3️⃣ <strong>Select Chess Piece Set</strong> - Choose LawbStation or PixeLawbs (if you own the NFT)<br/>
+                          4️⃣ <strong>Create Match</strong> - Click "Create Match" to trigger wallet transaction<br/>
                           <br/>
                           <strong>💡 Note:</strong> You'll need to approve token spending first (if using ERC-20), then confirm the game creation transaction.
                         </div>

@@ -63,18 +63,38 @@ interface DesktopProps {
 const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
   // Only show desktop icons (row >= 0, col >= 0)
   const desktopIcons = ICONS.filter(icon => icon.row >= 0 && icon.col >= 0);
+  
+  // Check if mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  
   // Recalculate positions for visible desktop icons, top-left oriented
   const getPositions = () => {
     const positions: Record<string, { x: number; y: number }> = {};
-    let row = 0, col = 0;
-    desktopIcons.forEach(icon => {
-      positions[icon.id] = {
-        x: START_LEFT + col * (ICON_WIDTH + ICON_HGAP),
-        y: START_TOP + row * (ICON_HEIGHT + ICON_VGAP),
-      };
-      row++;
-      if (row >= 4) { row = 0; col++; }
-    });
+    
+    if (isMobile) {
+      // Mobile: Use 2-column grid that fits screen
+      let index = 0;
+      desktopIcons.forEach(icon => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        positions[icon.id] = {
+          x: START_LEFT + col * (ICON_WIDTH + ICON_HGAP),
+          y: START_TOP + row * (ICON_HEIGHT + ICON_VGAP),
+        };
+        index++;
+      });
+    } else {
+      // Desktop: Original column-based layout
+      let row = 0, col = 0;
+      desktopIcons.forEach(icon => {
+        positions[icon.id] = {
+          x: START_LEFT + col * (ICON_WIDTH + ICON_HGAP),
+          y: START_TOP + row * (ICON_HEIGHT + ICON_VGAP),
+        };
+        row++;
+        if (row >= 4) { row = 0; col++; }
+      });
+    }
     return positions;
   };
   const [positions, setPositions] = useState(getPositions());
@@ -105,10 +125,12 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
       <div style={{ 
         position: 'relative',
         width: '100%',
+        maxWidth: '100vw',
         height: 'calc(100vh - 60px)',
-        padding: '10px',
+        padding: isMobile ? '8px' : '10px',
         zIndex: 10,
-        overflow: 'visible'
+        overflow: isMobile ? 'hidden' : 'visible',
+        boxSizing: 'border-box'
       }}>
         {desktopIcons.map(icon => (
           <Icon
