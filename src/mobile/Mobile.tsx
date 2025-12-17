@@ -693,26 +693,13 @@ const Mobile = () => {
         <div 
           className={classes.walletStatus}
           onClick={() => {
-            // Web browser mobile - always show Pixelawbs
-            {
-              // In Base app, use Farcaster connector directly
-              if (!isConnected) {
-                const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-                if (farcasterConnector) {
-                  connect({ connector: farcasterConnector });
-                }
-              } else {
-                // In Base app, just disconnect using wagmi
-                disconnect();
-              }
-            } else {
+            // Web browser mobile - use AppKit
             if (!isConnected) {
               // Open wallet connection modal
               void open({ view: 'Connect' });
             } else {
               // Open account management modal (chain selector/disconnect)
               void open({ view: 'Account' });
-              }
             }
           }}
           style={{ cursor: 'pointer' }}
