@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
+import { ThemeToggle } from './ThemeToggle';
 
 const useStyles = createUseStyles({
   taskbar: {
@@ -289,6 +290,15 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           >
             Public Chat
           </button>
+          <div style={{
+            padding: '4px 12px',
+            background: '#c0c0c0',
+            border: '2px outset #fff',
+            marginBottom: '1px',
+            width: '100%'
+          }}>
+            <ThemeToggle />
+          </div>
         </div>
       )}
     </div>

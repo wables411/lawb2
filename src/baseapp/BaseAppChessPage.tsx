@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BaseAppChessGame } from './BaseAppChessGame';
 import { BaseAppChessMultiplayer } from './BaseAppChessMultiplayer';
 import { ChessChat } from '../components/ChessChat';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import { initBaseMiniApp } from '../utils/baseMiniapp';
 import '../components/ChessMultiplayer.css';
@@ -71,21 +70,6 @@ const BaseAppChessPage: React.FC = () => {
 
   return (
     <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
-      {/* Theme Toggle - Always visible in Base app */}
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        zIndex: 10000,
-        backgroundColor: 'rgba(192, 192, 192, 0.95)',
-        border: '2px outset #fff',
-        padding: '8px',
-        borderRadius: '4px',
-        boxShadow: '2px 2px 4px rgba(0,0,0,0.3)'
-      }}>
-        <ThemeToggle />
-      </div>
-
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
           <BaseAppChessGame 

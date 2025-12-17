@@ -16,6 +16,7 @@ import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../con
 import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 import '../components/ChessGame.css';
 
@@ -2399,6 +2400,19 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 >
                   Profile
                 </button>
+                <div style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '12px 16px',
+                  marginBottom: '4px',
+                  background: '#c0c0c0',
+                  border: '2px outset #fff',
+                  textAlign: 'left',
+                  minHeight: '44px',
+                  fontSize: '16px'
+                }}>
+                  <ThemeToggle />
+                </div>
                 {onBackToModeSelect && (
                   <button 
                     className="mobile-menu-btn"
@@ -2696,6 +2710,19 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             >
               Profile
             </button>
+            <div style={{
+              display: 'block',
+              width: '100%',
+              padding: isMobile ? '12px 16px' : '8px',
+              marginBottom: '4px',
+              background: '#c0c0c0',
+              border: '2px outset #fff',
+              textAlign: 'left',
+              minHeight: isMobile ? '44px' : 'auto',
+              fontSize: isMobile ? '16px' : '14px'
+            }}>
+              <ThemeToggle />
+            </div>
             {onBackToModeSelect && (
               <button
                 onClick={() => {

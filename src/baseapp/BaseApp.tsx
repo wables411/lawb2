@@ -84,21 +84,6 @@ function BaseApp() {
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <Desktop onIconClick={handleIconClick} />
 
-      {/* Theme Toggle - Always visible in Base app */}
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        zIndex: 10000,
-        backgroundColor: 'rgba(192, 192, 192, 0.95)',
-        border: '2px outset #fff',
-        padding: '8px',
-        borderRadius: '4px',
-        boxShadow: '2px 2px 4px rgba(0,0,0,0.3)'
-      }}>
-        <ThemeToggle />
-      </div>
-
       <Taskbar
         minimizedWindows={Array.from(minimizedPopups)}
         onRestoreWindow={restorePopup}
