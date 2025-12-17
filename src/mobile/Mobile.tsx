@@ -315,8 +315,17 @@ const Mobile = () => {
     return () => window.clearInterval(interval);
   }, []);
 
+  // Show popup on load - ASCII Lawbs for Base app, Pixelawbs for desktop/mobile
   useEffect(() => {
-    setShowPixelawbsPopup(true);
+    const isBaseApp = isBaseMiniApp();
+    console.log('[Mobile] Base app detected:', isBaseApp);
+    if (isBaseApp) {
+      console.log('[Mobile] ✅ Showing ASCII Lawbs popup (Base app)');
+      setShowAsciilawbs(true);
+    } else {
+      console.log('[Mobile] ⚠️ Showing Pixelawbs popup (desktop/mobile)');
+      setShowPixelawbsPopup(true);
+    }
   }, []);
 
   // Initialize Base Mini App SDK when interface is ready
