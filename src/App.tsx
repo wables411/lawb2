@@ -39,28 +39,34 @@ function App() {
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // Base app detection - check immediately and make it reactive
+  // Base app detection - check immediately
   const baseAppDetected = isBaseMiniApp();
   
   // Base app: show ASCII Lawbs popup, desktop/mobile: show Pixelawbs popup
-  // Calculate initial popup based on Base app detection
-  const getInitialPopup = (): string | null => {
-    // Check Base app detection multiple ways to be sure
-    const detected = isBaseMiniApp();
-    return detected ? 'asciilawbs-popup' : 'pixelawbs-popup';
-  };
+  // ALWAYS check Base app detection for initial popup - don't rely on state
+  const [activePopup, setActivePopup] = useState<string | null>(() => {
+    // Force check Base app detection at initialization
+    return isBaseMiniApp() ? 'asciilawbs-popup' : 'pixelawbs-popup';
+  });
   
-  const [activePopup, setActivePopup] = useState<string | null>(getInitialPopup);
-  
-  // Force update popup if Base app is detected (runs on every render if baseAppDetected is true)
+  // Continuously ensure popup is correct for Base app
+  // This runs on mount and whenever baseAppDetected might change
   useEffect(() => {
-    if (baseAppDetected && activePopup !== 'asciilawbs-popup') {
-      setActivePopup('asciilawbs-popup');
-    } else if (!baseAppDetected && activePopup === 'asciilawbs-popup' && activePopup !== 'pixelawbs-popup') {
-      // Only set to pixelawbs if we're not in Base app and currently showing asciilawbs
-      setActivePopup('pixelawbs-popup');
+    // Re-check detection in case iframe wasn't ready on first check
+    const detected = isBaseMiniApp();
+    
+    if (detected) {
+      // In Base app - MUST show ASCII Lawbs
+      if (activePopup !== 'asciilawbs-popup') {
+        setActivePopup('asciilawbs-popup');
+      }
+    } else {
+      // Not in Base app - show Pixelawbs (only if currently showing ASCII Lawbs)
+      if (activePopup === 'asciilawbs-popup') {
+        setActivePopup('pixelawbs-popup');
+      }
     }
-  }, [baseAppDetected, activePopup]);
+  }, [activePopup]); // Run whenever activePopup changes, and on mount
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   

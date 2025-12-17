@@ -316,43 +316,43 @@ const Mobile = () => {
   }, []);
 
   // Show popup on load - ASCII Lawbs for Base app, Pixelawbs for desktop/mobile
-  // Check Base app detection and set popup accordingly
+  // Continuously check and enforce correct popup based on Base app detection
   useEffect(() => {
-    const isBaseApp = isBaseMiniApp();
-    if (isBaseApp) {
-      // Base app: show ASCII Lawbs
-      setShowAsciilawbs(true);
-      setShowPixelawbsPopup(false);
-    } else {
-      // Desktop/mobile: show Pixelawbs
-      setShowPixelawbsPopup(true);
-      setShowAsciilawbs(false);
-    }
-  }, []);
-  
-  // Re-check Base app detection periodically to catch delayed iframe detection
-  useEffect(() => {
-    const checkAndUpdate = () => {
+    const updatePopup = () => {
       const isBaseApp = isBaseMiniApp();
-      if (isBaseApp && !showAsciilawbs) {
-        setShowAsciilawbs(true);
-        setShowPixelawbsPopup(false);
-      } else if (!isBaseApp && showAsciilawbs && !showPixelawbsPopup) {
-        setShowPixelawbsPopup(true);
-        setShowAsciilawbs(false);
+      if (isBaseApp) {
+        // Base app: MUST show ASCII Lawbs, hide Pixelawbs
+        if (!showAsciilawbs) {
+          setShowAsciilawbs(true);
+        }
+        if (showPixelawbsPopup) {
+          setShowPixelawbsPopup(false);
+        }
+      } else {
+        // Desktop/mobile: show Pixelawbs, hide ASCII Lawbs
+        if (!showPixelawbsPopup) {
+          setShowPixelawbsPopup(true);
+        }
+        if (showAsciilawbs) {
+          setShowAsciilawbs(false);
+        }
       }
     };
     
-    // Check immediately and then again after delays
-    checkAndUpdate();
-    const t1 = setTimeout(checkAndUpdate, 100);
-    const t2 = setTimeout(checkAndUpdate, 500);
-    const t3 = setTimeout(checkAndUpdate, 1000);
+    // Check immediately
+    updatePopup();
+    
+    // Check again after delays to catch any timing issues with iframe detection
+    const t1 = setTimeout(updatePopup, 50);
+    const t2 = setTimeout(updatePopup, 200);
+    const t3 = setTimeout(updatePopup, 500);
+    const t4 = setTimeout(updatePopup, 1000);
     
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [showAsciilawbs, showPixelawbsPopup]);
 
