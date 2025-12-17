@@ -77,17 +77,8 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
-  // Additional check: if SDK context is available, we're definitely in Base App
-  // The SDK's context property is only populated when actually running in Base/Farcaster
-  try {
-    if (sdk && sdk.context) {
-      // SDK context exists - we're in Base App
-      console.log('[Base Mini App Detection] ✅ Detected via SDK context');
-      return true;
-    }
-  } catch (e) {
-    // SDK context check failed
-  }
+  // Note: SDK context check is async and handled in isBaseMiniAppAsync()
+  // We can't check sdk.context synchronously since it's a Promise
   
   // Log detection failure for debugging
   console.log('[Base Mini App Detection] ❌ Not detected. hostname:', hostname, 'referrer:', document.referrer, 'userAgent:', userAgent);
