@@ -20,35 +20,46 @@ if (typeof window !== 'undefined' && sdk && sdk.actions && sdk.actions.ready) {
 export const isBaseMiniApp = () => {
   if (typeof window === 'undefined') return false;
   
-  // Check for environment variable or URL parameter
+  // Check for environment variable or URL parameter (highest priority)
   if (import.meta.env.VITE_BASE_MINIAPP === 'true' || 
       new URLSearchParams(window.location.search).has('base_miniapp')) {
     return true;
   }
   
   // Check if we're running in an iframe (embedded in Base/Farcaster app)
+  // This is the PRIMARY detection method for Farcaster apps
   try {
     if (window.self !== window.top) {
-      // We're in an iframe - likely embedded in Base/Farcaster app
+      // We're in an iframe - definitely embedded in Base/Farcaster app
       return true;
     }
   } catch (e) {
     // Cross-origin iframe - can't access window.top, but we're definitely in an iframe
-    // This is the case when embedded in Farcaster app
+    // This is the case when embedded in Farcaster app (most common scenario)
+    // The exception is thrown because we can't access window.top from cross-origin iframe
     return true;
   }
   
-  // Check for Farcaster-specific indicators
+  // Check for Farcaster-specific domain indicators
   // Farcaster app uses wallet.farcaster.xyz domain
-  if (window.location.hostname.includes('farcaster.xyz') || 
-      window.location.hostname.includes('warpcast.com')) {
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname.includes('farcaster.xyz') || 
+      hostname.includes('warpcast.com') ||
+      hostname.includes('base.org') ||
+      hostname.includes('base.dev')) {
+    return true;
+  }
+  
+  // Check user agent for Farcaster/Base app indicators
+  const userAgent = navigator.userAgent?.toLowerCase() || '';
+  if (userAgent.includes('farcaster') || userAgent.includes('base')) {
     return true;
   }
   
   // NOTE: We do NOT check SDK availability here because the SDK is statically imported
   // and will always be available in the bundle, even when not in Base app context.
   // The SDK being available doesn't mean we're in Base app - we rely on the other
-  // indicators above (iframe, domain, env vars) which are more reliable.
+  // indicators above (iframe, domain, env vars, user agent) which are more reliable.
   
   return false;
 };

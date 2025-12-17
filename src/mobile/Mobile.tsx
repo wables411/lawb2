@@ -316,17 +316,45 @@ const Mobile = () => {
   }, []);
 
   // Show popup on load - ASCII Lawbs for Base app, Pixelawbs for desktop/mobile
+  // Check Base app detection and set popup accordingly
   useEffect(() => {
     const isBaseApp = isBaseMiniApp();
-    console.log('[Mobile] Base app detected:', isBaseApp);
     if (isBaseApp) {
-      console.log('[Mobile] ✅ Showing ASCII Lawbs popup (Base app)');
+      // Base app: show ASCII Lawbs
       setShowAsciilawbs(true);
+      setShowPixelawbsPopup(false);
     } else {
-      console.log('[Mobile] ⚠️ Showing Pixelawbs popup (desktop/mobile)');
+      // Desktop/mobile: show Pixelawbs
       setShowPixelawbsPopup(true);
+      setShowAsciilawbs(false);
     }
   }, []);
+  
+  // Re-check Base app detection periodically to catch delayed iframe detection
+  useEffect(() => {
+    const checkAndUpdate = () => {
+      const isBaseApp = isBaseMiniApp();
+      if (isBaseApp && !showAsciilawbs) {
+        setShowAsciilawbs(true);
+        setShowPixelawbsPopup(false);
+      } else if (!isBaseApp && showAsciilawbs && !showPixelawbsPopup) {
+        setShowPixelawbsPopup(true);
+        setShowAsciilawbs(false);
+      }
+    };
+    
+    // Check immediately and then again after delays
+    checkAndUpdate();
+    const t1 = setTimeout(checkAndUpdate, 100);
+    const t2 = setTimeout(checkAndUpdate, 500);
+    const t3 = setTimeout(checkAndUpdate, 1000);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [showAsciilawbs, showPixelawbsPopup]);
 
   // Initialize Base Mini App SDK when interface is ready
   // Call ready() after component mounts to hide splash screen (per Farcaster docs)

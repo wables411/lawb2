@@ -39,67 +39,26 @@ function App() {
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // Base app detection - check on every render to catch timing issues
-  const [baseAppDetected, setBaseAppDetected] = useState(() => {
-    const detected = isBaseMiniApp();
-    console.log('[App] Initial Base app detection:', detected);
-    return detected;
-  });
+  // Base app detection - check immediately and make it reactive
+  const baseAppDetected = isBaseMiniApp();
   
-  // Re-check Base app detection periodically in case iframe detection is delayed
-  useEffect(() => {
-    const checkBaseApp = () => {
-      const detected = isBaseMiniApp();
-      if (detected !== baseAppDetected) {
-        console.log('[App] Base app detection changed:', baseAppDetected, '->', detected);
-        setBaseAppDetected(detected);
-      }
-    };
-    
-    // Check immediately
-    checkBaseApp();
-    
-    // Check again after a short delay (in case iframe detection needs time)
-    const timeout = setTimeout(checkBaseApp, 100);
-    const timeout2 = setTimeout(checkBaseApp, 500);
-    const timeout3 = setTimeout(checkBaseApp, 1000);
-    
-    return () => {
-      clearTimeout(timeout);
-      clearTimeout(timeout2);
-      clearTimeout(timeout3);
-    };
-  }, [baseAppDetected]);
-  
-  // Base app: show mint popup, desktop/mobile: show pixelawbs popup
-  const [activePopup, setActivePopup] = useState<string | null>(() => {
+  // Base app: show ASCII Lawbs popup, desktop/mobile: show Pixelawbs popup
+  // Calculate initial popup based on Base app detection
+  const getInitialPopup = (): string | null => {
+    // Check Base app detection multiple ways to be sure
     const detected = isBaseMiniApp();
-    console.log('[App] Initial popup state - Base detected:', detected, 'Setting to:', detected ? 'asciilawbs-popup' : 'pixelawbs-popup');
     return detected ? 'asciilawbs-popup' : 'pixelawbs-popup';
-  });
+  };
   
-  // Debug logging with version check and force popup update
+  const [activePopup, setActivePopup] = useState<string | null>(getInitialPopup);
+  
+  // Force update popup if Base app is detected (runs on every render if baseAppDetected is true)
   useEffect(() => {
-    const version = (window as any).__LAWB_APP_VERSION__ || 'unknown';
-    console.log('[App] Version:', version, 'Base App Detected:', baseAppDetected, 'Current popup:', activePopup);
-    console.log('[App] window.self !== window.top:', window.self !== window.top);
-    try {
-      console.log('[App] window.top check (cross-origin?):', window.self === window.top ? 'same' : 'different (iframe)');
-    } catch (e) {
-      console.log('[App] window.top check failed (cross-origin iframe):', e);
-    }
-    console.log('[App] window.location.href:', window.location.href);
-    console.log('[App] window.location.hostname:', window.location.hostname);
-    
-    if (baseAppDetected) {
-      console.log('[App] ✅ Base Mini App detected - FORCING ASCII Lawbs popup (v2.0.0)');
-      // Force set to ASCII Lawbs if in Base app - use setTimeout to ensure it happens after render
-      setTimeout(() => {
-        console.log('[App] Setting activePopup to asciilawbs-popup');
-        setActivePopup('asciilawbs-popup');
-      }, 0);
-    } else {
-      console.log('[App] ⚠️ Not in Base Mini App - showing Pixelawbs popup');
+    if (baseAppDetected && activePopup !== 'asciilawbs-popup') {
+      setActivePopup('asciilawbs-popup');
+    } else if (!baseAppDetected && activePopup === 'asciilawbs-popup' && activePopup !== 'pixelawbs-popup') {
+      // Only set to pixelawbs if we're not in Base app and currently showing asciilawbs
+      setActivePopup('pixelawbs-popup');
     }
   }, [baseAppDetected, activePopup]);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
