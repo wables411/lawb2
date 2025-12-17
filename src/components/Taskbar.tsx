@@ -10,9 +10,9 @@ interface TaskbarStyleProps {
 const useStyles = createUseStyles({
   taskbar: {
     position: 'fixed',
-    left: '10%',
+    left: 0,
     bottom: 0,
-    width: '80%',
+    width: '100%',
     height: 40,
     background: '#c0c0c0',
     borderTop: '2px outset #fff',
@@ -20,6 +20,9 @@ const useStyles = createUseStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 200,
+    paddingLeft: '10%',
+    paddingRight: '10%',
+    boxSizing: 'border-box',
   },
   leftSection: {
     display: 'flex',

@@ -23,6 +23,18 @@ const useStyles = createUseStyles({
     '@media (max-width: 768px)': {
       flexDirection: 'column',
     },
+    // Base Mini App optimization
+    ...(typeof window !== 'undefined' && (() => {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    })() ? {
+      flexDirection: 'column',
+      height: '100%',
+      overflow: 'auto',
+    } : {}),
   },
   header: {
     textAlign: 'center',

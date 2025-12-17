@@ -184,7 +184,9 @@ function BaseApp() {
           initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
         >
           <Suspense fallback={<div>Loading...</div>}>
-            <MemeGenerator />
+            <div style={{ width: '100%', height: '100%', overflow: 'auto', boxSizing: 'border-box' }}>
+              <MemeGenerator />
+            </div>
           </Suspense>
         </Popup>
       )}
@@ -309,6 +311,35 @@ function BaseApp() {
             <p style={{ marginBottom: '10px' }}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
             <p style={{ marginBottom: '10px' }}>step 3. select token quantity, confirm transactions.</p>
             <p style={{ marginBottom: '10px' }}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
+          </div>
+        </Popup>
+      )}
+
+      {/* Lawbstarz Popup */}
+      {activePopup === 'lawbstarz-popup' && (
+        <Popup
+          id="lawbstarz-popup"
+          isOpen={true}
+          onClose={() => closePopup('lawbstarz-popup')}
+          onMinimize={() => minimizePopup('lawbstarz-popup')}
+          zIndex={2000}
+          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+        >
+          <div style={{ padding: '15px', overflow: 'auto', height: '100%' }}>
+            <p style={{ marginBottom: '10px' }}>
+              ☆ LAWBSTARZ 666x LOBSTERS DRIPPED IN BUTTER ☆ 666x PREMIUM PFP COLLECTION ☆ LAWBSTARZ IS A MUSIC NFT ☆ LAWBSTARZ IS AN <a href="https://allstarz.world" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>ALLSTARZ</a> DERIVATIVE ☆ LAWBSTARZ IS INSPIRED BY <a href="https://www.remilia.org/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>REMILIA CORP</a> ☆ LED BY NETWORK SPIRITUALITY ☆ 666 <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>CIGAWRETTEPACKS</a> WERE CONSUMED BY <a href="https://x.com/portionclub69" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>PORTIONCLUB69</a> AND FRIENDS DURING THE CREATION OF LAWBSTARZ v1 ☆
+            </p>
+            <p>Chain: Ethereum</p>
+            <p>
+              Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a>
+            </p>
+            <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
+            <blockquote className="twitter-tweet" data-media-max-width="560">
+              <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
+            </blockquote>
+            <script async src="https://platform.twitter.com/widgets.js"></script>
+            <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
+            <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
           </div>
         </Popup>
       )}
