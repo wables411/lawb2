@@ -140,6 +140,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Base Mini App detection
   const isBaseApp = isBaseMiniApp();
   
+  // Debug logging for Base app detection
+  useEffect(() => {
+    if (isBaseApp) {
+      console.log('[ChessMultiplayer] ✅ Base Mini App detected - UI/UX changes active');
+    } else {
+      console.log('[ChessMultiplayer] ⚠️ Not in Base Mini App - using desktop/web UI');
+    }
+  }, [isBaseApp]);
+  
   // Smart contract integration
   const [contractInviteCode, setContractInviteCode] = useState<string>('');
   const [contractWinner, setContractWinner] = useState<string>('');

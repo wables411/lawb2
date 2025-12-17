@@ -38,9 +38,22 @@ function App() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // Base app detection
+  const baseAppDetected = isBaseMiniApp();
+  
+  // Debug logging
+  useEffect(() => {
+    if (baseAppDetected) {
+      console.log('[App] ✅ Base Mini App detected - showing ASCII Lawbs popup');
+    } else {
+      console.log('[App] ⚠️ Not in Base Mini App - showing Pixelawbs popup');
+    }
+  }, [baseAppDetected]);
+  
   // Base app: show mint popup, desktop/mobile: show pixelawbs popup
   const [activePopup, setActivePopup] = useState<string | null>(
-    isBaseMiniApp() ? 'asciilawbs-popup' : 'pixelawbs-popup'
+    baseAppDetected ? 'asciilawbs-popup' : 'pixelawbs-popup'
   );
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);

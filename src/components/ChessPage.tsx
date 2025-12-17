@@ -137,6 +137,15 @@ const ChessPage: React.FC = () => {
   };
 
   const isBaseApp = isBaseMiniApp();
+  
+  // Debug logging for Base app detection
+  useEffect(() => {
+    if (isBaseApp) {
+      console.log('[ChessPage] ✅ Base Mini App detected - Theme toggle should be visible');
+    } else {
+      console.log('[ChessPage] ⚠️ Not in Base Mini App - no theme toggle');
+    }
+  }, [isBaseApp]);
 
   return (
     <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
