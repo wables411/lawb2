@@ -28,7 +28,6 @@ import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { HowToContent as BaseAppHowToContent } from '../baseapp/HowToContent';
 import { isBaseMiniApp } from '../utils/baseMiniapp';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {

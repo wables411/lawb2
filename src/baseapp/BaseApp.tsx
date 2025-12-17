@@ -141,7 +141,7 @@ function BaseApp() {
           zIndex={2000}
         >
           <Suspense fallback={<div>Loading...</div>}>
-            <AsciiLawbsterMint />
+            <AsciiLawbsterMint walletAddress={address || ''} onMintSuccess={() => {}} />
           </Suspense>
         </Popup>
       )}
