@@ -15,16 +15,16 @@ import { database } from '../firebaseApp';
 import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
 import './ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
-import { TokenSelector } from './TokenSelector';
-import { ChainSelector } from './ChainSelector';
+import { TokenSelector } from '../components/TokenSelector';
+import { ChainSelector } from '../components/ChainSelector';
 import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
 import { useMobileCapabilities } from '../hooks/useMediaQuery';
 import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, TOKEN_ADDRESSES_BY_CHAIN, type TokenSymbol, getTokenAddressForChain, getDefaultTokenForChain } from '../config/tokens';
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
-import Popup from './Popup';
-import { PlayerProfile } from './PlayerProfile';
+import Popup from '../components/Popup';
+import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
 
 // Get contract address based on current network
@@ -6540,15 +6540,6 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                           <strong>💡 Note:</strong> You'll need to approve token spending first (if using ERC-20), then confirm the game creation transaction.
                         </div>
                         
-                        {/* No Chain Selector in Base App - Base is the only chain */}
-                          <ChainSelector
-                            selectedChain={selectedChain}
-                            onSelect={setSelectedChain}
-                            mode="desktop"
-                            disabled={isGameCreationInProgress}
-                          />
-                        )}
-                        
                         {/* Wager Type Selector - Base/Arbitrum only */}
                         {(isBase || isArbitrum) && (
                           <div style={{ marginBottom: '10px' }}>
@@ -7373,4 +7364,4 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   );
 };
 
-export default ChessMultiplayer; 
+export default BaseAppChessMultiplayer;

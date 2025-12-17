@@ -118,9 +118,9 @@ const AppWithWagmi = () => {
                     <BaseAppChessPage />
                   </Suspense>
                 ) : (
-                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                    <ChessPage />
-                  </Suspense>
+                <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                  <ChessPage />
+                </Suspense>
                 )
               } />
             ) : (
@@ -132,9 +132,9 @@ const AppWithWagmi = () => {
                       <BaseAppChessPage />
                     </Suspense>
                   ) : (
-                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                      <ChessPage />
-                    </Suspense>
+                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                    <ChessPage />
+                  </Suspense>
                   )
                 } />
               </>

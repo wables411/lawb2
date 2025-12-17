@@ -13,8 +13,8 @@ import { firebaseProfiles } from '../firebaseProfiles';
 // Removed blocking connection test - loading data directly with timeout
 import { BaseAppChessMultiplayer } from './BaseAppChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
-import Popup from './Popup';
-import { PlayerProfile } from './PlayerProfile';
+import Popup from '../components/Popup';
+import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
 
 import './ChessGame.css';

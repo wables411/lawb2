@@ -125,7 +125,7 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
   }
 }
 
-export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false, useBaseAppHowTo = false }) => {
+export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
 
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -6616,78 +6616,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             {/* TODO: Add NFT selector component */}
                           </div>
                         )}
-                        
-                        {/* Piece Set Selector - Desktop/Web uses separate selector */}
-                          <div style={{ marginBottom: '15px', marginTop: '15px' }}>
-                            <label style={{ fontWeight: 'bold', color: '#ff0000', marginBottom: '8px', display: 'block' }}>
-                              Select Chess Piece Set:
-                            </label>
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                              <div style={{ position: 'relative', minWidth: '200px' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowPieceSetDropdown(!showPieceSetDropdown)}
-                                  disabled={isGameCreationInProgress}
-                                  style={{
-                                    padding: isMobile ? '10px 14px' : '12px 16px',
-                                    border: '2px outset #fff',
-                                    background: '#000000',
-                                    color: '#ff0000',
-                                    cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
-                                    minWidth: '200px',
-                                    textAlign: 'left',
-                                    fontWeight: 'bold',
-                                    fontSize: isMobile ? '0.9em' : '1em'
-                                  }}
-                                >
-                                  {selectedPieceSet.id === 'lawbstation' ? 'LawbStation Chess Set' : 
-                                   selectedPieceSet.id === 'pixelawbs' ? 'PixeLawbs Chess Set' : 
-                                   'Select Chess Set'}
-                                  <span style={{ float: 'right' }}>▲</span>
-                                </button>
-                                
-                                {showPieceSetDropdown && (
-                                  <div style={{
-                                    position: 'absolute',
-                                    bottom: '100%',
-                                    left: 0,
-                                    background: '#000000',
-                                    border: '2px outset #fff',
-                                    zIndex: 10,
-                                    minWidth: '200px',
-                                    marginBottom: '4px'
-                                  }}>
-                                    {[
-                                      getDefaultPieceSet(),
-                                      ...(nftVerificationResult?.hasPixelawbsNFT ? [getPixelawbsPieceSet()] : [])
-                                    ].map((pieceSet) => (
-                                      <div
-                                        key={pieceSet.id}
-                                        onClick={() => {
-                                          setSelectedPieceSet(pieceSet);
-                                          setShowPieceSetDropdown(false);
-                                        }}
-                                        style={{
-                                          padding: '12px 16px',
-                                          cursor: 'pointer',
-                                          borderBottom: '1px solid #333',
-                                          fontSize: '1em',
-                                          color: '#ff0000',
-                                          background: '#000000'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
-                                      >
-                                        {pieceSet.id === 'lawbstation' ? 'LawbStation Chess Set' : 'PixeLawbs Chess Set'}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        
+                       
                         <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
                           <button 
                             className="create-confirm-btn"
@@ -6702,7 +6631,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                 chainId,
                                 isBase,
                                 isArbitrum,
-                                isBaseApp,
                                 selectedPieceSet
                               });
                               const isDisabled = (wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress;
