@@ -239,20 +239,7 @@ const Mobile = () => {
   const { data: ens } = useEnsName({ address });
   const chainId = useChainId();
   
-  // Auto-connect to Farcaster wallet when in Base app and not already connected
-  useEffect(() => {
-    if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
-      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-      if (farcasterConnector) {
-        // Auto-connecting to Farcaster wallet in Base app
-        try {
-          connect({ connector: farcasterConnector });
-        } catch (error) {
-          console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
-        }
-      }
-    }
-  }, [isConnected, connectors, connect]);
+  // Web browser mobile - no Base app auto-connect
   
   // Simple wallet connection
   const handleWalletConnection = async () => {
