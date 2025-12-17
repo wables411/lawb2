@@ -8,7 +8,7 @@
     "ownerAddress": "0xb97f4b80bdB8b7722c53B17D17c994329E2767B6"
   },
   "miniapp": {
-    "version": 2,
+    "version": "1",
     "name": "LAWB",
     "homeUrl": "https://lawb.xyz?v=2",
     "iconUrl": "https://lawb.xyz/assets/chessicon.png",
