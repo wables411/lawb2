@@ -17,6 +17,22 @@ const AsciiLawbsterMint = lazy(() => import('../components/AsciiLawbsterMint'));
 const MintPopup = lazy(() => import('../components/MintPopup'));
 const MemeGenerator = lazy(() => import('../components/MemeGenerator'));
 
+// Uniform popup content wrapper style for miniapp
+const POPUP_CONTENT_STYLE: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  overflow: 'auto',
+  boxSizing: 'border-box',
+  padding: '15px',
+  WebkitOverflowScrolling: 'touch'
+};
+
+// Uniform popup size for miniapp
+const MINIAPP_POPUP_SIZE = { 
+  width: 'calc(100vw - 32px)', 
+  height: 'calc(100vh - 80px)' 
+};
+
 function BaseApp() {
   const { address, isConnected } = useAccount();
   const [activePopup, setActivePopup] = useState<string | null>(null);
@@ -153,11 +169,13 @@ function BaseApp() {
           onClose={() => setShowProfile(false)} 
           onMinimize={() => setShowProfile(false)} 
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <Suspense fallback={<div>Loading...</div>}>
-            <PlayerProfile isMobile={isBaseMiniApp()} />
-          </Suspense>
+          <div style={POPUP_CONTENT_STYLE}>
+            <Suspense fallback={<div>Loading...</div>}>
+              <PlayerProfile isMobile={isBaseMiniApp()} />
+            </Suspense>
+          </div>
         </Popup>
       )}
 
@@ -181,13 +199,13 @@ function BaseApp() {
           onClose={() => setShowMemeGenerator(false)}
           onMinimize={() => setShowMemeGenerator(false)}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <Suspense fallback={<div>Loading...</div>}>
-            <div style={{ width: '100%', height: '100%', overflow: 'auto', boxSizing: 'border-box' }}>
+          <div style={POPUP_CONTENT_STYLE}>
+            <Suspense fallback={<div>Loading...</div>}>
               <MemeGenerator />
-            </div>
-          </Suspense>
+            </Suspense>
+          </div>
         </Popup>
       )}
 
@@ -199,17 +217,17 @@ function BaseApp() {
           onClose={() => closePopup('purity-popup')}
           onMinimize={() => minimizePopup('purity-popup')}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <div style={{ padding: '15px' }}>
+          <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
               purify your wallet and cleanse your soul with Purity Finance.
             </p>
             <p style={{ marginBottom: '10px' }}>
               swap any sol token in your wallet directly for $LAWB
             </p>
-            <a href="https://www.purity.finance/lawb" target="_blank" rel="noopener noreferrer" style={{ cursor: 'pointer', color: '#0066cc' }}>click to Purify</a>
-            <img src="/assets/puritylawb.png" alt="Purity Lawb" style={{ maxWidth: '100%', marginTop: '10px' }} />
+            <a href="https://www.purity.finance/lawb" target="_blank" rel="noopener noreferrer" style={{ cursor: 'pointer', color: '#0066cc', display: 'block', marginBottom: '10px' }}>click to Purify</a>
+            <img src="/assets/puritylawb.png" alt="Purity Lawb" style={{ maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
           </div>
         </Popup>
       )}
@@ -222,9 +240,9 @@ function BaseApp() {
           onClose={() => closePopup('miladychan-popup')}
           onMinimize={() => minimizePopup('miladychan-popup')}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <div style={{ padding: '15px' }}>
+          <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
               miladychan is a realtime imageboard inspired by the early 00's anonymous imageboard and its culture - embracing the loosely organized discussion & light-hearted funposting enabled by anonymity and transciency. Click(button) to be lawbed.
             </p>
@@ -238,7 +256,9 @@ function BaseApp() {
                 fontSize: '14px',
                 fontWeight: 'bold',
                 color: '#000',
-                marginTop: '10px'
+                marginTop: '10px',
+                marginBottom: '10px',
+                display: 'block'
               }}
             >
               Click
@@ -248,9 +268,9 @@ function BaseApp() {
               alt="Miladychan FAQ" 
               style={{ 
                 width: '100%', 
-                marginTop: '10px',
                 maxWidth: '100%',
-                height: 'auto'
+                height: 'auto',
+                marginTop: '10px'
               }} 
             />
           </div>
@@ -265,18 +285,18 @@ function BaseApp() {
           onClose={() => closePopup('lawbstation-popup')}
           onMinimize={() => minimizePopup('lawbstation-popup')}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <div style={{ padding: '15px' }}>
+          <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
               Lawbstations: low poly Lawbsters viewed through various cathode-ray tubes built on <a href="https://www.miladystation2.net/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>MiladyStation</a> technology. Inspired by Milady, Allstarz, Rusty Rollers, Cigawrette Packs, SPX6900 and Radbro. Brought to you in part by PortionClub and Mony Corp Group. LawbStations seem nice but a lobster controlled by MiladyStation will never achieve anything without a roadmap.
             </p>
             <p style={{ marginBottom: '10px' }}>Chain: Solana</p>
             <p style={{ marginBottom: '10px' }}>
-              <a href="https://magiceden.us/marketplace/lawbstation" target="_blank" rel="noopener noreferrer">Collect Lawbstations on Secondary</a>
+              <a href="https://magiceden.us/marketplace/lawbstation" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Collect Lawbstations on Secondary</a>
             </p>
-            <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
-            <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', marginTop: '10px' }} />
+            <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
+            <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
           </div>
         </Popup>
       )}
@@ -289,9 +309,9 @@ function BaseApp() {
           onClose={() => closePopup('lawb-popup')}
           onMinimize={() => minimizePopup('lawb-popup')}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <div style={{ padding: '15px', overflow: 'auto', height: '100%' }}>
+          <div style={POPUP_CONTENT_STYLE}>
             <h1 style={{ marginBottom: '10px' }}>
               <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>🦞 $LAWB</a>
             </h1>
@@ -323,9 +343,9 @@ function BaseApp() {
           onClose={() => closePopup('lawbstarz-popup')}
           onMinimize={() => minimizePopup('lawbstarz-popup')}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <div style={{ padding: '15px', overflow: 'auto', height: '100%' }}>
+          <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
               ☆ LAWBSTARZ 666x LOBSTERS DRIPPED IN BUTTER ☆ 666x PREMIUM PFP COLLECTION ☆ LAWBSTARZ IS A MUSIC NFT ☆ LAWBSTARZ IS AN <a href="https://allstarz.world" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>ALLSTARZ</a> DERIVATIVE ☆ LAWBSTARZ IS INSPIRED BY <a href="https://www.remilia.org/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>REMILIA CORP</a> ☆ LED BY NETWORK SPIRITUALITY ☆ 666 <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>CIGAWRETTEPACKS</a> WERE CONSUMED BY <a href="https://x.com/portionclub69" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>PORTIONCLUB69</a> AND FRIENDS DURING THE CREATION OF LAWBSTARZ v1 ☆
             </p>
@@ -333,13 +353,13 @@ function BaseApp() {
             <p>
               Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a>
             </p>
-            <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
-            <blockquote className="twitter-tweet" data-media-max-width="560">
+            <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
+            <blockquote className="twitter-tweet" data-media-max-width="560" style={{ marginTop: '10px', marginBottom: '10px' }}>
               <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
             </blockquote>
             <script async src="https://platform.twitter.com/widgets.js"></script>
-            <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
-            <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
+            <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
+            <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
           </div>
         </Popup>
       )}
@@ -352,11 +372,13 @@ function BaseApp() {
           onClose={() => closePopup('asciilawbs-popup')}
           onMinimize={() => minimizePopup('asciilawbs-popup')}
           zIndex={2000}
-          initialSize={{ width: 'calc(100vw - 32px)', height: 'calc(100vh - 80px)' }}
+          initialSize={MINIAPP_POPUP_SIZE}
         >
-          <Suspense fallback={<div>Loading...</div>}>
-            <AsciiLawbsterMint walletAddress={address || ''} onMintSuccess={() => {}} />
-          </Suspense>
+          <div style={POPUP_CONTENT_STYLE}>
+            <Suspense fallback={<div>Loading...</div>}>
+              <AsciiLawbsterMint walletAddress={address || ''} onMintSuccess={() => {}} />
+            </Suspense>
+          </div>
         </Popup>
       )}
     </div>
