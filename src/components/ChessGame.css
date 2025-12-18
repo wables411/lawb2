@@ -89,6 +89,16 @@
   justify-content: stretch;
   box-sizing: border-box;
   padding: 0;
+  background: transparent;
+}
+
+/* Light mode - ensure game-content and game-stable-layout are transparent */
+.lawb-app-light-mode .game-content,
+.lawb-app-light-mode .game-stable-layout,
+.lawb-app-light-mode [class*="game-content"],
+.lawb-app-light-mode [class*="game-stable-layout"] {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .left-sidebar, .right-sidebar {

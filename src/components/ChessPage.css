@@ -16,6 +16,17 @@
   flex-direction: column;
 }
 
+/* Light mode - ensure chess-page and chess-content show animated background */
+.lawb-app-light-mode .chess-page,
+.lawb-app-light-mode .chess-content {
+  background: transparent !important;
+  background-image: url('/assets/background.gif') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
 /* Mobile-specific styles */
 .chess-page.mobile {
   min-height: 100vh;
