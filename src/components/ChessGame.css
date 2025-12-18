@@ -233,6 +233,7 @@
   min-height: 0;
   height: 100%;
   padding: 0;
+  padding-top: 60px !important; /* Add padding below header to prevent overlap */
 }
 
 .chessboard-container {
@@ -660,11 +661,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center; /* Center vertically */
   flex: 1 1 0;
   min-height: 600px;
   height: 100%;
   width: 100%;
+  margin-top: 20px; /* Additional spacing from game info bar */
 }
 
 .chessboard-container {
@@ -1122,12 +1124,17 @@
   color: #ffd700 !important;
 }
 
-.game-stable-layout, .center-area {
+.game-stable-layout {
   height: 100%;
   min-height: 0;
+  padding-top: 60px !important; /* Add padding below header to prevent overlap */
 }
+
 .center-area {
+  height: 100%;
+  min-height: 0;
   overflow: auto;
+  padding-top: 60px !important; /* Add padding below header to prevent overlap */
 }
 
 .chess-dark-mode, .chess-dark-mode body, html.chess-dark-mode, body.chess-dark-mode {
@@ -2224,7 +2231,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   font-weight: bold;
   min-height: 20px;
   box-sizing: border-box;
-  margin: 0 0 1px 0;
+  margin: 20px 0 12px 0; /* Add margin-top to prevent overlap with header, margin-bottom to space from chessboard */
 }
 
 .game-info-compact span {
