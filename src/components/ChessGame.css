@@ -2266,6 +2266,27 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   overflow-x: hidden;
 }
 
+/* Theme-aware styling for game mode panel */
+.lawb-app-light-mode .game-mode-panel-streamlined {
+  background-image: url('/assets/lawbstationprint.png');
+  color: #000000;
+}
+
+.lawb-app-dark-mode .game-mode-panel-streamlined {
+  background-image: none !important;
+  background-color: transparent !important;
+  color: #00ff00;
+}
+
+.lawb-app-dark-mode .game-mode-panel-streamlined * {
+  color: #00ff00;
+}
+
+/* Exception for chessboard images in dark mode */
+.lawb-app-dark-mode .game-mode-panel-streamlined img {
+  filter: none !important;
+}
+
 @media (max-width: 768px) {
   .game-stable-layout.home-view .center-area {
     display: flex;
@@ -2326,6 +2347,50 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   border: 2px inset #c00000;
 }
 
+/* Light mode styling for buttons */
+.lawb-app-light-mode .mode-btn-compact {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  color: #000000;
+}
+
+.lawb-app-light-mode .mode-btn-compact:hover {
+  background: #d4d0c8;
+}
+
+.lawb-app-light-mode .mode-btn-compact:active {
+  border: 2px inset #fff;
+  background: #a0a0a0;
+}
+
+.lawb-app-light-mode .mode-btn-compact.selected {
+  background: #000000;
+  color: #ffffff;
+  border: 2px inset #000;
+}
+
+/* Dark mode styling for buttons */
+.lawb-app-dark-mode .mode-btn-compact {
+  background: #000000;
+  border: 2px outset #00ff00;
+  color: #00ff00;
+}
+
+.lawb-app-dark-mode .mode-btn-compact:hover {
+  background: #001100;
+}
+
+.lawb-app-dark-mode .mode-btn-compact:active {
+  border: 2px inset #00ff00;
+  background: #002200;
+}
+
+.lawb-app-dark-mode .mode-btn-compact.selected {
+  background: #000000;
+  color: #00ff00;
+  border: 2px inset #00ff00;
+}
+
 .start-btn-compact {
   background: #000000;
   border: 2px outset #c00000;
@@ -2352,6 +2417,38 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background: #333333;
 }
 
+/* Light mode styling for start button */
+.lawb-app-light-mode .start-btn-compact {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  color: #000000;
+}
+
+.lawb-app-light-mode .start-btn-compact:hover {
+  background: #d4d0c8;
+}
+
+.lawb-app-light-mode .start-btn-compact:active {
+  border: 2px inset #fff;
+  background: #a0a0a0;
+}
+
+/* Dark mode styling for start button */
+.lawb-app-dark-mode .start-btn-compact {
+  background: #000000;
+  border: 2px outset #00ff00;
+  color: #00ff00;
+}
+
+.lawb-app-dark-mode .start-btn-compact:hover {
+  background: #001100;
+}
+
+.lawb-app-dark-mode .start-btn-compact:active {
+  border: 2px inset #00ff00;
+  background: #002200;
+}
+
 /* PvP Info */
 .pvp-info {
   text-align: center;
@@ -2366,6 +2463,26 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   margin: 4px 0;
   font-size: 12px;
   color: #666;
+}
+
+/* Light mode styling for PvP info */
+.lawb-app-light-mode .pvp-info {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+}
+
+.lawb-app-light-mode .pvp-info p {
+  color: #000000;
+}
+
+/* Dark mode styling for PvP info */
+.lawb-app-dark-mode .pvp-info {
+  background: #000000;
+  border: 2px outset #00ff00;
+}
+
+.lawb-app-dark-mode .pvp-info p {
+  color: #00ff00;
 }
 
 /* Compact Help Section */
