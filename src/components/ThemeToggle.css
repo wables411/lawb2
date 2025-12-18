@@ -330,6 +330,19 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   text-shadow: 0 0 5px #00ff00 !important;
 }
 
+/* Ensure chess board and pieces always display full color */
+.lawb-app-dark-mode .chessboard,
+.lawb-app-dark-mode [class*="chessboard"],
+.lawb-app-dark-mode .piece,
+.lawb-app-dark-mode [class*="piece"],
+.lawb-app-dark-mode .chessboard-container,
+.lawb-app-dark-mode [class*="chessboard-container"] {
+  background-image: inherit !important;
+  background: inherit !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
 .lawb-app-dark-mode button {
   background: #000000 !important;
   border-color: #00ff00 !important;
