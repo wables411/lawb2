@@ -16,23 +16,9 @@ const ChessPage = lazy(() => import('./components/ChessPage'));
 const BaseApp = lazy(() => import('./baseapp/BaseApp'));
 const BaseAppChessPage = lazy(() => import('./baseapp/BaseAppChessPage'));
 
-import { appKit, wagmiAdapter } from './appkit.ts'; // Import the appKit instance and wagmi adapter
+import { appKit, wagmiAdapter, initializeAppKit } from './appkit.ts'; // Import the appKit instance and wagmi adapter
 import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
 import { config as wagmiConfig } from './wagmi';
-
-// Initialize AppKit singleton before any hooks are used
-// Skip AppKit initialization in Base app to avoid WalletConnect CSP issues
-// Farcaster connector will be used instead via wagmi config
-// Use dynamic import to avoid loading @reown/appkit/react in Base app
-if (appKit && typeof window !== 'undefined' && !isBaseMiniApp()) {
-  import('@reown/appkit/react').then(({ getAppKit }) => {
-    if (appKit) {
-      getAppKit(appKit);
-    }
-  }).catch((error) => {
-    console.warn('[main.tsx] Failed to load getAppKit:', error);
-  });
-}
 const queryClient = new QueryClient();
 
 // Note: Base Mini App SDK ready() is called in React components (App.tsx, Mobile.tsx)
@@ -82,9 +68,17 @@ const AppWithWagmi = () => {
   const [currentConfig, setCurrentConfig] = React.useState(getWagmiConfig());
   const [configKey, setConfigKey] = React.useState(0);
   
-  // Check if AppKit has loaded and update config if needed
+  // Initialize AppKit ONLY if NOT in Base app
+  // This must happen after mount to ensure iframe detection works
   React.useEffect(() => {
-    if (isBaseMiniApp()) return; // Base app uses wagmiConfig directly, no need to wait
+    if (isBaseMiniApp()) {
+      console.log('[main.tsx] Base app detected, skipping AppKit initialization');
+      return; // Base app uses wagmiConfig directly with Farcaster connector
+    }
+    
+    // Initialize AppKit for regular web users
+    console.log('[main.tsx] Initializing AppKit for web users');
+    initializeAppKit();
     
     // Poll for AppKit loading
     let attempts = 0;

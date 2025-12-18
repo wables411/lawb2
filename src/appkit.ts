@@ -18,29 +18,41 @@ const metadata = {
   icons: [`${baseUrl}/assets/favicon.ico`]
 };
 
-// Delay check until after window is available to ensure proper detection
-// Use isBaseMiniApp() which has proper detection logic
-// CRITICAL: Only skip AppKit loading if we're ACTUALLY in Base/Farcaster app
-// Regular browser users (lawb.xyz) should ALWAYS load AppKit
-let isBase = false;
-if (typeof window !== 'undefined') {
-  // Use the comprehensive detection from baseMiniapp.ts
-  // This checks iframe, hostname, referrer, user agent - but NOT SDK (which is too broad)
-  isBase = isBaseMiniApp();
+// CRITICAL: Do NOT check isBaseMiniApp() at module load time
+// The check happens too early and may fail to detect iframe properly
+// Instead, we'll check it lazily when actually needed
+// This prevents AppKit from loading in Base/Farcaster app
+
+// Function to check if we're in Base app - call this when needed, not at module load
+const checkIsBaseApp = (): boolean => {
+  if (typeof window === 'undefined') return false;
   
-  console.log('[AppKit] Detection result:', {
-    isBase,
-    hostname: window.location.hostname,
-    isInIframe: (() => {
-      try {
-        return window.self !== window.top;
-      } catch (e) {
-        return true;
-      }
-    })(),
-    location: window.location.href
-  });
-}
+  // PRIMARY: Check iframe first (most reliable)
+  try {
+    if (window.self !== window.top) {
+      console.log('[AppKit] ✅ Detected Base app via iframe');
+      return true;
+    }
+  } catch (e) {
+    // Cross-origin iframe - definitely Base app
+    console.log('[AppKit] ✅ Detected Base app via cross-origin iframe');
+    return true;
+  }
+  
+  // Use the comprehensive detection from baseMiniapp.ts
+  const isBase = isBaseMiniApp();
+  
+  if (isBase) {
+    console.log('[AppKit] ✅ Detected Base app via baseMiniapp detection');
+  } else {
+    console.log('[AppKit] ❌ Not in Base app - will load AppKit');
+  }
+  
+  return isBase;
+};
+
+// Don't check at module load - check lazily
+let isBase: boolean | null = null;
 
 // Type definitions for when modules are loaded
 // Use any for dynamic imports to avoid type issues at compile time
@@ -48,25 +60,31 @@ if (typeof window !== 'undefined') {
 let wagmiAdapter: any = null;
 let appKit: any = null;
 
-// Only load AppKit modules if NOT in Base app
-// This prevents WalletConnect from initializing at all
-// CRITICAL: Check isBase again right before import to ensure it's still false
-if (!isBase && typeof window !== 'undefined') {
-  // Double-check we're not in Base app before loading
-  const doubleCheckBase = isBaseMiniApp();
-  if (doubleCheckBase) {
-    console.log('[AppKit] Base app detected during double-check, skipping AppKit load');
-  } else {
-    console.log('[AppKit] Loading AppKit modules (NOT in Base app)');
-    
-    // Use dynamic imports to prevent WalletConnect from loading in Base app
-    // Wrap in try-catch to prevent any errors from propagating
-    Promise.all([
-      import('@reown/appkit/react'),
-      import('@reown/appkit/networks'),
-      import('@reown/appkit-adapter-wagmi')
-    ]).then(([appkitModule, networksModule, adapterModule]) => {
-    const { createAppKit } = appkitModule;
+// Lazy initialization function - call this when we actually need AppKit
+// This ensures the Base app check happens AFTER the app is mounted and in iframe
+export const initializeAppKit = () => {
+  // Check if already initialized
+  if (appKit || wagmiAdapter) {
+    console.log('[AppKit] Already initialized, skipping');
+    return;
+  }
+  
+  // Check if we're in Base app NOW (after mount, when iframe is definitely set up)
+  if (checkIsBaseApp()) {
+    console.log('[AppKit] Base app detected, skipping AppKit initialization');
+    return;
+  }
+  
+  console.log('[AppKit] Loading AppKit modules (NOT in Base app)');
+  
+  // Use dynamic imports to prevent WalletConnect from loading in Base app
+  // Wrap in try-catch to prevent any errors from propagating
+  Promise.all([
+    import('@reown/appkit/react'),
+    import('@reown/appkit/networks'),
+    import('@reown/appkit-adapter-wagmi')
+  ]).then(([appkitModule, networksModule, adapterModule]) => {
+    const { createAppKit, getAppKit } = appkitModule;
     const { mainnet, arbitrum, base, solana } = networksModule;
     const { WagmiAdapter } = adapterModule;
     
@@ -113,14 +131,20 @@ if (!isBase && typeof window !== 'undefined') {
       }
     });
     
-      console.log('[AppKit] AppKit initialized successfully');
-    }).catch((error) => {
-      console.error('[AppKit] Failed to load AppKit modules:', error);
-    });
-  }
-} else {
-  console.log('[AppKit] Skipping AppKit module loading (in Base app - using Farcaster connector)');
-}
+    // Register AppKit with React component
+    if (appKit && getAppKit) {
+      getAppKit(appKit);
+      console.log('[AppKit] AppKit registered with React');
+    }
+    
+    console.log('[AppKit] AppKit initialized successfully');
+  }).catch((error) => {
+    console.error('[AppKit] Failed to load AppKit modules:', error);
+  });
+};
+
+// Don't auto-initialize at module load - let main.tsx call initializeAppKit() when needed
+// This ensures Base app detection happens after the app is mounted
 
 // Export with type assertions for TypeScript
 // In Base app, appKit will be null - useAppKitSafe hook will handle this gracefully
