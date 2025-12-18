@@ -2579,7 +2579,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           }}
         >
           <div 
-            className="chess-menu-popup"
+            className="chess-menu-popup base-miniapp-menu"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
@@ -3413,7 +3413,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           }}
         >
           <div 
-            className="chess-menu-popup"
+            className="chess-menu-popup base-miniapp-menu"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
