@@ -504,7 +504,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             left: 0,
             right: 0,
             background: isDarkMode 
-              ? 'transparent !important' 
+              ? 'transparent' 
               : 'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0.6) 100%)',
             padding: isMobile ? '12px 8px 8px 8px' : '16px 12px 12px 12px',
             color: isDarkMode ? '#00ff00' : '#ffffff',

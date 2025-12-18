@@ -163,8 +163,8 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 }
 
 /* Universal dark mode background override - catch ALL elements except chess board/pieces */
-/* Exclude entire chessboard container tree from background removal */
-.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.chessboard-container *):not([class*="chessboard-container"] *):not([style*="backgroundImage"]):not([style*="background-image"]) {
+/* Exclude entire chessboard container tree AND player profile stats overlay from background removal */
+.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.chessboard-container *):not([class*="chessboard-container"] *):not([style*="backgroundImage"]):not([style*="background-image"]):not(.player-profile-stats-overlay):not([class*="player-profile-stats-overlay"]) {
   background-image: none !important;
   background: #000000 !important;
 }
@@ -196,10 +196,15 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   -webkit-filter: none !important;
 }
 
-/* Ensure player profile stats overlay is transparent in dark mode */
+/* Ensure player profile stats overlay is transparent in dark mode - HIGHEST PRIORITY */
+/* Must come AFTER universal selector and have higher specificity */
 .lawb-app-dark-mode .player-profile-stats-overlay,
-.lawb-app-dark-mode [class*="player-profile-stats-overlay"] {
+.lawb-app-dark-mode [class*="player-profile-stats-overlay"],
+.lawb-app-dark-mode div.player-profile-stats-overlay,
+.lawb-app-dark-mode [class*="PlayerProfile"] .player-profile-stats-overlay {
   background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 /* Exclude chess board container from dark mode background removal - REMOVED */
