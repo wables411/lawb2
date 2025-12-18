@@ -17,7 +17,13 @@ import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { triggerHapticImpact, triggerHapticSelection, triggerHapticNotification, getSafeAreaInsets, isBaseMiniApp } from '../utils/baseMiniapp';
+import { 
+  triggerHapticImpact, 
+  triggerHapticSelection, 
+  triggerHapticNotification, 
+  getSafeAreaInsets, 
+  isBaseMiniApp 
+} from '../utils/baseMiniapp';
 
 import '../components/ChessGame.css';
 

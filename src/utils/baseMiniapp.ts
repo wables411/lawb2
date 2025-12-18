@@ -174,9 +174,188 @@ export const initBaseMiniApp = async () => {
   return false;
 };
 
+/**
+ * Haptic Feedback Utilities
+ * Provides safe haptic feedback functions that check for capability before calling
+ */
 
+// Cache for haptic capability to avoid repeated checks
+let hapticCapabilityCache: boolean | null = null;
+let hapticCapabilityChecked = false;
 
+/**
+ * Check if haptic feedback is available
+ */
+export const checkHapticCapability = async (): Promise<boolean> => {
+  if (hapticCapabilityChecked && hapticCapabilityCache !== null) {
+    return hapticCapabilityCache;
+  }
 
+  try {
+    if (!sdk || typeof sdk !== 'object') {
+      hapticCapabilityCache = false;
+      hapticCapabilityChecked = true;
+      return false;
+    }
+
+    // Check via capabilities API
+    if (typeof sdk.getCapabilities === 'function') {
+      const capabilities = await sdk.getCapabilities();
+      hapticCapabilityCache = capabilities.includes('haptics.impactOccurred') ||
+                              capabilities.includes('haptics.notificationOccurred') ||
+                              capabilities.includes('haptics.selectionChanged');
+      hapticCapabilityChecked = true;
+      return hapticCapabilityCache;
+    }
+
+    // Check via context features
+    if (typeof sdk.context !== 'undefined') {
+      const context = await sdk.context;
+      hapticCapabilityCache = context?.features?.haptics === true;
+      hapticCapabilityChecked = true;
+      return hapticCapabilityCache;
+    }
+
+    // Check if haptics object exists
+    hapticCapabilityCache = !!(sdk.haptics && typeof sdk.haptics === 'object');
+    hapticCapabilityChecked = true;
+    return hapticCapabilityCache;
+  } catch (error) {
+    console.warn('[Base Mini App] Error checking haptic capability:', error);
+    hapticCapabilityCache = false;
+    hapticCapabilityChecked = true;
+    return false;
+  }
+};
+
+/**
+ * Trigger impact haptic feedback
+ * @param type - Type of impact: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'
+ */
+export const triggerHapticImpact = async (type: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid' = 'light'): Promise<void> => {
+  try {
+    const hasHaptics = await checkHapticCapability();
+    if (!hasHaptics || !sdk?.haptics?.impactOccurred) {
+      return;
+    }
+    await sdk.haptics.impactOccurred(type);
+  } catch (error) {
+    // Silently fail - haptics are optional
+    console.debug('[Base Mini App] Haptic impact failed:', error);
+  }
+};
+
+/**
+ * Trigger notification haptic feedback
+ * @param type - Type of notification: 'success' | 'warning' | 'error'
+ */
+export const triggerHapticNotification = async (type: 'success' | 'warning' | 'error' = 'success'): Promise<void> => {
+  try {
+    const hasHaptics = await checkHapticCapability();
+    if (!hasHaptics || !sdk?.haptics?.notificationOccurred) {
+      return;
+    }
+    await sdk.haptics.notificationOccurred(type);
+  } catch (error) {
+    // Silently fail - haptics are optional
+    console.debug('[Base Mini App] Haptic notification failed:', error);
+  }
+};
+
+/**
+ * Trigger selection haptic feedback
+ */
+export const triggerHapticSelection = async (): Promise<void> => {
+  try {
+    const hasHaptics = await checkHapticCapability();
+    if (!hasHaptics || !sdk?.haptics?.selectionChanged) {
+      return;
+    }
+    await sdk.haptics.selectionChanged();
+  } catch (error) {
+    // Silently fail - haptics are optional
+    console.debug('[Base Mini App] Haptic selection failed:', error);
+  }
+};
+
+/**
+ * Safe Area Insets Utilities
+ * Provides safe area inset values from SDK context
+ */
+
+// Cache for safe area insets
+let safeAreaInsetsCache: { top: number; bottom: number; left: number; right: number } | null = null;
+let safeAreaInsetsChecked = false;
+
+/**
+ * Get safe area insets from SDK context
+ * Returns default values if not available
+ */
+export const getSafeAreaInsets = async (): Promise<{ top: number; bottom: number; left: number; right: number }> => {
+  if (safeAreaInsetsChecked && safeAreaInsetsCache !== null) {
+    return safeAreaInsetsCache;
+  }
+
+  const defaultInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+
+  try {
+    if (!sdk || typeof sdk !== 'object' || typeof sdk.context === 'undefined') {
+      safeAreaInsetsCache = defaultInsets;
+      safeAreaInsetsChecked = true;
+      return defaultInsets;
+    }
+
+    const context = await sdk.context;
+    const insets = context?.client?.safeAreaInsets;
+
+    if (insets && typeof insets === 'object') {
+      safeAreaInsetsCache = {
+        top: insets.top ?? 0,
+        bottom: insets.bottom ?? 0,
+        left: insets.left ?? 0,
+        right: insets.right ?? 0,
+      };
+    } else {
+      safeAreaInsetsCache = defaultInsets;
+    }
+
+    safeAreaInsetsChecked = true;
+    return safeAreaInsetsCache;
+  } catch (error) {
+    console.warn('[Base Mini App] Error getting safe area insets:', error);
+    safeAreaInsetsCache = defaultInsets;
+    safeAreaInsetsChecked = true;
+    return defaultInsets;
+  }
+};
+
+/**
+ * Apply safe area insets as CSS custom properties on the document root
+ * This makes them available throughout the app via CSS variables
+ */
+export const applySafeAreaInsets = async (): Promise<void> => {
+  try {
+    const insets = await getSafeAreaInsets();
+    const root = document.documentElement;
+
+    root.style.setProperty('--safe-area-top', `${insets.top}px`);
+    root.style.setProperty('--safe-area-bottom', `${insets.bottom}px`);
+    root.style.setProperty('--safe-area-left', `${insets.left}px`);
+    root.style.setProperty('--safe-area-right', `${insets.right}px`);
+  } catch (error) {
+    console.warn('[Base Mini App] Error applying safe area insets:', error);
+  }
+};
+
+/**
+ * Reset caches (useful for testing or when context changes)
+ */
+export const resetBaseMiniAppCaches = (): void => {
+  hapticCapabilityCache = null;
+  hapticCapabilityChecked = false;
+  safeAreaInsetsCache = null;
+  safeAreaInsetsChecked = false;
+};
 
 
 
