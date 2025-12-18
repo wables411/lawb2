@@ -292,35 +292,124 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   }, [isOpen, id, position]);
 
   // Render popup content (extracted for reuse)
-  const renderPopupContent = () => (
-    <>
-      <div className={classes.header}>
-        <span>{title || id.replace('-popup', '')}</span>
-        <div className={classes.titleBarButtons}>
-          <button
-            className={classes.titleBarButton}
-            onClick={handleMinimize}
-            title="Minimize"
-          >
-            _
-          </button>
-          <button
-            className={classes.titleBarButton}
-            onClick={onClose}
-            title="Close"
-          >
-            ×
-          </button>
+  const renderPopupContent = () => {
+    // For Base Mini App, use inline styles for header/buttons to avoid JSS conflicts
+    if (isBaseMiniAppDetected) {
+      return (
+        <>
+          <div style={{
+            background: 'navy',
+            color: '#fff',
+            padding: '4px 6px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'default',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            userSelect: 'none',
+            minHeight: '24px',
+          }}>
+            <span>{title || id.replace('-popup', '')}</span>
+            <div style={{ display: 'flex', gap: '1px' }}>
+              <button
+                onClick={handleMinimize}
+                title="Minimize"
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  border: '1px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  color: 'black',
+                  padding: '12px',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                _
+              </button>
+              <button
+                onClick={onClose}
+                title="Close"
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  border: '1px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  color: 'black',
+                  padding: '12px',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div style={{
+            padding: '16px',
+            height: 'calc(100% - 50px)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            background: 'transparent',
+            boxSizing: 'border-box',
+            maxWidth: '100%',
+            width: '100%',
+            wordWrap: 'break-word',
+            wordBreak: 'break-word',
+            hyphens: 'auto',
+            fontSize: '16px',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+            {children}
+          </div>
+        </>
+      );
+    }
+    
+    // Regular desktop rendering with JSS classes
+    return (
+      <>
+        <div className={classes.header}>
+          <span>{title || id.replace('-popup', '')}</span>
+          <div className={classes.titleBarButtons}>
+            <button
+              className={classes.titleBarButton}
+              onClick={handleMinimize}
+              title="Minimize"
+            >
+              _
+            </button>
+            <button
+              className={classes.titleBarButton}
+              onClick={onClose}
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
         </div>
-      </div>
-      <div className={classes.content}>
-        {children}
-      </div>
-      {!isBaseMiniAppDetected && (
+        <div className={classes.content}>
+          {children}
+        </div>
         <div className={classes.resizeHandle} />
-      )}
-    </>
-  );
+      </>
+    );
+  };
 
   // For Base Mini App, don't use Draggable at all - render directly
   if (isBaseMiniAppDetected && isOpen) {
@@ -345,38 +434,38 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     const totalLeftSpace = leftInset + padding;
     const totalRightSpace = rightInset + padding;
     
+    // For Base Mini App, don't use the JSS class to avoid media query conflicts
+    // Create inline styles that override everything
     return (
       <div 
         ref={nodeRef} 
-        className={classes.popup}
         style={{ 
+          // Base styles
+          position: 'fixed',
+          background: '#c0c0c0',
+          border: '2px outset #fff',
+          display: isOpen ? 'block' : 'none',
+          boxSizing: 'border-box',
+          zIndex: zIndex || 100,
+          overflow: 'hidden',
           // Use inset to constrain all sides, ensuring popup never exceeds viewport
           // Top: safe area + Base App header + padding
           // Bottom: safe area + taskbar + padding
           // Left/Right: safe area + padding
-          // Use !important to override JSS media query styles
-          inset: `${totalTopSpace}px ${totalRightSpace}px ${totalBottomSpace}px ${totalLeftSpace}px !important`,
-          width: 'auto !important',
-          height: 'auto !important',
-          maxWidth: 'none !important',
-          maxHeight: 'none !important',
-          minWidth: '0 !important',
-          minHeight: '0 !important',
-          left: 'auto !important',
-          top: 'auto !important',
-          right: 'auto !important',
-          bottom: 'auto !important',
-          resize: 'none !important',
-          boxSizing: 'border-box !important',
-          position: 'fixed !important',
-          transform: 'none !important',
-          margin: '0 !important',
-          padding: '0 !important',
-          zIndex: zIndex || 100,
-          overflow: 'hidden !important',
+          inset: `${totalTopSpace}px ${totalRightSpace}px ${totalBottomSpace}px ${totalLeftSpace}px`,
+          width: 'auto',
+          height: 'auto',
+          maxWidth: 'none',
+          maxHeight: 'none',
+          minWidth: '0',
+          minHeight: '0',
+          resize: 'none',
+          transform: 'none',
+          margin: '0',
+          padding: '0',
           // Force constraints to prevent overflow
           contain: 'layout style paint',
-        } as React.CSSProperties}
+        }}
       >
         {renderPopupContent()}
       </div>
