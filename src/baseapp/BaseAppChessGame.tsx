@@ -2254,12 +2254,13 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 textAlign: 'center', 
                 marginBottom: '20px',
                 padding: '10px',
-                backgroundColor: '#000000',
-                border: '2px outset #fff',
-                borderRadius: '4px'
+                backgroundColor: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
+                borderRadius: '4px',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}>
                 <div style={{ 
-                  color: '#ff0000', 
+                  color: isDarkMode ? '#00ff00' : '#ff0000', 
                   fontSize: '14px', 
                   fontWeight: 'bold',
                   marginBottom: '10px'
@@ -2598,7 +2599,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             bottom: 0,
             zIndex: 10003,
             background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)',
-            pointerEvents: 'all'
+            pointerEvents: 'all',
+            display: 'block'
           }}
         >
           <div 
@@ -3267,7 +3269,15 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               )}
               
               {viewingProfileAddress && (
-                <div className="profile-compact mobile-content-view" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: '#fff' }}>
+                <div className="profile-compact mobile-content-view" style={{ 
+                  position: 'fixed', 
+                  top: 0, 
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0, 
+                  zIndex: 10000, 
+                  background: isDarkMode ? '#000000' : '#ffffff'
+                }}>
                   <button onClick={() => setViewingProfileAddress(null)} style={{ margin: '10px', padding: '5px 10px' }}>Close</button>
                   <PlayerProfile isMobile={true} address={viewingProfileAddress} />
                 </div>
@@ -3463,7 +3473,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             bottom: 0,
             zIndex: 10003,
             background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)',
-            pointerEvents: 'all'
+            pointerEvents: 'all',
+            display: 'block'
           }}
         >
           <div 

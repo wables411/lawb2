@@ -196,6 +196,12 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   -webkit-filter: none !important;
 }
 
+/* Ensure player profile stats overlay is transparent in dark mode */
+.lawb-app-dark-mode .player-profile-stats-overlay,
+.lawb-app-dark-mode [class*="player-profile-stats-overlay"] {
+  background: transparent !important;
+}
+
 /* Exclude chess board container from dark mode background removal - REMOVED */
 /* Chessboard container should inherit its background image */
 

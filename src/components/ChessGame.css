@@ -111,13 +111,19 @@
   backdrop-filter: none;
 }
 
-/* Always make header transparent */
+/* Always make header transparent - REDUCED HEIGHT */
 .chess-game .chess-header {
   background: transparent;
   border-bottom: 1px solid rgba(255, 0, 0, 0.3);
   backdrop-filter: blur(5px);
   position: relative;
   z-index: 10001;
+  padding: 4px 8px !important;
+  min-height: 32px !important;
+  max-height: 40px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 /* Menu button styling */
@@ -178,6 +184,22 @@
   color: #ff0000;
   text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
   font-weight: bold;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+  font-size: 14px;
+}
+
+/* Light mode header text */
+.lawb-app-light-mode .chess-header h2 {
+  color: #000000;
+  text-shadow: none;
+}
+
+/* Dark mode header text */
+.lawb-app-dark-mode .chess-header h2 {
+  color: #00ff00;
+  text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
 }
 
 .center-area {
@@ -202,8 +224,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0;
+  margin: 0 auto;
   flex: 1 1 0;
+  position: relative;
 }
 .chessboard {
   width: 100%;
@@ -3013,13 +3036,17 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     touch-action: manipulation;
   }
   
-  /* Mobile-optimized header */
+  /* Mobile-optimized header - REDUCED HEIGHT */
   .chess-header {
-    padding: 8px 4px;
+    padding: 4px 4px !important;
+    min-height: 28px !important;
+    max-height: 36px !important;
   }
   
   .chess-header h2 {
-    font-size: 14px;
+    font-size: 12px;
+    margin: 0;
+    line-height: 1.2;
   }
   
   .chess-controls button {
