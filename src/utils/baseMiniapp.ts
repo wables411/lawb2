@@ -90,6 +90,13 @@ export const isBaseMiniApp = () => {
   // Regular browser users should NOT be detected as Base Mini App just because SDK exists in bundle
   
   // Log detection failure for debugging
+  const isInIframe = (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  })();
   console.log('[Base Mini App Detection] ❌ Not detected (regular browser). hostname:', hostname, 'referrer:', document.referrer, 'userAgent:', userAgent, 'isInIframe:', isInIframe);
   return false;
 };
