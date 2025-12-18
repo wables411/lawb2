@@ -22,6 +22,17 @@
   touch-action: pan-x pan-y;
 }
 
+/* Light mode - ensure chess-game shows animated background */
+.lawb-app-light-mode .chess-game,
+.lawb-app-light-mode [class*="chess-game"] {
+  background: transparent !important;
+  background-image: url('/assets/background.gif') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
 /* Custom transparent scrollbars for all elements */
 * {
   scrollbar-width: none; /* Firefox */
@@ -2269,6 +2280,11 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 /* Theme-aware styling for game mode panel */
 .lawb-app-light-mode .game-mode-panel-streamlined {
   background-image: url('/assets/lawbstationprint.png');
+  background-color: transparent;
+  color: #000000;
+}
+
+.lawb-app-light-mode .game-mode-panel-streamlined * {
   color: #000000;
 }
 
@@ -2285,6 +2301,29 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 /* Exception for chessboard images in dark mode */
 .lawb-app-dark-mode .game-mode-panel-streamlined img {
   filter: none !important;
+}
+
+/* Light mode - ensure center-area and game-stable-layout are visible */
+.lawb-app-light-mode .center-area,
+.lawb-app-light-mode [class*="center-area"],
+.lawb-app-light-mode .game-stable-layout,
+.lawb-app-light-mode [class*="game-stable-layout"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #000000 !important;
+}
+
+.lawb-app-light-mode .center-area *,
+.lawb-app-light-mode .game-stable-layout * {
+  color: #000000 !important;
+}
+
+/* Exception for images - preserve their colors */
+.lawb-app-light-mode .center-area img,
+.lawb-app-light-mode .game-stable-layout img,
+.lawb-app-light-mode .game-mode-panel-streamlined img {
+  filter: none !important;
+  opacity: 1 !important;
 }
 
 @media (max-width: 768px) {

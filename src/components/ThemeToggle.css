@@ -84,6 +84,24 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   border-color: #cccccc !important;
 }
 
+/* Light mode - ensure center-area and game-stable-layout are visible and transparent */
+.lawb-app-light-mode .center-area,
+.lawb-app-light-mode [class*="center-area"],
+.lawb-app-light-mode .game-stable-layout,
+.lawb-app-light-mode [class*="game-stable-layout"],
+.lawb-app-light-mode .game-content,
+.lawb-app-light-mode [class*="game-content"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #000000 !important;
+}
+
+.lawb-app-light-mode .center-area *,
+.lawb-app-light-mode .game-stable-layout *,
+.lawb-app-light-mode .game-content * {
+  color: #000000 !important;
+}
+
 .lawb-app-light-mode .chess-header h2 {
   color: #000000 !important;
   text-shadow: none !important;
