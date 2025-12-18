@@ -79,8 +79,13 @@ export const isBaseMiniApp = () => {
   }
   
   // Check user agent for Farcaster/Base app indicators
+  // Be very specific - don't match generic "base" words in user agent
   const userAgent = navigator.userAgent?.toLowerCase() || '';
-  if (userAgent.includes('farcaster') || userAgent.includes('base')) {
+  // Only match specific Base/Farcaster app indicators, not generic "base" strings
+  if (userAgent.includes('farcaster') || 
+      userAgent.includes('base.app') ||
+      userAgent.includes('baseapp') ||
+      (userAgent.includes('base') && (userAgent.includes('miniapp') || userAgent.includes('mini-app')))) {
     console.log('[Base Mini App Detection] ✅ Detected via user agent:', userAgent);
     return true;
   }
