@@ -5,17 +5,19 @@
 /* Chess Game Styles */
 .chess-game {
   width: 100vw;
-  min-height: 100vh;
-  height: auto;
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
   background: #c0c0c0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
   padding: 0;
+  box-sizing: border-box;
+  position: relative;
   /* Mobile viewport optimization */
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -82,12 +84,15 @@
   display: flex;
   flex-direction: row;
   gap: 0;
-  width: 100vw;
-  max-width: 100vw;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
   margin: 0;
   align-items: stretch;
   justify-content: stretch;
   box-sizing: border-box;
+  overflow: hidden;
   padding: 0;
   background: transparent;
 }
@@ -104,7 +109,11 @@
 .left-sidebar, .right-sidebar {
   min-width: 160px;
   max-width: 220px;
+  width: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #f0f0f0;
+  box-sizing: border-box;
   border: 1px solid #bbb;
   display: flex;
   flex-direction: column;
@@ -228,19 +237,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-width: 0;
   min-height: 0;
+  max-width: 100%;
+  width: 100%;
   height: 100%;
+  max-height: 100%;
   padding: 0;
-  padding-top: 60px !important; /* Add padding below header to prevent overlap */
+  padding-top: 0px !important; /* No padding - content starts immediately below header */
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .chessboard-container {
   width: 100%;
   height: 100%;
-  max-width: 100vh;
-  max-height: 100vh;
+  max-width: min(100vh, 100%);
+  max-height: min(100vh, 100%);
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -249,6 +264,8 @@
   margin: 0 auto;
   flex: 1 1 0;
   position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .chessboard {
   width: 100%;
@@ -1130,11 +1147,40 @@
   padding-top: 60px !important; /* Add padding below header to prevent overlap */
 }
 
+/* Remove ALL padding for baseapp - content must start immediately after header */
+.chess-game.baseapp .game-stable-layout {
+  padding-top: 0px !important;
+  padding: 0px !important;
+  margin-top: 0px !important;
+}
+
+.chess-game.baseapp .game-stable-layout.home-view {
+  padding: 0px !important;
+  padding-top: 0px !important;
+  padding-bottom: 80px !important;
+  margin-top: 0px !important;
+}
+
 .center-area {
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-top: 60px !important; /* Add padding below header to prevent overlap */
+  box-sizing: border-box;
+}
+
+/* Remove ALL padding for baseapp - content must start immediately after header */
+.chess-game.baseapp .center-area {
+  padding-top: 0px !important;
+  padding: 0px !important;
+  margin-top: 0px !important;
+}
+
+.chess-game.baseapp .game-stable-layout.home-view .center-area {
+  padding-top: 0px !important;
+  margin-top: 0px !important;
 }
 
 .chess-dark-mode, .chess-dark-mode body, html.chess-dark-mode, body.chess-dark-mode {
@@ -1567,10 +1613,37 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 24px 20px 80px;
+  padding: 0px 20px 80px;
   gap: 20px;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Force zero gap and padding for baseapp */
+.chess-game.baseapp .game-stable-layout.home-view,
+div.chess-game.baseapp div.game-stable-layout.home-view {
+  gap: 0px !important;
+  padding-top: 0px !important;
+  margin-top: 0px !important;
+}
+
+/* COMPREHENSIVE OVERRIDE: Remove ALL padding for baseapp - content starts immediately after header */
+.chess-game.baseapp .game-stable-layout.home-view {
+  padding: 0px 20px 80px !important;
+  padding-top: 0px !important;
+  margin-top: 0px !important;
+}
+
+.chess-game.baseapp .game-stable-layout.home-view .center-area {
+  padding-top: 0px !important;
+  padding: 0px !important;
+  margin-top: 0px !important;
+}
+
+.chess-game.baseapp .game-stable-layout.home-view .game-mode-panel-streamlined {
+  margin-top: 0px !important;
+  padding-top: 0px !important;
+  margin-bottom: 0px !important;
 }
 
 .game-stable-layout.home-view .center-area {
@@ -2279,7 +2352,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 20px;
   background-color: transparent;
   background-image: url('/assets/lawbstationprint.png');
@@ -2287,11 +2360,28 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background-size: cover;
   background-repeat: no-repeat;
   border-radius: 0;
-  margin: 20px;
+  margin: 0 auto;
+  margin-top: 0;
   max-width: 600px;
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+}
+
+/* Remove ALL margins/padding for baseapp - content starts immediately */
+.chess-game.baseapp .game-mode-panel-streamlined {
+  margin-top: 0px !important;
+  padding-top: 0px !important;
+  margin-bottom: 0px !important;
+  padding: 20px !important;
+  padding-top: 0px !important;
+}
+
+/* Ensure buttons inside game-mode-panel have solid backgrounds in light mode */
+.lawb-app-light-mode .game-mode-panel-streamlined button.mode-btn-compact,
+.lawb-app-light-mode .game-mode-panel-streamlined button.start-btn-compact {
+  background: #c0c0c0 !important;
+  background-color: #c0c0c0 !important;
 }
 
 /* Theme-aware styling for game mode panel */
@@ -2371,12 +2461,12 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .mode-btn-compact {
-  background: #000000;
-  border: 2px outset #c00000;
+  background: #000000 !important;
+  border: 2px outset #c00000 !important;
   padding: 12px 24px;
   font-size: 14px;
   font-weight: bold;
-  color: #ff0000;
+  color: #ff0000 !important;
   cursor: pointer;
   border-radius: 0;
   min-width: 80px;
@@ -2403,26 +2493,30 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   border: 2px inset #c00000;
 }
 
-/* Light mode styling for buttons */
-.lawb-app-light-mode .mode-btn-compact {
-  background: #c0c0c0;
-  border: 2px outset #fff;
-  color: #000000;
+/* Light mode styling for buttons - ensure solid backgrounds */
+.lawb-app-light-mode .mode-btn-compact,
+.lawb-app-light-mode .game-mode-panel-streamlined .mode-btn-compact,
+.lawb-app-light-mode button.mode-btn-compact {
+  background: #c0c0c0 !important;
+  background-color: #c0c0c0 !important;
+  border: 2px outset #fff !important;
+  color: #000000 !important;
+  opacity: 1 !important;
 }
 
 .lawb-app-light-mode .mode-btn-compact:hover {
-  background: #d4d0c8;
+  background: #d4d0c8 !important;
 }
 
 .lawb-app-light-mode .mode-btn-compact:active {
-  border: 2px inset #fff;
-  background: #a0a0a0;
+  border: 2px inset #fff !important;
+  background: #a0a0a0 !important;
 }
 
 .lawb-app-light-mode .mode-btn-compact.selected {
-  background: #000000;
-  color: #ffffff;
-  border: 2px inset #000;
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 2px inset #000 !important;
 }
 
 /* Dark mode styling for buttons */
@@ -2448,12 +2542,12 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
 }
 
 .start-btn-compact {
-  background: #000000;
-  border: 2px outset #c00000;
+  background: #000000 !important;
+  border: 2px outset #c00000 !important;
   padding: 12px 32px;
   font-size: 16px;
   font-weight: bold;
-  color: #ff0000;
+  color: #ff0000 !important;
   cursor: pointer;
   border-radius: 0;
   margin-bottom: 20px;
@@ -2473,20 +2567,24 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background: #333333;
 }
 
-/* Light mode styling for start button */
-.lawb-app-light-mode .start-btn-compact {
-  background: #c0c0c0;
-  border: 2px outset #fff;
-  color: #000000;
+/* Light mode styling for start button - ensure solid backgrounds */
+.lawb-app-light-mode .start-btn-compact,
+.lawb-app-light-mode .game-mode-panel-streamlined .start-btn-compact,
+.lawb-app-light-mode button.start-btn-compact {
+  background: #c0c0c0 !important;
+  background-color: #c0c0c0 !important;
+  border: 2px outset #fff !important;
+  color: #000000 !important;
+  opacity: 1 !important;
 }
 
 .lawb-app-light-mode .start-btn-compact:hover {
-  background: #d4d0c8;
+  background: #d4d0c8 !important;
 }
 
 .lawb-app-light-mode .start-btn-compact:active {
-  border: 2px inset #fff;
-  background: #a0a0a0;
+  border: 2px inset #fff !important;
+  background: #a0a0a0 !important;
 }
 
 /* Dark mode styling for start button */
@@ -3192,13 +3290,28 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     padding-top: 0 !important;
   }
   
-  /* Base Mini App (baseapp class) should keep padding-top */
-  .chess-game.baseapp .game-stable-layout {
-    padding-top: 60px !important;
+  /* Base Mini App (baseapp class) - NO padding, content starts immediately after header */
+  .chess-game.baseapp .game-stable-layout,
+  .chess-game.baseapp .game-stable-layout.home-view {
+    padding-top: 0px !important;
+    padding: 0px !important;
+    margin-top: 0px !important;
   }
   
-  .chess-game.baseapp .center-area {
-    padding-top: 60px !important;
+  .chess-game.baseapp .center-area,
+  .chess-game.baseapp .game-stable-layout.home-view .center-area {
+    padding-top: 0px !important;
+    padding: 0px !important;
+    margin-top: 0px !important;
+  }
+  
+  .chess-game.baseapp .game-mode-panel-streamlined {
+    margin-top: 0px !important;
+    padding-top: 0px !important;
+  }
+  
+  .chess-game.baseapp .game-stable-layout {
+    padding-top: 0px !important;
   }
   
   .mode-selection-compact {
@@ -3211,13 +3324,38 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   .chess-menu-popup {
     display: none !important;
   }
-  
+
   .chess-menu-popup button {
     min-height: 44px;
     padding: 12px 16px;
     font-size: 16px;
     touch-action: manipulation;
   }
+}
+
+/* Ensure chess menu popup is visible in both themes */
+.chess-menu-popup {
+  background: #c0c0c0 !important;
+  color: #000000 !important;
+  border: 2px outset #ffffff !important;
+}
+
+.chess-menu-popup button {
+  background: #c0c0c0 !important;
+  color: #000000 !important;
+  border: 2px outset #ffffff !important;
+}
+
+.lawb-app-dark-mode .chess-menu-popup {
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border: 2px outset #00ff00 !important;
+}
+
+.lawb-app-dark-mode .chess-menu-popup button {
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border: 2px outset #00ff00 !important;
   
   /* Mobile-optimized header - REDUCED HEIGHT */
   .chess-header {
@@ -3697,5 +3835,56 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     font-weight: bold !important;
     background: #e0e0e0 !important;
   }
+}
+
+/* ============================================
+   FINAL OVERRIDE: Base Mini App - ZERO PADDING
+   Content must start immediately after header
+   ============================================ */
+.chess-game.baseapp .game-stable-layout,
+.chess-game.baseapp .game-stable-layout.home-view,
+div.chess-game.baseapp .game-stable-layout.home-view,
+div.chess-game.baseapp div.game-stable-layout.home-view {
+  padding-top: 0px !important;
+  padding: 0px 20px 80px !important;
+  margin-top: 0px !important;
+  gap: 0px !important;
+}
+
+.chess-game.baseapp .center-area,
+.chess-game.baseapp .game-stable-layout .center-area,
+.chess-game.baseapp .game-stable-layout.home-view .center-area,
+div.chess-game.baseapp div.center-area,
+div.chess-game.baseapp div.game-stable-layout.home-view div.center-area {
+  padding-top: 0px !important;
+  padding: 0px !important;
+  margin-top: 0px !important;
+}
+
+.chess-game.baseapp .game-mode-panel-streamlined,
+div.chess-game.baseapp div.game-mode-panel-streamlined {
+  margin-top: 0px !important;
+  padding-top: 0px !important;
+  margin-bottom: 0px !important;
+}
+
+.chess-game.baseapp .game-mode-panel-streamlined > div:first-child,
+div.chess-game.baseapp div.game-mode-panel-streamlined > div:first-child {
+  margin-top: 0px !important;
+  padding-top: 0px !important;
+}
+
+/* Additional specificity to override any conflicting rules */
+div.chess-game.baseapp div.game-stable-layout.home-view.baseapp {
+  padding-top: 0px !important;
+  margin-top: 0px !important;
+  gap: 0px !important;
+}
+
+div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area {
+  padding-top: 0px !important;
+  padding: 0px !important;
+  margin-top: 0px !important;
+  margin: 0px !important;
 }
 

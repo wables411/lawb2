@@ -17,6 +17,7 @@ import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { triggerHapticImpact, triggerHapticSelection, triggerHapticNotification, getSafeAreaInsets, isBaseMiniApp } from '../utils/baseMiniapp';
 
 import '../components/ChessGame.css';
 
@@ -425,17 +426,27 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
 
   // Check wallet connection - any EVM chain is fine for single-player
   // Chain switching is only required when joining multiplayer games on different chains
+  // In Base Mini App, auto-connect is handled, so don't show connect button
   useEffect(() => {
-    if (!isConnected || !walletAddress) {
-      setStatus('Connect wallet to play');
-      setShowGame(false);
-      setShowDifficulty(false);
-      // Trigger Reown appkit popup for wallet connection
-      void open();
+    if (isBaseMiniAppDetected) {
+      // In Base Mini App, auto-connect is handled, just set status
+      if (isConnected && walletAddress) {
+        setStatus('Select chess mode');
+      } else {
+        setStatus('Connecting...');
+      }
     } else {
-      setStatus('Select chess mode');
+      if (!isConnected || !walletAddress) {
+        setStatus('Connect wallet to play');
+        setShowGame(false);
+        setShowDifficulty(false);
+        // Trigger Reown appkit popup for wallet connection
+        void open();
+      } else {
+        setStatus('Select chess mode');
+      }
     }
-  }, [isConnected, walletAddress, open]);
+  }, [isConnected, walletAddress, open, isBaseMiniAppDetected]);
 
   // Chain switching is no longer required for single-player mode
   // It's only needed when joining multiplayer games on different chains (handled in ChessMultiplayer)
@@ -1005,7 +1016,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
   };
 
   // Handle square click
-  const handleSquareClick = (row: number, col: number) => {
+  const handleSquareClick = async (row: number, col: number) => {
     if (gameState !== 'active' || isAIMovingRef.current) return;
     
     const piece = board[row][col];
@@ -1013,12 +1024,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
     
     // If a piece is selected and we click on a legal move
     if (selectedPiece && legalMoves.some(move => move.row === row && move.col === col)) {
+      await triggerHapticImpact('medium');
       makeMove(selectedPiece, { row, col });
       return;
     }
     
     // If we click on a piece of the current player
     if (piece && pieceColor === currentPlayer) {
+      await triggerHapticSelection();
       const moves = getLegalMoves({ row, col });
       setSelectedPiece({ row, col });
       setLegalMoves(moves);
@@ -1026,6 +1039,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
     }
     
     // Deselect if clicking on invalid square
+    await triggerHapticImpact('light');
     setSelectedPiece(null);
     setLegalMoves([]);
   };
@@ -1259,6 +1273,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
     
     if (!blueKingFound) {
       console.log('[GAME END] KING CAPTURED - Red wins!');
+      void triggerHapticNotification('error');
       setGameState('checkmate');
       setStatus('King captured! Red wins!');
       void updateScore('loss');
@@ -1266,9 +1281,10 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       return 'checkmate';
     }
-    
+
     if (!redKingFound) {
       console.log('[GAME END] KING CAPTURED - Blue wins!');
+      void triggerHapticNotification('success');
       setGameState('checkmate');
       setStatus('King captured! You win!');
       void updateScore('win');
@@ -1290,6 +1306,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       if (isPlayerWin) {
         setStatus(`Checkmate! You win!`);
         playSound('victory');
+        void triggerHapticNotification('success');
         setShowVictory(true);
         setVictoryCelebration(true);
         triggerVictoryCelebration();
@@ -1299,6 +1316,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       } else {
         setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
         playSound('loser');
+        void triggerHapticNotification('error');
         setShowDefeat(true);
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
@@ -1320,6 +1338,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       if (isPlayerWin) {
         setStatus(`Stalemate! You win!`);
         playSound('victory');
+        void triggerHapticNotification('success');
         setShowVictory(true);
         setVictoryCelebration(true);
         triggerVictoryCelebration();
@@ -1329,6 +1348,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       } else {
         setStatus(`Stalemate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
         playSound('loser');
+        void triggerHapticNotification('error');
         setShowDefeat(true);
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
@@ -1341,6 +1361,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
     if (isKingInCheck(boardState, playerToMove)) {
       console.log('CHECK detected!');
       playSound('check');
+      void triggerHapticNotification('warning');
       setStatus(`${playerToMove === 'blue' ? 'Blue' : 'Red'} is in check!`);
     } else {
       setStatus(`Your turn`);
@@ -2058,38 +2079,62 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+  const openWindow = async (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
     if (typeof window !== 'undefined' && window.console) {
       window.console.log('[OPEN WINDOW] Opening window:', windowType);
     }
+    await triggerHapticSelection();
     setIsMenuOpen(false);
+    
+    // Get safe area insets for proper positioning
+    const insets = isBaseMiniApp() ? await getSafeAreaInsets() : { top: 0, bottom: 0, left: 0, right: 0 };
+    
     // Set default position if not set - position windows to avoid covering chessboard
     // Calculate position BEFORE opening window to ensure it's available on first render
     if (!windowPositions[windowType]) {
-      const windowWidth =
-        windowType === 'gallery' ? 380 :
-        windowType === 'moves' ? 300 :
-        windowType === 'profile' ? 400 :
-        windowType === 'howto' ? 420 : 400;
-      const windowHeight =
-        windowType === 'gallery' ? 480 :
-        windowType === 'moves' ? 400 :
-        windowType === 'profile' ? 500 :
-        windowType === 'howto' ? 520 : 500;
+      // Calculate window size based on viewport and safe areas
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
+      const taskbarHeight = 60; // Account for taskbar
+      const padding = 16; // Padding around windows
       
-      // Position windows on the left side to avoid center chessboard
-      // Stagger them vertically to avoid overlap
+      // Calculate available space accounting for safe areas
+      const availableWidth = screenWidth - insets.left - insets.right - (padding * 2);
+      const availableHeight = screenHeight - insets.top - insets.bottom - headerHeight - taskbarHeight - (padding * 2);
+      
+      // Size windows to fit within available space, with max sizes
+      const windowWidth = Math.min(
+        windowType === 'gallery' ? 380 :
+        windowType === 'moves' ? 300 :
+        windowType === 'profile' ? 400 :
+        windowType === 'howto' ? 420 : 400,
+        availableWidth
+      );
+      const windowHeight = Math.min(
+        windowType === 'gallery' ? 480 :
+        windowType === 'moves' ? 400 :
+        windowType === 'profile' ? 500 :
+        windowType === 'howto' ? 520 : 500,
+        availableHeight
+      );
+      
+      // Position windows centered or on the left side to avoid center chessboard
+      // In Base Mini App, center windows; otherwise position on left
+      const isBaseApp = isBaseMiniApp();
+      const leftMargin = isBaseApp 
+        ? Math.max(insets.left + padding, (screenWidth - windowWidth) / 2)
+        : insets.left + padding;
+      const topMargin = insets.top + headerHeight + padding;
+      
+      // Stagger windows vertically to avoid overlap
       const openCount = Object.keys(windowPositions).length;
-      const leftMargin = 20;
-      const topMargin = headerHeight + 20;
       const staggerOffset = openCount * 40;
+      const maxY = screenHeight - insets.bottom - taskbarHeight - windowHeight - padding;
       
       const newPosition = { 
-        x: leftMargin, 
-        y: Math.min(topMargin + staggerOffset, screenHeight - windowHeight - 20),
+        x: Math.max(insets.left + padding, Math.min(leftMargin, screenWidth - windowWidth - insets.right - padding)), 
+        y: Math.max(topMargin, Math.min(topMargin + staggerOffset, maxY)),
         width: windowWidth, 
         height: windowHeight 
       };
@@ -2122,7 +2167,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+  const closeWindow = async (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+    await triggerHapticSelection();
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
@@ -2198,9 +2244,10 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             {shouldShowDesktopMenu && (
             <button 
               className="menu-btn"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                await triggerHapticSelection();
                 if (typeof window !== 'undefined' && window.console) {
                   window.console.log('[MENU] Home view button clicked, current isMenuOpen:', isMenuOpen);
                 }
@@ -2216,14 +2263,16 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             {isMobile && (
               <button 
                 className="sidebar-menu-btn"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  await triggerHapticSelection();
                   setIsSidebarOpen(prev => !prev);
                 }}
-                onTouchStart={(e) => {
+                onTouchStart={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  await triggerHapticSelection();
                   setIsSidebarOpen(prev => !prev);
                 }}
                 title="Toggle Menu"
@@ -2245,14 +2294,32 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             <button onClick={onClose}>×</button>
           </div>
         </div>
-        <div className={`game-stable-layout home-view ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile' : 'desktop')}`}>
+        <div 
+          className={`game-stable-layout home-view ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile' : 'desktop')}`}
+          style={isBaseMiniAppDetected ? { 
+            marginTop: '0px', 
+            paddingTop: '0px', 
+            padding: '0px 20px 80px',
+            gap: '0px' 
+          } : {}}
+        >
           {/* Desktop sidebar removed - using menu popup and windows instead */}
-          <div className="center-area">
-            <div className="game-mode-panel-streamlined">
-              {/* Status Display and Network Switching */}
+          <div 
+            className="center-area"
+            style={isBaseMiniAppDetected ? { 
+              marginTop: '0px', 
+              paddingTop: '0px', 
+              padding: '0px',
+              margin: '0px'
+            } : {}}
+          >
+            <div className="game-mode-panel-streamlined" style={isBaseMiniAppDetected ? { marginTop: '0px', paddingTop: '0px' } : {}}>
+              {/* Status Display and Network Switching - Hide connect wallet button in Base Mini App */}
+              {(!isBaseMiniAppDetected || (isBaseMiniAppDetected && isConnected && walletAddress)) && (
               <div style={{ 
                 textAlign: 'center', 
                 marginBottom: '20px',
+                marginTop: isBaseMiniAppDetected ? '0px' : 'auto',
                 padding: '10px',
                 backgroundColor: isDarkMode ? '#000000' : '#c0c0c0',
                 border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
@@ -2280,6 +2347,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 )}
                 {/* Chain switching no longer required for single-player - any EVM chain works */}
               </div>
+              )}
               
               <div className="mode-selection-compact">
                 <button 
@@ -2813,7 +2881,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('leaderboard')}
           title="Leaderboard"
           initialPosition={windowPositions['leaderboard'] ? { x: windowPositions['leaderboard'].x, y: windowPositions['leaderboard'].y } : { x: 20, y: 80 }}
-          initialSize={{ width: 400, height: 500 }}
+          initialSize={windowPositions['leaderboard'] ? { width: windowPositions['leaderboard'].width, height: windowPositions['leaderboard'].height } : { width: 400, height: 500 }}
           zIndex={1000}
         >
           <div className="leaderboard-compact">
@@ -2873,7 +2941,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('gallery')}
           title="Piece Gallery"
           initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
-          initialSize={{ width: 380, height: 480 }}
+          initialSize={windowPositions['gallery'] ? { width: windowPositions['gallery'].width, height: windowPositions['gallery'].height } : { width: 380, height: 480 }}
           zIndex={1000}
         >
           <div className="piece-gallery-compact">
@@ -2889,7 +2957,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('profile')}
           title="Profile"
           initialPosition={windowPositions['profile'] ? { x: windowPositions['profile'].x, y: windowPositions['profile'].y } : { x: 20, y: 180 }}
-          initialSize={{ width: 400, height: 500 }}
+          initialSize={windowPositions['profile'] ? { width: windowPositions['profile'].width, height: windowPositions['profile'].height } : { width: 400, height: 500 }}
           zIndex={1000}
         >
           <PlayerProfile isMobile={false} />
@@ -2903,7 +2971,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('howto')}
           title="How To Play"
           initialPosition={windowPositions['howto'] ? { x: windowPositions['howto'].x, y: windowPositions['howto'].y } : { x: 40, y: 160 }}
-          initialSize={{ width: 420, height: 520 }}
+          initialSize={windowPositions['howto'] ? { width: windowPositions['howto'].width, height: windowPositions['howto'].height } : { width: 420, height: 520 }}
           zIndex={1000}
         >
           <HowToContent />
@@ -3660,7 +3728,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('leaderboard')}
           title="Leaderboard"
           initialPosition={windowPositions['leaderboard'] ? { x: windowPositions['leaderboard'].x, y: windowPositions['leaderboard'].y } : { x: 20, y: 80 }}
-          initialSize={{ width: 400, height: 500 }}
+          initialSize={windowPositions['leaderboard'] ? { width: windowPositions['leaderboard'].width, height: windowPositions['leaderboard'].height } : { width: 400, height: 500 }}
           zIndex={1000}
         >
           <div className="leaderboard-compact">
@@ -3720,7 +3788,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('gallery')}
           title="Piece Gallery"
           initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
-          initialSize={{ width: 380, height: 480 }}
+          initialSize={windowPositions['gallery'] ? { width: windowPositions['gallery'].width, height: windowPositions['gallery'].height } : { width: 380, height: 480 }}
           zIndex={1000}
         >
           <div className="piece-gallery-compact">
@@ -3736,7 +3804,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('moves')}
           title="Move History"
           initialPosition={windowPositions['moves'] ? { x: windowPositions['moves'].x, y: windowPositions['moves'].y } : { x: 20, y: 140 }}
-          initialSize={{ width: 300, height: 400 }}
+          initialSize={windowPositions['moves'] ? { width: windowPositions['moves'].width, height: windowPositions['moves'].height } : { width: 300, height: 400 }}
           zIndex={1000}
         >
           <div className="move-history-compact">
@@ -3768,7 +3836,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           }}
           title="Profile"
           initialPosition={windowPositions['profile'] ? { x: windowPositions['profile'].x, y: windowPositions['profile'].y } : { x: 20, y: 180 }}
-          initialSize={{ width: 400, height: 500 }}
+          initialSize={windowPositions['profile'] ? { width: windowPositions['profile'].width, height: windowPositions['profile'].height } : { width: 400, height: 500 }}
           zIndex={1000}
         >
           <PlayerProfile isMobile={false} />
@@ -3782,7 +3850,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           onClose={() => closeWindow('howto')}
           title="How To Play"
           initialPosition={windowPositions['howto'] ? { x: windowPositions['howto'].x, y: windowPositions['howto'].y } : { x: 40, y: 160 }}
-          initialSize={{ width: 420, height: 520 }}
+          initialSize={windowPositions['howto'] ? { width: windowPositions['howto'].width, height: windowPositions['howto'].height } : { width: 420, height: 520 }}
           zIndex={1000}
         >
           <HowToContent />
