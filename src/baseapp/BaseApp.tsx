@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Desktop from '../components/Desktop';
 import Taskbar from '../components/Taskbar';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAccount } from 'wagmi';
-import { initBaseMiniApp, isBaseMiniApp } from '../utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp, getSafeAreaInsets, applySafeAreaInsets, triggerHapticImpact, triggerHapticSelection, triggerHapticNotification } from '../utils/baseMiniapp';
 import { lazy, Suspense } from 'react';
 import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
@@ -22,14 +22,19 @@ const NFTGallery = lazy(() => import('../components/NFTGallery'));
 const POPUP_CONTENT_STYLE: React.CSSProperties = {
   width: '100%',
   height: '100%',
-  overflow: 'auto',
+  overflowY: 'auto',
+  overflowX: 'hidden',
   boxSizing: 'border-box',
   padding: '15px',
-  WebkitOverflowScrolling: 'touch'
+  WebkitOverflowScrolling: 'touch',
+  wordWrap: 'break-word',
+  wordBreak: 'break-word',
+  maxWidth: '100%'
 };
 
-// Uniform popup size for miniapp - ensure windows don't cover taskbar
-const MINIAPP_POPUP_SIZE = { 
+// Default popup size for miniapp - will be updated with safe area insets
+// This is a fallback if safe area insets aren't available yet
+const DEFAULT_MINIAPP_POPUP_SIZE = { 
   width: 'calc(100vw - 32px)', 
   height: 'calc(100vh - 60px)' // 16px top + 44px bottom (taskbar + padding)
 };
@@ -44,18 +49,41 @@ function BaseApp() {
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [windowSizes, setWindowSizes] = useState<Record<string, { width: number; height: number }>>({});
+  const [miniappPopupSize, setMiniappPopupSize] = useState(DEFAULT_MINIAPP_POPUP_SIZE);
 
-  // Initialize Base Mini App SDK
-  React.useEffect(() => {
-    void initBaseMiniApp();
+  // Initialize Base Mini App SDK and apply safe area insets
+  useEffect(() => {
+    const initialize = async () => {
+      await initBaseMiniApp();
+      
+      if (isBaseMiniApp()) {
+        // Apply safe area insets as CSS variables
+        await applySafeAreaInsets();
+        
+        // Get safe area insets and calculate popup size
+        const insets = await getSafeAreaInsets();
+        const taskbarHeight = 60;
+        const padding = 16; // 8px on each side
+        
+        const width = `calc(100vw - ${insets.left + insets.right + padding * 2}px)`;
+        const height = `calc(100vh - ${insets.top + insets.bottom + taskbarHeight + padding}px)`;
+        
+        setMiniappPopupSize({ width, height });
+      }
+    };
+    
+    void initialize();
   }, []);
 
   React.useEffect(() => {
     console.log('[BaseApp] showPublicChat changed:', showPublicChat);
   }, [showPublicChat]);
 
-  const handleIconClick = (action: string, popupId?: string, url?: string) => {
+  const handleIconClick = async (action: string, popupId?: string, url?: string) => {
     console.log('[BaseApp] Icon clicked:', { action, popupId, url });
+    
+    // Haptic feedback for icon click
+    await triggerHapticImpact('light');
     
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -74,6 +102,7 @@ function BaseApp() {
 
     if (action === 'mint') {
       if (!address) {
+        await triggerHapticNotification('error');
         alert('Please connect your wallet first!');
         return;
       }
@@ -101,7 +130,8 @@ function BaseApp() {
     }
   };
 
-  const closePopup = (popupId: string) => {
+  const closePopup = async (popupId: string) => {
+    await triggerHapticSelection();
     setActivePopup(null);
     setMinimizedPopups(prev => {
       const next = new Set(prev);
@@ -110,12 +140,14 @@ function BaseApp() {
     });
   };
 
-  const minimizePopup = (popupId: string) => {
+  const minimizePopup = async (popupId: string) => {
+    await triggerHapticSelection();
     setActivePopup(null);
     setMinimizedPopups(prev => new Set(prev).add(popupId));
   };
 
-  const restorePopup = (popupId: string) => {
+  const restorePopup = async (popupId: string) => {
+    await triggerHapticSelection();
     setMinimizedPopups(prev => {
       const next = new Set(prev);
       next.delete(popupId);
@@ -124,17 +156,27 @@ function BaseApp() {
     setActivePopup(popupId);
   };
 
-  const openPublicChat = () => {
+  const openPublicChat = async () => {
     console.log('[BaseApp] Opening public chat');
+    await triggerHapticImpact('light');
     setShowPublicChat(true);
   };
 
-  const minimizePublicChat = () => {
+  const minimizePublicChat = async () => {
+    await triggerHapticSelection();
     setShowPublicChat(false);
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      overflow: 'hidden',
+      position: 'relative',
+      boxSizing: 'border-box',
+      maxWidth: '100vw',
+      maxHeight: '100vh'
+    }}>
       <Desktop onIconClick={handleIconClick} />
 
       <Taskbar
@@ -168,10 +210,16 @@ function BaseApp() {
         <Popup 
           id="profile-popup" 
           isOpen={true} 
-          onClose={() => setShowProfile(false)} 
-          onMinimize={() => setShowProfile(false)} 
+          onClose={async () => {
+            await triggerHapticSelection();
+            setShowProfile(false);
+          }} 
+          onMinimize={async () => {
+            await triggerHapticSelection();
+            setShowProfile(false);
+          }} 
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <Suspense fallback={<div>Loading...</div>}>
@@ -186,8 +234,14 @@ function BaseApp() {
         <Suspense fallback={<div>Loading...</div>}>
           <MintPopup 
             isOpen={true}
-            onClose={() => setShowMintPopup(false)}
-            onMinimize={() => setShowMintPopup(false)}
+            onClose={async () => {
+              await triggerHapticSelection();
+              setShowMintPopup(false);
+            }}
+            onMinimize={async () => {
+              await triggerHapticSelection();
+              setShowMintPopup(false);
+            }}
             walletAddress={address || ''}
           />
         </Suspense>
@@ -198,10 +252,16 @@ function BaseApp() {
         <Popup
           id="meme-generator-popup"
           isOpen={true}
-          onClose={() => setShowMemeGenerator(false)}
-          onMinimize={() => setShowMemeGenerator(false)}
+          onClose={async () => {
+            await triggerHapticSelection();
+            setShowMemeGenerator(false);
+          }}
+          onMinimize={async () => {
+            await triggerHapticSelection();
+            setShowMemeGenerator(false);
+          }}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <Suspense fallback={<div>Loading...</div>}>
@@ -219,7 +279,7 @@ function BaseApp() {
           onClose={() => closePopup('purity-popup')}
           onMinimize={() => minimizePopup('purity-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -242,7 +302,7 @@ function BaseApp() {
           onClose={() => closePopup('miladychan-popup')}
           onMinimize={() => minimizePopup('miladychan-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -287,7 +347,7 @@ function BaseApp() {
           onClose={() => closePopup('lawbstation-popup')}
           onMinimize={() => minimizePopup('lawbstation-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -311,7 +371,7 @@ function BaseApp() {
           onClose={() => closePopup('lawb-popup')}
           onMinimize={() => minimizePopup('lawb-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <h1 style={{ marginBottom: '10px' }}>
@@ -345,7 +405,7 @@ function BaseApp() {
           onClose={() => closePopup('lawbstarz-popup')}
           onMinimize={() => minimizePopup('lawbstarz-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -374,7 +434,7 @@ function BaseApp() {
           onClose={() => closePopup('asciilawbs-popup')}
           onMinimize={() => minimizePopup('asciilawbs-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <Suspense fallback={<div>Loading...</div>}>
@@ -392,7 +452,7 @@ function BaseApp() {
           onClose={() => closePopup('nft-gallery-popup')}
           onMinimize={() => minimizePopup('nft-gallery-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <Suspense fallback={<div>Loading...</div>}>
@@ -414,7 +474,7 @@ function BaseApp() {
           onClose={() => closePopup('lawbsters-popup')}
           onMinimize={() => minimizePopup('lawbsters-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -440,7 +500,7 @@ function BaseApp() {
           onClose={() => closePopup('pixelawbs-popup')}
           onMinimize={() => minimizePopup('pixelawbs-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -463,7 +523,7 @@ function BaseApp() {
           onClose={() => closePopup('halloween-popup')}
           onMinimize={() => minimizePopup('halloween-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>
@@ -486,7 +546,7 @@ function BaseApp() {
           onClose={() => closePopup('nexus-popup')}
           onMinimize={() => minimizePopup('nexus-popup')}
           zIndex={2000}
-          initialSize={MINIAPP_POPUP_SIZE}
+          initialSize={miniappPopupSize}
         >
           <div style={POPUP_CONTENT_STYLE}>
             <p style={{ marginBottom: '10px' }}>

@@ -2820,33 +2820,21 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             >
               Profile
             </button>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // Trigger theme toggle by clicking the ThemeToggle component
-                const toggleBtn = e.currentTarget.querySelector('button');
-                if (toggleBtn) {
-                  toggleBtn.click();
-                }
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: isMobile ? '12px 16px' : '8px',
-                marginBottom: '4px',
-                background: isDarkMode ? '#000000' : '#c0c0c0',
-                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
-                cursor: 'pointer',
-                textAlign: 'left',
-                minHeight: isMobile ? '44px' : 'auto',
-                fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation',
-                color: isDarkMode ? '#00ff00' : '#000000'
-              }}
-            >
-              <ThemeToggle asMenuItem={true} />
-            </button>
+            <div style={{
+              display: 'block',
+              width: '100%',
+              padding: isMobile ? '12px 16px' : '8px',
+              marginBottom: '4px',
+              background: isDarkMode ? '#000000' : '#c0c0c0',
+              border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
+              textAlign: 'left',
+              minHeight: isMobile ? '44px' : 'auto',
+              fontSize: isMobile ? '16px' : '14px',
+              touchAction: 'manipulation',
+              color: isDarkMode ? '#00ff00' : '#000000'
+            }}>
+              <ThemeToggle />
+            </div>
             {onBackToModeSelect && (
               <button
                 onClick={() => {

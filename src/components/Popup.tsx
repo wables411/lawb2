@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Draggable from 'react-draggable';
 import { createUseStyles } from 'react-jss';
+import { getSafeAreaInsets, isBaseMiniApp } from '../utils/baseMiniapp';
 
 const useStyles = createUseStyles({
   popup: {
@@ -56,33 +57,60 @@ const useStyles = createUseStyles({
     gap: '1px'
   },
   titleBarButton: {
-    width: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '14px' : '16px') as any,
-    height: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '12px' : '14px') as any,
+    width: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '44px' : '16px') as any,
+    height: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '44px' : '14px') as any,
+    minWidth: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '44px' : '16px') as any,
+    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '44px' : '14px') as any,
     border: '1px outset #c0c0c0',
     backgroundColor: '#c0c0c0',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '7px' : '8px') as any,
+    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '18px' : '8px') as any,
     color: 'black',
-    padding: '0',
+    padding: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '12px' : '0') as any,
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
     '&:active': {
-      border: '1px inset #c0c0c0'
+      border: '1px inset #c0c0c0',
+      backgroundColor: '#a0a0a0'
     },
     '@media (max-width: 768px)': {
-      width: '14px',
-      height: '12px',
-      fontSize: '7px',
-      minWidth: '14px',
-      minHeight: '12px',
+      width: '44px',
+      height: '44px',
+      minWidth: '44px',
+      minHeight: '44px',
+      fontSize: '18px',
+      padding: '12px',
     }
   },
   content: {
     padding: '15px',
     height: 'calc(100% - 30px)',
-    overflow: 'auto',
+    overflowY: 'auto',
+    overflowX: 'hidden',
     background: 'transparent',
+    boxSizing: 'border-box',
+    maxWidth: '100%',
+    width: '100%',
+    wordWrap: 'break-word',
+    wordBreak: 'break-word',
+    hyphens: 'auto',
+    '& img': {
+      maxWidth: '100%',
+      height: 'auto',
+      display: 'block'
+    },
+    '& video': {
+      maxWidth: '100%',
+      height: 'auto',
+      display: 'block'
+    },
+    '& *': {
+      maxWidth: '100%',
+      boxSizing: 'border-box'
+    },
     '@media (max-width: 768px)': {
       padding: '16px',
       height: 'calc(100% - 50px)',
@@ -144,6 +172,30 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   const classes = useStyles({ isOpen, isBaseMiniApp: isBaseMiniAppDetected });
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
+  
+  // Safe area insets state
+  const [safeAreaInsets, setSafeAreaInsets] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
+  const [popupSize, setPopupSize] = useState({ width: 'calc(100vw - 32px)', height: 'calc(100vh - 60px)' });
+  
+  // Get safe area insets and calculate popup size
+  useEffect(() => {
+    if (isBaseMiniAppDetected && isOpen) {
+      const updateSafeAreas = async () => {
+        const insets = await getSafeAreaInsets();
+        setSafeAreaInsets(insets);
+        
+        // Calculate popup size accounting for safe areas and taskbar (estimated 60px)
+        const taskbarHeight = 60;
+        const padding = 16; // 8px on each side
+        const width = `calc(100vw - ${insets.left + insets.right + padding * 2}px)`;
+        const height = `calc(100vh - ${insets.top + insets.bottom + taskbarHeight + padding}px)`;
+        
+        setPopupSize({ width, height });
+      };
+      
+      updateSafeAreas();
+    }
+  }, [isBaseMiniAppDetected, isOpen]);
   
   // Debug: log when popup should be visible
   React.useEffect(() => {
@@ -280,10 +332,10 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         ref={nodeRef} 
         className={classes.popup}
         style={{ 
-          width: 'calc(100vw - 32px)',
-          height: 'calc(100vh - 60px)',
-          maxWidth: 'calc(100vw - 32px)',
-          maxHeight: 'calc(100vh - 60px)',
+          width: popupSize.width,
+          height: popupSize.height,
+          maxWidth: popupSize.width,
+          maxHeight: popupSize.height,
           minWidth: '0',
           minHeight: '0',
           left: '50%',
@@ -295,7 +347,12 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
           position: 'fixed',
           transform: 'translate(-50%, -50%) !important',
           margin: '0',
-          zIndex: zIndex || 100
+          zIndex: zIndex || 100,
+          overflow: 'hidden',
+          paddingTop: `max(0px, ${safeAreaInsets.top}px)`,
+          paddingBottom: `max(0px, ${safeAreaInsets.bottom}px)`,
+          paddingLeft: `max(0px, ${safeAreaInsets.left}px)`,
+          paddingRight: `max(0px, ${safeAreaInsets.right}px)`,
         }}
       >
         {renderPopupContent()}
@@ -318,10 +375,10 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         className={classes.popup}
         style={{ 
           ...(isBaseMiniAppDetected ? {
-            width: 'calc(100vw - 32px)',
-            height: 'calc(100vh - 60px)',
-            maxWidth: 'calc(100vw - 32px)',
-            maxHeight: 'calc(100vh - 60px)',
+            width: popupSize.width,
+            height: popupSize.height,
+            maxWidth: popupSize.width,
+            maxHeight: popupSize.height,
             minWidth: '0',
             minHeight: '0',
             left: '50%',
@@ -333,7 +390,12 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
             position: 'fixed',
             transform: 'translate(-50%, -50%)',
             margin: '0',
-            inset: 'auto'
+            inset: 'auto',
+            overflow: 'hidden',
+            paddingTop: `max(0px, ${safeAreaInsets.top}px)`,
+            paddingBottom: `max(0px, ${safeAreaInsets.bottom}px)`,
+            paddingLeft: `max(0px, ${safeAreaInsets.left}px)`,
+            paddingRight: `max(0px, ${safeAreaInsets.right}px)`,
           } : {
             width: initialSize?.width,
             height: initialSize?.height

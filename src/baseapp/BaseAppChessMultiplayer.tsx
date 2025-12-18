@@ -26,6 +26,7 @@ import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils
 import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
+import { triggerHapticImpact, triggerHapticSelection, triggerHapticNotification, getSafeAreaInsets, isBaseMiniApp } from '../utils/baseMiniapp';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -886,37 +887,60 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+  const openWindow = async (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+    await triggerHapticSelection();
     setOpenWindows(prev => new Set(prev).add(windowType));
     setIsMenuOpen(false);
+    
+    // Get safe area insets for proper positioning
+    const insets = isBaseMiniApp() ? await getSafeAreaInsets() : { top: 0, bottom: 0, left: 0, right: 0 };
+    
     // Set default position if not set - position windows to avoid covering chessboard
     if (!windowPositions[windowType]) {
-      const windowWidth =
-        windowType === 'gallery' ? 380 :
-        windowType === 'moves' ? 300 :
-        windowType === 'profile' ? 400 :
-        windowType === 'howto' ? 420 : 400;
-      const windowHeight =
-        windowType === 'gallery' ? 480 :
-        windowType === 'moves' ? 400 :
-        windowType === 'profile' ? 500 :
-        windowType === 'howto' ? 520 : 500;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
+      const taskbarHeight = 60; // Account for taskbar
+      const padding = 16; // Padding around windows
       
-      // Position windows on the left side to avoid center chessboard
-      // Stagger them vertically to avoid overlap
+      // Calculate available space accounting for safe areas
+      const availableWidth = screenWidth - insets.left - insets.right - (padding * 2);
+      const availableHeight = screenHeight - insets.top - insets.bottom - headerHeight - taskbarHeight - (padding * 2);
+      
+      // Size windows to fit within available space, with max sizes
+      const windowWidth = Math.min(
+        windowType === 'gallery' ? 380 :
+        windowType === 'moves' ? 300 :
+        windowType === 'profile' ? 400 :
+        windowType === 'howto' ? 420 : 400,
+        availableWidth
+      );
+      const windowHeight = Math.min(
+        windowType === 'gallery' ? 480 :
+        windowType === 'moves' ? 400 :
+        windowType === 'profile' ? 500 :
+        windowType === 'howto' ? 520 : 500,
+        availableHeight
+      );
+      
+      // Position windows centered or on the left side to avoid center chessboard
+      // In Base Mini App, center windows; otherwise position on left
+      const isBaseApp = isBaseMiniApp();
+      const leftMargin = isBaseApp 
+        ? Math.max(insets.left + padding, (screenWidth - windowWidth) / 2)
+        : insets.left + padding;
+      const topMargin = insets.top + headerHeight + padding;
+      
+      // Stagger windows vertically to avoid overlap
       const openCount = Object.keys(windowPositions).length;
-      const leftMargin = 20;
-      const topMargin = headerHeight + 20;
       const staggerOffset = openCount * 40;
+      const maxY = screenHeight - insets.bottom - taskbarHeight - windowHeight - padding;
       
       setWindowPositions(prev => ({
         ...prev,
         [windowType]: { 
-          x: leftMargin, 
-          y: Math.min(topMargin + staggerOffset, screenHeight - windowHeight - 20),
+          x: Math.max(insets.left + padding, Math.min(leftMargin, screenWidth - windowWidth - insets.right - padding)), 
+          y: Math.max(topMargin, Math.min(topMargin + staggerOffset, maxY)),
           width: windowWidth, 
           height: windowHeight 
         }
@@ -924,7 +948,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+  const closeWindow = async (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+    await triggerHapticSelection();
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
@@ -4442,7 +4467,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   };
 
   // Handle square click
-  const handleSquareClick = (row: number, col: number) => {
+  const handleSquareClick = async (row: number, col: number) => {
     console.log('[CLICK] Square clicked:', { row, col });
     console.log('[CLICK] Game mode:', gameMode, 'Player color:', playerColor);
     console.log('[CLICK] Current player:', currentPlayer, 'Player color:', playerColor);
@@ -4459,11 +4484,13 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     // If it's not the player's turn, don't allow moves
     if (currentPlayer !== playerColor) {
       console.log('[CLICK] Not player\'s turn. Current:', currentPlayer, 'Player:', playerColor);
+      await triggerHapticImpact('light');
       return;
     }
     
     // If clicking on own piece, select it
     if (piece && pieceColor === playerColor) {
+      await triggerHapticSelection();
       setSelectedSquare({ row, col });
       const moves = getLegalMoves({ row, col }, board, currentPlayer, true, 0);
       setValidMoves(moves);
@@ -4472,6 +4499,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     
     // If a piece is selected and clicking on a valid move square
     if (selectedSquare && validMoves.some(move => move.row === row && move.col === col)) {
+      await triggerHapticImpact('medium');
       makeMove(selectedSquare, { row, col });
       setSelectedSquare(null);
       setValidMoves([]);
@@ -4479,16 +4507,15 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     }
     
     // Deselect if clicking elsewhere
+    await triggerHapticImpact('light');
     setSelectedSquare(null);
     setValidMoves([]);
   };
 
   // Make move
   const makeMove = async (from: { row: number; col: number }, to: { row: number; col: number }) => {
-    // Haptic feedback for move execution
-    if (hasHapticFeedback && navigator.vibrate) {
-      navigator.vibrate(20);
-    }
+    // Haptic feedback for move execution (already triggered in handleSquareClick, but keep for safety)
+    await triggerHapticImpact('medium');
     if (!playerColor || currentPlayer !== playerColor) {
       return;
     }
@@ -7185,7 +7212,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
           onClose={() => closeWindow('leaderboard')}
           title="Leaderboard"
           initialPosition={windowPositions['leaderboard'] ? { x: windowPositions['leaderboard'].x, y: windowPositions['leaderboard'].y } : { x: 20, y: 80 }}
-          initialSize={{ width: 400, height: 500 }}
+          initialSize={windowPositions['leaderboard'] ? { width: windowPositions['leaderboard'].width, height: windowPositions['leaderboard'].height } : { width: 400, height: 500 }}
           zIndex={1000}
         >
           <div className="leaderboard-compact">
@@ -7247,7 +7274,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
           onClose={() => closeWindow('gallery')}
           title="Piece Gallery"
           initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
-          initialSize={{ width: 380, height: 480 }}
+          initialSize={windowPositions['gallery'] ? { width: windowPositions['gallery'].width, height: windowPositions['gallery'].height } : { width: 380, height: 480 }}
           zIndex={1000}
         >
           <div className="piece-gallery-compact">
@@ -7303,7 +7330,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
           onClose={() => closeWindow('moves')}
           title="Move History"
           initialPosition={windowPositions['moves'] ? { x: windowPositions['moves'].x, y: windowPositions['moves'].y } : { x: 20, y: 140 }}
-          initialSize={{ width: 300, height: 400 }}
+          initialSize={windowPositions['moves'] ? { width: windowPositions['moves'].width, height: windowPositions['moves'].height } : { width: 300, height: 400 }}
           zIndex={1000}
         >
           <div className="move-history-compact">
@@ -7324,7 +7351,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
           onClose={() => closeWindow('profile')}
           title="Profile"
           initialPosition={windowPositions['profile'] ? { x: windowPositions['profile'].x, y: windowPositions['profile'].y } : { x: 20, y: 180 }}
-          initialSize={{ width: 400, height: 500 }}
+          initialSize={windowPositions['profile'] ? { width: windowPositions['profile'].width, height: windowPositions['profile'].height } : { width: 400, height: 500 }}
           zIndex={1000}
         >
           <PlayerProfile isMobile={false} />
@@ -7338,7 +7365,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
           onClose={() => closeWindow('howto')}
           title="How To Play"
           initialPosition={windowPositions['howto'] ? { x: windowPositions['howto'].x, y: windowPositions['howto'].y } : { x: 40, y: 160 }}
-          initialSize={{ width: 420, height: 520 }}
+          initialSize={windowPositions['howto'] ? { width: windowPositions['howto'].width, height: windowPositions['howto'].height } : { width: 420, height: 520 }}
           zIndex={1000}
         >
           <HowToContent />

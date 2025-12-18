@@ -7,18 +7,27 @@ import { isBaseMiniApp } from '../utils/baseMiniapp';
 const useStyles = createUseStyles({
   icon: {
     position: 'absolute',
-    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '60px' : '80px',
+    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '80px' : '80px',
+    minWidth: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '80px' : '80px',
+    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '80px' : '80px',
     textAlign: 'center',
     cursor: 'pointer',
     zIndex: 3000,
     userSelect: 'none',
-    pointerEvents: 'auto'
+    pointerEvents: 'auto',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    padding: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '12px' : '8px',
+    boxSizing: 'border-box'
   },
   iconImage: {
-    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '36px' : '48px',
-    height: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '36px' : '48px',
+    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
+    height: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
+    minWidth: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
+    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
     display: 'block',
-    margin: '0 auto'
+    margin: '0 auto',
+    objectFit: 'contain'
   },
   iconLabel: {
     display: 'block',

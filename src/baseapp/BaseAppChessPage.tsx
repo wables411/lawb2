@@ -83,8 +83,29 @@ const BaseAppChessPage: React.FC = () => {
   };
 
   return (
-    <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
-      <div className="chess-content">
+    <div 
+      className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}
+      style={{
+        width: '100vw',
+        height: '100vh',
+        overflow: 'hidden',
+        position: 'relative',
+        boxSizing: 'border-box',
+        maxWidth: '100vw',
+        maxHeight: '100vh'
+      }}
+    >
+      <div 
+        className="chess-content"
+        style={{
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          boxSizing: 'border-box',
+          maxWidth: '100%',
+          maxHeight: '100%'
+        }}
+      >
         {gameMode === 'singleplayer' ? (
           <BaseAppChessGame 
             onClose={handleClose} 

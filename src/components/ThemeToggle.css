@@ -28,10 +28,13 @@
 
 /* Light Mode - Stock colorway with animated background (formerly Underwater) */
 .lawb-app-light-mode body,
-.lawb-app-light-mode html {
+.lawb-app-light-mode html,
+.lawb-app-light-mode #root {
   background: url('/assets/background.gif') no-repeat center center fixed !important;
   background-size: cover !important;
+  background-attachment: fixed !important;
   color: #000000 !important;
+  overflow: hidden !important;
 }
 
 /* Default (no theme class) - use light mode */
@@ -42,21 +45,21 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   color: #000000 !important;
 }
 
+/* Light mode popups - use light grey containers for better visibility */
 .lawb-app-light-mode .popup-0-2-17,
-.lawb-app-light-mode [class*="popup"] {
+.lawb-app-light-mode [class*="popup"],
+.lawb-app-light-mode [class*="Popup"] {
   background: #c0c0c0 !important;
-  border-color: #fff !important;
+  border-color: #ffffff !important;
+  border-style: outset !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  color: #000000 !important;
 }
 
 .lawb-app-light-mode .chess-chat-window {
   background: #c0c0c0 !important;
-}
-
-.lawb-app-light-mode .popup-0-2-17,
-.lawb-app-light-mode [class*="popup"] {
-  background: #ffffff !important;
-  border-color: #cccccc !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
 }
 
 .lawb-app-light-mode .chess-chat-window {
@@ -173,7 +176,13 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode,
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html,
-.lawb-app-dark-mode #root,
+.lawb-app-dark-mode #root {
+  background-image: none !important;
+  background: #000000 !important;
+  color: #00ff00 !important;
+  overflow: hidden !important;
+}
+
 .lawb-app-dark-mode [class*="baseapp"],
 .lawb-app-dark-mode [class*="BaseApp"],
 .lawb-app-dark-mode [id*="root"],
@@ -187,6 +196,7 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode [class*="center-area"] {
   background-image: none !important;
   background: #000000 !important;
+  color: #00ff00 !important;
 }
 
 /* Universal dark mode background override - catch ALL elements except chess board/pieces */
@@ -275,11 +285,15 @@ html.lawb-app-dark-mode {
   background-repeat: no-repeat !important;
 }
 
+/* Dark mode popups - black containers with green borders and glow */
 .lawb-app-dark-mode .popup-0-2-17,
-.lawb-app-dark-mode [class*="popup"] {
+.lawb-app-dark-mode [class*="popup"],
+.lawb-app-dark-mode [class*="Popup"] {
   background: #000000 !important;
   border-color: #00ff00 !important;
-  box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3) !important;
+  border-style: outset !important;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.4), 0 2px 8px rgba(0, 255, 0, 0.3) !important;
+  color: #00ff00 !important;
 }
 
 .lawb-app-dark-mode .chess-chat-window {
@@ -310,6 +324,8 @@ html.lawb-app-dark-mode {
 .lawb-app-dark-mode .taskbar {
   background: #000000 !important;
   border-color: #00ff00 !important;
+  color: #00ff00 !important;
+  box-shadow: 0 -2px 8px rgba(0, 255, 0, 0.2) !important;
 }
 
 .lawb-app-dark-mode .clock,
@@ -372,10 +388,25 @@ html.lawb-app-dark-mode {
 .lawb-app-light-mode .menuLink,
 .lawb-app-light-mode .menu,
 .lawb-app-light-mode [class*="menuLink"],
-.lawb-app-light-mode [class*="menu"] {
-  background: #ffffff !important;
+.lawb-app-light-mode [class*="menu"],
+.lawb-app-light-mode .chess-menu-popup,
+.lawb-app-light-mode [class*="chess-menu-popup"] {
+  background: #c0c0c0 !important;
   color: #000000 !important;
-  border-color: #cccccc !important;
+  border-color: #ffffff !important;
+}
+
+.lawb-app-light-mode .menu button,
+.lawb-app-light-mode .menu a,
+.lawb-app-light-mode [class*="menu"] button,
+.lawb-app-light-mode [class*="menu"] a,
+.lawb-app-light-mode button.menuLink,
+.lawb-app-light-mode a.menuLink,
+.lawb-app-light-mode .chess-menu-popup button,
+.lawb-app-light-mode [class*="chess-menu-popup"] button {
+  color: #000000 !important;
+  background: #c0c0c0 !important;
+  border-color: #ffffff !important;
 }
 
 .lawb-app-light-mode .menuLink:hover {
@@ -388,10 +419,7 @@ html.lawb-app-dark-mode {
   border-color: #999999 !important;
 }
 
-.lawb-app-dark-mode .taskbar {
-  background: #1a1a1a !important;
-  border-color: #333333 !important;
-}
+/* Remove duplicate taskbar rule - already defined above */
 
 .lawb-app-light-mode .menuBtn {
   background: #e0e0e0 !important;
@@ -400,9 +428,14 @@ html.lawb-app-dark-mode {
 }
 
 .lawb-app-dark-mode .menuBtn {
-  background: #2a2a2a !important;
-  color: #e0e0e0 !important;
-  border-color: #444444 !important;
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .menuBtn:hover {
+  background: #001100 !important;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.3) !important;
 }
 
 .lawb-app-dark-mode .chess-page,
