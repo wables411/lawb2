@@ -440,29 +440,49 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
   }, [isOpen, currentInviteCode]);
   
-  if (!isOpen) return null;
+  // Debug logging
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[ChessChat] Chat is OPEN', { isMobile, isBaseMiniApp, isOpen });
+    } else {
+      console.log('[ChessChat] Chat is CLOSED', { isMobile, isBaseMiniApp, isOpen });
+    }
+  }, [isOpen, isMobile, isBaseMiniApp]);
+  
+  if (!isOpen) {
+    console.log('[ChessChat] Returning null because isOpen is false');
+    return null;
+  }
+  
+  const mobileStyle = isMobile || isBaseMiniApp;
+  const chatStyle = mobileStyle ? {
+    position: 'fixed' as const,
+    left: '16px',
+    top: '16px',
+    right: '16px',
+    bottom: '60px',
+    width: 'auto',
+    height: 'auto',
+    zIndex: 10002, // Higher than Popup (2000) to ensure it's on top
+    display: 'flex',
+    flexDirection: 'column' as const,
+    boxSizing: 'border-box' as const
+  } : {
+    position: 'fixed' as const,
+    left: position.x,
+    top: position.y,
+    width: size.width,
+    height: size.height,
+    zIndex: 10002
+  };
+  
+  console.log('[ChessChat] Rendering chat window', { mobileStyle, chatStyle });
   
   return (
     <div
       ref={chatRef}
-      className={`chess-chat-window ${isMobile || isBaseMiniApp ? 'mobile' : 'desktop'}`}
-      style={isMobile || isBaseMiniApp ? {
-        position: 'fixed',
-        left: '16px',
-        top: '16px',
-        right: '16px',
-        bottom: '60px',
-        width: 'auto',
-        height: 'auto',
-        zIndex: 10001
-      } : {
-        position: 'fixed',
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: size.height,
-        zIndex: 10001
-      }}
+      className={`chess-chat-window ${mobileStyle ? 'mobile' : 'desktop'}`}
+      style={chatStyle}
     >
       {/* Chat Header */}
       <div 

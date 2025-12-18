@@ -394,7 +394,7 @@
 
 /* Mobile chat styles */
 .chess-chat-window {
-  z-index: 10001 !important;
+  z-index: 10002 !important;
 }
 
 .chess-chat-window.mobile {
@@ -402,9 +402,9 @@
   left: 12px !important;
   top: 12px !important;
   right: 12px !important;
-  bottom: calc(12px + 56px) !important; /* Account for taskbar height */
+  bottom: calc(12px + 60px) !important; /* Account for taskbar height (60px in Base app) */
   width: calc(100vw - 24px) !important;
-  height: calc(100vh - 24px - 56px) !important; /* Account for taskbar */
+  height: calc(100vh - 24px - 60px) !important; /* Account for taskbar (60px in Base app) */
   max-width: none !important;
   max-height: none !important;
   min-width: 0 !important;
@@ -412,12 +412,14 @@
   border: 2px outset #fff !important;
   border-radius: 0 !important;
   resize: none !important;
-  z-index: 10001 !important;
+  z-index: 10002 !important; /* Higher than Popup (2000) */
   display: flex !important;
   flex-direction: column !important;
   margin: 0 !important;
   padding: 0 !important;
   box-sizing: border-box !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .chess-chat-window.mobile .chat-header {

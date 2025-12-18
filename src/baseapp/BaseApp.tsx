@@ -76,7 +76,10 @@ function BaseApp() {
   }, []);
 
   React.useEffect(() => {
-    console.log('[BaseApp] showPublicChat changed:', showPublicChat);
+    console.log('[BaseApp] showPublicChat state changed to:', showPublicChat);
+    if (showPublicChat) {
+      console.log('[BaseApp] Public chat should now be visible');
+    }
   }, [showPublicChat]);
 
   const handleIconClick = async (action: string, popupId?: string, url?: string) => {
@@ -157,9 +160,11 @@ function BaseApp() {
   };
 
   const openPublicChat = async () => {
-    console.log('[BaseApp] Opening public chat');
+    console.log('[BaseApp] Opening public chat - button clicked');
     await triggerHapticImpact('light');
+    console.log('[BaseApp] Setting showPublicChat to true');
     setShowPublicChat(true);
+    console.log('[BaseApp] showPublicChat state updated');
   };
 
   const minimizePublicChat = async () => {
@@ -193,7 +198,7 @@ function BaseApp() {
 
       {/* Public Chat */}
       {showPublicChat && (
-        <Suspense fallback={<div>Loading chat...</div>}>
+        <Suspense fallback={<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10002, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading chat...</div>}>
           <ChessChat
             isOpen={showPublicChat}
             onMinimize={minimizePublicChat}
