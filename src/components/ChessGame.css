@@ -3172,21 +3172,22 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     margin-top: 0 !important;
   }
   
-  .game-mode-panel-streamlined h2,
-  .game-mode-panel-streamlined h4 {
+  /* Only apply to mobile class, not Base Mini App (desktop class) */
+  .chess-game.mobile .game-mode-panel-streamlined h2,
+  .chess-game.mobile .game-mode-panel-streamlined h4 {
     margin-top: 0 !important;
     padding-top: 0 !important;
   }
   
-  /* Reduce padding on mobile for piece set and difficulty selectors */
-  .piece-set-selection-panel,
-  .difficulty-selection-panel {
+  /* Reduce padding on mobile for piece set and difficulty selectors - only for mobile class */
+  .chess-game.mobile .piece-set-selection-panel,
+  .chess-game.mobile .difficulty-selection-panel {
     padding-top: 4px !important;
     margin-top: 0 !important;
   }
   
-  .piece-set-selection-panel h2,
-  .difficulty-selection-panel h2 {
+  .chess-game.mobile .piece-set-selection-panel h2,
+  .chess-game.mobile .difficulty-selection-panel h2 {
     margin-top: 0 !important;
     padding-top: 0 !important;
   }

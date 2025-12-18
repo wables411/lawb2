@@ -2135,7 +2135,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     align-items: stretch !important;
   }
   
-  .center-area,
+  /* Only apply mobile-specific padding to mobile class, not Base Mini App (desktop class) */
   .chess-game.mobile .center-area,
   .chess-game.mobile-device .center-area {
     order: 1 !important;
@@ -2148,6 +2148,12 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+  }
+  
+  /* Base Mini App (desktop class) should keep padding-top */
+  .chess-game.desktop .center-area {
+    padding-top: 60px !important;
+  }
     justify-content: center !important;
     margin: 0 auto !important; /* Ensure centering */
   }
