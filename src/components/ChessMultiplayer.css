@@ -697,6 +697,7 @@ button.sidebar-menu-btn,
 @media (max-width: 768px) {
   .center-area {
     padding: 0 !important;
+    padding-top: 60px !important; /* Keep padding-top even on mobile to prevent header overlap */
   }
   
   .chess-multiplayer-lobby {
