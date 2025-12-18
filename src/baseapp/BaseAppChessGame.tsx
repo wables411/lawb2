@@ -2594,7 +2594,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             right: 0,
             bottom: 0,
             zIndex: 10003,
-            background: 'rgba(0, 0, 0, 0.3)'
+            background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)',
+            pointerEvents: 'all'
           }}
         >
           <div 
@@ -2604,13 +2605,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               position: 'fixed',
               top: '60px',
               right: '20px',
-              background: '#c0c0c0',
-              border: '2px outset #fff',
+              background: isDarkMode ? '#000000' : '#c0c0c0',
+              border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
               padding: '10px',
               minWidth: '200px',
               zIndex: 10004,
-              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)',
-              display: 'block'
+              boxShadow: isDarkMode ? '4px 4px 8px rgba(0, 255, 0, 0.3)' : '4px 4px 8px rgba(0, 0, 0, 0.3)',
+              display: 'block',
+              color: isDarkMode ? '#00ff00' : '#000000'
             }}
           >
             <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
@@ -3450,7 +3452,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             right: 0,
             bottom: 0,
             zIndex: 10003,
-            background: 'rgba(0, 0, 0, 0.3)'
+            background: isDarkMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)',
+            pointerEvents: 'all'
           }}
         >
           <div 
@@ -3460,13 +3463,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               position: 'fixed',
               top: '60px',
               right: '20px',
-              background: '#c0c0c0',
-              border: '2px outset #fff',
+              background: isDarkMode ? '#000000' : '#c0c0c0',
+              border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
               padding: '10px',
               minWidth: '200px',
               zIndex: 10004,
-              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)',
-              display: 'block'
+              boxShadow: isDarkMode ? '4px 4px 8px rgba(0, 255, 0, 0.3)' : '4px 4px 8px rgba(0, 0, 0, 0.3)',
+              display: 'block',
+              color: isDarkMode ? '#00ff00' : '#000000'
             }}
           >
             <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
