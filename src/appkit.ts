@@ -24,33 +24,20 @@ const metadata = {
 // Regular browser users (lawb.xyz) should ALWAYS load AppKit
 let isBase = false;
 if (typeof window !== 'undefined') {
-  // Check if we're in an iframe (Base/Farcaster app)
-  // OR if we're on a Base/Farcaster domain
-  // Regular browser visits to lawb.xyz should NOT be detected as Base app
-  const isInIframe = (() => {
-    try {
-      return window.self !== window.top;
-    } catch (e) {
-      return true; // Cross-origin iframe
-    }
-  })();
+  // Use the comprehensive detection from baseMiniapp.ts
+  // This checks iframe, hostname, referrer, user agent - but NOT SDK (which is too broad)
+  isBase = isBaseMiniApp();
   
-  const hostname = window.location.hostname.toLowerCase();
-  const isOnBaseFarcasterDomain = hostname.includes('farcaster.xyz') || 
-                                   hostname.includes('warpcast.com') ||
-                                   hostname.includes('base.app') ||
-                                   hostname.includes('base.org') ||
-                                   hostname.includes('base.dev');
-  
-  // Only consider it Base app if we're in an iframe OR on Base/Farcaster domain
-  // Regular browser visits to lawb.xyz should load AppKit
-  isBase = isInIframe || isOnBaseFarcasterDomain;
-  
-  console.log('[AppKit] Detection:', {
-    isInIframe,
-    hostname,
-    isOnBaseFarcasterDomain,
+  console.log('[AppKit] Detection result:', {
     isBase,
+    hostname: window.location.hostname,
+    isInIframe: (() => {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    })(),
     location: window.location.href
   });
 }

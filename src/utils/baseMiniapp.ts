@@ -28,20 +28,9 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
-  // CRITICAL: Check if SDK is available - if SDK exists, we're likely in Base App
-  // The SDK is only loaded when actually in a miniapp context
-  try {
-    if (sdk && typeof sdk === 'object' && 'actions' in sdk) {
-      // SDK is available - we're in Base App
-      console.log('[Base Mini App Detection] ✅ Detected via SDK availability');
-      return true;
-    }
-  } catch (e) {
-    // SDK check failed, continue with other checks
-  }
-  
-  // Check if we're running in an iframe (embedded in Base/Farcaster app)
-  // This is a PRIMARY detection method for Farcaster apps
+  // PRIMARY: Check if we're running in an iframe (embedded in Base/Farcaster app)
+  // This is the most reliable indicator - regular browser visits to lawb.xyz are NOT in iframes
+  // Regular browser users should NOT be detected as Base Mini App
   try {
     if (window.self !== window.top) {
       // We're in an iframe - definitely embedded in Base/Farcaster app
@@ -55,6 +44,10 @@ export const isBaseMiniApp = () => {
     console.log('[Base Mini App Detection] ✅ Detected via cross-origin iframe (exception accessing window.top)');
     return true;
   }
+  
+  // If we're NOT in an iframe and NOT on a Base/Farcaster domain, we're a regular browser user
+  // Regular browser users should NOT be detected as Base Mini App
+  // This allows AppKit to load for wallet connection
   
   // Check for Farcaster/Base-specific domain indicators
   // Farcaster app uses wallet.farcaster.xyz domain
@@ -92,11 +85,12 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
-  // Note: SDK context check is async and handled in isBaseMiniAppAsync()
-  // We can't check sdk.context synchronously since it's a Promise
+  // IMPORTANT: Do NOT check SDK availability here - SDK might be in bundle but not active
+  // SDK check should only be used in async detection (isBaseMiniAppAsync)
+  // Regular browser users should NOT be detected as Base Mini App just because SDK exists in bundle
   
   // Log detection failure for debugging
-  console.log('[Base Mini App Detection] ❌ Not detected. hostname:', hostname, 'referrer:', document.referrer, 'userAgent:', userAgent);
+  console.log('[Base Mini App Detection] ❌ Not detected (regular browser). hostname:', hostname, 'referrer:', document.referrer, 'userAgent:', userAgent, 'isInIframe:', isInIframe);
   return false;
 };
 
