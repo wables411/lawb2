@@ -106,7 +106,7 @@ export const isBaseMiniApp = () => {
   return false;
 };
 
-// Async check using SDK's built-in detection (more reliable)
+// Async check using SDK's built-in detection (more reliable, especially on mobile)
 // Use this when you can handle async detection
 export const isBaseMiniAppAsync = async (): Promise<boolean> => {
   if (typeof window === 'undefined') return false;
@@ -114,32 +114,49 @@ export const isBaseMiniAppAsync = async (): Promise<boolean> => {
   // Check for environment variable or URL parameter (highest priority)
   if (import.meta.env.VITE_BASE_MINIAPP === 'true' || 
       new URLSearchParams(window.location.search).has('base_miniapp')) {
+    console.log('[Base Mini App Detection] ✅ Detected via env var or URL param (async)');
     return true;
   }
   
-  // Use SDK's built-in detection method (most reliable)
+  // PRIMARY: Use SDK's built-in detection method (most reliable, especially on mobile Base app)
+  // This is the most accurate way to detect if we're in a miniapp
   try {
     if (sdk && typeof sdk.isInMiniApp === 'function') {
       const isInMiniApp = await sdk.isInMiniApp();
       if (isInMiniApp) {
+        console.log('[Base Mini App Detection] ✅ Detected via SDK isInMiniApp()');
         // Optionally check if it's specifically Base App (clientFid === 309857)
         try {
           const context = await sdk.context;
           if (context?.client?.clientFid === 309857) {
+            console.log('[Base Mini App Detection] ✅ Confirmed Base App (clientFid: 309857)');
             return true; // Confirmed Base App
           }
+          console.log('[Base Mini App Detection] ✅ Detected miniapp (not specifically Base, but miniapp)');
           return true; // Any miniapp (including Base)
         } catch (e) {
+          console.log('[Base Mini App Detection] ✅ Detected miniapp (context check failed, but isInMiniApp=true)');
           return isInMiniApp; // Fallback to miniapp detection
         }
+      } else {
+        console.log('[Base Mini App Detection] ❌ SDK isInMiniApp() returned false');
       }
+    } else {
+      console.log('[Base Mini App Detection] ⚠️ SDK or isInMiniApp function not available');
     }
   } catch (e) {
+    console.warn('[Base Mini App Detection] ⚠️ SDK check failed:', e);
     // SDK check failed, fall through to synchronous checks
   }
   
   // Fallback to synchronous detection
-  return isBaseMiniApp();
+  const syncResult = isBaseMiniApp();
+  if (syncResult) {
+    console.log('[Base Mini App Detection] ✅ Fallback: Detected via sync check');
+  } else {
+    console.log('[Base Mini App Detection] ❌ Fallback: Not detected via sync check');
+  }
+  return syncResult;
 };
 
 // Initialize Base Mini App SDK if running as mini app

@@ -17,7 +17,7 @@ const BaseApp = lazy(() => import('./baseapp/BaseApp'));
 const BaseAppChessPage = lazy(() => import('./baseapp/BaseAppChessPage'));
 
 import { appKit, wagmiAdapter, initializeAppKit } from './appkit.ts'; // Import the appKit instance and wagmi adapter
-import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
+import { initBaseMiniApp, isBaseMiniApp, isBaseMiniAppAsync } from './utils/baseMiniapp';
 import { config as wagmiConfig } from './wagmi';
 const queryClient = new QueryClient();
 
@@ -27,8 +27,42 @@ const queryClient = new QueryClient();
 const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
 
 const Root = () => {
-  const isBaseApp = isBaseMiniApp();
+  const [isBaseApp, setIsBaseApp] = React.useState(false);
+  const [isChecking, setIsChecking] = React.useState(true);
   const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // Use async SDK detection as primary method (most reliable for mobile Base app)
+  React.useEffect(() => {
+    const checkBaseApp = async () => {
+      // First do quick synchronous check
+      const syncCheck = isBaseMiniApp();
+      if (syncCheck) {
+        console.log('[Root] Base app detected via sync check');
+        setIsBaseApp(true);
+        setIsChecking(false);
+        return;
+      }
+      
+      // Then do async SDK check (more reliable, especially on mobile)
+      try {
+        const asyncCheck = await isBaseMiniAppAsync();
+        console.log('[Root] Base app async check result:', asyncCheck);
+        setIsBaseApp(asyncCheck);
+      } catch (e) {
+        console.warn('[Root] Async check failed, using sync result:', e);
+        setIsBaseApp(syncCheck);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    
+    void checkBaseApp();
+  }, []);
+  
+  // Show loading while checking (prevents flash of wrong UI)
+  if (isChecking) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading...</div>;
+  }
   
   // BASE APP: Use completely separate BaseApp component
   if (isBaseApp) {
@@ -67,18 +101,40 @@ const getWagmiConfig = () => {
 const AppWithWagmi = () => {
   const [currentConfig, setCurrentConfig] = React.useState(getWagmiConfig());
   const [configKey, setConfigKey] = React.useState(0);
+  const [isBaseApp, setIsBaseApp] = React.useState<boolean | null>(null);
   
-  // Initialize AppKit ONLY if NOT in Base app
-  // This must happen after mount to ensure iframe detection works
+  // Use async SDK detection as primary method (most reliable for mobile Base app)
   React.useEffect(() => {
-    if (isBaseMiniApp()) {
-      console.log('[main.tsx] Base app detected, skipping AppKit initialization');
-      return; // Base app uses wagmiConfig directly with Farcaster connector
-    }
-    
-    // Initialize AppKit for regular web users
-    console.log('[main.tsx] Initializing AppKit for web users');
-    initializeAppKit();
+    const checkAndInitialize = async () => {
+      // First do quick synchronous check
+      const syncCheck = isBaseMiniApp();
+      if (syncCheck) {
+        console.log('[AppWithWagmi] Base app detected via sync check, skipping AppKit');
+        setIsBaseApp(true);
+        return;
+      }
+      
+      // Then do async SDK check (more reliable, especially on mobile)
+      try {
+        const asyncCheck = await isBaseMiniAppAsync();
+        console.log('[AppWithWagmi] Base app async check result:', asyncCheck);
+        setIsBaseApp(asyncCheck);
+        
+        if (asyncCheck) {
+          console.log('[AppWithWagmi] Base app detected via async check, skipping AppKit initialization');
+          return; // Base app uses wagmiConfig directly with Farcaster connector
+        }
+      } catch (e) {
+        console.warn('[AppWithWagmi] Async check failed, using sync result:', e);
+        setIsBaseApp(syncCheck);
+        if (syncCheck) {
+          return;
+        }
+      }
+      
+      // Initialize AppKit for regular web users
+      console.log('[AppWithWagmi] Initializing AppKit for web users');
+      initializeAppKit();
     
     // Poll for AppKit loading
     let attempts = 0;
@@ -97,8 +153,47 @@ const AppWithWagmi = () => {
       }
     }, 100);
     
-    return () => clearInterval(interval);
+    };
+    
+    void checkAndInitialize();
   }, []);
+  
+  // Update config if Base app status changes
+  React.useEffect(() => {
+    if (isBaseApp === true) {
+      // Base app detected - use wagmiConfig with Farcaster connector
+      setCurrentConfig(wagmiConfig);
+      setConfigKey(prev => prev + 1);
+    } else if (isBaseApp === false && wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
+      // Not Base app and AppKit loaded - use WagmiAdapter config
+      const adapterConfig = (wagmiAdapter as any).wagmiConfig;
+      setCurrentConfig(adapterConfig);
+      setConfigKey(prev => prev + 1);
+    }
+  }, [isBaseApp, wagmiAdapter]);
+  
+  // Poll for AppKit loading (only if not Base app)
+  React.useEffect(() => {
+    if (isBaseApp === true) return; // Base app uses wagmiConfig directly
+    
+    let attempts = 0;
+    const maxAttempts = 50; // Check for 5 seconds (50 * 100ms)
+    const interval = setInterval(() => {
+      attempts++;
+      if (wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
+        const adapterConfig = (wagmiAdapter as any).wagmiConfig;
+        console.log('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
+        setCurrentConfig(adapterConfig);
+        setConfigKey(prev => prev + 1); // Force WagmiProvider to re-initialize
+        clearInterval(interval);
+      } else if (attempts >= maxAttempts) {
+        console.warn('[main.tsx] AppKit did not load within timeout, using fallback config (connectors may be limited)');
+        clearInterval(interval);
+      }
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, [isBaseApp]);
   
   return (
     <WagmiProvider key={configKey} config={currentConfig}>
@@ -107,7 +202,7 @@ const AppWithWagmi = () => {
           <Routes>
             {isChessSubdomain ? (
               <Route path="/*" element={
-                isBaseMiniApp() ? (
+                isBaseApp === true ? (
                   <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Base App Chess...</div>}>
                     <BaseAppChessPage />
                   </Suspense>
@@ -121,7 +216,7 @@ const AppWithWagmi = () => {
               <>
                 <Route path="/" element={<Root />} />
                 <Route path="/chess" element={
-                  isBaseMiniApp() ? (
+                  isBaseApp === true ? (
                     <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Base App Chess...</div>}>
                       <BaseAppChessPage />
                     </Suspense>
