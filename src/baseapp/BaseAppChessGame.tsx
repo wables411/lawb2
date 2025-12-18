@@ -1792,10 +1792,24 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               <span role="img" aria-label="chess">♟️🦞</span> Continue
             </button>
 
+            {/* Theme Toggle - Always visible on piece selection page */}
+            <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center'}}>
+              <div onClick={(e) => e.stopPropagation()}>
+                <ThemeToggle asMenuItem={true} />
+              </div>
+            </div>
+
             {/* Back to Chess Button */}
             <div style={{marginTop: '16px', justifyContent: 'center'}}>
               <button
-                onClick={() => window.location.href = '/chess'}
+                onClick={() => {
+                  if (onBackToModeSelect) {
+                    setShowPieceSetSelector(false);
+                    onBackToModeSelect();
+                  } else {
+                    window.location.href = '/chess';
+                  }
+                }}
                 style={{ 
                   background: 'transparent',
                   color: '#ff0000',
@@ -1824,6 +1838,13 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
         <div className="difficulty-selection-panel" style={{background:'transparent',borderRadius:0,padding: effectiveIsMobile ? '8px 12px' : '32px 24px',paddingTop: effectiveIsMobile ? '4px' : undefined,marginTop: effectiveIsMobile ? '0' : undefined,boxShadow:'none',textAlign:'center'}}>
           <h2 style={{fontWeight:700,letterSpacing:1,fontSize: effectiveIsMobile ? '1.5rem' : '2rem',color:'#ff0000',marginBottom: effectiveIsMobile ? '8px' : 16,marginTop: effectiveIsMobile ? '0' : undefined,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Select Difficulty</h2>
           <p style={{fontSize:'1.1rem',color:'#ff0000',marginBottom:24,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Compete against the computer to climb the leaderboard.</p>
+          
+          {/* Theme Toggle - Always visible on difficulty selection page */}
+          <div style={{marginBottom: '24px', display: 'flex', justifyContent: 'center'}}>
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThemeToggle asMenuItem={true} />
+            </div>
+          </div>
           <div style={{display:'flex',justifyContent:'center',gap:16,marginBottom:24}}>
             <button
               className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
