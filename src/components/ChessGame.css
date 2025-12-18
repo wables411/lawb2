@@ -1351,7 +1351,7 @@ html.chess-dark-mode, body.chess-dark-mode {
 .lawb-app-light-mode [class*="chessboard"],
 .chessboard {
   /* CRITICAL: Preserve full color chessboard image - ALWAYS BRIGHT */
-  background-image: inherit !important;
+  /* DO NOT override background-image - let inline style from component handle it */
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
