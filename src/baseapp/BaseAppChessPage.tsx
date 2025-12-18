@@ -16,7 +16,21 @@ const BaseAppChessPage: React.FC = () => {
   const mediaQueryMatch = useMediaQuery('(max-width: 768px)');
   const capabilities = useMobileCapabilities();
 
+  // Detect Base Mini App
+  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  })();
+  
   const isMobile = useMemo(() => {
+    // Don't treat Base Mini App as mobile
+    if (isBaseMiniAppDetected) {
+      return false;
+    }
+    
     if (typeof navigator === 'undefined') {
       return mediaQueryMatch;
     }
@@ -31,7 +45,7 @@ const BaseAppChessPage: React.FC = () => {
       (capabilities.isTouchDevice && (mediaQueryMatch || capabilities.screenWidth <= 1024));
 
     return detected;
-  }, [mediaQueryMatch, capabilities]);
+  }, [mediaQueryMatch, capabilities, isBaseMiniAppDetected]);
 
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
