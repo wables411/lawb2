@@ -173,29 +173,26 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
   
-  // Safe area insets state
+  // Safe area insets state - initialize with defaults
   const [safeAreaInsets, setSafeAreaInsets] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
-  const [popupSize, setPopupSize] = useState({ width: 'calc(100vw - 32px)', height: 'calc(100vh - 60px)' });
   
-  // Get safe area insets and calculate popup size
+  // Get safe area insets immediately when Base Mini App is detected
   useEffect(() => {
-    if (isBaseMiniAppDetected && isOpen) {
+    if (isBaseMiniAppDetected) {
       const updateSafeAreas = async () => {
-        const insets = await getSafeAreaInsets();
-        setSafeAreaInsets(insets);
-        
-        // Calculate popup size accounting for safe areas and taskbar (estimated 60px)
-        const taskbarHeight = 60;
-        const padding = 16; // 8px on each side
-        const width = `calc(100vw - ${insets.left + insets.right + padding * 2}px)`;
-        const height = `calc(100vh - ${insets.top + insets.bottom + taskbarHeight + padding}px)`;
-        
-        setPopupSize({ width, height });
+        try {
+          const insets = await getSafeAreaInsets();
+          setSafeAreaInsets(insets);
+          console.log('[POPUP] Safe area insets loaded:', insets);
+        } catch (error) {
+          console.warn('[POPUP] Failed to get safe area insets, using defaults:', error);
+          setSafeAreaInsets({ top: 0, bottom: 0, left: 0, right: 0 });
+        }
       };
       
-      updateSafeAreas();
+      void updateSafeAreas();
     }
-  }, [isBaseMiniAppDetected, isOpen]);
+  }, [isBaseMiniAppDetected]);
   
   // Debug: log when popup should be visible
   React.useEffect(() => {
@@ -328,25 +325,45 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   // For Base Mini App, don't use Draggable at all - render directly
   if (isBaseMiniAppDetected && isOpen) {
     // Calculate safe positioning for Base Mini App
-    const topOffset = safeAreaInsets.top || 0;
-    const bottomOffset = safeAreaInsets.bottom || 0;
-    const leftOffset = safeAreaInsets.left || 0;
-    const rightOffset = safeAreaInsets.right || 0;
+    // Use actual safe area insets, or fallback to 0 if not loaded yet
+    const topInset = safeAreaInsets.top || 0;
+    const bottomInset = safeAreaInsets.bottom || 0;
+    const leftInset = safeAreaInsets.left || 0;
+    const rightInset = safeAreaInsets.right || 0;
     const taskbarHeight = 60;
+    const padding = 8; // 8px padding on all sides
+    
+    // Calculate total space needed from edges
+    const totalHorizontalSpace = leftInset + rightInset + (padding * 2);
+    const totalVerticalSpace = topInset + bottomInset + taskbarHeight + (padding * 2);
+    
+    // Calculate available space - ensure we never exceed viewport
+    // Use calc() to subtract all space needed from viewport dimensions
+    const availableWidth = `calc(100vw - ${totalHorizontalSpace}px)`;
+    const availableHeight = `calc(100vh - ${totalVerticalSpace}px)`;
+    
+    // Position: start from left inset + padding, top inset + padding
+    const leftPosition = `${leftInset + padding}px`;
+    const topPosition = `${topInset + padding}px`;
+    
+    // Additional safety: use max() to ensure we never go negative or exceed viewport
+    // Also set explicit max constraints
+    const maxWidthValue = `min(calc(100vw - ${leftInset + rightInset}px), ${availableWidth})`;
+    const maxHeightValue = `min(calc(100vh - ${topInset + bottomInset + taskbarHeight}px), ${availableHeight})`;
     
     return (
       <div 
         ref={nodeRef} 
         className={classes.popup}
         style={{ 
-          width: `calc(100vw - ${leftOffset + rightOffset + 16}px)`,
-          height: `calc(100vh - ${topOffset + bottomOffset + taskbarHeight + 16}px)`,
-          maxWidth: `calc(100vw - ${leftOffset + rightOffset + 16}px)`,
-          maxHeight: `calc(100vh - ${topOffset + bottomOffset + taskbarHeight + 16}px)`,
+          width: availableWidth,
+          height: availableHeight,
+          maxWidth: maxWidthValue,
+          maxHeight: maxHeightValue,
           minWidth: '0',
           minHeight: '0',
-          left: `${8 + leftOffset}px`,
-          top: `${8 + topOffset}px`,
+          left: leftPosition,
+          top: topPosition,
           right: 'auto',
           bottom: 'auto',
           resize: 'none',
@@ -354,8 +371,13 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
           position: 'fixed',
           transform: 'none',
           margin: '0',
+          padding: '0',
           zIndex: zIndex || 100,
           overflow: 'hidden',
+          // Force constraints to prevent overflow
+          contain: 'layout style paint',
+          // Ensure popup stays within viewport
+          willChange: 'auto',
         }}
       >
         {renderPopupContent()}
@@ -363,6 +385,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     );
   }
 
+  // Desktop/regular browser path - Base Mini App should never reach here
   return (
     <Draggable 
       nodeRef={nodeRef} 
@@ -377,32 +400,8 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         ref={nodeRef} 
         className={classes.popup}
         style={{ 
-          ...(isBaseMiniAppDetected ? {
-            width: popupSize.width,
-            height: popupSize.height,
-            maxWidth: popupSize.width,
-            maxHeight: popupSize.height,
-            minWidth: '0',
-            minHeight: '0',
-            left: '50%',
-            top: '50%',
-            right: 'auto',
-            bottom: 'auto',
-            resize: 'none',
-            boxSizing: 'border-box',
-            position: 'fixed',
-            transform: 'translate(-50%, -50%)',
-            margin: '0',
-            inset: 'auto',
-            overflow: 'hidden',
-            paddingTop: `max(0px, ${safeAreaInsets.top}px)`,
-            paddingBottom: `max(0px, ${safeAreaInsets.bottom}px)`,
-            paddingLeft: `max(0px, ${safeAreaInsets.left}px)`,
-            paddingRight: `max(0px, ${safeAreaInsets.right}px)`,
-          } : {
-            width: initialSize?.width,
-            height: initialSize?.height
-          }),
+          width: initialSize?.width,
+          height: initialSize?.height,
           zIndex: zIndex || 100
         }}
       >
