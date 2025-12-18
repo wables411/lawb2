@@ -3016,6 +3016,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 >
                   Profile
                 </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ThemeToggle asMenuItem={true} />
+                </div>
                 {showGame && (
                   <button 
                     className="mobile-menu-btn"
@@ -3483,6 +3486,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             >
               Profile
             </button>
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThemeToggle asMenuItem={true} />
+            </div>
             {showGame && (
               <button
                 onClick={() => openWindow('moves')}

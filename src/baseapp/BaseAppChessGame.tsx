@@ -2815,20 +2815,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             >
               Profile
             </button>
-            <div style={{
-              display: 'block',
-              width: '100%',
-              padding: isMobile ? '12px 16px' : '8px',
-              marginBottom: '4px',
-              background: isDarkMode ? '#000000' : '#c0c0c0',
-              border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
-              textAlign: 'left',
-              minHeight: isMobile ? '44px' : 'auto',
-              fontSize: isMobile ? '16px' : '14px',
-              touchAction: 'manipulation',
-              color: isDarkMode ? '#00ff00' : '#000000'
-            }}>
-              <ThemeToggle />
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThemeToggle asMenuItem={true} />
             </div>
             {onBackToModeSelect && (
               <button
@@ -3146,6 +3134,9 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 >
                   Profile
                 </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ThemeToggle asMenuItem={true} />
+                </div>
                 {showGame && (
                   <button 
                     className="mobile-menu-btn"
