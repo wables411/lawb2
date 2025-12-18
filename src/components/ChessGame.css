@@ -1422,9 +1422,11 @@ html.chess-dark-mode, body.chess-dark-mode {
 .lawb-app-dark-mode [class*="piece"],
 .lawb-app-light-mode .piece,
 .lawb-app-light-mode [class*="piece"],
-.piece,
-img.piece {
+.piece {
   /* CRITICAL: Preserve full color pieces - ALWAYS BRIGHT, no filter that affects colors */
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
@@ -1434,16 +1436,6 @@ img.piece {
   z-index: 2 !important;
   width: 100% !important;
   height: 100% !important;
-  top: 0 !important;
-  left: 0 !important;
-  object-fit: contain !important;
-}
-
-/* For div.piece with background-image */
-.piece:not(img) {
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
 }
 
 .lawb-app-dark-mode .piece,

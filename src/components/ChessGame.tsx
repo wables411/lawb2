@@ -1549,8 +1549,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.warn('[PIECE RENDER] Piece exists but no image:', piece, 'pieceImages keys:', Object.keys(pieceImages));
     }
 
-  const pieceImageUrl = piece ? pieceImages[piece] : null;
-  
   return (
       <div
         key={`${row}-${col}`}
@@ -1558,22 +1556,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         onClick={() => handleSquareClick(row, col)}
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
-        style={{ position: 'relative' }}
       >
-        {piece && pieceImageUrl && (
-          <img
-            src={pieceImageUrl}
-            alt={piece}
+        {piece && (
+          <div
             className="piece"
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              zIndex: 2,
-              pointerEvents: 'none'
+              backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center'
             }}
           />
         )}

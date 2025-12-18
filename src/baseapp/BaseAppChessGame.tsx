@@ -1588,8 +1588,6 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
     const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
                                    lastMove.to.row === row && lastMove.to.col === col);
     
-    const pieceImageUrl = piece ? pieceImages[piece] : null;
-
   return (
       <div
         key={`${row}-${col}`}
@@ -1597,22 +1595,15 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
         onClick={() => handleSquareClick(row, col)}
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
-        style={{ position: 'relative' }}
       >
-        {piece && pieceImageUrl && (
-          <img
-            src={pieceImageUrl}
-            alt={piece}
+        {piece && (
+          <div
             className="piece"
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              zIndex: 2,
-              pointerEvents: 'none'
+              backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center'
             }}
           />
         )}
