@@ -129,15 +129,19 @@ const useStyles = createUseStyles({
   },
   collectionSelector: {
     display: 'flex',
-    gap: '10px',
-    padding: '10px',
+    gap: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '6px' : '10px',
+    padding: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '8px' : '10px',
     borderBottom: '2px inset #fff',
+    flexWrap: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? 'wrap' : 'nowrap',
+    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '11px' : '12px',
   },
   collectionButton: {
-    padding: '5px 10px',
+    padding: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '4px 8px' : '5px 10px',
     background: '#c0c0c0',
     border: '2px outset #fff',
     cursor: 'pointer',
+    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '11px' : '12px',
+    minWidth: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? 'auto' : '60px',
     '&.active': {
       borderStyle: 'inset',
       backgroundColor: '#e0e0e0',
@@ -181,6 +185,7 @@ interface NFTGalleryProps {
   onClose: () => void;
   onMinimize?: () => void;
   walletAddress?: string;
+  renderAsContent?: boolean; // If true, don't render popup wrapper, just content
 }
 
 type ViewMode = 'all' | 'recent' | 'owned';
@@ -229,7 +234,7 @@ declare global {
   }
 }
 
-const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, walletAddress }) => {
+const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, walletAddress, renderAsContent = false }) => {
   // Detect Base Mini App
   const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
     try {
@@ -488,6 +493,151 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
   };
 
   if (!isOpen) return null;
+
+  // If renderAsContent is true, just render content without any wrapper
+  if (renderAsContent) {
+    return (
+      <>
+        {!selectedNft && (
+          <div className={classes.collectionSelector} style={{ 
+            gap: '6px', 
+            padding: '8px',
+            flexWrap: 'wrap',
+            fontSize: '11px'
+          }}>
+            {COLLECTIONS.map(col => (
+              <button 
+                key={col.slug} 
+                className={`${classes.collectionButton} ${currentCollection.slug === col.slug ? 'active' : ''}`}
+                onClick={() => handleCollectionChange(col)}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  minWidth: 'auto',
+                }}
+              >
+                {col.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className={classes.content} style={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+          {selectedNft ? (
+            renderDetailView()
+          ) : (
+            <>
+              <div style={{ marginBottom: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap', fontSize: '11px' }}>
+                <button
+                  onClick={() => setViewMode('all')}
+                  style={{
+                    background: viewMode === 'all' ? '#808080' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    color: viewMode === 'all' ? 'white' : 'black',
+                    fontSize: '11px',
+                  }}
+                >
+                  All NFTs
+                </button>
+                <button
+                  onClick={() => setViewMode('recent')}
+                  disabled={!walletAddress}
+                  style={{
+                    background: viewMode === 'recent' ? '#808080' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '4px 8px',
+                    cursor: walletAddress ? 'pointer' : 'not-allowed',
+                    color: viewMode === 'recent' ? 'white' : 'black',
+                    opacity: walletAddress ? 1 : 0.6,
+                    fontSize: '11px',
+                  }}
+                >
+                  Recently Minted
+                </button>
+                <button
+                  onClick={() => setViewMode('owned')}
+                  disabled={!walletAddress && !solanaAddress}
+                  style={{
+                    background: viewMode === 'owned' ? '#808080' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '4px 8px',
+                    cursor: (walletAddress || solanaAddress) ? 'pointer' : 'not-allowed',
+                    color: viewMode === 'owned' ? 'white' : 'black',
+                    opacity: (walletAddress || solanaAddress) ? 1 : 0.6,
+                    fontSize: '11px',
+                  }}
+                >
+                  My NFTs
+                </button>
+                
+                {currentCollection.api === 'opensea-solana' && (
+                  <button
+                    onClick={() => { void connectSolanaWallet(); }}
+                    style={{
+                      background: solanaAddress ? '#4CAF50' : '#c0c0c0',
+                      border: '2px outset #c0c0c0',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      color: solanaAddress ? 'white' : 'black',
+                      marginLeft: 'auto',
+                      fontSize: '11px',
+                    }}
+                  >
+                    {solanaAddress ? `Solana: ${solanaAddress.slice(0, 4)}...${solanaAddress.slice(-4)}` : 'Connect Solana'}
+                  </button>
+                )}
+              </div>
+
+              {loading && <div style={{ fontSize: '12px' }}>Loading...</div>}
+              {error && <div style={{ color: 'red', fontSize: '12px' }}>{error}</div>}
+              
+              {!loading && !error && (
+                <>
+                  <div style={{ marginBottom: '8px', fontSize: '11px' }}>
+                    {viewMode === 'all' && `Showing ${nfts.length} NFTs from ${currentCollection.name}`}
+                    {viewMode === 'recent' && `Recently minted NFTs from ${currentCollection.name}`}
+                    {viewMode === 'owned' && `NFTs owned by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
+                  </div>
+
+                  {nfts.length === 0 ? (
+                    <div style={{ fontSize: '12px' }}>No NFTs found.</div>
+                  ) : (
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                      gap: '6px',
+                      marginBottom: '12px',
+                    }}>
+                      {nfts.map(nft => (
+                        <div 
+                          key={nft.id} 
+                          style={{ 
+                            cursor: 'pointer',
+                            display: 'block',
+                            width: '100%',
+                            aspectRatio: '1',
+                            overflow: 'hidden'
+                          }} 
+                          onClick={() => { void handleNftClick(nft); }}
+                        >
+                          <CORSImage 
+                            src={getImageUrl(nft)} 
+                            alt={nft.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </>
+    );
+  }
 
   // In Base Mini App, render without Draggable wrapper
   if (isBaseMiniAppDetected) {

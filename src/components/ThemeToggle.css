@@ -136,10 +136,16 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 
 /* Dark Mode - Black backgrounds with terminal green text */
 .lawb-app-dark-mode body,
-.lawb-app-dark-mode html {
+.lawb-app-dark-mode html,
+.lawb-app-dark-mode #root,
+.lawb-app-dark-mode [class*="baseapp"],
+.lawb-app-dark-mode [class*="BaseApp"] {
   background: #000000 !important;
   background-image: none !important;
   background-size: auto !important;
+  background-attachment: fixed !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   color: #00ff00 !important;
 }
 

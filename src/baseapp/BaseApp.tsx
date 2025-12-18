@@ -399,6 +399,7 @@ function BaseApp() {
               <NFTGallery 
                 isOpen={true}
                 onClose={() => closePopup('nft-gallery-popup')}
+                renderAsContent={true}
               />
             </Suspense>
           </div>
