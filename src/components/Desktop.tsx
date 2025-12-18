@@ -72,8 +72,11 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
   // Only show desktop icons (row >= 0, col >= 0)
   const desktopIcons = ICONS.filter(icon => icon.row >= 0 && icon.col >= 0);
   
-  // Check if mobile
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  // Base Mini App should ALWAYS use mobile/miniapp layout (vertical, mobile-like)
+  // regardless of actual device or window width
+  // This ensures consistent appearance in Farcaster/Base on both mobile and desktop browsers
+  const isBaseApp = typeof window !== 'undefined' && isBaseMiniApp();
+  const isMobile = isBaseApp || (typeof window !== 'undefined' && window.innerWidth <= 768);
   
   // Detect dark mode
   const isDarkMode = typeof document !== 'undefined' && 
