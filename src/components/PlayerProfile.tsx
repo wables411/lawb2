@@ -497,10 +497,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           bottom: 0,
           left: 0,
           right: 0,
-          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0.6) 100%)',
           padding: isMobile ? '12px 8px 8px 8px' : '16px 12px 12px 12px',
-          color: '#fff',
-          pointerEvents: 'none'
+          color: '#ffffff',
+          pointerEvents: 'none',
+          zIndex: 3
         }}>
           <div style={{ 
             fontSize: isMobile ? '14px' : '16px', 

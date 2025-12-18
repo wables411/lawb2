@@ -421,9 +421,9 @@
 }
 
 .chess-chat-window.mobile .chat-header {
-  padding: 12px 16px;
-  font-size: 16px;
-  min-height: 56px;
+  padding: 4px 8px;
+  font-size: 12px;
+  min-height: 24px;
   flex-shrink: 0;
 }
 
