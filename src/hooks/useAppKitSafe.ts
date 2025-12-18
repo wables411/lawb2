@@ -4,6 +4,7 @@
  */
 import { isBaseMiniApp } from '../utils/baseMiniapp';
 import { useState, useEffect } from 'react';
+import { appKit } from '../appkit';
 
 // Type for useAppKit return value
 // Note: useAppKit() only returns open and close
@@ -19,10 +20,44 @@ type AppKitReturn = {
 export const useAppKitSafe = (): AppKitReturn => {
   const isBase = isBaseMiniApp();
   const [appKitModule, setAppKitModule] = useState<typeof import('@reown/appkit/react') | null>(null);
+  const [appKitReady, setAppKitReady] = useState(false);
   
-  // Only load AppKit module if NOT in Base app
+  // Check if AppKit instance is ready (from appkit.ts)
   useEffect(() => {
     if (isBase || typeof window === 'undefined') {
+      return;
+    }
+    
+    // Check if appKit instance is ready
+    const checkAppKit = () => {
+      if (appKit && typeof appKit === 'object') {
+        setAppKitReady(true);
+        return true;
+      }
+      return false;
+    };
+    
+    // Check immediately
+    if (checkAppKit()) {
+      return;
+    }
+    
+    // Poll for AppKit to be ready (from appkit.ts dynamic import)
+    let attempts = 0;
+    const maxAttempts = 100; // 10 seconds
+    const interval = setInterval(() => {
+      attempts++;
+      if (checkAppKit() || attempts >= maxAttempts) {
+        clearInterval(interval);
+      }
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, [isBase]);
+  
+  // Only load AppKit module if NOT in Base app and AppKit instance is ready
+  useEffect(() => {
+    if (isBase || typeof window === 'undefined' || !appKitReady) {
       return;
     }
     
@@ -30,11 +65,12 @@ export const useAppKitSafe = (): AppKitReturn => {
     import('@reown/appkit/react')
       .then((module) => {
         setAppKitModule(module);
+        console.log('[useAppKitSafe] AppKit module loaded successfully');
       })
       .catch((error) => {
         console.warn('[useAppKitSafe] Failed to load AppKit module:', error);
       });
-  }, [isBase]);
+  }, [isBase, appKitReady]);
   
   if (isBase) {
     // Return no-op functions in Base app to prevent WalletConnect initialization
@@ -50,10 +86,36 @@ export const useAppKitSafe = (): AppKitReturn => {
     };
   }
   
-  // If module not loaded yet, return no-ops temporarily
-  if (!appKitModule) {
+  // If AppKit instance not ready or module not loaded yet, wait and retry
+  if (!appKitReady || !appKitModule) {
     return {
-      open: () => console.warn('[AppKit] useAppKit module not loaded yet'),
+      open: (options?: any) => {
+        // Retry loading if not ready
+        if (!appKitReady) {
+          console.log('[AppKit] AppKit instance not ready yet, retrying...');
+          // Trigger re-check
+          setTimeout(() => {
+            if (appKit && typeof appKit === 'object') {
+              setAppKitReady(true);
+            }
+          }, 100);
+        } else if (!appKitModule) {
+          console.log('[AppKit] AppKit module not loaded yet, retrying...');
+          import('@reown/appkit/react')
+            .then((module) => {
+              setAppKitModule(module);
+              // Try to open again after module loads
+              if (module && module.useAppKit) {
+                const hook = module.useAppKit();
+                hook.open(options);
+              }
+            })
+            .catch((error) => {
+              console.error('[AppKit] Failed to load module on retry:', error);
+              alert('Unable to connect wallet. Please refresh the page and try again.');
+            });
+        }
+      },
       close: () => {},
       setThemeMode: () => {},
       setThemeVariables: () => {},

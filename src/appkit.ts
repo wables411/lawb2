@@ -20,18 +20,39 @@ const metadata = {
 
 // Delay check until after window is available to ensure proper detection
 // Use isBaseMiniApp() which has proper detection logic
+// CRITICAL: Only skip AppKit loading if we're ACTUALLY in Base/Farcaster app
+// Regular browser users (lawb.xyz) should ALWAYS load AppKit
 let isBase = false;
 if (typeof window !== 'undefined') {
-  isBase = isBaseMiniApp();
-  console.log('[AppKit] isBaseMiniApp() =', isBase, 'window.location:', window.location.href, 'hostname:', window.location.hostname);
+  // Check if we're in an iframe (Base/Farcaster app)
+  // OR if we're on a Base/Farcaster domain
+  // Regular browser visits to lawb.xyz should NOT be detected as Base app
+  const isInIframe = (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true; // Cross-origin iframe
+    }
+  })();
   
-  // Additional safety check: if we're on farcaster domain, definitely don't load WalletConnect
-  // Note: isBaseMiniApp() already checks for iframes, so we don't need to duplicate that here
-    const onFarcasterDomain = window.location.hostname.includes('farcaster.xyz') || window.location.hostname.includes('warpcast.com');
-  if (onFarcasterDomain) {
-    isBase = true;
-    console.log('[AppKit] Additional safety check: onFarcasterDomain -> forcing isBase=true');
-  }
+  const hostname = window.location.hostname.toLowerCase();
+  const isOnBaseFarcasterDomain = hostname.includes('farcaster.xyz') || 
+                                   hostname.includes('warpcast.com') ||
+                                   hostname.includes('base.app') ||
+                                   hostname.includes('base.org') ||
+                                   hostname.includes('base.dev');
+  
+  // Only consider it Base app if we're in an iframe OR on Base/Farcaster domain
+  // Regular browser visits to lawb.xyz should load AppKit
+  isBase = isInIframe || isOnBaseFarcasterDomain;
+  
+  console.log('[AppKit] Detection:', {
+    isInIframe,
+    hostname,
+    isOnBaseFarcasterDomain,
+    isBase,
+    location: window.location.href
+  });
 }
 
 // Type definitions for when modules are loaded
