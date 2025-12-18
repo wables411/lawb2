@@ -271,6 +271,11 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
   // In Base Mini App, treat as desktop (not mobile) for menu purposes
   const shouldShowDesktopMenu = !isMobile || isBaseMiniAppDetected;
   
+  // Detect current theme mode for menu styling
+  const isDarkMode = typeof document !== 'undefined' && 
+    (document.body.classList.contains('lawb-app-dark-mode') || 
+     document.documentElement.classList.contains('lawb-app-dark-mode'));
+  
   // Mobile wallet connection handler
   const handleMobileWalletConnection = async () => {
     try {
@@ -2621,13 +2626,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
                 textAlign: 'left',
                 minHeight: isMobile ? '44px' : 'auto',
                 fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation'
+                touchAction: 'manipulation',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Leaderboard
@@ -2642,13 +2648,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
                 textAlign: 'left',
                 minHeight: isMobile ? '44px' : 'auto',
                 fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation'
+                touchAction: 'manipulation',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Gallery
@@ -2663,13 +2670,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
                 textAlign: 'left',
                 minHeight: isMobile ? '44px' : 'auto',
                 fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation'
+                touchAction: 'manipulation',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               How To
@@ -2686,13 +2694,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
                 textAlign: 'left',
                 minHeight: isMobile ? '44px' : 'auto',
                 fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation'
+                touchAction: 'manipulation',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Chat
@@ -2712,30 +2721,45 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: isMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
                 textAlign: 'left',
                 minHeight: isMobile ? '44px' : 'auto',
                 fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation'
+                touchAction: 'manipulation',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Profile
             </button>
-            <div style={{
-              display: 'block',
-              width: '100%',
-              padding: isMobile ? '12px 16px' : '8px',
-              marginBottom: '4px',
-              background: '#c0c0c0',
-              border: '2px outset #fff',
-              textAlign: 'left',
-              minHeight: isMobile ? '44px' : 'auto',
-              fontSize: isMobile ? '16px' : '14px'
-            }}>
-              <ThemeToggle />
-            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Trigger theme toggle by clicking the ThemeToggle component
+                const toggleBtn = e.currentTarget.querySelector('button');
+                if (toggleBtn) {
+                  toggleBtn.click();
+                }
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: isMobile ? '12px 16px' : '8px',
+                marginBottom: '4px',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left',
+                minHeight: isMobile ? '44px' : 'auto',
+                fontSize: isMobile ? '16px' : '14px',
+                touchAction: 'manipulation',
+                color: isDarkMode ? '#00ff00' : '#000000'
+              }}
+            >
+              <ThemeToggle asMenuItem={true} />
+            </button>
             {onBackToModeSelect && (
               <button
                 onClick={() => {
