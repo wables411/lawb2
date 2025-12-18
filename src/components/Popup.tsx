@@ -354,24 +354,29 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
           // Top: safe area + Base App header + padding
           // Bottom: safe area + taskbar + padding
           // Left/Right: safe area + padding
-          inset: `${totalTopSpace}px ${totalRightSpace}px ${totalBottomSpace}px ${totalLeftSpace}px`,
-          width: 'auto',
-          height: 'auto',
-          maxWidth: 'none',
-          maxHeight: 'none',
-          minWidth: '0',
-          minHeight: '0',
-          resize: 'none',
-          boxSizing: 'border-box',
-          position: 'fixed',
-          transform: 'none',
-          margin: '0',
-          padding: '0',
+          // Use !important to override JSS media query styles
+          inset: `${totalTopSpace}px ${totalRightSpace}px ${totalBottomSpace}px ${totalLeftSpace}px !important`,
+          width: 'auto !important',
+          height: 'auto !important',
+          maxWidth: 'none !important',
+          maxHeight: 'none !important',
+          minWidth: '0 !important',
+          minHeight: '0 !important',
+          left: 'auto !important',
+          top: 'auto !important',
+          right: 'auto !important',
+          bottom: 'auto !important',
+          resize: 'none !important',
+          boxSizing: 'border-box !important',
+          position: 'fixed !important',
+          transform: 'none !important',
+          margin: '0 !important',
+          padding: '0 !important',
           zIndex: zIndex || 100,
-          overflow: 'hidden',
+          overflow: 'hidden !important',
           // Force constraints to prevent overflow
           contain: 'layout style paint',
-        }}
+        } as React.CSSProperties}
       >
         {renderPopupContent()}
       </div>
