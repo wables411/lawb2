@@ -6158,6 +6158,32 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                 >
                   Profile
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Trigger theme toggle by clicking the ThemeToggle component
+                    const toggleBtn = e.currentTarget.querySelector('button');
+                    if (toggleBtn) {
+                      toggleBtn.click();
+                    }
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '12px 16px',
+                    marginBottom: '4px',
+                    background: '#c0c0c0',
+                    border: '2px outset #fff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    minHeight: '44px',
+                    fontSize: '16px',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <ThemeToggle asMenuItem={true} />
+                </button>
                 {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
                   <button 
                     className="mobile-menu-btn"
@@ -7158,6 +7184,29 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
               }}
             >
               Profile
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Trigger theme toggle by clicking the ThemeToggle component
+                const toggleBtn = e.currentTarget.querySelector('button');
+                if (toggleBtn) {
+                  toggleBtn.click();
+                }
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <ThemeToggle asMenuItem={true} />
             </button>
             {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
               <button
