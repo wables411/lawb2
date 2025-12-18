@@ -3008,7 +3008,8 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     display: none !important;
   }
   
-  /* Override for Base Mini App - allow menu to show when it has inline display style */
+  /* Override for Base Mini App - allow menu to show when it has the base-miniapp-menu class */
+  .chess-menu-popup.base-miniapp-menu,
   .chess-menu-popup[style*="display: block"],
   .chess-menu-popup[style*="display:block"],
   [class*="baseapp"] .chess-menu-popup,
