@@ -163,7 +163,8 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 }
 
 /* Universal dark mode background override - catch ALL elements except chess board/pieces */
-.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]) {
+/* BUT: Don't override elements that have inline background-image styles (like chessboard) */
+.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not([style*="backgroundImage"]):not([style*="background-image"]) {
   background-image: none !important;
   background: #000000 !important;
 }
@@ -172,18 +173,25 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"],
 .lawb-app-dark-mode .piece,
-.lawb-app-dark-mode [class*="piece"] {
+.lawb-app-dark-mode [class*="piece"],
+.lawb-app-dark-mode [style*="backgroundImage"],
+.lawb-app-dark-mode [style*="background-image"] {
   background-image: inherit !important;
   background: inherit !important;
   filter: none !important;
 }
 
-/* Exclude chess board container from dark mode background removal */
+/* Specifically preserve chessboard container background images */
 .lawb-app-dark-mode .chessboard-container,
-.lawb-app-dark-mode [class*="chessboard-container"] {
-  background: transparent !important;
-  background-image: none !important;
+.lawb-app-dark-mode [class*="chessboard-container"],
+.lawb-app-dark-mode [class*="chessboard-container"] * {
+  background-image: inherit !important;
+  background: inherit !important;
+  filter: none !important;
 }
+
+/* Exclude chess board container from dark mode background removal - REMOVED */
+/* Chessboard container should inherit its background image */
 
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html,

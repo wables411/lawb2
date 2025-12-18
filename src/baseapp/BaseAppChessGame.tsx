@@ -2618,7 +2618,13 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               color: isDarkMode ? '#00ff00' : '#000000'
             }}
           >
-            <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
+            <div style={{ 
+              marginBottom: '8px', 
+              fontWeight: 'bold', 
+              borderBottom: isDarkMode ? '1px solid #00ff00' : '1px solid #000', 
+              paddingBottom: '4px',
+              color: isDarkMode ? '#00ff00' : '#000000'
+            }}>
               Menu
             </div>
                 <button
@@ -3581,6 +3587,30 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 Move History
               </button>
             )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Trigger theme toggle by clicking the ThemeToggle component
+                const toggleBtn = e.currentTarget.querySelector('button');
+                if (toggleBtn) {
+                  toggleBtn.click();
+                }
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px',
+                marginBottom: '4px',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
+                cursor: 'pointer',
+                textAlign: 'left',
+                color: isDarkMode ? '#00ff00' : '#000000'
+              }}
+            >
+              <ThemeToggle asMenuItem={true} />
+            </button>
             {onBackToModeSelect && showGame && (
               <button
                 onClick={() => {
