@@ -37,7 +37,7 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
   
   const isBaseApp = checkIsBaseApp();
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === 'undefined' || !isBaseApp) return 'light';
+    if (typeof window === 'undefined') return 'light';
     const saved = localStorage.getItem('lawb-app-theme');
     // Migrate old 'underwater' to 'light'
     if (saved === 'underwater') {
@@ -48,7 +48,7 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
   });
 
   useEffect(() => {
-    if (!isBaseApp) return;
+    if (typeof window === 'undefined') return;
     
     const root = document.documentElement;
     const body = document.body;
@@ -61,7 +61,7 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
     root.classList.add(`lawb-app-${themeMode}-mode`);
     body.classList.add(`lawb-app-${themeMode}-mode`);
     localStorage.setItem('lawb-app-theme', themeMode);
-  }, [themeMode, isBaseApp]);
+  }, [themeMode]);
 
   const cycleTheme = () => {
     const modes: ThemeMode[] = ['light', 'dark'];
@@ -83,8 +83,6 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
       case 'dark': return '🌙';
     }
   };
-
-  if (!isBaseApp) return null;
 
   // Render as menu item
   if (asMenuItem) {
