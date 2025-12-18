@@ -99,7 +99,11 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
       <button
         type="button"
         className="lawb-theme-menu-item"
-        onClick={cycleTheme}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          cycleTheme();
+        }}
         style={{
           width: '100%',
           border: 'none',
@@ -138,7 +142,11 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
   return (
     <button
       className="lawb-theme-toggle"
-      onClick={cycleTheme}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        cycleTheme();
+      }}
       title={`Current: ${getThemeLabel()} Mode - Click to cycle`}
       aria-label={`Current: ${getThemeLabel()} Mode - Click to cycle`}
       style={{

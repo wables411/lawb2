@@ -28,7 +28,13 @@
 
 /* Light Mode - Stock colorway with animated background (formerly Underwater) */
 .lawb-app-light-mode body,
-.lawb-app-light-mode html,
+.lawb-app-light-mode html {
+  background: url('/assets/background.gif') no-repeat center center fixed !important;
+  background-size: cover !important;
+  color: #000000 !important;
+}
+
+/* Default (no theme class) - use light mode */
 body:not(.lawb-app-dark-mode):not(.lawb-app-light-mode),
 html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background: url('/assets/background.gif') no-repeat center center fixed !important;
@@ -135,11 +141,23 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 }
 
 /* Dark Mode - Black backgrounds with terminal green text */
+/* Remove ALL background images in dark mode */
+.lawb-app-dark-mode,
+.lawb-app-dark-mode *,
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html,
 .lawb-app-dark-mode #root,
 .lawb-app-dark-mode [class*="baseapp"],
-.lawb-app-dark-mode [class*="BaseApp"] {
+.lawb-app-dark-mode [class*="BaseApp"],
+.lawb-app-dark-mode [id*="root"],
+.lawb-app-dark-mode [class*="desktop"],
+.lawb-app-dark-mode [class*="Desktop"] {
+  background-image: none !important;
+  background: #000000 !important;
+}
+
+.lawb-app-dark-mode body,
+.lawb-app-dark-mode html {
   background: #000000 !important;
   background-image: none !important;
   background-size: auto !important;

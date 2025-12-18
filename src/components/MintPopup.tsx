@@ -18,10 +18,33 @@ const useStyles = createUseStyles({
     minHeight: '240px',
     top: 0,
     left: 0,
-    display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
-    resize: 'both',
+    display: ({ isOpen, isBaseMiniApp }: { isOpen: boolean; isBaseMiniApp?: boolean }) => (isOpen ? 'block' : 'none'),
+    resize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? 'none' : 'both',
     overflow: 'auto',
     zIndex: 5000,
+    ...(typeof window !== 'undefined' && (() => {
+      try {
+        const isBaseMiniApp = window.self !== window.top;
+        if (isBaseMiniApp) {
+          return {
+            position: 'fixed',
+            left: '16px',
+            top: '16px',
+            right: '16px',
+            bottom: '96px',
+            width: 'auto',
+            height: 'auto',
+            minWidth: '0',
+            minHeight: '0',
+            maxWidth: 'calc(100vw - 32px)',
+            maxHeight: 'calc(100vh - 96px)',
+          };
+        }
+      } catch (e) {
+        return {};
+      }
+      return {};
+    })()),
     '@media (max-width: 768px)': {
       position: 'fixed',
       top: '0',
@@ -46,10 +69,11 @@ const useStyles = createUseStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    cursor: 'move',
+    cursor: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? 'default' : 'move') as any,
     fontSize: '12px',
     fontWeight: 'bold',
-    userSelect: 'none'
+    userSelect: 'none',
+    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '24px' : 'auto') as any,
   },
   titleBarButtons: {
     display: 'flex',
@@ -296,6 +320,15 @@ interface MintPopupProps {
 }
 
 const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, walletAddress, initialMintType = 'selection' }) => {
+  // Detect Base Mini App
+  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  })();
+  
   const mediaQueryMatch = useMediaQuery('(max-width: 768px)');
   const capabilities = useMobileCapabilities();
   
@@ -308,7 +341,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
     return uaMobile || (capabilities.isTouchDevice && (mediaQueryMatch || capabilities.screenWidth <= 768));
   }, [mediaQueryMatch, capabilities]);
   
-  const classes = useStyles({ isOpen });
+  const classes = useStyles({ isOpen, isBaseMiniApp: isBaseMiniAppDetected });
   const nodeRef = useRef(null);
   const [mintType, setMintType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
   const [position, setPosition] = useState({ x: 100, y: 100 });
@@ -1238,7 +1271,8 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
     </div>
   );
 
-  if (isMobile) {
+  // In Base Mini App, render without Draggable wrapper
+  if (isBaseMiniAppDetected || isMobile) {
     return popupContent;
   }
 
