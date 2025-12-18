@@ -1368,8 +1368,8 @@ html.chess-dark-mode, body.chess-dark-mode {
   display: grid !important;
   position: relative !important;
   z-index: 1 !important;
-  /* Ensure background-image is never set to none */
-  background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
+  /* CRITICAL: Never set background-image to none - preserve inline style */
+  /* Do NOT add background-image here - let inline style handle it */
 }
 
 .lawb-app-dark-mode .chessboard,
