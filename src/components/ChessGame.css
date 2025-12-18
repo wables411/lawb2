@@ -267,6 +267,8 @@
   position: relative;
   box-sizing: border-box;
   overflow: hidden;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 .chessboard {
   width: 100%;
@@ -275,15 +277,19 @@
   max-height: 80vh;
   aspect-ratio: 1 / 1;
   background-image: url('/images/chessboard1.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   border-radius: 8px;
   box-shadow: 0 0 8px rgba(0,0,0,0.06);
   border: 1px solid #bbb;
-  display: grid;
+  display: grid !important;
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
+  visibility: visible !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 
 /* Chess board styles */
@@ -685,6 +691,14 @@
   height: 100%;
   width: 100%;
   margin-top: 20px; /* Additional spacing from game info bar */
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.lawb-app-dark-mode .chess-main-area,
+.chess-dark-mode .chess-main-area {
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .chessboard-container {
@@ -700,6 +714,8 @@
   margin: 0 auto;
   flex-shrink: 0;
   aspect-ratio: 1 / 1;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .chessboard {
@@ -1332,18 +1348,27 @@ html.chess-dark-mode, body.chess-dark-mode {
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"],
 .lawb-app-light-mode .chessboard,
-.lawb-app-light-mode [class*="chessboard"] {
-  /* Do NOT override background-image! Only add border or shadow for dark mode. */
-  border: 2px solid #00ff00 !important;
-  box-shadow: 0 0 16px #00ff0033;
-  /* Preserve full color chessboard image - ALWAYS BRIGHT */
+.lawb-app-light-mode [class*="chessboard"],
+.chessboard {
+  /* CRITICAL: Preserve full color chessboard image - ALWAYS BRIGHT */
   background-image: inherit !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
-  brightness: 1 !important;
   visibility: visible !important;
   display: grid !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.lawb-app-dark-mode .chessboard,
+.lawb-app-dark-mode [class*="chessboard"],
+.chess-dark-mode .chessboard {
+  border: 2px solid #00ff00 !important;
+  box-shadow: 0 0 16px #00ff0033 !important;
 }
 
 .lawb-app-light-mode .chessboard,
@@ -1352,19 +1377,63 @@ html.chess-dark-mode, body.chess-dark-mode {
   box-shadow: 0 0 8px rgba(0,0,0,0.06) !important;
 }
 
+/* Ensure chessboard container is always visible */
+.chessboard-container {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.lawb-app-dark-mode .chessboard-container,
+.chess-dark-mode .chessboard-container {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure squares are always visible */
+.square {
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.lawb-app-dark-mode .square,
+.chess-dark-mode .square {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 /* Ensure pieces are always visible in both light and dark modes */
 .chess-dark-mode .piece,
 .lawb-app-dark-mode .piece,
 .lawb-app-dark-mode [class*="piece"],
 .lawb-app-light-mode .piece,
-.lawb-app-light-mode [class*="piece"] {
-  /* Preserve full color pieces - ALWAYS BRIGHT, no filter that affects colors */
+.lawb-app-light-mode [class*="piece"],
+.piece {
+  /* CRITICAL: Preserve full color pieces - ALWAYS BRIGHT, no filter that affects colors */
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
-  brightness: 1 !important;
   visibility: visible !important;
   display: block !important;
+  position: absolute !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.lawb-app-dark-mode .piece,
+.chess-dark-mode .piece {
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 .chess-dark-mode .close-modal-btn {
   background: #222 !important;
