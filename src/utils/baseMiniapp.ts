@@ -56,13 +56,15 @@ export const isBaseMiniApp = () => {
     return true;
   }
   
-  // Check for Farcaster-specific domain indicators
+  // Check for Farcaster/Base-specific domain indicators
   // Farcaster app uses wallet.farcaster.xyz domain
+  // Base.app uses base.app domain
   const hostname = window.location.hostname.toLowerCase();
   if (hostname.includes('farcaster.xyz') || 
       hostname.includes('warpcast.com') ||
       hostname.includes('base.org') ||
-      hostname.includes('base.dev')) {
+      hostname.includes('base.dev') ||
+      hostname.includes('base.app')) {
     console.log('[Base Mini App Detection] ✅ Detected via hostname:', hostname);
     return true;
   }
@@ -74,6 +76,7 @@ export const isBaseMiniApp = () => {
         referrer.includes('warpcast') ||
         referrer.includes('base.org') ||
         referrer.includes('base.dev') ||
+        referrer.includes('base.app') ||
         referrer.includes('wallet.farcaster')) {
       console.log('[Base Mini App Detection] ✅ Detected via referrer:', referrer);
       return true;

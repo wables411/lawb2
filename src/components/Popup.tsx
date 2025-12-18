@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Draggable from 'react-draggable';
 import { createUseStyles } from 'react-jss';
-import { getSafeAreaInsets, isBaseMiniApp } from '../utils/baseMiniapp';
+import { getSafeAreaInsets, isBaseMiniApp, isBaseMiniAppAsync } from '../utils/baseMiniapp';
 
 const useStyles = createUseStyles({
   popup: {
@@ -160,39 +160,58 @@ interface PopupProps {
 }
 
 function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPosition, initialSize, zIndex }: PopupProps) {
-  // Detect Base Mini App (iframe)
-  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
-    try {
-      return window.self !== window.top;
-    } catch (e) {
-      return true; // Cross-origin iframe = Base Mini App
-    }
-  })();
+  // Use the comprehensive Base Mini App detection from utils
+  // This checks for iframe, SDK, hostname, referrer, user agent, etc.
+  const [isBaseMiniAppDetected, setIsBaseMiniAppDetected] = useState(false);
+  const [safeAreaInsets, setSafeAreaInsets] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
   
   const classes = useStyles({ isOpen, isBaseMiniApp: isBaseMiniAppDetected });
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
   
-  // Safe area insets state - initialize with defaults
-  const [safeAreaInsets, setSafeAreaInsets] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
-  
-  // Get safe area insets immediately when Base Mini App is detected
+  // Detect Base Mini App using comprehensive detection (works on both mobile and desktop)
   useEffect(() => {
-    if (isBaseMiniAppDetected) {
-      const updateSafeAreas = async () => {
+    const detectBaseMiniApp = async () => {
+      // First try synchronous detection
+      const syncDetected = isBaseMiniApp();
+      if (syncDetected) {
+        setIsBaseMiniAppDetected(true);
+        // Get safe area insets
         try {
           const insets = await getSafeAreaInsets();
           setSafeAreaInsets(insets);
-          console.log('[POPUP] Safe area insets loaded:', insets);
+          console.log('[POPUP] Base Mini App detected (sync), safe area insets:', insets);
         } catch (error) {
-          console.warn('[POPUP] Failed to get safe area insets, using defaults:', error);
-          setSafeAreaInsets({ top: 0, bottom: 0, left: 0, right: 0 });
+          console.warn('[POPUP] Failed to get safe area insets:', error);
         }
-      };
+        return;
+      }
       
-      void updateSafeAreas();
-    }
-  }, [isBaseMiniAppDetected]);
+      // If sync detection failed, try async detection
+      try {
+        const asyncDetected = await isBaseMiniAppAsync();
+        if (asyncDetected) {
+          setIsBaseMiniAppDetected(true);
+          // Get safe area insets
+          try {
+            const insets = await getSafeAreaInsets();
+            setSafeAreaInsets(insets);
+            console.log('[POPUP] Base Mini App detected (async), safe area insets:', insets);
+          } catch (error) {
+            console.warn('[POPUP] Failed to get safe area insets:', error);
+          }
+        } else {
+          setIsBaseMiniAppDetected(false);
+          console.log('[POPUP] Base Mini App not detected');
+        }
+      } catch (error) {
+        console.warn('[POPUP] Error in async Base Mini App detection:', error);
+        setIsBaseMiniAppDetected(false);
+      }
+    };
+    
+    void detectBaseMiniApp();
+  }, []);
   
   // Debug: log when popup should be visible
   React.useEffect(() => {
