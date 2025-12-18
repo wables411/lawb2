@@ -44,13 +44,18 @@ const useStyles = createUseStyles({
   },
   menuBtn: {
     marginLeft: ({ isMobile }: TaskbarStyleProps) => isMobile ? '20px' : '5px',
-    padding: '5px 10px',
+    padding: ({ isMobile }: TaskbarStyleProps) => isMobile ? '12px 16px' : '8px 12px',
+    minWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? '44px' : 'auto',
+    minHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? '44px' : 'auto',
     background: '#c0c0c0',
     border: '2px outset #fff',
     cursor: 'pointer',
     fontSize: '12px',
     fontFamily: 'MS Sans Serif, sans-serif',
-    color: '#000'
+    color: '#000',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    boxSizing: 'border-box'
   },
   menu: {
     position: 'absolute',
@@ -68,8 +73,8 @@ const useStyles = createUseStyles({
     boxShadow: '2px 2px 4px rgba(0,0,0,0.3)'
   },
   menuLink: {
-    display: 'block',
-    padding: '6px 14px',
+    padding: ({ isMobile }: TaskbarStyleProps) => isMobile ? '14px 16px' : '10px 14px',
+    minHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? '44px' : 'auto',
     color: '#000 !important',
     textDecoration: 'none !important',
     background: '#c0c0c0 !important',
@@ -80,6 +85,11 @@ const useStyles = createUseStyles({
     fontFamily: 'MS Sans Serif, sans-serif',
     width: '100%',
     textAlign: 'left',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
     '&:first-child': {
       borderTop: 'none'
     },
@@ -147,10 +157,16 @@ const useStyles = createUseStyles({
   },
   windowButton: {
     marginLeft: '5px',
-    padding: '5px 10px',
+    padding: ({ isMobile }: TaskbarStyleProps) => isMobile ? '12px 16px' : '8px 12px',
+    minWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? '44px' : 'auto',
+    minHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? '44px' : 'auto',
     background: '#c0c0c0',
     border: '2px outset #fff',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    boxSizing: 'border-box',
+    fontSize: ({ isMobile }: TaskbarStyleProps) => isMobile ? '12px' : '12px'
   }
 });
 
