@@ -162,8 +162,8 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background: #000000 !important;
 }
 
-/* Universal dark mode background override - catch everything */
-.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]) {
+/* Universal dark mode background override - catch ALL elements except chess board/pieces */
+.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]) {
   background-image: none !important;
   background: #000000 !important;
 }
