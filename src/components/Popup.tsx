@@ -281,9 +281,9 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         className={classes.popup}
         style={{ 
           width: 'calc(100vw - 32px)',
-          height: 'calc(100vh - 80px)',
+          height: 'calc(100vh - 60px)',
           maxWidth: 'calc(100vw - 32px)',
-          maxHeight: 'calc(100vh - 80px)',
+          maxHeight: 'calc(100vh - 60px)',
           minWidth: '0',
           minHeight: '0',
           left: '50%',
@@ -319,9 +319,9 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         style={{ 
           ...(isBaseMiniAppDetected ? {
             width: 'calc(100vw - 32px)',
-            height: 'calc(100vh - 80px)',
+            height: 'calc(100vh - 60px)',
             maxWidth: 'calc(100vw - 32px)',
-            maxHeight: 'calc(100vh - 80px)',
+            maxHeight: 'calc(100vh - 60px)',
             minWidth: '0',
             minHeight: '0',
             left: '50%',

@@ -28,10 +28,10 @@ const POPUP_CONTENT_STYLE: React.CSSProperties = {
   WebkitOverflowScrolling: 'touch'
 };
 
-// Uniform popup size for miniapp - match chat window dimensions
+// Uniform popup size for miniapp - ensure windows don't cover taskbar
 const MINIAPP_POPUP_SIZE = { 
   width: 'calc(100vw - 32px)', 
-  height: 'calc(100vh - 96px)' // 16px top + 80px bottom (taskbar)
+  height: 'calc(100vh - 60px)' // 16px top + 44px bottom (taskbar + padding)
 };
 
 function BaseApp() {

@@ -31,13 +31,13 @@ const useStyles = createUseStyles({
             left: '16px',
             top: '16px',
             right: '16px',
-            bottom: '96px',
+            bottom: '60px',
             width: 'auto',
             height: 'auto',
             minWidth: '0',
             minHeight: '0',
             maxWidth: 'calc(100vw - 32px)',
-            maxHeight: 'calc(100vh - 96px)',
+            maxHeight: 'calc(100vh - 60px)',
           };
         }
       } catch (e) {

@@ -451,7 +451,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         left: '16px',
         top: '16px',
         right: '16px',
-        bottom: '80px',
+        bottom: '60px',
         width: 'auto',
         height: 'auto',
         zIndex: 10001

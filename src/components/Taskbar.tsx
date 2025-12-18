@@ -225,7 +225,7 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               width: 10,
               height: 10,
               borderRadius: '50%',
-              background: connectionStatus.connected ? 'limegreen' : 'red',
+              background: connectionStatus.connected ? '#00ff00' : 'red',
               marginRight: 4,
               border: '1px solid #222'
             }} />

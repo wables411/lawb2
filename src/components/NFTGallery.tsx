@@ -650,7 +650,7 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
           left: '16px',
           top: '16px',
           right: '16px',
-          bottom: '96px',
+          bottom: '60px',
           width: 'auto',
           height: 'auto',
           zIndex: 10001

@@ -161,7 +161,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
             onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} 
             onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} 
             zIndex={3001}
-            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 96px)' } : undefined}
+            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 60px)' } : undefined}
           >
             <div style={{
               display: 'grid',
@@ -198,7 +198,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
             onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} 
             onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} 
             zIndex={3001}
-            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 96px)' } : undefined}
+            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 60px)' } : undefined}
           >
             <div style={{
               display: 'grid',

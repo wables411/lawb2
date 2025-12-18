@@ -444,6 +444,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         transform: 'perspective(1000px) rotateX(2deg)',
         transition: 'transform 0.3s ease, box-shadow 0.3s ease',
         background: '#fff',
+        zIndex: 1,
         cursor: !isOwnProfile ? 'pointer' : 'default'
       }}
       onClick={(e) => {
@@ -482,7 +483,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             width: '100%',
             height: 'auto',
             display: 'block',
-            objectFit: 'contain'
+            objectFit: 'contain',
+            position: 'relative',
+            zIndex: 2,
+            background: '#fff'
           }} 
         />
         
