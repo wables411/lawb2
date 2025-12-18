@@ -4,7 +4,7 @@
   box-sizing: border-box;
 }
 
-body {
+body:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   margin: 0;
   padding: 0;
   height: 100vh;

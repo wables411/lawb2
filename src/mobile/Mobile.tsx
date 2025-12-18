@@ -20,12 +20,19 @@ const useStyles = createUseStyles({
     minWidth: '100vw',
     width: '100vw',
     height: '100vh',
+    // Background will be overridden by dark mode CSS
     background: "url('/assets/background.gif') no-repeat center center fixed",
     backgroundSize: 'cover',
     fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif",
     color: '#fff',
     position: 'relative',
     overflow: 'hidden',
+    // Dark mode override
+    '.lawb-app-dark-mode &': {
+      background: '#000000 !important',
+      backgroundImage: 'none !important',
+      color: '#00ff00 !important',
+    },
   },
   header: {
     backgroundColor: '#c00',

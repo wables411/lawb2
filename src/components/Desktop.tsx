@@ -75,6 +75,11 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
   // Check if mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   
+  // Detect dark mode
+  const isDarkMode = typeof document !== 'undefined' && 
+    (document.body.classList.contains('lawb-app-dark-mode') || 
+     document.documentElement.classList.contains('lawb-app-dark-mode'));
+  
   // Recalculate positions for visible desktop icons, top-left oriented
   const getPositions = () => {
     const positions: Record<string, { x: number; y: number }> = {};
@@ -126,8 +131,9 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
       position: 'relative',
       width: '100vw',
       height: '100vh',
-      background: "url('/assets/background.gif') no-repeat center center fixed",
+      background: isDarkMode ? '#000000' : "url('/assets/background.gif') no-repeat center center fixed",
       backgroundSize: 'cover',
+      backgroundImage: isDarkMode ? 'none' : "url('/assets/background.gif')",
       overflow: 'hidden',
     }}>
       <div style={{ 

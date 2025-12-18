@@ -141,9 +141,10 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 }
 
 /* Dark Mode - Black backgrounds with terminal green text */
-/* Remove ALL background images in dark mode */
+/* Remove ALL background images in dark mode - COMPREHENSIVE OVERRIDE */
 /* BUT preserve chess board and piece images/colors */
 .lawb-app-dark-mode,
+.lawb-app-dark-mode *,
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html,
 .lawb-app-dark-mode #root,
@@ -151,7 +152,13 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode [class*="BaseApp"],
 .lawb-app-dark-mode [id*="root"],
 .lawb-app-dark-mode [class*="desktop"],
-.lawb-app-dark-mode [class*="Desktop"] {
+.lawb-app-dark-mode [class*="Desktop"],
+.lawb-app-dark-mode [class*="chess-game"],
+.lawb-app-dark-mode [class*="chess-page"],
+.lawb-app-dark-mode [class*="chess-content"],
+.lawb-app-dark-mode [class*="game-stable-layout"],
+.lawb-app-dark-mode [class*="game-content"],
+.lawb-app-dark-mode [class*="center-area"] {
   background-image: none !important;
   background: #000000 !important;
 }
@@ -174,7 +181,9 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 }
 
 .lawb-app-dark-mode body,
-.lawb-app-dark-mode html {
+.lawb-app-dark-mode html,
+.lawb-app-dark-mode body *,
+.lawb-app-dark-mode html * {
   background: #000000 !important;
   background-image: none !important;
   background-size: auto !important;
@@ -182,6 +191,31 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background-position: center !important;
   background-repeat: no-repeat !important;
   color: #00ff00 !important;
+}
+
+/* Override ALL chess game background rules in dark mode */
+.lawb-app-dark-mode .chess-game,
+.lawb-app-dark-mode .chess-game.game-active,
+.lawb-app-dark-mode [class*="chess-game"],
+.lawb-app-dark-mode [class*="chess-game"].game-active {
+  background-image: none !important;
+  background: #000000 !important;
+  background-size: auto !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Override body/html background in dark mode - highest priority */
+.lawb-app-dark-mode body,
+.lawb-app-dark-mode html,
+body.lawb-app-dark-mode,
+html.lawb-app-dark-mode {
+  background: #000000 !important;
+  background-image: none !important;
+  background-size: auto !important;
+  background-attachment: fixed !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
 .lawb-app-dark-mode .popup-0-2-17,
@@ -377,13 +411,48 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 }
 
 /* Dark mode for all text elements - terminal green */
+/* OVERRIDE ALL TEXT COLORS - ensure nothing is black */
 .lawb-app-dark-mode p,
 .lawb-app-dark-mode span,
 .lawb-app-dark-mode div,
 .lawb-app-dark-mode label,
 .lawb-app-dark-mode input,
 .lawb-app-dark-mode select,
-.lawb-app-dark-mode textarea {
+.lawb-app-dark-mode textarea,
+.lawb-app-dark-mode h1,
+.lawb-app-dark-mode h2,
+.lawb-app-dark-mode h3,
+.lawb-app-dark-mode h4,
+.lawb-app-dark-mode h5,
+.lawb-app-dark-mode h6 {
+  color: #00ff00 !important;
+}
+
+/* Exception: chess board and pieces keep their colors */
+.lawb-app-dark-mode .chessboard,
+.lawb-app-dark-mode [class*="chessboard"],
+.lawb-app-dark-mode .piece,
+.lawb-app-dark-mode [class*="piece"] {
+  color: inherit !important;
+}
+
+/* Override Desktop component inline background */
+.lawb-app-dark-mode [style*="background.gif"],
+.lawb-app-dark-mode [style*="background: url"] {
+  background: #000000 !important;
+  background-image: none !important;
+}
+
+/* Override MemeGenerator inline background */
+.lawb-app-dark-mode [style*='backgroundImage: "url("/assets/background.gif")"'] {
+  background: #000000 !important;
+  background-image: none !important;
+}
+
+/* Override Mobile component background */
+.lawb-app-dark-mode [class*="mobileContainer"] {
+  background: #000000 !important;
+  background-image: none !important;
   color: #00ff00 !important;
 }
 

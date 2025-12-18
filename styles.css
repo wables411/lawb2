@@ -1,4 +1,4 @@
-body {
+body:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   margin: 0;
   height: 100vh;
   background: url('assets/background.gif') no-repeat center center fixed;

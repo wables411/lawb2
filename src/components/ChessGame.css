@@ -50,16 +50,16 @@
   background: transparent;
 }
 
-/* Animated background when game is active */
-.chess-game.game-active {
+/* Animated background when game is active - BUT NOT IN DARK MODE */
+.chess-game.game-active:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   background-image: url('/assets/background.gif') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
 
-/* Always apply animated background to chess games */
-.chess-game {
+/* Always apply animated background to chess games - BUT NOT IN DARK MODE */
+.chess-game:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   background-image: url('/assets/background.gif') !important;
   background-size: cover !important;
   background-position: center !important;
@@ -1118,9 +1118,12 @@ html.chess-dark-mode, body.chess-dark-mode {
   border-color: #00ff00 !important;
 }
 
-/* Override dark mode background when game is active to show animated background */
-.chess-dark-mode.chess-game.game-active .game-stable-layout {
-  background: transparent !important;
+/* REMOVED: Dark mode should NEVER show animated background */
+/* Dark mode always has solid black background */
+.lawb-app-dark-mode .game-stable-layout,
+.lawb-app-dark-mode [class*="game-stable-layout"] {
+  background: #000000 !important;
+  background-image: none !important;
 }
 
 /* Override all dark mode backgrounds when game is active */
@@ -1368,16 +1371,8 @@ html.chess-dark-mode, body.chess-dark-mode {
 
 
 
-/* Override body/html dark mode background when game is active */
-.chess-dark-mode.chess-game.game-active,
-.chess-dark-mode.chess-game.game-active body,
-.chess-dark-mode.chess-game.game-active html {
-  background: transparent !important;
-  background-image: url('/assets/background.gif') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
+/* REMOVED: Dark mode should NEVER show animated background */
+/* Dark mode always has solid black background */
 
 body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   background: url('/assets/background.gif') no-repeat center center fixed;

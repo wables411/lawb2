@@ -170,6 +170,7 @@ const useStyles = createUseStyles({
     flex: 1,
     minHeight: 0,
     minWidth: 0,
+    // Background will be overridden by dark mode CSS
     backgroundImage: 'url("/assets/background.gif")',
     backgroundRepeat: 'repeat',
     backgroundSize: 'cover',
