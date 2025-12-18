@@ -1793,9 +1793,9 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             </button>
 
             {/* Theme Toggle - Always visible on piece selection page */}
-            <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center'}}>
+            <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
               <div onClick={(e) => e.stopPropagation()}>
-                <ThemeToggle asMenuItem={true} />
+                <ThemeToggle asMenuItem={false} />
               </div>
             </div>
 
@@ -1880,9 +1880,9 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           {/* Sidebar toggle buttons removed - use menu button instead */}
 
           {/* Theme Toggle - Always visible on difficulty selection page */}
-          <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center'}}>
+          <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
             <div onClick={(e) => e.stopPropagation()}>
-              <ThemeToggle asMenuItem={true} />
+              <ThemeToggle asMenuItem={false} />
             </div>
           </div>
 
