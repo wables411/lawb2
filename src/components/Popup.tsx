@@ -350,21 +350,23 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     const maxWidthValue = availableWidth;
     const maxHeightValue = availableHeight;
     
+    // Use inset to constrain popup to viewport bounds
+    const rightPosition = `${rightInset + padding}px`;
+    const bottomPosition = `${bottomInset + taskbarHeight + padding}px`;
+    
     return (
       <div 
         ref={nodeRef} 
         className={classes.popup}
         style={{ 
-          width: availableWidth,
-          height: availableHeight,
-          maxWidth: maxWidthValue,
-          maxHeight: maxHeightValue,
+          // Use inset to constrain all sides, ensuring popup never exceeds viewport
+          inset: `${topInset + padding}px ${rightInset + padding}px ${bottomInset + taskbarHeight + padding}px ${leftInset + padding}px`,
+          width: 'auto',
+          height: 'auto',
+          maxWidth: 'none',
+          maxHeight: 'none',
           minWidth: '0',
           minHeight: '0',
-          left: leftPosition,
-          top: topPosition,
-          right: 'auto',
-          bottom: 'auto',
           resize: 'none',
           boxSizing: 'border-box',
           position: 'fixed',
@@ -375,8 +377,6 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
           overflow: 'hidden',
           // Force constraints to prevent overflow
           contain: 'layout style paint',
-          // Ensure popup stays within viewport
-          willChange: 'auto',
         }}
       >
         {renderPopupContent()}
