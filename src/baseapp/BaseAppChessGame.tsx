@@ -1879,10 +1879,24 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
 
           {/* Sidebar toggle buttons removed - use menu button instead */}
 
+          {/* Theme Toggle - Always visible on difficulty selection page */}
+          <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center'}}>
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThemeToggle asMenuItem={true} />
+            </div>
+          </div>
+
           {/* Back to Chess Button */}
           <div style={{marginTop: '16px', justifyContent: 'center'}}>
             <button
-              onClick={() => window.location.href = '/chess'}
+              onClick={() => {
+                if (onBackToModeSelect) {
+                  setShowDifficulty(false);
+                  onBackToModeSelect();
+                } else {
+                  window.location.href = '/chess';
+                }
+              }}
               style={{ 
                 background: 'transparent',
                 color: '#ff0000',
@@ -1896,7 +1910,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 letterSpacing: 1
               }}
             >
-              ← Back to Chess
+              ← Back to Chess Home
             </button>
           </div>
 
