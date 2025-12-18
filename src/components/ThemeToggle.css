@@ -142,8 +142,8 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 
 /* Dark Mode - Black backgrounds with terminal green text */
 /* Remove ALL background images in dark mode */
+/* BUT preserve chess board and piece images/colors */
 .lawb-app-dark-mode,
-.lawb-app-dark-mode *,
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html,
 .lawb-app-dark-mode #root,
@@ -154,6 +154,23 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode [class*="Desktop"] {
   background-image: none !important;
   background: #000000 !important;
+}
+
+/* Exclude chess board and pieces from dark mode background removal */
+.lawb-app-dark-mode .chessboard,
+.lawb-app-dark-mode [class*="chessboard"],
+.lawb-app-dark-mode .piece,
+.lawb-app-dark-mode [class*="piece"] {
+  background-image: inherit !important;
+  background: inherit !important;
+  filter: none !important;
+}
+
+/* Exclude chess board container from dark mode background removal */
+.lawb-app-dark-mode .chessboard-container,
+.lawb-app-dark-mode [class*="chessboard-container"] {
+  background: transparent !important;
+  background-image: none !important;
 }
 
 .lawb-app-dark-mode body,

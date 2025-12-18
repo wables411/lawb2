@@ -1141,10 +1141,14 @@ body, html {
 
 .chess-dark-mode .chessboard {
   border: 1px solid #00ff00 !important;
+  /* Preserve full color chessboard image */
+  background-image: inherit !important;
+  filter: none !important;
 }
 
 .chess-dark-mode .piece {
-  filter: drop-shadow(0 2px 4px rgba(0, 255, 0, 0.3)) !important;
+  /* Preserve full color pieces - no filter that affects colors */
+  filter: none !important;
 }
 
 .chess-dark-mode .close-modal-btn {

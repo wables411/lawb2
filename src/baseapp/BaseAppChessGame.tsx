@@ -2194,13 +2194,16 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
             {onMinimize && <button onClick={onMinimize}>_</button>}
-            {/* Desktop menu button */}
-            {!isMobile && (
+            {/* Desktop menu button - show in Base Mini App even if detected as mobile */}
+            {shouldShowDesktopMenu && (
             <button 
               className="menu-btn"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (typeof window !== 'undefined' && window.console) {
+                  window.console.log('[MENU] Home view button clicked, current isMenuOpen:', isMenuOpen);
+                }
                 setIsMenuOpen(prev => !prev);
               }}
               title="Menu"
@@ -2936,7 +2939,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {!isMobile && (
+          {shouldShowDesktopMenu && (
             <button 
               className="menu-btn"
               onClick={(e) => {

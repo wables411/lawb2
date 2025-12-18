@@ -89,19 +89,52 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
   // Render as menu item
   if (asMenuItem) {
     const isDark = themeMode === 'dark';
-    // Match the menu button styling - transparent background since parent button handles it
+    const baseBg = isDark ? '#000000' : '#c0c0c0';
+    const hoverBg = isDark ? '#001100' : '#d4d0c8';
+    const activeBg = isDark ? '#002200' : '#a0a0a0';
+    const textColor = isDark ? '#00ff00' : '#000';
+    const borderColor = isDark ? '#00ff00' : '#808080';
+    
     return (
-      <span style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        width: '100%',
-        fontSize: 'inherit',
-        color: 'inherit'
-      }}>
+      <button
+        type="button"
+        className="lawb-theme-menu-item"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          cycleTheme();
+        }}
+        style={{
+          width: '100%',
+          border: 'none',
+          borderBottom: `1px solid ${borderColor}`,
+          textAlign: 'left',
+          background: baseBg,
+          padding: '6px 14px',
+          color: textColor,
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontFamily: 'MS Sans Serif, sans-serif',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = hoverBg;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = baseBg;
+        }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.background = activeBg;
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.background = hoverBg;
+        }}
+      >
         <span>{getThemeIcon()}</span>
         <span>Theme: {getThemeLabel()}</span>
-      </span>
+      </button>
     );
   }
 

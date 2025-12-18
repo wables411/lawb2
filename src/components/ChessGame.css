@@ -1230,9 +1230,13 @@ html.chess-dark-mode, body.chess-dark-mode {
   /* Do NOT override background-image! Only add border or shadow for dark mode. */
   border: 2px solid #00ff00 !important;
   box-shadow: 0 0 16px #00ff0033;
+  /* Preserve full color chessboard image */
+  background-image: inherit !important;
+  filter: none !important;
 }
 .chess-dark-mode .piece {
-  filter: brightness(1.2) drop-shadow(0 0 6px #00ff00cc);
+  /* Preserve full color pieces - no filter that affects colors */
+  filter: none !important;
 }
 .chess-dark-mode .close-modal-btn {
   background: #222 !important;
