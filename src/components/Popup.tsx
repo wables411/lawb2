@@ -12,7 +12,7 @@ const useStyles = createUseStyles({
     minWidth: '360px',
     minHeight: '240px',
     // Remove centering CSS - let react-draggable handle positioning
-    display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
+    display: ({ isOpen }: { isOpen: boolean; isBaseMiniApp?: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
     overflow: 'auto',
     top: 0,
@@ -39,14 +39,15 @@ const useStyles = createUseStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    cursor: 'move',
+    cursor: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? 'default' : 'move') as any,
     fontSize: '12px',
     fontWeight: 'bold',
     userSelect: 'none',
+    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '24px' : 'auto') as any,
     '@media (max-width: 768px)': {
-      padding: '12px 16px',
-      fontSize: '16px',
-      minHeight: '50px',
+      padding: '4px 6px',
+      fontSize: '12px',
+      minHeight: '24px',
       cursor: 'default',
     }
   },
@@ -55,25 +56,26 @@ const useStyles = createUseStyles({
     gap: '1px'
   },
   titleBarButton: {
-    width: '16px',
-    height: '14px',
+    width: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '14px' : '16px') as any,
+    height: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '12px' : '14px') as any,
     border: '1px outset #c0c0c0',
     backgroundColor: '#c0c0c0',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '8px',
+    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '7px' : '8px') as any,
     color: 'black',
+    padding: '0',
     '&:active': {
       border: '1px inset #c0c0c0'
     },
     '@media (max-width: 768px)': {
-      width: '44px',
-      height: '44px',
-      fontSize: '18px',
-      minWidth: '44px',
-      minHeight: '44px',
+      width: '14px',
+      height: '12px',
+      fontSize: '7px',
+      minWidth: '14px',
+      minHeight: '12px',
     }
   },
   content: {
@@ -130,7 +132,16 @@ interface PopupProps {
 }
 
 function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPosition, initialSize, zIndex }: PopupProps) {
-  const classes = useStyles({ isOpen });
+  // Detect Base Mini App (iframe)
+  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true; // Cross-origin iframe = Base Mini App
+    }
+  })();
+  
+  const classes = useStyles({ isOpen, isBaseMiniApp: isBaseMiniAppDetected });
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
   
@@ -201,20 +212,13 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   // Store position state to persist drag position
   const [position, setPosition] = React.useState(defaultPos);
   
-  // Detect mobile and Base Mini App (iframe) - must be before useEffect
+  // Detect mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const isBaseMiniApp = typeof window !== 'undefined' && (() => {
-    try {
-      return window.self !== window.top;
-    } catch (e) {
-      return true; // Cross-origin iframe = Base Mini App
-    }
-  })();
   
   // Update position when initialPosition changes or when popup opens
   React.useEffect(() => {
     if (isOpen) {
-      if (isBaseMiniApp) {
+      if (isBaseMiniAppDetected) {
         // Center popup in Base Mini App
         setPosition({ x: 0, y: 0 });
       } else if (initialPosition) {
@@ -224,7 +228,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         setPosition({ x: 100, y: 100 });
       }
     }
-  }, [isOpen, initialPosition, isBaseMiniApp]);
+  }, [isOpen, initialPosition, isBaseMiniAppDetected]);
   
   const handleDrag = (e: any, data: any) => {
     setPosition({ x: data.x, y: data.y });
@@ -263,14 +267,14 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       <div className={classes.content}>
         {children}
       </div>
-      {!isBaseMiniApp && (
+      {!isBaseMiniAppDetected && (
         <div className={classes.resizeHandle} />
       )}
     </>
   );
 
   // For Base Mini App, don't use Draggable at all - render directly
-  if (isBaseMiniApp && isOpen) {
+  if (isBaseMiniAppDetected && isOpen) {
     return (
       <div 
         ref={nodeRef} 
@@ -304,16 +308,16 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       nodeRef={nodeRef} 
       handle={`.${classes.header}`} 
       defaultPosition={defaultPos}
-      position={isOpen && !isBaseMiniApp ? position : { x: 0, y: 0 }}
+      position={isOpen && !isBaseMiniAppDetected ? position : { x: 0, y: 0 }}
       onDrag={handleDrag}
       key={id}
-      disabled={!isOpen || isMobile || isBaseMiniApp}
+      disabled={!isOpen || isMobile || isBaseMiniAppDetected}
     >
       <div 
         ref={nodeRef} 
         className={classes.popup}
         style={{ 
-          ...(isBaseMiniApp ? {
+          ...(isBaseMiniAppDetected ? {
             width: 'calc(100vw - 32px)',
             height: 'calc(100vh - 80px)',
             maxWidth: 'calc(100vw - 32px)',

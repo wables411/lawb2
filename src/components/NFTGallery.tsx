@@ -17,7 +17,7 @@ const useStyles = createUseStyles({
     minHeight: '360px',
     top: 'calc(50vh - 300px)',
     left: 'calc(50vw - 360px)',
-    display: ({ isOpen }: { isOpen: boolean }) => (isOpen ? 'block' : 'none'),
+    display: ({ isOpen }: { isOpen: boolean; isBaseMiniApp?: boolean }) => (isOpen ? 'block' : 'none'),
     resize: 'both',
     overflow: 'auto',
     zIndex: 100
@@ -29,26 +29,28 @@ const useStyles = createUseStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    cursor: 'move',
+    cursor: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? 'default' : 'move',
     fontSize: '12px',
     fontWeight: 'bold',
-    userSelect: 'none'
+    userSelect: 'none',
+    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '24px' : 'auto',
   },
   titleBarButtons: {
     display: 'flex',
     gap: '1px'
   },
   titleBarButton: {
-    width: '16px',
-    height: '14px',
+    width: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '14px' : '16px',
+    height: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '12px' : '14px',
     border: '1px outset #c0c0c0',
     backgroundColor: '#c0c0c0',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '8px',
+    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => isBaseMiniApp ? '7px' : '8px',
     color: 'black',
+    padding: '0',
     '&:active': {
       border: '1px inset #c0c0c0'
     }
@@ -62,7 +64,19 @@ const useStyles = createUseStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
     gap: '0',
-    marginBottom: '20px'
+    marginBottom: '20px',
+    // Base Mini App optimization
+    ...(typeof window !== 'undefined' && (() => {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    })() ? {
+      gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+      gap: '8px',
+      padding: '8px',
+    } : {}),
   },
   gridItem: {
     cursor: 'pointer',
@@ -216,7 +230,16 @@ declare global {
 }
 
 const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, walletAddress }) => {
-  const classes = useStyles({ isOpen });
+  // Detect Base Mini App
+  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  })();
+  
+  const classes = useStyles({ isOpen, isBaseMiniApp: isBaseMiniAppDetected });
   const { open } = useAppKit();
   const nodeRef = useRef(null);
   const [nfts, setNfts] = useState<NFT[]>([]);
@@ -466,6 +489,179 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
 
   if (!isOpen) return null;
 
+  // In Base Mini App, render without Draggable wrapper
+  if (isBaseMiniAppDetected) {
+    return (
+      <div 
+        ref={nodeRef} 
+        className={classes.popup}
+        style={{
+          position: 'fixed',
+          left: '16px',
+          top: '16px',
+          right: '16px',
+          bottom: '96px',
+          width: 'auto',
+          height: 'auto',
+          zIndex: 10001
+        }}
+      >
+        <div className={classes.header} style={{ cursor: 'default' }}>
+          {selectedNft ? (
+            <>
+              <button className={classes.backButton} onClick={() => setSelectedNft(null)}>
+                ← Back
+              </button>
+              <span>{selectedNft.name}</span>
+            </>
+          ) : (
+            <span>LAWB GALLERY</span>
+          )}
+          <div className={classes.titleBarButtons}>
+            <button
+              className={classes.titleBarButton}
+              onClick={handleMinimize}
+              title="Minimize"
+            >
+              _
+            </button>
+            <button
+              className={classes.titleBarButton}
+              onClick={onClose}
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        {!selectedNft && (
+          <div className={classes.collectionSelector}>
+            {COLLECTIONS.map(col => (
+              <button 
+                key={col.slug} 
+                className={`${classes.collectionButton} ${currentCollection.slug === col.slug ? 'active' : ''}`}
+                onClick={() => handleCollectionChange(col)}
+              >
+                {col.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className={classes.content} style={{ height: 'calc(100% - 60px)', overflow: 'auto' }}>
+          {selectedNft ? (
+            renderDetailView()
+          ) : (
+            <>
+              <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setViewMode('all')}
+                  style={{
+                    background: viewMode === 'all' ? '#808080' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    color: viewMode === 'all' ? 'white' : 'black'
+                  }}
+                >
+                  All NFTs
+                </button>
+                <button
+                  onClick={() => setViewMode('recent')}
+                  disabled={!walletAddress}
+                  style={{
+                    background: viewMode === 'recent' ? '#808080' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '8px 16px',
+                    cursor: walletAddress ? 'pointer' : 'not-allowed',
+                    color: viewMode === 'recent' ? 'white' : 'black',
+                    opacity: walletAddress ? 1 : 0.6
+                  }}
+                >
+                  Recently Minted
+                </button>
+                <button
+                  onClick={() => setViewMode('owned')}
+                  disabled={!walletAddress && !solanaAddress}
+                  style={{
+                    background: viewMode === 'owned' ? '#808080' : '#c0c0c0',
+                    border: '2px outset #c0c0c0',
+                    padding: '8px 16px',
+                    cursor: (walletAddress || solanaAddress) ? 'pointer' : 'not-allowed',
+                    color: viewMode === 'owned' ? 'white' : 'black',
+                    opacity: (walletAddress || solanaAddress) ? 1 : 0.6
+                  }}
+                >
+                  My NFTs
+                </button>
+                
+                {currentCollection.api === 'opensea-solana' && (
+                  <button
+                    onClick={() => { void connectSolanaWallet(); }}
+                    style={{
+                      background: solanaAddress ? '#4CAF50' : '#c0c0c0',
+                      border: '2px outset #c0c0c0',
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      color: solanaAddress ? 'white' : 'black',
+                      marginLeft: 'auto'
+                    }}
+                  >
+                    {solanaAddress ? `Solana: ${solanaAddress.slice(0, 4)}...${solanaAddress.slice(-4)}` : 'Connect Solana'}
+                  </button>
+                )}
+              </div>
+
+              {loading && <div>Loading...</div>}
+              {error && <div style={{ color: 'red' }}>{error}</div>}
+              
+              {!loading && !error && (
+                <>
+                  <div style={{ marginBottom: '10px', fontSize: '12px' }}>
+                    {viewMode === 'all' && `Showing ${nfts.length} NFTs from ${currentCollection.name}`}
+                    {viewMode === 'recent' && `Recently minted NFTs from ${currentCollection.name}`}
+                    {viewMode === 'owned' && `NFTs owned by ${currentCollection.api === 'opensea-solana' ? (solanaAddress?.slice(0, 6) + '...' + solanaAddress?.slice(-4)) : (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}`}
+                  </div>
+
+                  {nfts.length === 0 ? (
+                    <div>No NFTs found.</div>
+                  ) : (
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                      gap: '8px',
+                      marginBottom: '20px',
+                      padding: '8px',
+                    }}>
+                      {nfts.map(nft => (
+                        <div 
+                          key={nft.id} 
+                          style={{ 
+                            cursor: 'pointer',
+                            display: 'block',
+                            width: '100%',
+                            aspectRatio: '1',
+                            overflow: 'hidden'
+                          }} 
+                          onClick={() => { void handleNftClick(nft); }}
+                        >
+                          <CORSImage 
+                            src={getImageUrl(nft)} 
+                            alt={nft.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Draggable nodeRef={nodeRef} handle={`.${classes.header}`}>
@@ -623,7 +819,13 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ isOpen, onClose, onMinimize, wa
                 {nfts.length === 0 ? (
                   <div>No NFTs found.</div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0', marginBottom: '20px' }}>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: isBaseMiniAppDetected ? 'repeat(auto-fill, minmax(100px, 1fr))' : 'repeat(auto-fill, minmax(150px, 1fr))',
+                    gap: isBaseMiniAppDetected ? '8px' : '0',
+                    marginBottom: '20px',
+                    padding: isBaseMiniAppDetected ? '8px' : '0',
+                  }}>
                     {nfts.map(nft => (
                       <div 
                         key={nft.id} 

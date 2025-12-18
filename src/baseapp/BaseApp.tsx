@@ -28,10 +28,10 @@ const POPUP_CONTENT_STYLE: React.CSSProperties = {
   WebkitOverflowScrolling: 'touch'
 };
 
-// Uniform popup size for miniapp
+// Uniform popup size for miniapp - match chat window dimensions
 const MINIAPP_POPUP_SIZE = { 
   width: 'calc(100vw - 32px)', 
-  height: 'calc(100vh - 80px)' 
+  height: 'calc(100vh - 96px)' // 16px top + 80px bottom (taskbar)
 };
 
 function BaseApp() {
@@ -473,6 +473,26 @@ function BaseApp() {
               Collect on <a href="https://magiceden.us/collections/base" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a>
             </p>
             <img src="/assets/lawbsterhalloween.gif" alt="Halloween Lawbsters" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
+          </div>
+        </Popup>
+      )}
+
+      {/* Nexus Popup */}
+      {activePopup === 'nexus-popup' && (
+        <Popup
+          id="nexus-popup"
+          isOpen={true}
+          onClose={() => closePopup('nexus-popup')}
+          onMinimize={() => minimizePopup('nexus-popup')}
+          zIndex={2000}
+          initialSize={MINIAPP_POPUP_SIZE}
+        >
+          <div style={POPUP_CONTENT_STYLE}>
+            <p style={{ marginBottom: '10px' }}>
+              1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://magiceden.us/marketplace/lawbnexus" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a>
+            </p>
+            <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px', marginBottom: '10px' }} />
+            <video controls src="/assets/nexusminting.mp4" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
           </div>
         </Popup>
       )}

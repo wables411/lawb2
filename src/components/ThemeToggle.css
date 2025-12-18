@@ -165,6 +165,13 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   border-color: #00ff00 !important;
 }
 
+.lawb-app-dark-mode .clock,
+.lawb-app-dark-mode [class*="clock"] {
+  background: #000000 !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
 .lawb-app-dark-mode .menuLink,
 .lawb-app-dark-mode .menu,
 .lawb-app-dark-mode [class*="menuLink"],

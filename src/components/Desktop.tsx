@@ -155,15 +155,26 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           />
         ))}
         {openFolders['evm-folder'] && (
-          <Popup id="evm-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} zIndex={3001}>
+          <Popup 
+            id="evm-folder" 
+            isOpen={true} 
+            onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} 
+            onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} 
+            zIndex={3001}
+            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 96px)' } : undefined}
+          >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
-              gap: 24,
-              padding: 32,
+              gridTemplateColumns: isBaseMiniApp() ? 'repeat(auto-fill, minmax(80px, 1fr))' : 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: isBaseMiniApp() ? '16px' : '24px',
+              padding: isBaseMiniApp() ? '16px' : '32px',
               justifyItems: 'center',
               alignItems: 'center',
               minHeight: '100%',
+              width: '100%',
+              height: '100%',
+              overflow: 'auto',
+              boxSizing: 'border-box',
             }}>
               {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween', 'pixelawbs', 'asciilawbs'].includes(icon.id)).map(icon => (
                 <Icon
@@ -181,15 +192,26 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           </Popup>
         )}
         {openFolders['sol-folder'] && (
-          <Popup id="sol-folder" isOpen={true} onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} zIndex={3001}>
+          <Popup 
+            id="sol-folder" 
+            isOpen={true} 
+            onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} 
+            onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} 
+            zIndex={3001}
+            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 96px)' } : undefined}
+          >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
-              gap: 24,
-              padding: 32,
+              gridTemplateColumns: isBaseMiniApp() ? 'repeat(auto-fill, minmax(80px, 1fr))' : 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: isBaseMiniApp() ? '16px' : '24px',
+              padding: isBaseMiniApp() ? '16px' : '32px',
               justifyItems: 'center',
               alignItems: 'center',
               minHeight: '100%',
+              width: '100%',
+              height: '100%',
+              overflow: 'auto',
+              boxSizing: 'border-box',
             }}>
               {ICONS.filter(icon => ['lawbstation', 'nexus'].includes(icon.id)).map(icon => (
                 <Icon
