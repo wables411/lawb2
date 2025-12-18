@@ -259,6 +259,18 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
   const { switchChain } = useSwitchChain();
   const { open } = useAppKit();
   
+  // Detect Base Mini App - should always show desktop menu
+  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  })();
+  
+  // In Base Mini App, treat as desktop (not mobile) for menu purposes
+  const shouldShowDesktopMenu = !isMobile || isBaseMiniAppDetected;
+  
   // Mobile wallet connection handler
   const handleMobileWalletConnection = async () => {
     try {
@@ -2547,12 +2559,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           </>
         )}
 
-        {/* Menu Popup - Home View (Desktop Only) */}
+        {/* Menu Popup - Home View (Desktop Only, or Base Mini App) */}
         {(() => {
-          const shouldRender = isMenuOpen && !showGame;
+          const shouldRender = isMenuOpen && !showGame && shouldShowDesktopMenu;
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[MENU RENDER] Home view menu check:', JSON.stringify({
               isMobile,
+              isBaseMiniAppDetected,
+              shouldShowDesktopMenu,
               isMenuOpen,
               showGame,
               shouldRender
@@ -2579,7 +2593,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           }}
         >
           <div 
-            className="chess-menu-popup base-miniapp-menu"
+            className="chess-menu-popup"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
@@ -2590,7 +2604,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               padding: '10px',
               minWidth: '200px',
               zIndex: 10004,
-              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
+              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)',
+              display: 'block'
             }}
           >
             <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
@@ -3383,10 +3398,12 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       
       {/* Desktop Menu Popup - Show for both home and game views */}
       {(() => {
-        const shouldRender = !isMobile && isMenuOpen;
+        const shouldRender = shouldShowDesktopMenu && isMenuOpen;
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[MENU RENDER] Menu check:', JSON.stringify({
             isMobile,
+            isBaseMiniAppDetected,
+            shouldShowDesktopMenu,
             isMenuOpen,
             showGame,
             shouldRender
@@ -3413,7 +3430,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           }}
         >
           <div 
-            className="chess-menu-popup base-miniapp-menu"
+            className="chess-menu-popup"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
@@ -3424,7 +3441,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               padding: '10px',
               minWidth: '200px',
               zIndex: 10004,
-              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)'
+              boxShadow: '4px 4px 8px rgba(0, 0, 0, 0.3)',
+              display: 'block'
             }}
           >
             <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
