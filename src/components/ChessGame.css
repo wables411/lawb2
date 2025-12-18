@@ -1223,7 +1223,12 @@ html.chess-dark-mode, body.chess-dark-mode {
 .chess-dark-mode .gallery-modal,
 .chess-dark-mode .move-history,
 .chess-dark-mode .game-controls,
-.chess-dark-mode .chessboard-container,
+.chess-dark-mode .chessboard-container {
+  /* DO NOT set background - chessboard needs to show through */
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
 .chess-dark-mode .center-area,
 .chess-dark-mode .game-content,
 .chess-dark-mode .game-stable-layout {
@@ -1352,6 +1357,7 @@ html.chess-dark-mode, body.chess-dark-mode {
 .chessboard {
   /* CRITICAL: Preserve full color chessboard image - ALWAYS BRIGHT */
   /* DO NOT override background-image - let inline style from component handle it */
+  /* Inline style has higher specificity than CSS classes, so it will work */
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -1362,6 +1368,8 @@ html.chess-dark-mode, body.chess-dark-mode {
   display: grid !important;
   position: relative !important;
   z-index: 1 !important;
+  /* Ensure background-image is never set to none */
+  background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
 }
 
 .lawb-app-dark-mode .chessboard,
@@ -1369,6 +1377,8 @@ html.chess-dark-mode, body.chess-dark-mode {
 .chess-dark-mode .chessboard {
   border: 2px solid #00ff00 !important;
   box-shadow: 0 0 16px #00ff0033 !important;
+  /* CRITICAL: Do NOT override background-image - inline style must take precedence */
+  /* background-image is set via inline style in component */
 }
 
 .lawb-app-light-mode .chessboard,

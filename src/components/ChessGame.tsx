@@ -385,6 +385,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
 
+  // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
+  pieceImages = selectedPieceSet.pieceImages;
+
   // Update piece images when selected piece set changes
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
@@ -3241,8 +3244,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <div 
                   className="chessboard"
                   style={{
-                    backgroundImage: `url(${selectedChessboard})`
-                  }}
+                    backgroundImage: `url(${selectedChessboard})`,
+                    '--chessboard-bg-image': `url(${selectedChessboard})` as any
+                  } as React.CSSProperties}
                 >
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="board-row">
