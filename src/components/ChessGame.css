@@ -3003,12 +3003,14 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   
   /* Desktop menu popup should NOT show on mobile - use mobile-menu-popup instead */
   /* BUT allow it in Base Mini App (which may be detected as mobile but should show desktop menu) */
-  /* Only hide if it doesn't have inline display style (Base Mini App will have inline display: block) */
-  .chess-menu-popup:not([style*="display"]) {
+  /* Hide by default on mobile */
+  .chess-menu-popup {
     display: none !important;
   }
   
-  /* Override for Base Mini App - allow menu to show */
+  /* Override for Base Mini App - allow menu to show when it has inline display style */
+  .chess-menu-popup[style*="display: block"],
+  .chess-menu-popup[style*="display:block"],
   [class*="baseapp"] .chess-menu-popup,
   [class*="BaseApp"] .chess-menu-popup {
     display: block !important;

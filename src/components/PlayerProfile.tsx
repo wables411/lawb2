@@ -491,32 +491,40 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         />
         
         {/* Stats Overlay at Bottom */}
-        {statsVisible && (
-        <div style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0.6) 100%)',
-          padding: isMobile ? '12px 8px 8px 8px' : '16px 12px 12px 12px',
-          color: '#ffffff',
-          pointerEvents: 'none',
-          zIndex: 3
-        }}>
+        {statsVisible && (() => {
+          // Check if dark mode is active
+          const isDarkMode = typeof document !== 'undefined' && 
+            (document.body.classList.contains('lawb-app-dark-mode') || 
+             document.documentElement.classList.contains('lawb-app-dark-mode'));
+          
+          return (
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: isDarkMode 
+              ? 'transparent' 
+              : 'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0.6) 100%)',
+            padding: isMobile ? '12px 8px 8px 8px' : '16px 12px 12px 12px',
+            color: isDarkMode ? '#00ff00' : '#ffffff',
+            pointerEvents: 'none',
+            zIndex: 3
+          }}>
           <div style={{ 
             fontSize: isMobile ? '14px' : '16px', 
             fontWeight: 'bold', 
             marginBottom: '8px',
-            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
+            textShadow: isDarkMode ? 'none' : '2px 2px 4px rgba(0, 0, 0, 0.8)'
           }}>
             {displayName}
           </div>
           {profile?.username && (
             <div style={{ 
               fontSize: isMobile ? '10px' : '11px', 
-              color: '#ccc',
+              color: isDarkMode ? '#00ff00' : '#ccc',
               marginBottom: '8px',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
             }}>
               @{profile.username}
             </div>
@@ -528,38 +536,51 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             fontSize: isMobile ? '10px' : '11px',
             marginTop: '8px'
           }}>
-            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ 
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
               Games: <strong>{stats.total_games}</strong>
             </div>
-            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ 
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
               Wins: <strong>{stats.wins}</strong>
             </div>
-            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ 
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
               Losses: <strong>{stats.losses}</strong>
             </div>
-            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ 
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
               Draws: <strong>{stats.draws}</strong>
             </div>
-            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ 
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
               Win Rate: <strong>{(stats.win_rate * 100).toFixed(1)}%</strong>
             </div>
-            <div style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ 
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
               Points: <strong>{stats.total_points}</strong>
             </div>
           </div>
           {leaderboardRank && (
             <div style={{ 
               fontSize: isMobile ? '9px' : '10px', 
-              color: '#aaa',
+              color: isDarkMode ? '#00ff00' : '#aaa',
               marginTop: '6px',
               textAlign: 'center',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
             }}>
               Rank: #{leaderboardRank}
             </div>
           )}
         </div>
-        )}
+          );
+        })()}
         {!isOwnProfile && (
           <div style={{
             position: 'absolute',
