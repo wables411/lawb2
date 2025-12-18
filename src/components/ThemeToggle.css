@@ -184,6 +184,21 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   border-color: #00ff00 !important;
 }
 
+/* Profile picture should not be covered by black background */
+.lawb-app-dark-mode [class*="PlayerProfile"] img,
+.lawb-app-dark-mode [class*="profile"] img,
+.lawb-app-dark-mode img[alt="Profile"],
+.lawb-app-dark-mode img[alt="Current profile picture"] {
+  background: #ffffff !important;
+  z-index: 2 !important;
+}
+
+.lawb-app-dark-mode [class*="PlayerProfile"] > div[style*="background: '#fff'"],
+.lawb-app-dark-mode [class*="PlayerProfile"] > div[style*="background: #fff"] {
+  background: #ffffff !important;
+  z-index: 1 !important;
+}
+
 .lawb-app-dark-mode .taskbar {
   background: #000000 !important;
   border-color: #00ff00 !important;
