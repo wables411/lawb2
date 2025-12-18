@@ -448,11 +448,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         cursor: !isOwnProfile ? 'pointer' : 'default'
       }}
       onClick={(e) => {
-        if (!isOwnProfile) {
-          e.preventDefault();
-          e.stopPropagation();
-          setStatsVisible(prev => !prev);
-        }
+        // Removed stats toggle - stats are now in separate section, not overlay
       }}
       onMouseEnter={(e) => {
         if (!isMobile) {
@@ -490,112 +486,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           }} 
         />
         
-        {/* Stats Overlay at Bottom */}
-        {statsVisible && (() => {
-          // Check if dark mode is active
-          const isDarkMode = typeof document !== 'undefined' && 
-            (document.body.classList.contains('lawb-app-dark-mode') || 
-             document.documentElement.classList.contains('lawb-app-dark-mode'));
-          
-          return (
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: isDarkMode 
-              ? 'transparent' 
-              : 'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 70%, rgba(0, 0, 0, 0.6) 100%)',
-            padding: isMobile ? '12px 8px 8px 8px' : '16px 12px 12px 12px',
-            color: isDarkMode ? '#00ff00' : '#ffffff',
-            pointerEvents: 'none',
-            zIndex: 3
-          }} className="player-profile-stats-overlay">
-          <div style={{ 
-            fontSize: isMobile ? '14px' : '16px', 
-            fontWeight: 'bold', 
-            marginBottom: '8px',
-            textShadow: isDarkMode ? 'none' : '2px 2px 4px rgba(0, 0, 0, 0.8)'
-          }}>
-            {displayName}
-          </div>
-          {profile?.username && (
-            <div style={{ 
-              fontSize: isMobile ? '10px' : '11px', 
-              color: isDarkMode ? '#00ff00' : '#ccc',
-              marginBottom: '8px',
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              @{profile.username}
-            </div>
-          )}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
-            gap: '6px',
-            fontSize: isMobile ? '10px' : '11px',
-            marginTop: '8px'
-          }}>
-            <div style={{ 
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Games: <strong>{stats.total_games}</strong>
-            </div>
-            <div style={{ 
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Wins: <strong>{stats.wins}</strong>
-            </div>
-            <div style={{ 
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Losses: <strong>{stats.losses}</strong>
-            </div>
-            <div style={{ 
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Draws: <strong>{stats.draws}</strong>
-            </div>
-            <div style={{ 
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Win Rate: <strong>{(stats.win_rate * 100).toFixed(1)}%</strong>
-            </div>
-            <div style={{ 
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Points: <strong>{stats.total_points}</strong>
-            </div>
-          </div>
-          {leaderboardRank && (
-            <div style={{ 
-              fontSize: isMobile ? '9px' : '10px', 
-              color: isDarkMode ? '#00ff00' : '#aaa',
-              marginTop: '6px',
-              textAlign: 'center',
-              textShadow: isDarkMode ? 'none' : '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-              Rank: #{leaderboardRank}
-            </div>
-          )}
-        </div>
-          );
-        })()}
-        {!isOwnProfile && (
-          <div style={{
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            background: 'rgba(0, 0, 0, 0.6)',
-            color: '#fff',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: isMobile ? '10px' : '11px',
-            pointerEvents: 'none'
-          }}>
-            {statsVisible ? 'Tap to hide stats' : 'Tap to show stats'}
-          </div>
-        )}
+        {/* Stats overlay removed - moved to separate section above NFT inventory */}
       </div>
 
       {/* Editing Features - Only show when viewing own profile */}
@@ -686,6 +577,129 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           </>
         )}
       </div>
+
+              {/* Chess Stats Section - Above NFT Inventory */}
+              {statsVisible && (() => {
+                // Check if dark mode is active
+                const isDarkMode = typeof document !== 'undefined' && 
+                  (document.body.classList.contains('lawb-app-dark-mode') || 
+                   document.documentElement.classList.contains('lawb-app-dark-mode'));
+                
+                return (
+                  <div style={{ 
+                    marginBottom: '20px', 
+                    width: '100%', 
+                    maxWidth: '600px',
+                    padding: '12px',
+                    background: isDarkMode ? '#000000' : '#f0f0f0',
+                    border: isDarkMode ? '2px outset #00ff00' : '1px solid #ccc',
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      marginBottom: '12px' 
+                    }}>
+                      <h4 style={{ 
+                        margin: 0, 
+                        fontSize: isMobile ? '13px' : '14px',
+                        color: isDarkMode ? '#00ff00' : '#000000'
+                      }}>
+                        Chess Stats
+                      </h4>
+                      {!isOwnProfile && (
+                        <button
+                          onClick={() => setStatsVisible(false)}
+                          style={{
+                            padding: '2px 6px',
+                            background: isDarkMode ? '#000000' : '#c0c0c0',
+                            border: isDarkMode ? '1px solid #00ff00' : '1px solid #999',
+                            color: isDarkMode ? '#00ff00' : '#000000',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                            fontSize: isMobile ? '9px' : '10px'
+                          }}
+                        >
+                          Hide
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ 
+                      fontSize: isMobile ? '12px' : '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '8px',
+                      color: isDarkMode ? '#00ff00' : '#000000'
+                    }}>
+                      {displayName}
+                    </div>
+                    {profile?.username && (
+                      <div style={{ 
+                        fontSize: isMobile ? '10px' : '11px', 
+                        color: isDarkMode ? '#00ff00' : '#666',
+                        marginBottom: '12px'
+                      }}>
+                        @{profile.username}
+                      </div>
+                    )}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr', 
+                      gap: '8px',
+                      fontSize: isMobile ? '11px' : '12px',
+                      color: isDarkMode ? '#00ff00' : '#000000'
+                    }}>
+                      <div>Games: <strong>{stats.total_games}</strong></div>
+                      <div>Wins: <strong>{stats.wins}</strong></div>
+                      <div>Losses: <strong>{stats.losses}</strong></div>
+                      <div>Draws: <strong>{stats.draws}</strong></div>
+                      <div>Win Rate: <strong>{(stats.win_rate * 100).toFixed(1)}%</strong></div>
+                      <div>Points: <strong>{stats.total_points}</strong></div>
+                    </div>
+                    {leaderboardRank && (
+                      <div style={{ 
+                        fontSize: isMobile ? '10px' : '11px', 
+                        color: isDarkMode ? '#00ff00' : '#666',
+                        marginTop: '8px',
+                        textAlign: 'center'
+                      }}>
+                        Rank: <strong>#{leaderboardRank}</strong>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              
+              {!statsVisible && !isOwnProfile && (() => {
+                // Check if dark mode is active
+                const isDarkMode = typeof document !== 'undefined' && 
+                  (document.body.classList.contains('lawb-app-dark-mode') || 
+                   document.documentElement.classList.contains('lawb-app-dark-mode'));
+                
+                return (
+                  <div style={{ 
+                    marginBottom: '20px', 
+                    width: '100%', 
+                    maxWidth: '600px',
+                    textAlign: 'center'
+                  }}>
+                    <button
+                      onClick={() => setStatsVisible(true)}
+                      style={{
+                        padding: '8px 16px',
+                        background: isDarkMode ? '#000000' : '#c0c0c0',
+                        border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
+                        color: isDarkMode ? '#00ff00' : '#000000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '11px' : '12px'
+                      }}
+                    >
+                      Show Chess Stats
+                    </button>
+                  </div>
+                );
+              })()}
 
               <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
