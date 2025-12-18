@@ -697,7 +697,11 @@ button.sidebar-menu-btn,
 @media (max-width: 768px) {
   .center-area {
     padding: 0 !important;
-    padding-top: 60px !important; /* Keep padding-top even on mobile to prevent header overlap */
+  }
+  
+  /* Base Mini App (baseapp class) should keep padding-top */
+  .chess-game.baseapp .center-area {
+    padding-top: 60px !important;
   }
   
   .chess-multiplayer-lobby {
@@ -2135,7 +2139,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     align-items: stretch !important;
   }
   
-  /* Only apply mobile-specific padding to mobile class, not Base Mini App (desktop class) */
+  /* Only apply mobile-specific padding to mobile class, not Base Mini App (baseapp class) */
   .chess-game.mobile .center-area,
   .chess-game.mobile-device .center-area {
     order: 1 !important;
@@ -2150,8 +2154,12 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     align-items: center !important;
   }
   
-  /* Base Mini App (desktop class) should keep padding-top */
-  .chess-game.desktop .center-area {
+  /* Base Mini App (baseapp class) should keep padding-top */
+  .chess-game.baseapp .center-area {
+    padding-top: 60px !important;
+  }
+  
+  .chess-game.baseapp .game-stable-layout {
     padding-top: 60px !important;
   }
     justify-content: center !important;

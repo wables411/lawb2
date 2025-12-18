@@ -131,6 +131,15 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   const { switchChain } = useSwitchChain();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
   
+  // Detect Base Mini App
+  const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  })();
+  
   // Chain detection
   const isBase = chainId === NETWORKS.base.chainId;
   const isArbitrum = chainId === NETWORKS.arbitrum.chainId;
@@ -5974,7 +5983,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
 
   // Main render - single container like ChessGame.tsx
   return (
-    <div className={`chess-game${showGame ? ' game-active' : ''} ${isMobile ? 'mobile mobile-device' : 'desktop'} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
+    <div className={`chess-game${showGame ? ' game-active' : ''} ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile mobile-device' : 'desktop')} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
       {/* Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>

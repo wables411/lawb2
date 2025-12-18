@@ -3172,7 +3172,7 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
     margin-top: 0 !important;
   }
   
-  /* Only apply to mobile class, not Base Mini App (desktop class) */
+  /* Only apply to mobile class, not Base Mini App (baseapp class) */
   .chess-game.mobile .game-mode-panel-streamlined h2,
   .chess-game.mobile .game-mode-panel-streamlined h4 {
     margin-top: 0 !important;
@@ -3190,6 +3190,15 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   .chess-game.mobile .difficulty-selection-panel h2 {
     margin-top: 0 !important;
     padding-top: 0 !important;
+  }
+  
+  /* Base Mini App (baseapp class) should keep padding-top */
+  .chess-game.baseapp .game-stable-layout {
+    padding-top: 60px !important;
+  }
+  
+  .chess-game.baseapp .center-area {
+    padding-top: 60px !important;
   }
   
   .mode-selection-compact {

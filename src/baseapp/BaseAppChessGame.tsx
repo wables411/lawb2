@@ -2189,7 +2189,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
   // Show home/mode selection UI if not in a game and not picking difficulty or piece set
   if (!showGame && !showDifficulty && !showPieceSetSelector) {
     return (
-      <div className="chess-game">
+      <div className={`chess-game ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile mobile-device' : 'desktop')}`}>
         <div className="chess-header">
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
@@ -2245,7 +2245,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             <button onClick={onClose}>×</button>
           </div>
         </div>
-        <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
+        <div className={`game-stable-layout home-view ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile' : 'desktop')}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="center-area">
             <div className="game-mode-panel-streamlined">
@@ -2941,7 +2941,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
 
   // Single player game UI
   return (
-    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''}${isMobile ? ' mobile' : ' desktop'}`}>
+    <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''} ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile mobile-device' : 'desktop')}`}>
       {/* Streamlined Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
