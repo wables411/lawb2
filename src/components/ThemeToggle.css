@@ -144,7 +144,6 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 /* Remove ALL background images in dark mode - COMPREHENSIVE OVERRIDE */
 /* BUT preserve chess board and piece images/colors */
 .lawb-app-dark-mode,
-.lawb-app-dark-mode *,
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html,
 .lawb-app-dark-mode #root,
@@ -159,6 +158,12 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode [class*="game-stable-layout"],
 .lawb-app-dark-mode [class*="game-content"],
 .lawb-app-dark-mode [class*="center-area"] {
+  background-image: none !important;
+  background: #000000 !important;
+}
+
+/* Universal dark mode background override - catch everything */
+.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]) {
   background-image: none !important;
   background: #000000 !important;
 }
@@ -413,8 +418,8 @@ html.lawb-app-dark-mode {
 /* Dark mode for all text elements - terminal green */
 /* OVERRIDE ALL TEXT COLORS - ensure nothing is black */
 .lawb-app-dark-mode p,
-.lawb-app-dark-mode span,
-.lawb-app-dark-mode div,
+.lawb-app-dark-mode span:not(.piece):not([class*="piece"]),
+.lawb-app-dark-mode div:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]),
 .lawb-app-dark-mode label,
 .lawb-app-dark-mode input,
 .lawb-app-dark-mode select,
@@ -424,7 +429,9 @@ html.lawb-app-dark-mode {
 .lawb-app-dark-mode h3,
 .lawb-app-dark-mode h4,
 .lawb-app-dark-mode h5,
-.lawb-app-dark-mode h6 {
+.lawb-app-dark-mode h6,
+.lawb-app-dark-mode button,
+.lawb-app-dark-mode a {
   color: #00ff00 !important;
 }
 
