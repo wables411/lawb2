@@ -2778,12 +2778,13 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                   width: '100%',
                   padding: '8px',
                   marginTop: '8px',
-                  background: '#c0c0c0',
-                  border: '2px outset #fff',
+                  background: isDarkMode ? '#000000' : '#c0c0c0',
+                  border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  borderTop: '1px solid #000',
-                  paddingTop: '12px'
+                  borderTop: isDarkMode ? '1px solid #00ff00' : '1px solid #000',
+                  paddingTop: '12px',
+                  color: isDarkMode ? '#00ff00' : '#000000'
                 }}
               >
                 Chess Home
@@ -3591,12 +3592,13 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                   width: '100%',
                   padding: '8px',
                   marginTop: '8px',
-                  background: '#c0c0c0',
-                  border: '2px outset #fff',
+                  background: isDarkMode ? '#000000' : '#c0c0c0',
+                  border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  borderTop: '1px solid #000',
-                  paddingTop: '12px'
+                  borderTop: isDarkMode ? '1px solid #00ff00' : '1px solid #000',
+                  paddingTop: '12px',
+                  color: isDarkMode ? '#00ff00' : '#000000'
                 }}
               >
                 Chess Home
