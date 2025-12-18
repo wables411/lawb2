@@ -729,12 +729,17 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   // Base App only - always use Base chain and ETH as default token
   useEffect(() => {
     // Force Base chain - switch if not on Base
-    if (chainId !== NETWORKS.base.chainId) {
+    if (chainId !== NETWORKS.base.chainId && switchChain) {
       console.log('[BASE APP] Not on Base chain, switching...');
-      switchChain({ chainId: NETWORKS.base.chainId }).catch(err => {
-        console.error('[BASE APP] Failed to switch to Base:', err);
-        setGameStatus('Please switch to Base network');
-      });
+      const switchToBase = async () => {
+        try {
+          await switchChain({ chainId: NETWORKS.base.chainId });
+        } catch (err: unknown) {
+          console.error('[BASE APP] Failed to switch to Base:', err);
+          setGameStatus('Please switch to Base network');
+        }
+      };
+      void switchToBase();
     }
     // Set default token for Base (ETH)
     if (selectedToken === 'NATIVE_DMT') {
