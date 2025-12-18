@@ -3473,7 +3473,13 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               color: isDarkMode ? '#00ff00' : '#000000'
             }}
           >
-            <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '4px' }}>
+            <div style={{ 
+              marginBottom: '8px', 
+              fontWeight: 'bold', 
+              borderBottom: isDarkMode ? '1px solid #00ff00' : '1px solid #000', 
+              paddingBottom: '4px',
+              color: isDarkMode ? '#00ff00' : '#000000'
+            }}>
               Menu
             </div>
             <button
@@ -3483,10 +3489,11 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Leaderboard
@@ -3498,10 +3505,11 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Gallery
@@ -3518,10 +3526,11 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Chat
@@ -3541,10 +3550,11 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 width: '100%',
                 padding: '8px',
                 marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
+                background: isDarkMode ? '#000000' : '#c0c0c0',
+                border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
-                textAlign: 'left'
+                textAlign: 'left',
+                color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >
               Profile
@@ -3557,10 +3567,11 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                   width: '100%',
                   padding: '8px',
                   marginBottom: '4px',
-                  background: '#c0c0c0',
-                  border: '2px outset #fff',
+                  background: isDarkMode ? '#000000' : '#c0c0c0',
+                  border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                   cursor: 'pointer',
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  color: isDarkMode ? '#00ff00' : '#000000'
                 }}
               >
                 Move History
