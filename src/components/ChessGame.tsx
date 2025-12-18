@@ -387,10 +387,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
   pieceImages = selectedPieceSet.pieceImages;
+  console.log('[PIECE IMAGES] Initialized:', Object.keys(pieceImages).length, 'pieces', pieceImages);
 
   // Update piece images when selected piece set changes
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
+    console.log('[PIECE IMAGES] Updated in useEffect:', Object.keys(pieceImages).length, 'pieces', pieceImages);
     
     // Update piece gallery with new piece set images
     pieceGallery = [
@@ -1541,6 +1543,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const isLegalMove = legalMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
                                    lastMove.to.row === row && lastMove.to.col === col);
+    
+    // Debug: log if piece exists but no image
+    if (piece && !pieceImages[piece]) {
+      console.warn('[PIECE RENDER] Piece exists but no image:', piece, 'pieceImages keys:', Object.keys(pieceImages));
+    }
 
   return (
       <div
@@ -1557,7 +1564,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
               backgroundSize: 'contain',
               backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center',
+              // Force visibility
+              display: pieceImages[piece] ? 'block' : 'none',
+              visibility: pieceImages[piece] ? 'visible' : 'hidden',
+              opacity: pieceImages[piece] ? 1 : 0
             }}
           />
         )}
