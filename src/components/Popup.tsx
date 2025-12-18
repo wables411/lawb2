@@ -346,10 +346,9 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     const leftPosition = `${leftInset + padding}px`;
     const topPosition = `${topInset + padding}px`;
     
-    // Additional safety: use max() to ensure we never go negative or exceed viewport
-    // Also set explicit max constraints
-    const maxWidthValue = `min(calc(100vw - ${leftInset + rightInset}px), ${availableWidth})`;
-    const maxHeightValue = `min(calc(100vh - ${topInset + bottomInset + taskbarHeight}px), ${availableHeight})`;
+    // Set max constraints to match available space (prevents overflow)
+    const maxWidthValue = availableWidth;
+    const maxHeightValue = availableHeight;
     
     return (
       <div 
