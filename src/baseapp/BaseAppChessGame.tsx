@@ -2250,7 +2250,6 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
         <div className="chess-header">
           <h2>LAWB CHESS MAINNET BETA 3000</h2>
           <div className="chess-controls">
-            <ThemeToggle />
             {onMinimize && <button onClick={onMinimize}>_</button>}
             {/* Desktop menu button - show in Base Mini App even if detected as mobile */}
             {shouldShowDesktopMenu && (
@@ -2499,19 +2498,32 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 >
                   Profile
                 </button>
-                <div style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '12px 16px',
-                  marginBottom: '4px',
-                  background: '#c0c0c0',
-                  border: '2px outset #fff',
-                  textAlign: 'left',
-                  minHeight: '44px',
-                  fontSize: '16px'
-                }}>
-                  <ThemeToggle />
-                </div>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const toggleBtn = e.currentTarget.querySelector('button');
+                    if (toggleBtn) {
+                      toggleBtn.click();
+                    }
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: effectiveIsMobile ? '12px 16px' : '8px',
+                    marginBottom: '4px',
+                    background: isDarkMode ? '#000000' : '#c0c0c0',
+                    border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    minHeight: effectiveIsMobile ? '44px' : 'auto',
+                    fontSize: effectiveIsMobile ? '16px' : '14px',
+                    touchAction: 'manipulation',
+                    color: isDarkMode ? '#00ff00' : '#000000'
+                  }}
+                >
+                  <ThemeToggle asMenuItem={true} />
+                </button>
                 {onBackToModeSelect && (
                   <button 
                     className="mobile-menu-btn"
@@ -3014,7 +3026,6 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
-          <ThemeToggle />
           {onMinimize && <button onClick={onMinimize}>_</button>}
           {shouldShowDesktopMenu && (
             <button 
@@ -3680,12 +3691,15 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '8px',
+                padding: effectiveIsMobile ? '12px 16px' : '8px',
                 marginBottom: '4px',
                 background: isDarkMode ? '#000000' : '#c0c0c0',
                 border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
                 cursor: 'pointer',
                 textAlign: 'left',
+                minHeight: effectiveIsMobile ? '44px' : 'auto',
+                fontSize: effectiveIsMobile ? '16px' : '14px',
+                touchAction: 'manipulation',
                 color: isDarkMode ? '#00ff00' : '#000000'
               }}
             >

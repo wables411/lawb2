@@ -6013,7 +6013,6 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
-          <ThemeToggle />
           {onMinimize && <button onClick={onMinimize}>_</button>}
           {/* Base Mini App always uses mobile menu style (vertical miniapp) */}
           {/* Desktop menu button - NOT shown in Base Mini App */}

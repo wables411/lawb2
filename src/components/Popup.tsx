@@ -333,26 +333,17 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     const taskbarHeight = 60;
     const padding = 8; // 8px padding on all sides
     
-    // Calculate total space needed from edges
-    const totalHorizontalSpace = leftInset + rightInset + (padding * 2);
-    const totalVerticalSpace = topInset + bottomInset + taskbarHeight + (padding * 2);
+    // Base App has a header bar at the top (typically ~44-50px) that's not in safe area insets
+    // Account for this header in addition to safe area insets
+    const baseAppHeaderHeight = 50; // Base App header height
     
-    // Calculate available space - ensure we never exceed viewport
-    // Use calc() to subtract all space needed from viewport dimensions
-    const availableWidth = `calc(100vw - ${totalHorizontalSpace}px)`;
-    const availableHeight = `calc(100vh - ${totalVerticalSpace}px)`;
-    
-    // Position: start from left inset + padding, top inset + padding
-    const leftPosition = `${leftInset + padding}px`;
-    const topPosition = `${topInset + padding}px`;
-    
-    // Set max constraints to match available space (prevents overflow)
-    const maxWidthValue = availableWidth;
-    const maxHeightValue = availableHeight;
-    
-    // Use inset to constrain popup to viewport bounds
-    const rightPosition = `${rightInset + padding}px`;
-    const bottomPosition = `${bottomInset + taskbarHeight + padding}px`;
+    // Total top space = safe area top + Base App header + padding
+    const totalTopSpace = topInset + baseAppHeaderHeight + padding;
+    // Total bottom space = safe area bottom + taskbar + padding
+    const totalBottomSpace = bottomInset + taskbarHeight + padding;
+    // Total left/right space = safe area + padding
+    const totalLeftSpace = leftInset + padding;
+    const totalRightSpace = rightInset + padding;
     
     return (
       <div 
@@ -360,7 +351,10 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         className={classes.popup}
         style={{ 
           // Use inset to constrain all sides, ensuring popup never exceeds viewport
-          inset: `${topInset + padding}px ${rightInset + padding}px ${bottomInset + taskbarHeight + padding}px ${leftInset + padding}px`,
+          // Top: safe area + Base App header + padding
+          // Bottom: safe area + taskbar + padding
+          // Left/Right: safe area + padding
+          inset: `${totalTopSpace}px ${totalRightSpace}px ${totalBottomSpace}px ${totalLeftSpace}px`,
           width: 'auto',
           height: 'auto',
           maxWidth: 'none',
