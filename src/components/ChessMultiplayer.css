@@ -2166,7 +2166,6 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   .chess-game.mobile .center-area,
   .chess-game.mobile-device .center-area {
     justify-content: center !important;
-  }
     margin: 0 auto !important; /* Ensure centering */
   }
   
