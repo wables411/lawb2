@@ -16,6 +16,7 @@ const BaseAppChessPage = lazy(() => import('./BaseAppChessPage'));
 const AsciiLawbsterMint = lazy(() => import('../components/AsciiLawbsterMint'));
 const MintPopup = lazy(() => import('../components/MintPopup'));
 const MemeGenerator = lazy(() => import('../components/MemeGenerator'));
+const NFTGallery = lazy(() => import('../components/NFTGallery'));
 
 // Uniform popup content wrapper style for miniapp
 const POPUP_CONTENT_STYLE: React.CSSProperties = {
@@ -96,6 +97,7 @@ function BaseApp() {
       } else {
         setActivePopup(popupId);
       }
+      return;
     }
   };
 
@@ -378,6 +380,99 @@ function BaseApp() {
             <Suspense fallback={<div>Loading...</div>}>
               <AsciiLawbsterMint walletAddress={address || ''} onMintSuccess={() => {}} />
             </Suspense>
+          </div>
+        </Popup>
+      )}
+
+      {/* NFT Gallery Popup */}
+      {activePopup === 'nft-gallery-popup' && (
+        <Popup
+          id="nft-gallery-popup"
+          isOpen={true}
+          onClose={() => closePopup('nft-gallery-popup')}
+          onMinimize={() => minimizePopup('nft-gallery-popup')}
+          zIndex={2000}
+          initialSize={MINIAPP_POPUP_SIZE}
+        >
+          <div style={POPUP_CONTENT_STYLE}>
+            <Suspense fallback={<div>Loading...</div>}>
+              <NFTGallery 
+                isOpen={true}
+                onClose={() => closePopup('nft-gallery-popup')}
+              />
+            </Suspense>
+          </div>
+        </Popup>
+      )}
+
+      {/* Lawbsters Popup */}
+      {activePopup === 'lawbsters-popup' && (
+        <Popup
+          id="lawbsters-popup"
+          isOpen={true}
+          onClose={() => closePopup('lawbsters-popup')}
+          onMinimize={() => minimizePopup('lawbsters-popup')}
+          zIndex={2000}
+          initialSize={MINIAPP_POPUP_SIZE}
+        >
+          <div style={POPUP_CONTENT_STYLE}>
+            <p style={{ marginBottom: '10px' }}>
+              420 Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap. A <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Cigawrette Packs</a> derivative.
+            </p>
+            <p style={{ marginBottom: '10px' }}>Chain: Ethereum</p>
+            <p style={{ marginBottom: '10px' }}>
+              Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>NFTX</a>
+            </p>
+            <div style={{ maxWidth: '400px', margin: '0 auto', marginBottom: '10px' }}>
+              {/* Tweet component would go here if available */}
+            </div>
+            <img src="/assets/lawbsters.gif" alt="Lawbsters" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
+          </div>
+        </Popup>
+      )}
+
+      {/* Pixelawbs Popup */}
+      {activePopup === 'pixelawbs-popup' && (
+        <Popup
+          id="pixelawbs-popup"
+          isOpen={true}
+          onClose={() => closePopup('pixelawbs-popup')}
+          onMinimize={() => minimizePopup('pixelawbs-popup')}
+          zIndex={2000}
+          initialSize={MINIAPP_POPUP_SIZE}
+        >
+          <div style={POPUP_CONTENT_STYLE}>
+            <p style={{ marginBottom: '10px' }}>
+              PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => { closePopup('pixelawbs-popup'); setShowMintPopup(true); }}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>SCATTER.ART</a>
+            </p>
+            <p style={{ marginBottom: '10px' }}>Chain: Ethereum</p>
+            <p style={{ marginBottom: '10px' }}>
+              Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a>
+            </p>
+            <img src="/assets/pixelawb.png" alt="Pixelawbs" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
+          </div>
+        </Popup>
+      )}
+
+      {/* Halloween Popup */}
+      {activePopup === 'halloween-popup' && (
+        <Popup
+          id="halloween-popup"
+          isOpen={true}
+          onClose={() => closePopup('halloween-popup')}
+          onMinimize={() => minimizePopup('halloween-popup')}
+          zIndex={2000}
+          initialSize={MINIAPP_POPUP_SIZE}
+        >
+          <div style={POPUP_CONTENT_STYLE}>
+            <p style={{ marginBottom: '10px' }}>
+              Halloween Lawbsters - Spooky collection details
+            </p>
+            <p style={{ marginBottom: '10px' }}>Chain: Base</p>
+            <p style={{ marginBottom: '10px' }}>
+              Collect on <a href="https://magiceden.us/collections/base" target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>Secondary</a>
+            </p>
+            <img src="/assets/lawbsterhalloween.gif" alt="Halloween Lawbsters" style={{ width: '100%', maxWidth: '100%', height: 'auto', marginTop: '10px' }} />
           </div>
         </Popup>
       )}

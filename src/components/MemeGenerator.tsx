@@ -20,6 +20,15 @@ const useStyles = createUseStyles({
     height: '100%',
     overflow: 'hidden',
     boxShadow: 'inset 1px 1px 0 #fff, inset -1px -1px 0 #000',
+    // Theme-aware styling
+    '.lawb-app-dark-mode &': {
+      background: '#000000 !important',
+      borderColor: '#00ff00 !important',
+      color: '#00ff00 !important',
+    },
+    '.lawb-app-light-mode &': {
+      background: 'linear-gradient(180deg, #c0c0c0 0%, #808080 100%)',
+    },
     '@media (max-width: 768px)': {
       flexDirection: 'column',
     },
@@ -36,6 +45,7 @@ const useStyles = createUseStyles({
       overflow: 'auto',
     } : {}),
   },
+  // Dark mode styles
   header: {
     textAlign: 'center',
     marginBottom: 6,

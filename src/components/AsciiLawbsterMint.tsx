@@ -250,6 +250,21 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
     return uaMobile || (capabilities.isTouchDevice && (mediaQueryMatch || capabilities.screenWidth <= 768));
   }, [mediaQueryMatch, capabilities]);
 
+  // Auto-switch to Base chain when in Base Mini App
+  useEffect(() => {
+    const isBaseMiniApp = typeof window !== 'undefined' && (() => {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    })();
+    
+    if (isBaseMiniApp && isConnected && chainId !== base.id && switchChain) {
+      void switchChain({ chainId: base.id });
+    }
+  }, [isConnected, chainId, switchChain]);
+
   useEffect(() => {
     if (isConnected && address && publicClient && chainId === base.id) {
       void loadClaimCondition();

@@ -2548,7 +2548,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
         )}
 
         {/* Menu Popup - Home View (Desktop Only) */}
-        {!isMobile && (() => {
+        {(() => {
           const shouldRender = isMenuOpen && !showGame;
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[MENU RENDER] Home view menu check:', JSON.stringify({

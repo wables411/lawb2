@@ -139,6 +139,7 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode html {
   background: #000000 !important;
   background-image: none !important;
+  background-size: auto !important;
   color: #00ff00 !important;
 }
 
@@ -167,9 +168,44 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode .menuLink,
 .lawb-app-dark-mode .menu,
 .lawb-app-dark-mode [class*="menuLink"],
-.lawb-app-dark-mode [class*="menu"] {
+.lawb-app-dark-mode [class*="menu"],
+.lawb-app-dark-mode button[class*="menuLink"],
+.lawb-app-dark-mode a[class*="menuLink"] {
   background: #000000 !important;
   color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .menuLink a,
+.lawb-app-dark-mode .menu a,
+.lawb-app-dark-mode [class*="menuLink"] a,
+.lawb-app-dark-mode button.menuLink,
+.lawb-app-dark-mode a.menuLink {
+  color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .menu button,
+.lawb-app-dark-mode .menu a,
+.lawb-app-dark-mode [class*="menu"] button,
+.lawb-app-dark-mode [class*="menu"] a {
+  color: #00ff00 !important;
+  background: #000000 !important;
+  border-color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .chess-menu-popup,
+.lawb-app-dark-mode [class*="chess-menu"] {
+  background: #000000 !important;
+  border-color: #00ff00 !important;
+  color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode .chess-menu-popup button,
+.lawb-app-dark-mode .chess-menu-popup a,
+.lawb-app-dark-mode [class*="chess-menu"] button,
+.lawb-app-dark-mode [class*="chess-menu"] a {
+  color: #00ff00 !important;
+  background: #000000 !important;
   border-color: #00ff00 !important;
 }
 
@@ -301,4 +337,17 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   background: #000000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;
+}
+
+/* Dark mode - Meme Generator */
+.lawb-app-dark-mode [class*="meme-generator"],
+.lawb-app-dark-mode [class*="MemeGenerator"] {
+  background: #000000 !important;
+  border-color: #00ff00 !important;
+  color: #00ff00 !important;
+}
+
+.lawb-app-dark-mode [class*="meme-generator"] *,
+.lawb-app-dark-mode [class*="MemeGenerator"] * {
+  color: #00ff00 !important;
 }
