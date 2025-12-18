@@ -327,32 +327,35 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
 
   // For Base Mini App, don't use Draggable at all - render directly
   if (isBaseMiniAppDetected && isOpen) {
+    // Calculate safe positioning for Base Mini App
+    const topOffset = safeAreaInsets.top || 0;
+    const bottomOffset = safeAreaInsets.bottom || 0;
+    const leftOffset = safeAreaInsets.left || 0;
+    const rightOffset = safeAreaInsets.right || 0;
+    const taskbarHeight = 60;
+    
     return (
       <div 
         ref={nodeRef} 
         className={classes.popup}
         style={{ 
-          width: popupSize.width,
-          height: popupSize.height,
-          maxWidth: popupSize.width,
-          maxHeight: popupSize.height,
+          width: `calc(100vw - ${leftOffset + rightOffset + 16}px)`,
+          height: `calc(100vh - ${topOffset + bottomOffset + taskbarHeight + 16}px)`,
+          maxWidth: `calc(100vw - ${leftOffset + rightOffset + 16}px)`,
+          maxHeight: `calc(100vh - ${topOffset + bottomOffset + taskbarHeight + 16}px)`,
           minWidth: '0',
           minHeight: '0',
-          left: '50%',
-          top: '50%',
+          left: `${8 + leftOffset}px`,
+          top: `${8 + topOffset}px`,
           right: 'auto',
           bottom: 'auto',
           resize: 'none',
           boxSizing: 'border-box',
           position: 'fixed',
-          transform: 'translate(-50%, -50%) !important',
+          transform: 'none',
           margin: '0',
           zIndex: zIndex || 100,
           overflow: 'hidden',
-          paddingTop: `max(0px, ${safeAreaInsets.top}px)`,
-          paddingBottom: `max(0px, ${safeAreaInsets.bottom}px)`,
-          paddingLeft: `max(0px, ${safeAreaInsets.left}px)`,
-          paddingRight: `max(0px, ${safeAreaInsets.right}px)`,
         }}
       >
         {renderPopupContent()}

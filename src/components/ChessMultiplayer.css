@@ -1146,16 +1146,41 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   color: #000 !important;
 }
 
-.chess-dark-mode .chessboard {
+/* Ensure chessboard is always visible in both light and dark modes */
+.chess-dark-mode .chessboard,
+.lawb-app-dark-mode .chessboard,
+.lawb-app-dark-mode [class*="chessboard"],
+.lawb-app-light-mode .chessboard,
+.lawb-app-light-mode [class*="chessboard"] {
   border: 1px solid #00ff00 !important;
   /* Preserve full color chessboard image */
   background-image: inherit !important;
   filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+  brightness: 1 !important;
+  visibility: visible !important;
+  display: grid !important;
 }
 
-.chess-dark-mode .piece {
+.lawb-app-light-mode .chessboard,
+.lawb-app-light-mode [class*="chessboard"] {
+  border: 1px solid #bbb !important;
+}
+
+/* Ensure pieces are always visible in both light and dark modes */
+.chess-dark-mode .piece,
+.lawb-app-dark-mode .piece,
+.lawb-app-dark-mode [class*="piece"],
+.lawb-app-light-mode .piece,
+.lawb-app-light-mode [class*="piece"] {
   /* Preserve full color pieces - no filter that affects colors */
   filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+  brightness: 1 !important;
+  visibility: visible !important;
+  display: block !important;
 }
 
 .chess-dark-mode .close-modal-btn {

@@ -13,7 +13,8 @@ const useStyles = createUseStyles({
     left: 0,
     bottom: 0,
     width: '100%',
-    height: 40,
+    height: ({ isMobile }: TaskbarStyleProps) => isMobile ? 60 : 40,
+    minHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 60 : 40,
     background: '#c0c0c0',
     borderTop: '2px outset #fff',
     display: 'flex',
@@ -59,14 +60,14 @@ const useStyles = createUseStyles({
   },
   menu: {
     position: 'absolute',
-    bottom: '45px',
+    bottom: ({ isMobile }: TaskbarStyleProps) => isMobile ? '65px' : '45px',
     left: '5px',
     background: '#c0c0c0',
     border: '2px outset #fff',
     padding: '2px',
     display: ({ isOpen }: TaskbarStyleProps) => (isOpen ? 'block' : 'none'),
     zIndex: 100000, // Higher than all popups to open over windows
-    maxHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vh - 100px)' : '400px',
+    maxHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vh - 120px)' : '400px',
     maxWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vw - 20px)' : '220px',
     overflowY: 'auto',
     minWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? '200px' : '220px',
@@ -204,7 +205,9 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
     });
   };
 
-  const handleMenuClick = () => {
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsMenuOpen(!isMenuOpen);
   };
 
@@ -215,7 +218,7 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
   return (
     <div className={classes.taskbar}>
       <div className={classes.leftSection}>
-        <button className={classes.menuBtn} onClick={handleMenuClick}>
+        <button className={classes.menuBtn} onClick={handleMenuClick} type="button">
           Menu
         </button>
         
@@ -365,7 +368,9 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
             borderTop: '1px solid #fff',
             borderBottom: '1px solid #808080'
           }} />
-          <ThemeToggle asMenuItem={true} />
+          <div onClick={(e) => e.stopPropagation()}>
+            <ThemeToggle asMenuItem={true} />
+          </div>
         </div>
       )}
     </div>

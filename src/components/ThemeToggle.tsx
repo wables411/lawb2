@@ -102,6 +102,7 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          e.nativeEvent.stopImmediatePropagation();
           cycleTheme();
         }}
         style={{

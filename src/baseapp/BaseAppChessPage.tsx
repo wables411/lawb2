@@ -25,12 +25,17 @@ const BaseAppChessPage: React.FC = () => {
     }
   })();
   
+  // Base Mini App should ALWAYS render in mobile/miniapp style (vertical, mobile-like)
+  // regardless of the actual device it's opened on
+  // Desktop browser visits should use desktop styling (handled by main.tsx routing)
   const isMobile = useMemo(() => {
-    // Don't treat Base Mini App as mobile
+    // Base Mini App is ALWAYS mobile-like (vertical miniapp style)
     if (isBaseMiniAppDetected) {
-      return false;
+      return true; // Always use mobile/miniapp styling in Base Mini App
     }
     
+    // For desktop browser visits (shouldn't happen since BaseAppChessPage is only for miniapp,
+    // but fallback logic for safety)
     if (typeof navigator === 'undefined') {
       return mediaQueryMatch;
     }
@@ -84,7 +89,7 @@ const BaseAppChessPage: React.FC = () => {
 
   return (
     <div 
-      className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}
+      className={`chess-page ${isMobile ? 'mobile' : 'desktop'} ${isBaseMiniAppDetected ? 'baseapp' : ''}`}
       style={{
         width: '100vw',
         height: '100vh',

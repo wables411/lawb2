@@ -16,7 +16,7 @@ import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'fireb
 import '../components/ChessMultiplayer.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from '../components/TokenSelector';
-import { ChainSelector } from '../components/ChainSelector';
+// ChainSelector removed - Base App only supports Base chain
 import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
 import { useMobileCapabilities } from '../hooks/useMediaQuery';
 import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, TOKEN_ADDRESSES_BY_CHAIN, type TokenSymbol, getTokenAddressForChain, getDefaultTokenForChain } from '../config/tokens';
@@ -27,6 +27,7 @@ import Popup from '../components/Popup';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { HowToContent } from '../baseapp/HowToContent';
 import { triggerHapticImpact, triggerHapticSelection, triggerHapticNotification, getSafeAreaInsets, isBaseMiniApp } from '../utils/baseMiniapp';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -132,7 +133,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   const { switchChain } = useSwitchChain();
   const chessContractAddress = getContractAddress(chainId || NETWORKS.mainnet.chainId);
   
-  // Detect Base Mini App
+  // Detect Base Mini App - Base Mini App should ALWAYS use mobile/miniapp styling
   const isBaseMiniAppDetected = typeof window !== 'undefined' && (() => {
     try {
       return window.self !== window.top;
@@ -141,10 +142,15 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     }
   })();
   
-  // Chain detection
-  const isBase = chainId === NETWORKS.base.chainId;
-  const isArbitrum = chainId === NETWORKS.arbitrum.chainId;
-  const isSanko = chainId === NETWORKS.mainnet.chainId || chainId === NETWORKS.testnet.chainId;
+  // Base Mini App should ALWAYS render in mobile/miniapp mode (vertical, mobile-like)
+  // regardless of the actual device it's opened on
+  // Desktop browser visits use ChessPage component instead (handled by main.tsx routing)
+  const effectiveIsMobile = isMobile || isBaseMiniAppDetected;
+  
+  // Base App only - always Base chain
+  const isBase = true; // Base App only supports Base chain
+  const isArbitrum = false; // Not supported in Base App
+  const isSanko = false; // Not supported in Base App
   
   // Base app - no detection needed, this IS the Base app component
   
@@ -706,10 +712,10 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   const [selectedToken, setSelectedToken] = useState<TokenSymbol | string>('NATIVE_DMT');
   const [currentGameToken, setCurrentGameToken] = useState<TokenSymbol | string>('NATIVE_DMT');
   
-  // Selected chain for game creation (defaults to current chain)
-  const [selectedChain, setSelectedChain] = useState<'sanko' | 'base' | 'arbitrum' | null>(null);
+  // Base App only - always use Base chain
+  const selectedChain = 'base' as const;
   
-  // Wager type: 'token' or 'nft' (NFT only on Base/Arbitrum)
+  // Wager type: 'token' or 'nft' (NFT only on Base)
   const [wagerType, setWagerType] = useState<'token' | 'nft'>('token');
   
   // NFT wagering state (Base only)
@@ -720,32 +726,21 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     quantity?: number;
   } | null>(null);
   
-  // Determine current chain from chainId and set default token
+  // Base App only - always use Base chain and ETH as default token
   useEffect(() => {
-    if (chainId === NETWORKS.mainnet.chainId) {
-      setSelectedChain('sanko');
-      // Reset to token wager on Sanko (NFT not supported)
-      if (wagerType === 'nft') {
-        setWagerType('token');
-      }
-      // Set default token for Sanko
-      if (selectedToken === 'NATIVE_DMT' || selectedToken === 'ETH') {
-        setSelectedToken('NATIVE_DMT');
-      }
-    } else if (chainId === NETWORKS.base.chainId) {
-      setSelectedChain('base');
-      // Set default token for Base (ETH instead of NATIVE_DMT)
-      if (selectedToken === 'NATIVE_DMT') {
-        setSelectedToken('ETH');
-      }
-    } else if (chainId === NETWORKS.arbitrum.chainId) {
-      setSelectedChain('arbitrum');
-      // Set default token for Arbitrum (ETH instead of NATIVE_DMT)
-      if (selectedToken === 'NATIVE_DMT') {
-        setSelectedToken('ETH');
-      }
+    // Force Base chain - switch if not on Base
+    if (chainId !== NETWORKS.base.chainId) {
+      console.log('[BASE APP] Not on Base chain, switching...');
+      switchChain({ chainId: NETWORKS.base.chainId }).catch(err => {
+        console.error('[BASE APP] Failed to switch to Base:', err);
+        setGameStatus('Please switch to Base network');
+      });
     }
-  }, [chainId, wagerType]);
+    // Set default token for Base (ETH)
+    if (selectedToken === 'NATIVE_DMT') {
+      setSelectedToken('ETH');
+    }
+  }, [chainId, switchChain, selectedToken]);
   
   // Reset NFT selection when switching to token wager
   useEffect(() => {
@@ -958,16 +953,16 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
   };
   
   const openHowToGuide = useCallback(() => {
-    if (isMobile) {
+    if (effectiveIsMobile) {
       setSidebarView('howto');
       setIsSidebarOpen(false);
     } else {
       openWindow('howto');
     }
-  }, [isMobile, openWindow]);
+  }, [effectiveIsMobile, openWindow]);
   
   // Mobile sidebar state (unchanged)
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(effectiveIsMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -1208,17 +1203,17 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
 
   // Reload leaderboard when window opens (desktop) or sidebar view changes (mobile)
   useEffect(() => {
-    if (!isMobile && openWindows.has('leaderboard')) {
+    if (!effectiveIsMobile && openWindows.has('leaderboard')) {
       void loadLeaderboard();
     }
-  }, [openWindows, isMobile]);
+  }, [openWindows, effectiveIsMobile]);
   
   // Reload leaderboard when mobile sidebar view changes to leaderboard
   useEffect(() => {
-    if (isMobile && sidebarView === 'leaderboard') {
+    if (effectiveIsMobile && sidebarView === 'leaderboard') {
       void loadLeaderboard();
     }
-  }, [sidebarView, isMobile]);
+  }, [sidebarView, effectiveIsMobile]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // Refs
@@ -2401,7 +2396,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     console.log('[CREATE GAME] selectedToken:', selectedToken);
     console.log('[CREATE GAME] isCustomToken:', isCustomToken);
     console.log('[CREATE GAME] chainId:', chainId);
-    console.log('[CREATE GAME] selectedChain:', selectedChain);
+    console.log('[CREATE GAME] selectedChain: base (Base App only)');
     console.log('[CREATE GAME] chessContractAddress:', chessContractAddress);
     console.log('[CREATE GAME] selectedNFT:', selectedNFT);
     
@@ -2423,8 +2418,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     try {
       // Handle NFT wagering (Base only)
       if (wagerType === 'nft' && selectedNFT) {
-        if (chainId !== NETWORKS.base.chainId && chainId !== NETWORKS.arbitrum.chainId) {
-          setGameStatus('NFT wagering is only available on Base/Arbitrum');
+        if (chainId !== NETWORKS.base.chainId) {
+          setGameStatus('NFT wagering is only available on Base');
           setIsGameCreationInProgress(false);
           return;
         }
@@ -2596,10 +2591,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
       
       console.log('[CREATE GAME] After validation, continuing to game data preparation...');
       
-      // Determine chain for Firebase
-      const gameChain = selectedChain || (chainId === NETWORKS.mainnet.chainId ? 'sanko' : 
-                        chainId === NETWORKS.base.chainId ? 'base' : 
-                        chainId === NETWORKS.arbitrum.chainId ? 'arbitrum' : 'sanko');
+      // Base App only - always use Base chain
+      const gameChain = 'base' as const;
       
       // Get token symbol for display (for custom tokens, use address or fetched symbol)
       const tokenSymbol = isCustomToken ? (tokenAddress.slice(0, 6) + '...') : 
@@ -5672,7 +5665,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
     
     return (
-      <div className={`promotion-dialog ${isMobile ? 'mobile-promotion' : ''}`} style={{
+      <div className={`promotion-dialog ${effectiveIsMobile ? 'mobile-promotion' : ''}`} style={{
         position: 'fixed',
         top: '50%',
         left: '50%',
@@ -5680,30 +5673,30 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
         background: 'rgba(0, 0, 0, 0.9)',
         border: '2px solid gold',
         borderRadius: '8px',
-        padding: isMobile ? '15px' : '20px',
+        padding: effectiveIsMobile ? '15px' : '20px',
         zIndex: 1000,
-        minWidth: isMobile ? '280px' : '320px',
-        maxWidth: isMobile ? '90vw' : '400px'
+        minWidth: effectiveIsMobile ? '280px' : '320px',
+        maxWidth: effectiveIsMobile ? '90vw' : '400px'
       }}>
         <div className="promotion-content">
           <h3 style={{ 
             color: 'white', 
-            marginBottom: isMobile ? '10px' : '15px',
-            fontSize: isMobile ? '16px' : '18px',
+            marginBottom: effectiveIsMobile ? '10px' : '15px',
+            fontSize: effectiveIsMobile ? '16px' : '18px',
             textAlign: 'center'
           }}>
             Choose promotion piece:
           </h3>
-          <div className={`promotion-pieces ${isMobile ? 'mobile-promotion-grid' : ''}`} style={{ 
+          <div className={`promotion-pieces ${effectiveIsMobile ? 'mobile-promotion-grid' : ''}`} style={{ 
             display: 'flex', 
-            gap: isMobile ? '8px' : '10px',
-            flexWrap: isMobile ? 'wrap' : 'nowrap',
+            gap: effectiveIsMobile ? '8px' : '10px',
+            flexWrap: effectiveIsMobile ? 'wrap' : 'nowrap',
             justifyContent: 'center'
           }}>
             {pieces.map(piece => (
               <div
                 key={piece}
-                className={`promotion-piece ${isMobile ? 'mobile-promotion-piece' : ''}`}
+                className={`promotion-piece ${effectiveIsMobile ? 'mobile-promotion-piece' : ''}`}
                 onClick={() => {
                   executeMove(promotionMove.from, promotionMove.to, piece);
                   setShowPromotion(false);
@@ -5717,14 +5710,14 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                 }}
                 style={{
                   cursor: 'pointer',
-                  padding: isMobile ? '8px' : '10px',
+                  padding: effectiveIsMobile ? '8px' : '10px',
                   border: '2px solid white',
                   borderRadius: '4px',
                   background: 'rgba(255, 255, 255, 0.1)',
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent',
-                  minWidth: isMobile ? '60px' : 'auto',
-                  minHeight: isMobile ? '60px' : 'auto',
+                  minWidth: effectiveIsMobile ? '60px' : 'auto',
+                  minHeight: effectiveIsMobile ? '60px' : 'auto',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -5734,8 +5727,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                   src={pieceImages[piece]} 
                   alt={piece} 
                   style={{ 
-                    width: isMobile ? '32px' : '40px', 
-                    height: isMobile ? '32px' : '40px',
+                    width: effectiveIsMobile ? '32px' : '40px',
+                    height: effectiveIsMobile ? '32px' : '40px',
                     pointerEvents: 'none'
                   }} 
                 />
@@ -5885,8 +5878,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                 background: 'transparent',
                 color: '#ff0000',
                 fontWeight: 'bold',
-                fontSize: isMobile ? '1.1em' : '1.3em',
-                padding: isMobile ? '14px 36px' : '18px 48px',
+                fontSize: effectiveIsMobile ? '1.1em' : '1.3em',
+                padding: effectiveIsMobile ? '14px 36px' : '18px 48px',
                 borderRadius: 0,
                 boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
                 border: '1px solid #ff0000',
@@ -6010,14 +6003,16 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
 
   // Main render - single container like ChessGame.tsx
   return (
-    <div className={`chess-game${showGame ? ' game-active' : ''} ${isBaseMiniAppDetected ? 'baseapp' : (isMobile ? 'mobile mobile-device' : 'desktop')} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
+    <div className={`chess-game${showGame ? ' game-active' : ''} ${isBaseMiniAppDetected ? 'baseapp mobile mobile-device' : (effectiveIsMobile ? 'mobile mobile-device' : 'desktop')} ${isLandscape ? 'landscape-orientation' : 'portrait-orientation'}`}>
       {/* Header - always show */}
       <div className="chess-header">
         <h2>LAWB CHESS MAINNET BETA 3000</h2>
         <div className="chess-controls">
+          <ThemeToggle />
           {onMinimize && <button onClick={onMinimize}>_</button>}
-          {/* Menu button - desktop only, mobile uses sidebar-menu-btn */}
-          {!isMobile && (
+          {/* Base Mini App always uses mobile menu style (vertical miniapp) */}
+          {/* Desktop menu button - NOT shown in Base Mini App */}
+          {!isMobile && !isBaseMiniAppDetected && (
             <button 
               className="menu-btn"
               onClick={(e) => {
@@ -6034,8 +6029,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
               ☰
             </button>
           )}
-          {/* Mobile menu button */}
-          {isMobile && (
+          {/* Mobile menu button - ALWAYS shown in Base Mini App */}
+          {effectiveIsMobile && (
             <button 
               className="sidebar-menu-btn"
               onClick={(e) => {
@@ -6195,7 +6190,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
     )}
     
     {/* Mobile Content Popup - Shows content when a menu button is clicked */}
-    {isMobile && sidebarView && (
+        {effectiveIsMobile && sidebarView && (
       <>
         {/* Overlay */}
         <div 
@@ -6451,21 +6446,21 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
               alignItems: 'center',
               justifyContent: 'flex-start',
               textAlign: 'center',
-              padding: isMobile ? '0' : '20px',
-              marginTop: isMobile ? '0' : '20px',
-              paddingTop: isMobile ? '0' : undefined,
-              paddingLeft: isMobile ? '12px' : undefined,
-              paddingRight: isMobile ? '12px' : undefined
+              padding: effectiveIsMobile ? '0' : '20px',
+              marginTop: effectiveIsMobile ? '0' : '20px',
+              paddingTop: effectiveIsMobile ? '0' : undefined,
+              paddingLeft: effectiveIsMobile ? '12px' : undefined,
+              paddingRight: effectiveIsMobile ? '12px' : undefined
             }}>
               <h2 style={{
                 color: '#ff0000',
                 fontFamily: 'Impact, Charcoal, sans-serif',
-                fontSize: isMobile ? '28px' : '48px',
+                fontSize: effectiveIsMobile ? '28px' : '48px',
                 fontWeight: 'bold',
                 textShadow: '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
-                marginBottom: isMobile ? '4px' : '10px',
-                marginTop: isMobile ? '0' : undefined,
-                paddingTop: isMobile ? '0' : undefined,
+                marginBottom: effectiveIsMobile ? '4px' : '10px',
+                marginTop: effectiveIsMobile ? '0' : undefined,
+                paddingTop: effectiveIsMobile ? '0' : undefined,
                 textTransform: 'uppercase'
               }}>PVP CHESS LAWBY</h2>
               
@@ -6546,25 +6541,25 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                     {isCreatingGame && (
                       <div className="create-form" style={{ 
                         order: 2, 
-                        marginBottom: isMobile ? '10px' : '20px',
-                        maxHeight: isMobile ? 'calc(100vh - 200px)' : 'none',
-                        overflowY: isMobile ? 'auto' : 'visible',
-                        padding: isMobile ? '8px' : undefined
+                        marginBottom: effectiveIsMobile ? '10px' : '20px',
+                        maxHeight: effectiveIsMobile ? 'calc(100vh - 200px)' : 'none',
+                        overflowY: effectiveIsMobile ? 'auto' : 'visible',
+                        padding: effectiveIsMobile ? '8px' : undefined
                       }}>
                         <h3 style={{ 
                           color: '#ff0000',
-                          fontSize: isMobile ? '18px' : undefined,
-                          marginBottom: isMobile ? '8px' : undefined
+                          fontSize: effectiveIsMobile ? '18px' : undefined,
+                          marginBottom: effectiveIsMobile ? '8px' : undefined
                         }}>Create New Match</h3>
                         
                         {/* Game Creation Flow Explanation - Base App */}
                         <div style={{ 
                           background: 'rgba(255, 0, 0, 0.1)', 
                           border: '1px solid #ff0000', 
-                          padding: isMobile ? '10px' : '12px', 
-                          marginBottom: isMobile ? '10px' : '15px',
+                          padding: effectiveIsMobile ? '10px' : '12px', 
+                          marginBottom: effectiveIsMobile ? '10px' : '15px',
                           borderRadius: '4px',
-                          fontSize: isMobile ? '11px' : '13px',
+                          fontSize: effectiveIsMobile ? '11px' : '13px',
                           lineHeight: '1.4',
                           color: '#ff0000'
                         }}>
@@ -6577,8 +6572,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                           <strong>💡 Note:</strong> You'll need to approve token spending first (if using ERC-20), then confirm the game creation transaction.
                         </div>
                         
-                        {/* Wager Type Selector - Base/Arbitrum only */}
-                        {(isBase || isArbitrum) && (
+                        {/* Wager Type Selector - Base only */}
+                        {isBase && (
                           <div style={{ marginBottom: '10px' }}>
                             <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000', marginRight: '10px' }}>
                               Wager Type:
@@ -6629,8 +6624,8 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                         />
                         )}
                         
-                        {/* NFT Selector - Show only for NFT wagers (Base/Arbitrum) */}
-                        {wagerType === 'nft' && (isBase || isArbitrum) && (
+                        {/* NFT Selector - Show only for NFT wagers (Base only) */}
+                        {wagerType === 'nft' && isBase && (
                           <div style={{ marginBottom: '10px' }}>
                             <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000', marginRight: '10px' }}>
                               NFT:
@@ -6663,7 +6658,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                                     minWidth: '200px',
                                     textAlign: 'left',
                                     fontWeight: 'bold',
-                                    fontSize: isMobile ? '0.9em' : '1em'
+                                    fontSize: effectiveIsMobile ? '0.9em' : '1em'
                                   }}
                                 >
                                   {selectedPieceSet.id === 'lawbstation' ? 'LawbStation Chess Set' : 
@@ -6753,7 +6748,7 @@ export const BaseAppChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClo
                               borderRadius: '0px',
                               cursor: gameWager <= 0 || isGameCreationInProgress ? 'not-allowed' : 'pointer',
                               fontWeight: 'bold',
-                              fontSize: isMobile ? '14px' : undefined
+                              fontSize: effectiveIsMobile ? '14px' : undefined
                             }}
                           >
                             {isGameCreationInProgress ? 'Creating...' : 'Create Match'}
