@@ -504,14 +504,14 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     minHeight: 0,
     flex: 1
   } : {
-    // Standalone: fixed positioning
+    // Standalone: fixed positioning - use viewport units to ensure full screen coverage
     position: 'fixed' as const,
-    left: '12px',
-    top: '12px',
-    right: '12px',
-    bottom: '72px', // 60px taskbar + 12px padding
-    width: 'calc(100vw - 24px)' as const,
-    height: 'calc(100vh - 84px)' as const, // 12px top + 60px taskbar + 12px bottom
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '100vw' as const,
+    height: '100vh' as const,
     zIndex: 100001, // Higher than Taskbar menu (100000) to ensure it's on top
     pointerEvents: 'auto' as const, // Ensure chat can receive clicks
     display: 'flex' as const,
@@ -522,7 +522,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     background: '#c0c0c0' as const, // Explicit background so we can see it
     border: '2px outset #fff' as const,
     margin: 0,
-    padding: 0
+    padding: '12px',
+    paddingBottom: '72px' // 60px taskbar + 12px padding
   }) : {
     position: 'fixed' as const,
     left: position.x,

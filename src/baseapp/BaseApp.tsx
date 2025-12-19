@@ -588,19 +588,18 @@ function BaseApp() {
           </div>
         </Popup>
       )}
+        {/* Public Chat - Render INSIDE main container like other popups */}
+        {showPublicChat && (
+          <ChessChat
+            isOpen={showPublicChat}
+            onMinimize={minimizePublicChat}
+            currentInviteCode={undefined}
+            isDraggable={!isBaseMiniApp()}
+            isResizable={!isBaseMiniApp()}
+            isMobile={isBaseMiniApp()}
+          />
+        )}
       </div>
-
-      {/* Public Chat - EXACT same pattern as BaseAppChessPage line 137 */}
-      {showPublicChat && (
-        <ChessChat
-          isOpen={showPublicChat}
-          onMinimize={minimizePublicChat}
-          currentInviteCode={undefined}
-          isDraggable={!isBaseMiniApp()}
-          isResizable={!isBaseMiniApp()}
-          isMobile={isBaseMiniApp()}
-        />
-      )}
     </>
   );
 }
