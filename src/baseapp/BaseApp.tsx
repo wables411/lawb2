@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Desktop from '../components/Desktop';
 import Taskbar from '../components/Taskbar';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -551,8 +552,8 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Render outside overflow container to ensure visibility */}
-      {showPublicChat && (
+      {/* Public Chat - Render via Portal at document body level to ensure visibility */}
+      {showPublicChat && typeof document !== 'undefined' && createPortal(
         <Suspense fallback={
           <div style={{ 
             position: 'fixed', 
@@ -572,26 +573,16 @@ function BaseApp() {
             Loading chat...
           </div>
         }>
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 10002,
-            pointerEvents: 'none',
-            overflow: 'visible'
-          }}>
-            <ChessChat
-              isOpen={showPublicChat}
-              onMinimize={minimizePublicChat}
-              currentInviteCode={undefined}
-              isDraggable={!isBaseMiniApp()}
-              isResizable={!isBaseMiniApp()}
-              isMobile={isBaseMiniApp()}
-            />
-          </div>
-        </Suspense>
+          <ChessChat
+            isOpen={showPublicChat}
+            onMinimize={minimizePublicChat}
+            currentInviteCode={undefined}
+            isDraggable={!isBaseMiniApp()}
+            isResizable={!isBaseMiniApp()}
+            isMobile={isBaseMiniApp()}
+          />
+        </Suspense>,
+        document.body
       )}
     </>
   );
