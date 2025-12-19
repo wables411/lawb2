@@ -595,18 +595,20 @@ function BaseApp() {
           {/* ChessChat wrapper - fills Popup content area without padding */}
           <div style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
-            margin: '-16px', // Compensate for Popup's 16px padding
+            top: '-16px',
+            left: '-16px',
+            right: '-16px',
+            bottom: '-16px',
+            width: 'calc(100% + 32px)',
+            height: 'calc(100% + 32px)',
             padding: 0,
+            margin: 0,
             boxSizing: 'border-box',
             overflow: 'hidden',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            minHeight: 0,
+            minWidth: 0
           }}>
             <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chat...</div>}>
               <ChessChat
