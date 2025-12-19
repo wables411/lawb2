@@ -459,12 +459,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   // When standalone, use fixed positioning
   const isInsidePopup = !isDraggable && !isResizable && mobileStyle;
   const chatStyle = mobileStyle ? (isInsidePopup ? {
-    // Inside Popup: fill the container properly
-    position: 'absolute' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    // Inside Popup: fill the parent wrapper (which already compensates for Popup padding)
+    position: 'relative' as const,
     width: '100%' as const,
     height: '100%' as const,
     display: 'flex' as const,
@@ -478,7 +474,9 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     margin: 0,
     padding: 0,
     zIndex: 1,
-    overflow: 'hidden' as const
+    overflow: 'hidden' as const,
+    minHeight: 0,
+    flex: 1
   } : {
     // Standalone: fixed positioning
     position: 'fixed' as const,

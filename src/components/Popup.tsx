@@ -393,6 +393,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
             hyphens: 'auto',
             fontSize: '16px',
             WebkitOverflowScrolling: 'touch',
+            position: 'relative', // Needed for absolutely positioned children
           }}>
             {children}
           </div>
