@@ -278,11 +278,21 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
           <button
             type="button"
             className={classes.menuLink}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[Taskbar] Public Chat button clicked', { onOpenPublicChat: !!onOpenPublicChat });
               handleMenuLinkClick();
               if (onOpenPublicChat) {
+                console.log('[Taskbar] Calling onOpenPublicChat()');
                 onOpenPublicChat();
+              } else {
+                console.warn('[Taskbar] onOpenPublicChat is not defined!');
               }
+            }}
+            onTouchStart={(e) => {
+              // Ensure touch events work on mobile
+              e.preventDefault();
             }}
           >
             Public Chat
