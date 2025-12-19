@@ -592,23 +592,17 @@ function BaseApp() {
           zIndex={2000}
           initialSize={miniappPopupSize}
         >
-          {/* ChessChat wrapper - fills Popup content area without padding */}
+          {/* ChessChat needs to fill Popup content - use negative margins to compensate for Popup padding */}
           <div style={{
-            position: 'absolute',
-            top: '-16px',
-            left: '-16px',
-            right: '-16px',
-            bottom: '-16px',
+            margin: '-16px',
+            padding: 0,
             width: 'calc(100% + 32px)',
             height: 'calc(100% + 32px)',
-            padding: 0,
-            margin: 0,
-            boxSizing: 'border-box',
-            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
+            boxSizing: 'border-box',
             minHeight: 0,
-            minWidth: 0
+            position: 'relative'
           }}>
             <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chat...</div>}>
               <ChessChat
