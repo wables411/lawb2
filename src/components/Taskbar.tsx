@@ -281,22 +281,27 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
               if (onOpenPublicChat) {
                 onOpenPublicChat();
               }
-              // Don't close menu - let user see chat open
             }}
             onTouchStart={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
             }}
             onTouchEnd={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
               if (onOpenPublicChat) {
                 onOpenPublicChat();
               }
-              // Don't close menu - let user see chat open
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
             }}
           >
             Public Chat

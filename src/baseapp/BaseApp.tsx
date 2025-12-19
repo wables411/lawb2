@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Desktop from '../components/Desktop';
 import Taskbar from '../components/Taskbar';
@@ -179,12 +179,15 @@ function BaseApp() {
     setActivePopup(popupId);
   };
 
-  const openPublicChat = () => {
+  const openPublicChat = useCallback(() => {
     // Force open (not toggle) - user clicked button to open chat
     chatOpenRef.current = true;
     setShowPublicChat(true);
+    // Force multiple state updates to ensure it sticks
+    setTimeout(() => setShowPublicChat(true), 0);
+    setTimeout(() => setShowPublicChat(true), 50);
     triggerHapticImpact('light').catch(() => {});
-  };
+  }, []);
 
   const minimizePublicChat = async () => {
     await triggerHapticSelection();
