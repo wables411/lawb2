@@ -10,15 +10,32 @@ import { sdk } from '@farcaster/miniapp-sdk';
 // Per Farcaster docs: "Don't call ready until your interface has loaded"
 // ready() is called in React useEffect hooks after components render
 
+// Memoized result to avoid excessive re-computation and logging
+let cachedResult: boolean | null = null;
+let hasLogged = false;
+
 // Synchronous check if we're running as a Base Mini App
 // For async detection, use isBaseMiniAppAsync() which uses sdk.isInMiniApp()
+// Result is memoized to prevent excessive logging and improve performance
 export const isBaseMiniApp = () => {
-  if (typeof window === 'undefined') return false;
+  // Return cached result if available
+  if (cachedResult !== null) {
+    return cachedResult;
+  }
+  
+  if (typeof window === 'undefined') {
+    cachedResult = false;
+    return false;
+  }
   
   // Check for environment variable or URL parameter (highest priority)
   if (import.meta.env.VITE_BASE_MINIAPP === 'true' || 
       new URLSearchParams(window.location.search).has('base_miniapp')) {
-    console.log('[Base Mini App Detection] ✅ Detected via env var or URL param');
+    if (!hasLogged) {
+      console.log('[Base Mini App Detection] ✅ Detected via env var or URL param');
+      hasLogged = true;
+    }
+    cachedResult = true;
     return true;
   }
   
@@ -28,14 +45,22 @@ export const isBaseMiniApp = () => {
   try {
     if (window.self !== window.top) {
       // We're in an iframe - definitely embedded in Base/Farcaster app
-      console.log('[Base Mini App Detection] ✅ Detected via iframe (window.self !== window.top)');
+      if (!hasLogged) {
+        console.log('[Base Mini App Detection] ✅ Detected via iframe (window.self !== window.top)');
+        hasLogged = true;
+      }
+      cachedResult = true;
       return true;
     }
   } catch (e) {
     // Cross-origin iframe - can't access window.top, but we're definitely in an iframe
     // This is the case when embedded in Farcaster app (most common scenario)
     // The exception is thrown because we can't access window.top from cross-origin iframe
-    console.log('[Base Mini App Detection] ✅ Detected via cross-origin iframe (exception accessing window.top)');
+    if (!hasLogged) {
+      console.log('[Base Mini App Detection] ✅ Detected via cross-origin iframe (exception accessing window.top)');
+      hasLogged = true;
+    }
+    cachedResult = true;
     return true;
   }
   
@@ -52,7 +77,11 @@ export const isBaseMiniApp = () => {
       hostname.includes('base.org') ||
       hostname.includes('base.dev') ||
       hostname.includes('base.app')) {
-    console.log('[Base Mini App Detection] ✅ Detected via hostname:', hostname);
+    if (!hasLogged) {
+      console.log('[Base Mini App Detection] ✅ Detected via hostname:', hostname);
+      hasLogged = true;
+    }
+    cachedResult = true;
     return true;
   }
   
@@ -65,7 +94,11 @@ export const isBaseMiniApp = () => {
         referrer.includes('base.dev') ||
         referrer.includes('base.app') ||
         referrer.includes('wallet.farcaster')) {
-      console.log('[Base Mini App Detection] ✅ Detected via referrer:', referrer);
+      if (!hasLogged) {
+        console.log('[Base Mini App Detection] ✅ Detected via referrer:', referrer);
+        hasLogged = true;
+      }
+      cachedResult = true;
       return true;
     }
   } catch (e) {
@@ -80,7 +113,11 @@ export const isBaseMiniApp = () => {
       userAgent.includes('base.app') ||
       userAgent.includes('baseapp') ||
       (userAgent.includes('base') && (userAgent.includes('miniapp') || userAgent.includes('mini-app')))) {
-    console.log('[Base Mini App Detection] ✅ Detected via user agent:', userAgent);
+    if (!hasLogged) {
+      console.log('[Base Mini App Detection] ✅ Detected via user agent:', userAgent);
+      hasLogged = true;
+    }
+    cachedResult = true;
     return true;
   }
   
@@ -88,15 +125,19 @@ export const isBaseMiniApp = () => {
   // SDK check should only be used in async detection (isBaseMiniAppAsync)
   // Regular browser users should NOT be detected as Base Mini App just because SDK exists in bundle
   
-  // Log detection failure for debugging
-  const isInIframe = (() => {
-    try {
-      return window.self !== window.top;
-    } catch (e) {
-      return true;
-    }
-  })();
-  console.log('[Base Mini App Detection] ❌ Not detected (regular browser). hostname:', hostname, 'referrer:', document.referrer, 'userAgent:', userAgent, 'isInIframe:', isInIframe);
+  // Only log once if not detected
+  if (!hasLogged) {
+    const isInIframe = (() => {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    })();
+    console.log('[Base Mini App Detection] ❌ Not detected (regular browser). hostname:', hostname, 'isInIframe:', isInIframe);
+    hasLogged = true;
+  }
+  cachedResult = false;
   return false;
 };
 
