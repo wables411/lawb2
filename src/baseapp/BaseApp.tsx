@@ -576,37 +576,35 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Render via Portal at document body level to ensure visibility */}
-      {showPublicChat && portalReady && typeof document !== 'undefined' && document.body && createPortal(
-        <Suspense fallback={
-          <div style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            zIndex: 10003, 
-            background: 'rgba(0,0,0,0.8)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: '#fff',
-            fontSize: '18px',
-            pointerEvents: 'auto'
-          }}>
-            Loading chat...
+      {/* Public Chat - Render same way as other popups (Profile, Gallery) which work */}
+      {showPublicChat && (
+        <Popup 
+          id="public-chat-popup" 
+          isOpen={true} 
+          onClose={async () => {
+            await triggerHapticSelection();
+            setShowPublicChat(false);
+          }} 
+          onMinimize={async () => {
+            await triggerHapticSelection();
+            setShowPublicChat(false);
+          }} 
+          zIndex={2000}
+          initialSize={miniappPopupSize}
+        >
+          <div style={POPUP_CONTENT_STYLE}>
+            <Suspense fallback={<div>Loading chat...</div>}>
+              <ChessChat
+                isOpen={showPublicChat}
+                onMinimize={minimizePublicChat}
+                currentInviteCode={undefined}
+                isDraggable={!isBaseMiniApp()}
+                isResizable={!isBaseMiniApp()}
+                isMobile={isBaseMiniApp()}
+              />
+            </Suspense>
           </div>
-        }>
-          <ChessChat
-            isOpen={showPublicChat}
-            onMinimize={minimizePublicChat}
-            currentInviteCode={undefined}
-            isDraggable={!isBaseMiniApp()}
-            isResizable={!isBaseMiniApp()}
-            isMobile={isBaseMiniApp()}
-          />
-        </Suspense>,
-        document.body
+        </Popup>
       )}
     </>
   );
