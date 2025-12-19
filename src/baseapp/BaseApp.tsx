@@ -592,17 +592,27 @@ function BaseApp() {
           zIndex={2000}
           initialSize={miniappPopupSize}
         >
-          {/* ChessChat needs to fill Popup's content area - Popup already provides padding wrapper */}
-          <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center' }}>Loading chat...</div>}>
-            <ChessChat
-              isOpen={showPublicChat}
-              onMinimize={minimizePublicChat}
-              currentInviteCode={undefined}
-              isDraggable={false}
-              isResizable={false}
-              isMobile={isBaseMiniApp()}
-            />
-          </Suspense>
+          {/* ChessChat needs absolute positioning to fill Popup content area */}
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            margin: '-16px', // Compensate for Popup's padding
+            padding: 0,
+            boxSizing: 'border-box',
+            overflow: 'hidden'
+          }}>
+            <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center' }}>Loading chat...</div>}>
+              <ChessChat
+                isOpen={showPublicChat}
+                onMinimize={minimizePublicChat}
+                currentInviteCode={undefined}
+                isDraggable={false}
+                isResizable={false}
+                isMobile={isBaseMiniApp()}
+              />
+            </Suspense>
+          </div>
         </Popup>
       )}
     </>
