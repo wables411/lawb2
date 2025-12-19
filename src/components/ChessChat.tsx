@@ -455,7 +455,27 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   }
   
   const mobileStyle = isMobile || isBaseMiniApp;
-  const chatStyle = mobileStyle ? {
+  // When inside Popup, use relative positioning and fill container
+  // When standalone, use fixed positioning
+  const isInsidePopup = !isDraggable && !isResizable && mobileStyle;
+  const chatStyle = mobileStyle ? (isInsidePopup ? {
+    // Inside Popup: fill the container
+    position: 'relative' as const,
+    width: '100%' as const,
+    height: '100%' as const,
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    boxSizing: 'border-box' as const,
+    pointerEvents: 'auto' as const,
+    visibility: 'visible' as const,
+    opacity: 1,
+    background: '#c0c0c0' as const,
+    border: 'none' as const, // Popup already has border
+    margin: 0,
+    padding: 0,
+    zIndex: 1
+  } : {
+    // Standalone: fixed positioning
     position: 'fixed' as const,
     left: '12px',
     top: '12px',
@@ -474,7 +494,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     border: '2px outset #fff' as const,
     margin: 0,
     padding: 0
-  } : {
+  }) : {
     position: 'fixed' as const,
     left: position.x,
     top: position.y,
