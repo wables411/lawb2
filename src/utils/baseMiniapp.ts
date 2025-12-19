@@ -6,15 +6,9 @@
 // Static import for better validator detection (instead of dynamic import)
 import { sdk } from '@farcaster/miniapp-sdk';
 
-// Call ready() immediately when module loads (for Farcaster validator detection)
-// The SDK will handle gracefully if not in Base app context
-if (typeof window !== 'undefined' && sdk && sdk.actions && sdk.actions.ready) {
-  // Call ready() immediately - this helps validator detect it
-  // We'll also call it in React useEffect for proper timing per docs
-  sdk.actions.ready().catch(() => {
-    // Silently fail - SDK will handle if not in Base app context
-  });
-}
+// NOTE: ready() should NOT be called here on module load
+// Per Farcaster docs: "Don't call ready until your interface has loaded"
+// ready() is called in React useEffect hooks after components render
 
 // Synchronous check if we're running as a Base Mini App
 // For async detection, use isBaseMiniAppAsync() which uses sdk.isInMiniApp()
@@ -160,15 +154,16 @@ export const isBaseMiniAppAsync = async (): Promise<boolean> => {
 };
 
 // Initialize Base Mini App SDK if running as mini app
-// Use static import so validator can detect it early
+// Per Farcaster docs: ready() should be called after UI is ready, not immediately
+// This function should be called from React useEffect after component renders
 export const initBaseMiniApp = async () => {
   // Always try to initialize - the SDK will handle if it's in the right context
   // This ensures it works when embedded in Base app even without env var
   try {
     if (sdk && sdk.actions && sdk.actions.ready) {
-      // ALWAYS call ready() - the SDK will handle if it's in the right context
-      // This is required to dismiss the splash screen in Base app
-      // Even if detection logic fails, the SDK itself knows if it's in Base app
+      // Call ready() to dismiss splash screen - only call this after UI is ready
+      // Per Farcaster docs: "Don't call ready until your interface has loaded"
+      // This should be called from React useEffect after component renders
       try {
         await sdk.actions.ready();
         console.log('[Base Mini App] ✅ SDK ready() called successfully');
