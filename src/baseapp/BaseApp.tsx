@@ -93,6 +93,9 @@ function BaseApp() {
     void initialize();
   }, []);
 
+  // Use a ref to track if we intentionally opened the chat (prevent accidental closes)
+  const chatOpenRef = React.useRef(false);
+  
   React.useEffect(() => {
     console.log('[BaseApp] showPublicChat state changed to:', showPublicChat);
     console.log('[BaseApp] isBaseMiniApp():', isBaseMiniApp());
@@ -102,8 +105,13 @@ function BaseApp() {
     if (showPublicChat) {
       console.log('[BaseApp] Public chat should now be visible');
       console.log('[BaseApp] ChessChat will render with isOpen=true');
+      chatOpenRef.current = true;
     } else {
       console.log('[BaseApp] Public chat is closed');
+      // Only reset ref if we're not in the middle of opening
+      if (!chatOpenRef.current) {
+        console.log('[BaseApp] Chat was closed, resetting ref');
+      }
     }
   }, [showPublicChat]);
 
@@ -185,33 +193,53 @@ function BaseApp() {
   };
 
   const openPublicChat = async () => {
+    console.log('[BaseApp] ========== OPENING PUBLIC CHAT ==========');
     console.log('[BaseApp] Opening public chat - button clicked');
     console.log('[BaseApp] Current showPublicChat state:', showPublicChat);
     console.log('[BaseApp] Portal ready:', portalReady);
     console.log('[BaseApp] Document body exists:', typeof document !== 'undefined' && !!document.body);
     await triggerHapticImpact('light');
+    
+    // Set ref first to prevent accidental closes
+    chatOpenRef.current = true;
+    console.log('[BaseApp] Set chatOpenRef.current = true');
+    
     console.log('[BaseApp] Setting showPublicChat to true');
     // Use functional update to ensure we're setting it correctly
     setShowPublicChat(prev => {
-      console.log('[BaseApp] setShowPublicChat called, previous value:', prev);
+      console.log('[BaseApp] setShowPublicChat functional update called, previous value:', prev);
       if (prev === true) {
-        console.warn('[BaseApp] showPublicChat is already true, not changing');
-        return prev;
+        console.warn('[BaseApp] showPublicChat is already true, keeping it true');
+        return true; // Keep it true, don't change
       }
-      console.log('[BaseApp] Setting showPublicChat to true');
+      console.log('[BaseApp] Setting showPublicChat to true (was false)');
       return true;
     });
-    // Force a re-render check after state update - use a ref or check in useEffect instead
+    
+    // Verify state was set after a brief delay
     setTimeout(() => {
-      // This will show the OLD value due to closure, but state should be updated
-      console.log('[BaseApp] setTimeout closure value (may be stale):', showPublicChat);
-    }, 100);
+      console.log('[BaseApp] ========== STATE CHECK AFTER OPEN ==========');
+      console.log('[BaseApp] setTimeout - chatOpenRef.current:', chatOpenRef.current);
+      // Force a re-render by checking state
+      setShowPublicChat(current => {
+        console.log('[BaseApp] State verification - current value:', current);
+        if (!current && chatOpenRef.current) {
+          console.error('[BaseApp] ERROR: State was reset to false! Restoring to true...');
+          return true; // Restore if it was reset
+        }
+        return current;
+      });
+    }, 200);
   };
 
   const minimizePublicChat = async () => {
+    console.log('[BaseApp] ========== MINIMIZING PUBLIC CHAT ==========');
     console.log('[BaseApp] minimizePublicChat called - stack trace:', new Error().stack);
+    console.log('[BaseApp] chatOpenRef.current before minimize:', chatOpenRef.current);
     await triggerHapticSelection();
+    chatOpenRef.current = false;
     setShowPublicChat(false);
+    console.log('[BaseApp] Chat minimized, chatOpenRef.current set to false');
   };
 
   return (
