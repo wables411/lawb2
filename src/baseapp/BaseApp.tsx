@@ -180,24 +180,9 @@ function BaseApp() {
   };
 
   const openPublicChat = () => {
-    // Immediately set state - don't wait for async
+    // Simple toggle like BaseAppChessPage does - it works there
+    setShowPublicChat(prev => !prev);
     chatOpenRef.current = true;
-    setShowPublicChat(true);
-    
-    // Force state to stay true
-    setTimeout(() => {
-      if (chatOpenRef.current) {
-        setShowPublicChat(true);
-      }
-    }, 0);
-    
-    setTimeout(() => {
-      if (chatOpenRef.current) {
-        setShowPublicChat(true);
-      }
-    }, 100);
-    
-    // Haptic feedback (non-blocking)
     triggerHapticImpact('light').catch(() => {});
   };
 
