@@ -576,47 +576,17 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Render same way as other popups (Profile, Gallery) which work */}
-      {showPublicChat && (
-        <Popup 
-          id="public-chat-popup" 
-          isOpen={true} 
-          onClose={async () => {
-            await triggerHapticSelection();
-            setShowPublicChat(false);
-          }} 
-          onMinimize={async () => {
-            await triggerHapticSelection();
-            setShowPublicChat(false);
-          }} 
-          zIndex={2000}
-          initialSize={miniappPopupSize}
-        >
-          {/* ChessChat needs to fill Popup content - use negative margins to compensate for Popup padding */}
-          <div style={{
-            margin: '-16px',
-            padding: 0,
-            width: 'calc(100% + 32px)',
-            height: 'calc(100% + 32px)',
-            display: 'flex',
-            flexDirection: 'column',
-            boxSizing: 'border-box',
-            minHeight: 0,
-            position: 'relative'
-          }}>
-            <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading chat...</div>}>
-              <ChessChat
-                isOpen={showPublicChat}
-                onMinimize={minimizePublicChat}
-                currentInviteCode={undefined}
-                isDraggable={false}
-                isResizable={false}
-                isMobile={isBaseMiniApp()}
-              />
-            </Suspense>
-          </div>
-        </Popup>
-      )}
+      {/* Public Chat - Render directly like App.tsx does (not in Popup) */}
+      <Suspense fallback={<div>Loading chat...</div>}>
+        <ChessChat
+          isOpen={showPublicChat}
+          onMinimize={minimizePublicChat}
+          currentInviteCode={undefined}
+          isDraggable={!isBaseMiniApp()}
+          isResizable={!isBaseMiniApp()}
+          isMobile={isBaseMiniApp()}
+        />
+      </Suspense>
     </>
   );
 }
