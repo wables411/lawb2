@@ -51,6 +51,23 @@ function BaseApp() {
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [windowSizes, setWindowSizes] = useState<Record<string, { width: number; height: number }>>({});
   const [miniappPopupSize, setMiniappPopupSize] = useState(DEFAULT_MINIAPP_POPUP_SIZE);
+  const [portalReady, setPortalReady] = useState(false);
+
+  // Ensure Portal target (document.body) is ready
+  useEffect(() => {
+    if (typeof document !== 'undefined' && document.body) {
+      setPortalReady(true);
+    } else {
+      // Wait for body to be ready
+      const checkBody = setInterval(() => {
+        if (typeof document !== 'undefined' && document.body) {
+          setPortalReady(true);
+          clearInterval(checkBody);
+        }
+      }, 10);
+      return () => clearInterval(checkBody);
+    }
+  }, []);
 
   // Initialize Base Mini App SDK and apply safe area insets
   useEffect(() => {
@@ -162,10 +179,17 @@ function BaseApp() {
 
   const openPublicChat = async () => {
     console.log('[BaseApp] Opening public chat - button clicked');
+    console.log('[BaseApp] Current showPublicChat state:', showPublicChat);
+    console.log('[BaseApp] Portal ready:', portalReady);
+    console.log('[BaseApp] Document body exists:', typeof document !== 'undefined' && !!document.body);
     await triggerHapticImpact('light');
     console.log('[BaseApp] Setting showPublicChat to true');
     setShowPublicChat(true);
-    console.log('[BaseApp] showPublicChat state updated');
+    // Force a re-render check after state update
+    setTimeout(() => {
+      console.log('[BaseApp] showPublicChat state after update:', showPublicChat);
+      console.log('[BaseApp] Portal ready after update:', portalReady);
+    }, 100);
   };
 
   const minimizePublicChat = async () => {
@@ -553,7 +577,7 @@ function BaseApp() {
       </div>
 
       {/* Public Chat - Render via Portal at document body level to ensure visibility */}
-      {showPublicChat && typeof document !== 'undefined' && createPortal(
+      {showPublicChat && portalReady && typeof document !== 'undefined' && document.body && createPortal(
         <Suspense fallback={
           <div style={{ 
             position: 'fixed', 
