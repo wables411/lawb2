@@ -463,20 +463,26 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     bottom: '60px',
     width: 'auto',
     height: 'auto',
-    zIndex: 10002, // Higher than Popup (2000) to ensure it's on top
+    zIndex: 10003, // Higher than Taskbar (200) and Popup (2000) to ensure it's on top
     display: 'flex',
     flexDirection: 'column' as const,
-    boxSizing: 'border-box' as const
+    boxSizing: 'border-box' as const,
+    pointerEvents: 'auto' as const, // Ensure it can receive clicks
+    visibility: 'visible' as const,
+    opacity: 1
   } : {
     position: 'fixed' as const,
     left: position.x,
     top: position.y,
     width: size.width,
     height: size.height,
-    zIndex: 10002
+    zIndex: 10003,
+    pointerEvents: 'auto' as const,
+    visibility: 'visible' as const,
+    opacity: 1
   };
   
-  console.log('[ChessChat] Rendering chat window', { mobileStyle, chatStyle });
+  console.log('[ChessChat] Rendering chat window', { mobileStyle, chatStyle, isOpen, showPublicChat: 'N/A (BaseApp context)' });
   
   return (
     <div

@@ -173,42 +173,29 @@ function BaseApp() {
   };
 
   return (
-    <div style={{ 
-      width: '100vw', 
-      height: '100vh', 
-      overflow: 'hidden',
-      position: 'relative',
-      boxSizing: 'border-box',
-      maxWidth: '100vw',
-      maxHeight: '100vh'
-    }}>
-      <Desktop onIconClick={handleIconClick} />
+    <>
+      <div style={{ 
+        width: '100vw', 
+        height: '100vh', 
+        overflow: 'hidden',
+        position: 'relative',
+        boxSizing: 'border-box',
+        maxWidth: '100vw',
+        maxHeight: '100vh'
+      }}>
+        <Desktop onIconClick={handleIconClick} />
 
-      <Taskbar
-        minimizedWindows={Array.from(minimizedPopups)}
-        onRestoreWindow={restorePopup}
-        connectionStatus={{
-          connected: isConnected,
-          address: address,
-          ens: undefined
-        }}
-        onOpenPublicChat={openPublicChat}
-        onOpenProfile={() => setShowProfile(true)}
-      />
-
-      {/* Public Chat */}
-      {showPublicChat && (
-        <Suspense fallback={<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10002, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading chat...</div>}>
-          <ChessChat
-            isOpen={showPublicChat}
-            onMinimize={minimizePublicChat}
-            currentInviteCode={undefined}
-            isDraggable={!isBaseMiniApp()}
-            isResizable={!isBaseMiniApp()}
-            isMobile={isBaseMiniApp()}
-          />
-        </Suspense>
-      )}
+        <Taskbar
+          minimizedWindows={Array.from(minimizedPopups)}
+          onRestoreWindow={restorePopup}
+          connectionStatus={{
+            connected: isConnected,
+            address: address,
+            ens: undefined
+          }}
+          onOpenPublicChat={openPublicChat}
+          onOpenProfile={() => setShowProfile(true)}
+        />
 
       {/* Profile Popup */}
       {showProfile && (
@@ -562,7 +549,22 @@ function BaseApp() {
           </div>
         </Popup>
       )}
-    </div>
+      </div>
+
+      {/* Public Chat - Render outside overflow container to ensure visibility */}
+      {showPublicChat && (
+        <Suspense fallback={<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10003, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading chat...</div>}>
+          <ChessChat
+            isOpen={showPublicChat}
+            onMinimize={minimizePublicChat}
+            currentInviteCode={undefined}
+            isDraggable={!isBaseMiniApp()}
+            isResizable={!isBaseMiniApp()}
+            isMobile={isBaseMiniApp()}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
 
