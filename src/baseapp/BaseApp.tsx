@@ -191,11 +191,20 @@ function BaseApp() {
     console.log('[BaseApp] Document body exists:', typeof document !== 'undefined' && !!document.body);
     await triggerHapticImpact('light');
     console.log('[BaseApp] Setting showPublicChat to true');
-    setShowPublicChat(true);
-    // Force a re-render check after state update
+    // Use functional update to ensure we're setting it correctly
+    setShowPublicChat(prev => {
+      console.log('[BaseApp] setShowPublicChat called, previous value:', prev);
+      if (prev === true) {
+        console.warn('[BaseApp] showPublicChat is already true, not changing');
+        return prev;
+      }
+      console.log('[BaseApp] Setting showPublicChat to true');
+      return true;
+    });
+    // Force a re-render check after state update - use a ref or check in useEffect instead
     setTimeout(() => {
-      console.log('[BaseApp] showPublicChat state after update:', showPublicChat);
-      console.log('[BaseApp] Portal ready after update:', portalReady);
+      // This will show the OLD value due to closure, but state should be updated
+      console.log('[BaseApp] setTimeout closure value (may be stale):', showPublicChat);
     }, 100);
   };
 
