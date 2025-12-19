@@ -553,15 +553,44 @@ function BaseApp() {
 
       {/* Public Chat - Render outside overflow container to ensure visibility */}
       {showPublicChat && (
-        <Suspense fallback={<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10003, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading chat...</div>}>
-          <ChessChat
-            isOpen={showPublicChat}
-            onMinimize={minimizePublicChat}
-            currentInviteCode={undefined}
-            isDraggable={!isBaseMiniApp()}
-            isResizable={!isBaseMiniApp()}
-            isMobile={isBaseMiniApp()}
-          />
+        <Suspense fallback={
+          <div style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            zIndex: 10003, 
+            background: 'rgba(0,0,0,0.8)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: '#fff',
+            fontSize: '18px',
+            pointerEvents: 'auto'
+          }}>
+            Loading chat...
+          </div>
+        }>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10002,
+            pointerEvents: 'none',
+            overflow: 'visible'
+          }}>
+            <ChessChat
+              isOpen={showPublicChat}
+              onMinimize={minimizePublicChat}
+              currentInviteCode={undefined}
+              isDraggable={!isBaseMiniApp()}
+              isResizable={!isBaseMiniApp()}
+              isMobile={isBaseMiniApp()}
+            />
+          </div>
         </Suspense>
       )}
     </>

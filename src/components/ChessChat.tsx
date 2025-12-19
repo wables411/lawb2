@@ -457,19 +457,23 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   const mobileStyle = isMobile || isBaseMiniApp;
   const chatStyle = mobileStyle ? {
     position: 'fixed' as const,
-    left: '16px',
-    top: '16px',
-    right: '16px',
-    bottom: '60px',
-    width: 'auto',
-    height: 'auto',
+    left: '12px',
+    top: '12px',
+    right: '12px',
+    bottom: '72px', // 60px taskbar + 12px padding
+    width: 'calc(100vw - 24px)' as const,
+    height: 'calc(100vh - 84px)' as const, // 12px top + 60px taskbar + 12px bottom
     zIndex: 10003, // Higher than Taskbar (200) and Popup (2000) to ensure it's on top
-    display: 'flex',
+    display: 'flex' as const,
     flexDirection: 'column' as const,
     boxSizing: 'border-box' as const,
-    pointerEvents: 'auto' as const, // Ensure it can receive clicks
+    pointerEvents: 'auto' as const,
     visibility: 'visible' as const,
-    opacity: 1
+    opacity: 1,
+    background: '#c0c0c0' as const, // Explicit background so we can see it
+    border: '2px outset #fff' as const,
+    margin: 0,
+    padding: 0
   } : {
     position: 'fixed' as const,
     left: position.x,
@@ -482,7 +486,15 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     opacity: 1
   };
   
-  console.log('[ChessChat] Rendering chat window', { mobileStyle, chatStyle, isOpen, showPublicChat: 'N/A (BaseApp context)' });
+  console.log('[ChessChat] Rendering chat window', { 
+    mobileStyle, 
+    chatStyle, 
+    isOpen, 
+    isMobile,
+    isBaseMiniApp,
+    className: `chess-chat-window ${mobileStyle ? 'mobile' : 'desktop'}`,
+    showPublicChat: 'N/A (BaseApp context)' 
+  });
   
   return (
     <div
