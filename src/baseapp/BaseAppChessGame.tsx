@@ -1772,25 +1772,32 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               </div>
             </div>
 
-            <button 
-              className={`piece-set-btn start-btn`}
-              onClick={() => { setShowPieceSetSelector(false); setShowDifficulty(true); }}
-              style={{ 
-                background: 'transparent',
-                color: '#ff0000',
-                fontWeight: 'bold',
-                fontSize: '1.3em',
-                padding: '18px 48px',
-                borderRadius: 0,
-                boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
-                border: '1px solid #ff0000',
-                cursor: 'pointer',
-                letterSpacing: 1,
-                marginBottom: 8
-              }}
-            >
-              <span role="img" aria-label="chess">♟️🦞</span> Continue
-            </button>
+            {/* Continue Button */}
+            <div style={{ marginTop: '24px', marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+              <button 
+                className={`piece-set-btn start-btn`}
+                onClick={() => { setShowPieceSetSelector(false); setShowDifficulty(true); }}
+                style={{ 
+                  background: 'transparent',
+                  color: '#ff0000',
+                  fontWeight: 'bold',
+                  fontSize: effectiveIsMobile ? '1.1em' : '1.3em',
+                  padding: effectiveIsMobile ? '14px 32px' : '18px 48px',
+                  borderRadius: 0,
+                  boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
+                  border: '1px solid #ff0000',
+                  cursor: 'pointer',
+                  letterSpacing: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span role="img" aria-label="chess">♟️🦞</span>
+                <span>Continue</span>
+              </button>
+            </div>
 
             {/* Theme Toggle - Always visible on piece selection page */}
             <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
@@ -1800,7 +1807,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             </div>
 
             {/* Back to Chess Button */}
-            <div style={{marginTop: '16px', justifyContent: 'center'}}>
+            <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center'}}>
               <button
                 onClick={() => {
                   if (onBackToModeSelect) {
@@ -1814,8 +1821,8 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                   background: 'transparent',
                   color: '#ff0000',
                   fontWeight: 'bold',
-                  fontSize: '1.1em',
-                  padding: '12px 24px',
+                  fontSize: effectiveIsMobile ? '0.95em' : '1.1em',
+                  padding: effectiveIsMobile ? '10px 20px' : '12px 24px',
                   borderRadius: 0,
                   boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
                   border: '1px solid #ff0000',
