@@ -581,18 +581,16 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Render conditionally like BaseAppChessPage (where it works) */}
+      {/* Public Chat - EXACT same pattern as BaseAppChessPage line 137 */}
       {showPublicChat && (
-        <Suspense fallback={null}>
-          <ChessChat
-            isOpen={showPublicChat}
-            onMinimize={minimizePublicChat}
-            currentInviteCode={undefined}
-            isDraggable={!isBaseMiniApp()}
-            isResizable={!isBaseMiniApp()}
-            isMobile={isBaseMiniApp()}
-          />
-        </Suspense>
+        <ChessChat
+          isOpen={showPublicChat}
+          onMinimize={minimizePublicChat}
+          currentInviteCode={undefined}
+          isDraggable={!isBaseMiniApp()}
+          isResizable={!isBaseMiniApp()}
+          isMobile={isBaseMiniApp()}
+        />
       )}
     </>
   );
