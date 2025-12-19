@@ -479,7 +479,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   
   // When inside Popup, use relative positioning and fill container
   // When standalone, use fixed positioning
-  const isInsidePopup = !isDraggable && !isResizable && mobileStyle;
+  // NOTE: isDraggable/isResizable being false doesn't mean we're in a Popup - 
+  // it could also mean we're in BaseApp where dragging/resizing is disabled
+  // We should only use relative positioning if we're actually inside a Popup container
+  // For now, always use fixed positioning when rendered directly (not in Popup)
+  const isInsidePopup = false; // Always use fixed positioning for direct rendering
   const chatStyle = mobileStyle ? (isInsidePopup ? {
     // Inside Popup: fill the parent wrapper (which already compensates for Popup padding)
     position: 'relative' as const,
