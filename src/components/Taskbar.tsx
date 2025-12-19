@@ -282,12 +282,16 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               e.preventDefault();
               e.stopPropagation();
               console.log('[Taskbar] Public Chat button clicked', { onOpenPublicChat: !!onOpenPublicChat });
-              handleMenuLinkClick();
               if (onOpenPublicChat) {
                 console.log('[Taskbar] Calling onOpenPublicChat()');
                 onOpenPublicChat();
+                // Close menu after a short delay to ensure handler runs
+                setTimeout(() => {
+                  handleMenuLinkClick();
+                }, 100);
               } else {
                 console.warn('[Taskbar] onOpenPublicChat is not defined!');
+                handleMenuLinkClick();
               }
             }}
             onTouchEnd={(e) => {
@@ -296,12 +300,17 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               e.preventDefault();
               e.stopPropagation();
               console.log('[Taskbar] Public Chat button touched', { onOpenPublicChat: !!onOpenPublicChat });
-              handleMenuLinkClick();
+              // Don't close menu immediately - let the handler run first
               if (onOpenPublicChat) {
                 console.log('[Taskbar] Calling onOpenPublicChat() from touch');
                 onOpenPublicChat();
+                // Close menu after a short delay to ensure handler runs
+                setTimeout(() => {
+                  handleMenuLinkClick();
+                }, 100);
               } else {
                 console.warn('[Taskbar] onOpenPublicChat is not defined!');
+                handleMenuLinkClick();
               }
             }}
           >

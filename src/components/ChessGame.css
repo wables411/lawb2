@@ -3397,6 +3397,38 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     padding-top: 0 !important;
   }
   
+  /* Fix piece set selector layout on mobile - remove empty space */
+  .chess-game.mobile .piece-set-selection-row,
+  .chess-game.baseapp .piece-set-selection-row {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    min-height: auto !important;
+    height: auto !important;
+  }
+  
+  .chess-game.mobile .piece-set-controls-col,
+  .chess-game.baseapp .piece-set-controls-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  
+  .chess-game.mobile .piece-set-selection-panel,
+  .chess-game.baseapp .piece-set-selection-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
   /* Base Mini App (baseapp class) - NO padding, content starts immediately after header */
   .chess-game.baseapp .game-stable-layout,
   .chess-game.baseapp .game-stable-layout.home-view {
