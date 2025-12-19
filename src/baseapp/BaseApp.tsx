@@ -96,7 +96,8 @@ function BaseApp() {
   // Use a ref to track if we intentionally opened the chat (prevent accidental closes)
   const chatOpenRef = React.useRef(false);
   
-  React.useEffect(() => {
+  React.  useEffect(() => {
+    console.log('[BaseApp] showPublicChat changed to:', showPublicChat);
     if (showPublicChat) {
       chatOpenRef.current = true;
     }
@@ -600,8 +601,6 @@ function BaseApp() {
           isMobile={isBaseMiniApp()}
         />
       )}
-      {/* Debug: Log when showPublicChat changes */}
-      {console.log('[BaseApp] Render - showPublicChat:', showPublicChat, 'chatOpenRef:', chatOpenRef.current)}
     </>
   );
 }
