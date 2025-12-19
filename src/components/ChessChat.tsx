@@ -517,7 +517,6 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     display: 'flex' as const,
     flexDirection: 'column' as const,
     boxSizing: 'border-box' as const,
-    pointerEvents: 'auto' as const,
     visibility: 'visible' as const,
     opacity: 1,
     background: '#c0c0c0' as const, // Explicit background so we can see it
