@@ -97,21 +97,8 @@ function BaseApp() {
   const chatOpenRef = React.useRef(false);
   
   React.useEffect(() => {
-    console.log('[BaseApp] showPublicChat state changed to:', showPublicChat);
-    console.log('[BaseApp] isBaseMiniApp():', isBaseMiniApp());
-    console.log('[BaseApp] window.innerWidth:', typeof window !== 'undefined' ? window.innerWidth : 'N/A');
-    console.log('[BaseApp] window.innerHeight:', typeof window !== 'undefined' ? window.innerHeight : 'N/A');
-    console.log('[BaseApp] User agent:', typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A');
     if (showPublicChat) {
-      console.log('[BaseApp] Public chat should now be visible');
-      console.log('[BaseApp] ChessChat will render with isOpen=true');
       chatOpenRef.current = true;
-    } else {
-      console.log('[BaseApp] Public chat is closed');
-      // Only reset ref if we're not in the middle of opening
-      if (!chatOpenRef.current) {
-        console.log('[BaseApp] Chat was closed, resetting ref');
-      }
     }
   }, [showPublicChat]);
 
@@ -193,53 +180,30 @@ function BaseApp() {
   };
 
   const openPublicChat = async () => {
-    console.log('[BaseApp] ========== OPENING PUBLIC CHAT ==========');
-    console.log('[BaseApp] Opening public chat - button clicked');
-    console.log('[BaseApp] Current showPublicChat state:', showPublicChat);
-    console.log('[BaseApp] Portal ready:', portalReady);
-    console.log('[BaseApp] Document body exists:', typeof document !== 'undefined' && !!document.body);
     await triggerHapticImpact('light');
     
     // Set ref first to prevent accidental closes
     chatOpenRef.current = true;
-    console.log('[BaseApp] Set chatOpenRef.current = true');
     
-    console.log('[BaseApp] Setting showPublicChat to true');
-    // Use functional update to ensure we're setting it correctly
-    setShowPublicChat(prev => {
-      console.log('[BaseApp] setShowPublicChat functional update called, previous value:', prev);
-      if (prev === true) {
-        console.warn('[BaseApp] showPublicChat is already true, keeping it true');
-        return true; // Keep it true, don't change
-      }
-      console.log('[BaseApp] Setting showPublicChat to true (was false)');
-      return true;
-    });
+    // Use functional update and force immediate state change
+    setShowPublicChat(true);
     
-    // Verify state was set after a brief delay
-    setTimeout(() => {
-      console.log('[BaseApp] ========== STATE CHECK AFTER OPEN ==========');
-      console.log('[BaseApp] setTimeout - chatOpenRef.current:', chatOpenRef.current);
-      // Force a re-render by checking state
+    // Double-check state is set after render cycle
+    requestAnimationFrame(() => {
       setShowPublicChat(current => {
-        console.log('[BaseApp] State verification - current value:', current);
         if (!current && chatOpenRef.current) {
-          console.error('[BaseApp] ERROR: State was reset to false! Restoring to true...');
-          return true; // Restore if it was reset
+          // State was reset, restore it
+          return true;
         }
         return current;
       });
-    }, 200);
+    });
   };
 
   const minimizePublicChat = async () => {
-    console.log('[BaseApp] ========== MINIMIZING PUBLIC CHAT ==========');
-    console.log('[BaseApp] minimizePublicChat called - stack trace:', new Error().stack);
-    console.log('[BaseApp] chatOpenRef.current before minimize:', chatOpenRef.current);
     await triggerHapticSelection();
     chatOpenRef.current = false;
     setShowPublicChat(false);
-    console.log('[BaseApp] Chat minimized, chatOpenRef.current set to false');
   };
 
   return (
@@ -631,18 +595,19 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Render directly like App.tsx does (not in Popup) */}
-      {/* Always render ChessChat, let it handle its own visibility via isOpen prop */}
-      <Suspense fallback={<div>Loading chat...</div>}>
-        <ChessChat
-          isOpen={showPublicChat}
-          onMinimize={minimizePublicChat}
-          currentInviteCode={undefined}
-          isDraggable={!isBaseMiniApp()}
-          isResizable={!isBaseMiniApp()}
-          isMobile={isBaseMiniApp()}
-        />
-      </Suspense>
+      {/* Public Chat - Render conditionally like BaseAppChessPage does (works there) */}
+      {showPublicChat && (
+        <Suspense fallback={<div>Loading chat...</div>}>
+          <ChessChat
+            isOpen={showPublicChat}
+            onMinimize={minimizePublicChat}
+            currentInviteCode={undefined}
+            isDraggable={!isBaseMiniApp()}
+            isResizable={!isBaseMiniApp()}
+            isMobile={isBaseMiniApp()}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
