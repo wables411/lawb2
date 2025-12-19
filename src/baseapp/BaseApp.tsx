@@ -209,6 +209,7 @@ function BaseApp() {
   };
 
   const minimizePublicChat = async () => {
+    console.log('[BaseApp] minimizePublicChat called - stack trace:', new Error().stack);
     await triggerHapticSelection();
     setShowPublicChat(false);
   };
