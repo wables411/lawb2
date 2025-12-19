@@ -290,9 +290,19 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
                 console.warn('[Taskbar] onOpenPublicChat is not defined!');
               }
             }}
-            onTouchStart={(e) => {
-              // Ensure touch events work on mobile
+            onTouchEnd={(e) => {
+              // On mobile native apps, touch events might not trigger click
+              // So we handle it directly in onTouchEnd
               e.preventDefault();
+              e.stopPropagation();
+              console.log('[Taskbar] Public Chat button touched', { onOpenPublicChat: !!onOpenPublicChat });
+              handleMenuLinkClick();
+              if (onOpenPublicChat) {
+                console.log('[Taskbar] Calling onOpenPublicChat() from touch');
+                onOpenPublicChat();
+              } else {
+                console.warn('[Taskbar] onOpenPublicChat is not defined!');
+              }
             }}
           >
             Public Chat
