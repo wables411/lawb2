@@ -512,7 +512,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     bottom: '72px', // 60px taskbar + 12px padding
     width: 'calc(100vw - 24px)' as const,
     height: 'calc(100vh - 84px)' as const, // 12px top + 60px taskbar + 12px bottom
-    zIndex: 10003, // Higher than Taskbar (200) and Popup (2000) to ensure it's on top
+    zIndex: 100001, // Higher than Taskbar menu (100000) to ensure it's on top
     pointerEvents: 'auto' as const, // Ensure chat can receive clicks
     display: 'flex' as const,
     flexDirection: 'column' as const,
@@ -529,7 +529,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     top: position.y,
     width: size.width,
     height: size.height,
-    zIndex: 10003,
+    zIndex: 100001,
     pointerEvents: 'auto' as const,
     visibility: 'visible' as const,
     opacity: 1

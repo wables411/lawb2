@@ -181,11 +181,16 @@ function BaseApp() {
 
   const openPublicChat = useCallback(() => {
     // Force open (not toggle) - user clicked button to open chat
+    console.log('[BaseApp] openPublicChat called - setting state to true');
     chatOpenRef.current = true;
     setShowPublicChat(true);
     // Force multiple state updates to ensure it sticks
-    setTimeout(() => setShowPublicChat(true), 0);
-    setTimeout(() => setShowPublicChat(true), 50);
+    requestAnimationFrame(() => {
+      setShowPublicChat(true);
+      requestAnimationFrame(() => {
+        setShowPublicChat(true);
+      });
+    });
     triggerHapticImpact('light').catch(() => {});
   }, []);
 
@@ -595,6 +600,8 @@ function BaseApp() {
           isMobile={isBaseMiniApp()}
         />
       )}
+      {/* Debug: Log when showPublicChat changes */}
+      {console.log('[BaseApp] Render - showPublicChat:', showPublicChat, 'chatOpenRef:', chatOpenRef.current)}
     </>
   );
 }

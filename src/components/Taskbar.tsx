@@ -284,6 +284,10 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               e.nativeEvent.stopImmediatePropagation();
               if (onOpenPublicChat) {
                 onOpenPublicChat();
+                // Close menu AFTER opening chat to ensure state update happens first
+                setTimeout(() => {
+                  setIsMenuOpen(false);
+                }, 100);
               }
             }}
             onTouchStart={(e) => {
@@ -297,6 +301,10 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               e.nativeEvent.stopImmediatePropagation();
               if (onOpenPublicChat) {
                 onOpenPublicChat();
+                // Close menu AFTER opening chat to ensure state update happens first
+                setTimeout(() => {
+                  setIsMenuOpen(false);
+                }, 100);
               }
             }}
             onMouseDown={(e) => {
