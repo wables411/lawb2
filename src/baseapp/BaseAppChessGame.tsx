@@ -2180,7 +2180,6 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       
       // Position windows centered or on the left side to avoid center chessboard
       // In Base Mini App mobile, use full screen; otherwise center or position on left
-      const isBaseApp = isBaseMiniApp();
       const leftMargin = (isBaseApp && effectiveIsMobile)
         ? insets.left
         : isBaseApp 
