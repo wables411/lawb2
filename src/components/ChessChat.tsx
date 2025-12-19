@@ -496,6 +496,27 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     showPublicChat: 'N/A (BaseApp context)' 
   });
   
+  // Log after render to verify element exists
+  useEffect(() => {
+    if (chatRef.current) {
+      const rect = chatRef.current.getBoundingClientRect();
+      const styles = window.getComputedStyle(chatRef.current);
+      console.log('[ChessChat] Element rendered:', {
+        exists: !!chatRef.current,
+        visible: styles.display !== 'none' && styles.visibility !== 'hidden' && styles.opacity !== '0',
+        dimensions: { width: rect.width, height: rect.height },
+        position: { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom },
+        zIndex: styles.zIndex,
+        display: styles.display,
+        visibility: styles.visibility,
+        opacity: styles.opacity,
+        pointerEvents: styles.pointerEvents
+      });
+    } else {
+      console.warn('[ChessChat] Element ref is null after render!');
+    }
+  }, [isOpen, mobileStyle]);
+  
   return (
     <div
       ref={chatRef}
