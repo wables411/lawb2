@@ -216,15 +216,25 @@ function BaseApp() {
 
   return (
     <>
-      <div style={{ 
-        width: '100vw', 
-        height: '100vh', 
-        overflow: 'hidden',
-        position: 'relative',
-        boxSizing: 'border-box',
-        maxWidth: '100vw',
-        maxHeight: '100vh'
-      }}>
+      <div 
+        style={{ 
+          width: '100vw', 
+          height: '100vh', 
+          overflow: 'hidden',
+          position: 'relative',
+          boxSizing: 'border-box',
+          maxWidth: '100vw',
+          maxHeight: '100vh'
+        }}
+        onClick={(e) => {
+          // Don't close chat when clicking on the main container
+          // Only close if clicking directly on the container background (not on children)
+          if (e.target === e.currentTarget && showPublicChat) {
+            console.log('[BaseApp] Clicked on main container background, but NOT closing chat');
+            // Intentionally do nothing - we don't want to close chat on background clicks
+          }
+        }}
+      >
         <Desktop onIconClick={handleIconClick} />
 
         <Taskbar
@@ -594,6 +604,7 @@ function BaseApp() {
       </div>
 
       {/* Public Chat - Render directly like App.tsx does (not in Popup) */}
+      {/* Always render ChessChat, let it handle its own visibility via isOpen prop */}
       <Suspense fallback={<div>Loading chat...</div>}>
         <ChessChat
           isOpen={showPublicChat}
