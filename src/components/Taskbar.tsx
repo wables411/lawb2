@@ -281,37 +281,22 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[Taskbar] Public Chat button clicked', { onOpenPublicChat: !!onOpenPublicChat });
               if (onOpenPublicChat) {
-                console.log('[Taskbar] Calling onOpenPublicChat()');
                 onOpenPublicChat();
-                // Close menu after a short delay to ensure handler runs
-                setTimeout(() => {
-                  handleMenuLinkClick();
-                }, 100);
-              } else {
-                console.warn('[Taskbar] onOpenPublicChat is not defined!');
-                handleMenuLinkClick();
               }
+              // Don't close menu - let user see chat open
             }}
-            onTouchEnd={(e) => {
-              // On mobile native apps, touch events might not trigger click
-              // So we handle it directly in onTouchEnd
+            onTouchStart={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[Taskbar] Public Chat button touched', { onOpenPublicChat: !!onOpenPublicChat });
-              // Don't close menu immediately - let the handler run first
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (onOpenPublicChat) {
-                console.log('[Taskbar] Calling onOpenPublicChat() from touch');
                 onOpenPublicChat();
-                // Close menu after a short delay to ensure handler runs
-                setTimeout(() => {
-                  handleMenuLinkClick();
-                }, 100);
-              } else {
-                console.warn('[Taskbar] onOpenPublicChat is not defined!');
-                handleMenuLinkClick();
               }
+              // Don't close menu - let user see chat open
             }}
           >
             Public Chat

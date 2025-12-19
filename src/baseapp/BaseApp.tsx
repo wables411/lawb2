@@ -179,25 +179,26 @@ function BaseApp() {
     setActivePopup(popupId);
   };
 
-  const openPublicChat = async () => {
-    await triggerHapticImpact('light');
-    
-    // Set ref first to prevent accidental closes
+  const openPublicChat = () => {
+    // Immediately set state - don't wait for async
     chatOpenRef.current = true;
-    
-    // Use functional update and force immediate state change
     setShowPublicChat(true);
     
-    // Double-check state is set after render cycle
-    requestAnimationFrame(() => {
-      setShowPublicChat(current => {
-        if (!current && chatOpenRef.current) {
-          // State was reset, restore it
-          return true;
-        }
-        return current;
-      });
-    });
+    // Force state to stay true
+    setTimeout(() => {
+      if (chatOpenRef.current) {
+        setShowPublicChat(true);
+      }
+    }, 0);
+    
+    setTimeout(() => {
+      if (chatOpenRef.current) {
+        setShowPublicChat(true);
+      }
+    }, 100);
+    
+    // Haptic feedback (non-blocking)
+    triggerHapticImpact('light').catch(() => {});
   };
 
   const minimizePublicChat = async () => {
@@ -595,19 +596,17 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Render conditionally like BaseAppChessPage does (works there) */}
-      {showPublicChat && (
-        <Suspense fallback={<div>Loading chat...</div>}>
-          <ChessChat
-            isOpen={showPublicChat}
-            onMinimize={minimizePublicChat}
-            currentInviteCode={undefined}
-            isDraggable={!isBaseMiniApp()}
-            isResizable={!isBaseMiniApp()}
-            isMobile={isBaseMiniApp()}
-          />
-        </Suspense>
-      )}
+      {/* Public Chat - Always render, control visibility via isOpen prop */}
+      <Suspense fallback={null}>
+        <ChessChat
+          isOpen={showPublicChat}
+          onMinimize={minimizePublicChat}
+          currentInviteCode={undefined}
+          isDraggable={!isBaseMiniApp()}
+          isResizable={!isBaseMiniApp()}
+          isMobile={isBaseMiniApp()}
+        />
+      </Suspense>
     </>
   );
 }
