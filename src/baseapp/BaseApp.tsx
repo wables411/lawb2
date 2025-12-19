@@ -184,14 +184,17 @@ function BaseApp() {
     // Force open (not toggle) - user clicked button to open chat
     console.log('[BaseApp] openPublicChat called - setting state to true');
     chatOpenRef.current = true;
+    // Set state immediately
     setShowPublicChat(true);
     // Force multiple state updates to ensure it sticks
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       setShowPublicChat(true);
-      requestAnimationFrame(() => {
-        setShowPublicChat(true);
-      });
-    });
+      console.log('[BaseApp] Forcing showPublicChat to true again');
+    }, 0);
+    setTimeout(() => {
+      setShowPublicChat(true);
+      console.log('[BaseApp] Forcing showPublicChat to true one more time');
+    }, 100);
     triggerHapticImpact('light').catch(() => {});
   }, []);
 

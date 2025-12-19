@@ -282,13 +282,14 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               e.preventDefault();
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
-              if (onOpenPublicChat) {
-                onOpenPublicChat();
-                // Close menu AFTER opening chat to ensure state update happens first
-                setTimeout(() => {
-                  setIsMenuOpen(false);
-                }, 100);
-              }
+              // Close menu FIRST, then open chat
+              setIsMenuOpen(false);
+              // Use setTimeout to ensure menu closes before chat opens
+              setTimeout(() => {
+                if (onOpenPublicChat) {
+                  onOpenPublicChat();
+                }
+              }, 50);
             }}
             onTouchStart={(e) => {
               e.preventDefault();
@@ -299,13 +300,14 @@ const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, wa
               e.preventDefault();
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
-              if (onOpenPublicChat) {
-                onOpenPublicChat();
-                // Close menu AFTER opening chat to ensure state update happens first
-                setTimeout(() => {
-                  setIsMenuOpen(false);
-                }, 100);
-              }
+              // Close menu FIRST, then open chat
+              setIsMenuOpen(false);
+              // Use setTimeout to ensure menu closes before chat opens
+              setTimeout(() => {
+                if (onOpenPublicChat) {
+                  onOpenPublicChat();
+                }
+              }, 50);
             }}
             onMouseDown={(e) => {
               e.preventDefault();
