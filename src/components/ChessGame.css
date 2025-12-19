@@ -3397,7 +3397,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     padding-top: 0 !important;
   }
   
-  /* Fix piece set selector layout on mobile - remove empty space */
+  /* Fix piece set selector layout on mobile - proper spacing and layout */
   .chess-game.mobile .piece-set-selection-row,
   .chess-game.baseapp .piece-set-selection-row {
     display: flex !important;
@@ -3406,7 +3406,6 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    border: none !important;
     min-height: auto !important;
     height: auto !important;
   }
@@ -3415,18 +3414,25 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .chess-game.baseapp .piece-set-controls-col {
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
-    border: none !important;
   }
   
   .chess-game.mobile .piece-set-selection-panel,
   .chess-game.baseapp .piece-set-selection-panel {
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Ensure buttons don't overlap */
+  .chess-game.mobile .piece-set-selection-panel button,
+  .chess-game.baseapp .piece-set-selection-panel button {
+    display: block !important;
+    width: auto !important;
+    margin: 8px auto !important;
   }
   
   /* Base Mini App (baseapp class) - NO padding, content starts immediately after header */
