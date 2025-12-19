@@ -3425,14 +3425,33 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     margin: 0 auto !important;
     padding: 16px !important;
     box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
   }
   
-  /* Ensure buttons don't overlap */
+  /* Ensure buttons don't overlap and are properly spaced */
+  .chess-game.mobile .piece-set-selection-panel > *,
+  .chess-game.baseapp .piece-set-selection-panel > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
   .chess-game.mobile .piece-set-selection-panel button,
   .chess-game.baseapp .piece-set-selection-panel button {
-    display: block !important;
+    display: flex !important;
     width: auto !important;
-    margin: 8px auto !important;
+    margin: 0 auto !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  
+  .chess-game.mobile .piece-set-selection-panel > div,
+  .chess-game.baseapp .piece-set-selection-panel > div {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
   }
   
   /* Base Mini App (baseapp class) - NO padding, content starts immediately after header */

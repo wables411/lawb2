@@ -180,9 +180,9 @@ function BaseApp() {
   };
 
   const openPublicChat = () => {
-    // Simple toggle like BaseAppChessPage does - it works there
-    setShowPublicChat(prev => !prev);
+    // Force open (not toggle) - user clicked button to open chat
     chatOpenRef.current = true;
+    setShowPublicChat(true);
     triggerHapticImpact('light').catch(() => {});
   };
 
@@ -581,17 +581,19 @@ function BaseApp() {
       )}
       </div>
 
-      {/* Public Chat - Always render, control visibility via isOpen prop */}
-      <Suspense fallback={null}>
-        <ChessChat
-          isOpen={showPublicChat}
-          onMinimize={minimizePublicChat}
-          currentInviteCode={undefined}
-          isDraggable={!isBaseMiniApp()}
-          isResizable={!isBaseMiniApp()}
-          isMobile={isBaseMiniApp()}
-        />
-      </Suspense>
+      {/* Public Chat - Render conditionally like BaseAppChessPage (where it works) */}
+      {showPublicChat && (
+        <Suspense fallback={null}>
+          <ChessChat
+            isOpen={showPublicChat}
+            onMinimize={minimizePublicChat}
+            currentInviteCode={undefined}
+            isDraggable={!isBaseMiniApp()}
+            isResizable={!isBaseMiniApp()}
+            isMobile={isBaseMiniApp()}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
