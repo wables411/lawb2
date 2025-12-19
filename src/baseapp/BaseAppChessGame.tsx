@@ -2157,28 +2157,38 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
       const availableHeight = screenHeight - insets.top - insets.bottom - headerHeight - taskbarHeight - (padding * 2);
       
       // Size windows to fit within available space, with max sizes
-      const windowWidth = Math.min(
-        windowType === 'gallery' ? 380 :
-        windowType === 'moves' ? 300 :
-        windowType === 'profile' ? 400 :
-        windowType === 'howto' ? 420 : 400,
-        availableWidth
-      );
-      const windowHeight = Math.min(
-        windowType === 'gallery' ? 480 :
-        windowType === 'moves' ? 400 :
-        windowType === 'profile' ? 500 :
-        windowType === 'howto' ? 520 : 500,
-        availableHeight
-      );
+      // On mobile, use full viewport; on desktop use fixed sizes
+      const isBaseApp = isBaseMiniApp();
+      const windowWidth = isBaseApp && effectiveIsMobile
+        ? screenWidth - insets.left - insets.right
+        : Math.min(
+            windowType === 'gallery' ? 380 :
+            windowType === 'moves' ? 300 :
+            windowType === 'profile' ? 400 :
+            windowType === 'howto' ? 420 : 400,
+            availableWidth
+          );
+      const windowHeight = isBaseApp && effectiveIsMobile
+        ? screenHeight - insets.top - insets.bottom
+        : Math.min(
+            windowType === 'gallery' ? 480 :
+            windowType === 'moves' ? 400 :
+            windowType === 'profile' ? 500 :
+            windowType === 'howto' ? 520 : 500,
+            availableHeight
+          );
       
       // Position windows centered or on the left side to avoid center chessboard
-      // In Base Mini App, center windows; otherwise position on left
+      // In Base Mini App mobile, use full screen; otherwise center or position on left
       const isBaseApp = isBaseMiniApp();
-      const leftMargin = isBaseApp 
-        ? Math.max(insets.left + padding, (screenWidth - windowWidth) / 2)
-        : insets.left + padding;
-      const topMargin = insets.top + headerHeight + padding;
+      const leftMargin = (isBaseApp && effectiveIsMobile)
+        ? insets.left
+        : isBaseApp 
+          ? Math.max(insets.left + padding, (screenWidth - windowWidth) / 2)
+          : insets.left + padding;
+      const topMargin = (isBaseApp && effectiveIsMobile)
+        ? insets.top
+        : insets.top + headerHeight + padding;
       
       // Stagger windows vertically to avoid overlap
       const openCount = Object.keys(windowPositions).length;
@@ -3782,14 +3792,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
         </Popup>
       )}
       
-      {!isMobile && openWindows.has('gallery') && (
+      {openWindows.has('gallery') && (
         <Popup
           id="gallery-window"
           isOpen={true}
           onClose={() => closeWindow('gallery')}
           title="Piece Gallery"
-          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
-          initialSize={windowPositions['gallery'] ? { width: windowPositions['gallery'].width, height: windowPositions['gallery'].height } : { width: 380, height: 480 }}
+          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : (effectiveIsMobile ? { x: 0, y: 0 } : { x: 20, y: 100 })}
+          initialSize={windowPositions['gallery'] ? { width: windowPositions['gallery'].width, height: windowPositions['gallery'].height } : (effectiveIsMobile ? { width: '100vw', height: '100vh' } : { width: 380, height: 480 })}
           zIndex={1000}
         >
           <div className="piece-gallery-compact">
