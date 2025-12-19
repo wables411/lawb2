@@ -95,8 +95,15 @@ function BaseApp() {
 
   React.useEffect(() => {
     console.log('[BaseApp] showPublicChat state changed to:', showPublicChat);
+    console.log('[BaseApp] isBaseMiniApp():', isBaseMiniApp());
+    console.log('[BaseApp] window.innerWidth:', typeof window !== 'undefined' ? window.innerWidth : 'N/A');
+    console.log('[BaseApp] window.innerHeight:', typeof window !== 'undefined' ? window.innerHeight : 'N/A');
+    console.log('[BaseApp] User agent:', typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A');
     if (showPublicChat) {
       console.log('[BaseApp] Public chat should now be visible');
+      console.log('[BaseApp] ChessChat will render with isOpen=true');
+    } else {
+      console.log('[BaseApp] Public chat is closed');
     }
   }, [showPublicChat]);
 
