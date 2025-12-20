@@ -240,10 +240,21 @@ html:not(.lawb-app-dark-mode) {
 /* Use higher specificity to override universal selector */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"] {
-  /* CRITICAL: Don't set background-image at all - let inline style handle it */
-  /* Inline styles have higher specificity than CSS classes (unless !important) */
+  /* CRITICAL: Explicitly preserve background-image - inline styles can't override !important */
+  /* So we must NOT set background-image: none here, and ensure no other rule does */
   background-color: transparent !important;
-  /* DO NOT set background-image here - inline style from component has it */
+  /* DO NOT set background-image here - let inline style handle it */
+}
+
+/* HIGHEST SPECIFICITY: Explicitly preserve chessboard background-image after ALL other rules */
+.lawb-app-dark-mode div.chessboard,
+.lawb-app-dark-mode div[class*="chessboard"],
+.lawb-app-dark-mode .chessboard-container .chessboard,
+.lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"] {
+  /* CRITICAL: This rule comes last and has highest specificity to preserve inline background-image */
+  /* We can't use !important on background-image because that would override inline styles */
+  /* Instead, we ensure no background-image rule is set here, allowing inline style to work */
+  background-color: transparent !important;
 }
 
 /* CRITICAL: Preserve all children of chessboard */
@@ -578,17 +589,9 @@ html.lawb-app-dark-mode {
 }
 
 /* Ensure chess board and pieces always display full color */
-.lawb-app-dark-mode .chessboard,
-.lawb-app-dark-mode [class*="chessboard"],
-.lawb-app-dark-mode .piece,
-.lawb-app-dark-mode [class*="piece"],
-.lawb-app-dark-mode .chessboard-container,
-.lawb-app-dark-mode [class*="chessboard-container"] {
-  background-image: inherit !important;
-  background: inherit !important;
-  filter: none !important;
-  -webkit-filter: none !important;
-}
+/* REMOVED: This rule was causing issues - inherit doesn't work for element's own inline styles */
+/* The chessboard and pieces need their inline background-image styles preserved */
+/* We handle this with more specific rules above that don't override background-image */
 
 /* Dark mode button styling - EXCLUDE buttons with inline styles (piece selection panel) */
 /* Preserve original button sizes - don't override width/height/padding */
