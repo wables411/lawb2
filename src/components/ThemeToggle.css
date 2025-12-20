@@ -267,9 +267,9 @@ html:not(.lawb-app-dark-mode) {
 /* DO NOT set background-image here - let inline styles handle it */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"] {
-  /* CRITICAL: Don't override background-image - inline styles have it */
-  /* Only ensure background-color is transparent so background-image shows */
+  /* CRITICAL: Explicitly preserve background-image from inline styles */
   background-color: transparent !important;
+  background-image: inherit !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
