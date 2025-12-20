@@ -47,6 +47,7 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
     return saved && ['light', 'dark'].includes(saved) ? saved as ThemeMode : 'light';
   });
 
+  // Apply theme immediately on mount and when themeMode changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -57,9 +58,12 @@ export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = f
     root.classList.remove('lawb-app-dark-mode', 'lawb-app-light-mode', 'lawb-app-underwater-mode');
     body.classList.remove('lawb-app-dark-mode', 'lawb-app-light-mode', 'lawb-app-underwater-mode');
     
-    // Add the current theme class
-    root.classList.add(`lawb-app-${themeMode}-mode`);
-    body.classList.add(`lawb-app-${themeMode}-mode`);
+    // Light mode = default (no class), Dark mode = add class
+    if (themeMode === 'dark') {
+      root.classList.add('lawb-app-dark-mode');
+      body.classList.add('lawb-app-dark-mode');
+    }
+    // For light mode, don't add any class - it's the default state
     localStorage.setItem('lawb-app-theme', themeMode);
   }, [themeMode]);
 

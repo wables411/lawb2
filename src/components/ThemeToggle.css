@@ -27,6 +27,7 @@
 }
 
 /* Light Mode - Stock colorway with animated background (formerly Underwater) */
+/* Note: Light mode is the default (no class), but these rules apply if light mode class is present */
 .lawb-app-light-mode body,
 .lawb-app-light-mode html,
 .lawb-app-light-mode #root {
@@ -37,9 +38,29 @@
   overflow: hidden !important;
 }
 
-/* Default (no theme class) - use light mode */
-body:not(.lawb-app-dark-mode):not(.lawb-app-light-mode),
-html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
+/* Ensure chessboard and pieces are always visible in default (light) mode */
+body:not(.lawb-app-dark-mode) .chessboard,
+body:not(.lawb-app-dark-mode) [class*="chessboard"],
+body:not(.lawb-app-dark-mode) .piece,
+body:not(.lawb-app-dark-mode) [class*="piece"],
+body:not(.lawb-app-dark-mode) .chessboard-container,
+body:not(.lawb-app-dark-mode) [class*="chessboard-container"],
+body:not(.lawb-app-dark-mode) .square,
+body:not(.lawb-app-dark-mode) [class*="square"],
+body:not(.lawb-app-dark-mode) .board-row,
+body:not(.lawb-app-dark-mode) [class*="board-row"] {
+  background-image: inherit !important;
+  background: inherit !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Default (no theme class) - this is light mode */
+/* No class = light mode (default state) */
+body:not(.lawb-app-dark-mode),
+html:not(.lawb-app-dark-mode) {
   background: url('/assets/background.gif') no-repeat center center fixed !important;
   background-size: cover !important;
   color: #000000 !important;
@@ -119,13 +140,14 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   text-shadow: none !important;
 }
 
-.lawb-app-light-mode button {
+/* Light mode button styling - EXCLUDE buttons with inline styles (piece selection panel) */
+.lawb-app-light-mode button:not([style*="color"]):not(.piece-set-btn):not(.start-btn):not([class*="piece-set"]):not([class*="difficulty"]) {
   background: rgba(0, 0, 0, 0.05) !important;
   border-color: #cccccc !important;
   color: #000000 !important;
 }
 
-.lawb-app-light-mode button:hover {
+.lawb-app-light-mode button:not([style*="color"]):not(.piece-set-btn):not(.start-btn):not([class*="piece-set"]):not([class*="difficulty"]):hover {
   background: rgba(0, 0, 0, 0.1) !important;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2) !important;
 }
@@ -151,10 +173,10 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
   color: #000000 !important;
 }
 
-/* Light mode for all text elements */
+/* Light mode for all text elements - EXCLUDE buttons to preserve inline styles */
 .lawb-app-light-mode p,
-.lawb-app-light-mode span,
-.lawb-app-light-mode div,
+.lawb-app-light-mode span:not(button *):not([style*="color"]),
+.lawb-app-light-mode div:not(button):not([style*="color"]):not(.piece-set-selection-panel *):not(.difficulty-selection-panel *),
 .lawb-app-light-mode label,
 .lawb-app-light-mode input,
 .lawb-app-light-mode select,
@@ -201,7 +223,8 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 
 /* Universal dark mode background override - catch ALL elements except chess board/pieces */
 /* Exclude entire chessboard container tree AND player profile stats overlay from background removal */
-.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.chessboard-container *):not([class*="chessboard-container"] *):not([style*="backgroundImage"]):not([style*="background-image"]):not(.player-profile-stats-overlay):not([class*="player-profile-stats-overlay"]) {
+/* Also exclude squares and board-row to preserve chessboard structure */
+.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.chessboard-container *):not([class*="chessboard-container"] *):not(.square):not([class*="square"]):not(.board-row):not([class*="board-row"]):not([style*="backgroundImage"]):not([style*="background-image"]):not(.player-profile-stats-overlay):not([class*="player-profile-stats-overlay"]) {
   background-image: none !important;
   background: #000000 !important;
 }
@@ -226,11 +249,21 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"],
 .lawb-app-dark-mode .chessboard *,
-.lawb-app-dark-mode [class*="chessboard"] * {
+.lawb-app-dark-mode [class*="chessboard"] *,
+.lawb-app-dark-mode .square,
+.lawb-app-dark-mode [class*="square"],
+.lawb-app-dark-mode .board-row,
+.lawb-app-dark-mode [class*="board-row"],
+.lawb-app-dark-mode .piece,
+.lawb-app-dark-mode [class*="piece"] {
   background-image: inherit !important;
   background: inherit !important;
+  background-color: transparent !important;
   filter: none !important;
   -webkit-filter: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inherit !important;
 }
 
 /* Ensure player profile stats overlay is transparent in dark mode - HIGHEST PRIORITY */
@@ -248,9 +281,19 @@ html:not(.lawb-app-dark-mode):not(.lawb-app-light-mode) {
 /* Chessboard container should inherit its background image */
 
 .lawb-app-dark-mode body,
-.lawb-app-dark-mode html,
-.lawb-app-dark-mode body *,
-.lawb-app-dark-mode html * {
+.lawb-app-dark-mode html {
+  background: #000000 !important;
+  background-image: none !important;
+  background-size: auto !important;
+  background-attachment: fixed !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  color: #00ff00 !important;
+}
+
+/* Dark mode for body/html children - EXCLUDE buttons and elements with inline styles */
+.lawb-app-dark-mode body *:not(button):not([style*="color"]):not(.piece-set-selection-panel *):not(.difficulty-selection-panel *):not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.square):not([class*="square"]):not(.board-row):not([class*="board-row"]),
+.lawb-app-dark-mode html *:not(button):not([style*="color"]):not(.piece-set-selection-panel *):not(.difficulty-selection-panel *):not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.square):not([class*="square"]):not(.board-row):not([class*="board-row"]) {
   background: #000000 !important;
   background-image: none !important;
   background-size: auto !important;
@@ -467,13 +510,14 @@ html.lawb-app-dark-mode {
   -webkit-filter: none !important;
 }
 
-.lawb-app-dark-mode button {
+/* Dark mode button styling - EXCLUDE buttons with inline styles (piece selection panel) */
+.lawb-app-dark-mode button:not([style*="color"]):not(.piece-set-btn):not(.start-btn):not([class*="piece-set"]):not([class*="difficulty"]) {
   background: #000000 !important;
   border-color: #00ff00 !important;
   color: #00ff00 !important;
 }
 
-.lawb-app-dark-mode button:hover {
+.lawb-app-dark-mode button:not([style*="color"]):not(.piece-set-btn):not(.start-btn):not([class*="piece-set"]):not([class*="difficulty"]):hover {
   background: #001100 !important;
   box-shadow: 0 0 10px #00ff00 !important;
 }
@@ -502,9 +546,10 @@ html.lawb-app-dark-mode {
 
 /* Dark mode for all text elements - terminal green */
 /* OVERRIDE ALL TEXT COLORS - ensure nothing is black */
+/* EXCLUDE buttons, chessboard elements, and elements with inline styles to preserve piece selection panel styling */
 .lawb-app-dark-mode p,
-.lawb-app-dark-mode span:not(.piece):not([class*="piece"]),
-.lawb-app-dark-mode div:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]),
+.lawb-app-dark-mode span:not(.piece):not([class*="piece"]):not(button *):not([style*="color"]):not(.square *):not([class*="square"] *),
+.lawb-app-dark-mode div:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(button):not([style*="color"]):not(.piece-set-selection-panel *):not(.difficulty-selection-panel *):not(.square):not([class*="square"]):not(.board-row):not([class*="board-row"]):not(.chessboard-container):not([class*="chessboard-container"]),
 .lawb-app-dark-mode label,
 .lawb-app-dark-mode input,
 .lawb-app-dark-mode select,
@@ -515,7 +560,7 @@ html.lawb-app-dark-mode {
 .lawb-app-dark-mode h4,
 .lawb-app-dark-mode h5,
 .lawb-app-dark-mode h6,
-.lawb-app-dark-mode button,
+.lawb-app-dark-mode button:not([style*="color"]):not(.piece-set-btn):not(.start-btn):not([class*="piece-set"]):not([class*="difficulty"]),
 .lawb-app-dark-mode a {
   color: #00ff00 !important;
 }
@@ -588,4 +633,40 @@ html.lawb-app-dark-mode {
 .lawb-app-dark-mode [class*="meme-generator"] *,
 .lawb-app-dark-mode [class*="MemeGenerator"] * {
   color: #00ff00 !important;
+}
+
+/* Piece Selection Panel - Preserve button and text styling in both themes */
+/* These rules have HIGHEST specificity to override universal color rules */
+
+/* Headers and paragraphs should be red in both themes */
+.lawb-app-light-mode .piece-set-selection-panel h2,
+.lawb-app-light-mode .piece-set-selection-panel p,
+.lawb-app-light-mode .difficulty-selection-panel h2,
+.lawb-app-light-mode .difficulty-selection-panel p {
+  color: #ff0000 !important;
+}
+
+.lawb-app-dark-mode .piece-set-selection-panel h2,
+.lawb-app-dark-mode .piece-set-selection-panel p,
+.lawb-app-dark-mode .difficulty-selection-panel h2,
+.lawb-app-dark-mode .difficulty-selection-panel p {
+  color: #ff0000 !important;
+}
+
+/* Buttons in piece selection panel - explicitly preserve red color */
+/* These selectors have higher specificity than universal rules */
+.lawb-app-light-mode .piece-set-selection-panel button,
+.lawb-app-light-mode .piece-set-selection-panel button span,
+.lawb-app-light-mode .difficulty-selection-panel button,
+.lawb-app-light-mode .difficulty-selection-panel button span {
+  /* Explicitly set red color to override universal black text rule */
+  color: #ff0000 !important;
+}
+
+.lawb-app-dark-mode .piece-set-selection-panel button,
+.lawb-app-dark-mode .piece-set-selection-panel button span,
+.lawb-app-dark-mode .difficulty-selection-panel button,
+.lawb-app-dark-mode .difficulty-selection-panel button span {
+  /* Explicitly set red color to override universal green text rule */
+  color: #ff0000 !important;
 }

@@ -1349,12 +1349,15 @@ html.chess-dark-mode, body.chess-dark-mode {
   color: #00ff00 !important;
 }
 /* Ensure chessboard is always visible in both light and dark modes */
+/* Default state (no class) = light mode */
+.chessboard,
+body:not(.lawb-app-dark-mode) .chessboard,
+body:not(.lawb-app-dark-mode) [class*="chessboard"],
 .chess-dark-mode .chessboard,
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"],
 .lawb-app-light-mode .chessboard,
-.lawb-app-light-mode [class*="chessboard"],
-.chessboard {
+.lawb-app-light-mode [class*="chessboard"] {
   /* CRITICAL: Preserve full color chessboard image - ALWAYS BRIGHT */
   /* DO NOT override background-image - let inline style from component handle it */
   /* Inline style has higher specificity than CSS classes, so it will work */
@@ -1417,12 +1420,15 @@ html.chess-dark-mode, body.chess-dark-mode {
 }
 
 /* Ensure pieces are always visible in both light and dark modes */
+/* Default state (no class) = light mode */
+.piece,
+body:not(.lawb-app-dark-mode) .piece,
+body:not(.lawb-app-dark-mode) [class*="piece"],
 .chess-dark-mode .piece,
 .lawb-app-dark-mode .piece,
 .lawb-app-dark-mode [class*="piece"],
 .lawb-app-light-mode .piece,
-.lawb-app-light-mode [class*="piece"],
-.piece {
+.lawb-app-light-mode [class*="piece"] {
   /* CRITICAL: Preserve full color pieces - ALWAYS BRIGHT, no filter that affects colors */
   background-size: contain !important;
   background-repeat: no-repeat !important;
@@ -3445,6 +3451,42 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     margin: 0 auto !important;
     justify-content: center !important;
     align-items: center !important;
+  }
+  
+  /* Piece selection panel - preserve red text and button styling in both themes */
+  /* These rules have high specificity to override universal theme color rules */
+  
+  /* Headers and paragraphs in piece selection panel should be red */
+  .lawb-app-light-mode .piece-set-selection-panel h2,
+  .lawb-app-light-mode .piece-set-selection-panel p,
+  .lawb-app-light-mode .difficulty-selection-panel h2,
+  .lawb-app-light-mode .difficulty-selection-panel p {
+    color: #ff0000 !important;
+  }
+  
+  .lawb-app-dark-mode .piece-set-selection-panel h2,
+  .lawb-app-dark-mode .piece-set-selection-panel p,
+  .lawb-app-dark-mode .difficulty-selection-panel h2,
+  .lawb-app-dark-mode .difficulty-selection-panel p {
+    color: #ff0000 !important;
+  }
+  
+  /* Buttons in piece selection panel - preserve inline styles by not overriding */
+  /* Inline styles have higher specificity, but we need to ensure theme rules don't override */
+  .lawb-app-light-mode .piece-set-selection-panel button,
+  .lawb-app-light-mode .piece-set-selection-panel button span,
+  .lawb-app-light-mode .difficulty-selection-panel button,
+  .lawb-app-light-mode .difficulty-selection-panel button span {
+    /* Don't override - let inline styles take precedence */
+    /* This empty rule block ensures these selectors exist but don't force colors */
+  }
+  
+  .lawb-app-dark-mode .piece-set-selection-panel button,
+  .lawb-app-dark-mode .piece-set-selection-panel button span,
+  .lawb-app-dark-mode .difficulty-selection-panel button,
+  .lawb-app-dark-mode .difficulty-selection-panel button span {
+    /* Don't override - let inline styles take precedence */
+    /* This empty rule block ensures these selectors exist but don't force colors */
   }
   
   .chess-game.mobile .piece-set-selection-panel > div,

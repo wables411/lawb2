@@ -39,6 +39,11 @@ const Root = () => {
       if (syncCheck) {
         console.log('[Root] Base app detected via sync check');
         setIsBaseApp(true);
+        // Add body class to enable Base Mini App styles regardless of window width
+        if (typeof document !== 'undefined') {
+          document.body.classList.add('base-miniapp');
+          document.documentElement.classList.add('base-miniapp');
+        }
         setIsChecking(false);
         return;
       }
@@ -48,15 +53,31 @@ const Root = () => {
         const asyncCheck = await isBaseMiniAppAsync();
         console.log('[Root] Base app async check result:', asyncCheck);
         setIsBaseApp(asyncCheck);
+        if (asyncCheck && typeof document !== 'undefined') {
+          document.body.classList.add('base-miniapp');
+          document.documentElement.classList.add('base-miniapp');
+        }
       } catch (e) {
         console.warn('[Root] Async check failed, using sync result:', e);
         setIsBaseApp(syncCheck);
+        if (syncCheck && typeof document !== 'undefined') {
+          document.body.classList.add('base-miniapp');
+          document.documentElement.classList.add('base-miniapp');
+        }
       } finally {
         setIsChecking(false);
       }
     };
     
     void checkBaseApp();
+    
+    return () => {
+      // Cleanup: remove class when component unmounts
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('base-miniapp');
+        document.documentElement.classList.remove('base-miniapp');
+      }
+    };
   }, []);
   
   // Show loading while checking (prevents flash of wrong UI)

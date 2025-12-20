@@ -11,6 +11,24 @@ const BaseAppChessPage: React.FC = () => {
   // Initialize Base Mini App SDK
   useEffect(() => {
     void initBaseMiniApp();
+    
+    // Add body class to enable Base Mini App styles regardless of window width
+    // This ensures mobile/miniapp styling works on desktop browsers too
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const isBaseApp = window.self !== window.top;
+      if (isBaseApp) {
+        document.body.classList.add('base-miniapp');
+        document.documentElement.classList.add('base-miniapp');
+      }
+    }
+    
+    return () => {
+      // Cleanup: remove class when component unmounts
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('base-miniapp');
+        document.documentElement.classList.remove('base-miniapp');
+      }
+    };
   }, []);
 
   const mediaQueryMatch = useMediaQuery('(max-width: 768px)');

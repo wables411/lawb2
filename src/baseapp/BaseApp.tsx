@@ -75,6 +75,11 @@ function BaseApp() {
       await initBaseMiniApp();
       
       if (isBaseMiniApp()) {
+        // Add body class to enable Base Mini App styles regardless of window width
+        // This ensures mobile/miniapp styling works on desktop browsers too
+        document.body.classList.add('base-miniapp');
+        document.documentElement.classList.add('base-miniapp');
+        
         // Apply safe area insets as CSS variables
         await applySafeAreaInsets();
         
@@ -88,6 +93,12 @@ function BaseApp() {
         
         setMiniappPopupSize({ width, height });
       }
+      
+      return () => {
+        // Cleanup: remove class when component unmounts
+        document.body.classList.remove('base-miniapp');
+        document.documentElement.classList.remove('base-miniapp');
+      };
     };
     
     void initialize();
@@ -96,7 +107,7 @@ function BaseApp() {
   // Use a ref to track if we intentionally opened the chat (prevent accidental closes)
   const chatOpenRef = React.useRef(false);
   
-  React.  useEffect(() => {
+  React.useEffect(() => {
     console.log('[BaseApp] showPublicChat changed to:', showPublicChat);
     if (showPublicChat) {
       chatOpenRef.current = true;

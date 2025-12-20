@@ -31,6 +31,21 @@ const useStyles = createUseStyles({
       bottom: '8px !important',
       resize: 'none !important',
       boxSizing: 'border-box !important',
+    },
+    // Base Mini App should always use mobile styles regardless of window width
+    '.base-miniapp &': {
+      width: 'calc(100vw - 16px) !important',
+      height: 'calc(100vh - 16px) !important',
+      maxWidth: 'calc(100vw - 16px) !important',
+      maxHeight: 'calc(100vh - 16px) !important',
+      minWidth: '0 !important',
+      minHeight: '0 !important',
+      left: '8px !important',
+      top: '8px !important',
+      right: '8px !important',
+      bottom: '8px !important',
+      resize: 'none !important',
+      boxSizing: 'border-box !important',
     }
   },
   header: {
@@ -46,6 +61,13 @@ const useStyles = createUseStyles({
     userSelect: 'none',
     minHeight: ({ isBaseMiniApp }: { isBaseMiniApp?: boolean }) => (isBaseMiniApp ? '24px' : 'auto') as any,
     '@media (max-width: 768px)': {
+      padding: '4px 6px',
+      fontSize: '12px',
+      minHeight: '24px',
+      cursor: 'default',
+    },
+    // Base Mini App should always use mobile header styles
+    '.base-miniapp &': {
       padding: '4px 6px',
       fontSize: '12px',
       minHeight: '24px',
@@ -77,6 +99,15 @@ const useStyles = createUseStyles({
       backgroundColor: '#a0a0a0'
     },
     '@media (max-width: 768px)': {
+      width: '44px',
+      height: '44px',
+      minWidth: '44px',
+      minHeight: '44px',
+      fontSize: '18px',
+      padding: '12px',
+    },
+    // Base Mini App should always use mobile button styles
+    '.base-miniapp &': {
       width: '44px',
       height: '44px',
       minWidth: '44px',
@@ -116,6 +147,13 @@ const useStyles = createUseStyles({
       height: 'calc(100% - 50px)',
       fontSize: '16px',
       '-webkit-overflow-scrolling': 'touch',
+    },
+    // Base Mini App should always use mobile content styles
+    '.base-miniapp &': {
+      padding: '16px',
+      height: 'calc(100% - 50px)',
+      fontSize: '16px',
+      '-webkit-overflow-scrolling': 'touch',
     }
   },
   resizeHandle: {
@@ -142,6 +180,10 @@ const useStyles = createUseStyles({
       borderColor: 'transparent transparent rgba(0, 0, 0, 0.3) transparent'
     },
     '@media (max-width: 768px)': {
+      display: 'none !important',
+    },
+    // Base Mini App should never show resize handle
+    '.base-miniapp &': {
       display: 'none !important',
     }
   }
