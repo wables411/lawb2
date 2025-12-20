@@ -49,7 +49,8 @@ body:not(.lawb-app-dark-mode) .square,
 body:not(.lawb-app-dark-mode) [class*="square"],
 body:not(.lawb-app-dark-mode) .board-row,
 body:not(.lawb-app-dark-mode) [class*="board-row"] {
-  /* CRITICAL: Preserve inline background-image styles */
+  /* CRITICAL: Preserve inline background-image styles - don't override them */
+  /* Use inherit to preserve inline styles */
   background-image: inherit !important;
   background: inherit !important;
   filter: none !important;
@@ -239,10 +240,11 @@ html:not(.lawb-app-dark-mode) {
 /* Use higher specificity to override universal selector */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"] {
-  /* CRITICAL: Don't set background-image - let inline style handle it */
-  /* But explicitly prevent background-image: none from universal selector */
+  /* CRITICAL: Explicitly preserve background-image from inline styles */
   background-color: transparent !important;
-  /* Don't set background-image here - inline style has it */
+  /* CRITICAL: Don't override background-image - let inline style handle it */
+  /* But ensure no other rule sets background-image: none */
+  background-image: inherit !important;
 }
 
 /* CRITICAL: Preserve all children of chessboard */
