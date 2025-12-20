@@ -242,7 +242,8 @@
   min-height: 0;
   max-width: 100%;
   width: 100%;
-  height: 100%;
+  /* ROOT FIX: Don't force height: 100% - let content determine height */
+  /* height: 100% only when showing game, not selection screens */
   max-height: 100%;
   padding: 0;
   padding-top: 0px !important; /* No padding - content starts immediately below header */
@@ -1183,13 +1184,14 @@
 }
 
 .center-area {
-  height: 100%;
+  /* ROOT FIX: Don't force height: 100% - let content determine height */
   min-height: 0;
   max-width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding-top: 60px !important; /* Add padding below header to prevent overlap */
   box-sizing: border-box;
+  /* Only use height: 100% when actually showing game content, not selection screens */
 }
 
 /* Remove ALL padding for baseapp - content must start immediately after header */
@@ -3509,14 +3511,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     /* This empty rule block ensures these selectors exist but don't force colors */
   }
   
-  /* Button containers should be auto-width, centered - NOT 100% width */
-  .chess-game.mobile .piece-set-selection-panel > div,
-  .chess-game.baseapp .piece-set-selection-panel > div {
-    width: auto !important;
-    max-width: 100% !important;
-    display: flex !important;
-    justify-content: center !important;
-  }
+  /* REMOVED DUPLICATE - This rule is already defined above with align-self: center */
   
   /* Base Mini App (baseapp class) - NO padding, content starts immediately after header */
   .chess-game.baseapp .game-stable-layout,
