@@ -1739,6 +1739,9 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   gap: 20px;
   width: 100%;
   box-sizing: border-box;
+  /* CRITICAL FIX: Don't force height - let content determine it */
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 /* Force zero gap and padding for baseapp */
@@ -1773,6 +1776,10 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   max-width: 100%;
   overflow-x: hidden;
   box-sizing: border-box;
+  /* CRITICAL FIX: Explicitly prevent height from being forced */
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
 }
 
 .game-stable-layout.home-view.mobile {
