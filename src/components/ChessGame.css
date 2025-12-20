@@ -250,6 +250,8 @@
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
+  /* CRITICAL: Don't set height - let content determine it */
+  height: auto;
 }
 
 .chessboard-container {

@@ -226,32 +226,44 @@ html:not(.lawb-app-dark-mode) {
 /* Also exclude squares and board-row to preserve chessboard structure */
 /* CRITICAL: Use background-color instead of background to avoid overriding background-image */
 /* ROOT FIX: Exclude chessboard-related elements from universal selector to prevent overriding inline background-image */
-.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.chessboard-container *):not([class*="chessboard-container"] *):not(.square):not([class*="square"]):not(.board-row):not([class*="board-row"]):not([style*="backgroundImage"]):not([style*="background-image"]):not(.player-profile-stats-overlay):not([class*="player-profile-stats-overlay"]):not(.chess-main-area):not([class*="chess-main-area"]):not(.chess-main-area *) {
+/* CRITICAL: Must exclude .chessboard, .piece, and ALL their children */
+.lawb-app-dark-mode *:not(.chessboard):not([class*="chessboard"]):not(.chessboard *):not([class*="chessboard"] *):not(.piece):not([class*="piece"]):not(.chessboard-container):not([class*="chessboard-container"]):not(.chessboard-container *):not([class*="chessboard-container"] *):not(.square):not([class*="square"]):not(.board-row):not([class*="board-row"]):not([style*="backgroundImage"]):not([style*="background-image"]):not(.player-profile-stats-overlay):not([class*="player-profile-stats-overlay"]):not(.chess-main-area):not([class*="chess-main-area"]):not(.chess-main-area *) {
   background-image: none !important;
   background-color: #000000 !important;
 }
 
 /* CRITICAL FIX: Explicitly override universal selector for chessboard and pieces */
 /* These rules MUST come AFTER the universal selector and have higher specificity */
+/* DO NOT set background-image here - let inline styles handle it */
 .lawb-app-dark-mode .chessboard,
-.lawb-app-dark-mode [class*="chessboard"],
-.lawb-app-dark-mode .chessboard *,
-.lawb-app-dark-mode [class*="chessboard"] * {
-  /* CRITICAL: Preserve background-image from inline style - override universal selector */
-  background-image: var(--chessboard-bg-image, inherit) !important;
+.lawb-app-dark-mode [class*="chessboard"] {
+  /* CRITICAL: Don't override background-image - inline styles have it */
+  /* Only ensure background-color is transparent so background-image shows */
   background-color: transparent !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
   visibility: visible !important;
+  display: grid !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.lawb-app-dark-mode .chessboard *,
+.lawb-app-dark-mode [class*="chessboard"] * {
+  background-color: transparent !important;
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 
 .lawb-app-dark-mode .piece,
 .lawb-app-dark-mode [class*="piece"],
 .lawb-app-dark-mode .square .piece,
-.lawb-app-dark-mode [class*="square"] .piece {
-  /* CRITICAL: Preserve piece background-image - override universal selector */
-  /* Don't set background-image here - let inline style handle it, but don't override it */
+.lawb-app-dark-mode [class*="square"] .piece,
+.lawb-app-dark-mode .chessboard .piece,
+.lawb-app-dark-mode [class*="chessboard"] .piece {
+  /* CRITICAL: Don't override background-image - inline styles have it */
+  /* Only ensure background-color is transparent so background-image shows */
   background-color: transparent !important;
   filter: none !important;
   -webkit-filter: none !important;
