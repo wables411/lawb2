@@ -3439,6 +3439,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     flex-direction: column !important;
     align-items: center !important;
     gap: 16px !important;
+    /* ROOT FIX: Prevent flex children from stretching to full width */
+    align-content: center !important;
   }
   
   /* Ensure buttons don't overlap and are properly spaced */
@@ -3449,13 +3451,15 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     max-width: 100% !important;
   }
   
-  /* Button containers should be auto-width, centered */
+  /* ROOT FIX: Button containers should NOT stretch in flex column - use align-self to prevent stretching */
   .chess-game.mobile .piece-set-selection-panel > div,
   .chess-game.baseapp .piece-set-selection-panel > div {
     width: auto !important;
     max-width: 100% !important;
     display: flex !important;
     justify-content: center !important;
+    align-self: center !important; /* Prevent flex child from stretching to full width */
+    flex-shrink: 0 !important; /* Prevent shrinking */
   }
   
   .chess-game.mobile .piece-set-selection-panel button,
