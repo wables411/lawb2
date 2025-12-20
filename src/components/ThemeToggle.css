@@ -677,8 +677,9 @@ html.lawb-app-dark-mode {
 }
 
 /* Override Desktop component inline background */
-.lawb-app-dark-mode [style*="background.gif"],
-.lawb-app-dark-mode [style*="background: url"] {
+/* CRITICAL: Exclude chessboard from this rule - it needs its background-image */
+.lawb-app-dark-mode [style*="background.gif"]:not(.chessboard):not([class*="chessboard"]),
+.lawb-app-dark-mode [style*="background: url"]:not(.chessboard):not([class*="chessboard"]) {
   background: #000000 !important;
   background-image: none !important;
 }
