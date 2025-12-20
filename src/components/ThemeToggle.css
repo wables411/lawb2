@@ -240,10 +240,10 @@ html:not(.lawb-app-dark-mode) {
 /* Use higher specificity to override universal selector */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"] {
-  /* CRITICAL: Explicitly preserve background-image from inline styles */
+  /* CRITICAL: Don't set background-image at all - let inline style handle it */
+  /* Inline styles have higher specificity than CSS classes (unless !important) */
   background-color: transparent !important;
-  /* CRITICAL: Use unset to allow inline backgroundImage style to work */
-  background-image: unset !important;
+  /* DO NOT set background-image here - inline style from component has it */
 }
 
 /* CRITICAL: Preserve all children of chessboard */
@@ -266,9 +266,10 @@ html:not(.lawb-app-dark-mode) {
 /* DO NOT set background-image here - let inline styles handle it */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"] {
-  /* CRITICAL: Use unset to allow inline backgroundImage style to work */
+  /* CRITICAL: Don't set background-image at all - let inline style handle it */
+  /* Inline styles have higher specificity than CSS classes (unless !important) */
   background-color: transparent !important;
-  background-image: unset !important;
+  /* DO NOT set background-image here - inline style from component has it */
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
