@@ -279,6 +279,7 @@
   max-height: 80vh;
   aspect-ratio: 1 / 1;
   /* Default fallback background - will be overridden by inline style */
+  /* CRITICAL: Don't use !important on background-image - let inline style override it */
   background-image: url('/images/chessboard1.png');
   background-size: cover !important;
   background-position: center !important;
