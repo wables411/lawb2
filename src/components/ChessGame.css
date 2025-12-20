@@ -2560,7 +2560,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: calc(100vh - 120px);
+    /* CRITICAL FIX: Remove min-height - it was forcing container to be huge */
+    /* min-height: calc(100vh - 120px); */
   }
   
   .game-mode-panel-streamlined {
