@@ -3429,8 +3429,9 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     height: auto !important;
+    max-height: none !important;
   }
   
   .chess-game.mobile .piece-set-controls-col,
@@ -3439,6 +3440,9 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     max-width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
   }
   
   .chess-game.mobile .piece-set-selection-panel,

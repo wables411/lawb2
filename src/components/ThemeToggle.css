@@ -49,6 +49,7 @@ body:not(.lawb-app-dark-mode) .square,
 body:not(.lawb-app-dark-mode) [class*="square"],
 body:not(.lawb-app-dark-mode) .board-row,
 body:not(.lawb-app-dark-mode) [class*="board-row"] {
+  /* CRITICAL: Preserve inline background-image styles */
   background-image: inherit !important;
   background: inherit !important;
   filter: none !important;
@@ -292,6 +293,8 @@ html:not(.lawb-app-dark-mode) {
   /* CRITICAL: Don't override background-image - inline styles have it */
   /* Only ensure background-color is transparent so background-image shows */
   background-color: transparent !important;
+  /* CRITICAL: Explicitly allow background-image from inline styles */
+  background-image: inherit !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
