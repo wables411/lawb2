@@ -744,14 +744,20 @@ html.lawb-app-dark-mode {
 
 /* FINAL OVERRIDE: Highest specificity rule to preserve chessboard background-image */
 /* This MUST be the last rule in the file to ensure it overrides everything */
-.lawb-app-dark-mode div.chessboard[class*="chessboard"],
-.lawb-app-dark-mode .chessboard-container div.chessboard,
-.lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"],
-.lawb-app-dark-mode div[class*="chessboard"][style*="background"] {
+/* CRITICAL: Match elements with inline style attribute containing backgroundImage */
+.lawb-app-dark-mode div.chessboard[style*="backgroundImage"],
+.lawb-app-dark-mode div.chessboard[style*="background-image"],
+.lawb-app-dark-mode div[class*="chessboard"][style*="backgroundImage"],
+.lawb-app-dark-mode div[class*="chessboard"][style*="background-image"],
+.lawb-app-dark-mode .chessboard-container div.chessboard[style*="backgroundImage"],
+.lawb-app-dark-mode .chessboard-container div.chessboard[style*="background-image"],
+.lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"][style*="backgroundImage"],
+.lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"][style*="background-image"] {
   /* CRITICAL: Do NOT set background-image - allow inline style to work */
   /* Inline styles have higher specificity than CSS classes (except !important) */
   /* By not setting background-image here, the inline style can work */
   background-color: transparent !important;
+  /* Explicitly do NOT set background-image to allow inline style */
 }
 
 /* Piece Selection Panel - Preserve button and text styling in both themes */
