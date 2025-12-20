@@ -3252,6 +3252,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className="chessboard"
                   style={{
                     backgroundImage: `url(${selectedChessboard})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundColor: 'transparent',
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
                 >

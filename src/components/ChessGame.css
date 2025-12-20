@@ -276,10 +276,12 @@
   max-width: 80vh;
   max-height: 80vh;
   aspect-ratio: 1 / 1;
+  /* Default fallback background - will be overridden by inline style */
   background-image: url('/images/chessboard1.png');
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+  background-color: transparent !important;
   border-radius: 8px;
   box-shadow: 0 0 8px rgba(0,0,0,0.06);
   border: 1px solid #bbb;
@@ -290,6 +292,8 @@
   opacity: 1 !important;
   filter: none !important;
   -webkit-filter: none !important;
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 /* Chess board styles */

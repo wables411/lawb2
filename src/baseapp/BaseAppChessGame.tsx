@@ -1603,7 +1603,15 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
               backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
               backgroundSize: 'contain',
               backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center',
+              backgroundColor: 'transparent',
+              opacity: 1,
+              visibility: 'visible',
+              display: 'block',
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              zIndex: 2
             }}
           />
         )}
@@ -3418,8 +3426,12 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 <div 
                   className="chessboard"
                   style={{
-                    backgroundImage: `url(${selectedChessboard})`
-                  }}
+                    backgroundImage: `url(${selectedChessboard})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundColor: 'transparent'
+                  } as React.CSSProperties}
                 >
                   {Array.from({ length: 8 }, (_, row) => (
                     <div key={row} className="board-row">
