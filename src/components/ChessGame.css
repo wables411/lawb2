@@ -3441,8 +3441,10 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     flex-direction: column !important;
     align-items: center !important;
     gap: 16px !important;
-    /* ROOT FIX: Prevent flex children from stretching to full width */
-    align-content: center !important;
+    /* ROOT FIX: Don't force height - let content determine height */
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
   }
   
   /* Ensure buttons don't overlap and are properly spaced */
