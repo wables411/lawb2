@@ -242,9 +242,8 @@ html:not(.lawb-app-dark-mode) {
 .lawb-app-dark-mode [class*="chessboard"] {
   /* CRITICAL: Explicitly preserve background-image from inline styles */
   background-color: transparent !important;
-  /* CRITICAL: Don't override background-image - let inline style handle it */
-  /* But ensure no other rule sets background-image: none */
-  background-image: inherit !important;
+  /* CRITICAL: Use unset to allow inline backgroundImage style to work */
+  background-image: unset !important;
 }
 
 /* CRITICAL: Preserve all children of chessboard */
@@ -267,9 +266,9 @@ html:not(.lawb-app-dark-mode) {
 /* DO NOT set background-image here - let inline styles handle it */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"] {
-  /* CRITICAL: Explicitly preserve background-image from inline styles */
+  /* CRITICAL: Use unset to allow inline backgroundImage style to work */
   background-color: transparent !important;
-  background-image: inherit !important;
+  background-image: unset !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
