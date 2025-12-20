@@ -1815,7 +1815,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
             </div>
 
             {/* Back to Chess Button */}
-            <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center'}}>
+            <div style={{marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'center', width: 'auto', maxWidth: '100%'}}>
               <button
                 onClick={() => {
                   if (onBackToModeSelect) {
@@ -1835,7 +1835,10 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                   boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
                   border: '1px solid #ff0000',
                   cursor: 'pointer',
-                  letterSpacing: 1
+                  letterSpacing: 1,
+                  width: 'auto',
+                  maxWidth: 'none',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 ← Back to Chess Home
@@ -1902,7 +1905,7 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
           </div>
 
           {/* Back to Chess Button */}
-          <div style={{marginTop: '16px', justifyContent: 'center'}}>
+          <div style={{marginTop: '16px', display: 'flex', justifyContent: 'center', width: 'auto', maxWidth: '100%'}}>
             <button
               onClick={() => {
                 if (onBackToModeSelect) {
@@ -1922,7 +1925,10 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
                 boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
                 border: '1px solid #ff0000',
                 cursor: 'pointer',
-                letterSpacing: 1
+                letterSpacing: 1,
+                width: 'auto',
+                maxWidth: 'none',
+                whiteSpace: 'nowrap'
               }}
             >
               ← Back to Chess Home

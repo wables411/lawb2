@@ -3442,19 +3442,31 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   }
   
   /* Ensure buttons don't overlap and are properly spaced */
-  .chess-game.mobile .piece-set-selection-panel > *,
-  .chess-game.baseapp .piece-set-selection-panel > * {
+  /* Only apply width: 100% to non-button containers */
+  .chess-game.mobile .piece-set-selection-panel > *:not(button):not(div),
+  .chess-game.baseapp .piece-set-selection-panel > *:not(button):not(div) {
     width: 100% !important;
     max-width: 100% !important;
+  }
+  
+  /* Button containers should be auto-width, centered */
+  .chess-game.mobile .piece-set-selection-panel > div,
+  .chess-game.baseapp .piece-set-selection-panel > div {
+    width: auto !important;
+    max-width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
   }
   
   .chess-game.mobile .piece-set-selection-panel button,
   .chess-game.baseapp .piece-set-selection-panel button {
     display: flex !important;
     width: auto !important;
+    max-width: none !important;
     margin: 0 auto !important;
     justify-content: center !important;
     align-items: center !important;
+    /* Preserve inline styles for padding and sizing */
   }
   
   /* Piece selection panel - preserve red text and button styling in both themes */
