@@ -233,7 +233,8 @@
 }
 
 .center-area {
-  flex: 1 1 0;
+  /* CRITICAL FIX: Don't use flex: 1 1 0 - it makes it grow to fill space */
+  /* Only use flex: 1 when showing game, not selection screens */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -242,8 +243,6 @@
   min-height: 0;
   max-width: 100%;
   width: 100%;
-  /* ROOT FIX: Don't force height: 100% - let content determine height */
-  /* height: 100% only when showing game, not selection screens */
   max-height: 100%;
   padding: 0;
   padding-top: 0px !important; /* No padding - content starts immediately below header */
@@ -1166,7 +1165,8 @@
 }
 
 .game-stable-layout {
-  height: 100%;
+  /* CRITICAL FIX: Don't force height: 100% - let content determine height */
+  /* Only use height: 100% when showing game, not selection screens */
   min-height: 0;
   padding-top: 60px !important; /* Add padding below header to prevent overlap */
 }
