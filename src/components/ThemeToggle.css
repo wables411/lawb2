@@ -200,7 +200,8 @@ html:not(.lawb-app-dark-mode) {
 .lawb-app-dark-mode html,
 .lawb-app-dark-mode #root {
   background-image: none !important;
-  background: #000000 !important;
+  background-color: #000000 !important;
+  /* CRITICAL: Use background-color not background shorthand to avoid overriding children's background-image */
   color: #00ff00 !important;
   overflow: hidden !important;
 }
@@ -217,7 +218,8 @@ html:not(.lawb-app-dark-mode) {
 .lawb-app-dark-mode [class*="game-content"],
 .lawb-app-dark-mode [class*="center-area"] {
   background-image: none !important;
-  background: #000000 !important;
+  background-color: #000000 !important;
+  /* CRITICAL: Use background-color not background shorthand to avoid overriding background-image */
   color: #00ff00 !important;
 }
 
@@ -232,20 +234,29 @@ html:not(.lawb-app-dark-mode) {
   background-color: #000000 !important;
 }
 
-/* CRITICAL: Explicitly preserve chessboard and all its descendants */
+/* CRITICAL: Explicitly preserve chessboard - MUST come after universal selector */
+/* Use higher specificity to override universal selector */
 .lawb-app-dark-mode .chessboard,
-.lawb-app-dark-mode [class*="chessboard"],
-.lawb-app-dark-mode .chessboard *,
-.lawb-app-dark-mode [class*="chessboard"] * {
-  /* Don't override background-image - let inline styles handle it */
+.lawb-app-dark-mode [class*="chessboard"] {
+  /* CRITICAL: Don't set background-image - let inline style handle it */
+  /* But explicitly prevent background-image: none from universal selector */
   background-color: transparent !important;
+  /* Don't set background-image here - inline style has it */
 }
 
-/* CRITICAL: Explicitly preserve pieces */
+/* CRITICAL: Preserve all children of chessboard */
+.lawb-app-dark-mode .chessboard *,
+.lawb-app-dark-mode [class*="chessboard"] * {
+  background-color: transparent !important;
+  /* Don't override background-image - let inline styles handle it */
+}
+
+/* CRITICAL: Explicitly preserve pieces - MUST override universal selector */
 .lawb-app-dark-mode .piece,
 .lawb-app-dark-mode [class*="piece"] {
-  /* Don't override background-image - let inline styles handle it */
+  /* CRITICAL: Don't set background-image - let inline style handle it */
   background-color: transparent !important;
+  /* Don't override background-image - inline style has it */
 }
 
 /* CRITICAL FIX: Explicitly override universal selector for chessboard and pieces */
@@ -343,12 +354,13 @@ html:not(.lawb-app-dark-mode) {
 
 .lawb-app-dark-mode body,
 .lawb-app-dark-mode html {
-  background: #000000 !important;
+  background-color: #000000 !important;
   background-image: none !important;
   background-size: auto !important;
   background-attachment: fixed !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+  /* CRITICAL: Use background-color not background shorthand to avoid overriding children's background-image */
   color: #00ff00 !important;
 }
 
