@@ -414,9 +414,14 @@ export const BaseAppChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
 
+  // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
+  pieceImages = selectedPieceSet.pieceImages;
+  console.log('[PIECE IMAGES] Initialized:', Object.keys(pieceImages).length, 'pieces', pieceImages);
+
   // Update piece images when selected piece set changes
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
+    console.log('[PIECE IMAGES] Updated in useEffect:', Object.keys(pieceImages).length, 'pieces', pieceImages);
     
     // Update piece gallery with new piece set images
     pieceGallery = [

@@ -3505,9 +3505,11 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     /* This empty rule block ensures these selectors exist but don't force colors */
   }
   
+  /* Button containers should be auto-width, centered - NOT 100% width */
   .chess-game.mobile .piece-set-selection-panel > div,
   .chess-game.baseapp .piece-set-selection-panel > div {
-    width: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
     display: flex !important;
     justify-content: center !important;
   }

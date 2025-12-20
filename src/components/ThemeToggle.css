@@ -231,14 +231,24 @@ html:not(.lawb-app-dark-mode) {
 }
 
 /* Exclude chess board and pieces from dark mode background removal */
+/* CRITICAL: Use background-image: inherit to preserve inline styles */
 .lawb-app-dark-mode .chessboard,
 .lawb-app-dark-mode [class*="chessboard"],
-.lawb-app-dark-mode .piece,
-.lawb-app-dark-mode [class*="piece"],
 .lawb-app-dark-mode [style*="backgroundImage"],
 .lawb-app-dark-mode [style*="background-image"] {
+  /* Preserve background-image from inline style - don't override */
   background-image: inherit !important;
-  background: inherit !important;
+  background-color: transparent !important;
+  filter: none !important;
+}
+
+.lawb-app-dark-mode .piece,
+.lawb-app-dark-mode [class*="piece"],
+.lawb-app-dark-mode [style*="backgroundImage"] .piece,
+.lawb-app-dark-mode [style*="background-image"] .piece {
+  /* Preserve piece background-image from inline style */
+  background-image: inherit !important;
+  background-color: transparent !important;
   filter: none !important;
 }
 
@@ -269,6 +279,8 @@ html:not(.lawb-app-dark-mode) {
   background-color: transparent !important;
   /* CRITICAL: Preserve background-image from inline style - inline styles have higher specificity */
   /* Don't override background-image here - let the inline style from the component handle it */
+  /* Explicitly ensure background-image is not overridden */
+  background-image: inherit !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
