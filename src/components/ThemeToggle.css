@@ -742,6 +742,18 @@ html.lawb-app-dark-mode {
   color: #00ff00 !important;
 }
 
+/* FINAL OVERRIDE: Highest specificity rule to preserve chessboard background-image */
+/* This MUST be the last rule in the file to ensure it overrides everything */
+.lawb-app-dark-mode div.chessboard[class*="chessboard"],
+.lawb-app-dark-mode .chessboard-container div.chessboard,
+.lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"],
+.lawb-app-dark-mode div[class*="chessboard"][style*="background"] {
+  /* CRITICAL: Do NOT set background-image - allow inline style to work */
+  /* Inline styles have higher specificity than CSS classes (except !important) */
+  /* By not setting background-image here, the inline style can work */
+  background-color: transparent !important;
+}
+
 /* Piece Selection Panel - Preserve button and text styling in both themes */
 /* These rules have HIGHEST specificity to override universal color rules */
 
