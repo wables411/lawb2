@@ -1570,9 +1570,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               height: '100%',
               objectFit: 'contain',
               position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
+              top: 0,
+              left: 0,
               zIndex: 10,
               pointerEvents: 'none',
               margin: 0,
@@ -3182,7 +3181,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
           {/* Game Info Bar - Compact */}
           {showGame && (
-            <div className="game-info-compact" style={{ marginTop: '2px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
+            <div className="game-info-compact" style={{ marginTop: '0px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
@@ -3205,7 +3204,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
           {/* Main Game Area */}
           {showGame ? (
-            <div className="chess-main-area" style={{ height: 'calc(100vh - 100px)', minHeight: 'calc(100vh - 100px)', paddingTop: '2px', paddingBottom: '40px' }}>
+            <div className="chess-main-area" style={{ height: 'calc(100vh - 100px)', minHeight: 'calc(100vh - 100px)', paddingTop: '0px', paddingBottom: '40px' }}>
               <div className="chessboard-container" style={{ 
                 width: 'min(85vh, 85vw, 700px)',
                 height: 'min(85vh, 85vw, 700px)',
