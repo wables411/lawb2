@@ -17,6 +17,7 @@ import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
+import { ChessChat } from './ChessChat';
 
 import './ChessGame.css';
 import './ChessGameModern.css';
@@ -3174,10 +3175,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         
         {/* Desktop Sidebar removed - using menu popup and windows instead */}
         {/* Center Area - Always Show Chess Board */}
-        <div className="center-area">
+        <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
           {/* Game Info Bar - Compact */}
           {showGame && (
-            <div className="game-info-compact">
+            <div className="game-info-compact" style={{ marginTop: 0, marginBottom: '4px' }}>
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
@@ -3620,6 +3621,27 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           zIndex={1000}
         >
           <HowToContent />
+        </Popup>
+      )}
+
+      {!isMobile && openWindows.has('chat') && (
+        <Popup
+          id="chat-window"
+          isOpen={true}
+          onClose={() => closeWindow('chat')}
+          title="Chat"
+          initialPosition={windowPositions['chat'] ? { x: windowPositions['chat'].x, y: windowPositions['chat'].y } : { x: 20, y: 120 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <ChessChat
+            isOpen={true}
+            onMinimize={() => closeWindow('chat')}
+            currentInviteCode={undefined}
+            isDraggable={false}
+            isResizable={false}
+            isMobile={false}
+          />
         </Popup>
       )}
       
