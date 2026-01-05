@@ -1686,12 +1686,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return (
       <div className="piece-set-selection-row" style={{ justifyContent: 'center' }}>
         <div className="piece-set-controls-col">
-          <div className="piece-set-selection-panel" style={{background:'rgba(0, 0, 0, 0.8)',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'0 0 20px rgba(255, 0, 0, 0.5)',textAlign:'center',border:'2px solid #ff0000',maxWidth: '600px', margin: '0 auto'}}>
-            <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#ffffff',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 10px #ff0000, 0 0 5px #ff0000, 2px 2px 4px rgba(0,0,0,0.8)'}}>Game Setup</h2>
+          <div className="piece-set-selection-panel" style={{background:'#252526',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'0 4px 12px rgba(0, 0, 0, 0.4)',textAlign:'center',border:'1px solid #3e3e42',maxWidth: '600px', margin: '0 auto'}}>
+            <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#00ff00',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 8px rgba(0, 255, 0, 0.5)'}}>Game Setup</h2>
             
             {/* Piece Set Selection */}
             <div style={{marginBottom: 24}}>
-              <h3 style={{fontSize:'1.2rem',color:'#ffffff',marginBottom:12,textShadow:'0 0 8px #ff0000, 0 0 4px #ff0000'}}>Select Chess Set</h3>
+              <h3 style={{fontSize:'1.2rem',color:'#e2e8f0',marginBottom:12}}>Select Chess Set</h3>
               <div style={{display:'flex',justifyContent:'center'}}>
                 <div style={{ position: 'relative', minWidth: '200px' }}>
                   <button
@@ -1699,14 +1699,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     onClick={() => setShowPieceSetDropdown(!showPieceSetDropdown)}
                     style={{
                       padding: '12px 16px',
-                      border: '2px outset #fff',
-                      background: '#000000',
-                      color: '#ff0000',
+                      border: '1px solid #4a5568',
+                      background: '#2d3748',
+                      color: '#e2e8f0',
                       cursor: 'pointer',
                       minWidth: '200px',
                       textAlign: 'left',
                       fontWeight: 'bold',
-                      fontSize: '1em'
+                      fontSize: '1em',
+                      borderRadius: 4
                     }}
                   >
                     {getPieceSetDisplayName(selectedPieceSet.id)}
@@ -1718,10 +1719,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                       position: 'absolute',
                       bottom: '100%',
                       left: 0,
-                      background: '#000000',
-                      border: '2px outset #fff',
+                      background: '#2d3748',
+                      border: '1px solid #4a5568',
+                      borderRadius: 4,
                       zIndex: 10,
-                      minWidth: '200px'
+                      minWidth: '200px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
                     }}>
                       {CHESS_PIECE_SETS.map((pieceSet) => (
                         <div
@@ -1730,13 +1733,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                           style={{
                             padding: '12px 16px',
                             cursor: 'pointer',
-                            borderBottom: '1px solid #333',
+                            borderBottom: '1px solid #4a5568',
                             fontSize: '1em',
-                            color: '#ff0000',
-                            background: '#000000'
+                            color: '#e2e8f0',
+                            background: '#2d3748'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#4a5568'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#2d3748'}
                         >
                           {getPieceSetDisplayName(pieceSet.id)}
                         </div>
@@ -1749,16 +1752,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
             {/* Difficulty Selection */}
             <div style={{marginBottom: 24}}>
-              <h3 style={{fontSize:'1.2rem',color:'#ffffff',marginBottom:12,textShadow:'0 0 8px #ff0000, 0 0 4px #ff0000'}}>Select Difficulty</h3>
+              <h3 style={{fontSize:'1.2rem',color:'#e2e8f0',marginBottom:12}}>Select Difficulty</h3>
               <div style={{display:'flex',justifyContent:'center',gap:16}}>
                 <button
                   className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
-                  style={{background:difficulty==='easy'?'#ff0000':'transparent',color:difficulty==='easy'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
+                  style={{background:difficulty==='easy'?'#4299e1':'#2d3748',color:'#e2e8f0',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:4,border:'1px solid #4a5568',cursor:'pointer',letterSpacing:1}}
                   onClick={()=>setDifficulty('easy')}
                 >Easy</button>
                 <button
                   className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
-                  style={{background:difficulty==='hard'?'#ff0000':'transparent',color:difficulty==='hard'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
+                  style={{background:difficulty==='hard'?'#4299e1':'#2d3748',color:'#e2e8f0',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:4,border:'1px solid #4a5568',cursor:'pointer',letterSpacing:1}}
                   onClick={()=>setDifficulty('hard')}
                 >Hard</button>
               </div>
@@ -1768,14 +1771,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               className={`difficulty-btn start-btn`}
               onClick={() => { startGame(); }}
               style={{ 
-                background: 'transparent',
-                color: '#ff0000',
+                background: 'linear-gradient(to bottom, #5a6578, #4a5568)',
+                color: '#e2e8f0',
                 fontWeight: 'bold',
                 fontSize: '1.3em',
                 padding: '18px 48px',
-                borderRadius: 0,
-                boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
-                border: '1px solid #ff0000',
+                borderRadius: 4,
+                border: '1px solid #2d3748',
                 cursor: 'pointer',
                 letterSpacing: 1,
                 marginBottom: 8
@@ -1789,14 +1791,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <button
                 onClick={() => { setShowPieceSetSelector(false); }}
                 style={{ 
-                  background: 'transparent',
-                  color: '#ff0000',
+                  background: '#2d3748',
+                  color: '#e2e8f0',
                   fontWeight: 'bold',
                   fontSize: '1.1em',
                   padding: '12px 24px',
-                  borderRadius: 0,
-                  boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
-                  border: '1px solid #ff0000',
+                  borderRadius: 4,
+                  border: '1px solid #4a5568',
                   cursor: 'pointer',
                   letterSpacing: 1,
                   width: 'auto',

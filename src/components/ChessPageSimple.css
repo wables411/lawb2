@@ -77,9 +77,12 @@
 }
 
 .chess-page-simple .chessboard-container {
-  width: 100%;
-  max-width: min(90vh, 90vw, 600px);
-  max-height: min(90vh, 90vw, 600px);
+  width: min(85vh, 85vw, 700px) !important;
+  height: min(85vh, 85vw, 700px) !important;
+  max-width: min(85vh, 85vw, 700px) !important;
+  max-height: min(85vh, 85vw, 700px) !important;
+  min-width: 400px !important;
+  min-height: 400px !important;
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
   display: flex !important;

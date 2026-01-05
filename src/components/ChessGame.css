@@ -724,12 +724,12 @@
 }
 
 .chessboard-container {
-  width: auto;
-  height: auto;
-  max-width: min(80vh, 80vw);
-  max-height: min(80vh, 80vw);
-  min-width: 300px;
-  min-height: 300px;
+  width: min(85vh, 85vw, 700px) !important;
+  height: min(85vh, 85vw, 700px) !important;
+  max-width: min(85vh, 85vw, 700px) !important;
+  max-height: min(85vh, 85vw, 700px) !important;
+  min-width: 400px !important;
+  min-height: 400px !important;
   display: flex !important;
   align-items: center;
   justify-content: center;
@@ -743,17 +743,17 @@
 }
 
 .chessboard {
-  width: 100%;
-  height: 100%;
-  max-width: min(80vh, 80vw);
-  max-height: min(80vh, 80vw);
-  min-width: 300px;
-  min-height: 300px;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
   aspect-ratio: 1 / 1;
   background-image: url('/images/chessboard1.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   border-radius: 12px;
   box-shadow: 0 0 15px rgba(0,0,0,0.10);
   border: 2px solid rgba(50,205,50,0.3);
