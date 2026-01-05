@@ -360,10 +360,6 @@
   margin: 0 !important;
   padding: 0 !important;
 }
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: block !important;
-  background-image: inherit !important;
 }
 
 .piece:hover {
