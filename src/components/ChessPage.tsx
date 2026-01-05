@@ -6,8 +6,6 @@ import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import './ChessPageSimple.css';
 
-const PlayerProfile = lazy(() => import('./PlayerProfile').then(m => ({ default: m.PlayerProfile })));
-
 const ChessPage: React.FC = () => {
 
   // Scroll to top on mount and whenever component updates

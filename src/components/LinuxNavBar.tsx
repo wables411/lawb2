@@ -193,7 +193,7 @@ interface LinuxNavBarProps {
   showChessMenu?: boolean;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onChessMenuClick, onChessClose, showChessMenu }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onChessClose, showChessMenu }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();

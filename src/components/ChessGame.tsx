@@ -56,6 +56,7 @@ interface ChessGameProps {
   onChatToggle?: () => void;
   isChatMinimized?: boolean;
   isMobile?: boolean;
+  onMenuToggle?: () => void;
 }
 
 // Piece gallery data - will be updated dynamically based on selected piece set
