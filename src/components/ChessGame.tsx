@@ -1570,10 +1570,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               height: '100%',
               objectFit: 'contain',
               position: 'absolute',
-              top: 0,
-              left: 0,
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
               zIndex: 10,
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              margin: 0,
+              padding: 0
             }}
             onError={(e) => {
               console.error('[PIECE IMAGE ERROR] Failed to load:', pieceImageUrl, 'for piece:', piece);
@@ -3179,7 +3182,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
           {/* Game Info Bar - Compact */}
           {showGame && (
-            <div className="game-info-compact" style={{ marginTop: '4px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
+            <div className="game-info-compact" style={{ marginTop: '2px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
@@ -3202,7 +3205,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
           {/* Main Game Area */}
           {showGame ? (
-            <div className="chess-main-area" style={{ height: 'calc(100vh - 140px)', minHeight: 'calc(100vh - 140px)', paddingBottom: '40px' }}>
+            <div className="chess-main-area" style={{ height: 'calc(100vh - 100px)', minHeight: 'calc(100vh - 100px)', paddingTop: '2px', paddingBottom: '40px' }}>
               <div className="chessboard-container" style={{ 
                 width: 'min(85vh, 85vw, 700px)',
                 height: 'min(85vh, 85vw, 700px)',
@@ -3211,36 +3214,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid red', // TEMP: Visual test to see if container renders
-                backgroundColor: '#ff0000' // TEMP: Visual test
+                justifyContent: 'center'
               }}>
-                {/* Primary img tag - this WILL display the chessboard */}
-                <img 
-                  src={selectedChessboard}
-                  alt="Chessboard"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    zIndex: 0,
-                    pointerEvents: 'none',
-                    display: 'block',
-                    visibility: 'visible',
-                    opacity: 1
-                  }}
-                  onError={(e) => {
-                    console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
-                    console.error('[CHESSBOARD] Image path:', selectedChessboard);
-                    console.error('[CHESSBOARD] Full error:', e);
-                  }}
-                  onLoad={() => {
-                    console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
-                  }}
-                />
                 <div 
                   className="chessboard"
                   style={{
@@ -3258,6 +3233,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     minHeight: '100%',
                     position: 'relative',
                     zIndex: 1,
+                    margin: 0,
+                    padding: 0,
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
                 >
