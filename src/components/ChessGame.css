@@ -770,7 +770,7 @@
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  background-color: #3e3e42 !important; /* Fallback if image doesn't load */
+  background-color: transparent !important;
   border-radius: 12px;
   box-shadow: 0 0 15px rgba(0,0,0,0.10);
   border: 2px solid rgba(50,205,50,0.3);
@@ -782,6 +782,10 @@
   opacity: 1 !important;
   position: relative;
   z-index: 1;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  gap: 0 !important;
 }
 
 /* CRITICAL: Force background-image to show regardless of theme */
