@@ -1,0 +1,1 @@
+import{f as r,h as e}from"./index-BhVj_7jo.js";import{g as t}from"./wagmi-vendor-CfOQr0nB.js";async function a(a){if(!a)return"";try{const e=await r.getProfile(a);if((null==e?void 0:e.username)&&""!==e.username.trim())return e.username}catch(s){}try{const r=await t(e,{address:a});if(r)return r}catch(s){}return`${a.slice(0,6)}...${a.slice(-4)}`}export{a as g};
