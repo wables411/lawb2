@@ -3225,7 +3225,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover',
+                    objectFit: 'fill',
                     zIndex: 0,
                     pointerEvents: 'none'
                   }}
@@ -3241,7 +3241,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className="chessboard"
                   style={{
                     backgroundImage: `url(${selectedChessboard})`,
-                    backgroundSize: 'cover',
+                    backgroundSize: '100% 100%',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
                     backgroundColor: 'transparent',
