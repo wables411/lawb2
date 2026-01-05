@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
 import { createUseStyles } from 'react-jss';
 import { playIconClickSound } from '../utils/sound';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 const useStyles = createUseStyles({
   icon: {
@@ -54,8 +53,7 @@ interface IconProps {
 }
 
 function Icon({ image, label, action, url, popupId, folderId, isInFolder = false, position, onDrag, onClick }: IconProps) {
-  const isBaseApp = isBaseMiniApp();
-  const classes = useStyles({ isBaseMiniApp: isBaseApp });
+  const classes = useStyles({ isBaseMiniApp: false });
   const nodeRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);
@@ -139,16 +137,6 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
     );
   }
 
-  // Disable dragging in Base Mini App
-  const disableDragging = isBaseMiniApp();
-
-  if (disableDragging) {
-    return (
-      <div onClick={handleClick}>
-        {iconMarkup}
-      </div>
-    );
-  }
 
   return (
     <Draggable 

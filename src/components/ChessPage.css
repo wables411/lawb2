@@ -1,5 +1,6 @@
 .chess-page {
   padding: 0;
+  padding-bottom: 50px; /* Space for navbar on mobile */
   max-width: 100vw;
   margin: 0;
   height: 100vh;
@@ -8,6 +9,12 @@
   position: relative;
   boxSizing: 'border-box';
   scroll-behavior: auto;
+}
+
+@media (min-width: 769px) {
+  .chess-page {
+    padding-bottom: 36px; /* Space for navbar on desktop */
+  }
 }
 
 .chess-content {

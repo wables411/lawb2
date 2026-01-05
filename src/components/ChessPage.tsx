@@ -3,15 +3,16 @@ import { ChessGame } from './ChessGame';
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { ChessChat } from './ChessChat';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
-import { initBaseMiniApp } from '../utils/baseMiniapp';
+import LinuxNavBar from './LinuxNavBar';
+import { useAccount } from 'wagmi';
+import { useAppKitSafe } from '../hooks/useAppKitSafe';
+import { lazy, Suspense } from 'react';
 import './ChessMultiplayer.css';
 import './ChessPage.css';
 
+const PlayerProfile = lazy(() => import('./PlayerProfile').then(m => ({ default: m.PlayerProfile })));
+
 const ChessPage: React.FC = () => {
-  // Initialize Base Mini App SDK if running as Base Mini App (doesn't affect regular web app)
-  useEffect(() => {
-    void initBaseMiniApp();
-  }, []);
 
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
@@ -87,19 +88,16 @@ const ChessPage: React.FC = () => {
       uaMobile ||
       (capabilities.isTouchDevice && (mediaQueryMatch || capabilities.screenWidth <= 1024));
 
-    console.log('[CHESS_PAGE] Mobile detection', {
-      mediaQueryMatch,
-      capabilities,
-      uaMobile,
-      detected
-    });
-
     return detected;
   }, [mediaQueryMatch, capabilities]);
   const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
   const [isInGame, setIsInGame] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  
+  const { address, isConnected } = useAccount();
+  const { open } = useAppKitSafe();
 
   useEffect(() => {
     setIsChatVisible(false);
@@ -135,8 +133,49 @@ const ChessPage: React.FC = () => {
     setIsChatVisible(false);
   };
 
+  const walletButton = (
+    <div style={{ position: 'relative' }}>
+      <div 
+        onClick={() => {
+          if (!isConnected) {
+            void open({ view: 'Connect' });
+          } else {
+            void open({ view: 'Account' });
+          }
+        }} 
+        style={{ 
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          color: isConnected ? 'limegreen' : 'red',
+          fontWeight: 'bold'
+        }}
+      >
+        <span style={{
+          height: '10px',
+          width: '10px',
+          borderRadius: '50%',
+          backgroundColor: isConnected ? 'limegreen' : 'red',
+          marginRight: '8px',
+          border: '1px solid black'
+        }}></span>
+        {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Disconnected'}
+      </div>
+    </div>
+  );
+
   return (
     <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
+      <LinuxNavBar
+        walletButton={walletButton}
+        connectionStatus={{
+          connected: isConnected,
+          address: address,
+          ens: undefined
+        }}
+        onOpenPublicChat={handleChatToggle}
+        onOpenProfile={() => setShowProfile(true)}
+      />
       <div className="chess-content">
         {gameMode === 'singleplayer' ? (
           <ChessGame 
@@ -172,6 +211,43 @@ const ChessPage: React.FC = () => {
           isResizable={!isMobile}
           isMobile={isMobile}
         />
+      )}
+      
+      {showProfile && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: '#c0c0c0',
+            border: '2px outset #fff',
+            padding: '20px',
+            zIndex: 10000,
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+          }}>
+            <button
+              onClick={() => setShowProfile(false)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: '#c0c0c0',
+                border: '2px outset #fff',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              ×
+            </button>
+            <PlayerProfile isMobile={isMobile} />
+          </div>
+        </Suspense>
       )}
     </div>
   );

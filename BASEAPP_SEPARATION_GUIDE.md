@@ -275,3 +275,8 @@ Update `public/.well-known/farcaster.json` with new domain:
 6. Update Farcaster manifest with new domain
 7. Remove Base App code from original repo
 
+
+
+
+
+

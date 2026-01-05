@@ -19,6 +19,7 @@ import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
 
 import './ChessGame.css';
+import './ChessGameModern.css';
 
 // Game modes
 const GameMode = {
@@ -387,12 +388,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
   pieceImages = selectedPieceSet.pieceImages;
-  console.log('[PIECE IMAGES] Initialized:', Object.keys(pieceImages).length, 'pieces', pieceImages);
 
   // Update piece images when selected piece set changes
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
-    console.log('[PIECE IMAGES] Updated in useEffect:', Object.keys(pieceImages).length, 'pieces', pieceImages);
     
     // Update piece gallery with new piece set images
     pieceGallery = [
@@ -1785,9 +1784,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const renderDifficultySelection = () => (
     <div className="difficulty-selection-row" style={{ justifyContent: 'center' }}>
       <div className="difficulty-controls-col">
-        <div className="difficulty-selection-panel" style={{background:'transparent',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'none',textAlign:'center'}}>
-          <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#ff0000',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Select Difficulty</h2>
-          <p style={{fontSize:'1.1rem',color:'#ff0000',marginBottom:24,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Compete against the computer to climb the leaderboard.</p>
+        <div className="difficulty-selection-panel" style={{background:'rgba(0, 0, 0, 0.8)',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'0 0 20px rgba(255, 0, 0, 0.5)',textAlign:'center',border:'2px solid #ff0000'}}>
+          <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#ffffff',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 10px #ff0000, 0 0 5px #ff0000, 2px 2px 4px rgba(0,0,0,0.8)'}}>Select Difficulty</h2>
+          <p style={{fontSize:'1.1rem',color:'#ffffff',marginBottom:24,textShadow:'0 0 8px #ff0000, 0 0 4px #ff0000, 1px 1px 2px rgba(0,0,0,0.8)'}}>Compete against the computer to climb the leaderboard.</p>
           <div style={{display:'flex',justifyContent:'center',gap:16,marginBottom:24}}>
             <button
               className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
@@ -2243,81 +2242,81 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </div>
         <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
-          <div className="center-area">
-            <div className="game-mode-panel-streamlined">
-              {/* Status Display and Network Switching */}
+          <div className="game-mode-panel-streamlined">
+            {/* Status Display and Network Switching */}
+            <div style={{ 
+              textAlign: 'center', 
+              marginBottom: '20px',
+              padding: '10px',
+              backgroundColor: '#000000',
+              border: '2px outset #fff',
+              borderRadius: '4px'
+            }}>
               <div style={{ 
-                textAlign: 'center', 
-                marginBottom: '20px',
-                padding: '10px',
-                backgroundColor: '#000000',
-                border: '2px outset #fff',
-                borderRadius: '4px'
+                color: '#ff0000', 
+                fontSize: '14px', 
+                fontWeight: 'bold',
+                marginBottom: '10px'
               }}>
-                <div style={{ 
-                  color: '#ff0000', 
-                  fontSize: '14px', 
+                {status}
+              </div>
+              {showGame && gameState === 'active' && gameMode === 'ai' && timeoutCountdown > 0 && (
+                <div className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`} style={{
+                  color: timeoutCountdown < 60 ? '#ff0000' : timeoutCountdown < 300 ? '#ff8800' : '#000080',
+                  fontSize: '12px',
                   fontWeight: 'bold',
-                  marginBottom: '10px'
+                  fontFamily: 'Courier New, monospace',
+                  marginTop: '5px'
                 }}>
-                  {status}
-                </div>
-                {showGame && gameState === 'active' && gameMode === 'ai' && timeoutCountdown > 0 && (
-                  <div className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`} style={{
-                    color: timeoutCountdown < 60 ? '#ff0000' : timeoutCountdown < 300 ? '#ff8800' : '#000080',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    fontFamily: 'Courier New, monospace',
-                    marginTop: '5px'
-                  }}>
-                    {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
-                  </div>
-                )}
-                {/* Chain switching no longer required for single-player - any EVM chain works */}
-              </div>
-              
-              <div className="mode-selection-compact">
-                <button 
-                  className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
-                  onClick={() => setGameMode('ai')}
-                >
-                  VS AI
-                </button>
-                <button 
-                  className={`mode-btn-compact ${isOnline ? 'selected' : ''}`}
-                  onClick={() => setGameMode('online')}
-                >
-                  PvP
-                </button>
-              </div>
-              {gameMode === GameMode.AI && (
-                <button className="start-btn-compact" onClick={() => setShowPieceSetSelector(true)}>
-                  Start Match
-                </button>
-              )}
-              {isOnline && (
-                <div className="pvp-info">
-                  <p>Challenge other players with tDMT wagers</p>
-                  <p>Create or join matches instantly</p>
+                  {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
                 </div>
               )}
-              {/* Chessboards GIF */}
-              <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
-                <img 
-                  src="/images/chessboards.gif" 
-                  alt="Chessboards Animation" 
-                  style={{
-                    maxWidth: '100%',
-                    width: '100%',
-                    height: 'auto',
-                    borderRadius: '0px',
-                    boxShadow: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-              {/* Sidebar toggle buttons removed - use menu button instead */}
+              {/* Chain switching no longer required for single-player - any EVM chain works */}
             </div>
+            
+            <div className="mode-selection-compact">
+              <button 
+                className={`mode-btn-compact chess-primary-btn ${gameMode === 'ai' ? 'selected' : ''}`}
+                onClick={() => setGameMode('ai')}
+              >
+                VS AI
+              </button>
+              <button 
+                className={`mode-btn-compact chess-primary-btn ${isOnline ? 'selected' : ''}`}
+                onClick={() => setGameMode('online')}
+              >
+                PvP
+              </button>
+            </div>
+            {gameMode === GameMode.AI && (
+              <button className="start-btn-compact chess-primary-btn" onClick={() => setShowPieceSetSelector(true)}>
+                Start Match
+              </button>
+            )}
+            {isOnline && (
+              <div className="pvp-info">
+                <p>Challenge other players with tDMT wagers</p>
+                <p>Create or join matches instantly</p>
+              </div>
+            )}
+            {/* Chessboards GIF */}
+            <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
+              <img 
+                src="/images/chessboards.gif" 
+                alt="Chessboards Animation" 
+                style={{
+                  maxWidth: '100%',
+                  width: '100%',
+                  height: 'auto',
+                  borderRadius: '0px',
+                  boxShadow: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            {/* Sidebar toggle buttons removed - use menu button instead */}
+          </div>
+          <div className="center-area">
           </div>
         </div>
 
@@ -2554,18 +2553,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         )}
 
         {/* Menu Popup - Home View (Desktop Only) */}
-        {!isMobile && (() => {
-          const shouldRender = isMenuOpen && !showGame;
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[MENU RENDER] Home view menu check:', JSON.stringify({
-              isMobile,
-              isMenuOpen,
-              showGame,
-              shouldRender
-            }));
-          }
-          return shouldRender;
-        })() && (
+        {!isMobile && isMenuOpen && !showGame && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
@@ -2869,12 +2857,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             initialSize={{ width: 400, height: 500 }}
             zIndex={10000}
           >
-            {(() => {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.log('[LEADERBOARD] Rendering profile popup for:', viewingProfileAddress);
-              }
-              return null;
-            })()}
             <PlayerProfile isMobile={false} address={viewingProfileAddress} />
           </Popup>
         )}
@@ -3302,20 +3284,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             <div className="game-mode-panel-streamlined">
               <div className="mode-selection-compact">
                 <button 
-                  className={`mode-btn-compact ${gameMode === 'ai' ? 'selected' : ''}`}
+                  className={`mode-btn-compact chess-primary-btn ${gameMode === 'ai' ? 'selected' : ''}`}
                   onClick={() => setGameMode('ai')}
                 >
                   VS AI
                 </button>
-                <button 
-                  className={`mode-btn-compact ${isOnline ? 'selected' : ''}`}
+                <button
+                  className={`mode-btn-compact chess-primary-btn ${isOnline ? 'selected' : ''}`}
                   onClick={() => setGameMode('online')}
                 >
                   PvP
                 </button>
               </div>
               {gameMode === GameMode.AI && (
-                <button className="start-btn-compact" onClick={() => setShowPieceSetSelector(true)}>
+                <button className="start-btn-compact chess-primary-btn" onClick={() => setShowPieceSetSelector(true)}>
                   Start Game
                 </button>
               )}
@@ -3386,18 +3368,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       )}
       
       {/* Desktop Menu Popup - Show for both home and game views */}
-      {(() => {
-        const shouldRender = !isMobile && isMenuOpen;
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[MENU RENDER] Menu check:', JSON.stringify({
-            isMobile,
-            isMenuOpen,
-            showGame,
-            shouldRender
-          }));
-        }
-        return shouldRender;
-      })() && (
+      {!isMobile && isMenuOpen && (
         <div 
           className="chess-menu-popup-overlay"
           onClick={() => {
@@ -3654,12 +3625,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
       )}
       
-      {(() => {
-        if (!isMobile && typeof window !== 'undefined' && window.console) {
-          window.console.log('[DEBUG] openWindows:', Array.from(openWindows), 'has profile:', openWindows.has('profile'));
-        }
-        return null;
-      })()}
       {!isMobile && openWindows.has('profile') && (
         <Popup
           id="profile-window"
@@ -3693,17 +3658,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
       )}
       
-      {(() => {
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[LEADERBOARD] Checking popup render condition:', {
-            isMobile,
-            viewingProfileAddress,
-            shouldRender: !isMobile && !!viewingProfileAddress
-          });
-        }
-        return null;
-      })()}
-      
       {/* Profile popup - rendered in home view */}
       {!isMobile && viewingProfileAddress && (
         <Popup
@@ -3719,13 +3673,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialPosition={{ x: 100, y: 100 }}
           initialSize={{ width: 400, height: 500 }}
           zIndex={10000}
-        >
-          {(() => {
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[LEADERBOARD] Rendering profile popup for:', viewingProfileAddress);
-            }
-            return null;
-          })()}
+          >
           <PlayerProfile isMobile={false} address={viewingProfileAddress} />
         </Popup>
       )}

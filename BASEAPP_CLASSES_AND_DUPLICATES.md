@@ -82,3 +82,8 @@ The codebase has **separate Base App versions** of chess components:
 
 **Future optimization**: Consider extracting shared logic into hooks/utilities rather than trying to merge the components.
 
+
+
+
+
+

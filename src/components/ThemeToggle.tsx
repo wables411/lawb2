@@ -1,41 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 import './ThemeToggle.css';
 
 type ThemeMode = 'light' | 'dark';
 
 export const ThemeToggle: React.FC<{ asMenuItem?: boolean }> = ({ asMenuItem = false }) => {
-  // Force check Base app - same logic as HowToContent
-  const checkIsBaseApp = (): boolean => {
-    if (typeof window === 'undefined') return false;
-    
-    // Check iframe - PRIMARY method
-    try {
-      if (window.self !== window.top) return true;
-    } catch (e) {
-      // Cross-origin iframe = definitely Base app
-      return true;
-    }
-    
-    // Check URL/referrer for Base/Farcaster indicators
-    const hostname = window.location.hostname.toLowerCase();
-    const referrer = document.referrer.toLowerCase();
-    if (hostname.includes('farcaster') || hostname.includes('base') ||
-        referrer.includes('farcaster') || referrer.includes('base') ||
-        referrer.includes('warpcast')) {
-      return true;
-    }
-    
-    // Check user agent
-    const ua = navigator.userAgent?.toLowerCase() || '';
-    if (ua.includes('farcaster') || ua.includes('base')) {
-      return true;
-    }
-    
-    return isBaseMiniApp();
-  };
-  
-  const isBaseApp = checkIsBaseApp();
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'light';
     const saved = localStorage.getItem('lawb-app-theme');

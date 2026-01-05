@@ -8,7 +8,6 @@ import { ChessGame } from './ChessGame';
 import Taskbar from './Taskbar';
 import MediaGallery from './MediaGallery';
 import NFTDetailPopup from './NFTDetailPopup';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 interface DesktopIcon {
   id: string;
@@ -49,18 +48,11 @@ const ICONS: DesktopIcon[] = [
   { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
 ];
 
-// Icon sizing - smaller for Base Mini App
-const getIconSize = () => {
-  if (typeof window !== 'undefined' && isBaseMiniApp()) {
-    return { width: 60, height: 60 };
-  }
-  return { width: 80, height: 80 };
-};
-
-const ICON_WIDTH = getIconSize().width;
-const ICON_HEIGHT = getIconSize().height;
-const ICON_HGAP = isBaseMiniApp() ? 15 : 10; // More horizontal spacing in Base Mini App
-const ICON_VGAP = isBaseMiniApp() ? 35 : 4; // Much more vertical padding in Base Mini App to prevent overlap
+// Icon sizing
+const ICON_WIDTH = 80;
+const ICON_HEIGHT = 80;
+const ICON_HGAP = 10;
+const ICON_VGAP = 4;
 const START_LEFT = 10;
 const START_TOP = 10;
 
@@ -72,11 +64,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
   // Only show desktop icons (row >= 0, col >= 0)
   const desktopIcons = ICONS.filter(icon => icon.row >= 0 && icon.col >= 0);
   
-  // Base Mini App should ALWAYS use mobile/miniapp layout (vertical, mobile-like)
-  // regardless of actual device or window width
-  // This ensures consistent appearance in Farcaster/Base on both mobile and desktop browsers
-  const isBaseApp = typeof window !== 'undefined' && isBaseMiniApp();
-  const isMobile = isBaseApp || (typeof window !== 'undefined' && window.innerWidth <= 768);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   
   // Detect dark mode
   const isDarkMode = typeof document !== 'undefined' && 
@@ -170,13 +158,12 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
             onClose={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} 
             onMinimize={() => setOpenFolders(prev => ({ ...prev, ['evm-folder']: false }))} 
             zIndex={3001}
-            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 60px)' } : undefined}
           >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isBaseMiniApp() ? 'repeat(auto-fill, minmax(80px, 1fr))' : 'repeat(auto-fill, minmax(96px, 1fr))',
-              gap: isBaseMiniApp() ? '16px' : '24px',
-              padding: isBaseMiniApp() ? '16px' : '32px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: '24px',
+              padding: '32px',
               justifyItems: 'center',
               alignItems: 'center',
               minHeight: '100%',
@@ -207,13 +194,12 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
             onClose={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} 
             onMinimize={() => setOpenFolders(prev => ({ ...prev, ['sol-folder']: false }))} 
             zIndex={3001}
-            initialSize={isBaseMiniApp() ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 60px)' } : undefined}
           >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isBaseMiniApp() ? 'repeat(auto-fill, minmax(80px, 1fr))' : 'repeat(auto-fill, minmax(96px, 1fr))',
-              gap: isBaseMiniApp() ? '16px' : '24px',
-              padding: isBaseMiniApp() ? '16px' : '32px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: '24px',
+              padding: '32px',
               justifyItems: 'center',
               alignItems: 'center',
               minHeight: '100%',

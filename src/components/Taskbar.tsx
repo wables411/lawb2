@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 import { ThemeToggle } from './ThemeToggle';
-import { isBaseMiniApp } from '../utils/baseMiniapp';
 
 interface TaskbarStyleProps {
   isOpen: boolean;
@@ -188,11 +187,7 @@ interface TaskbarProps {
 const Taskbar: React.FC<TaskbarProps> = ({ minimizedWindows, onRestoreWindow, walletButton, connectionStatus, onOpenPublicChat, onOpenProfile }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  // Base Mini App should ALWAYS use mobile/miniapp layout (vertical, mobile-like)
-  // regardless of actual device or window width
-  // This ensures consistent appearance in Farcaster/Base on both mobile and desktop browsers
-  const isBaseApp = typeof window !== 'undefined' && isBaseMiniApp();
-  const isMobile = isBaseApp || (typeof window !== 'undefined' && window.innerWidth <= 768);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const classes = useStyles({ isOpen: isMenuOpen, isMobile });
 
   useEffect(() => {

@@ -4129,3 +4129,52 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   margin: 0px !important;
 }
 
+/* CRITICAL: Ensure all buttons and images are visible on chess page */
+.chess-page button,
+.chess-page .chess-game button,
+.chess-page .game-mode-panel-streamlined button,
+.chess-page .mode-btn-compact,
+.chess-page .start-btn-compact,
+.chess-page .menu-btn,
+.chess-page .sidebar-menu-btn {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.chess-page img,
+.chess-page .chess-game img,
+.chess-page .game-mode-panel-streamlined img,
+.chess-page .chessboard,
+.chess-page .piece {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure buttons and images are visible in both light and dark modes */
+.lawb-app-light-mode .chess-page button,
+.lawb-app-light-mode .chess-page img,
+.lawb-app-dark-mode .chess-page button,
+.lawb-app-dark-mode .chess-page img {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Mobile-specific visibility rules */
+@media (max-width: 768px) {
+  .chess-page button,
+  .chess-page img {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .chess-page img {
+    display: block !important;
+  }
+}
+

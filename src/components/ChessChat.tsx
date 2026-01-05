@@ -37,14 +37,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
 }) => {
   const { address: walletAddress, isConnected } = useAccount();
   
-  // Detect Base Mini App (iframe)
-  const isBaseMiniApp = typeof window !== 'undefined' && (() => {
-    try {
-      return window.self !== window.top;
-    } catch (e) {
-      return true; // Cross-origin iframe = Base Mini App
-    }
-  })();
+  // Always false - no Base Mini App support
+  const isBaseMiniApp = false;
   
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);

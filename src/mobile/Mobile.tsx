@@ -10,7 +10,7 @@ import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { PlayerProfile } from '../components/PlayerProfile';
 import { playIconClickSound } from '../utils/sound';
-import { initBaseMiniApp } from '../utils/baseMiniapp';
+import LinuxNavBar from '../components/LinuxNavBar';
 
 const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
@@ -303,16 +303,6 @@ const Mobile = () => {
 
   // No auto-popup on load - user must click to open popups
 
-  // Initialize Base Mini App SDK when interface is ready
-  // Call ready() after component mounts to hide splash screen (per Farcaster docs)
-  useEffect(() => {
-    // Use a small delay to ensure UI is fully rendered and avoid jitter
-    const timer = setTimeout(() => {
-      void initBaseMiniApp();
-    }, 0);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   if (activeView === 'gallery') {
     return <MobileNFTGallery onBack={() => setActiveView('main')} walletAddress={address || undefined} />;
@@ -694,36 +684,40 @@ const Mobile = () => {
           isMobile={true}
         />
       </Suspense>
-      {/* Bottom Taskbar */}
-      <div className={classes.taskbar}>
-        <button className={classes.menuButton} onClick={() => setMenuOpen(true)}>Menu</button>
-        <div 
-          className={classes.walletStatus}
-          onClick={() => {
-            // Web browser mobile - use AppKit
-            if (!isConnected) {
-              // Open wallet connection modal
-              void open({ view: 'Connect' });
-            } else {
-              // Open account management modal (chain selector/disconnect)
-              void open({ view: 'Account' });
-            }
-          }}
-          style={{ cursor: 'pointer' }}
-        >
-          <span style={{
-            height: '10px',
-            width: '10px',
-            borderRadius: '50%',
-            backgroundColor: isConnected ? 'limegreen' : 'red',
-            marginRight: '6px',
-            border: '1px solid #000',
-            display: 'inline-block',
-          }}></span>
-          {isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
-        </div>
-        <span className={classes.clock}>{clock}</span>
-      </div>
+      {/* Linux NavBar */}
+      <LinuxNavBar
+        walletButton={
+          <div 
+            onClick={() => {
+              if (!isConnected) {
+                void open({ view: 'Connect' });
+              } else {
+                void open({ view: 'Account' });
+              }
+            }}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span style={{
+              height: '8px',
+              width: '8px',
+              borderRadius: '50%',
+              backgroundColor: isConnected ? '#48bb78' : '#f56565',
+              border: '1px solid rgba(0, 0, 0, 0.3)',
+              display: 'inline-block',
+            }}></span>
+            <span style={{ fontSize: '11px', color: '#cbd5e0' }}>
+              {isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
+            </span>
+          </div>
+        }
+        connectionStatus={{
+          connected: isConnected,
+          address: address,
+          ens: ens || undefined
+        }}
+        onOpenPublicChat={() => setShowPublicChat(true)}
+        onOpenProfile={() => setShowProfile(true)}
+      />
     </div>
   );
 };

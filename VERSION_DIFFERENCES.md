@@ -108,3 +108,8 @@ return isMobile ? <Mobile /> : <App />;
 - This triggers `BaseApp` component with miniapp-specific features
 - The `?v=2` parameter itself doesn't cause this - it's the iframe embedding that triggers detection
 
+
+
+
+
+

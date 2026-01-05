@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "postbuild": "cp _headers dist/",
-    "build:base-miniapp": "VITE_BASE_MINIAPP=true tsc && vite build && cp index.base-miniapp.html dist/index.html",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
 import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
-import Taskbar from './components/Taskbar';
+import LinuxNavBar from './components/LinuxNavBar';
 import { ThemeToggle } from './components/ThemeToggle';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
@@ -9,7 +9,6 @@ import { useAppKitSafe } from './hooks/useAppKitSafe';
 import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
-import { initBaseMiniApp, isBaseMiniApp } from './utils/baseMiniapp';
 import { useMediaQuery } from './hooks/useMediaQuery';
 
 // Lazy load heavy components to reduce initial bundle size
@@ -43,38 +42,8 @@ function App() {
   // No auto-popup on load - user must click to open popups
   const [activePopup, setActivePopup] = useState<string | null>(null);
   
-  // Base app detection for theme toggle
-  const baseAppDetected = isBaseMiniApp();
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  
-  const { connect, connectors } = useConnect();
-  
-  // Initialize Base Mini App SDK when interface is ready
-  // Call ready() after component mounts to hide splash screen (per Farcaster docs)
-  useEffect(() => {
-    // Use a small delay to ensure UI is fully rendered and avoid jitter
-    const timer = setTimeout(() => {
-      void initBaseMiniApp();
-    }, 0); // Use requestAnimationFrame or 0ms timeout to ensure render completes
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  // Auto-connect to Farcaster wallet when in Base app and not already connected
-  useEffect(() => {
-    if (isBaseMiniApp() && !isConnected && connectors.length > 0) {
-      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-      if (farcasterConnector) {
-        console.log('[Base Mini App] Auto-connecting to Farcaster wallet...');
-        try {
-          connect({ connector: farcasterConnector });
-        } catch (error) {
-          console.warn('[Base Mini App] Auto-connect failed (this is OK if user needs to approve):', error);
-        }
-      }
-    }
-  }, [isBaseMiniApp(), isConnected, connectors, connect]);
 
   // Debug: log activePopup changes
   useEffect(() => {
@@ -173,25 +142,12 @@ function App() {
         void document.body.offsetWidth;
       }
     } else if (action === 'wallet') {
-      if (isBaseMiniApp()) {
-        // In Base app, use Farcaster connector directly
-        if (!isConnected) {
-          const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-          if (farcasterConnector) {
-            connect({ connector: farcasterConnector });
-          }
-        } else {
-          // Just toggle wallet menu for disconnect option
-          setShowWalletMenu(!showWalletMenu);
-        }
+      if (!isConnected) {
+        // Open wallet connection modal
+        void open({ view: 'Connect' });
       } else {
-        if (!isConnected) {
-          // Open wallet connection modal
-          void open({ view: 'Connect' });
-        } else {
-          // Open account management modal (chain selector/disconnect)
-          void open({ view: 'Account' });
-        }
+        // Open account management modal (chain selector/disconnect)
+        void open({ view: 'Account' });
       }
     } else if (action === 'mint') {
       if (!address) {
@@ -274,24 +230,12 @@ function App() {
     <div style={{ position: 'relative' }}>
       <div 
         onClick={() => {
-          if (isBaseMiniApp()) {
-            // In Base app, use Farcaster connector directly
-            if (!isConnected) {
-              const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp' || c.name?.toLowerCase().includes('farcaster'));
-              if (farcasterConnector) {
-                connect({ connector: farcasterConnector });
-              }
-            } else {
-              setShowWalletMenu(!showWalletMenu);
-            }
+          if (!isConnected) {
+            // Open wallet connection modal
+            void open({ view: 'Connect' });
           } else {
-            if (!isConnected) {
-              // Open wallet connection modal
-              void open({ view: 'Connect' });
-            } else {
-              // Toggle wallet menu
-              setShowWalletMenu(!showWalletMenu);
-            }
+            // Toggle wallet menu
+            setShowWalletMenu(!showWalletMenu);
           }
         }} 
         style={{ 
@@ -433,10 +377,8 @@ function App() {
       )}
       <Desktop onIconClick={handleIconClick} />
 
-      <Taskbar
-        minimizedWindows={Array.from(minimizedPopups)}
-        onRestoreWindow={restorePopup}
-        walletButton={!baseAppDetected ? walletButton : undefined}
+      <LinuxNavBar
+        walletButton={walletButton}
         connectionStatus={{
           connected: isConnected,
           address: address,

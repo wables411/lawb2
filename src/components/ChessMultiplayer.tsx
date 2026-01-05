@@ -14,6 +14,7 @@ import { firebaseProfiles } from '../firebaseProfiles';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
 import './ChessMultiplayer.css';
+import './ChessGameModern.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from './TokenSelector';
 import { ChainSelector } from './ChainSelector';
