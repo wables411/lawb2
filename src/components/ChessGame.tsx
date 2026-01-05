@@ -3211,7 +3211,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                border: '2px solid red', // TEMP: Visual test to see if container renders
+                backgroundColor: '#ff0000' // TEMP: Visual test
               }}>
                 {/* Primary img tag - this WILL display the chessboard */}
                 <img 
