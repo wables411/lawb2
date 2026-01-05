@@ -3202,8 +3202,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
           {/* Main Game Area */}
           {showGame ? (
-            <div className="chess-main-area">
-              <div className="chessboard-container">
+            <div className="chess-main-area" style={{ height: 'calc(100vh - 100px)', minHeight: 'calc(100vh - 100px)' }}>
+              <div className="chessboard-container" style={{ 
+                width: 'min(85vh, 85vw, 700px)',
+                height: 'min(85vh, 85vw, 700px)',
+                minWidth: '400px',
+                minHeight: '400px'
+              }}>
                 <div 
                   className="chessboard"
                   style={{
@@ -3211,10 +3216,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
-                    backgroundColor: 'transparent',
+                    backgroundColor: '#3e3e42',
                     display: 'grid',
                     gridTemplateColumns: 'repeat(8, 1fr)',
                     gridTemplateRows: 'repeat(8, 1fr)',
+                    width: '100%',
+                    height: '100%',
+                    minWidth: '100%',
+                    minHeight: '100%',
+                    position: 'relative',
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
                 >

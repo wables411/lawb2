@@ -706,8 +706,8 @@
   align-items: center;
   justify-content: center; /* Center vertically */
   flex: 1 1 0;
-  min-height: 400px;
-  height: 100%;
+  min-height: calc(100vh - 100px) !important;
+  height: calc(100vh - 100px) !important;
   width: 100%;
   margin-top: 0 !important; /* No spacing from game info bar */
   padding-top: 0 !important;
@@ -740,6 +740,7 @@
   opacity: 1 !important;
   position: relative;
   z-index: 1;
+  background-color: #3e3e42 !important; /* Fallback background so we can see the container */
 }
 
 .chessboard {
@@ -750,10 +751,11 @@
   min-width: 100% !important;
   min-height: 100% !important;
   aspect-ratio: 1 / 1;
-  background-image: url('/images/chessboard1.png');
+  background-image: url('/images/chessboard1.png') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+  background-color: #3e3e42 !important; /* Fallback if image doesn't load */
   border-radius: 12px;
   box-shadow: 0 0 15px rgba(0,0,0,0.10);
   border: 2px solid rgba(50,205,50,0.3);
