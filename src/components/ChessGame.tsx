@@ -254,7 +254,7 @@ const useLichessAPI = () => {
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false, onMenuToggle }) => {
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -1548,6 +1548,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       console.warn('[PIECE RENDER] Piece exists but no image:', piece, 'pieceImages keys:', Object.keys(pieceImages));
     }
 
+    const pieceImageUrl = piece && pieceImages[piece] ? pieceImages[piece] : null;
+
   return (
       <div
         key={`${row}-${col}`}
@@ -1556,14 +1558,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
       >
-        {piece && (
-          <div
+        {piece && pieceImageUrl && (
+          <img
+            src={pieceImageUrl}
+            alt={piece}
             className="piece"
             style={{
-              backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
-              backgroundSize: 'contain',
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center'
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 10,
+              pointerEvents: 'none'
+            }}
+            onError={(e) => {
+              console.error('[PIECE IMAGE ERROR] Failed to load:', pieceImageUrl, 'for piece:', piece);
             }}
           />
         )}
@@ -2050,6 +2061,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Expose menu toggle to parent if provided
+  useEffect(() => {
+    if (onMenuToggle) {
+      // Store the toggle function so parent can call it
+      (window as any).__chessMenuToggle = () => setIsMenuOpen(prev => !prev);
+    }
+  }, [onMenuToggle]);
   const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
@@ -2188,58 +2207,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   if (!showGame && !showDifficulty && !showPieceSetSelector) {
     return (
       <div className="chess-game">
-        <div className="chess-header">
-          <h2>LAWB CHESS MAINNET BETA 3000</h2>
-          <div className="chess-controls">
-            {onMinimize && <button onClick={onMinimize}>_</button>}
-            {/* Desktop menu button */}
-            {!isMobile && (
-            <button 
-              className="menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsMenuOpen(prev => !prev);
-              }}
-              title="Menu"
-              type="button"
-            >
-              ☰
-            </button>
-            )}
-            {/* Mobile menu button */}
-            {isMobile && (
-              <button 
-                className="sidebar-menu-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsSidebarOpen(prev => !prev);
-                }}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsSidebarOpen(prev => !prev);
-                }}
-                title="Toggle Menu"
-                type="button"
-                aria-label="Toggle Menu"
-              >
-                ☰
-              </button>
-            )}
-            {isMobile && isChatMinimized && onChatToggle && (
-              <button 
-                className="chat-bubble-btn"
-                onClick={onChatToggle}
-                title="Open Chat"
-              >
-                💬
-              </button>
-            )}
-            <button onClick={onClose}>×</button>
-          </div>
-        </div>
         <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="game-mode-panel-streamlined">
@@ -2867,47 +2834,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Single player game UI
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''}${isMobile ? ' mobile' : ' desktop'}`}>
-      {/* Streamlined Header - always show */}
-      <div className="chess-header">
-        <h2>LAWB CHESS MAINNET BETA 3000</h2>
-        <div className="chess-controls">
-          {onMinimize && <button onClick={onMinimize}>_</button>}
-          {!isMobile && (
-            <button 
-              className="menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof window !== 'undefined' && window.console) {
-                  window.console.log('Menu button clicked (game view), current isMenuOpen:', isMenuOpen);
-                }
-                setIsMenuOpen(prev => !prev);
-              }}
-              title="Menu"
-              type="button"
-            >
-              ☰
-            </button>
-          )}
-          {isMobile && (
-            <button 
-              className="sidebar-menu-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[MENU BUTTON] Clicked, current isSidebarOpen:', isSidebarOpen);
-                setIsSidebarOpen(!isSidebarOpen);
-              }}
-              title="Toggle Menu"
-              type="button"
-              aria-label="Toggle Menu"
-            >
-              ☰
-            </button>
-          )}
-          <button onClick={onClose}>×</button>
-        </div>
-      </div>
       <div className={`game-stable-layout ${isMobile ? 'mobile-layout' : 'desktop-layout'}`}>
         {/* Mobile Sidebar Popup - Always available on mobile via menu button */}
         {isMobile && (

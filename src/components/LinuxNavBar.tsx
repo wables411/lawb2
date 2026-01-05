@@ -189,9 +189,11 @@ interface LinuxNavBarProps {
   };
   onOpenPublicChat?: () => void;
   onOpenProfile?: () => void;
+  onChessClose?: () => void;
+  showChessMenu?: boolean;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onChessMenuClick, onChessClose, showChessMenu }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
@@ -313,6 +315,32 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             >
               <span>👤</span>
               <span>Profile</span>
+            </button>
+          )}
+          {showChessMenu && (
+            <>
+              <hr className={classes.menuSeparator} />
+              <button
+                className={classes.menuItem}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if ((window as any).__chessMenuToggle) {
+                    (window as any).__chessMenuToggle();
+                  }
+                }}
+              >
+                <span>☰</span>
+                <span>Chess Menu</span>
+              </button>
+            </>
+          )}
+          {onChessClose && (
+            <button
+              className={classes.menuItem}
+              onClick={() => handleMenuLinkClick(undefined, onChessClose)}
+            >
+              <span>×</span>
+              <span>Close Chess</span>
             </button>
           )}
           <hr className={classes.menuSeparator} />

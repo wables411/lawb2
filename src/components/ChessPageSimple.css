@@ -1,0 +1,154 @@
+/* ============================================
+   SIMPLE CHESS PAGE - Clean Linux Style
+   ============================================ */
+
+.chess-page-simple {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  padding-bottom: 36px; /* Space for LinuxNavBar */
+}
+
+.chess-page-simple.mobile {
+  padding-bottom: 50px;
+}
+
+.chess-content-simple {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Override ChessGame styles to fit console */
+.chess-page-simple .chess-game {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Hide any remaining headers */
+.chess-page-simple .chess-header {
+  display: none !important;
+}
+
+.chess-page-simple .chess-controls {
+  display: none !important;
+}
+
+.chess-page-simple .chess-main-area {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  box-sizing: border-box;
+  margin-top: 0;
+}
+
+.chess-page-simple .game-info-compact {
+  margin: 0 0 4px 0;
+  padding: 4px 8px;
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  width: calc(100% - 16px);
+  max-width: 600px;
+}
+
+.chess-page-simple .chessboard-container {
+  width: 100%;
+  max-width: min(90vh, 90vw, 600px);
+  max-height: min(90vh, 90vw, 600px);
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+}
+
+.chess-page-simple .chessboard {
+  width: 100%;
+  height: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(8, 1fr) !important;
+  grid-template-rows: repeat(8, 1fr) !important;
+  position: relative !important;
+}
+
+.chess-page-simple .square {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chess-page-simple .piece {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+/* Ensure board background shows */
+.chess-page-simple .chessboard {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Light mode */
+.lawb-app-light-mode .chess-page-simple {
+  background: #ffffff;
+}
+
+.lawb-app-light-mode .chess-page-simple .game-info-compact {
+  background: #f3f3f3;
+  border-color: #d0d0d0;
+  color: #1e1e1e;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .chess-page-simple {
+    padding-bottom: 50px;
+  }
+
+  .chess-page-simple .chess-main-area {
+    padding: 4px;
+  }
+
+  .chess-page-simple .game-info-compact {
+    width: calc(100% - 8px);
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .chess-page-simple .chessboard-container {
+    max-width: min(95vh, 95vw);
+    max-height: min(95vh, 95vw);
+  }
+}
+

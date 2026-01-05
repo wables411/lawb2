@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChessGame } from './ChessGame';
-import { ChessMultiplayer } from './ChessMultiplayer';
-import { ChessChat } from './ChessChat';
-import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import LinuxNavBar from './LinuxNavBar';
 import { useAccount } from 'wagmi';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
-import { lazy, Suspense } from 'react';
-import './ChessMultiplayer.css';
-import './ChessPage.css';
+import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
+import './ChessPageSimple.css';
 
 const PlayerProfile = lazy(() => import('./PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 
@@ -90,47 +86,11 @@ const ChessPage: React.FC = () => {
 
     return detected;
   }, [mediaQueryMatch, capabilities]);
-  const [gameMode, setGameMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
-  const [chatInviteCode, setChatInviteCode] = useState<string | undefined>();
-  const [isInGame, setIsInGame] = useState(false);
-  const [isChatVisible, setIsChatVisible] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  
   const { address, isConnected } = useAccount();
   const { open } = useAppKitSafe();
 
-  useEffect(() => {
-    setIsChatVisible(false);
-  }, [isMobile]);
-
   const handleClose = () => {
-    // Navigate back to main site
     window.location.href = '/';
-  };
-
-  const handleModeSelect = (mode: 'singleplayer' | 'multiplayer') => {
-    setGameMode(mode);
-  };
-
-  const handleBackToModeSelect = () => {
-    // Reset game state when going back to mode selection
-    setIsInGame(false);
-    setChatInviteCode(undefined);
-  };
-
-
-
-  const handleGameStart = (inviteCode?: string) => {
-    setIsInGame(true);
-    setChatInviteCode(inviteCode);
-  };
-
-  const handleChatToggle = () => {
-    setIsChatVisible(!isChatVisible);
-  };
-
-  const handleChatMinimize = () => {
-    setIsChatVisible(false);
   };
 
   const walletButton = (
@@ -165,7 +125,7 @@ const ChessPage: React.FC = () => {
   );
 
   return (
-    <div className={`chess-page ${isMobile ? 'mobile' : 'desktop'}`}>
+    <div className={`chess-page-simple ${isMobile ? 'mobile' : 'desktop'}`}>
       <LinuxNavBar
         walletButton={walletButton}
         connectionStatus={{
@@ -173,82 +133,15 @@ const ChessPage: React.FC = () => {
           address: address,
           ens: undefined
         }}
-        onOpenPublicChat={handleChatToggle}
-        onOpenProfile={() => setShowProfile(true)}
+        onChessClose={handleClose}
+        showChessMenu={true}
       />
-      <div className="chess-content">
-        {gameMode === 'singleplayer' ? (
-          <ChessGame 
-            onClose={handleClose} 
-            onBackToModeSelect={handleBackToModeSelect}
-            onGameStart={handleGameStart}
-            onChatToggle={handleChatToggle}
-            isChatMinimized={!isChatVisible}
-            isMobile={isMobile}
-          />
-        ) : (
-          <ChessMultiplayer 
-            onClose={handleClose} 
-            onMinimize={() => {}} 
-            fullscreen={false} 
-            onBackToModeSelect={handleBackToModeSelect}
-            onGameStart={handleGameStart}
-            onChatToggle={handleChatToggle}
-            isChatMinimized={!isChatVisible}
-            isMobile={isMobile}
-          />
-        )}
-      </div>
-      
-      {/* Independent Chat Window - Available on both desktop and mobile when opened via menu */}
-      {/* Chat is now opened via menu button in ChessGame/ChessMultiplayer components */}
-      {isChatVisible && (
-        <ChessChat
-          isOpen={isChatVisible}
-          onMinimize={handleChatMinimize} // Allow minimizing
-          currentInviteCode={chatInviteCode}
-          isDraggable={!isMobile}
-          isResizable={!isMobile}
+      <div className="chess-content-simple">
+        <ChessGame 
+          onClose={handleClose} 
           isMobile={isMobile}
         />
-      )}
-      
-      {showProfile && (
-        <Suspense fallback={<div>Loading...</div>}>
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: '#c0c0c0',
-            border: '2px outset #fff',
-            padding: '20px',
-            zIndex: 10000,
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-          }}>
-            <button
-              onClick={() => setShowProfile(false)}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold'
-              }}
-            >
-              ×
-            </button>
-            <PlayerProfile isMobile={isMobile} />
-          </div>
-        </Suspense>
-      )}
+      </div>
     </div>
   );
 };
