@@ -256,6 +256,8 @@ html:not(.lawb-app-dark-mode) {
   /* We can't use !important on background-image because that would override inline styles */
   /* Instead, we ensure no background-image rule is set here, allowing inline style to work */
   background-color: transparent !important;
+  /* CRITICAL: Allow background-image from inline style or CSS variable */
+  background-image: var(--chessboard-bg-image) !important;
 }
 
 /* CRITICAL: Preserve all children of chessboard */

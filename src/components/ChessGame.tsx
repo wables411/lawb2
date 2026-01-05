@@ -3179,7 +3179,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
           {/* Game Info Bar - Compact */}
           {showGame && (
-            <div className="game-info-compact" style={{ marginTop: 0, marginBottom: '4px' }}>
+            <div className="game-info-compact" style={{ marginTop: '4px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
@@ -3202,13 +3202,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
           {/* Main Game Area */}
           {showGame ? (
-            <div className="chess-main-area" style={{ height: 'calc(100vh - 100px)', minHeight: 'calc(100vh - 100px)' }}>
+            <div className="chess-main-area" style={{ height: 'calc(100vh - 140px)', minHeight: 'calc(100vh - 140px)', paddingBottom: '40px' }}>
               <div className="chessboard-container" style={{ 
                 width: 'min(85vh, 85vw, 700px)',
                 height: 'min(85vh, 85vw, 700px)',
                 minWidth: '400px',
-                minHeight: '400px'
+                minHeight: '400px',
+                position: 'relative'
               }}>
+                {/* Fallback img tag to ensure chessboard displays */}
+                <img 
+                  src={selectedChessboard}
+                  alt="Chessboard"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    zIndex: 0,
+                    pointerEvents: 'none'
+                  }}
+                  onError={(e) => {
+                    console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
                 <div 
                   className="chessboard"
                   style={{
@@ -3225,6 +3245,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     minWidth: '100%',
                     minHeight: '100%',
                     position: 'relative',
+                    zIndex: 1,
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
                 >

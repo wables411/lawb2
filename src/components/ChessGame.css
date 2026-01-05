@@ -766,6 +766,20 @@
   visibility: visible !important;
   opacity: 1 !important;
   position: relative;
+  z-index: 1;
+}
+
+/* CRITICAL: Force background-image to show regardless of theme */
+.chessboard[style*="backgroundImage"],
+.chessboard[style*="background-image"],
+div.chessboard[style*="backgroundImage"],
+div.chessboard[style*="background-image"] {
+  background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
+}
+
+/* Force background-image from inline style attribute */
+div[class*="chessboard"][style*="url"] {
+  background-image: inherit !important;
 }
 .game-controls {
   flex: 0 0 auto;
