@@ -743,6 +743,18 @@
   background-color: #3e3e42 !important; /* Fallback background so we can see the container */
 }
 
+/* Ensure img tags inside chessboard-container are visible */
+.chessboard-container img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  z-index: 0 !important;
+}
+
 .chessboard {
   width: 100% !important;
   height: 100% !important;

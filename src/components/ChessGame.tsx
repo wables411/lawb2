@@ -3208,9 +3208,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 height: 'min(85vh, 85vw, 700px)',
                 minWidth: '400px',
                 minHeight: '400px',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                {/* Fallback img tag to ensure chessboard displays */}
+                {/* Primary img tag - this WILL display the chessboard */}
                 <img 
                   src={selectedChessboard}
                   alt="Chessboard"
@@ -3222,11 +3225,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     height: '100%',
                     objectFit: 'cover',
                     zIndex: 0,
-                    pointerEvents: 'none'
+                    pointerEvents: 'none',
+                    display: 'block',
+                    visibility: 'visible',
+                    opacity: 1
                   }}
                   onError={(e) => {
                     console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
-                    (e.target as HTMLImageElement).style.display = 'none';
+                    console.error('[CHESSBOARD] Image path:', selectedChessboard);
+                    console.error('[CHESSBOARD] Full error:', e);
+                  }}
+                  onLoad={() => {
+                    console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
                   }}
                 />
                 <div 
@@ -3236,7 +3246,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
-                    backgroundColor: '#3e3e42',
+                    backgroundColor: 'transparent',
                     display: 'grid',
                     gridTemplateColumns: 'repeat(8, 1fr)',
                     gridTemplateRows: 'repeat(8, 1fr)',
