@@ -324,13 +324,73 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
                 className={classes.menuItem}
                 onClick={() => {
                   setIsMenuOpen(false);
-                  if ((window as any).__chessMenuToggle) {
-                    (window as any).__chessMenuToggle();
+                  if ((window as any).__chessOpenLeaderboard) {
+                    (window as any).__chessOpenLeaderboard();
                   }
                 }}
               >
-                <span>☰</span>
-                <span>Chess Menu</span>
+                <span>🏆</span>
+                <span>Leaderboard</span>
+              </button>
+              <button
+                className={classes.menuItem}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if ((window as any).__chessOpenMoves) {
+                    (window as any).__chessOpenMoves();
+                  }
+                }}
+              >
+                <span>📜</span>
+                <span>Move History</span>
+              </button>
+              <button
+                className={classes.menuItem}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if ((window as any).__chessOpenChat) {
+                    (window as any).__chessOpenChat();
+                  }
+                }}
+              >
+                <span>💬</span>
+                <span>Chat</span>
+              </button>
+              <button
+                className={classes.menuItem}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if ((window as any).__chessOpenProfile) {
+                    (window as any).__chessOpenProfile();
+                  }
+                }}
+              >
+                <span>👤</span>
+                <span>Profile</span>
+              </button>
+              <button
+                className={classes.menuItem}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if ((window as any).__chessOpenGallery) {
+                    (window as any).__chessOpenGallery();
+                  }
+                }}
+              >
+                <span>🖼️</span>
+                <span>Piece Gallery</span>
+              </button>
+              <button
+                className={classes.menuItem}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if ((window as any).__chessOpenHowTo) {
+                    (window as any).__chessOpenHowTo();
+                  }
+                }}
+              >
+                <span>❓</span>
+                <span>How To Play</span>
               </button>
             </>
           )}

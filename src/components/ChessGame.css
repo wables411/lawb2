@@ -314,6 +314,8 @@
   justify-content: center;
   visibility: visible !important;
   opacity: 1 !important;
+  min-width: 0;
+  min-height: 0;
 }
 
 .square.selected {
@@ -343,13 +345,15 @@
   position: absolute !important;
   width: 100% !important;
   height: 100% !important;
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
+  object-fit: contain !important;
+  display: block !important;
   cursor: pointer;
   transition: transform 0.2s ease;
   z-index: 2 !important;
   top: 0 !important;
+  left: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   left: 0 !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -723,7 +727,7 @@
   max-height: min(80vh, 80vw);
   min-width: 300px;
   min-height: 300px;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
@@ -731,6 +735,8 @@
   aspect-ratio: 1 / 1;
   visibility: visible !important;
   opacity: 1 !important;
+  position: relative;
+  z-index: 1;
 }
 
 .chessboard {
@@ -748,10 +754,13 @@
   border-radius: 12px;
   box-shadow: 0 0 15px rgba(0,0,0,0.10);
   border: 2px solid rgba(50,205,50,0.3);
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(8, 1fr);
+  display: grid !important;
+  grid-template-columns: repeat(8, 1fr) !important;
+  grid-template-rows: repeat(8, 1fr) !important;
   flex-shrink: 0;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative;
 }
 .game-controls {
   flex: 0 0 auto;

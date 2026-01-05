@@ -1685,68 +1685,87 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return (
       <div className="piece-set-selection-row" style={{ justifyContent: 'center' }}>
         <div className="piece-set-controls-col">
-          <div className="piece-set-selection-panel" style={{background:'transparent',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'none',textAlign:'center'}}>
-            <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#ff0000',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Select Chess Set</h2>
-            <p style={{fontSize:'1.1rem',color:'#ff0000',marginBottom:24,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Choose your preferred chess set.</p>
+          <div className="piece-set-selection-panel" style={{background:'rgba(0, 0, 0, 0.8)',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'0 0 20px rgba(255, 0, 0, 0.5)',textAlign:'center',border:'2px solid #ff0000',maxWidth: '600px', margin: '0 auto'}}>
+            <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#ffffff',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 10px #ff0000, 0 0 5px #ff0000, 2px 2px 4px rgba(0,0,0,0.8)'}}>Game Setup</h2>
             
-            {/* Piece Set Dropdown */}
-            <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
-              <div style={{ position: 'relative', minWidth: '200px' }}>
+            {/* Piece Set Selection */}
+            <div style={{marginBottom: 24}}>
+              <h3 style={{fontSize:'1.2rem',color:'#ffffff',marginBottom:12,textShadow:'0 0 8px #ff0000, 0 0 4px #ff0000'}}>Select Chess Set</h3>
+              <div style={{display:'flex',justifyContent:'center'}}>
+                <div style={{ position: 'relative', minWidth: '200px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPieceSetDropdown(!showPieceSetDropdown)}
+                    style={{
+                      padding: '12px 16px',
+                      border: '2px outset #fff',
+                      background: '#000000',
+                      color: '#ff0000',
+                      cursor: 'pointer',
+                      minWidth: '200px',
+                      textAlign: 'left',
+                      fontWeight: 'bold',
+                      fontSize: '1em'
+                    }}
+                  >
+                    {getPieceSetDisplayName(selectedPieceSet.id)}
+                    <span style={{ float: 'right' }}>▲</span>
+                  </button>
+                  
+                  {showPieceSetDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      background: '#000000',
+                      border: '2px outset #fff',
+                      zIndex: 10,
+                      minWidth: '200px'
+                    }}>
+                      {CHESS_PIECE_SETS.map((pieceSet) => (
+                        <div
+                          key={pieceSet.id}
+                          onClick={() => handlePieceSetSelect(pieceSet)}
+                          style={{
+                            padding: '12px 16px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #333',
+                            fontSize: '1em',
+                            color: '#ff0000',
+                            background: '#000000'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
+                        >
+                          {getPieceSetDisplayName(pieceSet.id)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Difficulty Selection */}
+            <div style={{marginBottom: 24}}>
+              <h3 style={{fontSize:'1.2rem',color:'#ffffff',marginBottom:12,textShadow:'0 0 8px #ff0000, 0 0 4px #ff0000'}}>Select Difficulty</h3>
+              <div style={{display:'flex',justifyContent:'center',gap:16}}>
                 <button
-                  type="button"
-                  onClick={() => setShowPieceSetDropdown(!showPieceSetDropdown)}
-                  style={{
-                    padding: '12px 16px',
-                    border: '2px outset #fff',
-                    background: '#000000',
-                    color: '#ff0000',
-                    cursor: 'pointer',
-                    minWidth: '200px',
-                    textAlign: 'left',
-                    fontWeight: 'bold',
-                    fontSize: '1em'
-                  }}
-                >
-                  {getPieceSetDisplayName(selectedPieceSet.id)}
-                  <span style={{ float: 'right' }}>▲</span>
-                </button>
-                
-                {showPieceSetDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '100%',
-                    left: 0,
-                    background: '#000000',
-                    border: '2px outset #fff',
-                    zIndex: 10,
-                    minWidth: '200px'
-                  }}>
-                    {CHESS_PIECE_SETS.map((pieceSet) => (
-                      <div
-                        key={pieceSet.id}
-                        onClick={() => handlePieceSetSelect(pieceSet)}
-                        style={{
-                          padding: '12px 16px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid #333',
-                          fontSize: '1em',
-                          color: '#ff0000',
-                          background: '#000000'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
-                      >
-                        {getPieceSetDisplayName(pieceSet.id)}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
+                  style={{background:difficulty==='easy'?'#ff0000':'transparent',color:difficulty==='easy'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
+                  onClick={()=>setDifficulty('easy')}
+                >Easy</button>
+                <button
+                  className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
+                  style={{background:difficulty==='hard'?'#ff0000':'transparent',color:difficulty==='hard'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
+                  onClick={()=>setDifficulty('hard')}
+                >Hard</button>
               </div>
             </div>
 
             <button 
-              className={`piece-set-btn start-btn`}
-              onClick={() => { setShowPieceSetSelector(false); setShowDifficulty(true); }}
+              className={`difficulty-btn start-btn`}
+              onClick={() => { startGame(); }}
               style={{ 
                 background: 'transparent',
                 color: '#ff0000',
@@ -1761,13 +1780,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 marginBottom: 8
               }}
             >
-              <span role="img" aria-label="chess">♟️🦞</span> Continue
+              <span role="img" aria-label="chess">♟️</span> Start Match
             </button>
 
             {/* Back to Chess Button */}
             <div style={{marginTop: '16px', display: 'flex', justifyContent: 'center', width: 'auto', maxWidth: '100%'}}>
               <button
-                onClick={() => window.location.href = '/chess'}
+                onClick={() => { setShowPieceSetSelector(false); }}
                 style={{ 
                   background: 'transparent',
                   color: '#ff0000',
@@ -2063,13 +2082,30 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // Expose menu toggle to parent if provided
+  // Expose menu toggle and window functions to parent/global scope
   useEffect(() => {
     if (onMenuToggle) {
       // Store the toggle function so parent can call it
       (window as any).__chessMenuToggle = () => setIsMenuOpen(prev => !prev);
     }
-  }, [onMenuToggle]);
+    // Expose window functions for Linux menu
+    (window as any).__chessOpenWindow = openWindow;
+    (window as any).__chessOpenLeaderboard = () => openWindow('leaderboard');
+    (window as any).__chessOpenMoves = () => openWindow('moves');
+    (window as any).__chessOpenChat = () => openWindow('chat');
+    (window as any).__chessOpenProfile = () => openWindow('profile');
+    (window as any).__chessOpenGallery = () => openWindow('gallery');
+    (window as any).__chessOpenHowTo = () => openWindow('howto');
+    return () => {
+      delete (window as any).__chessOpenWindow;
+      delete (window as any).__chessOpenLeaderboard;
+      delete (window as any).__chessOpenMoves;
+      delete (window as any).__chessOpenChat;
+      delete (window as any).__chessOpenProfile;
+      delete (window as any).__chessOpenGallery;
+      delete (window as any).__chessOpenHowTo;
+    };
+  }, [onMenuToggle, openWindow]);
   const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
@@ -2257,7 +2293,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </button>
             </div>
             {gameMode === GameMode.AI && (
-              <button className="start-btn-compact chess-primary-btn" onClick={() => setShowPieceSetSelector(true)}>
+              <button className="start-btn-compact chess-primary-btn" onClick={() => {
+                // Show unified setup screen
+                setShowPieceSetSelector(true);
+              }}>
                 Start Match
               </button>
             )}
@@ -3171,13 +3210,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
                     backgroundColor: 'transparent',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(8, 1fr)',
+                    gridTemplateRows: 'repeat(8, 1fr)',
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
                 >
                   {Array.from({ length: 8 }, (_, row) => (
-                    <div key={row} className="board-row">
-                      {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                    </div>
+                    Array.from({ length: 8 }, (_, col) => renderSquare(row, col))
                   ))}
                   {/* Capture Animation Overlay */}
                   {captureAnimation && captureAnimation.show && (
@@ -3205,8 +3245,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </div>
           ) : showPieceSetSelector ? (
             renderPieceSetSelector()
-          ) : showDifficulty ? (
-            renderDifficultySelection()
           ) : (
             <div className="game-mode-panel-streamlined">
               <div className="mode-selection-compact">
