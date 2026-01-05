@@ -275,10 +275,41 @@
    SMOOTH TRANSITIONS
    ============================================ */
 
-.chess-game * {
+/* Exclude chessboard and pieces from global transitions to prevent display issues */
+/* Use more specific selectors to avoid affecting chessboard elements */
+.chess-game .menu-btn,
+.chess-game .sidebar-menu-btn,
+.chess-game .chess-controls button,
+.chess-game .chess-primary-btn,
+.chess-game .chess-secondary-btn,
+.chess-game .player-info-modern,
+.chess-game .chess-card-modern {
   transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
+}
+
+/* CRITICAL: Ensure chessboard and pieces are ALWAYS visible and NOT affected by transitions */
+.chessboard-container,
+.chessboard-container *,
+.chessboard,
+.chessboard *,
+.board-row,
+.board-row *,
+.square,
+.piece {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  transition: none !important;
+}
+
+.chessboard {
+  display: grid !important;
+}
+
+.square {
+  display: flex !important;
 }
 
 /* ============================================
