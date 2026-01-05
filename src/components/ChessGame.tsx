@@ -2081,31 +2081,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  // Expose menu toggle and window functions to parent/global scope
-  useEffect(() => {
-    if (onMenuToggle) {
-      // Store the toggle function so parent can call it
-      (window as any).__chessMenuToggle = () => setIsMenuOpen(prev => !prev);
-    }
-    // Expose window functions for Linux menu
-    (window as any).__chessOpenWindow = openWindow;
-    (window as any).__chessOpenLeaderboard = () => openWindow('leaderboard');
-    (window as any).__chessOpenMoves = () => openWindow('moves');
-    (window as any).__chessOpenChat = () => openWindow('chat');
-    (window as any).__chessOpenProfile = () => openWindow('profile');
-    (window as any).__chessOpenGallery = () => openWindow('gallery');
-    (window as any).__chessOpenHowTo = () => openWindow('howto');
-    return () => {
-      delete (window as any).__chessOpenWindow;
-      delete (window as any).__chessOpenLeaderboard;
-      delete (window as any).__chessOpenMoves;
-      delete (window as any).__chessOpenChat;
-      delete (window as any).__chessOpenProfile;
-      delete (window as any).__chessOpenGallery;
-      delete (window as any).__chessOpenHowTo;
-    };
-  }, [onMenuToggle, openWindow]);
   const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
@@ -2183,6 +2158,31 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return newSet;
     });
   };
+
+  // Expose menu toggle and window functions to parent/global scope
+  useEffect(() => {
+    if (onMenuToggle) {
+      // Store the toggle function so parent can call it
+      (window as any).__chessMenuToggle = () => setIsMenuOpen(prev => !prev);
+    }
+    // Expose window functions for Linux menu
+    (window as any).__chessOpenWindow = openWindow;
+    (window as any).__chessOpenLeaderboard = () => openWindow('leaderboard');
+    (window as any).__chessOpenMoves = () => openWindow('moves');
+    (window as any).__chessOpenChat = () => openWindow('chat');
+    (window as any).__chessOpenProfile = () => openWindow('profile');
+    (window as any).__chessOpenGallery = () => openWindow('gallery');
+    (window as any).__chessOpenHowTo = () => openWindow('howto');
+    return () => {
+      delete (window as any).__chessOpenWindow;
+      delete (window as any).__chessOpenLeaderboard;
+      delete (window as any).__chessOpenMoves;
+      delete (window as any).__chessOpenChat;
+      delete (window as any).__chessOpenProfile;
+      delete (window as any).__chessOpenGallery;
+      delete (window as any).__chessOpenHowTo;
+    };
+  }, [onMenuToggle, openWindow]);
 
   const openHowToGuide = useCallback(() => {
     if (isMobile) {
