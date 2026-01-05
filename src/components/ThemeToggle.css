@@ -758,12 +758,9 @@ html.lawb-app-dark-mode {
 .lawb-app-dark-mode .chessboard-container div.chessboard[style*="background-image"],
 .lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"][style*="backgroundImage"],
 .lawb-app-dark-mode [class*="chessboard-container"] [class*="chessboard"][style*="background-image"] {
-  /* CRITICAL: Extract background-image from inline style using CSS attr() */
-  /* But attr() doesn't work for style attributes, so we need a different approach */
-  /* Instead, ensure NO rule sets background-image: none on these elements */
+  /* CRITICAL: Use CSS variable to preserve background-image from inline style */
+  background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
   background-color: transparent !important;
-  /* DO NOT set background-image here - the inline style should work */
-  /* But if something is overriding it, we need to be more specific */
 }
 
 /* ABSOLUTE FINAL OVERRIDE: Use attribute selector to match inline style and preserve it */
