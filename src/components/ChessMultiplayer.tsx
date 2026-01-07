@@ -7311,14 +7311,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     alt="Chessboard"
                     style={{
                       position: 'absolute',
-                      top: 0,
-                      left: 0,
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
                       width: '100%',
                       height: '100%',
                       maxWidth: '80vh',
                       maxHeight: '80vh',
                       aspectRatio: '1 / 1',
-                      objectFit: 'contain',
+                      objectFit: 'cover',
                       zIndex: 0,
                       pointerEvents: 'none'
                     }}
@@ -7326,8 +7327,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
-                    onLoad={() => {
+                    onLoad={(e) => {
                       console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
+                      // #region agent log
+                      // Capture actual rendered dimensions and position to verify alignment
+                      setTimeout(() => {
+                        const imgEl = e.target as HTMLImageElement;
+                        const chessboardEl = imgEl.parentElement?.querySelector('.chessboard') as HTMLElement;
+                        const containerEl = imgEl.parentElement as HTMLElement;
+                        if (imgEl && chessboardEl && containerEl) {
+                          const imgRect = imgEl.getBoundingClientRect();
+                          const gridRect = chessboardEl.getBoundingClientRect();
+                          const containerRect = containerEl.getBoundingClientRect();
+                          const imgStyle = window.getComputedStyle(imgEl);
+                          const gridStyle = window.getComputedStyle(chessboardEl);
+                          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7330',message:'Chessboard image alignment check',data:{imgTop:imgRect.top,imgLeft:imgRect.left,imgWidth:imgRect.width,imgHeight:imgRect.height,gridTop:gridRect.top,gridLeft:gridRect.left,gridWidth:gridRect.width,gridHeight:gridRect.height,containerWidth:containerRect.width,containerHeight:containerRect.height,imgObjectFit:imgStyle.objectFit,imgPosition:imgStyle.position,imgTransform:imgStyle.transform,gridPosition:gridStyle.position,alignment:imgRect.top===gridRect.top&&imgRect.left===gridRect.left?'aligned':'misaligned'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                        }
+                      }, 100);
+                      // #endregion
                     }}
                   />
                   {/* #endregion */}
@@ -7352,7 +7369,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       padding: 0
                     }}
                     ref={(el) => {
-                      // Chessboard ref callback - no debug logging needed
+                      // #region agent log
+                      // Capture grid position to compare with image
+                      if (el && gameMode === GameMode.ACTIVE) {
+                        setTimeout(() => {
+                          const gridEl = el;
+                          const containerEl = gridEl.parentElement;
+                          const imgEl = containerEl?.querySelector('img') as HTMLImageElement;
+                          if (gridEl && containerEl && imgEl) {
+                            const gridRect = gridEl.getBoundingClientRect();
+                            const imgRect = imgEl.getBoundingClientRect();
+                            const containerRect = containerEl.getBoundingClientRect();
+                            const gridStyle = window.getComputedStyle(gridEl);
+                            const imgStyle = window.getComputedStyle(imgEl);
+                            const containerStyle = window.getComputedStyle(containerEl);
+                            fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7355',message:'Grid vs Image alignment',data:{gridTop:gridRect.top,gridLeft:gridRect.left,gridWidth:gridRect.width,gridHeight:gridRect.height,imgTop:imgRect.top,imgLeft:imgRect.left,imgWidth:imgRect.width,imgHeight:imgRect.height,containerTop:containerRect.top,containerLeft:containerRect.left,containerWidth:containerRect.width,containerHeight:containerRect.height,gridDisplay:gridStyle.display,gridPosition:gridStyle.position,gridMargin:gridStyle.margin,imgPosition:imgStyle.position,imgTop:imgStyle.top,imgLeft:imgStyle.left,containerDisplay:containerStyle.display,containerAlignItems:containerStyle.alignItems,containerJustifyContent:containerStyle.justifyContent,topDiff:gridRect.top-imgRect.top,leftDiff:gridRect.left-imgRect.left},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+                          }
+                        }, 200);
+                      }
+                      // #endregion
                     }}
                   >
                     {Array.from({ length: 8 }, (_, row) => (
