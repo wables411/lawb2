@@ -2693,7 +2693,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Join game
   const joinGame = async (inviteCode: string) => {
-    if (!address) return;
+    console.log('[JOIN GAME] ========== FUNCTION CALLED ==========');
+    console.log('[JOIN GAME] inviteCode:', inviteCode);
+    console.log('[JOIN GAME] address:', address);
+    console.log('[JOIN GAME] isConnected:', isConnected);
+    console.log('[JOIN GAME] chainId:', chainId);
+    console.log('[JOIN GAME] isJoiningGameRef.current:', isJoiningGameRef.current);
+    console.log('[JOIN GAME] isJoiningGameContract:', isJoiningGameContract);
+    console.log('[JOIN GAME] joinGameHash:', joinGameHash);
+    
+    if (!address) {
+      console.log('[JOIN GAME] ❌ Early return: No address');
+      return;
+    }
     
     // Prevent duplicate calls
     if (isJoiningGameRef.current) {
@@ -2707,6 +2719,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return;
     }
     
+    console.log('[JOIN GAME] ✅ Passing early checks, setting isJoiningGameRef.current = true');
     isJoiningGameRef.current = true;
     
     try {
@@ -6781,7 +6794,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             </div>
                             <button 
                               className="join-btn"
-                              onClick={() => joinGame(game.invite_code)}
+                              onClick={() => {
+                                console.log('[JOIN BUTTON] ========== CLICKED ==========');
+                                console.log('[JOIN BUTTON] Game invite code:', game.invite_code);
+                                console.log('[JOIN BUTTON] Current state:', {
+                                  address,
+                                  isConnected,
+                                  chainId,
+                                  isJoiningGameContract,
+                                  joinGameHash,
+                                  isJoiningGameRef: isJoiningGameRef.current
+                                });
+                                try {
+                                  joinGame(game.invite_code);
+                                  console.log('[JOIN BUTTON] joinGame() called');
+                                } catch (error) {
+                                  console.error('[JOIN BUTTON] Error calling joinGame():', error);
+                                }
+                              }}
                               style={{
                                 padding: '4px 12px',
                                 fontSize: '0.8rem',
