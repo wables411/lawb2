@@ -939,6 +939,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     });
   };
   
+  // Expose menu toggle and window functions to parent/global scope (for LinuxNavBar)
+  useEffect(() => {
+    // Expose window functions for Linux menu
+    (window as any).__chessOpenWindow = openWindow;
+    (window as any).__chessOpenLeaderboard = () => openWindow('leaderboard');
+    (window as any).__chessOpenMoves = () => openWindow('moves');
+    (window as any).__chessOpenChat = () => openWindow('chat');
+    (window as any).__chessOpenProfile = () => openWindow('profile');
+    (window as any).__chessOpenGallery = () => openWindow('gallery');
+    (window as any).__chessOpenHowTo = () => openWindow('howto');
+    return () => {
+      delete (window as any).__chessOpenWindow;
+      delete (window as any).__chessOpenLeaderboard;
+      delete (window as any).__chessOpenMoves;
+      delete (window as any).__chessOpenChat;
+      delete (window as any).__chessOpenProfile;
+      delete (window as any).__chessOpenGallery;
+      delete (window as any).__chessOpenHowTo;
+    };
+  }, [openWindow]);
+  
   const openHowToGuide = useCallback(() => {
     if (isMobile) {
       setSidebarView('howto');
@@ -7195,7 +7216,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               Menu
             </div>
             <button
-              onClick={() => openWindow('leaderboard')}
+              onClick={() => {
+                openWindow('leaderboard');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
@@ -7210,7 +7234,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               Leaderboard
             </button>
             <button
-              onClick={() => openWindow('gallery')}
+              onClick={() => {
+                openWindow('gallery');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
@@ -7225,7 +7252,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               Gallery
             </button>
             <button
-              onClick={() => openWindow('howto')}
+              onClick={() => {
+                openWindow('howto');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
@@ -7241,9 +7271,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             </button>
             <button
               onClick={() => {
-                if (onChatToggle) {
-                  onChatToggle();
-                }
+                openWindow('chat');
                 setIsMenuOpen(false);
               }}
               style={{
@@ -7282,7 +7310,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             </div>
             {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && (
               <button
-                onClick={() => openWindow('moves')}
+                onClick={() => {
+                  openWindow('moves');
+                  setIsMenuOpen(false);
+                }}
                 style={{
                   display: 'block',
                   width: '100%',
