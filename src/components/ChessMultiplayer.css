@@ -721,7 +721,7 @@ button.sidebar-menu-btn,
   align-items: center;
   justify-content: center;
   margin: 0;
-  flex: 1 1 0;
+  flex: 0 0 auto; /* Don't grow, just fit content */
 }
 
 .chessboard {
@@ -740,9 +740,13 @@ button.sidebar-menu-btn,
   display: grid !important;
   grid-template-columns: repeat(8, 1fr) !important;
   grid-template-rows: repeat(8, 1fr) !important;
+  gap: 0 !important; /* Ensure no gap between grid cells */
+  padding: 0 !important; /* Ensure no padding */
+  margin: 0 !important; /* Ensure no margin */
   transition: all 0.3s ease;
   visibility: visible !important;
   opacity: 1 !important;
+  box-sizing: border-box !important;
 }
 
 .board-row {
@@ -761,11 +765,18 @@ button.sidebar-menu-btn,
   padding: 0;
   box-sizing: border-box;
   overflow: visible;
+  /* Ensure square is a proper positioning context */
+  transform: none;
 }
 
 .square:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.05);
+  /* Ensure indicator stays centered during hover */
+}
+
+.square:hover .legal-move-indicator {
+  transform: translate(-50%, -50%) scale(0.952) !important; /* Inverse of 1.05 to maintain center */
 }
 
 .square.selected {
@@ -784,23 +795,25 @@ button.sidebar-menu-btn,
 }
 
 .legal-move-indicator {
-  width: 20%;
-  height: 20%;
-  min-width: 8px;
-  min-height: 8px;
-  max-width: 30px;
-  max-height: 30px;
+  width: 30%;
+  height: 30%;
+  min-width: 12px;
+  min-height: 12px;
+  max-width: 40px;
+  max-height: 40px;
   background: rgba(72, 187, 120, 0.8);
   border-radius: 50%;
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
   pointer-events: none;
   z-index: 5;
+  /* Ensure it's centered regardless of parent transforms */
+  will-change: transform;
 }
 
 .piece {
@@ -1331,7 +1344,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   font-weight: bold;
   min-height: 24px;
   box-sizing: border-box;
-  margin: 20px auto 12px auto; /* Add margin-top to prevent overlap with header, margin-bottom to space from chessboard */
+  margin: 4px auto 8px auto; /* Reduced top margin to move board higher, small bottom margin for spacing */
   flex-wrap: wrap; /* Allow wrapping on mobile */
   gap: 4px; /* Add gap between items when wrapped */
 }
@@ -3118,14 +3131,16 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* Center vertically */
+  justify-content: flex-start; /* Start from top, not center */
   min-width: 0;
   min-height: 0;
   height: 100%;
   padding: 0;
+  padding-top: 8px; /* Small top padding */
   padding-bottom: 50px; /* Space for nav bar (36px desktop, 50px mobile) */
-  margin-top: 20px; /* Additional spacing from game info bar */
+  margin-top: 0; /* No top margin - move board higher */
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 /* Desktop: nav bar is 36px */
