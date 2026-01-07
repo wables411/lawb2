@@ -237,15 +237,30 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   }, [cancelGameHash, isWaitingForCancelReceipt]);
 
   // Contract read hook for checking player's game state
-  const { data: playerGameInviteCode, refetch: refetchPlayerGame } = useReadContract({
+  const { data: playerGameInviteCode, refetch: refetchPlayerGame, isLoading: isLoadingPlayerGame, error: playerGameError } = useReadContract({
     address: chessContractAddress as `0x${string}`,
     abi: CHESS_CONTRACT_ABI,
     functionName: 'playerToGame',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address,
+      enabled: !!address && !!chainId,
     },
   });
+  
+  // Debug logging for playerGameInviteCode
+  useEffect(() => {
+    if (address) {
+      console.log('[PLAYER_GAME_INVITE] State:', {
+        address,
+        playerGameInviteCode,
+        isLoadingPlayerGame,
+        playerGameError,
+        chainId,
+        chessContractAddress,
+        enabled: !!address && !!chainId
+      });
+    }
+  }, [address, playerGameInviteCode, isLoadingPlayerGame, playerGameError, chainId, chessContractAddress]);
 
   // Contract read hook for getting game details from player's current game
   const { data: contractGameData } = useReadContract({
