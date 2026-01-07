@@ -1220,6 +1220,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     ];
   }, [selectedPieceSet]);
 
+  // Track showPieceSetSelector state changes
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:1224',message:'showPieceSetSelector state changed',data:{showPieceSetSelector,address:!!address},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+  }, [showPieceSetSelector]);
+
   // Check NFT ownership when piece set selector is shown
   useEffect(() => {
     if (showPieceSetSelector && address) {
@@ -2359,6 +2366,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   const createGame = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:2361',message:'createGame() function entry',data:{wagerType,address:!!address,gameWager,selectedToken,chainId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     console.log('[CREATE GAME] ========== START ==========');
     console.log('[CREATE GAME] Function called at:', new Date().toISOString());
     console.log('[CREATE GAME] Stack trace:', new Error().stack);
@@ -2376,11 +2386,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (wagerType === 'token' && (!address || gameWager <= 0)) {
       console.error('[CREATE GAME] ❌ VALIDATION FAILED: wagerType=token but (!address || gameWager <= 0)');
       console.error('[CREATE GAME]   address:', address, 'gameWager:', gameWager);
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:2376',message:'createGame() early return: token validation failed',data:{address:!!address,gameWager},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return;
     }
     if (wagerType === 'nft' && (!address || !selectedNFT)) {
       console.error('[CREATE GAME] ❌ VALIDATION FAILED: wagerType=nft but (!address || !selectedNFT)');
       setGameStatus('Please select an NFT to wager');
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:2382',message:'createGame() early return: NFT validation failed',data:{address:!!address,selectedNFT:!!selectedNFT},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return;
     }
     
@@ -5714,6 +5730,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Render piece set selector
   const renderPieceSetSelector = () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5716',message:'renderPieceSetSelector called',data:{showPieceSetSelector,address,isConnected},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const handlePieceSetSelect = (pieceSet: ChessPieceSet) => {
       setSelectedPieceSet(pieceSet);
       setShowPieceSetDropdown(false);
@@ -5827,6 +5846,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               className={`piece-set-btn start-btn`}
               onClick={() => { 
                               console.log('[PIECE SET] ========== START BUTTON CLICKED ==========');
+                              // #region agent log
+                              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5828',message:'Continue button clicked in piece set selector',data:{address,gameWager,selectedToken,chainId,isGameCreationInProgress,wagerType,selectedPieceSetId:selectedPieceSet?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                              // #endregion
                               console.log('[PIECE SET] Start button clicked, calling createGame()');
                               console.log('[PIECE SET] Current state:', {
                                 address,
@@ -5839,11 +5861,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               });
                 setShowPieceSetSelector(false); 
                               console.log('[PIECE SET] About to call createGame()...');
+                              // #region agent log
+                              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5841',message:'About to call createGame()',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                              // #endregion
                               try {
                 createGame();
                                 console.log('[PIECE SET] createGame() called successfully');
+                                // #region agent log
+                                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5844',message:'createGame() call completed (no exception)',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                                // #endregion
                               } catch (error) {
                                 console.error('[PIECE SET] ❌ Error calling createGame():', error);
+                                // #region agent log
+                                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5846',message:'Error calling createGame()',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                                // #endregion
                               }
               }}
               style={{ 
@@ -6644,7 +6675,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
                                 if (!isGameCreationInProgress) {
                                   console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
+                                  // #region agent log
+                                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6647',message:'Setting showPieceSetSelector to true',data:{wagerType,gameWager,selectedNFT,isGameCreationInProgress,currentShowPieceSetSelector:showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                                  // #endregion
                                   setShowPieceSetSelector(true);
+                                  // #region agent log
+                                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6649',message:'setShowPieceSetSelector(true) called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                                  // #endregion
                                 } else {
                                   console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
                                 }
@@ -6697,6 +6734,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     {/* Piece Set Selector - Desktop/Web */}
                     {showPieceSetSelector && (
                       <div style={{ order: 2, marginBottom: '20px' }}>
+                        {/* #region agent log */}
+                        {(() => { fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6698',message:'Piece set selector rendering in JSX',data:{showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{}); return null; })()}
+                        {/* #endregion */}
                         {renderPieceSetSelector()}
                       </div>
                     )}
