@@ -4086,6 +4086,46 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   }, [gameMode, showGame, board, pieceImages, selectedChessboard, selectedPieceSet, playerColor, isMobile]);
   
+  // Debug: Check image loading for chessboard and pieces
+  useEffect(() => {
+    if (gameMode === GameMode.ACTIVE && showGame && selectedChessboard) {
+      // Test chessboard image loading
+      const testChessboardImg = new Image();
+      testChessboardImg.onload = () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4090',message:'chessboard image loaded',data:{selectedChessboard,width:testChessboardImg.width,height:testChessboardImg.height},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+      };
+      testChessboardImg.onerror = () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4090',message:'chessboard image error',data:{selectedChessboard,error:'Failed to load'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        console.error('[IMAGE ERROR] Failed to load chessboard image:', selectedChessboard);
+      };
+      testChessboardImg.src = selectedChessboard;
+      
+      // Test piece images loading (sample a few pieces)
+      const samplePieces = ['K', 'Q', 'R', 'k', 'q', 'r'];
+      samplePieces.forEach(piece => {
+        if (pieceImages[piece]) {
+          const testPieceImg = new Image();
+          testPieceImg.onload = () => {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4105',message:'piece image loaded',data:{piece,imagePath:pieceImages[piece],width:testPieceImg.width,height:testPieceImg.height},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+          };
+          testPieceImg.onerror = () => {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4105',message:'piece image error',data:{piece,imagePath:pieceImages[piece],error:'Failed to load'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            console.error('[IMAGE ERROR] Failed to load piece image:', pieceImages[piece], 'for piece:', piece);
+          };
+          testPieceImg.src = pieceImages[piece];
+        }
+      });
+    }
+  }, [gameMode, showGame, selectedChessboard, pieceImages]);
+  
   // Debug: Log window state
   useEffect(() => {
     console.log('[WINDOW_DEBUG] Window state:', {
