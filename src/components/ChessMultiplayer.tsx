@@ -5730,6 +5730,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Render piece set selector
   const renderPieceSetSelector = () => {
+    console.log('[PIECE SET SELECTOR] renderPieceSetSelector() function called');
+    console.log('[PIECE SET SELECTOR] Current state:', { showPieceSetSelector, address, isConnected, selectedPieceSet: selectedPieceSet?.id });
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5716',message:'renderPieceSetSelector called',data:{showPieceSetSelector,address,isConnected},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
@@ -6675,12 +6677,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
                                 if (!isGameCreationInProgress) {
                                   console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
+                                  console.log('[CREATE BUTTON] Current showPieceSetSelector state:', showPieceSetSelector);
+                                  console.log('[CREATE BUTTON] Setting showPieceSetSelector to true and hiding form');
                                   // #region agent log
                                   fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6647',message:'Setting showPieceSetSelector to true',data:{wagerType,gameWager,selectedNFT,isGameCreationInProgress,currentShowPieceSetSelector:showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                                   // #endregion
                                   setShowPieceSetSelector(true);
+                                  setIsCreatingGame(false); // Hide the form when showing piece set selector
                                   // #region agent log
-                                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6649',message:'setShowPieceSetSelector(true) called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6649',message:'setShowPieceSetSelector(true) called and form hidden',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                                   // #endregion
                                 } else {
                                   console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
@@ -6733,9 +6738,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
                     {/* Piece Set Selector - Desktop/Web */}
                     {showPieceSetSelector && (
-                      <div style={{ order: 2, marginBottom: '20px' }}>
+                      <div style={{ order: 2, marginBottom: '20px', zIndex: 1000, position: 'relative' }}>
                         {/* #region agent log */}
-                        {(() => { fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6698',message:'Piece set selector rendering in JSX',data:{showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{}); return null; })()}
+                        {(() => { 
+                          console.log('[PIECE SET SELECTOR] Rendering piece set selector in JSX, showPieceSetSelector:', showPieceSetSelector);
+                          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6698',message:'Piece set selector rendering in JSX',data:{showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                          return null; 
+                        })()}
                         {/* #endregion */}
                         {renderPieceSetSelector()}
                       </div>
