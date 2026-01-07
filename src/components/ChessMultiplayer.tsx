@@ -236,14 +236,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   }, [cancelGameHash, isWaitingForCancelReceipt]);
 
+  // Check if current chain is supported for chess contract
+  const isSupportedChain = chainId === NETWORKS.base.chainId || 
+                          chainId === NETWORKS.mainnet.chainId || 
+                          chainId === NETWORKS.testnet.chainId || 
+                          chainId === NETWORKS.arbitrum.chainId;
+  
   // Contract read hook for checking player's game state
+  // Only enable on supported chains to avoid errors on unsupported chains (like Ethereum mainnet)
   const { data: playerGameInviteCode, refetch: refetchPlayerGame, isLoading: isLoadingPlayerGame, error: playerGameError } = useReadContract({
     address: chessContractAddress as `0x${string}`,
     abi: CHESS_CONTRACT_ABI,
     functionName: 'playerToGame',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && !!chainId,
+      enabled: !!address && !!chainId && isSupportedChain,
     },
   });
   
@@ -1253,6 +1260,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Update piece images when selected piece set changes
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:1261',message:'pieceImages updated',data:{selectedPieceSetId:selectedPieceSet?.id,pieceImagesKeys:Object.keys(pieceImages),pieceImagesSample:Object.fromEntries(Object.entries(pieceImages).slice(0,3))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     
     // Update piece gallery with new piece set images
     pieceGallery = [
@@ -4039,13 +4050,37 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               backgroundImage: window.getComputedStyle(chessboard).backgroundImage
             } : { exists: false },
             squaresCount: squares.length,
+            piecesCount: document.querySelectorAll('.piece').length,
             firstSquare: squares[0] ? {
               exists: true,
               width: (squares[0] as HTMLElement).offsetWidth,
               height: (squares[0] as HTMLElement).offsetHeight,
               display: window.getComputedStyle(squares[0]).display
-            } : { exists: false }
+            } : { exists: false },
+            firstPiece: (() => {
+              const firstPiece = document.querySelector('.piece') as HTMLElement | null;
+              if (!firstPiece) return { exists: false };
+              const style = window.getComputedStyle(firstPiece);
+              return {
+                exists: true,
+                width: firstPiece.offsetWidth,
+                height: firstPiece.offsetHeight,
+                display: style.display,
+                backgroundImage: style.backgroundImage,
+                backgroundSize: style.backgroundSize,
+                visibility: style.visibility,
+                opacity: style.opacity
+              };
+            })()
           });
+          
+          // #region agent log
+          const pieces = document.querySelectorAll('.piece');
+          const firstPiece = pieces[0] as HTMLElement | null;
+          const chessboardStyle = chessboard ? window.getComputedStyle(chessboard) : null;
+          const firstPieceStyle = firstPiece ? window.getComputedStyle(firstPiece) : null;
+          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4046',message:'DOM check detailed',data:{piecesCount:pieces.length,chessboardBackgroundImage:chessboardStyle?.backgroundImage,firstPieceBackgroundImage:firstPieceStyle?.backgroundImage,firstPieceVisible:firstPiece ? firstPiece.offsetWidth > 0 : false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+          // #endregion
         }, 100);
       }
     }
@@ -5884,7 +5919,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // Debug logging for piece rendering
     if (piece && !pieceImages[piece]) {
       console.warn('[RENDER SQUARE] Piece exists but no image:', piece, 'pieceImages keys:', Object.keys(pieceImages), 'selectedPieceSet:', selectedPieceSet?.id);
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5892',message:'piece missing image',data:{piece,pieceImagesKeys:Object.keys(pieceImages),selectedPieceSetId:selectedPieceSet?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
     }
+    
+    // #region agent log
+    if (piece && (row === 0 || row === 7) && (col === 0 || col === 7)) {
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5905',message:'renderSquare with piece',data:{row,col,piece,pieceImagePath:pieceImages[piece],hasImage:!!pieceImages[piece]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    }
+    // #endregion
     
     return (
       <div
@@ -7223,6 +7267,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       zIndex: 1,
                       margin: 0,
                       padding: 0
+                    }}
+                    ref={(el) => {
+                      if (el && gameMode === GameMode.ACTIVE) {
+                        // #region agent log
+                        setTimeout(() => {
+                          const computedStyle = window.getComputedStyle(el);
+                          const bgImage = computedStyle.backgroundImage;
+                          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7214',message:'chessboard DOM check',data:{selectedChessboard,computedBackgroundImage:bgImage,width:el.offsetWidth,height:el.offsetHeight,display:computedStyle.display},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+                        }, 100);
+                        // #endregion
+                      }
                     }}
                   >
                     {Array.from({ length: 8 }, (_, row) => (
