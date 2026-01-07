@@ -3929,25 +3929,66 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   useEffect(() => {
     if (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) {
       const boardRenderCondition = (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame;
+      const boardSample = board ? board.slice(0, 2).map(row => row?.slice(0, 3)) : null;
       console.log('[BOARD_RENDER_DEBUG] Game state:', {
         gameMode,
         showGame,
         boardRenderCondition,
         boardExists: !!board,
         boardLength: board?.length,
-        boardFirstRow: board?.[0],
+        boardSample,
+        boardFull: JSON.stringify(board),
         pieceImagesCount: Object.keys(pieceImages).length,
         pieceImagesKeys: Object.keys(pieceImages),
+        pieceImagesSample: Object.fromEntries(Object.entries(pieceImages).slice(0, 5)),
         selectedChessboard,
         selectedPieceSetId: selectedPieceSet?.id,
         playerColor,
-        isMobile
+        isMobile,
+        chessboardContainerExists: typeof document !== 'undefined' ? !!document.querySelector('.chessboard-container') : 'N/A',
+        chessboardExists: typeof document !== 'undefined' ? !!document.querySelector('.chessboard') : 'N/A',
+        squaresCount: typeof document !== 'undefined' ? document.querySelectorAll('.square').length : 'N/A'
       });
       if (!boardRenderCondition) {
         console.warn('[BOARD_RENDER_DEBUG] Board will NOT render because:', {
           gameModeCheck: gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED,
           showGameCheck: showGame
         });
+      } else {
+        console.log('[BOARD_RENDER_DEBUG] Board SHOULD render - checking DOM in 100ms...');
+        setTimeout(() => {
+          const container = document.querySelector('.chessboard-container');
+          const chessboard = document.querySelector('.chessboard');
+          const squares = document.querySelectorAll('.square');
+          console.log('[BOARD_RENDER_DEBUG] DOM check:', {
+            container: container ? {
+              exists: true,
+              visible: container.offsetWidth > 0 && container.offsetHeight > 0,
+              width: container.offsetWidth,
+              height: container.offsetHeight,
+              display: window.getComputedStyle(container).display,
+              visibility: window.getComputedStyle(container).visibility,
+              opacity: window.getComputedStyle(container).opacity
+            } : { exists: false },
+            chessboard: chessboard ? {
+              exists: true,
+              visible: chessboard.offsetWidth > 0 && chessboard.offsetHeight > 0,
+              width: chessboard.offsetWidth,
+              height: chessboard.offsetHeight,
+              display: window.getComputedStyle(chessboard).display,
+              visibility: window.getComputedStyle(chessboard).visibility,
+              opacity: window.getComputedStyle(chessboard).opacity,
+              backgroundImage: window.getComputedStyle(chessboard).backgroundImage
+            } : { exists: false },
+            squaresCount: squares.length,
+            firstSquare: squares[0] ? {
+              exists: true,
+              width: squares[0].offsetWidth,
+              height: squares[0].offsetHeight,
+              display: window.getComputedStyle(squares[0]).display
+            } : { exists: false }
+          });
+        }, 100);
       }
     }
   }, [gameMode, showGame, board, pieceImages, selectedChessboard, selectedPieceSet, playerColor, isMobile]);
@@ -7051,7 +7092,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
           
           {/* Active Game Mode */}
-          {(gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame && (
+          {(() => {
+            const shouldRender = (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame;
+            if (shouldRender) {
+              console.log('[RENDER] Rendering active game board - gameMode:', gameMode, 'showGame:', showGame, 'board:', !!board, 'selectedChessboard:', selectedChessboard, 'pieceImages count:', Object.keys(pieceImages).length);
+            } else {
+              console.log('[RENDER] NOT rendering active game board - gameMode:', gameMode, 'showGame:', showGame);
+            }
+            return shouldRender;
+          })() && (
             <>
               <div className="game-info-compact">
                 <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
@@ -7119,9 +7168,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     }}
                   >
                     {Array.from({ length: 8 }, (_, row) => (
-                      <div key={row} className="board-row">
-                        {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
-                      </div>
+                      Array.from({ length: 8 }, (_, col) => renderSquare(row, col))
                     ))}
                     
                     {/* Capture Animation Overlay */}
