@@ -2806,8 +2806,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (balance < wagerAmountWei) {
             const balanceFormatted = Number(balance) / Math.pow(10, tokenDecimals);
             const wagerFormatted = Number(wagerAmountWei) / Math.pow(10, tokenDecimals);
+            const errorMessage = `Insufficient ${tokenDisplaySymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenDisplaySymbol}, need ${wagerFormatted} ${tokenDisplaySymbol} to join this game.`;
             console.log('[JOIN GAME] ❌ Insufficient balance - returning early');
-            setGameStatus(`Insufficient ${tokenDisplaySymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenDisplaySymbol}, need ${wagerFormatted} ${tokenDisplaySymbol} to join this game.`);
+            console.log('[JOIN GAME] Balance details:', {
+              balance: balance.toString(),
+              balanceFormatted,
+              required: wagerAmountWei.toString(),
+              requiredFormatted: wagerFormatted,
+              token: tokenDisplaySymbol
+            });
+            setGameStatus(errorMessage);
+            // Show alert to make error more visible
+            alert(errorMessage);
             isJoiningGameRef.current = false;
             return;
           }
