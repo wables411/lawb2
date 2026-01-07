@@ -5956,6 +5956,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        ref={(el) => {
+          if (el && isValidMove && gameMode === GameMode.ACTIVE) {
+            // #region agent log
+            setTimeout(() => {
+              const computed = window.getComputedStyle(el);
+              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5954',message:'Square styles check',data:{row,col,display:computed.display,position:computed.position,width:computed.width,height:computed.height,transform:computed.transform,hasValidMove:isValidMove},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            }, 150);
+            // #endregion
+          }
+        }}
       >
         {piece && pieceImageUrl && (
           <img
@@ -5989,7 +5999,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             }}
           />
         )}
-        {isValidMove && <div className="legal-move-indicator" />}
+        {isValidMove && (
+          <div 
+            className="legal-move-indicator"
+            ref={(el) => {
+              if (el && gameMode === GameMode.ACTIVE) {
+                // #region agent log
+                setTimeout(() => {
+                  const computed = window.getComputedStyle(el);
+                  const parentComputed = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
+                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5992',message:'Legal move indicator styles',data:{row,col,indicatorDisplay:computed.display,indicatorPosition:computed.position,indicatorTop:computed.top,indicatorLeft:computed.left,indicatorTransform:computed.transform,indicatorWidth:computed.width,indicatorHeight:computed.height,parentDisplay:parentComputed?.display,parentPosition:parentComputed?.position,viewportWidth:window.innerWidth},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                }, 100);
+                // #endregion
+              }
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -7252,7 +7277,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   </span>
                 )}
               </div>
-              <div className="chess-main-area">
+              <div 
+                className="chess-main-area"
+                ref={(el) => {
+                  if (el && gameMode === GameMode.ACTIVE) {
+                    // #region agent log
+                    setTimeout(() => {
+                      const computed = window.getComputedStyle(el);
+                      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7255',message:'Chess main area styles',data:{paddingBottom:computed.paddingBottom,paddingTop:computed.paddingTop,height:computed.height,viewportWidth:window.innerWidth,viewportHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                    }, 200);
+                    // #endregion
+                  }
+                }}
+              >
                 {/* Loading indicator */}
                 {isGameLoading && (
                   <div className="game-loading-indicator" style={{
