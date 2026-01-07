@@ -3957,8 +3957,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } else {
         console.log('[BOARD_RENDER_DEBUG] Board SHOULD render - checking DOM in 100ms...');
         setTimeout(() => {
-          const container = document.querySelector('.chessboard-container');
-          const chessboard = document.querySelector('.chessboard');
+          const container = document.querySelector('.chessboard-container') as HTMLElement | null;
+          const chessboard = document.querySelector('.chessboard') as HTMLElement | null;
           const squares = document.querySelectorAll('.square');
           console.log('[BOARD_RENDER_DEBUG] DOM check:', {
             container: container ? {
@@ -3983,8 +3983,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             squaresCount: squares.length,
             firstSquare: squares[0] ? {
               exists: true,
-              width: squares[0].offsetWidth,
-              height: squares[0].offsetHeight,
+              width: (squares[0] as HTMLElement).offsetWidth,
+              height: (squares[0] as HTMLElement).offsetHeight,
               display: window.getComputedStyle(squares[0]).display
             } : { exists: false }
           });
