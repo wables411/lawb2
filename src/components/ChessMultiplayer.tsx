@@ -2806,10 +2806,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (balance < wagerAmountWei) {
             const balanceFormatted = Number(balance) / Math.pow(10, tokenDecimals);
             const wagerFormatted = Number(wagerAmountWei) / Math.pow(10, tokenDecimals);
+            console.log('[JOIN GAME] ❌ Insufficient balance - returning early');
             setGameStatus(`Insufficient ${tokenDisplaySymbol} balance. You have ${balanceFormatted.toFixed(6)} ${tokenDisplaySymbol}, need ${wagerFormatted} ${tokenDisplaySymbol} to join this game.`);
             isJoiningGameRef.current = false;
             return;
           }
+          console.log('[JOIN GAME] ✅ Balance check passed, continuing...');
         } catch (error) {
           console.error('[JOIN] Error checking token balance:', error);
           setGameStatus('Failed to check token balance. Please try again.');
@@ -2846,9 +2848,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
+      console.log('[JOIN GAME] Checking token approval...');
+      console.log('[JOIN GAME] tokenAddress:', tokenAddress, 'isNative:', isNative, 'publicClient:', !!publicClient);
+      
       // Check token approval for the game's token (use tokenAddress already computed above)
       if (tokenAddress && !isNative && publicClient) {
         try {
+          console.log('[JOIN GAME] Reading allowance from contract...');
           const allowance = await publicClient.readContract({
             address: tokenAddress as `0x${string}`,
             abi: [
@@ -2870,7 +2876,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           const allowanceBigInt = allowance;
           const requiredAmountBigInt = BigInt(gameData.bet_amount);
           
+          console.log('[JOIN GAME] Allowance check:', {
+            allowance: allowanceBigInt.toString(),
+            required: requiredAmountBigInt.toString(),
+            needsApproval: allowanceBigInt < requiredAmountBigInt
+          });
+          
           if (allowanceBigInt < requiredAmountBigInt) {
+            console.log('[JOIN GAME] ⚠️ Approval needed, requesting approval...');
             const tokenDisplaySymbol = isCustomToken ? (gameData.bet_token || 'token') : (tokenConfig?.symbol || tokenSymbolOrAddress);
             setGameStatus(`Approving ${tokenDisplaySymbol} spending...`);
             setWaitingForApproval(true);
@@ -2910,12 +2923,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             return;
               }
             }
+          } else {
+            console.log('[JOIN GAME] ✅ Token already approved, proceeding to join transaction');
           }
         } catch (error) {
           console.error('[JOIN] Error checking token allowance:', error);
         }
+      } else {
+        console.log('[JOIN GAME] Native token or no publicClient, skipping approval check');
       }
       
+      console.log('[JOIN GAME] About to send join transaction...');
       setGameStatus('Joining game... Please confirm transaction in your wallet.');
       
       // Estimate gas for joinGame function (use game's contract address)
@@ -2937,6 +2955,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
 
       try {
+        console.log('[JOIN GAME] Calling writeJoinGame...');
+        console.log('[JOIN GAME] isNative:', isNative, 'gameContractAddress:', gameContractAddress);
         // Use game's contract address (may be different chain)
         if (isNative) {
           // Native token transaction - include value
@@ -2949,8 +2969,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             gas: gasLimit,
             value: BigInt(gameData.bet_amount) as any, // Type assertion for native token support
           });
+          console.log('[JOIN GAME] writeJoinGame (native) returned:', result);
         } else {
           // ERC-20 token transaction - no value
+          console.log('[JOIN GAME] ERC-20 token transaction');
           const result = writeJoinGame({
             address: gameContractAddress as `0x${string}`,
             abi: CHESS_CONTRACT_ABI,
@@ -2958,12 +2980,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             args: [inviteCode as `0x${string}`],
             gas: gasLimit,
           });
+          console.log('[JOIN GAME] writeJoinGame (ERC-20) returned:', result);
         }
         
+        console.log('[JOIN GAME] Setting pendingJoinGameData...');
         // Store game data for after transaction confirmation
         setPendingJoinGameData({ inviteCode, gameData, address });
         // Reset the ref - transaction has been submitted
         isJoiningGameRef.current = false;
+        console.log('[JOIN GAME] ✅ Transaction submitted successfully');
       } catch (error) {
         console.error('[JOIN] Error calling writeJoinGame:', error);
         setGameStatus('Failed to send transaction. Please try again.');
