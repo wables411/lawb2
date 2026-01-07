@@ -129,6 +129,17 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
 }
 
 export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
+  // #region agent log
+  // Track render count and props to identify re-render causes
+  const renderCountRef = React.useRef(0);
+  const prevPropsRef = React.useRef({ onClose, onMinimize, fullscreen, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile });
+  renderCountRef.current += 1;
+  const propsChanged = JSON.stringify(prevPropsRef.current) !== JSON.stringify({ onClose, onMinimize, fullscreen, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile });
+  if (propsChanged || renderCountRef.current % 10 === 0 || renderCountRef.current <= 5) {
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:131',message:'Component render',data:{renderCount:renderCountRef.current,propsChanged,prevProps:prevPropsRef.current,currentProps:{onClose:!!onClose,onMinimize:!!onMinimize,fullscreen,onBackToModeSelect:!!onBackToModeSelect,onGameStart:!!onGameStart,onChatToggle:!!onChatToggle,isChatMinimized,isMobile}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    prevPropsRef.current = { onClose, onMinimize, fullscreen, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile };
+  }
+  // #endregion
 
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -700,7 +711,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [selectedPieceSet, setSelectedPieceSet] = useState<ChessPieceSet>(getDefaultPieceSet());
   // #region agent log
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
+  const prevPieceImagesRef = React.useRef(pieceImages);
   pieceImages = selectedPieceSet.pieceImages;
+  const pieceImagesChanged = prevPieceImagesRef.current !== pieceImages;
+  if (pieceImagesChanged || renderCountRef.current <= 3) {
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:703',message:'pieceImages assignment',data:{renderCount:renderCountRef.current,pieceImagesChanged,pieceCount:Object.keys(pieceImages).length,selectedPieceSetId:selectedPieceSet?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    prevPieceImagesRef.current = pieceImages;
+  }
   console.log('[PIECE_IMAGES_INIT] Initialized immediately with', Object.keys(pieceImages).length, 'pieces:', Object.keys(pieceImages));
   // #endregion
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
@@ -3945,6 +3962,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // CRITICAL FIX: Add periodic board sync for active games to ensure real-time updates
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:3964',message:'BOARD_SYNC_CHECK useEffect executed',data:{inviteCode,gameMode,address,currentPlayer,renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     if (inviteCode && gameMode === GameMode.ACTIVE && address) {
       console.log('[BOARD_SYNC_CHECK] Setting up periodic board sync for active game:', inviteCode);
       
@@ -3960,6 +3980,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               try {
                 const reconstructedBoard = reconstructBoard(gameData.board);
                 if (isValidBoardState(reconstructedBoard)) {
+                  // #region agent log
+                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:3963',message:'setBoard called',data:{renderCount:renderCountRef.current,boardChanged:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                  // #endregion
                   setBoard(reconstructedBoard);
                   previousBoardStateRef.current = currentBoardState;
                   console.log('[BOARD_SYNC_CHECK] Board updated successfully');
@@ -3972,6 +3995,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             // Update current player if it changed
             if (gameData.current_player && gameData.current_player !== currentPlayer) {
               console.log('[BOARD_SYNC_CHECK] Current player changed to:', gameData.current_player);
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:3992',message:'setCurrentPlayer called',data:{from:currentPlayer,to:gameData.current_player,renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+              // #endregion
               setCurrentPlayer(gameData.current_player);
             }
           }
@@ -3989,6 +4015,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug: Log state changes for board rendering
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4008',message:'BOARD_RENDER_DEBUG useEffect executed',data:{gameMode,showGame,renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     if (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) {
       const boardRenderCondition = (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame;
       const boardSample = board ? board.slice(0, 2).map(row => row?.slice(0, 3)) : null;
@@ -7282,9 +7311,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     alt="Chessboard"
                     style={{
                       position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
+                      top: 0,
+                      left: 0,
                       width: '100%',
                       height: '100%',
                       maxWidth: '80vh',
