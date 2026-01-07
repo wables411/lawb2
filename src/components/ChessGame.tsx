@@ -3414,7 +3414,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               Menu
             </div>
             <button
-              onClick={() => openWindow('leaderboard')}
+              onClick={() => {
+                openWindow('leaderboard');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
@@ -3429,7 +3432,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               Leaderboard
             </button>
             <button
-              onClick={() => openWindow('gallery')}
+              onClick={() => {
+                openWindow('gallery');
+                setIsMenuOpen(false);
+              }}
               style={{
                 display: 'block',
                 width: '100%',
@@ -3445,9 +3451,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </button>
             <button
               onClick={() => {
-                if (onChatToggle) {
-                  onChatToggle();
-                }
+                openWindow('chat');
                 setIsMenuOpen(false);
               }}
               style={{
@@ -3491,7 +3495,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </div>
             {showGame && (
               <button
-                onClick={() => openWindow('moves')}
+                onClick={() => {
+                  openWindow('moves');
+                  setIsMenuOpen(false);
+                }}
                 style={{
                   display: 'block',
                   width: '100%',
