@@ -759,24 +759,19 @@ button.sidebar-menu-btn,
   height: 100%;
   display: block;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   border: 1px solid rgba(255, 255, 255, 0.1);
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   overflow: visible;
-  /* Ensure square is a proper positioning context */
-  transform: none;
+  /* Ensure square is a proper positioning context - NO TRANSFORM on square itself */
+  transform: none !important;
 }
 
 .square:hover {
   background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
-  /* Ensure indicator stays centered during hover */
-}
-
-.square:hover .legal-move-indicator {
-  transform: translate(-50%, -50%) scale(0.952) !important; /* Inverse of 1.05 to maintain center */
+  /* Don't scale the square on hover - it interferes with indicator positioning */
 }
 
 .square.selected {
@@ -795,10 +790,10 @@ button.sidebar-menu-btn,
 }
 
 .legal-move-indicator {
-  width: 30%;
-  height: 30%;
-  min-width: 12px;
-  min-height: 12px;
+  width: 30px;
+  height: 30px;
+  min-width: 20px;
+  min-height: 20px;
   max-width: 40px;
   max-height: 40px;
   background: rgba(72, 187, 120, 0.8);
@@ -811,9 +806,28 @@ button.sidebar-menu-btn,
   padding: 0 !important;
   box-sizing: border-box !important;
   pointer-events: none;
-  z-index: 5;
+  z-index: 5 !important;
   /* Ensure it's centered regardless of parent transforms */
   will-change: transform;
+}
+
+/* Responsive sizing for smaller squares */
+@media (max-width: 768px) {
+  .legal-move-indicator {
+    width: 24px;
+    height: 24px;
+    min-width: 16px;
+    min-height: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .legal-move-indicator {
+    width: 20px;
+    height: 20px;
+    min-width: 12px;
+    min-height: 12px;
+  }
 }
 
 .piece {
@@ -3137,23 +3151,23 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   height: 100%;
   padding: 0;
   padding-top: 8px; /* Small top padding */
-  padding-bottom: 50px; /* Space for nav bar (36px desktop, 50px mobile) */
+  padding-bottom: 62px; /* Space for nav bar (36px desktop) + 12px gap */
   margin-top: 0; /* No top margin - move board higher */
   box-sizing: border-box;
   overflow-y: auto;
 }
 
-/* Desktop: nav bar is 36px */
+/* Desktop: nav bar is 36px, add 12px gap = 48px total */
 @media (min-width: 601px) {
   .chess-main-area {
-    padding-bottom: 36px;
+    padding-bottom: 48px;
   }
 }
 
-/* Mobile: nav bar is 50px */
+/* Mobile: nav bar is 50px, add 12px gap = 62px total */
 @media (max-width: 600px) {
   .chess-main-area {
-    padding-bottom: 50px;
+    padding-bottom: 62px;
   }
 }
 
