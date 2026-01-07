@@ -28,6 +28,7 @@ import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
+import { ChessChat } from './ChessChat';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -3906,18 +3907,38 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Debug: Log state changes for board rendering
   useEffect(() => {
     if (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) {
+      const boardRenderCondition = (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame;
       console.log('[BOARD_RENDER_DEBUG] Game state:', {
         gameMode,
         showGame,
+        boardRenderCondition,
         boardExists: !!board,
         boardLength: board?.length,
+        boardFirstRow: board?.[0],
         pieceImagesCount: Object.keys(pieceImages).length,
+        pieceImagesKeys: Object.keys(pieceImages),
         selectedChessboard,
         selectedPieceSetId: selectedPieceSet?.id,
-        playerColor
+        playerColor,
+        isMobile
       });
+      if (!boardRenderCondition) {
+        console.warn('[BOARD_RENDER_DEBUG] Board will NOT render because:', {
+          gameModeCheck: gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED,
+          showGameCheck: showGame
+        });
+      }
     }
-  }, [gameMode, showGame, board, pieceImages, selectedChessboard, selectedPieceSet, playerColor]);
+  }, [gameMode, showGame, board, pieceImages, selectedChessboard, selectedPieceSet, playerColor, isMobile]);
+  
+  // Debug: Log window state
+  useEffect(() => {
+    console.log('[WINDOW_DEBUG] Window state:', {
+      openWindows: Array.from(openWindows),
+      windowPositions,
+      isMobile
+    });
+  }, [openWindows, windowPositions, isMobile]);
 
   // FIX: Add fallback mechanism to ensure playerColor is set correctly
   useEffect(() => {
@@ -7440,6 +7461,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               ))}
             </ul>
           </div>
+        </Popup>
+      )}
+      
+      {!isMobile && openWindows.has('chat') && (
+        <Popup
+          id="chat-window"
+          isOpen={true}
+          onClose={() => closeWindow('chat')}
+          title="Chat"
+          initialPosition={windowPositions['chat'] ? { x: windowPositions['chat'].x, y: windowPositions['chat'].y } : { x: 20, y: 120 }}
+          initialSize={{ width: 400, height: 500 }}
+          zIndex={1000}
+        >
+          <ChessChat
+            isOpen={true}
+            onMinimize={() => closeWindow('chat')}
+            currentInviteCode={inviteCode}
+            isDraggable={false}
+            isResizable={false}
+            isMobile={false}
+          />
         </Popup>
       )}
       
