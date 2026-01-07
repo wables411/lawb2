@@ -731,16 +731,18 @@ button.sidebar-menu-btn,
   max-height: 80vh;
   aspect-ratio: 1 / 1;
   background-image: url('/images/chessboard1.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 100% 100% !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   border-radius: 8px;
   box-shadow: 0 0 8px rgba(0,0,0,0.06);
   border: 1px solid #bbb;
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(8, 1fr);
+  display: grid !important;
+  grid-template-columns: repeat(8, 1fr) !important;
+  grid-template-rows: repeat(8, 1fr) !important;
   transition: all 0.3s ease;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .board-row {
