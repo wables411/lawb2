@@ -1678,17 +1678,41 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Check player game state when contract data changes
   useEffect(() => {
-    if (address && playerGameInviteCode !== undefined) {
+    console.log('[GAME_STATE_INIT] useEffect triggered:', {
+      address: !!address,
+      playerGameInviteCode,
+      hasLoadedGame,
+      contractGameData: !!contractGameData
+    });
+    
+    if (address) {
       // Reset game loading flag when address changes
       if (!hasLoadedGame) {
-        // Only check if we have both the invite code and the contract data, or if we have no invite code
-        const currentContractData = getCurrentContractGameData();
-        if ((playerGameInviteCode !== '0x000000000000' && currentContractData) || playerGameInviteCode === '0x000000000000') {
-          checkPlayerGameState();
+        // If we have an invite code (even if undefined, we'll wait), check game state
+        if (playerGameInviteCode !== undefined) {
+          // Only check if we have both the invite code and the contract data, or if we have no invite code
+          const currentContractData = getCurrentContractGameData();
+          console.log('[GAME_STATE_INIT] Checking conditions:', {
+            hasInviteCode: playerGameInviteCode !== '0x000000000000',
+            hasContractData: !!currentContractData,
+            shouldCheck: (playerGameInviteCode !== '0x000000000000' && currentContractData) || playerGameInviteCode === '0x000000000000'
+          });
+          if ((playerGameInviteCode !== '0x000000000000' && currentContractData) || playerGameInviteCode === '0x000000000000') {
+            console.log('[GAME_STATE_INIT] Calling checkPlayerGameState');
+            checkPlayerGameState();
+          } else {
+            console.log('[GAME_STATE_INIT] Waiting for contract data...');
+          }
+        } else {
+          console.log('[GAME_STATE_INIT] playerGameInviteCode is undefined, waiting...');
         }
+      } else {
+        console.log('[GAME_STATE_INIT] Game already loaded, skipping');
       }
+    } else {
+      console.log('[GAME_STATE_INIT] No address, skipping');
     }
-  }, [address, playerGameInviteCode, hasLoadedGame]); // Keep only essential dependencies to prevent infinite loops
+  }, [address, playerGameInviteCode, hasLoadedGame, contractGameData]); // Added contractGameData to dependencies
 
   // Reset game loading flag when address changes
   useEffect(() => {
@@ -1697,16 +1721,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Watch for contract data changes and trigger game state check
   useEffect(() => {
+    console.log('[CONTRACT_WATCH] useEffect triggered:', {
+      address: !!address,
+      hasLoadedGame,
+      hasContractGameData: !!contractGameData,
+      hasLobbyGameContractData: !!lobbyGameContractData
+    });
+    
     if (address && !hasLoadedGame && (contractGameData || lobbyGameContractData)) {
       // Only check if we haven't already loaded a game
       const currentContractData = getCurrentContractGameData();
+      console.log('[CONTRACT_WATCH] currentContractData:', currentContractData);
       if (currentContractData && Array.isArray(currentContractData)) {
         const [player1, player2] = currentContractData;
-        if (player1 && player2 && (player1 === address || player2 === address)) {
+        console.log('[CONTRACT_WATCH] Players:', { player1, player2, address });
+        if (player1 && player2 && (player1.toLowerCase() === address.toLowerCase() || player2.toLowerCase() === address.toLowerCase())) {
           console.log('[CONTRACT_WATCH] Found active game in contract, checking game state');
           checkPlayerGameState();
+        } else {
+          console.log('[CONTRACT_WATCH] Player not in this game');
         }
+      } else {
+        console.log('[CONTRACT_WATCH] No valid contract data');
       }
+    } else {
+      console.log('[CONTRACT_WATCH] Conditions not met:', {
+        hasAddress: !!address,
+        hasLoadedGame,
+        hasContractData: !!(contractGameData || lobbyGameContractData)
+      });
     }
   }, [contractGameData, lobbyGameContractData, address, hasLoadedGame]);
 
