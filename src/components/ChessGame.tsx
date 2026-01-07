@@ -2666,9 +2666,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             </button>
             <button
               onClick={() => {
-                if (onChatToggle) {
-                  onChatToggle();
-                }
+                openWindow('chat');
                 setIsMenuOpen(false);
               }}
               style={{
