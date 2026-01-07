@@ -751,12 +751,16 @@ button.sidebar-menu-btn,
 
 .square {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
+  height: 100%;
+  display: block;
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .square:hover {
@@ -782,12 +786,21 @@ button.sidebar-menu-btn,
 .legal-move-indicator {
   width: 20%;
   height: 20%;
+  min-width: 8px;
+  min-height: 8px;
+  max-width: 30px;
+  max-height: 30px;
   background: rgba(72, 187, 120, 0.8);
   border-radius: 50%;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .piece {
@@ -2063,9 +2076,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     height: 100% !important;
     aspect-ratio: 1 / 1 !important;
     position: relative !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
@@ -2073,6 +2084,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     pointer-events: auto !important;
     touch-action: manipulation !important;
     -webkit-tap-highlight-color: rgba(66, 153, 225, 0.3) !important;
+    overflow: visible !important;
   }
   
   /* Ensure pieces fit perfectly in squares on mobile */
@@ -3111,7 +3123,23 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   min-height: 0;
   height: 100%;
   padding: 0;
+  padding-bottom: 50px; /* Space for nav bar (36px desktop, 50px mobile) */
   margin-top: 20px; /* Additional spacing from game info bar */
+  box-sizing: border-box;
+}
+
+/* Desktop: nav bar is 36px */
+@media (min-width: 601px) {
+  .chess-main-area {
+    padding-bottom: 36px;
+  }
+}
+
+/* Mobile: nav bar is 50px */
+@media (max-width: 600px) {
+  .chess-main-area {
+    padding-bottom: 50px;
+  }
 }
 
 /* --- Sidebar Toggle Group --- */
