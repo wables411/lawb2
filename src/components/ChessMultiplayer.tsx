@@ -870,6 +870,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
   const [showGame, setShowGame] = useState(false); // Track when game is actually active for background
+  const [selectedChessboard, setSelectedChessboard] = useState<string>(() => {
+    const chessboards = [
+      '/images/chessboard1.png',
+      '/images/chessboard2.png',
+      '/images/chessboard3.png',
+      '/images/chessboard4.png',
+      '/images/chessboard5.png',
+      '/images/chessboard6.png'
+    ];
+    const randomIndex = Math.floor(Math.random() * chessboards.length);
+    const selected = chessboards[randomIndex];
+    console.log('[CHESSBOARD] Initial random chessboard selected:', selected, '(index:', randomIndex, ')');
+    return selected;
+  });
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
@@ -3354,23 +3368,29 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }, 1000);
         
         // CRITICAL FIX: Force board state synchronization when game becomes active
+        console.log('[GAME_ACTIVE] Board sync check - gameData.board:', !!gameData.board, 'isFirstBoardLoadRef.current:', isFirstBoardLoadRef.current);
         if (gameData.board && isFirstBoardLoadRef.current) {
           console.log('[GAME_ACTIVE] Game just became active, ensuring board synchronization');
+          console.log('[GAME_ACTIVE] Board data:', gameData.board);
           try {
             const reconstructedBoard = reconstructBoard(gameData.board);
+            console.log('[GAME_ACTIVE] Reconstructed board:', reconstructedBoard);
             if (isValidBoardState(reconstructedBoard)) {
               setBoard(reconstructedBoard);
               isFirstBoardLoadRef.current = false;
-              console.log('[GAME_ACTIVE] Board synchronized successfully');
+              console.log('[GAME_ACTIVE] Board synchronized successfully, board state:', JSON.stringify(reconstructedBoard));
               // Only show game AFTER board is properly loaded
               setShowGame(true);
+              setGameMode(GameMode.ACTIVE);
               setGameStatus('Game in progress');
+              console.log('[GAME_ACTIVE] showGame set to true, gameMode set to ACTIVE');
             } else {
               console.warn('[GAME_ACTIVE] Invalid board state, using initial board');
               setBoard(initialBoard);
               isFirstBoardLoadRef.current = false;
               // Show game with initial board
               setShowGame(true);
+              setGameMode(GameMode.ACTIVE);
               setGameStatus('Game in progress');
             }
           } catch (error) {
@@ -3379,11 +3399,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             isFirstBoardLoadRef.current = false;
             // Show game with initial board
             setShowGame(true);
+            setGameMode(GameMode.ACTIVE);
             setGameStatus('Game in progress');
           }
         } else if (!isFirstBoardLoadRef.current) {
           // Board already loaded, just show game
+          console.log('[GAME_ACTIVE] Board already loaded, showing game');
           setShowGame(true);
+          setGameMode(GameMode.ACTIVE);
           setGameStatus('Game in progress');
         } else {
           // No board data available, use initial board and show game
@@ -3391,6 +3414,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setBoard(initialBoard);
           isFirstBoardLoadRef.current = false;
           setShowGame(true);
+          setGameMode(GameMode.ACTIVE);
           setGameStatus('Game in progress');
         }
         
@@ -3732,9 +3756,42 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           
           if (gameData && gameData.game_state === 'active' && gameMode === GameMode.WAITING) {
             console.log('[PERIODIC_CHECK] Game became active, forcing UI update for game creator');
+            console.log('[PERIODIC_CHECK] Game data:', { board: !!gameData.board, piece_set: gameData.piece_set });
+            
+            // Load piece set from game data
+            if (gameData.piece_set && gameData.piece_set !== selectedPieceSet.id) {
+              console.log('[PERIODIC_CHECK] Loading piece set from game data:', gameData.piece_set);
+              if (gameData.piece_set === 'pixelawbs') {
+                setSelectedPieceSet(getPixelawbsPieceSet());
+              } else {
+                setSelectedPieceSet(getDefaultPieceSet());
+              }
+            }
+            
+            // Set board if available
+            if (gameData.board) {
+              try {
+                const reconstructedBoard = reconstructBoard(gameData.board);
+                if (isValidBoardState(reconstructedBoard)) {
+                  console.log('[PERIODIC_CHECK] Setting board from game data');
+                  setBoard(reconstructedBoard);
+                } else {
+                  console.warn('[PERIODIC_CHECK] Invalid board state, using initial board');
+                  setBoard(initialBoard);
+                }
+              } catch (error) {
+                console.error('[PERIODIC_CHECK] Error reconstructing board:', error);
+                setBoard(initialBoard);
+              }
+            } else {
+              console.warn('[PERIODIC_CHECK] No board data, using initial board');
+              setBoard(initialBoard);
+            }
+            
             setGameMode(GameMode.ACTIVE);
             setShowGame(true);
             setGameStatus('Game in progress');
+            console.log('[PERIODIC_CHECK] Set gameMode to ACTIVE, showGame to true');
             
             // Set player color and opponent if not already set
             if (!playerColor && gameData.blue_player === address) {
@@ -3845,6 +3902,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       };
     }
   }, [inviteCode, gameMode, address, currentPlayer]);
+
+  // Debug: Log state changes for board rendering
+  useEffect(() => {
+    if (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) {
+      console.log('[BOARD_RENDER_DEBUG] Game state:', {
+        gameMode,
+        showGame,
+        boardExists: !!board,
+        boardLength: board?.length,
+        pieceImagesCount: Object.keys(pieceImages).length,
+        selectedChessboard,
+        selectedPieceSetId: selectedPieceSet?.id,
+        playerColor
+      });
+    }
+  }, [gameMode, showGame, board, pieceImages, selectedChessboard, selectedPieceSet, playerColor]);
 
   // FIX: Add fallback mechanism to ensure playerColor is set correctly
   useEffect(() => {
@@ -5667,6 +5740,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const isLastMove = lastMove && ((lastMove.from.row === row && lastMove.from.col === col) || (lastMove.to.row === row && lastMove.to.col === col));
     const isInCheck = piece && piece.toUpperCase() === 'K' && isKingInCheck(board, getPieceColor(piece));
     
+    // Debug logging for piece rendering
+    if (piece && !pieceImages[piece]) {
+      console.warn('[RENDER SQUARE] Piece exists but no image:', piece, 'pieceImages keys:', Object.keys(pieceImages), 'selectedPieceSet:', selectedPieceSet?.id);
+    }
+    
     return (
       <div
         key={`${row}-${col}`}
@@ -6977,7 +7055,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   </div>
                 )}
                 <div className={`chessboard-container ${isGameLoading ? 'loading' : ''}`}>
-                  <div className={`chessboard ${isGameLoading ? 'loading' : ''}`}>
+                  <div 
+                    className={`chessboard ${isGameLoading ? 'loading' : ''}`}
+                    style={{
+                      backgroundImage: `url(${selectedChessboard})`,
+                      backgroundSize: '100% 100%',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: 'transparent',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(8, 1fr)',
+                      gridTemplateRows: 'repeat(8, 1fr)',
+                      width: '100%',
+                      height: '100%',
+                      minWidth: '100%',
+                      minHeight: '100%',
+                      position: 'relative',
+                      zIndex: 1,
+                      margin: 0,
+                      padding: 0
+                    }}
+                  >
                     {Array.from({ length: 8 }, (_, row) => (
                       <div key={row} className="board-row">
                         {Array.from({ length: 8 }, (_, col) => renderSquare(row, col))}
