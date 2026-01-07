@@ -5843,58 +5843,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 {nftVerificationResult.error}
               </div>
             )}
-            
-            <button 
-              className={`piece-set-btn start-btn`}
-              onClick={() => { 
-                              console.log('[PIECE SET] ========== START BUTTON CLICKED ==========');
-                              // #region agent log
-                              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5828',message:'Continue button clicked in piece set selector',data:{address,gameWager,selectedToken,chainId,isGameCreationInProgress,wagerType,selectedPieceSetId:selectedPieceSet?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                              // #endregion
-                              console.log('[PIECE SET] Start button clicked, calling createGame()');
-                              console.log('[PIECE SET] Current state:', {
-                                address,
-                                gameWager,
-                                selectedToken,
-                                chainId,
-                                isGameCreationInProgress,
-                                wagerType,
-                                selectedPieceSet
-                              });
-                setShowPieceSetSelector(false); 
-                              console.log('[PIECE SET] About to call createGame()...');
-                              // #region agent log
-                              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5841',message:'About to call createGame()',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                              // #endregion
-                              try {
-                createGame();
-                                console.log('[PIECE SET] createGame() called successfully');
-                                // #region agent log
-                                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5844',message:'createGame() call completed (no exception)',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                                // #endregion
-                              } catch (error) {
-                                console.error('[PIECE SET] ❌ Error calling createGame():', error);
-                                // #region agent log
-                                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5846',message:'Error calling createGame()',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                                // #endregion
-                              }
-              }}
-              style={{ 
-                background: 'transparent',
-                color: '#ff0000',
-                fontWeight: 'bold',
-                fontSize: '1.3em',
-                padding: '18px 48px',
-                borderRadius: 0,
-                boxShadow: '0 0 6px #ff0000, 0 0 2px #ff0000',
-                border: '1px solid #ff0000',
-                cursor: 'pointer',
-                letterSpacing: 1,
-                marginBottom: 8
-              }}
-            >
-              <span role="img" aria-label="chess">♟️🦞</span> Continue
-            </button>
           </div>
         </div>
       </div>
@@ -6654,65 +6602,96 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             {/* TODO: Add NFT selector component */}
                           </div>
                         )}
+                        
+                        {/* Piece Set Selector - Show inline in form when showPieceSetSelector is true */}
+                        {showPieceSetSelector && (
+                          <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+                            {renderPieceSetSelector()}
+                          </div>
+                        )}
                        
                         <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
-                          <button 
-                            className="create-confirm-btn"
-                            onClick={() => {
-                              console.log('[CREATE BUTTON] ========== CLICKED ==========');
-                              console.log('[CREATE BUTTON] Clicked with state:', {
-                                wagerType,
-                                gameWager,
-                                selectedNFT,
-                                isGameCreationInProgress,
-                                address,
-                                chainId,
-                                isBase,
-                                isArbitrum,
-                                selectedPieceSet
-                              });
-                              const isDisabled = (wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress;
-                              console.log('[CREATE BUTTON] Button disabled?', isDisabled);
-                              // Desktop/Web: Show piece set selector first
-                              if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
-                                if (!isGameCreationInProgress) {
-                                  console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector');
-                                  console.log('[CREATE BUTTON] Current showPieceSetSelector state:', showPieceSetSelector);
-                                  console.log('[CREATE BUTTON] Setting showPieceSetSelector to true and hiding form');
-                                  // #region agent log
-                                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6647',message:'Setting showPieceSetSelector to true',data:{wagerType,gameWager,selectedNFT,isGameCreationInProgress,currentShowPieceSetSelector:showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                                  // #endregion
-                                  setShowPieceSetSelector(true);
-                                  setIsCreatingGame(false); // Hide the form when showing piece set selector
-                                  // #region agent log
-                                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6649',message:'setShowPieceSetSelector(true) called and form hidden',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                                  // #endregion
-                                } else {
-                                  console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
-                                }
-                              } else {
-                                console.warn('[CREATE BUTTON] ❌ Validation failed:', {
+                          {!showPieceSetSelector ? (
+                            <button 
+                              className="create-confirm-btn"
+                              onClick={() => {
+                                console.log('[CREATE BUTTON] ========== CLICKED ==========');
+                                console.log('[CREATE BUTTON] Clicked with state:', {
                                   wagerType,
                                   gameWager,
                                   selectedNFT,
-                                  canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT),
-                                  reason: wagerType === 'token' ? `gameWager is ${gameWager} (needs > 0)` : `selectedNFT is ${selectedNFT ? 'set' : 'not set'}`
+                                  isGameCreationInProgress,
+                                  address,
+                                  chainId,
+                                  isBase,
+                                  isArbitrum,
+                                  selectedPieceSet
                                 });
-                              }
-                            }}
-                            disabled={(wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress}
-                            style={{
-                              padding: '8px 16px',
-                              backgroundColor: '#ff0000',
-                              color: '#000000',
-                              border: 'none',
-                              borderRadius: '0px',
-                              cursor: gameWager <= 0 || isGameCreationInProgress ? 'not-allowed' : 'pointer',
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
-                          </button>
+                                const isDisabled = (wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress;
+                                console.log('[CREATE BUTTON] Button disabled?', isDisabled);
+                                // Show piece set selector inline
+                                if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
+                                  if (!isGameCreationInProgress) {
+                                    console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector inline');
+                                    console.log('[CREATE BUTTON] Current showPieceSetSelector state:', showPieceSetSelector);
+                                    // #region agent log
+                                    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6647',message:'Setting showPieceSetSelector to true',data:{wagerType,gameWager,selectedNFT,isGameCreationInProgress,currentShowPieceSetSelector:showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                                    // #endregion
+                                    setShowPieceSetSelector(true);
+                                    // #region agent log
+                                    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6649',message:'setShowPieceSetSelector(true) called - showing inline',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                                    // #endregion
+                                  } else {
+                                    console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
+                                  }
+                                } else {
+                                  console.warn('[CREATE BUTTON] ❌ Validation failed:', {
+                                    wagerType,
+                                    gameWager,
+                                    selectedNFT,
+                                    canProceed: (wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT),
+                                    reason: wagerType === 'token' ? `gameWager is ${gameWager} (needs > 0)` : `selectedNFT is ${selectedNFT ? 'set' : 'not set'}`
+                                  });
+                                }
+                              }}
+                              disabled={(wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress}
+                              style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#ff0000',
+                                color: '#000000',
+                                border: 'none',
+                                borderRadius: '0px',
+                                cursor: gameWager <= 0 || isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Continue to Piece Selection
+                            </button>
+                          ) : (
+                            <button 
+                              className="create-confirm-btn"
+                              onClick={() => {
+                                console.log('[CREATE GAME FINAL] Button clicked, calling createGame()');
+                                try {
+                                  createGame();
+                                } catch (error) {
+                                  console.error('[CREATE GAME FINAL] Error:', error);
+                                }
+                              }}
+                              disabled={isGameCreationInProgress}
+                              style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#ff0000',
+                                color: '#000000',
+                                border: 'none',
+                                borderRadius: '0px',
+                                cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
+                            </button>
+                          )}
                           <button 
                             className="cancel-btn"
                             onClick={() => {
@@ -6736,19 +6715,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       </div>
                     )}
 
-                    {/* Piece Set Selector - Desktop/Web */}
-                    {showPieceSetSelector && (
-                      <div style={{ order: 2, marginBottom: '20px', zIndex: 1000, position: 'relative' }}>
-                        {/* #region agent log */}
-                        {(() => { 
-                          console.log('[PIECE SET SELECTOR] Rendering piece set selector in JSX, showPieceSetSelector:', showPieceSetSelector);
-                          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:6698',message:'Piece set selector rendering in JSX',data:{showPieceSetSelector},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          return null; 
-                        })()}
-                        {/* #endregion */}
-                        {renderPieceSetSelector()}
-                      </div>
-                    )}
                     
                     <div className="open-games" style={{ order: 3 }}>
                       <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
