@@ -702,7 +702,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
   pieceImages = selectedPieceSet.pieceImages;
   console.log('[PIECE_IMAGES_INIT] Initialized immediately with', Object.keys(pieceImages).length, 'pieces:', Object.keys(pieceImages));
-  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:700',message:'pieceImages initialized immediately',data:{pieceCount:Object.keys(pieceImages).length,keys:Object.keys(pieceImages)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
   // #endregion
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
@@ -1269,8 +1268,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const beforeCount = Object.keys(pieceImages).length;
     // #endregion
     pieceImages = selectedPieceSet.pieceImages;
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:1262',message:'pieceImages updated in useEffect',data:{beforeCount,afterCount:Object.keys(pieceImages).length,keys:Object.keys(pieceImages)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     
     // Update piece gallery with new piece set images
@@ -5936,17 +5933,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // Debug logging for piece rendering
     if (piece && !pieceImages[piece]) {
       console.warn('[RENDER SQUARE] Piece exists but no image:', piece, 'pieceImages keys:', Object.keys(pieceImages), 'selectedPieceSet:', selectedPieceSet?.id);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5927',message:'Piece missing image',data:{piece,pieceImagesKeys:Object.keys(pieceImages),pieceImagesCount:Object.keys(pieceImages).length,selectedPieceSetId:selectedPieceSet?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
     }
     
     const pieceImageUrl = piece && pieceImages[piece] ? pieceImages[piece] : null;
-    // #region agent log
-    if (piece && gameMode === GameMode.ACTIVE && row < 2) {
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5930',message:'Rendering piece',data:{piece,pieceImageUrl,hasImage:!!pieceImageUrl,pieceImagesCount:Object.keys(pieceImages).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    }
-    // #endregion
     
     return (
       <div
@@ -5957,14 +5946,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         ref={(el) => {
-          if (el && isValidMove && gameMode === GameMode.ACTIVE) {
-            // #region agent log
-            setTimeout(() => {
-              const computed = window.getComputedStyle(el);
-              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5954',message:'Square styles check',data:{row,col,display:computed.display,position:computed.position,width:computed.width,height:computed.height,transform:computed.transform,hasValidMove:isValidMove},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            }, 150);
-            // #endregion
-          }
+          // Square ref callback - no debug logging needed
         }}
       >
         {piece && pieceImageUrl && (
@@ -5986,16 +5968,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             }}
             onError={(e) => {
               console.error('[PIECE IMAGE ERROR] Failed to load:', pieceImageUrl, 'for piece:', piece);
-              // #region agent log
-              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5950',message:'Piece image failed to load',data:{piece,pieceImageUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-              // #endregion
             }}
             onLoad={() => {
-              // #region agent log
-              if (row < 2) {
-                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5955',message:'Piece image loaded successfully',data:{piece,pieceImageUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-              }
-              // #endregion
+              // Piece image loaded successfully
             }}
           />
         )}
@@ -6003,15 +5978,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           <div 
             className="legal-move-indicator"
             ref={(el) => {
-              if (el && gameMode === GameMode.ACTIVE) {
-                // #region agent log
-                setTimeout(() => {
-                  const computed = window.getComputedStyle(el);
-                  const parentComputed = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
-                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:5992',message:'Legal move indicator styles',data:{row,col,indicatorDisplay:computed.display,indicatorPosition:computed.position,indicatorTop:computed.top,indicatorLeft:computed.left,indicatorTransform:computed.transform,indicatorWidth:computed.width,indicatorHeight:computed.height,parentDisplay:parentComputed?.display,parentPosition:parentComputed?.position,viewportWidth:window.innerWidth},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                }, 100);
-                // #endregion
-              }
+              // Legal move indicator ref callback - no debug logging needed
             }}
           />
         )}
@@ -7280,14 +7247,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               <div 
                 className="chess-main-area"
                 ref={(el) => {
-                  if (el && gameMode === GameMode.ACTIVE) {
-                    // #region agent log
-                    setTimeout(() => {
-                      const computed = window.getComputedStyle(el);
-                      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7255',message:'Chess main area styles',data:{paddingBottom:computed.paddingBottom,paddingTop:computed.paddingTop,height:computed.height,viewportWidth:window.innerWidth,viewportHeight:window.innerHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                    }, 200);
-                    // #endregion
-                  }
+                  // Chess main area ref callback - no debug logging needed
                 }}
               >
                 {/* Loading indicator */}
@@ -7322,22 +7282,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     alt="Chessboard"
                     style={{
                       position: 'absolute',
-                      top: 0,
-                      left: 0,
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
                       width: '100%',
                       height: '100%',
-                      objectFit: 'fill',
+                      maxWidth: '80vh',
+                      maxHeight: '80vh',
+                      aspectRatio: '1 / 1',
+                      objectFit: 'contain',
                       zIndex: 0,
                       pointerEvents: 'none'
                     }}
                     onError={(e) => {
                       console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
-                      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7280',message:'Chessboard image failed to load',data:{selectedChessboard,gameMode},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                     onLoad={() => {
                       console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
-                      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7280',message:'Chessboard image loaded successfully',data:{selectedChessboard,gameMode},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                     }}
                   />
                   {/* #endregion */}
@@ -7362,15 +7324,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       padding: 0
                     }}
                     ref={(el) => {
-                      if (el && gameMode === GameMode.ACTIVE) {
-                        // #region agent log
-                        setTimeout(() => {
-                          const computedStyle = window.getComputedStyle(el);
-                          const bgImage = computedStyle.backgroundImage;
-                          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7270',message:'CSS backgroundImage check',data:{bgImage,selectedChessboard,hasBgImage:bgImage && bgImage !== 'none'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                        }, 100);
-                        // #endregion
-                      }
+                      // Chessboard ref callback - no debug logging needed
                     }}
                   >
                     {Array.from({ length: 8 }, (_, row) => (
