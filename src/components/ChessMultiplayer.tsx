@@ -6006,6 +6006,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         {isValidMove && (
           <div 
             className="legal-move-indicator"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '30px',
+              height: '30px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(72, 187, 120, 0.8)',
+              zIndex: 5,
+              pointerEvents: 'none',
+              margin: 0,
+              padding: 0
+            }}
             ref={(el) => {
               // Legal move indicator ref callback - no debug logging needed
             }}
