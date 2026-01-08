@@ -717,12 +717,8 @@ button.sidebar-menu-btn,
   max-height: 100vh;
   min-width: 0;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  flex: 0 0 auto; /* Don't grow, just fit content */
   position: relative; /* Create positioning context for absolute children */
+  margin: 0;
 }
 
 /* Ensure chessboard image aligns exactly with the chessboard grid */
@@ -741,6 +737,9 @@ button.sidebar-menu-btn,
 }
 
 .chessboard {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   max-width: 80vh;
