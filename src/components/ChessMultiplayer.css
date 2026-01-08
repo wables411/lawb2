@@ -726,18 +726,15 @@ button.sidebar-menu-btn,
 }
 
 /* Ensure chessboard image aligns exactly with the chessboard grid */
-/* Since container uses flexbox to center the grid, image must also be centered */
 .chessboard-container > img {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
   height: 100%;
-  max-width: 80vh;
-  max-height: 80vh;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
+  object-fit: fill;
   z-index: 0;
   pointer-events: none;
 }
