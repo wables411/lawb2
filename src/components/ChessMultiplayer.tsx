@@ -129,17 +129,6 @@ async function getPlayerInviteCodeFromContract(address: string, contractAddress:
 }
 
 export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false }) => {
-  // #region agent log
-  // Track render count and props to identify re-render causes
-  const renderCountRef = React.useRef(0);
-  const prevPropsRef = React.useRef({ onClose, onMinimize, fullscreen, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile });
-  renderCountRef.current += 1;
-  const propsChanged = JSON.stringify(prevPropsRef.current) !== JSON.stringify({ onClose, onMinimize, fullscreen, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile });
-  if (propsChanged || renderCountRef.current % 10 === 0 || renderCountRef.current <= 5) {
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:131',message:'Component render',data:{renderCount:renderCountRef.current,propsChanged,prevProps:prevPropsRef.current,currentProps:{onClose:!!onClose,onMinimize:!!onMinimize,fullscreen,onBackToModeSelect:!!onBackToModeSelect,onGameStart:!!onGameStart,onChatToggle:!!onChatToggle,isChatMinimized,isMobile}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    prevPropsRef.current = { onClose, onMinimize, fullscreen, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile };
-  }
-  // #endregion
 
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -709,17 +698,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Piece set state
   const [selectedPieceSet, setSelectedPieceSet] = useState<ChessPieceSet>(getDefaultPieceSet());
-  // #region agent log
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
-  const prevPieceImagesRef = React.useRef(pieceImages);
   pieceImages = selectedPieceSet.pieceImages;
-  const pieceImagesChanged = prevPieceImagesRef.current !== pieceImages;
-  if (pieceImagesChanged || renderCountRef.current <= 3) {
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:703',message:'pieceImages assignment',data:{renderCount:renderCountRef.current,pieceImagesChanged,pieceCount:Object.keys(pieceImages).length,selectedPieceSetId:selectedPieceSet?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    prevPieceImagesRef.current = pieceImages;
-  }
   console.log('[PIECE_IMAGES_INIT] Initialized immediately with', Object.keys(pieceImages).length, 'pieces:', Object.keys(pieceImages));
-  // #endregion
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
   const [nftVerificationResult, setNftVerificationResult] = useState<NFTVerificationResult | null>(null);
@@ -3962,9 +3943,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // CRITICAL FIX: Add periodic board sync for active games to ensure real-time updates
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:3964',message:'BOARD_SYNC_CHECK useEffect executed',data:{inviteCode,gameMode,address,currentPlayer,renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (inviteCode && gameMode === GameMode.ACTIVE && address) {
       console.log('[BOARD_SYNC_CHECK] Setting up periodic board sync for active game:', inviteCode);
       
@@ -3980,9 +3958,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               try {
                 const reconstructedBoard = reconstructBoard(gameData.board);
                 if (isValidBoardState(reconstructedBoard)) {
-                  // #region agent log
-                  fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:3963',message:'setBoard called',data:{renderCount:renderCountRef.current,boardChanged:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                  // #endregion
                   setBoard(reconstructedBoard);
                   previousBoardStateRef.current = currentBoardState;
                   console.log('[BOARD_SYNC_CHECK] Board updated successfully');
@@ -3995,9 +3970,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             // Update current player if it changed
             if (gameData.current_player && gameData.current_player !== currentPlayer) {
               console.log('[BOARD_SYNC_CHECK] Current player changed to:', gameData.current_player);
-              // #region agent log
-              fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:3992',message:'setCurrentPlayer called',data:{from:currentPlayer,to:gameData.current_player,renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-              // #endregion
               setCurrentPlayer(gameData.current_player);
             }
           }
@@ -4015,9 +3987,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
 
   // Debug: Log state changes for board rendering
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:4008',message:'BOARD_RENDER_DEBUG useEffect executed',data:{gameMode,showGame,renderCount:renderCountRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) {
       const boardRenderCondition = (gameMode === GameMode.ACTIVE || gameMode === GameMode.FINISHED) && showGame;
       const boardSample = board ? board.slice(0, 2).map(row => row?.slice(0, 3)) : null;
@@ -7340,24 +7309,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
-                    onLoad={(e) => {
+                    onLoad={() => {
                       console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
-                      // #region agent log
-                      // Capture actual rendered dimensions and position to verify alignment
-                      setTimeout(() => {
-                        const imgEl = e.target as HTMLImageElement;
-                        const chessboardEl = imgEl.parentElement?.querySelector('.chessboard') as HTMLElement;
-                        const containerEl = imgEl.parentElement as HTMLElement;
-                        if (imgEl && chessboardEl && containerEl) {
-                          const imgRect = imgEl.getBoundingClientRect();
-                          const gridRect = chessboardEl.getBoundingClientRect();
-                          const containerRect = containerEl.getBoundingClientRect();
-                          const imgStyle = window.getComputedStyle(imgEl);
-                          const gridStyle = window.getComputedStyle(chessboardEl);
-                          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7330',message:'Chessboard image alignment check',data:{imgTop:imgRect.top,imgLeft:imgRect.left,imgWidth:imgRect.width,imgHeight:imgRect.height,gridTop:gridRect.top,gridLeft:gridRect.left,gridWidth:gridRect.width,gridHeight:gridRect.height,containerWidth:containerRect.width,containerHeight:containerRect.height,imgObjectFit:imgStyle.objectFit,imgPosition:imgStyle.position,imgTransform:imgStyle.transform,gridPosition:gridStyle.position,alignment:imgRect.top===gridRect.top&&imgRect.left===gridRect.left?'aligned':'misaligned'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                        }
-                      }, 100);
-                      // #endregion
                     }}
                   />
                   {/* #endregion */}
@@ -7382,26 +7335,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       margin: 0,
                       padding: 0
                     }}
-                    ref={(el) => {
-                      // #region agent log
-                      // Capture grid position to compare with image
-                      if (el && gameMode === GameMode.ACTIVE) {
-                        setTimeout(() => {
-                          const gridEl = el;
-                          const containerEl = gridEl.parentElement;
-                          const imgEl = containerEl?.querySelector('img') as HTMLImageElement;
-                          if (gridEl && containerEl && imgEl) {
-                            const gridRect = gridEl.getBoundingClientRect();
-                            const imgRect = imgEl.getBoundingClientRect();
-                            const containerRect = containerEl.getBoundingClientRect();
-                            const gridStyle = window.getComputedStyle(gridEl);
-                            const imgStyle = window.getComputedStyle(imgEl);
-                            const containerStyle = window.getComputedStyle(containerEl);
-                            fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessMultiplayer.tsx:7355',message:'Grid vs Image alignment',data:{gridTop:gridRect.top,gridLeft:gridRect.left,gridWidth:gridRect.width,gridHeight:gridRect.height,imgTop:imgRect.top,imgLeft:imgRect.left,imgWidth:imgRect.width,imgHeight:imgRect.height,containerTop:containerRect.top,containerLeft:containerRect.left,containerWidth:containerRect.width,containerHeight:containerRect.height,gridDisplay:gridStyle.display,gridPosition:gridStyle.position,gridMargin:gridStyle.margin,imgPosition:imgStyle.position,imgStyleTop:imgStyle.top,imgStyleLeft:imgStyle.left,containerDisplay:containerStyle.display,containerAlignItems:containerStyle.alignItems,containerJustifyContent:containerStyle.justifyContent,topDiff:gridRect.top-imgRect.top,leftDiff:gridRect.left-imgRect.left},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-                          }
-                        }, 200);
-                      }
-                      // #endregion
+                    ref={() => {
+                      // Grid ref callback
                     }}
                   >
                     {Array.from({ length: 8 }, (_, row) => (
