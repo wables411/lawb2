@@ -7287,30 +7287,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   </div>
                 )}
                 <div className={`chessboard-container ${isGameLoading ? 'loading' : ''}`}>
-                  {/* Fallback img tag to ensure chessboard displays */}
-                  {/* #region agent log */}
-                  <img 
-                    src={selectedChessboard}
-                    alt="Chessboard"
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'fill',
-                      zIndex: 0,
-                      pointerEvents: 'none'
-                    }}
-                    onError={(e) => {
-                      console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                    onLoad={() => {
-                      console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
-                    }}
-                  />
-                  {/* #endregion */}
                   <div 
                     className={`chessboard ${isGameLoading ? 'loading' : ''}`}
                     style={{
@@ -7336,6 +7312,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       // Grid ref callback
                     }}
                   >
+                    {/* Fallback img tag to ensure chessboard displays */}
+                    <img
+                      className="chessboard-image"
+                      src={selectedChessboard}
+                      alt="Chessboard"
+                      onError={(e) => {
+                        console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
+                      }}
+                    />
                     {Array.from({ length: 8 }, (_, row) => (
                       Array.from({ length: 8 }, (_, col) => renderSquare(row, col))
                     ))}

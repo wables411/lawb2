@@ -3213,28 +3213,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                {/* Fallback img tag to ensure chessboard displays */}
-                <img 
-                  src={selectedChessboard}
-                  alt="Chessboard"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'fill',
-                    zIndex: 0,
-                    pointerEvents: 'none'
-                  }}
-                  onError={(e) => {
-                    console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                  onLoad={() => {
-                    console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
-                  }}
-                />
                 <div 
                   className="chessboard"
                   style={{
@@ -3257,6 +3235,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
                 >
+                  {/* Fallback img tag to ensure chessboard displays */}
+                  <img
+                    className="chessboard-image"
+                    src={selectedChessboard}
+                    alt="Chessboard"
+                    onError={(e) => {
+                      console.error('[CHESSBOARD] Failed to load image:', selectedChessboard);
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      console.log('[CHESSBOARD] Image loaded successfully:', selectedChessboard);
+                    }}
+                  />
                   {Array.from({ length: 8 }, (_, row) => (
                     Array.from({ length: 8 }, (_, col) => renderSquare(row, col))
                   ))}

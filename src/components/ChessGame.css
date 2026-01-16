@@ -766,18 +766,18 @@
   background-color: #3e3e42 !important; /* Fallback background so we can see the container */
 }
 
-/* Ensure img tags inside chessboard-container are visible */
-.chessboard-container img {
+/* Ensure chessboard image aligns to the grid */
+.chessboard .chessboard-image {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
   object-fit: fill !important;
   z-index: 0 !important;
+  pointer-events: none !important;
 }
 
 .chessboard {
@@ -795,6 +795,7 @@
   background-origin: padding-box !important;
   background-clip: padding-box !important;
   background-color: transparent !important;
+  overflow: hidden !important;
   border-radius: 12px;
   box-shadow: 0 0 15px rgba(0,0,0,0.10);
   border: 2px solid rgba(50,205,50,0.3);
