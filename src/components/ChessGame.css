@@ -766,19 +766,6 @@
   background-color: #3e3e42 !important; /* Fallback background so we can see the container */
 }
 
-/* Ensure chessboard image aligns to the grid */
-.chessboard .chessboard-image {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: fill !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-}
 
 .chessboard {
   width: 100% !important;
@@ -823,7 +810,7 @@ div.chessboard[style*="background-image"] {
 
 /* Force background-image from inline style attribute */
 div[class*="chessboard"][style*="url"] {
-  background-image: inherit !important;
+  background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
 }
 .game-controls {
   flex: 0 0 auto;
