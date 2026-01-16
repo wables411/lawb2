@@ -7298,9 +7298,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       left: 0,
                       width: '100%',
                       height: '100%',
-                      maxWidth: '80vh',
-                      maxHeight: '80vh',
-                      aspectRatio: '1 / 1',
                       objectFit: 'fill',
                       zIndex: 0,
                       pointerEvents: 'none'

@@ -774,7 +774,9 @@
   position: absolute !important;
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: fill !important;
   z-index: 0 !important;
 }
 
