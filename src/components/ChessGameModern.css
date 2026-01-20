@@ -111,6 +111,43 @@
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
+/* Mobile optimizations for buttons */
+@media (max-width: 768px) {
+  .chess-primary-btn {
+    min-height: 44px;
+    min-width: 120px;
+    padding: 12px 20px;
+    font-size: 16px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.3);
+  }
+  
+  .chess-secondary-btn {
+    min-height: 44px;
+    min-width: 100px;
+    padding: 10px 16px;
+    font-size: 15px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+@media (max-width: 480px) {
+  .chess-primary-btn {
+    min-height: 44px;
+    min-width: 100px;
+    padding: 10px 16px;
+    font-size: 15px;
+  }
+  
+  .chess-secondary-btn {
+    min-height: 44px;
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
 /* Secondary buttons */
 .chess-secondary-btn {
   background: rgba(255, 255, 255, 0.1);

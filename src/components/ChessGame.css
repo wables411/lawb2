@@ -202,6 +202,17 @@
   z-index: 10002;
 }
 
+/* Mobile: Ensure menu button is large enough for touch */
+@media (max-width: 768px) {
+  .sidebar-menu-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    font-size: 20px;
+  }
+}
+
 .sidebar-menu-btn:hover {
   background: #d4d4d4;
 }
@@ -2156,6 +2167,29 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   font-size: 24px;
   font-weight: bold;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  max-width: 90vw;
+  box-sizing: border-box;
+}
+
+/* Mobile styles for victory modal */
+@media (max-width: 768px) {
+  .victory-content {
+    padding: 24px;
+    font-size: 18px;
+    border-radius: 12px;
+    max-width: 85vw;
+    margin: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .victory-content {
+    padding: 16px;
+    font-size: 16px;
+    border-radius: 8px;
+    max-width: 90vw;
+    margin: 10px;
+  }
 }
 
 /* Enhanced board glow */
@@ -3486,13 +3520,27 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   
   /* Mobile-friendly game info */
   .game-info-compact {
-    font-size: 14px;
-    padding: 8px 12px;
+    font-size: 12px;
+    padding: 6px 8px;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 32px;
   }
   
   .game-info-compact span {
-    font-size: 14px;
-    margin: 0 4px;
+    font-size: 12px;
+    margin: 0 2px;
+    white-space: nowrap;
+  }
+  
+  .timer-display {
+    font-size: 12px !important;
+  }
+  
+  /* Ensure game info doesn't overflow on mobile */
+  .game-info-compact {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Mobile-optimized leaderboard */
@@ -3563,8 +3611,19 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .chessboard {
     max-width: 95vw;
     max-height: 95vw;
-    min-width: 280px;
-    min-height: 280px;
+    min-width: 250px;
+    min-height: 250px;
+  }
+  
+  /* Ensure chessboard fits on very small screens */
+  @media (max-width: 360px) {
+    .chessboard-container,
+    .chessboard {
+      min-width: 240px;
+      min-height: 240px;
+      max-width: calc(100vw - 16px);
+      max-height: calc(100vw - 16px);
+    }
   }
   
   .game-stable-layout {
@@ -3575,6 +3634,29 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .center-area {
     min-width: 0;
     width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent horizontal overflow on mobile */
+  .chess-game.mobile,
+  .chess-game.mobile * {
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+  
+  /* Ensure game mode panel doesn't overflow */
+  .game-mode-panel-streamlined {
+    max-width: 100%;
+    overflow-x: hidden;
+    padding: 8px 12px !important;
+  }
+  
+  .mode-selection-compact {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
   }
   
   /* Mobile-optimized controls layout */
@@ -3969,6 +4051,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .promotion-dialog {
     padding: 15px;
     max-width: 90vw;
+    min-width: 280px;
+    box-sizing: border-box;
   }
   
   .promotion-content h3 {
@@ -3978,12 +4062,49 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   
   .promotion-pieces {
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .promotion-piece {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
     padding: 8px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .promotion-piece:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .promotion-dialog {
+    padding: 12px;
+    max-width: 95vw;
+    min-width: 260px;
+  }
+  
+  .promotion-content h3 {
+    font-size: 0.9em;
+    margin-bottom: 8px;
+  }
+  
+  .promotion-pieces {
+    gap: 6px;
+  }
+  
+  .promotion-piece {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px;
   }
 }
 

@@ -93,6 +93,14 @@
   z-index: 2;
 }
 
+/* Mobile override for smaller screens */
+@media (max-width: 768px) {
+  .chess-page-simple .chessboard-container {
+    min-width: 280px !important;
+    min-height: 280px !important;
+  }
+}
+
 .chess-page-simple .chessboard {
   width: 100% !important;
   height: 100% !important;
@@ -166,8 +174,34 @@
   }
 
   .chess-page-simple .chessboard-container {
-    max-width: min(95vh, 95vw);
-    max-height: min(95vh, 95vw);
+    max-width: min(95vh, 95vw) !important;
+    max-height: min(95vh, 95vw) !important;
+    min-width: 280px !important;
+    min-height: 280px !important;
+    width: min(95vh, 95vw) !important;
+    height: min(95vh, 95vw) !important;
+  }
+  
+  .chess-page-simple .chess-main-area {
+    height: calc(100vh - 50px) !important;
+    min-height: calc(100vh - 50px) !important;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .chess-page-simple .chessboard-container {
+    max-width: min(90vh, 90vw) !important;
+    max-height: min(90vh, 90vw) !important;
+    min-width: 250px !important;
+    min-height: 250px !important;
+    width: min(90vh, 90vw) !important;
+    height: min(90vh, 90vw) !important;
+  }
+  
+  .chess-page-simple .game-info-compact {
+    font-size: 10px;
+    padding: 2px 4px;
   }
 }
 
