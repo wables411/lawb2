@@ -319,6 +319,7 @@
   padding: 0;
   box-sizing: border-box;
   overflow: visible;
+  background-image: none !important;
 }
 
 .square.selected {
@@ -806,6 +807,7 @@
 div.chessboard[style*="backgroundImage"],
 div.chessboard[style*="background-image"] {
   background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
+  background-size: 100% 100% !important;
 }
 
 /* Force background-image from inline style attribute */

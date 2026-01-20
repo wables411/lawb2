@@ -771,6 +771,7 @@ button.sidebar-menu-btn,
   overflow: visible !important;
   /* Ensure square is a proper positioning context - NO TRANSFORM on square itself */
   transform: none !important;
+  background-image: none !important;
 }
 
 .square:hover {
@@ -1209,6 +1210,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   border: 1px solid #00ff00 !important;
   /* Preserve full color chessboard image */
   background-image: var(--chessboard-bg-image, url('/images/chessboard1.png')) !important;
+  background-size: 100% 100% !important;
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
