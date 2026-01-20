@@ -267,6 +267,20 @@ html:not(.lawb-app-dark-mode) {
   /* Don't override background-image - let inline styles handle it */
 }
 
+/* CRITICAL: Explicitly prevent squares from getting chessboard background-image */
+.lawb-app-dark-mode .chessboard .square,
+.lawb-app-dark-mode .chessboard > .square,
+.lawb-app-dark-mode [class*="chessboard"] .square,
+.lawb-app-dark-mode [class*="chessboard"] > .square {
+  background-image: none !important;
+}
+
+/* CRITICAL: Prevent ALL children of chessboard from inheriting background-image (except pieces) */
+.lawb-app-dark-mode .chessboard *:not(.piece),
+.lawb-app-dark-mode [class*="chessboard"] *:not(.piece) {
+  background-image: none !important;
+}
+
 /* CRITICAL: Explicitly preserve pieces - MUST override universal selector */
 .lawb-app-dark-mode .piece,
 .lawb-app-dark-mode [class*="piece"] {

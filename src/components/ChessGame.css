@@ -331,6 +331,11 @@ div.chessboard > .square {
   background-size: auto !important;
 }
 
+/* CRITICAL: Prevent ALL children of chessboard from inheriting background-image */
+.chessboard *:not(.piece) {
+  background-image: none !important;
+}
+
 .square.selected {
   background-color: rgba(0, 255, 0, 0.3);
 }
