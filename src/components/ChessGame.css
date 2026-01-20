@@ -2616,6 +2616,23 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   overflow-x: hidden;
 }
 
+/* Mobile: Reduce top padding for game mode panel */
+@media (max-width: 768px) {
+  .chess-game.mobile .game-mode-panel-streamlined {
+    padding-top: 8px !important;
+    padding: 8px 12px 20px 12px !important;
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .chess-game.mobile .game-mode-panel-streamlined {
+    padding-top: 4px !important;
+    padding: 4px 8px 16px 8px !important;
+    margin-top: 0 !important;
+  }
+}
+
 /* Center all selection panels */
 .difficulty-selection-row,
 .piece-set-selection-row {
@@ -3453,6 +3470,19 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     gap: 8px;
     padding: 8px;
   }
+  
+  /* Reduce top padding on mobile for initial game mode selection view */
+  .chess-game.mobile .game-stable-layout.home-view,
+  .chess-game.mobile .game-stable-layout:not(.game-active) {
+    padding-top: 0px !important;
+    padding: 0px 8px 8px 8px !important;
+  }
+  
+  /* Ensure center-area has no top padding on mobile */
+  .chess-game.mobile .center-area {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
 
   .chess-game.mobile .left-sidebar,
   .chess-game.mobile .right-sidebar {
@@ -3573,6 +3603,13 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     padding: 4px;
     gap: 4px;
   }
+  
+  /* Further reduce top padding on small mobile screens */
+  .chess-game.mobile .game-stable-layout.home-view,
+  .chess-game.mobile .game-stable-layout:not(.game-active) {
+    padding-top: 0px !important;
+    padding: 0px 4px 4px 4px !important;
+  }
 
   .chess-game.mobile .left-sidebar,
   .chess-game.mobile .right-sidebar {
@@ -3674,6 +3711,38 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   /* Better mobile spacing */
   .game-mode-panel-streamlined {
     padding: 4px 12px !important;
+    padding-top: 4px !important;
+    margin-top: 0 !important;
+  }
+  
+  /* Reduce top padding on mobile for game mode panel */
+  .chess-game.mobile .game-mode-panel-streamlined,
+  .chess-game.mobile .center-area .game-mode-panel-streamlined {
+    padding-top: 8px !important;
+    margin-top: 0 !important;
+  }
+  
+  /* Ensure center-area has minimal top padding on mobile */
+  .chess-game.mobile .center-area {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  
+  /* Reduce padding for game-stable-layout on mobile when showing game mode panel */
+  .chess-game.mobile .game-stable-layout:not(.game-active) {
+    padding-top: 0px !important;
+    padding: 4px 8px !important;
+    margin-top: 0 !important;
+  }
+  
+  /* Ensure center-area has no top padding on mobile for initial view */
+  .chess-game.mobile .center-area:not(:has(.chessboard-container)) {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  
+  /* Reduce top padding for game mode panel on mobile */
+  .chess-game.mobile .center-area .game-mode-panel-streamlined {
     padding-top: 4px !important;
     margin-top: 0 !important;
   }
