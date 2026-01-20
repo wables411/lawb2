@@ -710,6 +710,30 @@ button.sidebar-menu-btn,
   }
 }
 
+/* Center multiplayer lobby */
+.chess-multiplayer-lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.lobby-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 .chessboard-container {
   width: 100%;
   height: 100%;

@@ -2582,6 +2582,38 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   overflow-x: hidden;
 }
 
+/* Center all selection panels */
+.difficulty-selection-row,
+.piece-set-selection-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.difficulty-controls-col,
+.piece-set-controls-col {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.difficulty-selection-panel,
+.piece-set-selection-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  margin: 0 auto;
+  max-width: 600px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Remove ALL margins/padding for baseapp - content starts immediately */
 .chess-game.baseapp .game-mode-panel-streamlined {
   margin-top: 0px !important;
@@ -2673,6 +2705,11 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   display: flex;
   gap: 16px;
   margin-bottom: 20px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .mode-btn-compact {
@@ -2984,6 +3021,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .mode-selection-compact {
     flex-direction: column;
     gap: 8px;
+    justify-content: center;
+    align-items: center;
   }
   
   .mode-btn-compact {
@@ -3528,11 +3567,13 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     flex-direction: column !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     min-height: 0 !important;
     height: auto !important;
     max-height: none !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
   
   .chess-game.mobile .piece-set-controls-col,
@@ -3544,6 +3585,9 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     min-height: 0 !important;
     height: auto !important;
     max-height: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
   
   .chess-game.mobile .piece-set-selection-panel,
@@ -3658,6 +3702,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .mode-selection-compact {
     gap: 12px;
     margin-bottom: 16px;
+    justify-content: center;
+    align-items: center;
   }
   
   /* Desktop menu popup should NOT show on mobile - use mobile-menu-popup instead */
