@@ -2590,6 +2590,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   align-items: center;
   width: 100%;
   margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .difficulty-controls-col,
@@ -2599,6 +2601,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   align-items: center;
   width: 100%;
   max-width: 600px;
+  margin: 0 auto;
 }
 
 .difficulty-selection-panel,
@@ -2612,6 +2615,59 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   max-width: 600px;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Ensure center-area properly centers the Game Setup page */
+.center-area > .piece-set-selection-row {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Ensure the Game Setup panel is centered */
+.center-area .piece-set-selection-row .piece-set-controls-col {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto !important;
+}
+
+.center-area .piece-set-selection-panel {
+  margin: 0 auto !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Desktop-specific centering for Game Setup */
+.chess-game:not(.mobile) .center-area > .piece-set-selection-row {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.chess-game:not(.mobile) .center-area .piece-set-selection-row .piece-set-controls-col {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto !important;
+}
+
+.chess-game:not(.mobile) .center-area .piece-set-selection-panel {
+  margin: 0 auto !important;
+  text-align: center !important;
 }
 
 /* Remove ALL margins/padding for baseapp - content starts immediately */
