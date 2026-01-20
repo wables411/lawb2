@@ -315,6 +315,13 @@
   transition: none !important;
 }
 
+/* CRITICAL: Prevent squares from inheriting chessboard background image */
+.chessboard .square,
+.chessboard * .square,
+.square {
+  background-image: none !important;
+}
+
 .chessboard {
   display: grid !important;
 }

@@ -322,6 +322,15 @@
   background-image: none !important;
 }
 
+/* CRITICAL: Highest specificity to prevent squares from getting chessboard background */
+.chessboard .square,
+.chessboard > .square,
+div.chessboard .square,
+div.chessboard > .square {
+  background-image: none !important;
+  background-size: auto !important;
+}
+
 .square.selected {
   background-color: rgba(0, 255, 0, 0.3);
 }

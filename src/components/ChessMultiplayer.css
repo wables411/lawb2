@@ -774,6 +774,15 @@ button.sidebar-menu-btn,
   background-image: none !important;
 }
 
+/* CRITICAL: Highest specificity to prevent squares from getting chessboard background */
+.chessboard .square,
+.chessboard > .square,
+div.chessboard .square,
+div.chessboard > .square {
+  background-image: none !important;
+  background-size: auto !important;
+}
+
 .square:hover {
   background: rgba(255, 255, 255, 0.2);
   /* Don't scale the square on hover - it interferes with indicator positioning */
