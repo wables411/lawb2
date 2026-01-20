@@ -336,6 +336,22 @@
   position: relative !important;
 }
 
+/* CRITICAL: Override .chessboard * rule for legal-move-indicator to center it properly */
+.chessboard .legal-move-indicator,
+.chessboard * .legal-move-indicator,
+.legal-move-indicator {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 30px !important;
+  height: 30px !important;
+  right: auto !important;
+  bottom: auto !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+
 /* ============================================
    MOBILE OPTIMIZATIONS
    ============================================ */
@@ -354,6 +370,14 @@
     gap: 10px;
   }
   
+  /* Responsive sizing for legal-move-indicator */
+  .chessboard .legal-move-indicator,
+  .chessboard * .legal-move-indicator,
+  .legal-move-indicator {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  
   .player-avatar-modern {
     width: 36px;
     height: 36px;
@@ -363,6 +387,16 @@
   .chessboard-container-modern {
     padding: 12px;
     border-radius: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Smaller legal-move-indicator for very small screens */
+  .chessboard .legal-move-indicator,
+  .chessboard * .legal-move-indicator,
+  .legal-move-indicator {
+    width: 20px !important;
+    height: 20px !important;
   }
 }
 
