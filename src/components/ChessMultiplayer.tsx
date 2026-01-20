@@ -5837,6 +5837,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPiece, setDraggedPiece] = useState<{ row: number; col: number } | null>(null);
+  const chessboardRef = useRef<HTMLDivElement | null>(null);
 
   const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
     // Prevent default to avoid double-tap zoom on mobile
@@ -5909,6 +5910,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setIsDragging(false);
     setDraggedPiece(null);
   };
+
+  useEffect(() => {
+    if (gameMode !== GameMode.ACTIVE || typeof window === 'undefined') return;
+    const boardEl = chessboardRef.current;
+    if (!boardEl) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessMultiplayer.tsx:chessboard-ref-missing',message:'chessboard ref missing',data:{gameMode,selectedChessboard},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+    const boardStyle = window.getComputedStyle(boardEl);
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessMultiplayer.tsx:chessboard-style',message:'chessboard computed style',data:{selectedChessboard,inlineBg:boardEl.style.backgroundImage,cssVarBg:boardEl.style.getPropertyValue('--chessboard-bg-image'),bg:boardStyle.backgroundImage,bgSize:boardStyle.backgroundSize,bgRepeat:boardStyle.backgroundRepeat,boxSizing:boardStyle.boxSizing,border:boardStyle.borderTopWidth,padding:boardStyle.paddingTop,width:boardEl.clientWidth,height:boardEl.clientHeight},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    const squares = boardEl.querySelectorAll('.square');
+    const squareWithBg = Array.from(squares).filter((el) => window.getComputedStyle(el as Element).backgroundImage !== 'none').length;
+    const firstSquare = squares[0] as HTMLElement | undefined;
+    const firstSquareStyle = firstSquare ? window.getComputedStyle(firstSquare) : null;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'ChessMultiplayer.tsx:square-style',message:'square background sampling',data:{squareCount:squares.length,squareWithBg,sampleBg:firstSquareStyle?.backgroundImage,bgSize:firstSquareStyle?.backgroundSize,bgRepeat:firstSquareStyle?.backgroundRepeat},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [gameMode, selectedChessboard]);
 
   // Render square
   const renderSquare = (row: number, col: number) => {
@@ -7308,9 +7331,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                       margin: 0,
                       padding: 0
                     }}
-                    ref={() => {
-                      // Grid ref callback
-                    }}
+                    ref={chessboardRef}
                   >
                     {Array.from({ length: 8 }, (_, row) => (
                       Array.from({ length: 8 }, (_, col) => renderSquare(row, col))

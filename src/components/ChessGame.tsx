@@ -301,6 +301,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       window.console.log('[LEADERBOARD] viewingProfileAddress changed to:', viewingProfileAddress);
     }
   }, [viewingProfileAddress]);
+
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   
   // UI state
@@ -379,6 +380,28 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return selected;
   });
 
+  useEffect(() => {
+    if (!showGame || typeof window === 'undefined') return;
+    const boardEl = chessboardRef.current;
+    if (!boardEl) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessGame.tsx:chessboard-ref-missing',message:'chessboard ref missing',data:{showGame,selectedChessboard},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+    const boardStyle = window.getComputedStyle(boardEl);
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessGame.tsx:chessboard-style',message:'chessboard computed style',data:{selectedChessboard,inlineBg:boardEl.style.backgroundImage,cssVarBg:boardEl.style.getPropertyValue('--chessboard-bg-image'),bg:boardStyle.backgroundImage,bgSize:boardStyle.backgroundSize,bgRepeat:boardStyle.backgroundRepeat,boxSizing:boardStyle.boxSizing,border:boardStyle.borderTopWidth,padding:boardStyle.paddingTop,width:boardEl.clientWidth,height:boardEl.clientHeight},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    const squares = boardEl.querySelectorAll('.square');
+    const squareWithBg = Array.from(squares).filter((el) => window.getComputedStyle(el as Element).backgroundImage !== 'none').length;
+    const firstSquare = squares[0] as HTMLElement | undefined;
+    const firstSquareStyle = firstSquare ? window.getComputedStyle(firstSquare) : null;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'ChessGame.tsx:square-style',message:'square background sampling',data:{squareCount:squares.length,squareWithBg,sampleBg:firstSquareStyle?.backgroundImage,bgSize:firstSquareStyle?.backgroundSize,bgRepeat:firstSquareStyle?.backgroundRepeat},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showGame, selectedChessboard]);
+
   // Add sound and celebration state
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
@@ -387,6 +410,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [selectedPieceSet, setSelectedPieceSet] = useState<ChessPieceSet>(getDefaultPieceSet());
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
+  const chessboardRef = useRef<HTMLDivElement | null>(null);
 
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
   pieceImages = selectedPieceSet.pieceImages;
@@ -3234,6 +3258,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     padding: 0,
                     '--chessboard-bg-image': `url(${selectedChessboard})` as any
                   } as React.CSSProperties}
+                  ref={chessboardRef}
                 >
                   {Array.from({ length: 8 }, (_, row) => (
                     Array.from({ length: 8 }, (_, col) => renderSquare(row, col))
