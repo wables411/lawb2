@@ -4814,24 +4814,36 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!piece) {
       return;
     }
-    // Check for pawn promotion - show dialog for user choice
+    // Check for pawn promotion - show dialog only for the current player's pawn
     // Blue pawns promote when reaching row 0 (top), red pawns promote when reaching row 7 (bottom)
     console.log('[PAWN_PROMOTION_CHECK]', {
       piece: piece,
       pieceLower: piece.toLowerCase(),
       isPawn: piece.toLowerCase() === 'p',
       pieceColor: getPieceColor(piece),
+      playerColor: playerColor,
+      currentPlayer: currentPlayer,
       toRow: to.row,
       bluePromotion: getPieceColor(piece) === 'blue' && to.row === 0,
       redPromotion: getPieceColor(piece) === 'red' && to.row === 7,
-      shouldPromote: piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))
+      shouldPromote: piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7)),
+      isCurrentPlayer: getPieceColor(piece) === playerColor
     });
     
     if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      console.log('[PAWN_PROMOTION] Triggering promotion dialog');
-      setPromotionMove({ from, to });
-      setShowPromotion(true);
-      return;
+      // Only show promotion dialog if it's the current player's pawn
+      if (getPieceColor(piece) === playerColor) {
+        console.log('[PAWN_PROMOTION] Triggering promotion dialog for current player');
+        setPromotionMove({ from, to });
+        setShowPromotion(true);
+        return;
+      } else {
+        // Opponent's pawn promotion - automatically promote to queen
+        // The executeMoveAfterAnimation will handle case conversion based on piece color
+        console.log('[PAWN_PROMOTION] Auto-promoting opponent pawn to queen');
+        await executeMove(from, to, 'q');
+        return;
+      }
     }
     
     await executeMove(from, to);

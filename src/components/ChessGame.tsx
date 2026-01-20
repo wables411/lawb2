@@ -1051,6 +1051,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     // Check for pawn promotion
     if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
+      // If it's an AI move, automatically promote to queen without showing dialog
+      if (isAIMove) {
+        executeMove(from, to, 'Q', isAIMove);
+        return;
+      }
+      // For player moves, show promotion dialog
       setPromotionMove({ from, to });
       setShowPromotion(true);
       return;
