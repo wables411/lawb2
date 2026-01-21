@@ -492,11 +492,23 @@ div.chessboard > .square {
 
 /* Linux-style list format for piece gallery */
 .piece-gallery-list {
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
   gap: 2px;
   padding: 4px 0;
-  width: 100%;
+  width: 100% !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  list-style: none !important;
+}
+
+/* Ensure piece gallery container allows list to display properly */
+.piece-gallery .piece-gallery-list {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .piece-gallery-list-item {
@@ -505,10 +517,13 @@ div.chessboard > .square {
   padding: 6px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-  display: flex;
+  display: flex !important;
   align-items: center;
   min-height: 60px;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
+  position: relative !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .piece-gallery-list-item:hover {
@@ -528,10 +543,12 @@ div.chessboard > .square {
 }
 
 .piece-gallery-list-content {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 12px;
-  width: 100%;
+  width: 100% !important;
+  position: relative !important;
+  box-sizing: border-box !important;
 }
 
 .piece-gallery-list-image-wrapper {
