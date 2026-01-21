@@ -823,6 +823,26 @@ button.sidebar-menu-btn,
   max-height: 80px;
 }
 
+/* Ensure gallery works in Popup content - override Popup's & * rules */
+[class*="popup"] .piece-gallery,
+[class*="popup"] .piece-gallery-compact {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+
+[class*="popup"] .piece-gallery .piece-gallery-list {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+[class*="popup"] .piece-gallery-list-item {
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Mobile responsive styles for piece gallery list */
 @media (max-width: 600px) {
   .piece-gallery-list-item {
@@ -1162,10 +1182,13 @@ div.chessboard > .square {
   padding: 12px 8px;
 }
 
+/* Base piece gallery - consolidated from multiple conflicting rules */
 .piece-gallery {
+  display: block;
   padding: 8px 0;
   margin: 0 auto;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 .piece-gallery h3 {

@@ -474,10 +474,13 @@ div.chessboard > .square {
   padding: 12px 8px;
 }
 
+/* Base piece gallery - consolidated from multiple conflicting rules */
 .piece-gallery {
+  display: block;
   padding: 8px 0;
   margin: 0 auto;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 .piece-gallery h3 {
@@ -509,12 +512,6 @@ div.chessboard > .square {
   flex-direction: column;
   width: 100%;
   max-width: 100%;
-}
-
-/* Override left sidebar alignment for list */
-.left-sidebar .piece-gallery .piece-gallery-list {
-  align-items: stretch;
-  width: 100%;
 }
 
 /* Ensure list items don't inherit center alignment from parent */
@@ -851,7 +848,7 @@ div.chessboard > .square {
   /* Don't force height - let content determine it */
 }
 
-.move-history, .piece-gallery {
+.move-history {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
@@ -865,6 +862,8 @@ div.chessboard > .square {
   align-items: center;
   color: #c00 !important; /* Red for light mode */
 }
+
+/* Piece gallery should not share move-history styles - use base rule */
 
 .chess-dark-mode .move-history {
   color: #00ff00 !important; /* Green for dark mode */
@@ -1007,18 +1006,12 @@ div[class*="chessboard"][style*="url"] {
   border-radius: 0 !important;
 }
 
-.piece-gallery {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-  margin: 0 auto;
-  max-width: 340px;
-}
-
+/* Piece gallery in panel context - removed duplicate rule, using base rule above */
 /* Ensure list format works within piece-gallery */
 .piece-gallery .piece-gallery-list {
   max-width: 100%;
   margin: 0;
+  width: 100%;
 }
 
 .gallery-item {
@@ -1090,16 +1083,7 @@ div[class*="chessboard"][style*="url"] {
   height: 100%;
 }
 
-/* Fix piece gallery scrolling */
-.piece-gallery {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  font-size: 11px;
-  line-height: 1.2;
-  max-height: 100%;
-  height: 100%;
-}
+/* Piece gallery in panel context - removed duplicate rule, using base rule above */
 
 /* Leaderboard */
 .leaderboard {
@@ -3428,7 +3412,13 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch; /* Changed from center to allow list items to stretch */
+}
+
+/* Override alignment for list format in sidebar */
+.left-sidebar .piece-gallery .piece-gallery-list {
+  align-items: stretch;
+  width: 100%;
 }
 
 .left-sidebar .piece-gallery-compact {
@@ -3501,6 +3491,28 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 
 .piece-gallery-compact .piece-gallery {
   background: transparent;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Ensure gallery works in Popup content - override Popup's & * rules */
+[class*="popup"] .piece-gallery,
+[class*="popup"] .piece-gallery-compact {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+
+[class*="popup"] .piece-gallery .piece-gallery-list {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+[class*="popup"] .piece-gallery-list-item {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Wallet Connection Overlay */
