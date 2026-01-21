@@ -669,81 +669,102 @@ button.sidebar-menu-btn,
 }
 
 /* Linux-style list format for piece gallery */
-/* List container - simple vertical stack */
-.piece-gallery-list {
-  display: block;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  list-style: none;
+/* List container - simple vertical stack - override Popup's & * rule */
+.piece-gallery-list,
+.piece-gallery .piece-gallery-list,
+div.piece-gallery-list {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none !important;
+  box-sizing: border-box !important;
 }
 
-/* Each piece row */
-.piece-gallery-list-item {
-  display: block;
-  width: 100%;
-  margin-bottom: 2px;
-  background: #c0c0c0;
-  border: 2px outset #c0c0c0;
-  padding: 6px 8px;
+/* Each piece row - override Popup's & * rule */
+.piece-gallery-list-item,
+.piece-gallery-list .piece-gallery-list-item,
+div.piece-gallery-list-item {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 2px !important;
+  background: #c0c0c0 !important;
+  border: 2px outset #c0c0c0 !important;
+  padding: 6px 8px !important;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-sizing: border-box;
-  position: relative;
-  min-height: 60px;
+  box-sizing: border-box !important;
+  position: relative !important;
+  min-height: 60px !important;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
 }
 
 .piece-gallery-list-item:hover {
-  background: #d4d4d4;
-  border-color: #e0e0e0;
+  background: #d4d4d4 !important;
+  border-color: #e0e0e0 !important;
 }
 
 .piece-gallery-list-item:active {
-  border: 2px inset #c0c0c0;
-  background: #a0a0a0;
+  border: 2px inset #c0c0c0 !important;
+  background: #a0a0a0 !important;
 }
 
 .piece-gallery-list-item.selected {
-  background: #ffff00;
-  border: 2px inset #c0c0c0;
-  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
+  background: #ffff00 !important;
+  border: 2px inset #c0c0c0 !important;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2) !important;
 }
 
-/* Content row inside each item */
-.piece-gallery-list-content {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
+/* Content row inside each item - override Popup's & * rule */
+.piece-gallery-list-content,
+.piece-gallery-list-item .piece-gallery-list-content,
+div.piece-gallery-list-content {
+  display: table !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  box-sizing: border-box !important;
 }
 
 /* Image cell */
-.piece-gallery-list-image-wrapper {
-  display: table-cell;
-  width: 50px;
-  vertical-align: middle;
-  padding-right: 12px;
+.piece-gallery-list-image-wrapper,
+.piece-gallery-list-content .piece-gallery-list-image-wrapper {
+  display: table-cell !important;
+  width: 50px !important;
+  max-width: 50px !important;
+  vertical-align: middle !important;
+  padding-right: 12px !important;
+  box-sizing: border-box !important;
 }
 
-.piece-gallery-list-img {
-  width: 50px;
-  height: 50px;
-  object-fit: contain;
-  display: block;
-  background: #ffffff;
-  border: 1px inset #808080;
-  padding: 2px;
-  box-sizing: border-box;
+.piece-gallery-list-img,
+.piece-gallery-list-image-wrapper img,
+.piece-gallery-list-image-wrapper .piece-gallery-list-img {
+  width: 50px !important;
+  height: 50px !important;
+  max-width: 50px !important;
+  max-height: 50px !important;
+  object-fit: contain !important;
+  display: block !important;
+  background: #ffffff !important;
+  border: 1px inset #808080 !important;
+  padding: 2px !important;
+  box-sizing: border-box !important;
 }
 
 /* Info cell */
-.piece-gallery-list-info {
-  display: table-cell;
-  vertical-align: middle;
-  width: auto;
+.piece-gallery-list-info,
+.piece-gallery-list-content .piece-gallery-list-info {
+  display: table-cell !important;
+  vertical-align: middle !important;
+  width: auto !important;
+  box-sizing: border-box !important;
 }
 
-.piece-gallery-list-name {
+.piece-gallery-list-name,
+.piece-gallery-list-info .piece-gallery-list-name {
   font-weight: bold;
   font-size: 12px;
   color: #000000;
@@ -754,6 +775,7 @@ button.sidebar-menu-btn,
   text-overflow: ellipsis;
   display: block;
   margin-bottom: 4px;
+  box-sizing: border-box;
 }
 
 .piece-gallery-list-item[data-piece-color="red"] .piece-gallery-list-name {
@@ -764,7 +786,8 @@ button.sidebar-menu-btn,
   color: #0000ff;
 }
 
-.piece-gallery-list-desc {
+.piece-gallery-list-desc,
+.piece-gallery-list-info .piece-gallery-list-desc {
   font-size: 10px;
   color: #000000;
   line-height: 1.4;
@@ -774,6 +797,7 @@ button.sidebar-menu-btn,
   transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
   margin-top: 0;
   display: block;
+  box-sizing: border-box;
 }
 
 .piece-gallery-list-desc.expanded {
@@ -1148,12 +1172,16 @@ div.chessboard > .square {
    PIECE GALLERY - COMPLETE REDESIGN
    ============================================ */
 
-/* Base container */
-.piece-gallery {
-  width: 100%;
-  max-width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
+/* Base container - override Popup's & * rule */
+.piece-gallery,
+.piece-gallery-compact .piece-gallery,
+div.piece-gallery,
+div.piece-gallery-compact .piece-gallery {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+  display: block !important;
 }
 
 .piece-gallery h3 {
