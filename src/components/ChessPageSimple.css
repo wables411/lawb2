@@ -5,16 +5,23 @@
 /* Fix Vite template body centering for /chess only.
    `index.css` uses `body { display:flex; place-items:center; }` which causes huge top whitespace on mobile. */
 body.chess-route {
-  display: block !important;
+  /* Keep this very explicit to beat the global `index.css` body flex centering on iOS Safari */
+  display: flex !important;
+  flex-direction: column !important;
   place-items: initial !important;
   align-items: stretch !important;
   justify-content: flex-start !important;
-  min-height: 100vh;
+  min-height: 100vh !important;
+  margin: 0 !important;
 }
 
 body.chess-route #root {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100vh !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  align-self: stretch !important; /* critical: defeat body align-items:center */
 }
 
 .chess-page-simple {
