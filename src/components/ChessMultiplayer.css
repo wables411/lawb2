@@ -670,23 +670,23 @@ button.sidebar-menu-btn,
 
 /* Linux-style list format for piece gallery */
 .piece-gallery-list {
-  display: flex !important;
-  flex-direction: column !important;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
   padding: 4px 0;
-  width: 100% !important;
-  position: relative !important;
-  box-sizing: border-box !important;
-  margin: 0 !important;
-  list-style: none !important;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+  margin: 0;
+  list-style: none;
 }
 
 /* Ensure piece gallery container allows list to display properly */
 .piece-gallery .piece-gallery-list {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-  max-width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
 }
 
 .piece-gallery-list-item {
@@ -695,13 +695,14 @@ button.sidebar-menu-btn,
   padding: 6px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-  display: flex !important;
+  display: flex;
   align-items: center;
   min-height: 60px;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
-  position: relative !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .piece-gallery-list-item:hover {
@@ -721,12 +722,14 @@ button.sidebar-menu-btn,
 }
 
 .piece-gallery-list-content {
-  display: flex !important;
+  display: flex;
   align-items: center;
   gap: 12px;
-  width: 100% !important;
-  position: relative !important;
-  box-sizing: border-box !important;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
 }
 
 .piece-gallery-list-image-wrapper {
