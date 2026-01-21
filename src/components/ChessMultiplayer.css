@@ -669,40 +669,29 @@ button.sidebar-menu-btn,
 }
 
 /* Linux-style list format for piece gallery */
+/* List container - simple vertical stack */
 .piece-gallery-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 0;
+  display: block;
   width: 100%;
-  position: relative;
-  box-sizing: border-box;
+  padding: 0;
   margin: 0;
   list-style: none;
 }
 
-/* Ensure piece gallery container allows list to display properly */
-.piece-gallery .piece-gallery-list {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 100%;
-}
-
+/* Each piece row */
 .piece-gallery-list-item {
+  display: block;
+  width: 100%;
+  margin-bottom: 2px;
   background: #c0c0c0;
   border: 2px outset #c0c0c0;
   padding: 6px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-  display: flex;
-  align-items: center;
+  box-sizing: border-box;
+  position: relative;
   min-height: 60px;
   font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
-  position: relative;
-  width: 100%;
-  box-sizing: border-box;
-  flex-shrink: 0;
 }
 
 .piece-gallery-list-item:hover {
@@ -721,42 +710,37 @@ button.sidebar-menu-btn,
   box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
 }
 
+/* Content row inside each item */
 .piece-gallery-list-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: table;
   width: 100%;
-  position: relative;
-  box-sizing: border-box;
-  flex: 1;
-  min-width: 0;
+  table-layout: fixed;
 }
 
+/* Image cell */
 .piece-gallery-list-image-wrapper {
-  flex-shrink: 0;
+  display: table-cell;
   width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  border: 1px inset #808080;
-  padding: 2px;
+  vertical-align: middle;
+  padding-right: 12px;
 }
 
 .piece-gallery-list-img {
-  width: 100%;
-  height: 100%;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
   display: block;
+  background: #ffffff;
+  border: 1px inset #808080;
+  padding: 2px;
+  box-sizing: border-box;
 }
 
+/* Info cell */
 .piece-gallery-list-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  display: table-cell;
+  vertical-align: middle;
+  width: auto;
 }
 
 .piece-gallery-list-name {
@@ -768,9 +752,10 @@ button.sidebar-menu-btn,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: block;
+  margin-bottom: 4px;
 }
 
-/* Color coding for pieces in list format */
 .piece-gallery-list-item[data-piece-color="red"] .piece-gallery-list-name {
   color: #ff0000;
 }
@@ -788,6 +773,7 @@ button.sidebar-menu-btn,
   opacity: 0;
   transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
   margin-top: 0;
+  display: block;
 }
 
 .piece-gallery-list-desc.expanded {
@@ -796,17 +782,17 @@ button.sidebar-menu-btn,
   margin-top: 4px;
 }
 
-/* Compact gallery styles for list format */
-.piece-gallery-compact .piece-gallery-list {
-  gap: 1px;
-}
-
+/* Compact variant for popups */
 .piece-gallery-compact .piece-gallery-list-item {
   min-height: 50px;
   padding: 4px 6px;
 }
 
 .piece-gallery-compact .piece-gallery-list-image-wrapper {
+  width: 40px;
+}
+
+.piece-gallery-compact .piece-gallery-list-img {
   width: 40px;
   height: 40px;
 }
@@ -819,31 +805,7 @@ button.sidebar-menu-btn,
   font-size: 9px;
 }
 
-.piece-gallery-compact .piece-gallery-list-desc.expanded {
-  max-height: 80px;
-}
-
-/* Ensure gallery works in Popup content - override Popup's & * rules */
-[class*="popup"] .piece-gallery,
-[class*="popup"] .piece-gallery-compact {
-  width: 100%;
-  max-width: 100%;
-  display: block;
-}
-
-[class*="popup"] .piece-gallery .piece-gallery-list {
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-[class*="popup"] .piece-gallery-list-item {
-  width: 100%;
-  max-width: 100%;
-}
-
-/* Mobile responsive styles for piece gallery list */
+/* Mobile responsive */
 @media (max-width: 600px) {
   .piece-gallery-list-item {
     min-height: 50px;
@@ -851,6 +813,10 @@ button.sidebar-menu-btn,
   }
   
   .piece-gallery-list-image-wrapper {
+    width: 40px;
+  }
+  
+  .piece-gallery-list-img {
     width: 40px;
     height: 40px;
   }
@@ -861,10 +827,6 @@ button.sidebar-menu-btn,
   
   .piece-gallery-list-desc {
     font-size: 9px;
-  }
-  
-  .piece-gallery-list-desc.expanded {
-    max-height: 80px;
   }
 }
 
@@ -1182,12 +1144,15 @@ div.chessboard > .square {
   padding: 12px 8px;
 }
 
-/* Base piece gallery - consolidated from multiple conflicting rules */
+/* ============================================
+   PIECE GALLERY - COMPLETE REDESIGN
+   ============================================ */
+
+/* Base container */
 .piece-gallery {
-  display: block;
-  padding: 8px 0;
-  margin: 0 auto;
+  width: 100%;
   max-width: 100%;
+  padding: 8px;
   box-sizing: border-box;
 }
 
