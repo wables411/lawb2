@@ -678,6 +678,9 @@ button.sidebar-menu-btn,
   list-style: none !important;
   position: relative !important;
   clear: both !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 /* Each piece row - simple block with table layout inside */
