@@ -703,19 +703,28 @@ button.sidebar-menu-btn,
 }
 
 .piece-gallery-list-item:hover {
-  background: #d4d4d4;
-  border-color: #e0e0e0;
+  background: #d4d4d4 !important;
+  border-color: #e0e0e0 !important;
 }
 
 .piece-gallery-list-item:active {
-  border: 2px inset #c0c0c0;
-  background: #a0a0a0;
+  border: 2px inset #c0c0c0 !important;
+  background: #a0a0a0 !important;
 }
 
 .piece-gallery-list-item.selected {
-  background: #ffff00;
-  border: 2px inset #c0c0c0;
-  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
+  background: #ffff00 !important;
+  border: 2px inset #c0c0c0 !important;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2) !important;
+}
+
+/* CRITICAL: Ensure list items are never affected by old gallery-item styles */
+.piece-gallery-list-item.piece-gallery-item,
+.piece-gallery-list-item {
+  display: block !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
 }
 
 /* Content row - table layout for horizontal alignment */
