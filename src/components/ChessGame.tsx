@@ -1676,9 +1676,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     });
 
     return (
-      <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`} style={{ width: '100%', maxWidth: '100%', display: 'block', padding: '8px', boxSizing: 'border-box' }}>
-        <h3 style={{color: '#ff0000', marginBottom: '12px'}}>{selectedPieceSet.name}</h3>
-        <div className="piece-gallery-list" style={{ display: 'block', width: '100%', maxWidth: '100%', padding: 0, margin: 0, listStyle: 'none' }}>
+      <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
+        <h3 style={{color: '#ff0000', marginBottom: '12px', fontSize: '12px', fontWeight: 'bold', textAlign: 'center'}}>{selectedPieceSet.name}</h3>
+        <div className="piece-gallery-list">
           {orderedPieces.map((piece) => {
             const isSelected = selectedGalleryPiece === piece.key;
             const isRed = piece.name.toLowerCase().includes('red');
@@ -1690,53 +1690,29 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 onClick={() => {
                   setSelectedGalleryPiece(isSelected ? null : piece.key);
                 }}
-                style={{ 
-                  display: 'block', 
-                  width: '100%', 
-                  maxWidth: '100%', 
-                  marginBottom: '2px', 
-                  background: isSelected ? '#ffff00' : '#c0c0c0',
-                  border: isSelected ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
-                  padding: '6px 8px',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  minHeight: '60px',
-                  boxSizing: 'border-box'
-                }}
               >
-                <div className="piece-gallery-list-content" style={{ display: 'table', width: '100%', maxWidth: '100%', tableLayout: 'fixed' }}>
-                  <div className="piece-gallery-list-image-wrapper" style={{ display: 'table-cell', width: '50px', maxWidth: '50px', verticalAlign: 'middle', paddingRight: '12px' }}>
+                <div className="piece-gallery-list-content">
+                  <div className="piece-gallery-list-image-wrapper">
                     <img 
                       src={piece.img} 
                       alt={piece.name} 
                       className="piece-gallery-list-img"
-                      style={{ width: '50px', height: '50px', maxWidth: '50px', maxHeight: '50px', objectFit: 'contain', display: 'block', background: '#ffffff', border: '1px inset #808080', padding: '2px', boxSizing: 'border-box' }}
                     />
                   </div>
-                  <div className="piece-gallery-list-info" style={{ display: 'table-cell', verticalAlign: 'middle', width: 'auto' }}>
-                    <div className="piece-gallery-list-name" style={{ fontWeight: 'bold', fontSize: '12px', color: isRed ? '#ff0000' : '#0000ff', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', marginBottom: '4px' }}>
-                      {piece.name}
-                    </div>
-                    <div className={`piece-gallery-list-desc ${isSelected ? 'expanded' : ''}`} style={{ 
-                      fontSize: '10px', 
-                      color: '#000000', 
-                      lineHeight: '1.4', 
-                      maxHeight: isSelected ? '100px' : '0', 
-                      overflow: 'hidden', 
-                      opacity: isSelected ? 1 : 0, 
-                      marginTop: isSelected ? '4px' : '0', 
-                      display: 'block',
-                      transition: 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease'
-                    }}>
-                      {piece.desc}
-                    </div>
+                  <div className="piece-gallery-list-info">
+                    <div className="piece-gallery-list-name">{piece.name}</div>
+                    {isSelected && (
+                      <div className="piece-gallery-list-desc expanded">
+                        {piece.desc}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-        {tipText && <div className="piece-gallery-tip">{tipText}</div>}
+        {tipText && <div className="piece-gallery-tip" style={{ fontSize: '10px', textAlign: 'center', marginTop: '8px', color: '#666' }}>{tipText}</div>}
       </div>
     );
   };
