@@ -10,6 +10,11 @@ const ChessPage: React.FC = () => {
 
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
+    // IMPORTANT: Vite template sets `body { display:flex; place-items:center; }` in `index.css`,
+    // which vertically centers the whole app and creates huge "empty space" above the chess home
+    // buttons on mobile. Scope the override to the /chess route only.
+    document.body.classList.add('chess-route');
+
     const scrollToTop = () => {
       try {
         // Try multiple methods to ensure scrolling works in all contexts
@@ -58,6 +63,7 @@ const ChessPage: React.FC = () => {
     const timeout4 = setTimeout(scrollToTop, 500);
     const timeout5 = setTimeout(scrollToTop, 1000);
     return () => {
+      document.body.classList.remove('chess-route');
       clearTimeout(timeout1);
       clearTimeout(timeout2);
       clearTimeout(timeout3);

@@ -2,6 +2,21 @@
    SIMPLE CHESS PAGE - Clean Linux Style
    ============================================ */
 
+/* Fix Vite template body centering for /chess only.
+   `index.css` uses `body { display:flex; place-items:center; }` which causes huge top whitespace on mobile. */
+body.chess-route {
+  display: block !important;
+  place-items: initial !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  min-height: 100vh;
+}
+
+body.chess-route #root {
+  width: 100%;
+  min-height: 100vh;
+}
+
 .chess-page-simple {
   width: 100vw;
   height: 100vh;
