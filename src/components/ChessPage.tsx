@@ -15,6 +15,10 @@ const ChessPage: React.FC = () => {
     // buttons on mobile. Scope the override to the /chess route only.
     document.body.classList.add('chess-route');
 
+    // #region agent log (hypothesis H1: body/#root centering is causing vertical offset)
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'mobile-topspace-pre',hypothesisId:'H1',location:'ChessPage.tsx:useEffect(mount)',message:'ChessPage mounted: body class + computed layout',data:(()=>{const cs=window.getComputedStyle(document.body);const root=document.getElementById('root');const rcs=root?window.getComputedStyle(root):null;return{bodyClass:document.body.className,bodyDisplay:cs.display,bodyAlignItems:(cs as any).alignItems,bodyJustifyContent:(cs as any).justifyContent,bodyPlaceItems:(cs as any).placeItems,rootDisplay:rcs?.display,rootAlignSelf:rcs?((rcs as any).alignSelf):undefined,inner:{w:window.innerWidth,h:window.innerHeight},vv:(window as any).visualViewport?{w:(window as any).visualViewport.width,h:(window as any).visualViewport.height,offsetTop:(window as any).visualViewport.offsetTop}:null,scroll:{y:window.scrollY,docEl:(document.documentElement&&{scrollTop:document.documentElement.scrollTop,clientH:document.documentElement.clientHeight,scrollH:document.documentElement.scrollHeight})}}})(),timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+
     const scrollToTop = () => {
       try {
         // Try multiple methods to ensure scrolling works in all contexts
@@ -56,6 +60,13 @@ const ChessPage: React.FC = () => {
     
     // Immediate scroll
     scrollToTop();
+
+    // #region agent log (hypothesis H2: chess containers are centered within viewport)
+    requestAnimationFrame(() => {
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'mobile-topspace-pre',hypothesisId:'H2',location:'ChessPage.tsx:rAF(after scrollToTop)',message:'Post-layout rects (page + home-view + first button)',data:(()=>{const page=document.querySelector('.chess-page-simple') as HTMLElement|null;const home=document.querySelector('.game-stable-layout.home-view') as HTMLElement|null;const panel=document.querySelector('.game-mode-panel-streamlined') as HTMLElement|null;const btn=document.querySelector('.mode-selection-compact button') as HTMLElement|null;const rect=(el:HTMLElement|null)=>el?{top:Math.round(el.getBoundingClientRect().top),left:Math.round(el.getBoundingClientRect().left),w:Math.round(el.getBoundingClientRect().width),h:Math.round(el.getBoundingClientRect().height)}:null;return{page:rect(page),home:rect(home),panel:rect(panel),firstBtn:rect(btn),scrollY:window.scrollY}})(),timestamp:Date.now()})}).catch(()=>{});
+    });
+    // #endregion agent log
+
     // Also scroll after multiple delays to ensure DOM is ready
     const timeout1 = setTimeout(scrollToTop, 50);
     const timeout2 = setTimeout(scrollToTop, 100);

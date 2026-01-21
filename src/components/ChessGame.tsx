@@ -412,6 +412,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
   const chessboardRef = useRef<HTMLDivElement | null>(null);
 
+  // #region agent log (hypothesis H3: home-view layout/padding or parent flex rules are pushing buttons down)
+  useEffect(() => {
+    if (showGame || showDifficulty || showPieceSetSelector) return;
+    if (!isMobile) return;
+    const emit = (phase: string) => {
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'mobile-topspace-pre',hypothesisId:'H3',location:'ChessGame.tsx:useEffect(home-view)',message:`Home view mobile layout snapshot (${phase})`,data:(()=>{const home=document.querySelector('.game-stable-layout.home-view') as HTMLElement|null;const panel=document.querySelector('.game-mode-panel-streamlined') as HTMLElement|null;const btn=document.querySelector('.mode-selection-compact button') as HTMLElement|null;const cs=(el:HTMLElement|null)=>el?window.getComputedStyle(el):null;const rect=(el:HTMLElement|null)=>el?{top:Math.round(el.getBoundingClientRect().top),w:Math.round(el.getBoundingClientRect().width),h:Math.round(el.getBoundingClientRect().height)}:null;const hcs=cs(home);const pcs=cs(panel);return{bodyClass:document.body.className,home:rect(home),panel:rect(panel),btn:rect(btn),homeStyles:hcs?{display:hcs.display,alignItems:(hcs as any).alignItems,justifyContent:(hcs as any).justifyContent,paddingTop:hcs.paddingTop,marginTop:hcs.marginTop}:null,panelStyles:pcs?{display:pcs.display,alignItems:(pcs as any).alignItems,justifyContent:(pcs as any).justifyContent,paddingTop:pcs.paddingTop,marginTop:pcs.marginTop}:null,scrollY:window.scrollY,innerH:window.innerHeight}})(),timestamp:Date.now()})}).catch(()=>{});
+    };
+    emit('immediate');
+    requestAnimationFrame(() => emit('rAF'));
+  }, [showGame, showDifficulty, showPieceSetSelector, isMobile]);
+  // #endregion agent log
+
   // Initialize pieceImages immediately (not in useEffect) to ensure it's available on first render
   pieceImages = selectedPieceSet.pieceImages;
 
