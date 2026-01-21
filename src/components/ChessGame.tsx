@@ -1665,54 +1665,54 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
 
   const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => {
-    // Organize pieces into pairs: red and blue side by side
-    const redPieces = pieceGallery.filter(p => p.name.toLowerCase().includes('red'));
-    const bluePieces = pieceGallery.filter(p => p.name.toLowerCase().includes('blue'));
-    const piecePairs = redPieces.map((redPiece, index) => ({
-      red: redPiece,
-      blue: bluePieces[index]
-    }));
+    // Organize pieces in order: King, Queen, Rook, Bishop, Knight, Pawn (Red then Blue)
+    const pieceOrder = ['K', 'Q', 'R', 'B', 'N', 'P'];
+    const orderedPieces: typeof pieceGallery = [];
+    pieceOrder.forEach(key => {
+      const redPiece = pieceGallery.find(p => p.key === key.toUpperCase());
+      const bluePiece = pieceGallery.find(p => p.key === key.toLowerCase());
+      if (redPiece) orderedPieces.push(redPiece);
+      if (bluePiece) orderedPieces.push(bluePiece);
+    });
 
     return (
-    <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-              <h3 style={{color: '#ff0000'}}>{selectedPieceSet.name}</h3>
-      <div className="piece-gallery-grid">
-          {piecePairs.map((pair, index) => (
-            <React.Fragment key={`pair-${index}`}>
-              {/* Red piece */}
-          <div 
-            className="piece-gallery-item" 
-                data-piece-color="red"
-            onClick={() => {
-                  setSelectedGalleryPiece(selectedGalleryPiece === pair.red.key ? null : pair.red.key);
-            }}
-          >
-                <img src={pair.red.img} alt={pair.red.name} className="piece-gallery-img" />
-                <div className="piece-gallery-name">{pair.red.name}</div>
-                {selectedGalleryPiece === pair.red.key && (
-                  <div className="piece-gallery-desc">{pair.red.desc}</div>
-            )}
-          </div>
-              {/* Blue piece */}
-              <div 
-                className="piece-gallery-item" 
-                data-piece-color="blue"
+      <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
+        <h3 style={{color: '#ff0000', marginBottom: '12px'}}>{selectedPieceSet.name}</h3>
+        <div className="piece-gallery-list">
+          {orderedPieces.map((piece) => {
+            const isSelected = selectedGalleryPiece === piece.key;
+            const isRed = piece.name.toLowerCase().includes('red');
+            return (
+              <div
+                key={piece.key}
+                className={`piece-gallery-list-item ${isSelected ? 'selected' : ''}`}
+                data-piece-color={isRed ? 'red' : 'blue'}
                 onClick={() => {
-                  setSelectedGalleryPiece(selectedGalleryPiece === pair.blue.key ? null : pair.blue.key);
+                  setSelectedGalleryPiece(isSelected ? null : piece.key);
                 }}
               >
-                <img src={pair.blue.img} alt={pair.blue.name} className="piece-gallery-img" />
-                <div className="piece-gallery-name">{pair.blue.name}</div>
-                {selectedGalleryPiece === pair.blue.key && (
-                  <div className="piece-gallery-desc">{pair.blue.desc}</div>
-                )}
+                <div className="piece-gallery-list-content">
+                  <div className="piece-gallery-list-image-wrapper">
+                    <img 
+                      src={piece.img} 
+                      alt={piece.name} 
+                      className="piece-gallery-list-img"
+                    />
+                  </div>
+                  <div className="piece-gallery-list-info">
+                    <div className="piece-gallery-list-name">{piece.name}</div>
+                    <div className={`piece-gallery-list-desc ${isSelected ? 'expanded' : ''}`}>
+                      {piece.desc}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </React.Fragment>
-        ))}
+            );
+          })}
+        </div>
+        {tipText && <div className="piece-gallery-tip">{tipText}</div>}
       </div>
-      <div className="piece-gallery-tip">{tipText}</div>
-    </div>
-  );
+    );
   };
 
   const renderPieceSetSelector = () => {

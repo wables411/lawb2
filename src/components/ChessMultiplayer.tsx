@@ -6236,25 +6236,55 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Render piece gallery
-  const renderPieceGallery = () => (
-    <div className="piece-gallery">
-      <h3>{selectedPieceSet.name}</h3>
-      <div className="piece-gallery-grid">
-        {pieceGallery.map(piece => (
-          <div key={piece.key} className="piece-gallery-item" onClick={() => {
-            // Toggle description - if already selected, deselect; otherwise select
-            setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key);
-          }}>
-            <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
-            <div className="piece-gallery-name">{piece.name}</div>
-            {selectedGalleryPiece === piece.key && (
-              <div className="piece-gallery-desc">{piece.desc}</div>
-            )}
-          </div>
-        ))}
+  const renderPieceGallery = () => {
+    // Organize pieces in order: King, Queen, Rook, Bishop, Knight, Pawn (Red then Blue)
+    const pieceOrder = ['K', 'Q', 'R', 'B', 'N', 'P'];
+    const orderedPieces: typeof pieceGallery = [];
+    pieceOrder.forEach(key => {
+      const redPiece = pieceGallery.find(p => p.key === key.toUpperCase());
+      const bluePiece = pieceGallery.find(p => p.key === key.toLowerCase());
+      if (redPiece) orderedPieces.push(redPiece);
+      if (bluePiece) orderedPieces.push(bluePiece);
+    });
+
+    return (
+      <div className="piece-gallery">
+        <h3 style={{color: '#ff0000', marginBottom: '12px'}}>{selectedPieceSet.name}</h3>
+        <div className="piece-gallery-list">
+          {orderedPieces.map((piece) => {
+            const isSelected = selectedGalleryPiece === piece.key;
+            const isRed = piece.name.toLowerCase().includes('red');
+            return (
+              <div
+                key={piece.key}
+                className={`piece-gallery-list-item ${isSelected ? 'selected' : ''}`}
+                data-piece-color={isRed ? 'red' : 'blue'}
+                onClick={() => {
+                  setSelectedGalleryPiece(isSelected ? null : piece.key);
+                }}
+              >
+                <div className="piece-gallery-list-content">
+                  <div className="piece-gallery-list-image-wrapper">
+                    <img 
+                      src={piece.img} 
+                      alt={piece.name} 
+                      className="piece-gallery-list-img"
+                    />
+                  </div>
+                  <div className="piece-gallery-list-info">
+                    <div className="piece-gallery-list-name">{piece.name}</div>
+                    <div className={`piece-gallery-list-desc ${isSelected ? 'expanded' : ''}`}>
+                      {piece.desc}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Load initial data with optimized lobby loading
   useEffect(() => {
@@ -6648,22 +6678,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           {sidebarView === 'gallery' && (
             <div className="piece-gallery-compact mobile-content-view">
               <div className="gallery-title">Piece Gallery</div>
-              <div className="piece-gallery-grid">
-                {pieceGallery.map((piece) => (
-                  <div 
-                    key={piece.key} 
-                    className={`piece-gallery-item ${selectedGalleryPiece === piece.key ? 'selected' : ''}`}
-                    data-piece-color={piece.name.toLowerCase().includes('red') ? 'red' : 'blue'}
-                    onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === piece.key ? null : piece.key)}
-                  >
-                    <img src={piece.img} alt={piece.name} className="piece-gallery-img" />
-                    <div className="piece-gallery-name">{piece.name}</div>
-                    {selectedGalleryPiece === piece.key && (
-                      <div className="piece-gallery-desc">{piece.desc}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {renderPieceGallery()}
             </div>
           )}
           
@@ -7654,47 +7669,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           zIndex={1000}
         >
           <div className="piece-gallery-compact">
-            <div className="gallery-title">Piece Gallery</div>
-            <div className="piece-gallery-grid">
-              {(() => {
-                // Organize pieces into pairs: red and blue side by side
-                const redPieces = pieceGallery.filter(p => p.name.toLowerCase().includes('red'));
-                const bluePieces = pieceGallery.filter(p => p.name.toLowerCase().includes('blue'));
-                const piecePairs = redPieces.map((redPiece, index) => ({
-                  red: redPiece,
-                  blue: bluePieces[index]
-                }));
-
-                return piecePairs.map((pair, index) => (
-                  <React.Fragment key={`pair-${index}`}>
-                    {/* Red piece */}
-                    <div 
-                      className={`piece-gallery-item ${selectedGalleryPiece === pair.red.key ? 'selected' : ''}`}
-                      data-piece-color="red"
-                      onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === pair.red.key ? null : pair.red.key)}
-                    >
-                      <img src={pair.red.img} alt={pair.red.name} className="piece-gallery-img" />
-                      <div className="piece-gallery-name">{pair.red.name}</div>
-                      {selectedGalleryPiece === pair.red.key && (
-                        <div className="piece-gallery-desc">{pair.red.desc}</div>
-                      )}
-                    </div>
-                    {/* Blue piece */}
-                    <div 
-                      className={`piece-gallery-item ${selectedGalleryPiece === pair.blue.key ? 'selected' : ''}`}
-                      data-piece-color="blue"
-                      onClick={() => setSelectedGalleryPiece(selectedGalleryPiece === pair.blue.key ? null : pair.blue.key)}
-                    >
-                      <img src={pair.blue.img} alt={pair.blue.name} className="piece-gallery-img" />
-                      <div className="piece-gallery-name">{pair.blue.name}</div>
-                      {selectedGalleryPiece === pair.blue.key && (
-                        <div className="piece-gallery-desc">{pair.blue.desc}</div>
-                      )}
-                    </div>
-                  </React.Fragment>
-                ));
-              })()}
-            </div>
+            {renderPieceGallery()}
           </div>
         </Popup>
       )}
