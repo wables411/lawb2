@@ -118,6 +118,10 @@ const useStyles = createUseStyles({
       maxWidth: '100%',
       boxSizing: 'border-box'
     },
+    '& .piece-gallery, & .piece-gallery-compact, & .piece-gallery-list, & .piece-gallery-list-item, & .piece-gallery-list-content, & .piece-gallery-list-image-wrapper, & .piece-gallery-list-img, & .piece-gallery-list-info': {
+      maxWidth: 'none',
+      boxSizing: 'border-box'
+    },
     '@media (max-width: 768px)': {
       padding: '16px',
       height: 'calc(100% - 50px)',
