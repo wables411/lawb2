@@ -122,6 +122,12 @@ const useStyles = createUseStyles({
       maxWidth: 'none',
       boxSizing: 'border-box'
     },
+    '& .chess-piece-info, & .chess-piece-info-scroll, & .chess-piece-info-list, & .chess-piece-info-container, & .chess-piece-info-item, & .chess-piece-info-item-content, & .chess-piece-info-image, & .chess-piece-info-name, & .chess-piece-info-description, & .chess-piece-info-desc-content': {
+      maxWidth: 'none',
+      boxSizing: 'border-box',
+      position: 'relative',
+      display: 'block'
+    },
     '@media (max-width: 768px)': {
       padding: '16px',
       height: 'calc(100% - 50px)',
