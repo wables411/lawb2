@@ -318,20 +318,22 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
               <span>Profile</span>
             </button>
           )}
-          {onOpenChessPieceInfo && (
-            <button
-              className={classes.menuItem}
-              onClick={() => {
-                console.log('[LINUXNAVBAR] Chess Piece Info clicked, onOpenChessPieceInfo:', onOpenChessPieceInfo);
-                setIsMenuOpen(false);
+          <button
+            className={classes.menuItem}
+            onClick={() => {
+              console.log('[LINUXNAVBAR] Chess Piece Info clicked, onOpenChessPieceInfo:', onOpenChessPieceInfo);
+              setIsMenuOpen(false);
+              if (onOpenChessPieceInfo) {
                 console.log('[LINUXNAVBAR] Calling onOpenChessPieceInfo');
                 onOpenChessPieceInfo();
-              }}
-            >
-              <span>♟️</span>
-              <span>Chess Piece Info</span>
-            </button>
-          )}
+              } else {
+                console.warn('[LINUXNAVBAR] onOpenChessPieceInfo is not defined!');
+              }
+            }}
+          >
+            <span>♟️</span>
+            <span>Chess Piece Info</span>
+          </button>
           {showChessMenu && (
             <>
               <hr className={classes.menuSeparator} />
