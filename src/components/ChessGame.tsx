@@ -60,21 +60,6 @@ interface ChessGameProps {
   onMenuToggle?: () => void;
 }
 
-// Piece gallery data - will be updated dynamically based on selected piece set
-let pieceGallery = [
-  { key: 'K', name: 'Red King', img: '/images/lawbstation/redking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-  { key: 'Q', name: 'Red Queen', img: '/images/lawbstation/redqueen.png', desc: 'The Queen moves any number of squares in any direction.' },
-  { key: 'R', name: 'Red Rook', img: '/images/lawbstation/redrook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
-  { key: 'B', name: 'Red Bishop', img: '/images/lawbstation/redbishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
-  { key: 'N', name: 'Red Knight', img: '/images/lawbstation/redknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-  { key: 'P', name: 'Red Pawn', img: '/images/lawbstation/redpawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
-  { key: 'k', name: 'Blue King', img: '/images/lawbstation/blueking.png', desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-  { key: 'q', name: 'Blue Queen', img: '/images/lawbstation/bluequeen.png', desc: 'The Queen moves any number of squares in any direction.' },
-  { key: 'r', name: 'Blue Rook', img: '/images/lawbstation/bluerook.png', desc: 'The Rook moves any number of squares horizontally or vertically.' },
-  { key: 'b', name: 'Blue Bishop', img: '/images/lawbstation/bluebishop.png', desc: 'The Bishop moves any number of squares diagonally.' },
-  { key: 'n', name: 'Blue Knight', img: '/images/lawbstation/blueknight.png', desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-  { key: 'p', name: 'Blue Pawn', img: '/images/lawbstation/bluepawn.png', desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
-];
 
 // Updated difficulty levels
 type Difficulty = 'easy' | 'hard';
@@ -336,8 +321,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add showDifficulty state
   const [showDifficulty, setShowDifficulty] = useState(false);
 
-  // Add state for piece gallery modal
-  const [showGalleryModal, setShowGalleryModal] = useState(false);
 
   // Add state for leaderboard updated message
   const [showLeaderboardUpdated, setShowLeaderboardUpdated] = useState(false);
@@ -430,22 +413,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Update piece images when selected piece set changes
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
-    
-    // Update piece gallery with new piece set images
-    pieceGallery = [
-      { key: 'K', name: 'Red King', img: selectedPieceSet.pieceImages['K'], desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-      { key: 'Q', name: 'Red Queen', img: selectedPieceSet.pieceImages['Q'], desc: 'The Queen moves any number of squares in any direction.' },
-      { key: 'R', name: 'Red Rook', img: selectedPieceSet.pieceImages['R'], desc: 'The Rook moves any number of squares horizontally or vertically.' },
-      { key: 'B', name: 'Red Bishop', img: selectedPieceSet.pieceImages['B'], desc: 'The Bishop moves any number of squares diagonally.' },
-      { key: 'N', name: 'Red Knight', img: selectedPieceSet.pieceImages['N'], desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-      { key: 'P', name: 'Red Pawn', img: selectedPieceSet.pieceImages['P'], desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
-      { key: 'k', name: 'Blue King', img: selectedPieceSet.pieceImages['k'], desc: 'The King moves one square in any direction. Protect your King at all costs!' },
-      { key: 'q', name: 'Blue Queen', img: selectedPieceSet.pieceImages['q'], desc: 'The Queen moves any number of squares in any direction.' },
-      { key: 'r', name: 'Blue Rook', img: selectedPieceSet.pieceImages['r'], desc: 'The Rook moves any number of squares horizontally or vertically.' },
-      { key: 'b', name: 'Blue Bishop', img: selectedPieceSet.pieceImages['b'], desc: 'The Bishop moves any number of squares diagonally.' },
-      { key: 'n', name: 'Blue Knight', img: selectedPieceSet.pieceImages['n'], desc: 'The Knight moves in an L-shape: two squares in one direction, then one square perpendicular.' },
-      { key: 'p', name: 'Blue Pawn', img: selectedPieceSet.pieceImages['p'], desc: 'The Pawn moves forward one square, with the option to move two squares on its first move. Captures diagonally.' },
-    ];
   }, [selectedPieceSet]);
 
   // Check wallet connection - any EVM chain is fine for single-player
@@ -1662,102 +1629,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     );
   };
 
-  const [selectedGalleryPiece, setSelectedGalleryPiece] = useState<string | null>(null);
-
-  const renderPieceGallery = (small = false, tipText = 'Click a piece to learn more about it.') => {
-    // Organize pieces in order: King, Queen, Rook, Bishop, Knight, Pawn (Red then Blue)
-    const pieceOrder = ['K', 'Q', 'R', 'B', 'N', 'P'];
-    const orderedPieces: typeof pieceGallery = [];
-    pieceOrder.forEach(key => {
-      const redPiece = pieceGallery.find(p => p.key === key.toUpperCase());
-      const bluePiece = pieceGallery.find(p => p.key === key.toLowerCase());
-      if (redPiece) orderedPieces.push(redPiece);
-      if (bluePiece) orderedPieces.push(bluePiece);
-    });
-
-    return (
-      <div className={`piece-gallery${small ? ' piece-gallery-sm' : ''}`}>
-        <h3 style={{color: '#ff0000', marginBottom: '12px', fontSize: '12px', fontWeight: 'bold', textAlign: 'center'}}>{selectedPieceSet.name}</h3>
-        <div className="piece-gallery-list">
-          {orderedPieces.map((piece) => {
-            const isSelected = selectedGalleryPiece === piece.key;
-            const isRed = piece.name.toLowerCase().includes('red');
-            return (
-              <div
-                key={piece.key}
-                className={`piece-gallery-list-item ${isSelected ? 'selected' : ''}`}
-                data-piece-color={isRed ? 'red' : 'blue'}
-                onClick={() => {
-                  setSelectedGalleryPiece(isSelected ? null : piece.key);
-                }}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  marginBottom: '2px',
-                  background: isSelected ? '#ffff00' : '#c0c0c0',
-                  border: isSelected ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
-                  padding: '6px 8px',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  minHeight: '60px',
-                  boxSizing: 'border-box',
-                  clear: 'both',
-                  float: 'none',
-                  top: 'auto',
-                  left: 'auto',
-                  right: 'auto',
-                  bottom: 'auto'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-                  <img 
-                    src={piece.img} 
-                    alt={piece.name} 
-                    style={{
-                      width: '50px',
-                      height: '50px',
-                      objectFit: 'contain',
-                      display: 'block',
-                      background: '#ffffff',
-                      border: '1px inset #808080',
-                      padding: '2px',
-                      flexShrink: 0
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontWeight: 'bold',
-                      fontSize: '12px',
-                      color: isRed ? '#ff0000' : '#0000ff',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      marginBottom: '4px'
-                    }}>
-                      {piece.name}
-                    </div>
-                    {isSelected && (
-                      <div style={{
-                        fontSize: '10px',
-                        color: '#000000',
-                        lineHeight: '1.4',
-                        marginTop: '4px'
-                      }}>
-                        {piece.desc}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {tipText && <div className="piece-gallery-tip" style={{ fontSize: '10px', textAlign: 'center', marginTop: '8px', color: '#666' }}>{tipText}</div>}
-      </div>
-    );
-  };
 
   const renderPieceSetSelector = () => {
     const handlePieceSetSelect = (pieceSet: ChessPieceSet) => {
@@ -2171,30 +2042,28 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<'leaderboard' | 'chat' | 'moves' | 'profile' | 'howto'>>(new Set());
   
   // Window positions and sizes (for draggable windows)
   const [windowPositions, setWindowPositions] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
   
   // Helper functions for window management
-  const openWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+  const openWindow = (windowType: 'leaderboard' | 'chat' | 'moves' | 'profile' | 'howto') => {
     if (typeof window !== 'undefined' && window.console) {
       window.console.log('[OPEN WINDOW] Opening window:', windowType);
     }
     setIsMenuOpen(false);
-    // Set default position if not set - position windows to avoid covering chessboard
-    // Calculate position BEFORE opening window to ensure it's available on first render
-    if (!windowPositions[windowType]) {
-      const windowWidth =
-        windowType === 'gallery' ? 380 :
-        windowType === 'moves' ? 300 :
-        windowType === 'profile' ? 400 :
-        windowType === 'howto' ? 420 : 400;
-      const windowHeight =
-        windowType === 'gallery' ? 480 :
-        windowType === 'moves' ? 400 :
-        windowType === 'profile' ? 500 :
-        windowType === 'howto' ? 520 : 500;
+      // Set default position if not set - position windows to avoid covering chessboard
+      // Calculate position BEFORE opening window to ensure it's available on first render
+      if (!windowPositions[windowType]) {
+        const windowWidth =
+          windowType === 'moves' ? 300 :
+          windowType === 'profile' ? 400 :
+          windowType === 'howto' ? 420 : 400;
+        const windowHeight =
+          windowType === 'moves' ? 400 :
+          windowType === 'profile' ? 500 :
+          windowType === 'howto' ? 520 : 500;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const headerHeight = 60; // Account for header
@@ -2241,7 +2110,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   };
   
-  const closeWindow = (windowType: 'leaderboard' | 'gallery' | 'chat' | 'moves' | 'profile' | 'howto') => {
+  const closeWindow = (windowType: 'leaderboard' | 'chat' | 'moves' | 'profile' | 'howto') => {
     setOpenWindows(prev => {
       const newSet = new Set(prev);
       newSet.delete(windowType);
@@ -2261,7 +2130,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     (window as any).__chessOpenMoves = () => openWindow('moves');
     (window as any).__chessOpenChat = () => openWindow('chat');
     (window as any).__chessOpenProfile = () => openWindow('profile');
-    (window as any).__chessOpenGallery = () => openWindow('gallery');
     (window as any).__chessOpenHowTo = () => openWindow('howto');
     return () => {
       delete (window as any).__chessOpenWindow;
@@ -2269,7 +2137,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       delete (window as any).__chessOpenMoves;
       delete (window as any).__chessOpenChat;
       delete (window as any).__chessOpenProfile;
-      delete (window as any).__chessOpenGallery;
       delete (window as any).__chessOpenHowTo;
     };
   }, [onMenuToggle, openWindow]);
@@ -2284,7 +2151,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   }, [isMobile, openWindow]);
   
   // Mobile sidebar state (unchanged)
-  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
+  const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Debug menu state
@@ -2467,17 +2334,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setSidebarView('gallery');
-                    setTimeout(() => { setIsSidebarOpen(false); }, 50);
-                  }}
-                >
-                  Gallery
-                </button>
-                <button 
-                  className="mobile-menu-btn"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     setSidebarView('howto');
                     setTimeout(() => { setIsSidebarOpen(false); }, 50);
                   }}
@@ -2627,13 +2483,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 </div>
               )}
               
-              {sidebarView === 'gallery' && (
-                <div className="piece-gallery-compact mobile-content-view">
-                  <div className="gallery-title">Piece Gallery</div>
-                  {renderPieceGallery(true, 'Click pieces to learn more')}
-                </div>
-              )}
-              
               {sidebarView === 'profile' && (
                 <div className="profile-compact mobile-content-view">
                   <PlayerProfile isMobile={true} />
@@ -2707,27 +2556,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               }}
             >
               Leaderboard
-            </button>
-                <button
-              onClick={() => {
-                openWindow('gallery');
-                setIsMenuOpen(false);
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: isMobile ? '12px 16px' : '8px',
-                marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
-                cursor: 'pointer',
-                textAlign: 'left',
-                minHeight: isMobile ? '44px' : 'auto',
-                fontSize: isMobile ? '16px' : '14px',
-                touchAction: 'manipulation'
-              }}
-            >
-              Gallery
             </button>
             <button
               onClick={() => {
@@ -2892,21 +2720,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
         )}
 
-        {!isMobile && openWindows.has('gallery') && (
-        <Popup
-          id="gallery-window"
-          isOpen={true}
-          onClose={() => closeWindow('gallery')}
-          title="Piece Gallery"
-          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
-          initialSize={{ width: 380, height: 480 }}
-          zIndex={1000}
-        >
-          <div className="piece-gallery-compact">
-            {renderPieceGallery(true, 'Click pieces to learn more')}
-        </div>
-        </Popup>
-        )}
 
         {!isMobile && openWindows.has('profile') && (
         <Popup
@@ -3014,19 +2827,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 </button>
                 <button 
                   className="mobile-menu-btn"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Set sidebarView first, then close menu after a tiny delay to ensure state updates
-                    setSidebarView('gallery');
-                    // Use setTimeout to ensure state update happens before closing menu
-                    setTimeout(() => {
-                    setIsSidebarOpen(false);
-                    }, 50);
-                  }}
-                >
-                  Gallery
-                </button>
                 <button 
                   className="mobile-menu-btn"
                   onClick={(e) => {
@@ -3204,13 +3004,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   ) : (
                     <div className="mobile-empty-state">No moves yet</div>
                   )}
-                </div>
-              )}
-              
-              {sidebarView === 'gallery' && (
-                <div className="piece-gallery-compact mobile-content-view">
-                  <div className="gallery-title">Piece Gallery</div>
-                  {renderPieceGallery(true, 'Click pieces to learn more')}
                 </div>
               )}
               
@@ -3402,8 +3195,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
         </div>
       </div>
-      {/* Gallery Modal */}
-      {showGalleryModal && renderPieceGallery(true)}
       {/* Promotion Dialog */}
       {showPromotion && renderPromotionDialog()}
       {/* Leaderboard Updated Message */}
@@ -3493,24 +3284,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               }}
             >
               Leaderboard
-            </button>
-            <button
-              onClick={() => {
-                openWindow('gallery');
-                setIsMenuOpen(false);
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '8px',
-                marginBottom: '4px',
-                background: '#c0c0c0',
-                border: '2px outset #fff',
-                cursor: 'pointer',
-                textAlign: 'left'
-              }}
-            >
-              Gallery
             </button>
             <button
               onClick={() => {
@@ -3666,21 +3439,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         </Popup>
       )}
       
-      {!isMobile && openWindows.has('gallery') && (
-        <Popup
-          id="gallery-window"
-          isOpen={true}
-          onClose={() => closeWindow('gallery')}
-          title="Piece Gallery"
-          initialPosition={windowPositions['gallery'] ? { x: windowPositions['gallery'].x, y: windowPositions['gallery'].y } : { x: 20, y: 100 }}
-          initialSize={{ width: 380, height: 480 }}
-          zIndex={1000}
-        >
-          <div className="piece-gallery-compact">
-            {renderPieceGallery(true, 'Click pieces to learn more')}
-          </div>
-        </Popup>
-      )}
       
       {!isMobile && openWindows.has('moves') && showGame && (
         <Popup

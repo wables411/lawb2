@@ -17,6 +17,7 @@ const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 const ChessChat = lazy(() => import('./components/ChessChat').then(m => ({ default: m.ChessChat })));
+const ChessPieceInfo = lazy(() => import('./components/ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
 
 const useStyles = createUseStyles({
   body: {
@@ -44,6 +45,7 @@ function App() {
   
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
 
   // Debug: log activePopup changes
   useEffect(() => {
@@ -386,6 +388,7 @@ function App() {
         }}
         onOpenPublicChat={openPublicChat}
         onOpenProfile={() => setShowProfile(true)}
+        onOpenChessPieceInfo={() => setShowChessPieceInfo(true)}
       />
 
       {/* Public Chat - Functional Firebase Chat Component */}
@@ -404,6 +407,14 @@ function App() {
         <Popup id="profile-popup" isOpen={true} onClose={() => setShowProfile(false)} onMinimize={() => setShowProfile(false)} zIndex={2000}>
           <Suspense fallback={<div>Loading...</div>}>
             <PlayerProfile isMobile={false} />
+          </Suspense>
+        </Popup>
+      )}
+
+      {showChessPieceInfo && (
+        <Popup id="chess-piece-info-popup" isOpen={true} onClose={() => setShowChessPieceInfo(false)} onMinimize={() => setShowChessPieceInfo(false)} title="Chess Piece Info" initialPosition={{ x: 100, y: 100 }} initialSize={{ width: 400, height: 500 }} zIndex={2000}>
+          <Suspense fallback={<div>Loading...</div>}>
+            <ChessPieceInfo isMobile={false} />
           </Suspense>
         </Popup>
       )}

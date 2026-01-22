@@ -189,11 +189,12 @@ interface LinuxNavBarProps {
   };
   onOpenPublicChat?: () => void;
   onOpenProfile?: () => void;
+  onOpenChessPieceInfo?: () => void;
   onChessClose?: () => void;
   showChessMenu?: boolean;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onChessClose, showChessMenu }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
@@ -372,13 +373,13 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
                 className={classes.menuItem}
                 onClick={() => {
                   setIsMenuOpen(false);
-                  if ((window as any).__chessOpenGallery) {
-                    (window as any).__chessOpenGallery();
+                  if (onOpenChessPieceInfo) {
+                    onOpenChessPieceInfo();
                   }
                 }}
               >
-                <span>🖼️</span>
-                <span>Piece Gallery</span>
+                <span>♟️</span>
+                <span>Chess Piece Info</span>
               </button>
               <button
                 className={classes.menuItem}
