@@ -195,6 +195,16 @@ interface LinuxNavBarProps {
 }
 
 const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu }) => {
+  // Debug: log props on mount
+  useEffect(() => {
+    console.log('[LINUXNAVBAR] Props received:', { 
+      hasOnOpenChessPieceInfo: !!onOpenChessPieceInfo,
+      hasOnOpenProfile: !!onOpenProfile,
+      hasOnOpenPublicChat: !!onOpenPublicChat,
+      showChessMenu 
+    });
+  }, [onOpenChessPieceInfo, onOpenProfile, onOpenPublicChat, showChessMenu]);
+  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
