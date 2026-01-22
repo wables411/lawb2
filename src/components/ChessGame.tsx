@@ -2827,8 +2827,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 </button>
                 <button 
                   className="mobile-menu-btn"
-                <button 
-                  className="mobile-menu-btn"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
