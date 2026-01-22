@@ -1,4 +1,4 @@
-import{f as e,i as t,x as i,g as o,a as r,c as n,r as s,e as a,n as d,o as l,b as c,H as u,d as p,N as h}from"./react-CAr37jwk.js";import{M as m,O as g,h as f,T as b,V as w,e as y,X as v,a as x,b as $,E as k,g as S,W as R,S as E,R as A}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import{C}from"./NetworkUtil-8PBlJxlj.js";import"./react-vendor-BlDtUSDV.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const N=e`
+import{f as e,i as t,x as i,g as o,a as r,c as n,r as s,e as a,n as d,o as c,b as l,H as u,d as p,N as h}from"./react-fB20Urdr.js";import{M as m,O as g,h as f,T as b,V as w,e as y,X as v,a as x,b as $,E as k,g as S,W as R,S as E,R as A}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import{C}from"./NetworkUtil-8PBlJxlj.js";import"./react-vendor-BlDtUSDV.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const N=e`
   div {
     width: 100%;
   }
@@ -233,7 +233,7 @@ import{f as e,i as t,x as i,g as o,a as r,c as n,r as s,e as a,n as d,o as l,b a
   }
 `;var K=function(e,t,i,o){var r,n=arguments.length,s=n<3?t:null===o?o=Object.getOwnPropertyDescriptor(t,i):o;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,o);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(n<3?r(s):n>3?r(t,i,s):r(t,i))||s);return n>3&&s&&Object.defineProperty(t,i,s),s};let W=class extends t{constructor(){super(...arguments),this.disabled=!1,this.loading=!1}render(){return i`
       <wui-input-text
-        value=${l(this.value)}
+        value=${c(this.value)}
         ?disabled=${this.disabled}
         .value=${this.value||""}
         data-testid="wui-ens-input"
@@ -292,7 +292,7 @@ import{f as e,i as t,x as i,g as o,a as r,c as n,r as s,e as a,n as d,o as l,b a
     transform: translateY(-50%);
     right: 10px;
   }
-`;var V=function(e,t,i,o){var r,n=arguments.length,s=n<3?t:null===o?o=Object.getOwnPropertyDescriptor(t,i):o;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,o);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(n<3?r(s):n>3?r(t,i,s):r(t,i))||s);return n>3&&s&&Object.defineProperty(t,i,s),s};let H=class extends t{constructor(){var e;super(),this.formRef=c(),this.usubscribe=[],this.name="",this.error="",this.loading=v.state.loading,this.suggestions=v.state.suggestions,this.profileName=null==(e=x.getAccountData())?void 0:e.profileName,this.onDebouncedNameInputChange=$.debounce(e=>{e.length<4?this.error="Name must be at least 4 characters long":u.isValidReownName(e)?(this.error="",v.getSuggestions(e)):this.error="The value is not a valid username"}),this.usubscribe.push(v.subscribe(e=>{this.suggestions=e.suggestions,this.loading=e.loading}),x.subscribeChainProp("accountState",e=>{this.profileName=null==e?void 0:e.profileName,(null==e?void 0:e.profileName)&&(this.error="You already own a name")}))}firstUpdated(){var e;null==(e=this.formRef.value)||e.addEventListener("keydown",this.onEnterKey.bind(this))}disconnectedCallback(){var e;super.disconnectedCallback(),this.usubscribe.forEach(e=>e()),null==(e=this.formRef.value)||e.removeEventListener("keydown",this.onEnterKey.bind(this))}render(){return i`
+`;var V=function(e,t,i,o){var r,n=arguments.length,s=n<3?t:null===o?o=Object.getOwnPropertyDescriptor(t,i):o;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,o);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(n<3?r(s):n>3?r(t,i,s):r(t,i))||s);return n>3&&s&&Object.defineProperty(t,i,s),s};let H=class extends t{constructor(){var e;super(),this.formRef=l(),this.usubscribe=[],this.name="",this.error="",this.loading=v.state.loading,this.suggestions=v.state.suggestions,this.profileName=null==(e=x.getAccountData())?void 0:e.profileName,this.onDebouncedNameInputChange=$.debounce(e=>{e.length<4?this.error="Name must be at least 4 characters long":u.isValidReownName(e)?(this.error="",v.getSuggestions(e)):this.error="The value is not a valid username"}),this.usubscribe.push(v.subscribe(e=>{this.suggestions=e.suggestions,this.loading=e.loading}),x.subscribeChainProp("accountState",e=>{this.profileName=null==e?void 0:e.profileName,(null==e?void 0:e.profileName)&&(this.error="You already own a name")}))}firstUpdated(){var e;null==(e=this.formRef.value)||e.addEventListener("keydown",this.onEnterKey.bind(this))}disconnectedCallback(){var e;super.disconnectedCallback(),this.usubscribe.forEach(e=>e()),null==(e=this.formRef.value)||e.removeEventListener("keydown",this.onEnterKey.bind(this))}render(){return i`
       <wui-flex
         flexDirection="column"
         alignItems="center"

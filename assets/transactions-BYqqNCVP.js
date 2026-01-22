@@ -1,4 +1,4 @@
-import{f as e,i as t,x as i,a as r}from"./react-CAr37jwk.js";import"./react-vendor-BlDtUSDV.js";import"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./NetworkUtil-8PBlJxlj.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const o=e`
+import{f as e,i as t,x as i,a as r}from"./react-fB20Urdr.js";import"./react-vendor-BlDtUSDV.js";import"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./NetworkUtil-8PBlJxlj.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const o=e`
   :host > wui-flex:first-child {
     height: 500px;
     overflow-y: auto;

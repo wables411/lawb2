@@ -1,4 +1,4 @@
-import{c as e,n as t,g as i,a as n,i as r,b as o,x as s,d as a,U as l,r as c,e as u,o as d}from"./react-CAr37jwk.js";import{b as h,a as p,C as f,Y as m,R as g,N as w,M as k,S as v,e as b,d as x,j as y,Z as $,v as A,E as T}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./index-DW4SGOKf.js";import"./index-aZK1aCU3.js";import{S as C}from"./SwapController-CmAG1bCl.js";import{C as R}from"./NetworkUtil-8PBlJxlj.js";import"./react-vendor-BlDtUSDV.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const P=e`
+import{c as e,n as t,g as i,a as n,i as r,b as o,x as s,d as a,U as l,r as c,e as u,o as d}from"./react-fB20Urdr.js";import{b as h,a as p,C as f,Y as m,R as g,N as w,M as k,S as v,e as b,d as x,j as y,Z as $,v as A,E as T}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./index-RZXxU327.js";import"./index-Ciyn7OtB.js";import{S as C}from"./SwapController-CmAG1bCl.js";import{C as R}from"./NetworkUtil-8PBlJxlj.js";import"./react-vendor-BlDtUSDV.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const P=e`
   :host {
     width: 100%;
     height: 100px;
@@ -361,7 +361,7 @@ ${this.value??""}</textarea
     border-radius: ${({borderRadius:e})=>e[16]};
   }
 `;var J=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let K=class extends r{constructor(){super(...arguments),this.text=""}render(){return s`<wui-text variant="lg-regular" color="primary">${this.text}</wui-text>
-      ${this.imageTemplate()}`}imageTemplate(){return this.address?s`<wui-avatar address=${this.address} .imageSrc=${this.imageSrc}></wui-avatar>`:this.imageSrc?s`<wui-image src=${this.imageSrc}></wui-image>`:s`<wui-icon size="lg" color="inverse" name="networkPlaceholder"></wui-icon>`}};K.styles=[c,u,Y],J([t({type:String})],K.prototype,"text",void 0),J([t({type:String})],K.prototype,"address",void 0),J([t({type:String})],K.prototype,"imageSrc",void 0),K=J([n("wui-preview-item")],K);const Z=e`
+      ${this.imageTemplate()}`}imageTemplate(){return this.address?s`<wui-avatar address=${this.address} .imageSrc=${this.imageSrc}></wui-avatar>`:this.imageSrc?s`<wui-image src=${this.imageSrc}></wui-image>`:s`<wui-icon size="lg" color="inverse" name="networkPlaceholder"></wui-icon>`}};K.styles=[c,u,Y],J([t({type:String})],K.prototype,"text",void 0),J([t({type:String})],K.prototype,"address",void 0),J([t({type:String})],K.prototype,"imageSrc",void 0),K=J([n("wui-preview-item")],K);const Q=e`
   :host {
     display: flex;
     padding: ${({spacing:e})=>e[4]} ${({spacing:e})=>e[3]};
@@ -380,12 +380,12 @@ ${this.value??""}</textarea
     width: 20px;
     height: 20px;
   }
-`;var Q=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let G=class extends r{constructor(){super(...arguments),this.imageSrc=void 0,this.textTitle="",this.textValue=void 0}render(){return s`
+`;var Z=function(e,t,i,n){var r,o=arguments.length,s=o<3?t:null===n?n=Object.getOwnPropertyDescriptor(t,i):n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,n);else for(var a=e.length-1;a>=0;a--)(r=e[a])&&(s=(o<3?r(s):o>3?r(t,i,s):r(t,i))||s);return o>3&&s&&Object.defineProperty(t,i,s),s};let G=class extends r{constructor(){super(...arguments),this.imageSrc=void 0,this.textTitle="",this.textValue=void 0}render(){return s`
       <wui-flex justifyContent="space-between" alignItems="center">
         <wui-text variant="lg-regular" color="primary"> ${this.textTitle} </wui-text>
         ${this.templateContent()}
       </wui-flex>
-    `}templateContent(){return this.imageSrc?s`<wui-image src=${this.imageSrc} alt=${this.textTitle}></wui-image>`:this.textValue?s` <wui-text variant="md-regular" color="secondary"> ${this.textValue} </wui-text>`:s`<wui-icon size="inherit" color="default" name="networkPlaceholder"></wui-icon>`}};G.styles=[c,u,Z],Q([t()],G.prototype,"imageSrc",void 0),Q([t()],G.prototype,"textTitle",void 0),Q([t()],G.prototype,"textValue",void 0),G=Q([n("wui-list-content")],G);const X=e`
+    `}templateContent(){return this.imageSrc?s`<wui-image src=${this.imageSrc} alt=${this.textTitle}></wui-image>`:this.textValue?s` <wui-text variant="md-regular" color="secondary"> ${this.textValue} </wui-text>`:s`<wui-icon size="inherit" color="default" name="networkPlaceholder"></wui-icon>`}};G.styles=[c,u,Q],Z([t()],G.prototype,"imageSrc",void 0),Z([t()],G.prototype,"textTitle",void 0),Z([t()],G.prototype,"textValue",void 0),G=Z([n("wui-list-content")],G);const X=e`
   :host {
     display: flex;
     width: auto;
