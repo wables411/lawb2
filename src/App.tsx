@@ -314,7 +314,8 @@ function App() {
   );
 
   return (
-    <div className={classes.body}>
+    <ChessPieceSetProvider>
+      <div className={classes.body}>
       {showChessLoading && (
         <div style={{
           position: 'fixed',
