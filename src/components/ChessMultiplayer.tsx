@@ -6262,19 +6262,61 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 onClick={() => {
                   setSelectedGalleryPiece(isSelected ? null : piece.key);
                 }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  marginBottom: '2px',
+                  background: isSelected ? '#ffff00' : '#c0c0c0',
+                  border: isSelected ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
+                  padding: '6px 8px',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  minHeight: '60px',
+                  boxSizing: 'border-box',
+                  clear: 'both',
+                  float: 'none',
+                  top: 'auto',
+                  left: 'auto',
+                  right: 'auto',
+                  bottom: 'auto'
+                }}
               >
-                <div className="piece-gallery-list-content">
-                  <div className="piece-gallery-list-image-wrapper">
-                    <img 
-                      src={piece.img} 
-                      alt={piece.name} 
-                      className="piece-gallery-list-img"
-                    />
-                  </div>
-                  <div className="piece-gallery-list-info">
-                    <div className="piece-gallery-list-name">{piece.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+                  <img 
+                    src={piece.img} 
+                    alt={piece.name} 
+                    style={{
+                      width: '50px',
+                      height: '50px',
+                      objectFit: 'contain',
+                      display: 'block',
+                      background: '#ffffff',
+                      border: '1px inset #808080',
+                      padding: '2px',
+                      flexShrink: 0
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      color: isRed ? '#ff0000' : '#0000ff',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginBottom: '4px'
+                    }}>
+                      {piece.name}
+                    </div>
                     {isSelected && (
-                      <div className="piece-gallery-list-desc expanded">
+                      <div style={{
+                        fontSize: '10px',
+                        color: '#000000',
+                        lineHeight: '1.4',
+                        marginTop: '4px'
+                      }}>
                         {piece.desc}
                       </div>
                     )}
