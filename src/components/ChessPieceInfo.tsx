@@ -136,37 +136,128 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
   };
 
   return (
-    <div className={`chess-piece-info ${isMobile ? 'mobile' : ''}`}>
-      <div className="chess-piece-info-header">
+    <div className={`chess-piece-info ${isMobile ? 'mobile' : ''}`} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div className="chess-piece-info-header" style={{ flexShrink: 0 }}>
         <h2>Chess Piece Info</h2>
       </div>
-      <div className="chess-piece-info-scroll">
-        <div className="chess-piece-info-list">
+      <div className="chess-piece-info-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative', width: '100%' }}>
+        <div className="chess-piece-info-list" style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '2px', position: 'relative', width: '100%' }}>
           {orderedPieces.map((piece) => {
             const isSelected = selectedPiece === piece.key;
             return (
-              <div key={piece.key} className="chess-piece-info-container">
+              <div 
+                key={piece.key} 
+                className="chess-piece-info-container"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  position: 'relative',
+                  width: '100%',
+                  marginBottom: '2px',
+                  clear: 'both',
+                  float: 'none',
+                  top: 'auto',
+                  left: 'auto',
+                  right: 'auto',
+                  bottom: 'auto'
+                }}
+              >
                 <button
                   className={`chess-piece-info-item ${isSelected ? 'selected' : ''} ${piece.color}`}
                   onClick={() => handlePieceClick(piece.key)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: isSelected ? '#ffff00' : '#c0c0c0',
+                    border: isSelected ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    color: '#000000',
+                    minHeight: '44px',
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                    margin: 0,
+                    clear: 'both',
+                    float: 'none',
+                    top: 'auto',
+                    left: 'auto',
+                    right: 'auto',
+                    bottom: 'auto',
+                    borderLeft: piece.color === 'red' ? '4px solid #ff0000' : '4px solid #0000ff'
+                  }}
                 >
-                  <div className="chess-piece-info-item-content">
+                  <div className="chess-piece-info-item-content" style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
                     <img 
                       src={piece.img} 
                       alt={piece.name}
                       className="chess-piece-info-image"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        objectFit: 'contain',
+                        flexShrink: 0,
+                        background: '#ffffff',
+                        border: '1px inset #808080',
+                        padding: '2px',
+                        boxSizing: 'border-box',
+                        display: 'block',
+                        position: 'relative'
+                      }}
                       onError={(e) => {
                         // Fallback if image doesn't exist
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                       }}
                     />
-                    <span className="chess-piece-info-name">{piece.name}</span>
+                    <span 
+                      className="chess-piece-info-name"
+                      style={{
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        flex: 1,
+                        textAlign: 'left',
+                        color: piece.color === 'red' ? '#ff0000' : '#0000ff',
+                        position: 'relative',
+                        display: 'block'
+                      }}
+                    >
+                      {piece.name}
+                    </span>
                   </div>
                 </button>
                 {isSelected && (
-                  <div className="chess-piece-info-description">
-                    <div className="chess-piece-info-desc-content">
+                  <div 
+                    className="chess-piece-info-description"
+                    style={{
+                      marginTop: '2px',
+                      marginLeft: '4px',
+                      marginRight: '4px',
+                      marginBottom: '2px',
+                      background: '#ffffff',
+                      border: '2px inset #c0c0c0',
+                      padding: '12px',
+                      boxSizing: 'border-box',
+                      position: 'relative',
+                      width: 'calc(100% - 8px)',
+                      display: 'block'
+                    }}
+                  >
+                    <div 
+                      className="chess-piece-info-desc-content"
+                      style={{
+                        fontSize: '11px',
+                        lineHeight: '1.5',
+                        color: '#000000',
+                        textAlign: 'left',
+                        position: 'relative',
+                        display: 'block'
+                      }}
+                    >
                       {piece.desc}
                     </div>
                   </div>
