@@ -81,15 +81,6 @@ const useStyles = createUseStyles({
       minHeight: '44px',
       fontSize: '18px',
       padding: '12px',
-    },
-    // Base Mini App should always use mobile button styles
-    '.base-miniapp &': {
-      width: '44px',
-      height: '44px',
-      minWidth: '44px',
-      minHeight: '44px',
-      fontSize: '18px',
-      padding: '12px',
     }
   },
   content: {
@@ -109,26 +100,6 @@ const useStyles = createUseStyles({
       height: 'auto',
       display: 'block'
     },
-    '& .chess-piece-info-image': {
-      display: 'block !important',
-      width: '32px !important',
-      height: '32px !important',
-      minWidth: '32px !important',
-      minHeight: '32px !important',
-      maxWidth: '32px !important',
-      maxHeight: '32px !important',
-      flexShrink: '0 !important',
-      marginRight: '12px !important',
-      objectFit: 'contain !important',
-    },
-    '& .chess-piece-info-container.mobile .chess-piece-info-image': {
-      width: '40px !important',
-      height: '40px !important',
-      minWidth: '40px !important',
-      minHeight: '40px !important',
-      maxWidth: '40px !important',
-      maxHeight: '40px !important',
-    },
     '& video': {
       maxWidth: '100%',
       height: 'auto',
@@ -138,59 +109,9 @@ const useStyles = createUseStyles({
       maxWidth: '100%',
       boxSizing: 'border-box'
     },
-    '& .chess-piece-info-container *': {
-      maxWidth: 'none !important',
-    },
-    '& .chess-piece-info-item-button *': {
-      maxWidth: 'none !important',
-    },
     '& .piece-gallery, & .piece-gallery-compact, & .piece-gallery-list, & .piece-gallery-list-item, & .piece-gallery-list-content, & .piece-gallery-list-image-wrapper, & .piece-gallery-list-img, & .piece-gallery-list-info': {
       maxWidth: 'none',
       boxSizing: 'border-box'
-    },
-    '& .chess-piece-info-container': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'flex !important',
-      flexDirection: 'column !important',
-    },
-    '& .chess-piece-info-scroll': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'block !important',
-    },
-    '& .chess-piece-info-list': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'flex !important',
-      flexDirection: 'column !important',
-    },
-    '& .chess-piece-info-item': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'block !important',
-      position: 'relative',
-    },
-    '& .chess-piece-info-item-button': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'flex !important',
-      flexDirection: 'row !important',
-      alignItems: 'center !important',
-      position: 'relative',
-    },
-    '& .chess-piece-info-name': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'block !important',
-      position: 'relative',
-      flex: '1 !important',
-    },
-    '& .chess-piece-info-description': {
-      maxWidth: 'none !important',
-      boxSizing: 'border-box',
-      display: 'block !important',
-      position: 'relative',
     },
     '& .chess-chat-window': {
       maxWidth: 'none !important',

@@ -141,43 +141,135 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
   };
 
   return (
-    <div className={`chess-piece-info-container ${isMobile ? 'mobile' : ''}`}>
-      <h2 className="chess-piece-info-title">
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      padding: isMobile ? '16px' : '20px',
+      gap: '12px',
+      height: '100%',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+      width: '100%'
+    }}>
+      <h2 style={{ 
+        margin: 0, 
+        fontSize: isMobile ? '16px' : '18px', 
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#000080',
+        textTransform: 'uppercase',
+        letterSpacing: '1px',
+        flexShrink: 0
+      }}>
         Chess Piece Info
       </h2>
       
-      <div className="chess-piece-info-scroll">
-        <div className="chess-piece-info-list">
-          {orderedPieces.map((piece) => {
-            const isSelected = selectedPiece === piece.key;
-            return (
-              <div key={piece.key} className="chess-piece-info-item">
-                <button
-                  onClick={() => handlePieceClick(piece.key)}
-                  className={`chess-piece-info-item-button ${piece.color} ${isSelected ? 'selected' : ''}`}
-                >
-                  <img 
-                    src={piece.img} 
-                    alt={piece.name}
-                    className="chess-piece-info-image"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                  <span className={`chess-piece-info-name ${piece.color}`}>
-                    {piece.name}
-                  </span>
-                </button>
-                {isSelected && (
-                  <div className="chess-piece-info-description">
-                    {piece.desc}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        padding: '4px',
+        background: '#c0c0c0',
+        border: '2px inset #c0c0c0',
+        boxSizing: 'border-box',
+        minHeight: 0,
+        width: '100%'
+      }}>
+        {orderedPieces.map((piece) => {
+          const isSelected = selectedPiece === piece.key;
+          return (
+            <div key={piece.key} style={{ marginBottom: '2px', width: '100%', boxSizing: 'border-box' }}>
+              <button
+                onClick={() => handlePieceClick(piece.key)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  width: '100%',
+                  padding: isMobile ? '12px 16px' : '8px 12px',
+                  background: isSelected ? '#ffff00' : '#c0c0c0',
+                  border: isSelected ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontSize: isMobile ? '14px' : '12px',
+                  color: '#000000',
+                  minHeight: isMobile ? '52px' : '44px',
+                  boxSizing: 'border-box',
+                  fontFamily: "'MS Sans Serif', 'Microsoft Sans Serif', sans-serif",
+                  borderLeft: piece.color === 'red' ? '4px solid #ff0000' : '4px solid #0000ff',
+                  margin: 0,
+                  outline: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.background = '#d4d4d4';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.background = '#c0c0c0';
+                  }
+                }}
+              >
+                <img 
+                  src={piece.img} 
+                  alt={piece.name}
+                  style={{
+                    width: isMobile ? '40px' : '32px',
+                    height: isMobile ? '40px' : '32px',
+                    minWidth: isMobile ? '40px' : '32px',
+                    minHeight: isMobile ? '40px' : '32px',
+                    maxWidth: isMobile ? '40px' : '32px',
+                    maxHeight: isMobile ? '40px' : '32px',
+                    objectFit: 'contain',
+                    flexShrink: 0,
+                    background: '#ffffff',
+                    border: '1px inset #808080',
+                    padding: '2px',
+                    boxSizing: 'border-box',
+                    display: 'block',
+                    marginRight: '12px'
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+                <span style={{
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  flex: 1,
+                  textAlign: 'left',
+                  color: piece.color === 'red' ? '#ff0000' : '#0000ff',
+                  textDecoration: 'none',
+                  display: 'block',
+                  minWidth: 0
+                }}>
+                  {piece.name}
+                </span>
+              </button>
+              {isSelected && (
+                <div style={{
+                  marginTop: '2px',
+                  marginLeft: '4px',
+                  marginRight: '4px',
+                  marginBottom: '2px',
+                  background: '#ffffff',
+                  border: '2px inset #c0c0c0',
+                  padding: '12px',
+                  boxSizing: 'border-box',
+                  fontSize: isMobile ? '13px' : '11px',
+                  lineHeight: '1.5',
+                  color: '#000000',
+                  textAlign: 'left'
+                }}>
+                  {piece.desc}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
