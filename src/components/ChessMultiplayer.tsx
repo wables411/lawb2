@@ -341,7 +341,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
   
   // Tab state for left sidebar
-  const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard' | 'gallery'>('moves');
+  const [leftSidebarTab, setLeftSidebarTab] = useState<'moves' | 'leaderboard'>('moves');
 
 
 
