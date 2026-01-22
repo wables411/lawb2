@@ -14,6 +14,27 @@
   position: relative;
 }
 
+/* When inside Popup, ensure it fills the container */
+.popup-content .chess-chat-window,
+[class*="popup"] .chess-chat-window {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
 /* Chat Header */
 .chat-header {
   background: linear-gradient(to bottom, #4a5568, #2d3748);

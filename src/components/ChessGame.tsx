@@ -13,6 +13,7 @@ import { firebaseProfiles } from '../firebaseProfiles';
 // Removed blocking connection test - loading data directly with timeout
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
+import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
@@ -414,6 +415,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     pieceImages = selectedPieceSet.pieceImages;
   }, [selectedPieceSet]);
+  
+  // Update context when selected piece set changes
+  const { setCurrentPieceSet } = useChessPieceSet();
+  useEffect(() => {
+    setCurrentPieceSet(selectedPieceSet);
+  }, [selectedPieceSet, setCurrentPieceSet]);
 
   // Check wallet connection - any EVM chain is fine for single-player
   // Chain switching is only required when joining multiplayer games on different chains

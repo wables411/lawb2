@@ -10,6 +10,7 @@ import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from './hooks/useMediaQuery';
+import { ChessPieceSetProvider } from './contexts/ChessPieceSetContext';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
@@ -700,7 +701,8 @@ function App() {
         </Popup>
       </Suspense>
 
-    </div>
+      </div>
+    </ChessPieceSetProvider>
   );
 }
 

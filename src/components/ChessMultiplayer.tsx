@@ -23,6 +23,7 @@ import { useMobileCapabilities } from '../hooks/useMediaQuery';
 import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, TOKEN_ADDRESSES_BY_CHAIN, type TokenSymbol, getTokenAddressForChain, getDefaultTokenForChain } from '../config/tokens';
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
 import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
+import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
 import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
@@ -1248,6 +1249,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     // #endregion
     
   }, [selectedPieceSet]);
+  
+  // Update context when selected piece set changes
+  const { setCurrentPieceSet } = useChessPieceSet();
+  useEffect(() => {
+    setCurrentPieceSet(selectedPieceSet);
+  }, [selectedPieceSet, setCurrentPieceSet]);
 
   // Track showPieceSetSelector state changes
   useEffect(() => {

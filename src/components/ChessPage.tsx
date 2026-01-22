@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import Popup from './Popup';
+import { ChessPieceSetProvider } from '../contexts/ChessPieceSetContext';
 import './ChessPageSimple.css';
 
 const ChessPieceInfo = lazy(() => import('./ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
@@ -144,51 +145,53 @@ const ChessPage: React.FC = () => {
   );
 
   return (
-    <div className={`chess-page-simple ${isMobile ? 'mobile' : 'desktop'}`}>
-      <LinuxNavBar
-        walletButton={walletButton}
-        connectionStatus={{
-          connected: isConnected,
-          address: address,
-          ens: undefined
-        }}
-        onChessClose={handleClose}
-        showChessMenu={true}
-        onOpenChessPieceInfo={() => {
-          console.log('[CHESSPAGE] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
-          setShowChessPieceInfo(true);
-        }}
-      />
-      <div className="chess-content-simple">
-        <ChessGame 
-          onClose={handleClose} 
-          isMobile={isMobile}
+    <ChessPieceSetProvider>
+      <div className={`chess-page-simple ${isMobile ? 'mobile' : 'desktop'}`}>
+        <LinuxNavBar
+          walletButton={walletButton}
+          connectionStatus={{
+            connected: isConnected,
+            address: address,
+            ens: undefined
+          }}
+          onChessClose={handleClose}
+          showChessMenu={true}
+          onOpenChessPieceInfo={() => {
+            console.log('[CHESSPAGE] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
+            setShowChessPieceInfo(true);
+          }}
         />
+        <div className="chess-content-simple">
+          <ChessGame 
+            onClose={handleClose} 
+            isMobile={isMobile}
+          />
+        </div>
+        
+        {showChessPieceInfo && (
+          <Popup 
+            id="chess-piece-info-popup" 
+            isOpen={true} 
+            onClose={() => {
+              console.log('[CHESSPAGE] Closing Chess Piece Info popup');
+              setShowChessPieceInfo(false);
+            }} 
+            onMinimize={() => {
+              console.log('[CHESSPAGE] Minimizing Chess Piece Info popup');
+              setShowChessPieceInfo(false);
+            }} 
+            title="Chess Piece Info" 
+            initialPosition={{ x: 100, y: 100 }} 
+            initialSize={{ width: 400, height: 500 }} 
+            zIndex={2000}
+          >
+            <Suspense fallback={<div>Loading...</div>}>
+              <ChessPieceInfo isMobile={isMobile} />
+            </Suspense>
+          </Popup>
+        )}
       </div>
-      
-      {showChessPieceInfo && (
-        <Popup 
-          id="chess-piece-info-popup" 
-          isOpen={true} 
-          onClose={() => {
-            console.log('[CHESSPAGE] Closing Chess Piece Info popup');
-            setShowChessPieceInfo(false);
-          }} 
-          onMinimize={() => {
-            console.log('[CHESSPAGE] Minimizing Chess Piece Info popup');
-            setShowChessPieceInfo(false);
-          }} 
-          title="Chess Piece Info" 
-          initialPosition={{ x: 100, y: 100 }} 
-          initialSize={{ width: 400, height: 500 }} 
-          zIndex={2000}
-        >
-          <Suspense fallback={<div>Loading...</div>}>
-            <ChessPieceInfo isMobile={isMobile} />
-          </Suspense>
-        </Popup>
-      )}
-    </div>
+    </ChessPieceSetProvider>
   );
 };
 

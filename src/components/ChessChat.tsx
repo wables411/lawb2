@@ -471,13 +471,10 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     return null;
   }
   
-  // When inside Popup, use relative positioning and fill container
-  // When standalone, use fixed positioning
-  // NOTE: isDraggable/isResizable being false doesn't mean we're in a Popup - 
-  // it could also mean we're in BaseApp where dragging/resizing is disabled
-  // We should only use relative positioning if we're actually inside a Popup container
-  // For now, always use fixed positioning when rendered directly (not in Popup)
-  const isInsidePopup = false; // Always use fixed positioning for direct rendering
+  // Detect if we're inside a Popup: when isDraggable and isResizable are both false,
+  // it means we're inside a Popup (Popup handles dragging/resizing)
+  const isInsidePopup = !isDraggable && !isResizable;
+  
   const chatStyle = mobileStyle ? (isInsidePopup ? {
     // Inside Popup: fill the parent wrapper (which already compensates for Popup padding)
     position: 'relative' as const,
@@ -518,7 +515,27 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     margin: 0,
     padding: '12px',
     paddingBottom: '72px' // 60px taskbar + 12px padding
-  }) : {
+  }) : (isInsidePopup ? {
+    // Desktop inside Popup: fill the parent container
+    position: 'relative' as const,
+    width: '100%' as const,
+    height: '100%' as const,
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    boxSizing: 'border-box' as const,
+    pointerEvents: 'auto' as const,
+    visibility: 'visible' as const,
+    opacity: 1,
+    background: '#c0c0c0' as const,
+    border: 'none' as const, // Popup already has border
+    margin: 0,
+    padding: 0,
+    zIndex: 1,
+    overflow: 'hidden' as const,
+    minHeight: 0,
+    flex: 1
+  } : {
+    // Desktop standalone: fixed positioning with draggable/resizable
     position: 'fixed' as const,
     left: position.x,
     top: position.y,
@@ -528,7 +545,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     pointerEvents: 'auto' as const,
     visibility: 'visible' as const,
     opacity: 1
-  };
+  });
   
   console.log('[ChessChat] Rendering chat window', { 
     mobileStyle, 
@@ -549,7 +566,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       {/* Chat Header */}
       <div 
         className="chat-header"
-        onMouseDown={handleMouseDown}
+        onMouseDown={isDraggable ? handleMouseDown : undefined}
+        style={{ cursor: isDraggable ? 'move' : 'default' }}
       >
         <div className="chat-title">
           <span className="chat-icon">💬</span>

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import './ChessPieceInfo.css';
+import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
 
 interface ChessPiece {
   key: string;
@@ -15,13 +17,14 @@ interface ChessPieceInfoProps {
 
 export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false }) => {
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
+  const { currentPieceSet } = useChessPieceSet();
 
-  // Define all chess pieces with their descriptions
-  const pieces: ChessPiece[] = [
+  // Define all chess pieces with their descriptions, using images from current piece set
+  const pieces: ChessPiece[] = useMemo(() => [
     {
       key: 'K',
       name: 'Red King',
-      img: '/images/lawbstation/redking.png',
+      img: currentPieceSet.pieceImages['K'] || '/images/lawbstation/redking.png',
       desc: 'The King is the most important piece. If your King is captured (checkmate), you lose the game. The King can move one square in any direction (horizontally, vertically, or diagonally).',
       color: 'red',
       type: 'king'
@@ -29,7 +32,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'k',
       name: 'Blue King',
-      img: '/images/lawbstation/blueking.png',
+      img: currentPieceSet.pieceImages['k'] || '/images/lawbstation/blueking.png',
       desc: 'The King is the most important piece. If your King is captured (checkmate), you lose the game. The King can move one square in any direction (horizontally, vertically, or diagonally).',
       color: 'blue',
       type: 'king'
@@ -37,7 +40,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'Q',
       name: 'Red Queen',
-      img: '/images/lawbstation/redqueen.png',
+      img: currentPieceSet.pieceImages['Q'] || '/images/lawbstation/redqueen.png',
       desc: 'The Queen is the most powerful piece. It can move any number of squares in any direction (horizontally, vertically, or diagonally) as long as the path is clear.',
       color: 'red',
       type: 'queen'
@@ -45,7 +48,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'q',
       name: 'Blue Queen',
-      img: '/images/lawbstation/bluequeen.png',
+      img: currentPieceSet.pieceImages['q'] || '/images/lawbstation/bluequeen.png',
       desc: 'The Queen is the most powerful piece. It can move any number of squares in any direction (horizontally, vertically, or diagonally) as long as the path is clear.',
       color: 'blue',
       type: 'queen'
@@ -53,7 +56,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'R',
       name: 'Red Rook',
-      img: '/images/lawbstation/redrook.png',
+      img: currentPieceSet.pieceImages['R'] || '/images/lawbstation/redrook.png',
       desc: 'The Rook can move any number of squares horizontally or vertically (but not diagonally) as long as the path is clear.',
       color: 'red',
       type: 'rook'
@@ -61,7 +64,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'r',
       name: 'Blue Rook',
-      img: '/images/lawbstation/bluerook.png',
+      img: currentPieceSet.pieceImages['r'] || '/images/lawbstation/bluerook.png',
       desc: 'The Rook can move any number of squares horizontally or vertically (but not diagonally) as long as the path is clear.',
       color: 'blue',
       type: 'rook'
@@ -69,7 +72,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'B',
       name: 'Red Bishop',
-      img: '/images/lawbstation/redbishop.png',
+      img: currentPieceSet.pieceImages['B'] || '/images/lawbstation/redbishop.png',
       desc: 'The Bishop can move any number of squares diagonally (but not horizontally or vertically) as long as the path is clear. Each player starts with two Bishops, one on a light square and one on a dark square.',
       color: 'red',
       type: 'bishop'
@@ -77,7 +80,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'b',
       name: 'Blue Bishop',
-      img: '/images/lawbstation/bluebishop.png',
+      img: currentPieceSet.pieceImages['b'] || '/images/lawbstation/bluebishop.png',
       desc: 'The Bishop can move any number of squares diagonally (but not horizontally or vertically) as long as the path is clear. Each player starts with two Bishops, one on a light square and one on a dark square.',
       color: 'blue',
       type: 'bishop'
@@ -85,7 +88,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'N',
       name: 'Red Knight',
-      img: '/images/lawbstation/redknight.png',
+      img: currentPieceSet.pieceImages['N'] || '/images/lawbstation/redknight.png',
       desc: 'The Knight moves in an L-shape: two squares in one direction and then one square perpendicular, or one square in one direction and then two squares perpendicular. The Knight is the only piece that can jump over other pieces.',
       color: 'red',
       type: 'knight'
@@ -93,7 +96,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'n',
       name: 'Blue Knight',
-      img: '/images/lawbstation/blueknight.png',
+      img: currentPieceSet.pieceImages['n'] || '/images/lawbstation/blueknight.png',
       desc: 'The Knight moves in an L-shape: two squares in one direction and then one square perpendicular, or one square in one direction and then two squares perpendicular. The Knight is the only piece that can jump over other pieces.',
       color: 'blue',
       type: 'knight'
@@ -101,7 +104,7 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'P',
       name: 'Red Pawn',
-      img: '/images/lawbstation/redpawn.png',
+      img: currentPieceSet.pieceImages['P'] || '/images/lawbstation/redpawn.png',
       desc: 'The Pawn moves forward one square at a time (or two squares on its first move). Pawns capture diagonally one square forward. When a Pawn reaches the opposite end of the board, it can be promoted to any other piece (usually a Queen).',
       color: 'red',
       type: 'pawn'
@@ -109,22 +112,25 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
     {
       key: 'p',
       name: 'Blue Pawn',
-      img: '/images/lawbstation/bluepawn.png',
+      img: currentPieceSet.pieceImages['p'] || '/images/lawbstation/bluepawn.png',
       desc: 'The Pawn moves forward one square at a time (or two squares on its first move). Pawns capture diagonally one square forward. When a Pawn reaches the opposite end of the board, it can be promoted to any other piece (usually a Queen).',
       color: 'blue',
       type: 'pawn'
     }
-  ];
+  ], [currentPieceSet]);
 
   // Group pieces by type for better organization
-  const pieceOrder = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
-  const orderedPieces: ChessPiece[] = [];
-  pieceOrder.forEach(type => {
-    const redPiece = pieces.find(p => p.type === type && p.color === 'red');
-    const bluePiece = pieces.find(p => p.type === type && p.color === 'blue');
-    if (redPiece) orderedPieces.push(redPiece);
-    if (bluePiece) orderedPieces.push(bluePiece);
-  });
+  const orderedPieces: ChessPiece[] = useMemo(() => {
+    const pieceOrder = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
+    const ordered: ChessPiece[] = [];
+    pieceOrder.forEach(type => {
+      const redPiece = pieces.find(p => p.type === type && p.color === 'red');
+      const bluePiece = pieces.find(p => p.type === type && p.color === 'blue');
+      if (redPiece) ordered.push(redPiece);
+      if (bluePiece) ordered.push(bluePiece);
+    });
+    return ordered;
+  }, [pieces]);
 
   const handlePieceClick = (pieceKey: string) => {
     if (selectedPiece === pieceKey) {
@@ -135,124 +141,43 @@ export const ChessPieceInfo: React.FC<ChessPieceInfoProps> = ({ isMobile = false
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      padding: isMobile ? '16px' : '20px',
-      gap: '12px',
-      height: '100%',
-      overflow: 'hidden',
-      boxSizing: 'border-box'
-    }}>
-      <h2 style={{ 
-        margin: 0, 
-        fontSize: isMobile ? '16px' : '18px', 
-        fontWeight: 'bold',
-        textAlign: 'center',
-        color: '#000080',
-        textTransform: 'uppercase',
-        letterSpacing: '1px'
-      }}>
+    <div className={`chess-piece-info-container ${isMobile ? 'mobile' : ''}`}>
+      <h2 className="chess-piece-info-title">
         Chess Piece Info
       </h2>
       
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        padding: '4px',
-        background: '#c0c0c0',
-        border: '2px inset #c0c0c0',
-        boxSizing: 'border-box'
-      }}>
-        {orderedPieces.map((piece) => {
-          const isSelected = selectedPiece === piece.key;
-          return (
-            <div key={piece.key} style={{ marginBottom: '2px' }}>
-              <button
-                onClick={() => handlePieceClick(piece.key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: isMobile ? '12px 16px' : '8px 12px',
-                  background: isSelected ? '#ffff00' : '#c0c0c0',
-                  border: isSelected ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontSize: isMobile ? '14px' : '12px',
-                  color: '#000000',
-                  minHeight: isMobile ? '52px' : '44px',
-                  boxSizing: 'border-box',
-                  fontFamily: "'MS Sans Serif', 'Microsoft Sans Serif', sans-serif",
-                  borderLeft: piece.color === 'red' ? '4px solid #ff0000' : '4px solid #0000ff',
-                  margin: 0,
-                  outline: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = '#d4d4d4';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = '#c0c0c0';
-                  }
-                }}
-              >
-                <img 
-                  src={piece.img} 
-                  alt={piece.name}
-                  style={{
-                    width: isMobile ? '40px' : '32px',
-                    height: isMobile ? '40px' : '32px',
-                    objectFit: 'contain',
-                    flexShrink: 0,
-                    background: '#ffffff',
-                    border: '1px inset #808080',
-                    padding: '2px',
-                    boxSizing: 'border-box',
-                    display: 'block',
-                    marginRight: '12px'
-                  }}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-                <span style={{
-                  fontWeight: 'bold',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  flex: 1,
-                  textAlign: 'left',
-                  color: piece.color === 'red' ? '#ff0000' : '#0000ff',
-                  textDecoration: 'none'
-                }}>
-                  {piece.name}
-                </span>
-              </button>
-              {isSelected && (
-                <div style={{
-                  marginTop: '2px',
-                  marginLeft: '4px',
-                  marginRight: '4px',
-                  marginBottom: '2px',
-                  background: '#ffffff',
-                  border: '2px inset #c0c0c0',
-                  padding: '12px',
-                  boxSizing: 'border-box',
-                  fontSize: isMobile ? '13px' : '11px',
-                  lineHeight: '1.5',
-                  color: '#000000',
-                  textAlign: 'left'
-                }}>
-                  {piece.desc}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <div className="chess-piece-info-scroll">
+        <div className="chess-piece-info-list">
+          {orderedPieces.map((piece) => {
+            const isSelected = selectedPiece === piece.key;
+            return (
+              <div key={piece.key} className="chess-piece-info-item">
+                <button
+                  onClick={() => handlePieceClick(piece.key)}
+                  className={`chess-piece-info-item-button ${piece.color} ${isSelected ? 'selected' : ''}`}
+                >
+                  <img 
+                    src={piece.img} 
+                    alt={piece.name}
+                    className="chess-piece-info-image"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                  <span className={`chess-piece-info-name ${piece.color}`}>
+                    {piece.name}
+                  </span>
+                </button>
+                {isSelected && (
+                  <div className="chess-piece-info-description">
+                    {piece.desc}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -109,6 +109,11 @@ const useStyles = createUseStyles({
       height: 'auto',
       display: 'block'
     },
+    '& .chess-piece-info-image': {
+      display: 'block !important',
+      maxWidth: 'none !important',
+      height: 'auto !important',
+    },
     '& video': {
       maxWidth: '100%',
       height: 'auto',
@@ -122,11 +127,60 @@ const useStyles = createUseStyles({
       maxWidth: 'none',
       boxSizing: 'border-box'
     },
-    '& .chess-piece-info, & .chess-piece-info-scroll, & .chess-piece-info-list, & .chess-piece-info-container, & .chess-piece-info-item, & .chess-piece-info-item-content, & .chess-piece-info-image, & .chess-piece-info-name, & .chess-piece-info-description, & .chess-piece-info-desc-content': {
-      maxWidth: 'none',
+    '& .chess-piece-info-container': {
+      maxWidth: 'none !important',
       boxSizing: 'border-box',
+      display: 'flex !important',
+      flexDirection: 'column !important',
+    },
+    '& .chess-piece-info-scroll': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      display: 'block !important',
+    },
+    '& .chess-piece-info-list': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      display: 'flex !important',
+      flexDirection: 'column !important',
+    },
+    '& .chess-piece-info-item': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      display: 'block !important',
       position: 'relative',
-      display: 'block'
+    },
+    '& .chess-piece-info-item-button': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      display: 'flex !important',
+      position: 'relative',
+    },
+    '& .chess-piece-info-name': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      display: 'block !important',
+      position: 'relative',
+    },
+    '& .chess-piece-info-description': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      display: 'block !important',
+      position: 'relative',
+    },
+    '& .chess-chat-window': {
+      maxWidth: 'none !important',
+      boxSizing: 'border-box',
+      position: 'relative !important',
+      width: '100% !important',
+      height: '100% !important',
+      left: 'auto !important',
+      top: 'auto !important',
+      right: 'auto !important',
+      bottom: 'auto !important',
+      margin: '0 !important',
+      padding: '0 !important',
+      overflow: 'hidden !important',
     },
     '@media (max-width: 768px)': {
       padding: '16px',
