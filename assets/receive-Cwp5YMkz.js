@@ -1,4 +1,4 @@
-import{c as e,r as t,e as i,n as o,a as r,i as n,x as s,U as a,o as c,g as l}from"./react-BbjSIjdY.js";import{a as d,S as u,j as p,T as w,g as h,W as m,R as g,b as f}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./react-vendor-BlDtUSDV.js";import"./NetworkUtil-8PBlJxlj.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const b=e`
+import{c as e,r as t,e as i,n as o,a as r,i as n,x as s,U as a,o as c,g as l}from"./react-fB20Urdr.js";import{a as d,S as u,j as p,T as w,g as h,W as m,R as g,b as f}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./react-vendor-BlDtUSDV.js";import"./NetworkUtil-8PBlJxlj.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const b=e`
   button {
     width: 100%;
     display: flex;

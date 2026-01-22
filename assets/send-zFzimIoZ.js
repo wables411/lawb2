@@ -1,4 +1,4 @@
-import{c as e,n as t,g as i,a as n,i as r,b as o,x as s,d as a,U as l,r as c,e as u,o as d}from"./react-BbjSIjdY.js";import{b as h,a as p,C as f,Y as m,R as g,N as w,M as k,S as v,e as b,d as x,j as y,Z as $,v as A,E as T}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./index-nxqak86u.js";import"./index-CodOepKJ.js";import{S as C}from"./SwapController-CmAG1bCl.js";import{C as R}from"./NetworkUtil-8PBlJxlj.js";import"./react-vendor-BlDtUSDV.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const P=e`
+import{c as e,n as t,g as i,a as n,i as r,b as o,x as s,d as a,U as l,r as c,e as u,o as d}from"./react-fB20Urdr.js";import{b as h,a as p,C as f,Y as m,R as g,N as w,M as k,S as v,e as b,d as x,j as y,Z as $,v as A,E as T}from"./W3MFrameProviderSingleton-BlJOKe5v.js";import"./index-RZXxU327.js";import"./index-Ciyn7OtB.js";import{S as C}from"./SwapController-CmAG1bCl.js";import{C as R}from"./NetworkUtil-8PBlJxlj.js";import"./react-vendor-BlDtUSDV.js";import"./wagmi-vendor-vKozJ7dF.js";import"./index-CFYEtFbK.js";const P=e`
   :host {
     width: 100%;
     height: 100px;
