@@ -875,7 +875,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const GAME_TIMEOUT_MS = 3600000; // 60 minutes
   
 
-  const [showPieceGallery, setShowPieceGallery] = useState(false);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState(false);
@@ -975,7 +974,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   }, [isMobile, openWindow]);
   
   // Mobile sidebar state (unchanged)
-  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'gallery' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
+  const [sidebarView, setSidebarView] = useState<'moves' | 'leaderboard' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Closed by default on mobile (popup mode)
   const [soundEnabled, setSoundEnabled] = useState(true);
   
