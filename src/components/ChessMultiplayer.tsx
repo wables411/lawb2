@@ -6394,17 +6394,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setSidebarView('gallery');
-                    setIsSidebarOpen(false);
-                  }}
-                >
-                  Gallery
-                </button>
-                <button 
-                  className="mobile-menu-btn"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     openHowToGuide();
                   }}
                 >
