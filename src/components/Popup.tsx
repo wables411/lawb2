@@ -112,7 +112,10 @@ const useStyles = createUseStyles({
     '& .chess-piece-info-image': {
       display: 'block !important',
       maxWidth: 'none !important',
+      width: 'auto !important',
       height: 'auto !important',
+      flexShrink: '0 !important',
+      marginRight: '12px !important',
     },
     '& video': {
       maxWidth: '100%',
@@ -122,6 +125,12 @@ const useStyles = createUseStyles({
     '& *': {
       maxWidth: '100%',
       boxSizing: 'border-box'
+    },
+    '& .chess-piece-info-container *': {
+      maxWidth: 'none !important',
+    },
+    '& .chess-piece-info-item-button *': {
+      maxWidth: 'none !important',
     },
     '& .piece-gallery, & .piece-gallery-compact, & .piece-gallery-list, & .piece-gallery-list-item, & .piece-gallery-list-content, & .piece-gallery-list-image-wrapper, & .piece-gallery-list-img, & .piece-gallery-list-info': {
       maxWidth: 'none',
@@ -154,6 +163,8 @@ const useStyles = createUseStyles({
       maxWidth: 'none !important',
       boxSizing: 'border-box',
       display: 'flex !important',
+      flexDirection: 'row !important',
+      alignItems: 'center !important',
       position: 'relative',
     },
     '& .chess-piece-info-name': {
@@ -161,6 +172,7 @@ const useStyles = createUseStyles({
       boxSizing: 'border-box',
       display: 'block !important',
       position: 'relative',
+      flex: '1 !important',
     },
     '& .chess-piece-info-description': {
       maxWidth: 'none !important',
