@@ -388,7 +388,10 @@ function App() {
         }}
         onOpenPublicChat={openPublicChat}
         onOpenProfile={() => setShowProfile(true)}
-        onOpenChessPieceInfo={() => setShowChessPieceInfo(true)}
+        onOpenChessPieceInfo={() => {
+          console.log('[APP] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
+          setShowChessPieceInfo(true);
+        }}
       />
 
       {/* Public Chat - Functional Firebase Chat Component */}

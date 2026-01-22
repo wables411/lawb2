@@ -372,9 +372,13 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
               <button
                 className={classes.menuItem}
                 onClick={() => {
+                  console.log('[LINUXNAVBAR] Chess Piece Info clicked, onOpenChessPieceInfo:', onOpenChessPieceInfo);
                   setIsMenuOpen(false);
                   if (onOpenChessPieceInfo) {
+                    console.log('[LINUXNAVBAR] Calling onOpenChessPieceInfo');
                     onOpenChessPieceInfo();
+                  } else {
+                    console.warn('[LINUXNAVBAR] onOpenChessPieceInfo is not defined');
                   }
                 }}
               >
