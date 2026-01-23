@@ -1427,6 +1427,12 @@ div[class*="chessboard"][style*="url"] {
   /* Only use height: 100% when actually showing game content, not selection screens */
 }
 
+/* Reduce center-area height in home view by 75% */
+.game-stable-layout.home-view .center-area {
+  max-height: 25% !important;
+  height: auto !important;
+}
+
 /* Remove ALL padding for baseapp - content must start immediately after header */
 .chess-game.baseapp .center-area {
   padding-top: 0px !important;
@@ -2009,10 +2015,10 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   /* CRITICAL FIX: Explicitly prevent height from being forced */
   height: auto !important;
   min-height: 0 !important;
-  max-height: none !important;
+  max-height: 25% !important; /* 75% less tall - reduce from auto/none to 25% */
   padding-top: 0 !important;
   margin-top: 0 !important;
-  display: none; /* Hide empty center-area in home view */
+  display: block; /* Show but with reduced height */
 }
 
 .game-stable-layout.home-view.mobile {
