@@ -2063,9 +2063,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Helper functions for window management
   const openWindow = (windowType: 'leaderboard' | 'chat' | 'moves' | 'profile' | 'howto') => {
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[OPEN WINDOW] Opening window:', windowType);
+      window.console.log('[OPEN WINDOW] Opening window:', windowType, 'isMobile:', isMobile);
     }
     setIsMenuOpen(false);
+    
+    // On mobile, use sidebar view instead of popup windows
+    if (isMobile) {
+      setSidebarView(windowType);
+      setIsSidebarOpen(true);
+      return;
+    }
+    
       // Set default position if not set - position windows to avoid covering chessboard
       // Calculate position BEFORE opening window to ensure it's available on first render
       if (!windowPositions[windowType]) {

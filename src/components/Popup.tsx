@@ -18,16 +18,16 @@ const useStyles = createUseStyles({
     top: 0,
     left: 0,
     '@media (max-width: 768px)': {
-      width: 'calc(100vw - 16px) !important',
-      height: 'calc(100vh - 16px) !important',
-      maxWidth: 'calc(100vw - 16px) !important',
-      maxHeight: 'calc(100vh - 16px) !important',
+      width: 'calc(100vw - 32px) !important',
+      height: 'calc(100vh - 100px) !important', /* Account for navbar (50px) + safe areas */
+      maxWidth: 'calc(100vw - 32px) !important',
+      maxHeight: 'calc(100vh - 100px) !important',
       minWidth: '0 !important',
-      minHeight: '0 !important',
-      left: '8px !important',
-      top: '8px !important',
-      right: '8px !important',
-      bottom: '8px !important',
+      minHeight: '200px !important', /* Minimum height for usability */
+      left: '16px !important',
+      top: 'calc(env(safe-area-inset-top, 0px) + 16px) !important', /* iOS safe area + spacing */
+      right: '16px !important',
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 50px + 16px) !important', /* Navbar + safe area + spacing */
       resize: 'none !important',
       boxSizing: 'border-box !important',
     },
@@ -183,6 +183,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   const classes = useStyles({ isOpen });
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   
   
   // Debug: log when popup should be visible
