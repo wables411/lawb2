@@ -35,6 +35,7 @@ body.chess-route #root {
   position: relative;
   box-sizing: border-box;
   padding-bottom: 36px; /* Space for LinuxNavBar */
+  padding-top: env(safe-area-inset-top, 0px); /* iOS safe area */
 }
 
 .chess-page-simple.mobile {
@@ -187,9 +188,16 @@ body.chess-route #root {
 /* Mobile */
 @media (max-width: 768px) {
   .chess-page-simple {
-    padding-bottom: 50px;
-    padding-top: 0 !important;
+    padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px)); /* Navbar + iOS safe area */
+    padding-top: env(safe-area-inset-top, 0px) !important; /* iOS safe area for status bar */
     min-height: calc(100vh - 50px);
+  }
+  
+  /* iOS specific adjustments */
+  @supports (padding: env(safe-area-inset-top)) {
+    .chess-page-simple {
+      padding-top: env(safe-area-inset-top) !important;
+    }
   }
 
   .chess-content-simple {

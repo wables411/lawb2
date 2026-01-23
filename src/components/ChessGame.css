@@ -2034,8 +2034,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 /* Mobile (/chess) home view: keep VS AI / PvP at the very top */
 @media (max-width: 768px) {
   .game-stable-layout.home-view.mobile {
-    padding-top: 0px !important;
-    padding: 0px 8px 24px 8px !important;
+    padding-top: env(safe-area-inset-top, 20px) !important; /* iOS safe area + minimum spacing */
+    padding: env(safe-area-inset-top, 20px) 8px 24px 8px !important;
     gap: 0px !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
@@ -2048,6 +2048,14 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     margin-top: 0px !important;
     margin-bottom: 0px !important;
     gap: 0px !important;
+  }
+  
+  /* iOS specific: ensure buttons are not off-screen */
+  @supports (padding: env(safe-area-inset-top)) {
+    .game-stable-layout.home-view.mobile {
+      padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+      padding: calc(env(safe-area-inset-top) + 12px) 8px 24px 8px !important;
+    }
   }
 
   /* Reorder home view panel so primary actions are first */
@@ -2088,13 +2096,20 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 
 @media (max-width: 600px) {
   .game-stable-layout.home-view.mobile {
-    padding: 0px 6px 60px 6px !important; /* Ensure navbar clearance */
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 6px 60px 6px !important; /* iOS safe area + spacing */
     gap: 0px !important;
   }
 
   .game-stable-layout.home-view.mobile .game-mode-panel-streamlined {
     padding: 0px 8px 8px 8px !important;
     padding-top: 0px !important;
+  }
+  
+  /* iOS specific: extra spacing for smaller screens */
+  @supports (padding: env(safe-area-inset-top)) {
+    .game-stable-layout.home-view.mobile {
+      padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+    }
   }
 }
 
@@ -2842,6 +2857,13 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     padding: 0px 12px 8px 12px !important;
     margin-top: 0 !important;
     margin-bottom: 0 !important;
+  }
+  
+  /* iOS: Add minimum top margin to prevent buttons going off-screen */
+  @supports (padding: env(safe-area-inset-top)) {
+    .chess-game.mobile .game-mode-panel-streamlined {
+      margin-top: 8px !important; /* Small margin to prevent off-screen positioning */
+    }
   }
 }
 
