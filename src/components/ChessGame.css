@@ -2019,6 +2019,11 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   padding-top: 0 !important;
   margin-top: 0 !important;
   display: block; /* Show but with reduced height */
+  order: 2; /* Place center-area after game-mode-panel-streamlined */
+}
+
+.game-stable-layout.home-view .game-mode-panel-streamlined {
+  order: 1; /* Place game-mode-panel-streamlined first (at top) */
 }
 
 .game-stable-layout.home-view.mobile {

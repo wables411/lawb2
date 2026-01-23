@@ -2216,6 +2216,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       <div className="chess-game">
         <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
+          <div className="center-area">
+          </div>
           <div className="game-mode-panel-streamlined">
             {/* Status Display and Network Switching - Hidden on mobile home view */}
             <div style={{ 
@@ -2298,8 +2300,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               />
             </div>
             {/* Sidebar toggle buttons removed - use menu button instead */}
-          </div>
-          <div className="center-area">
           </div>
         </div>
 
