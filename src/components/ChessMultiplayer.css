@@ -3352,7 +3352,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   box-shadow: none;
   transition: all 0.3s ease;
   position: relative;
-  z-index: 10005 !important;
+  z-index: 999998 !important; /* Below navbar (999999) */
   pointer-events: all !important;
 }
 
@@ -3375,7 +3375,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
 
 .chess-header .chess-controls button {
   position: relative;
-  z-index: 10007 !important;
+  z-index: 999998 !important; /* Below navbar (999999) */
   pointer-events: auto !important;
   touch-action: manipulation !important;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;

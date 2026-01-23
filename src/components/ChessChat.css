@@ -418,7 +418,7 @@
 
 /* Mobile chat styles */
 .chess-chat-window {
-  z-index: 10003 !important;
+  z-index: 999998 !important; /* Below navbar (999999) */
 }
 
 .chess-chat-window.mobile {
@@ -436,7 +436,7 @@
   border: 2px outset #fff !important;
   border-radius: 0 !important;
   resize: none !important;
-  z-index: 10003 !important; /* Higher than Taskbar (200) and Popup (2000) */
+  z-index: 999998 !important; /* Below navbar (999999) */ /* Higher than Taskbar (200) and Popup (2000) */
   display: flex !important;
   flex-direction: column !important;
   margin: 0 !important;

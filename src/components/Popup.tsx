@@ -327,7 +327,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         style={{ 
           width: initialSize?.width,
           height: initialSize?.height,
-          zIndex: zIndex || 100
+          zIndex: Math.min(zIndex || 100, 999998) // Ensure popups are always below navbar (999999)
         }}
       >
         <div className={classes.header}>

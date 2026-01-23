@@ -503,7 +503,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     bottom: 0,
     width: '100vw' as const,
     height: '100vh' as const,
-    zIndex: 100001, // Higher than Taskbar menu (100000) to ensure it's on top
+    zIndex: 999998, // Below navbar (999999) but above other elements
     pointerEvents: 'auto' as const, // Ensure chat can receive clicks
     display: 'flex' as const,
     flexDirection: 'column' as const,

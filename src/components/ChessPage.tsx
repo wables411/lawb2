@@ -183,7 +183,7 @@ const ChessPage: React.FC = () => {
             title="Chess Piece Info" 
             initialPosition={{ x: 100, y: 100 }} 
             initialSize={{ width: 400, height: 500 }} 
-            zIndex={2000}
+            zIndex={999998}
           >
             <Suspense fallback={<div>Loading...</div>}>
               <ChessPieceInfo isMobile={isMobile} />

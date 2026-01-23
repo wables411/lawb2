@@ -21,7 +21,7 @@ const useStyles = createUseStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 200,
+    zIndex: 999999, // Highest z-index to ensure navbar is always on top of everything
     paddingLeft: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '8px' : '12px',
     paddingRight: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '8px' : '12px',
     boxSizing: 'border-box',
