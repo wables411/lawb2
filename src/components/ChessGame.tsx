@@ -2280,7 +2280,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             {/* Chessboards GIF */}
             <div style={{
               textAlign: 'center', 
-              marginTop: isMobile ? '4px' : '20px', 
+              marginTop: isMobile ? '4px' : '8px', 
               marginBottom: isMobile ? '8px' : '20px',
               paddingBottom: isMobile ? '8px' : '0px'
             }}>
@@ -2288,8 +2288,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 src="/images/chessboards.gif" 
                 alt="Chessboards Animation" 
                 style={{
-                  maxWidth: '100%',
-                  width: '100%',
+                  maxWidth: isMobile ? '100%' : '60%',
+                  width: isMobile ? '100%' : '60%',
                   height: 'auto',
                   borderRadius: '0px',
                   boxShadow: 'none',
@@ -3193,13 +3193,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <HowToContent />
               </div>
               {/* Chessboards GIF */}
-              <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
+              <div style={{textAlign: 'center', marginTop: '8px', marginBottom: '20px'}}>
                 <img 
                   src="/images/chessboards.gif" 
                   alt="Chessboards Animation" 
                   style={{
-                    maxWidth: '100%',
-                    width: '100%',
+                    maxWidth: '60%',
+                    width: '60%',
                     height: 'auto',
                     borderRadius: '0px',
                     boxShadow: 'none',
