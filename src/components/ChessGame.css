@@ -2020,21 +2020,24 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   .game-stable-layout.home-view.mobile {
     padding-top: 0px !important;
     padding: 0px 8px 24px 8px !important;
-    gap: 8px !important;
+    gap: 0px !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
+    margin-top: 0px !important;
   }
 
   .game-stable-layout.home-view.mobile .game-mode-panel-streamlined {
-    padding-top: 4px !important;
-    padding: 4px 12px 16px 12px !important;
-    margin-top: 0 !important;
+    padding-top: 0px !important;
+    padding: 0px 12px 16px 12px !important;
+    margin-top: 0px !important;
+    gap: 0px !important;
   }
 
   /* Reorder home view panel so primary actions are first */
   .game-stable-layout.home-view.mobile .game-mode-panel-streamlined .mode-selection-compact {
     order: 0;
     margin-top: 0 !important;
+    margin-bottom: 8px !important;
   }
 
   .game-stable-layout.home-view.mobile .game-mode-panel-streamlined .start-btn-compact {

@@ -1007,6 +1007,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const handleSquareClick = (row: number, col: number) => {
     if (gameState !== 'active' || isAIMovingRef.current) return;
     
+    // CRITICAL FIX: In AI mode, player (blue) should only be able to move when it's their turn
+    // Prevent player from clicking when it's AI's turn (red)
+    if (gameMode === 'ai' && currentPlayer !== 'blue') {
+      return;
+    }
+    
     const piece = board[row][col];
     const pieceColor = piece ? getPieceColor(piece) : null;
     
@@ -2211,14 +2217,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="game-mode-panel-streamlined">
-            {/* Status Display and Network Switching */}
+            {/* Status Display and Network Switching - Hidden on mobile home view */}
             <div style={{ 
               textAlign: 'center', 
               marginBottom: '20px',
               padding: '10px',
               backgroundColor: '#000000',
               border: '2px outset #fff',
-              borderRadius: '4px'
+              borderRadius: '4px',
+              display: isMobile ? 'none' : 'block'
             }}>
               <div style={{ 
                 color: '#ff0000', 
