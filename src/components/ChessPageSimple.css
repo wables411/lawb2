@@ -49,6 +49,8 @@ body.chess-route #root {
   min-height: 0;
   width: 100%;
   height: 100%;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 /* Override ChessGame styles to fit console */
@@ -61,6 +63,8 @@ body.chess-route #root {
   padding: 0;
   margin: 0;
   overflow: hidden;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 /* Hide any remaining headers */
@@ -83,6 +87,7 @@ body.chess-route #root {
   padding: 8px;
   box-sizing: border-box;
   margin-top: 0 !important;
+  padding-top: 0 !important;
   visibility: visible !important;
   opacity: 1 !important;
   position: relative;
@@ -183,16 +188,36 @@ body.chess-route #root {
 @media (max-width: 768px) {
   .chess-page-simple {
     padding-bottom: 50px;
+    padding-top: 0 !important;
+  }
+
+  .chess-content-simple {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  .chess-page-simple .chess-game {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  .chess-page-simple .game-stable-layout {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
   }
 
   .chess-page-simple .chess-main-area {
     padding: 4px;
+    justify-content: flex-start !important;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
   }
 
   .chess-page-simple .game-info-compact {
     width: calc(100% - 8px);
     font-size: 11px;
     padding: 3px 6px;
+    margin-top: 0 !important;
   }
 
   .chess-page-simple .chessboard-container {
@@ -202,6 +227,7 @@ body.chess-route #root {
     min-height: 280px !important;
     width: min(95vh, 95vw) !important;
     height: min(95vh, 95vw) !important;
+    margin-top: 0 !important;
   }
   
   .chess-page-simple .chess-main-area {
