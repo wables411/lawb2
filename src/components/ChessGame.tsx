@@ -3156,6 +3156,35 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         {/* Desktop Sidebar removed - using menu popup and windows instead */}
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
+          {/* Debug Overlay - Mobile Only */}
+          {isMobile && showGame && gameMode === 'ai' && (
+            <div style={{
+              position: 'fixed',
+              top: '60px',
+              left: '8px',
+              right: '8px',
+              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              border: '2px solid #ff0000',
+              borderRadius: '4px',
+              padding: '8px',
+              fontSize: '10px',
+              color: '#00ff00',
+              fontFamily: 'monospace',
+              zIndex: 999999,
+              maxHeight: '150px',
+              overflowY: 'auto',
+              lineHeight: '1.4'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff0000' }}>DEBUG FLAGS:</div>
+              <div>isAIMovingRef: {isAIMovingRef.current ? 'TRUE' : 'false'}</div>
+              <div>currentPlayer: {currentPlayer}</div>
+              <div>gameState: {gameState}</div>
+              <div>isUpdatingBoard: {isUpdatingBoard ? 'TRUE' : 'false'}</div>
+              <div>lastAIMoveRef: {lastAIMoveRef.current ? 'TRUE' : 'false'}</div>
+              <div>apiCallInProgress: {apiCallInProgressRef.current ? 'TRUE' : 'false'}</div>
+              <div>gameMode: {gameMode}</div>
+            </div>
+          )}
           {/* Game Info Bar - Compact */}
           {showGame && (
             <div className="game-info-compact" style={{ marginTop: '0px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
