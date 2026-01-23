@@ -2222,12 +2222,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             {/* Status Display and Network Switching - Hidden on mobile home view */}
             <div style={{ 
               textAlign: 'center', 
-              marginBottom: '20px',
-              padding: '10px',
+              marginBottom: isMobile ? '8px' : '20px',
+              marginTop: isMobile ? '0px' : '0px',
+              padding: isMobile ? '6px' : '10px',
               backgroundColor: '#000000',
               border: '2px outset #fff',
               borderRadius: '4px',
-              display: isMobile ? 'none' : 'block'
+              display: isMobile ? 'none' : 'block',
+              fontSize: isMobile ? '12px' : '14px'
             }}>
               <div style={{ 
                 color: '#ff0000', 

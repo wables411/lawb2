@@ -189,15 +189,8 @@ body.chess-route #root {
 @media (max-width: 768px) {
   .chess-page-simple {
     padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px)); /* Navbar + iOS safe area */
-    padding-top: env(safe-area-inset-top, 0px) !important; /* iOS safe area for status bar */
+    padding-top: 0px !important; /* No top padding - let content handle spacing */
     min-height: calc(100vh - 50px);
-  }
-  
-  /* iOS specific adjustments */
-  @supports (padding: env(safe-area-inset-top)) {
-    .chess-page-simple {
-      padding-top: env(safe-area-inset-top) !important;
-    }
   }
 
   .chess-content-simple {

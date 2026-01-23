@@ -2015,7 +2015,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   /* CRITICAL FIX: Explicitly prevent height from being forced */
   height: auto !important;
   min-height: 0 !important;
-  max-height: 25% !important; /* 75% less tall - reduce from auto/none to 25% */
+  max-height: 60px !important; /* Fixed small height - much less tall */
   padding-top: 0 !important;
   margin-top: 0 !important;
   display: block; /* Show but with reduced height */
@@ -2034,8 +2034,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 /* Mobile (/chess) home view: keep VS AI / PvP at the very top */
 @media (max-width: 768px) {
   .game-stable-layout.home-view.mobile {
-    padding-top: env(safe-area-inset-top, 20px) !important; /* iOS safe area + minimum spacing */
-    padding: env(safe-area-inset-top, 20px) 8px 24px 8px !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important; /* iOS safe area + small spacing */
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 8px 24px 8px !important;
     gap: 0px !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
@@ -2053,8 +2053,8 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   /* iOS specific: ensure buttons are not off-screen */
   @supports (padding: env(safe-area-inset-top)) {
     .game-stable-layout.home-view.mobile {
-      padding-top: calc(env(safe-area-inset-top) + 12px) !important;
-      padding: calc(env(safe-area-inset-top) + 12px) 8px 24px 8px !important;
+      padding-top: calc(env(safe-area-inset-top) + 8px) !important; /* Reduced from 12px to 8px */
+      padding: calc(env(safe-area-inset-top) + 8px) 8px 24px 8px !important;
     }
   }
 
@@ -2096,7 +2096,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 
 @media (max-width: 600px) {
   .game-stable-layout.home-view.mobile {
-    padding: calc(env(safe-area-inset-top, 0px) + 12px) 6px 60px 6px !important; /* iOS safe area + spacing */
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 6px 60px 6px !important; /* iOS safe area + minimal spacing */
     gap: 0px !important;
   }
 
@@ -2105,10 +2105,10 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
     padding-top: 0px !important;
   }
   
-  /* iOS specific: extra spacing for smaller screens */
+  /* iOS specific: minimal spacing for smaller screens */
   @supports (padding: env(safe-area-inset-top)) {
     .game-stable-layout.home-view.mobile {
-      padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+      padding-top: calc(env(safe-area-inset-top) + 8px) !important; /* Reduced from 16px to 8px */
     }
   }
 }
