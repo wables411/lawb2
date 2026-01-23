@@ -183,7 +183,6 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   const classes = useStyles({ isOpen });
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   
   
   // Debug: log when popup should be visible
@@ -328,7 +327,19 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         style={{ 
           width: initialSize?.width,
           height: initialSize?.height,
-          zIndex: Math.min(zIndex || 100, 999998) // Ensure popups are always below navbar (999999)
+          zIndex: Math.min(zIndex || 100, 999998), // Ensure popups are always below navbar (999999)
+          ...(isMobile && {
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+            left: '16px',
+            right: '16px',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 50px + 16px)',
+            width: 'calc(100vw - 32px)',
+            height: 'calc(100vh - 100px)',
+            maxWidth: 'calc(100vw - 32px)',
+            maxHeight: 'calc(100vh - 100px)',
+            margin: 0
+          })
         }}
       >
         <div className={classes.header}>
