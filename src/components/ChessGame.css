@@ -1398,6 +1398,8 @@ div[class*="chessboard"][style*="url"] {
   /* Only use height: 100% when showing game, not selection screens */
   min-height: 0;
   padding-top: 0 !important; /* No padding - content starts at top */
+  margin-top: 0 !important;
+  position: relative;
 }
 
 /* Remove ALL padding for baseapp - content must start immediately after header */
@@ -1420,7 +1422,7 @@ div[class*="chessboard"][style*="url"] {
   max-width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 60px !important; /* Add padding below header to prevent overlap */
+  padding-top: 0 !important; /* No top padding for home view */
   box-sizing: border-box;
   /* Only use height: 100% when actually showing game content, not selection screens */
 }
@@ -2008,6 +2010,9 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  display: none; /* Hide empty center-area in home view */
 }
 
 .game-stable-layout.home-view.mobile {
@@ -2816,6 +2821,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  position: relative;
 }
 
 /* Mobile: Reduce top padding for game mode panel */
