@@ -1005,10 +1005,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Handle square click
   const handleSquareClick = (row: number, col: number) => {
+    const logData = {row,col,gameState,isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current,lastAIMoveRef:lastAIMoveRef.current};
+    console.log('[DEBUG] handleSquareClick entry', logData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:{row,col,gameState,isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
     if (gameState !== 'active' || isAIMovingRef.current) {
+      console.log('[DEBUG] handleSquareClick BLOCKED: gameState or isAIMovingRef', {gameState,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1008',message:'handleSquareClick blocked: gameState or isAIMovingRef',data:{gameState,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
@@ -1018,6 +1021,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // CRITICAL FIX: In AI mode, player (blue) should only be able to move when it's their turn
     // Prevent player from clicking when it's AI's turn (red)
     if (gameMode === 'ai' && currentPlayer !== 'blue') {
+      console.log('[DEBUG] handleSquareClick BLOCKED: currentPlayer not blue', {gameMode,currentPlayer});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1012',message:'handleSquareClick blocked: currentPlayer not blue',data:{gameMode,currentPlayer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
@@ -1129,12 +1133,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // CRITICAL FIX: Set lastAIMoveRef BEFORE updatePieceState to prevent race condition
     // The AI useEffect depends on pieceState, so when updatePieceState triggers setPieceState,
     // it can cause the useEffect to run. We must set the blocking flag FIRST.
+    const flagDataBefore = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard,currentPlayer};
+    console.log('[DEBUG] executeMoveAfterAnimation before flag update', flagDataBefore);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1121',message:'executeMoveAfterAnimation before flag update',data:{isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard,currentPlayer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1121',message:'executeMoveAfterAnimation before flag update',data:flagDataBefore,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
     if (isAIMove) {
       lastAIMoveRef.current = true; // Block useEffect from triggering again
       isAIMovingRef.current = false; // Allow player to move
+      console.log('[DEBUG] executeMoveAfterAnimation AI move flags set', {isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1123',message:'executeMoveAfterAnimation AI move flags set',data:{isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
@@ -1152,9 +1159,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Switch players
     setCurrentPlayer(prev => {
       const newPlayer = prev === 'blue' ? 'red' : 'blue';
-      console.log('[DEBUG] Player switched to:', newPlayer);
+      const playerSwitchData = {prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current};
+      console.log('[DEBUG] Player switched to:', newPlayer, playerSwitchData);
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:{prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:playerSwitchData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
       // Check game end for the player who is about to move (after switch)
       checkGameEnd(newBoard, newPlayer);
@@ -1175,20 +1183,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setBoard(newBoard);
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);
+    const endFlagData = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard:false};
+    console.log('[DEBUG] executeMoveAfterAnimation end flags reset', endFlagData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1157',message:'executeMoveAfterAnimation end flags reset',data:{isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1157',message:'executeMoveAfterAnimation end flags reset',data:endFlagData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
   }, [board, currentPlayer, moveHistory, getOpeningData]);
 
   // Reset lastAIMoveRef when it becomes player's turn (blue)
   // This ensures the flag is cleared after the state updates from AI move
   useEffect(() => {
+    const resetData = {gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isAIMovingRef:isAIMovingRef.current};
+    console.log('[DEBUG] lastAIMoveRef reset useEffect', resetData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1162',message:'lastAIMoveRef reset useEffect',data:{gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1162',message:'lastAIMoveRef reset useEffect',data:resetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
     // #endregion
     if (gameMode === 'ai' && currentPlayer === 'blue' && lastAIMoveRef.current) {
       // Player's turn now - reset the flag that was blocking double AI moves
       lastAIMoveRef.current = false;
+      console.log('[DEBUG] lastAIMoveRef reset to false', {lastAIMoveRef:lastAIMoveRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1165',message:'lastAIMoveRef reset to false',data:{lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
       // #endregion
@@ -1197,14 +1210,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
+    const aiEffectData = {isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current};
+    console.log('[DEBUG] AI useEffect triggered', aiEffectData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1170',message:'AI useEffect triggered',data:{isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1170',message:'AI useEffect triggered',data:aiEffectData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
     // CRITICAL: Check lastAIMoveRef to prevent double moves
     // When AI moves, setCurrentPlayer is async. The useEffect might run again before
     // currentPlayer updates from 'red' to 'blue'. lastAIMoveRef blocks this.
     if (!isAIMovingRef.current && gameMode === 'ai' && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
       isAIMovingRef.current = true;
+      console.log('[DEBUG] AI useEffect starting AI move', {difficulty,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1175',message:'AI useEffect starting AI move',data:{difficulty,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
       // #endregion
@@ -1242,14 +1258,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current) });
               if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
                 console.log('[STOCKFISH] Executing API move:', moveObj);
+                const stockfishMoveData = {moveObj,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
+                console.log('[DEBUG] AI making valid Stockfish move', stockfishMoveData);
                 // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1210',message:'AI making valid Stockfish move',data:{moveObj,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1210',message:'AI making valid Stockfish move',data:stockfishMoveData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
                 // #endregion
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
                 console.warn('[DEBUG] Invalid Stockfish move, falling back to random');
+                const fallbackData = {isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
+                console.log('[DEBUG] AI invalid move fallback', fallbackData);
                 // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1212',message:'AI invalid move fallback',data:{isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1212',message:'AI invalid move fallback',data:fallbackData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
                 // #endregion
                 const fallbackMove = getRandomAIMove(boardRef.current);
                 if (fallbackMove) {
@@ -1278,8 +1298,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }).catch(async (error) => {
           console.error('[STOCKFISH] API error:', error);
+          const errorData = {error:error?.message,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
+          console.log('[DEBUG] AI Stockfish API error', errorData);
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1238',message:'AI Stockfish API error',data:{error:error?.message,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1238',message:'AI Stockfish API error',data:errorData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
           // #endregion
           // Check if it's a DNS/network error
           const isNetworkError = error?.message?.includes('Failed to fetch') || 
@@ -1299,8 +1321,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
           isAIMovingRef.current = false;
           apiCallInProgressRef.current = false;
+          const errorResetData = {isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
+          console.log('[DEBUG] AI error fallback flags reset', errorResetData);
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1257',message:'AI error fallback flags reset',data:{isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1257',message:'AI error fallback flags reset',data:errorResetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
           // #endregion
         });
       }
