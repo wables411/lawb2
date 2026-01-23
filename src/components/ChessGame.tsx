@@ -2278,7 +2278,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </div>
             )}
             {/* Chessboards GIF */}
-            <div style={{textAlign: 'center', marginTop: '20px', marginBottom: '20px'}}>
+            <div style={{
+              textAlign: 'center', 
+              marginTop: isMobile ? '4px' : '20px', 
+              marginBottom: isMobile ? '8px' : '20px',
+              paddingBottom: isMobile ? '8px' : '0px'
+            }}>
               <img 
                 src="/images/chessboards.gif" 
                 alt="Chessboards Animation" 

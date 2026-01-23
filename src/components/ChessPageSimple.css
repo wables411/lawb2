@@ -189,6 +189,7 @@ body.chess-route #root {
   .chess-page-simple {
     padding-bottom: 50px;
     padding-top: 0 !important;
+    min-height: calc(100vh - 50px);
   }
 
   .chess-content-simple {
