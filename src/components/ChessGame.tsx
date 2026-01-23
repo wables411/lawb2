@@ -2219,23 +2219,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <div className="center-area">
           </div>
           <div className="game-mode-panel-streamlined">
-            {/* Status Display and Network Switching - Hidden on mobile home view */}
+            {/* Status Display and Network Switching - Visible on mobile with compact styling */}
             <div style={{ 
               textAlign: 'center', 
-              marginBottom: isMobile ? '8px' : '20px',
+              marginBottom: isMobile ? '4px' : '20px',
               marginTop: isMobile ? '0px' : '0px',
-              padding: isMobile ? '6px' : '10px',
+              padding: isMobile ? '4px 8px' : '10px',
               backgroundColor: '#000000',
               border: '2px outset #fff',
               borderRadius: '4px',
-              display: isMobile ? 'none' : 'block',
-              fontSize: isMobile ? '12px' : '14px'
+              display: 'block', /* Always visible */
+              fontSize: isMobile ? '11px' : '14px',
+              lineHeight: isMobile ? '1.2' : 'normal'
             }}>
               <div style={{ 
                 color: '#ff0000', 
-                fontSize: '14px', 
+                fontSize: isMobile ? '11px' : '14px', 
                 fontWeight: 'bold',
-                marginBottom: '10px'
+                marginBottom: isMobile ? '4px' : '10px',
+                lineHeight: isMobile ? '1.2' : 'normal'
               }}>
                 {status}
               </div>

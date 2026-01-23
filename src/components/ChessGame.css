@@ -2079,10 +2079,14 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 
   /* The status / wallet connection block is the first child <div> in this panel */
   .game-stable-layout.home-view.mobile .game-mode-panel-streamlined > div:first-child {
-    order: 3;
-    margin-top: 8px !important;
-    margin-bottom: 8px !important;
-    padding: 6px !important;
+    order: 0; /* Show wallet status first, before buttons */
+    margin-top: 0px !important;
+    margin-bottom: 4px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    max-height: 40px !important; /* Limit height to prevent pushing buttons off-screen */
+    overflow: hidden !important;
   }
 
   /* Chessboards GIF container is currently the last child <div> in the panel */
