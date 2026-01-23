@@ -66,7 +66,7 @@ const useStyles = createUseStyles({
     border: '2px outset #fff',
     padding: '2px',
     display: ({ isOpen }: TaskbarStyleProps) => (isOpen ? 'block' : 'none'),
-    zIndex: 100000, // Higher than all popups to open over windows
+    zIndex: 999998, // Below navbar (999999) but above other elements
     maxHeight: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vh - 120px)' : '400px',
     maxWidth: ({ isMobile }: TaskbarStyleProps) => isMobile ? 'calc(100vw - 20px)' : '220px',
     overflowY: 'auto',

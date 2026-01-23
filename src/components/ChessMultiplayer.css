@@ -140,7 +140,7 @@
   width: 100vw !important;
   height: 100vh !important;
   background: rgba(0, 0, 0, 0.5) !important;
-  z-index: 9998 !important;
+  z-index: 999997 !important; /* Below navbar (999999) */
   animation: fadeIn 0.2s ease !important;
   pointer-events: all !important;
 }
@@ -2018,7 +2018,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     width: 100vw !important;
     height: 100vh !important;
     background: rgba(0, 0, 0, 0.5) !important;
-    z-index: 9998 !important;
+    z-index: 999997 !important; /* Below navbar (999999) */
     pointer-events: all !important;
   }
   
@@ -2030,7 +2030,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     width: 100vw !important; /* Changed from calc(100vw - 32px) to 100vw */
     max-width: 100vw !important; /* Changed from 500px to 100vw */
     max-height: 70vh !important; /* Changed from calc(100vh - 100px) to 70vh - leaves room for chessboard */
-    z-index: 9999 !important;
+    z-index: 999998 !important; /* Below navbar (999999) */
     background: rgba(0, 255, 0, 0.9) !important;
     border: 2px solid #00ff00 !important;
     border-radius: 12px 12px 0 0 !important; /* Rounded top corners only */
@@ -2317,7 +2317,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     width: calc(100vw - 32px) !important;
     max-width: 400px !important;
     max-height: calc(100vh - 32px) !important;
-    z-index: 9999 !important;
+    z-index: 999998 !important; /* Below navbar (999999) */
     background: rgba(0, 255, 0, 0.85) !important;
     backdrop-filter: blur(10px) !important;
     border: 2px solid #00ff00 !important;
@@ -2346,7 +2346,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   
   /* Ensure overlay doesn't block menu button */
   .sidebar-popup-overlay {
-    z-index: 9998 !important;
+    z-index: 999997 !important; /* Below navbar (999999) */
   }
   
   @keyframes slideIn {

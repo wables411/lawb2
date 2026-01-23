@@ -2782,7 +2782,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             title="Player Profile"
             initialPosition={{ x: 100, y: 100 }}
             initialSize={{ width: 400, height: 500 }}
-            zIndex={10000}
+            zIndex={999998}
           >
             <PlayerProfile isMobile={false} address={viewingProfileAddress} />
           </Popup>
@@ -3061,7 +3061,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               
               {viewingProfileAddress && (
-                <div className="profile-compact mobile-content-view" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: '#fff' }}>
+                <div className="profile-compact mobile-content-view" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999998, background: '#fff' }}>
                   <button onClick={() => setViewingProfileAddress(null)} style={{ margin: '10px', padding: '5px 10px' }}>Close</button>
                   <PlayerProfile isMobile={true} address={viewingProfileAddress} />
                 </div>

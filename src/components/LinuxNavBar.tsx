@@ -110,7 +110,7 @@ const useStyles = createUseStyles({
     borderRadius: '6px',
     padding: '4px',
     display: ({ isOpen }: LinuxNavBarStyleProps) => (isOpen ? 'block' : 'none'),
-    zIndex: 100000,
+    zIndex: 999999, // Match navbar z-index to ensure menu is also on top
     maxHeight: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? 'calc(100vh - 120px)' : '500px',
     maxWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? 'calc(100vw - 20px)' : '280px',
     overflowY: 'auto',

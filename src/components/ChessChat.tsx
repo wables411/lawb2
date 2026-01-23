@@ -541,7 +541,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     top: position.y,
     width: size.width,
     height: size.height,
-    zIndex: 100001,
+    zIndex: 999998, // Below navbar (999999) but above other elements
     pointerEvents: 'auto' as const,
     visibility: 'visible' as const,
     opacity: 1

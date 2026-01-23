@@ -167,7 +167,7 @@
   font-weight: bold;
   margin-right: 4px;
   position: relative;
-  z-index: 10002;
+  z-index: 999997; /* Below navbar (999999) */
   pointer-events: auto;
 }
 
@@ -199,7 +199,7 @@
   margin: 0 4px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
-  z-index: 10002;
+  z-index: 999997; /* Below navbar (999999) */
 }
 
 /* Mobile: Ensure menu button is large enough for touch */
@@ -765,7 +765,7 @@ div.chessboard > .square {
   display: flex;
   gap: 8px;
   position: relative;
-  z-index: 10002;
+  z-index: 999997; /* Below navbar (999999) */
   pointer-events: auto;
 }
 
