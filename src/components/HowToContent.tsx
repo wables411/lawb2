@@ -32,7 +32,7 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
         <p><strong>Match Modes:</strong></p>
         <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
           <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
-          <li><strong>Multiplayer:</strong> wage $DMT, $LAWB, $GOLD or $MOSS and challenge other players on Sanko mainnet. Winner takes the pot minus 5% house fee.</li>
+          <li><strong>Multiplayer:</strong> wage tokens and challenge other players. Winner takes the pot minus 5% house fee.</li>
         </ul>
         <p><strong>Multiplayer Flow:</strong></p>
         <ol style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
