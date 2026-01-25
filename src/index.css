@@ -30,6 +30,26 @@ body {
   min-height: 100vh;
 }
 
+/* Mobile: Don't center content vertically */
+@media (max-width: 768px) {
+  body {
+    display: flex !important;
+    flex-direction: column !important;
+    place-items: initial !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important; /* Dynamic viewport height */
+  }
+
+  #root {
+    width: 100% !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    align-self: stretch !important;
+  }
+}
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;

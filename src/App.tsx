@@ -425,7 +425,7 @@ function App() {
       )}
 
       <Popup id="miladychan-popup" isOpen={activePopup === 'miladychan-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
-        <p style={{marginBottom: '10px'}}>
+        <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
           miladychan is a realtime imageboard inspired by the early 00's anonymous imageboard and its culture - embracing the loosely organized discussion & light-hearted funposting enabled by anonymity and transciency. Click(button) to be lawbed.
         </p>
         <button
@@ -433,12 +433,15 @@ function App() {
           style={{
             background: '#c0c0c0',
             border: '2px outset #fff',
-            padding: '8px 16px',
+            padding: isMobile ? '12px 16px' : '8px 16px',
             cursor: 'pointer',
-            fontSize: '14px',
+            fontSize: isMobile ? '16px' : '14px',
             fontWeight: 'bold',
             color: '#000',
-            marginTop: '10px'
+            marginTop: isMobile ? '12px' : '10px',
+            minHeight: isMobile ? '44px' : 'auto',
+            minWidth: isMobile ? '44px' : 'auto',
+            touchAction: 'manipulation'
           }}
         >
           Click
@@ -456,13 +459,21 @@ function App() {
       </Popup>
 
       <Popup id="purity-popup" isOpen={activePopup === 'purity-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
-        <p style={{marginBottom: '10px'}}>
+        <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
           purify your wallet and cleanse your soul with Purity Finance.
         </p>
-        <p style={{marginBottom: '10px'}}>
+        <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
           swap any sol token in your wallet directly for $LAWB
         </p>
-        <a href="https://www.purity.finance/lawb" target="_blank" rel="noopener noreferrer" style={{cursor: 'pointer'}}>click to Purify</a>
+        <a href="https://www.purity.finance/lawb" target="_blank" rel="noopener noreferrer" style={{
+          cursor: 'pointer',
+          fontSize: isMobile ? '16px' : '14px',
+          padding: isMobile ? '8px 12px' : '4px 8px',
+          display: 'inline-block',
+          minHeight: isMobile ? '44px' : 'auto',
+          lineHeight: isMobile ? '28px' : 'inherit',
+          touchAction: 'manipulation'
+        }}>click to Purify</a>
         <img src="/assets/puritylawb.png" alt="Purity Lawb" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
 
@@ -638,10 +649,19 @@ function App() {
       </Popup>
 
       <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
-        <h1 style={{marginBottom: '10px'}}>
-          <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>🦞 $LAWB</a>
+        <h1 style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '24px' : '20px', lineHeight: isMobile ? '1.4' : '1.2'}}>
+          <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{
+            color: 'blue', 
+            textDecoration: 'underline',
+            fontSize: isMobile ? '24px' : '20px',
+            padding: isMobile ? '8px 12px' : '4px 8px',
+            display: 'inline-block',
+            minHeight: isMobile ? '44px' : 'auto',
+            lineHeight: isMobile ? '28px' : 'inherit',
+            touchAction: 'manipulation'
+          }}>🦞 $LAWB</a>
         </h1>
-        <p style={{marginBottom: '10px'}}>
+        <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
           $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>pump.fun</a>.
         </p>
         <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
@@ -663,7 +683,7 @@ function App() {
 
         <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
 
-        <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
+        <div style={{ width: '100%', height: isMobile ? '300px' : '400px', marginTop: isMobile ? '12px' : '10px' }}>
           <iframe 
             height="100%" 
             width="100%" 

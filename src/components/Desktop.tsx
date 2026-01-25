@@ -161,9 +161,9 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
-              gap: '24px',
-              padding: '32px',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: isMobile ? '16px' : '24px',
+              padding: isMobile ? '16px' : '32px',
               justifyItems: 'center',
               alignItems: 'center',
               minHeight: '100%',
@@ -197,9 +197,9 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
-              gap: '24px',
-              padding: '32px',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: isMobile ? '16px' : '24px',
+              padding: isMobile ? '16px' : '32px',
               justifyItems: 'center',
               alignItems: 'center',
               minHeight: '100%',

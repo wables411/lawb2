@@ -24,6 +24,42 @@ body:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   padding: 0;
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  body:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  #root {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow-x: hidden;
+  }
+
+  /* Ensure touch targets are at least 44x44px */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Improve text readability on mobile */
+  p, span, div, li {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Prevent text size adjustment on iOS */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
