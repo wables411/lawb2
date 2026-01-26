@@ -23,6 +23,7 @@ import { ChessChat } from './ChessChat';
 
 import './ChessGame.css';
 import './ChessGameModern.css';
+import './ChessChat.css';
 
 // Game modes
 const GameMode = {
@@ -3803,52 +3804,54 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 400, height: 500 }}
           zIndex={1000}
         >
-          <div className="leaderboard-compact">
-            {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
-              <div className="leaderboard-table-compact">
-                <table style={{ width: '100%' }}>
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Player</th>
-                      <th>Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboardData.slice(0, 20).map((entry, index: number) => {
-                      if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
-                        const typedEntry = entry as LeaderboardEntry;
-                        const displayName = leaderboardDisplayNames[typedEntry.username] || formatAddress(typedEntry.username);
-                        return (
-                          <tr key={typedEntry.username}>
-                            <td>{index + 1}</td>
-                            <td 
-                              style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (typeof window !== 'undefined' && window.console) {
-                                  window.console.log('[LEADERBOARD] Clicked profile:', typedEntry.username);
-                                }
-                                setViewingProfileAddress(typedEntry.username);
-                              }}
-                            >
-                              {displayName}
-                            </td>
-                            <td>{typedEntry.points}</td>
-                          </tr>
-                        );
-                      }
-                      return null;
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ color: '#000080', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                No leaderboard data available
-              </div>
-            )}
+          <div className="chess-chat-window desktop" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="leaderboard-compact" style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+              {Array.isArray(leaderboardData) && leaderboardData.length > 0 ? (
+                <div className="leaderboard-table-compact">
+                  <table style={{ width: '100%', color: '#e2e8f0' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ color: '#e2e8f0', padding: '8px', textAlign: 'left' }}>Rank</th>
+                        <th style={{ color: '#e2e8f0', padding: '8px', textAlign: 'left' }}>Player</th>
+                        <th style={{ color: '#e2e8f0', padding: '8px', textAlign: 'left' }}>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboardData.slice(0, 20).map((entry, index: number) => {
+                        if (typeof entry === 'object' && entry !== null && 'username' in entry && 'wins' in entry && 'losses' in entry && 'draws' in entry && 'points' in entry) {
+                          const typedEntry = entry as LeaderboardEntry;
+                          const displayName = leaderboardDisplayNames[typedEntry.username] || formatAddress(typedEntry.username);
+                          return (
+                            <tr key={typedEntry.username}>
+                              <td style={{ padding: '4px 8px', color: '#e2e8f0' }}>{index + 1}</td>
+                              <td 
+                                style={{ cursor: 'pointer', color: '#90cdf4', textDecoration: 'underline', padding: '4px 8px' }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (typeof window !== 'undefined' && window.console) {
+                                    window.console.log('[LEADERBOARD] Clicked profile:', typedEntry.username);
+                                  }
+                                  setViewingProfileAddress(typedEntry.username);
+                                }}
+                              >
+                                {displayName}
+                              </td>
+                              <td style={{ padding: '4px 8px', color: '#e2e8f0' }}>{typedEntry.points}</td>
+                            </tr>
+                          );
+                        }
+                        return null;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ color: '#e2e8f0', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
+                  No leaderboard data available
+                </div>
+              )}
+            </div>
           </div>
         </Popup>
       )}
@@ -3864,13 +3867,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 300, height: 400 }}
           zIndex={1000}
         >
-          <div className="move-history-compact">
-            <div className="move-history-title">Moves</div>
-            <ul className="move-history-list-compact" style={{ listStyle: 'none', padding: 0 }}>
-              {moveHistory.slice().reverse().map((move, idx) => (
-                <li key={moveHistory.length - 1 - idx} style={{ padding: '4px 0' }}>{move}</li>
-              ))}
-            </ul>
+          <div className="chess-chat-window desktop" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="move-history-compact" style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+              <div className="move-history-title" style={{ marginBottom: '8px', fontWeight: 'bold' }}>Moves</div>
+              <ul className="move-history-list-compact" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {moveHistory.slice().reverse().map((move, idx) => (
+                  <li key={moveHistory.length - 1 - idx} style={{ padding: '4px 0', color: '#e2e8f0' }}>{move}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         </Popup>
       )}
@@ -3890,7 +3895,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 400, height: 500 }}
           zIndex={1000}
         >
-          <PlayerProfile isMobile={false} />
+          <div className="chess-chat-window desktop" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+              <PlayerProfile isMobile={false} />
+            </div>
+          </div>
         </Popup>
       )}
 
@@ -3904,7 +3913,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 420, height: 520 }}
           zIndex={1000}
         >
-          <HowToContent />
+          <div className="chess-chat-window desktop" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px', color: '#e2e8f0' }}>
+              <HowToContent />
+            </div>
+          </div>
         </Popup>
       )}
 
@@ -3945,7 +3958,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           initialSize={{ width: 400, height: 500 }}
           zIndex={10000}
           >
-          <PlayerProfile isMobile={false} address={viewingProfileAddress} />
+          <div className="chess-chat-window desktop" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+              <PlayerProfile isMobile={false} address={viewingProfileAddress} />
+            </div>
+          </div>
         </Popup>
       )}
     </div>

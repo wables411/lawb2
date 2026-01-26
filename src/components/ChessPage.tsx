@@ -9,9 +9,11 @@ import { ChessPieceSetProvider } from '../contexts/ChessPieceSetContext';
 import './ChessPageSimple.css';
 
 const ChessPieceInfo = lazy(() => import('./ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
+const ChessChat = lazy(() => import('./ChessChat').then(m => ({ default: m.ChessChat })));
 
 const ChessPage: React.FC = () => {
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
+  const [showPublicChat, setShowPublicChat] = useState(false);
 
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
@@ -160,6 +162,10 @@ const ChessPage: React.FC = () => {
             console.log('[CHESSPAGE] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
             setShowChessPieceInfo(true);
           }}
+          onOpenPublicChat={() => {
+            console.log('[CHESSPAGE] onOpenPublicChat called, setting showPublicChat to true');
+            setShowPublicChat(true);
+          }}
         />
         <div className="chess-content-simple">
           <ChessGame 
@@ -187,6 +193,36 @@ const ChessPage: React.FC = () => {
           >
             <Suspense fallback={<div>Loading...</div>}>
               <ChessPieceInfo isMobile={isMobile} />
+            </Suspense>
+          </Popup>
+        )}
+        
+        {showPublicChat && (
+          <Popup 
+            id="public-chat-popup" 
+            isOpen={true} 
+            onClose={() => {
+              console.log('[CHESSPAGE] Closing Public Chat popup');
+              setShowPublicChat(false);
+            }} 
+            onMinimize={() => {
+              console.log('[CHESSPAGE] Minimizing Public Chat popup');
+              setShowPublicChat(false);
+            }} 
+            title="Public Chat" 
+            initialPosition={isMobile ? { x: 16, y: 16 } : { x: 20, y: 120 }} 
+            initialSize={isMobile ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 100px)' } : { width: 400, height: 500 }} 
+            zIndex={999998}
+          >
+            <Suspense fallback={<div>Loading chat...</div>}>
+              <ChessChat
+                isOpen={true}
+                onMinimize={() => setShowPublicChat(false)}
+                currentInviteCode={undefined}
+                isDraggable={false}
+                isResizable={false}
+                isMobile={isMobile}
+              />
             </Suspense>
           </Popup>
         )}

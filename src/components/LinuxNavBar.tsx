@@ -344,6 +344,46 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             <span>♟️</span>
             <span>Chess Piece Info</span>
           </button>
+          <a
+            href="https://t.me/tickerlawb"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>📱</span>
+            <span>Telegram</span>
+          </a>
+          <a
+            href="https://x.com/lawbstation"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>🐦</span>
+            <span>LawbStation Twitter</span>
+          </a>
+          <a
+            href="https://x.com/lawbnexus"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>🐦</span>
+            <span>LawbNexus Twitter</span>
+          </a>
+          <a
+            href="https://opensea.io/collection/lawb-lore"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span><img src="/images/lawblore.gif" alt="Lawb Lore" style={{ width: '16px', height: '16px', objectFit: 'contain' }} /></span>
+            <span>Lawb Lore</span>
+          </a>
           {showChessMenu && (
             <>
               <hr className={classes.menuSeparator} />
@@ -375,13 +415,15 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
                 className={classes.menuItem}
                 onClick={() => {
                   setIsMenuOpen(false);
-                  if ((window as any).__chessOpenChat) {
+                  if (onOpenPublicChat) {
+                    onOpenPublicChat();
+                  } else if ((window as any).__chessOpenChat) {
                     (window as any).__chessOpenChat();
                   }
                 }}
               >
                 <span>💬</span>
-                <span>Chat</span>
+                <span>Public Chat</span>
               </button>
               <button
                 className={classes.menuItem}

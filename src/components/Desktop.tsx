@@ -41,6 +41,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'halloween', image: '/assets/lawbsterhalloween.gif', label: 'Halloween', action: 'popup', popupId: 'halloween-popup', row: -1, col: -1 },
   { id: 'pixelawbs', image: '/assets/pixelawb.png', label: 'Pixelawbs', action: 'popup', popupId: 'pixelawbs-popup', row: -1, col: -1 },
   { id: 'asciilawbs', image: '/assets/asciilawb.GIF', label: 'ASCII Lawbsters', action: 'popup', popupId: 'asciilawbs-popup', row: -1, col: -1 },
+  { id: 'red-vs-blue', image: '/images/racing-flag.svg', label: 'Red VS Blue', action: 'url', url: 'https://opensea.io/item/ethereum/0x46353e0b6b4d9723d253c00acd29adefc05083bb/2', row: -1, col: -1 },
   { id: 'lawbstation', image: '/assets/lawbstation.GIF', label: 'Lawbstation', action: 'popup', popupId: 'lawbstation-popup', row: -1, col: -1 },
   { id: 'nexus', image: '/assets/nexus.gif', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
   // Row 4
@@ -172,7 +173,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
               overflow: 'auto',
               boxSizing: 'border-box',
             }}>
-              {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween', 'pixelawbs', 'asciilawbs'].includes(icon.id)).map(icon => (
+              {ICONS.filter(icon => ['lawbsters', 'lawbstarz', 'halloween', 'pixelawbs', 'asciilawbs', 'red-vs-blue'].includes(icon.id)).map(icon => (
                 <Icon
                   key={icon.id}
                   image={icon.image}
