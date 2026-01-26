@@ -563,20 +563,22 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       className={`chess-chat-window ${mobileStyle ? 'mobile' : 'desktop'}`}
       style={chatStyle}
     >
-      {/* Chat Header */}
-      <div 
-        className="chat-header"
-        onMouseDown={isDraggable ? handleMouseDown : undefined}
-        style={{ cursor: isDraggable ? 'move' : 'default' }}
-      >
-        <div className="chat-title">
-          <span className="chat-icon">💬</span>
-          {currentRoom === 'public' ? 'Public Chat' : 'Game Chat'}
+      {/* Chat Header - only show when not inside a Popup */}
+      {!isInsidePopup && (
+        <div 
+          className="chat-header"
+          onMouseDown={isDraggable ? handleMouseDown : undefined}
+          style={{ cursor: isDraggable ? 'move' : 'default' }}
+        >
+          <div className="chat-title">
+            <span className="chat-icon">💬</span>
+            {currentRoom === 'public' ? 'Public Chat' : 'Game Chat'}
+          </div>
+          <div className="chat-controls">
+            <button className="chat-btn minimize-btn" onClick={onMinimize}>_</button>
+          </div>
         </div>
-        <div className="chat-controls">
-          <button className="chat-btn minimize-btn" onClick={onMinimize}>_</button>
-        </div>
-      </div>
+      )}
       
       {/* Chat Room Tabs */}
       <div className="chat-tabs">

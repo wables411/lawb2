@@ -415,32 +415,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
                 className={classes.menuItem}
                 onClick={() => {
                   setIsMenuOpen(false);
-                  if (onOpenPublicChat) {
-                    onOpenPublicChat();
-                  } else if ((window as any).__chessOpenChat) {
-                    (window as any).__chessOpenChat();
-                  }
-                }}
-              >
-                <span>💬</span>
-                <span>Public Chat</span>
-              </button>
-              <button
-                className={classes.menuItem}
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  if ((window as any).__chessOpenProfile) {
-                    (window as any).__chessOpenProfile();
-                  }
-                }}
-              >
-                <span>👤</span>
-                <span>Profile</span>
-              </button>
-              <button
-                className={classes.menuItem}
-                onClick={() => {
-                  setIsMenuOpen(false);
                   if ((window as any).__chessOpenHowTo) {
                     (window as any).__chessOpenHowTo();
                   }
