@@ -10,6 +10,7 @@ import {
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
 import { firebaseProfiles } from '../firebaseProfiles';
+import { getOpenSeaNFTs, getCollectionNFTs } from '../mint';
 // Removed blocking connection test - loading data directly with timeout
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
@@ -33,6 +34,15 @@ const GameMode = {
 const SANKO_CHAIN_ID = 1996;
 
 // LeaderboardEntry interface is now imported from firebaseLeaderboard
+
+// AI NFT collections for random profile picture (matching MemeGenerator logic)
+const AI_NFT_COLLECTIONS = [
+  { id: 'lawbsters', name: 'Lawbsters', api: 'opensea', slug: 'lawbsters', chain: 'ethereum' },
+  { id: 'lawbstarz', name: 'Lawbstarz', api: 'opensea', slug: 'lawbstarz', chain: 'ethereum' },
+  { id: 'pixelawbs', name: 'Pixelawbsters', api: 'scatter', slug: 'pixelawbs' },
+  { id: 'halloween', name: 'Halloween Lawbsters', api: 'opensea', slug: 'a-lawbster-halloween', chain: 'base' },
+  { id: 'asciilawbs', name: 'ASCII Lawbsters', api: 'opensea', slug: 'asciilawbs', chain: 'base' },
+];
 
 // Chess piece images - will be set dynamically based on selected piece set
 let pieceImages: { [key: string]: string } = {};
@@ -294,6 +304,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showGame, setShowGame] = useState(false);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  
+  // Profile picture state
+  const [playerProfilePic, setPlayerProfilePic] = useState<string | null>(null);
+  const [aiProfilePic, setAiProfilePic] = useState<string | null>(null);
+  const [loadingAiPic, setLoadingAiPic] = useState(false);
   
   // Capture animation state
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
@@ -1381,7 +1396,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       } else {
         setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
         playSound('loser');
-        setShowDefeat(true);
+        // Add 3-second delay before showing defeat overlay
+        setDefeatDelayActive(true);
+        setTimeout(() => {
+          setShowDefeat(true);
+          setDefeatDelayActive(false);
+        }, 3000);
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
@@ -1411,7 +1431,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       } else {
         setStatus(`Stalemate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
         playSound('loser');
-        setShowDefeat(true);
+        // Add 3-second delay before showing defeat overlay
+        setDefeatDelayActive(true);
+        setTimeout(() => {
+          setShowDefeat(true);
+          setDefeatDelayActive(false);
+        }, 3000);
         void updateScore('loss');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
@@ -1533,6 +1558,70 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setStatus('Set wager and create/join match');
   };
 
+  // Fetch random AI NFT for profile picture
+  const fetchRandomAINFT = useCallback(async () => {
+    if (loadingAiPic) return; // Prevent multiple simultaneous fetches
+    setLoadingAiPic(true);
+    try {
+      // Select a random collection from AI_NFT_COLLECTIONS
+      const randomCollection = AI_NFT_COLLECTIONS[Math.floor(Math.random() * AI_NFT_COLLECTIONS.length)];
+      console.log('[AI_PROFILE] Fetching random NFT from collection:', randomCollection);
+      
+      let nfts;
+      if (randomCollection.api === 'opensea') {
+        console.log('[AI_PROFILE] Using OpenSea API for:', randomCollection.slug);
+        const resp = await getOpenSeaNFTs(randomCollection.slug, 50, undefined, randomCollection.chain as 'ethereum' | 'base');
+        nfts = resp.data;
+        console.log('[AI_PROFILE] OpenSea response:', resp);
+      } else {
+        console.log('[AI_PROFILE] Using Scatter API for:', randomCollection.slug);
+        const resp = await getCollectionNFTs(randomCollection.slug, 1, 50);
+        nfts = resp.data;
+        console.log('[AI_PROFILE] Scatter response:', resp);
+      }
+      
+      if (nfts && nfts.length > 0) {
+        const randomNft = nfts[Math.floor(Math.random() * nfts.length)];
+        const imageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
+        console.log('[AI_PROFILE] Selected NFT:', randomNft);
+        console.log('[AI_PROFILE] Image URL:', imageUrl);
+        setAiProfilePic(imageUrl);
+      } else {
+        console.log('[AI_PROFILE] No NFTs found in collection');
+      }
+    } catch (err) {
+      console.error('[AI_PROFILE] Error fetching NFTs:', err);
+    } finally {
+      setLoadingAiPic(false);
+    }
+  }, [loadingAiPic]);
+
+  // Fetch player profile picture when game starts in AI mode
+  useEffect(() => {
+    if (walletAddress && gameMode === GameMode.AI && showGame && gameState === 'active') {
+      firebaseProfiles.getProfile(walletAddress).then(profile => {
+        if (profile?.profile_picture?.image_url) {
+          setPlayerProfilePic(profile.profile_picture.image_url);
+          console.log('[PROFILE] Loaded player profile picture:', profile.profile_picture.image_url);
+        } else {
+          setPlayerProfilePic(null);
+        }
+      }).catch(err => {
+        console.error('[PROFILE] Error fetching player profile:', err);
+        setPlayerProfilePic(null);
+      });
+    } else {
+      setPlayerProfilePic(null);
+    }
+  }, [walletAddress, gameMode, showGame, gameState]);
+
+  // Fetch random AI NFT when game starts in AI mode
+  useEffect(() => {
+    if (gameMode === GameMode.AI && showGame && gameState === 'active' && !aiProfilePic && !loadingAiPic) {
+      fetchRandomAINFT();
+    }
+  }, [gameMode, showGame, gameState, aiProfilePic, loadingAiPic, fetchRandomAINFT]);
+
   const startGame = () => {
     playStartSound();
     console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
@@ -1555,6 +1644,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Start timer when game starts
     const now = Date.now();
     setLastMoveTime(now);
+    setGameStartTime(now); // Track game start time for stats
     setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Initialize countdown to full time
     console.log('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
   };
@@ -1699,13 +1789,35 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   setShowPromotion(false);
                   setPromotionMove(null);
                 }}
-            style={{
-                  backgroundImage: pieceImages[piece] ? `url(${pieceImages[piece]})` : undefined,
-                  backgroundSize: 'contain',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'center'
+                style={{
+                  cursor: 'pointer',
+                  padding: isMobile ? '8px' : '10px',
+                  border: '2px solid white',
+                  borderRadius: '4px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  minWidth: isMobile ? '60px' : 'auto',
+                  minHeight: isMobile ? '60px' : 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
-              />
+              >
+                <img 
+                  src={pieceImages[piece]} 
+                  alt={piece} 
+                  style={{ 
+                    width: isMobile ? '32px' : '40px', 
+                    height: isMobile ? '32px' : '40px',
+                    pointerEvents: 'none'
+                  }} 
+                  onError={(e) => {
+                    console.error('[PROMOTION] Failed to load piece image:', pieceImages[piece], 'for piece:', piece);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
             ))}
         </div>
       </div>
@@ -2098,11 +2210,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for victory/defeat animation
   const [showVictory, setShowVictory] = useState(false);
   const [showDefeat, setShowDefeat] = useState(false);
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null);
+  const [defeatDelayActive, setDefeatDelayActive] = useState(false);
 
   // Helper to clear victory/defeat overlays
   const clearCelebration = () => {
     setShowVictory(false);
     setShowDefeat(false);
+    setDefeatDelayActive(false);
+    setGameStartTime(null);
   };
 
   const handleNewGame = () => {
@@ -2123,6 +2239,38 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Workaround for TypeScript JSX type error
   const isOnline = gameMode === 'online';
+
+  // Calculate game stats for defeat screen
+  const getGameStats = () => {
+    if (!gameStartTime) return null;
+    
+    const gameDuration = Date.now() - gameStartTime;
+    const minutes = Math.floor(gameDuration / 60000);
+    const seconds = Math.floor((gameDuration % 60000) / 1000);
+    const durationText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    // Get player names
+    const playerName = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Player';
+    const opponentName = gameMode === GameMode.AI 
+      ? `${difficulty === 'easy' ? 'Easy' : 'Hard'} AI`
+      : 'Opponent';
+    
+    // Determine winner (the one who didn't lose - red wins when blue loses)
+    const winner = currentPlayer === 'blue' ? 'red' : 'blue';
+    const winnerName = winner === 'blue' ? playerName : opponentName;
+    const winnerProfilePic = winner === 'blue' ? playerProfilePic : aiProfilePic;
+    
+    return {
+      playerName,
+      opponentName,
+      winnerName,
+      winnerProfilePic,
+      winnerColor: winner,
+      moves: moveHistory,
+      duration: durationText,
+      wager: isOnline ? wager : null
+    };
+  };
 
   // Desktop menu and window state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -3188,9 +3336,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           {/* Game Info Bar - Compact */}
           {showGame && (
             <div className="game-info-compact" style={{ marginTop: '0px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
+              {playerProfilePic && gameMode === GameMode.AI && (
+                <img 
+                  src={playerProfilePic} 
+                  alt="Player" 
+                  className="profile-pic-mini"
+                  style={{ 
+                    width: isMobile ? '20px' : '24px', 
+                    height: isMobile ? '20px' : '24px', 
+                    borderRadius: '4px', 
+                    marginRight: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    objectFit: 'cover'
+                  }}
+                  onError={(e) => {
+                    console.error('[PROFILE] Failed to load player profile picture:', playerProfilePic);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                 {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
               </span>
+              {moveHistory.length >= 1 && (
+                <span className="move-history-display">
+                  {moveHistory.length >= 2 
+                    ? `Last: ${moveHistory[moveHistory.length - 2]} ${moveHistory[moveHistory.length - 1]}`
+                    : `Last: ${moveHistory[moveHistory.length - 1]}`
+                  }
+                </span>
+              )}
               {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (
                 <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
                   {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
@@ -3205,6 +3380,25 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <span className="wager-display">
                   Wager: {wager} tDMT
                 </span>
+              )}
+              {aiProfilePic && gameMode === GameMode.AI && (
+                <img 
+                  src={aiProfilePic} 
+                  alt="AI" 
+                  className="profile-pic-mini"
+                  style={{ 
+                    width: isMobile ? '20px' : '24px', 
+                    height: isMobile ? '20px' : '24px', 
+                    borderRadius: '4px', 
+                    marginLeft: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    objectFit: 'cover'
+                  }}
+                  onError={(e) => {
+                    console.error('[AI_PROFILE] Failed to load AI profile picture:', aiProfilePic);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               )}
             </div>
           )}
@@ -3345,18 +3539,109 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           </div>
         </div>
       )}
-      {showDefeat && (
-        <div className="defeat-overlay">
-          <div className="blood-overlay" />
-          <div className="victory-modal">
-            <div className="victory-content">
-              <img src="/images/loser.gif" alt="Defeat" style={{ width: 120, marginBottom: 16 }} />
-              <div>Defeat!</div>
-              <button onClick={handleNewGame}>Try Again</button>
+      {showDefeat && (() => {
+        const stats = getGameStats();
+        return (
+          <div className="defeat-overlay">
+            <div className="blood-overlay" />
+            <div className="victory-modal">
+              <div className="victory-content">
+                <img src="/images/loser.gif" alt="Defeat" style={{ width: 120, marginBottom: 16 }} />
+                <div>Defeat!</div>
+                {stats && (
+                  <div className="game-stats-container" style={{
+                    marginTop: '20px',
+                    padding: '16px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: isMobile ? '12px' : '14px',
+                    maxWidth: '500px',
+                    width: '100%',
+                    maxHeight: '60vh',
+                    overflowY: 'auto'
+                  }}>
+                    <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: isMobile ? '14px' : '16px', textAlign: 'center' }}>
+                      Game Stats
+                    </div>
+                    
+                    {/* Players */}
+                    <div style={{ marginBottom: '12px', borderBottom: '1px solid rgba(255, 255, 255, 0.3)', paddingBottom: '8px' }}>
+                      <div style={{ marginBottom: '4px' }}>
+                        <strong>Player:</strong> {stats.playerName}
+                      </div>
+                      <div>
+                        <strong>Opponent:</strong> {stats.opponentName}
+                      </div>
+                    </div>
+                    
+                    {/* Winner */}
+                    <div style={{ marginBottom: '12px', borderBottom: '1px solid rgba(255, 255, 255, 0.3)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <strong>Winner:</strong>
+                      {stats.winnerProfilePic && (
+                        <img 
+                          src={stats.winnerProfilePic} 
+                          alt="Winner" 
+                          style={{ 
+                            width: '24px', 
+                            height: '24px', 
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            objectFit: 'cover'
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span>{stats.winnerName}</span>
+                    </div>
+                    
+                    {/* Duration */}
+                    <div style={{ marginBottom: '12px', borderBottom: '1px solid rgba(255, 255, 255, 0.3)', paddingBottom: '8px' }}>
+                      <strong>Duration:</strong> {stats.duration}
+                    </div>
+                    
+                    {/* Wager */}
+                    {stats.wager !== null && (
+                      <div style={{ marginBottom: '12px', borderBottom: '1px solid rgba(255, 255, 255, 0.3)', paddingBottom: '8px' }}>
+                        <strong>Wager:</strong> {stats.wager} tDMT
+                      </div>
+                    )}
+                    
+                    {/* Move History */}
+                    <div style={{ marginTop: '12px' }}>
+                      <strong style={{ display: 'block', marginBottom: '8px' }}>Move History ({stats.moves.length} moves):</strong>
+                      <div style={{ 
+                        maxHeight: '150px', 
+                        overflowY: 'auto',
+                        background: 'rgba(0, 0, 0, 0.3)',
+                        padding: '8px',
+                        borderRadius: '4px',
+                        fontSize: isMobile ? '10px' : '12px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {stats.moves.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {stats.moves.map((move: string, idx: number) => (
+                              <span key={idx} style={{ marginRight: '4px' }}>
+                                {move}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div>No moves recorded</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button onClick={handleNewGame} style={{ marginTop: '16px' }}>Try Again</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       
       {/* Desktop Menu Popup - Show for both home and game views */}
       {!isMobile && isMenuOpen && (

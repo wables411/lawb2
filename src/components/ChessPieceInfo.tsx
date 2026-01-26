@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import './ChessPieceInfo.css';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
 
 interface ChessPiece {

@@ -1373,7 +1373,32 @@ div[class*="chessboard"][style*="url"] {
 }
 .game-info-bar .mode-master {
   color: #00ff00 !important;
+}
+
+/* Profile picture mini styles */
+.profile-pic-mini {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* Move history display styles */
+.move-history-display {
+  font-size: 12px;
+  color: #00ff00 !important;
   text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
+  margin: 0 8px;
+}
+
+@media (max-width: 768px) {
+  .move-history-display {
+    font-size: 10px;
+    margin: 0 4px;
+  }
+  
+  .profile-pic-mini {
+    width: 20px !important;
+    height: 20px !important;
+  }
 }
 
 .game-info-bar .mode-grand-master {
