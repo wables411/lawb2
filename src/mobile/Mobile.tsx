@@ -71,7 +71,11 @@ const useStyles = createUseStyles({
       height: '64px',
     },
     '& span': {
-      wordBreak: 'break-word',
+      // Never split single-word collection names (Lawbsters, Lawbstarz, Halloween)
+      whiteSpace: 'nowrap',
+      wordBreak: 'keep-all',
+      overflowWrap: 'normal',
+      hyphens: 'none',
     }
   },
   taskbar: {
@@ -279,6 +283,44 @@ const Mobile = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
+  // Twitter widgets loading for both lawbsters and lawbstarz popups on mobile
+  useEffect(() => {
+    if (showLawbsters || showLawbstarz) {
+      // Small delay to ensure popup is rendered
+      const loadTwitterWidgets = () => {
+        // Load Twitter widgets script if not already loaded
+        const existingScript = document.querySelector('script[src="https://platform.twitter.com/widgets.js"]');
+        if (!existingScript) {
+          const script = document.createElement('script');
+          script.src = 'https://platform.twitter.com/widgets.js';
+          script.async = true;
+          script.charset = 'utf-8';
+          document.body.appendChild(script);
+          
+          // Wait for script to load, then parse tweets
+          script.onload = () => {
+            // Additional delay to ensure twttr is fully initialized
+            setTimeout(() => {
+              if ((window as any).twttr && (window as any).twttr.widgets) {
+                (window as any).twttr.widgets.load();
+              }
+            }, 300);
+          };
+        } else {
+          // Script already loaded, wait a bit then parse tweets
+          setTimeout(() => {
+            if ((window as any).twttr && (window as any).twttr.widgets) {
+              (window as any).twttr.widgets.load();
+            }
+          }, 500);
+        }
+      };
+      
+      // Delay to ensure popup content is rendered
+      setTimeout(loadTwitterWidgets, 300);
+    }
+  }, [showLawbsters, showLawbstarz]);
+
   const icons = [
     { label: 'Chess', icon: '/assets/chessicon.png', action: () => window.location.href = '/chess' },
     { label: 'Mint', icon: '/assets/mint.gif', action: () => { setMintPopupType('selection'); setShowMintPopup(true); } },
@@ -339,9 +381,9 @@ const Mobile = () => {
       <MobilePopup98 isOpen={open} onClose={onClose} title={title}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
           {nfts.map((nft: FolderNFT) => (
-            <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8, cursor: 'pointer' }} onClick={() => handleIconClick(nft.id)}>
+            <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8, cursor: 'pointer', minWidth: 0, overflow: 'visible' }} onClick={() => handleIconClick(nft.id)}>
               <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
-              <span style={{ fontWeight: 'bold', fontSize: 14 }}>{nft.name}</span>
+              <span style={{ fontWeight: 'bold', fontSize: 14, whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal', hyphens: 'none', textAlign: 'center', lineHeight: '1.2', overflow: 'visible', width: '100%', maxWidth: '100%' }}>{nft.name}</span>
               <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
             </div>
           ))}
@@ -559,6 +601,11 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>
           Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>NFTX</a>
         </p>
+        <div id="twitter-embed-lawbsters-mobile" style={{ marginTop: '10px', width: '100%', minHeight: '200px' }}>
+          <blockquote className="twitter-tweet" data-media-max-width="560">
+            <p lang="en" dir="ltr">420 Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap. A <a href="https://www.cigawrettepacks.shop/">Cigawrette Packs</a> derivative.</p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1620879129850834944?ref_src=twsrc%5Etfw">March 2, 2023</a>
+          </blockquote>
+        </div>
         <img src="/assets/lawbsters.gif" alt="Lawbsters" style={{ width: '100%', marginTop: '10px' }} />
       </MobilePopup98>
       {/* Lawbstarz Popup */}
@@ -571,6 +618,11 @@ const Mobile = () => {
           Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <div id="twitter-embed-lawbstarz-mobile" style={{ marginTop: '10px', width: '100%', minHeight: '200px' }}>
+          <blockquote className="twitter-tweet" data-media-max-width="560">
+            <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
+          </blockquote>
+        </div>
         <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
         <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </MobilePopup98>

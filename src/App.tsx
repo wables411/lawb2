@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
-import { Tweet } from 'react-tweet';
 import Desktop from './components/Desktop';
 import LinuxNavBar from './components/LinuxNavBar';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -110,9 +109,9 @@ function App() {
     }
   }, [activePopup]);
 
-  // Twitter widgets loading for lawbstarz-popup
+  // Twitter widgets loading for tweet embeds (lawbsters + lawbstarz)
   useEffect(() => {
-    if (activePopup === 'lawbstarz-popup') {
+    if (activePopup === 'lawbstarz-popup' || activePopup === 'lawbsters-popup') {
       // Small delay to ensure popup is rendered
       const loadTwitterWidgets = () => {
         // Load Twitter widgets script if not already loaded
@@ -560,8 +559,10 @@ function App() {
         <p style={{marginBottom: '10px'}}>
           Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>NFTX</a>
         </p>
-        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-          <Tweet id="1620879129850834944" />
+        <div id="twitter-embed-lawbsters" style={{ maxWidth: '560px', margin: '10px auto', width: '100%' }}>
+          <blockquote className="twitter-tweet" data-media-max-width="560">
+            <a href="https://twitter.com/wables411/status/1620879129850834944?ref_src=twsrc%5Etfw">March 2, 2023</a>
+          </blockquote>
         </div>
         <img src="/assets/lawbsters.gif" alt="Lawbsters" style={{ width: '100%', marginTop: '10px' }} />
       </Popup>

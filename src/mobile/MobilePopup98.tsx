@@ -68,11 +68,13 @@ const useStyles = createUseStyles({
   content: {
     padding: 16,
     overflowY: 'auto',
+    overflowX: 'hidden',
     fontFamily: "'MS Sans Serif', Arial, sans-serif",
     color: '#000',
     fontSize: 15,
     background: '#fff',
     flex: 1,
+    minHeight: 0,
   },
 });
 

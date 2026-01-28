@@ -35,7 +35,15 @@ const useStyles = createUseStyles({
     fontSize: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '10px' : '12px',
     padding: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '2px 2px' : '2px 4px',
     marginTop: '2px',
-    border: '1px outset #fff'
+    border: '1px outset #fff',
+    whiteSpace: 'nowrap',
+    wordBreak: 'keep-all',
+    overflowWrap: 'normal',
+    hyphens: 'none',
+    textAlign: 'center',
+    lineHeight: '1.2',
+    overflow: 'visible',
+    textOverflow: 'clip'
   }
 });
 
@@ -122,6 +130,9 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
         zIndex: 3000,
         left: !isInFolder && position ? position.x : undefined,
         top: !isInFolder && position ? position.y : undefined,
+        width: isInFolder ? 'auto' : undefined,
+        minWidth: isInFolder ? '80px' : undefined,
+        maxWidth: isInFolder ? 'none' : undefined,
       }}
     >
       <img src={image} alt={label} className={classes.iconImage} />
