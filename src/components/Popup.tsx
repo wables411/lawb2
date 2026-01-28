@@ -111,14 +111,13 @@ const useStyles = createUseStyles({
     },
     // CRITICAL: Folder icons render inside Popups. The global wordBreak/hyphens above
     // can split single words like "Lawbsters" into "Lawbster" + "s".
-    // Force icon labels to NEVER break mid-word.
+    // Do NOT force whiteSpace here (Icon.tsx decides wrap/nowrap by label),
+    // but do prevent mid-word breaking and hyphenation.
     '& .iconLabel, & [class*="iconLabel"]': {
-      whiteSpace: 'nowrap !important',
       wordBreak: 'keep-all !important',
       overflowWrap: 'normal !important',
       wordWrap: 'normal !important',
       hyphens: 'none !important',
-      maxWidth: 'none !important',
     },
     '& .piece-gallery, & .piece-gallery-compact, & .piece-gallery-list, & .piece-gallery-list-item, & .piece-gallery-list-content, & .piece-gallery-list-image-wrapper, & .piece-gallery-list-img, & .piece-gallery-list-info': {
       maxWidth: 'none',

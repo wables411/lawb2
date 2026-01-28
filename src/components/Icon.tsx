@@ -3,12 +3,14 @@ import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
 import { createUseStyles } from 'react-jss';
 import { playIconClickSound } from '../utils/sound';
 
+type StyleProps = { isBaseMiniApp: boolean; labelHasSpace: boolean };
+
 const useStyles = createUseStyles({
   icon: {
     position: 'absolute',
-    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '80px' : '80px',
-    minWidth: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '80px' : '80px',
-    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '80px' : '80px',
+    width: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '80px' : '80px',
+    minWidth: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '80px' : '80px',
+    minHeight: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '80px' : '80px',
     textAlign: 'center',
     cursor: 'pointer',
     zIndex: 3000,
@@ -16,34 +18,36 @@ const useStyles = createUseStyles({
     pointerEvents: 'auto',
     touchAction: 'manipulation',
     WebkitTapHighlightColor: 'transparent',
-    padding: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '12px' : '8px',
+    padding: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '12px' : '8px',
     boxSizing: 'border-box'
   },
   iconImage: {
-    width: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
-    height: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
-    minWidth: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
-    minHeight: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '44px' : '48px',
+    width: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '44px' : '48px',
+    height: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '44px' : '48px',
+    minWidth: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '44px' : '48px',
+    minHeight: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '44px' : '48px',
     display: 'block',
     margin: '0 auto',
     objectFit: 'contain'
   },
   iconLabel: {
-    display: 'block',
+    // Inline-block so the grey "badge" grows with text (prevents text spilling past background)
+    display: 'inline-block',
     background: '#c0c0c0',
     color: '#000',
-    fontSize: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '10px' : '12px',
-    padding: ({ isBaseMiniApp }: { isBaseMiniApp: boolean }) => isBaseMiniApp ? '2px 2px' : '2px 4px',
+    fontSize: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '10px' : '12px',
+    padding: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '2px 2px' : '2px 4px',
     marginTop: '2px',
     border: '1px outset #fff',
-    whiteSpace: 'nowrap',
+    // Multiple words (e.g. "Meme Generator") can wrap between words.
+    // Single words (e.g. "Lawbsters") should never split across lines.
+    whiteSpace: ({ labelHasSpace }: StyleProps) => (labelHasSpace ? 'normal' : 'nowrap'),
     wordBreak: 'keep-all',
     overflowWrap: 'normal',
     hyphens: 'none',
     textAlign: 'center',
     lineHeight: '1.2',
-    overflow: 'visible',
-    textOverflow: 'clip'
+    maxWidth: ({ labelHasSpace }: StyleProps) => (labelHasSpace ? '96px' : 'none'),
   }
 });
 
@@ -61,7 +65,7 @@ interface IconProps {
 }
 
 function Icon({ image, label, action, url, popupId, folderId, isInFolder = false, position, onDrag, onClick }: IconProps) {
-  const classes = useStyles({ isBaseMiniApp: false });
+  const classes = useStyles({ isBaseMiniApp: false, labelHasSpace: label.includes(' ') });
   const nodeRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);
