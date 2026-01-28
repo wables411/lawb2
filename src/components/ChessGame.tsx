@@ -2687,7 +2687,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                                 <tr key={typedEntry.username}>
                                   <td>{index + 1}</td>
                                   <td 
-                                    style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                                    style={{ cursor: 'pointer', textDecoration: 'underline' }}
                                     onClick={() => setViewingProfileAddress(typedEntry.username)}
                                   >
                                     {displayName}
@@ -3194,7 +3194,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                                 <tr key={typedEntry.username}>
                                   <td>{index + 1}</td>
                                   <td 
-                                    style={{ cursor: 'pointer', color: '#0000ff', textDecoration: 'underline' }}
+                                    style={{ cursor: 'pointer', textDecoration: 'underline' }}
                                     onClick={() => setViewingProfileAddress(typedEntry.username)}
                                   >
                                     {displayName}

@@ -79,6 +79,16 @@ html:not(.lawb-app-dark-mode) {
   color: #000000 !important;
 }
 
+/* Light mode popup content text */
+.lawb-app-light-mode .popup-0-2-17 p,
+.lawb-app-light-mode [class*="popup"] p,
+.lawb-app-light-mode [class*="Popup"] p,
+.lawb-app-light-mode .popup-0-2-17 span,
+.lawb-app-light-mode [class*="popup"] span,
+.lawb-app-light-mode [class*="Popup"] span {
+  color: #000000 !important;
+}
+
 .lawb-app-light-mode .chess-chat-window {
   background: #c0c0c0 !important;
   border-color: #ffffff !important;
@@ -445,6 +455,16 @@ html.lawb-app-dark-mode {
   border-color: #00ff00 !important;
   border-style: outset !important;
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.4), 0 2px 8px rgba(0, 255, 0, 0.3) !important;
+  color: #00ff00 !important;
+}
+
+/* Dark mode popup content text */
+.lawb-app-dark-mode .popup-0-2-17 p,
+.lawb-app-dark-mode [class*="popup"] p,
+.lawb-app-dark-mode [class*="Popup"] p,
+.lawb-app-dark-mode .popup-0-2-17 span,
+.lawb-app-dark-mode [class*="popup"] span,
+.lawb-app-dark-mode [class*="Popup"] span {
   color: #00ff00 !important;
 }
 

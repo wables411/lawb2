@@ -179,6 +179,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
                   image={icon.image}
                   label={icon.label}
                   action={icon.action}
+                  url={icon.url}
                   popupId={icon.popupId}
                   folderId={icon.folderId}
                   onClick={handleIconClick}

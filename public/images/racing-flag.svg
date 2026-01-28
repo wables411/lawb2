@@ -1,20 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Racing flag with checkered pattern -->
+  <!-- Racing flag with red and blue checkered pattern -->
   <defs>
-    <pattern id="checker" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
-      <rect width="4" height="4" fill="#000000"/>
-      <rect x="4" y="0" width="4" height="4" fill="#ffffff"/>
-      <rect x="0" y="4" width="4" height="4" fill="#ffffff"/>
-      <rect x="4" y="4" width="4" height="4" fill="#000000"/>
+    <pattern id="redBlueChecker" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="#FF0000"/>
+      <rect x="4" y="0" width="4" height="4" fill="#0000FF"/>
+      <rect x="0" y="4" width="4" height="4" fill="#0000FF"/>
+      <rect x="4" y="4" width="4" height="4" fill="#FF0000"/>
     </pattern>
   </defs>
   <!-- Flag pole -->
   <rect x="4" y="8" width="3" height="48" fill="#8B4513"/>
-  <!-- Flag with checkered pattern -->
-  <path d="M 7 8 L 7 20 L 50 20 L 50 8 Z" fill="url(#checker)"/>
-  <path d="M 7 20 L 7 32 L 50 32 L 50 20 Z" fill="url(#checker)"/>
-  <path d="M 7 32 L 7 44 L 50 44 L 50 32 Z" fill="url(#checker)"/>
-  <path d="M 7 44 L 7 56 L 50 56 L 50 44 Z" fill="url(#checker)"/>
-  <!-- Red diagonal stripe for racing flag -->
-  <path d="M 7 8 L 50 56 L 50 8 Z" fill="#FF0000" opacity="0.3"/>
+  <!-- Flag with red and blue checkered pattern -->
+  <path d="M 7 8 L 7 20 L 50 20 L 50 8 Z" fill="url(#redBlueChecker)"/>
+  <path d="M 7 20 L 7 32 L 50 32 L 50 20 Z" fill="url(#redBlueChecker)"/>
+  <path d="M 7 32 L 7 44 L 50 44 L 50 32 Z" fill="url(#redBlueChecker)"/>
+  <path d="M 7 44 L 7 56 L 50 56 L 50 44 Z" fill="url(#redBlueChecker)"/>
 </svg>

@@ -110,6 +110,43 @@ function App() {
     }
   }, [activePopup]);
 
+  // Twitter widgets loading for lawbstarz-popup
+  useEffect(() => {
+    if (activePopup === 'lawbstarz-popup') {
+      // Small delay to ensure popup is rendered
+      const loadTwitterWidgets = () => {
+        // Load Twitter widgets script if not already loaded
+        if (!document.querySelector('script[src="https://platform.twitter.com/widgets.js"]')) {
+          const script = document.createElement('script');
+          script.src = 'https://platform.twitter.com/widgets.js';
+          script.async = true;
+          script.charset = 'utf-8';
+          document.body.appendChild(script);
+          
+          // Wait for script to load, then parse tweets
+          script.onload = () => {
+            // Additional delay to ensure twttr is fully initialized
+            setTimeout(() => {
+              if ((window as any).twttr && (window as any).twttr.widgets) {
+                (window as any).twttr.widgets.load();
+              }
+            }, 100);
+          };
+        } else {
+          // Script already loaded, wait a bit then parse tweets
+          setTimeout(() => {
+            if ((window as any).twttr && (window as any).twttr.widgets) {
+              (window as any).twttr.widgets.load();
+            }
+          }, 200);
+        }
+      };
+      
+      // Delay to ensure popup content is rendered
+      setTimeout(loadTwitterWidgets, 100);
+    }
+  }, [activePopup]);
+
   const handleIconClick = (action: string, popupId?: string, url?: string) => {
     console.log('[APP] handleIconClick called with:', { action, popupId, url });
     if (action === 'url' && url) {
@@ -479,24 +516,25 @@ function App() {
 
       <Popup id="lawbstarz-popup" isOpen={activePopup === 'lawbstarz-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <p style={{marginBottom: '10px'}}>
-          ☆ LAWBSTARZ 666x LOBSTERS DRIPPED IN BUTTER ☆ 666x PREMIUM PFP COLLECTION ☆ LAWBSTARZ IS A MUSIC NFT ☆ LAWBSTARZ IS AN <a href="https://allstarz.world" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>ALLSTARZ</a> DERIVATIVE ☆ LAWBSTARZ IS INSPIRED BY <a href="https://www.remilia.org/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>REMILIA CORP</a> ☆ LED BY NETWORK SPIRITUALITY ☆ 666 <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>CIGAWRETTEPACKS</a> WERE CONSUMED BY <a href="https://x.com/portionclub69" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PORTIONCLUB69</a> AND FRIENDS DURING THE CREATION OF LAWBSTARZ v1 ☆
+          ☆ LAWBSTARZ 666x LOBSTERS DRIPPED IN BUTTER ☆ 666x PREMIUM PFP COLLECTION ☆ LAWBSTARZ IS A MUSIC NFT ☆ LAWBSTARZ IS AN <a href="https://allstarz.world" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>ALLSTARZ</a> DERIVATIVE ☆ LAWBSTARZ IS INSPIRED BY <a href="https://www.remilia.org/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>REMILIA CORP</a> ☆ LED BY NETWORK SPIRITUALITY ☆ 666 <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>CIGAWRETTEPACKS</a> WERE CONSUMED BY <a href="https://x.com/portionclub69" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PORTIONCLUB69</a> AND FRIENDS DURING THE CREATION OF LAWBSTARZ v1 ☆
         </p>
         <p>Chain: Ethereum</p>
         <p>
-          Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+          Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
-        <blockquote className="twitter-tweet" data-media-max-width="560">
-          <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
-        </blockquote>
-        <script async src="https://platform.twitter.com/widgets.js"></script>
+        <div id="twitter-embed-lawbstarz">
+          <blockquote className="twitter-tweet" data-media-max-width="560">
+            <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
+          </blockquote>
+        </div>
         <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
         <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
 
       <Popup id="lawbstation-popup" isOpen={activePopup === 'lawbstation-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <p style={{marginBottom: '10px'}}>
-          Lawbstations: low poly Lawbsters viewed through various cathode-ray tubes built on <a href="https://www.miladystation2.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>MiladyStation</a> technology. Inspired by Milady, Allstarz, Rusty Rollers, Cigawrette Packs, SPX6900 and Radbro. Brought to you in part by PortionClub and Mony Corp Group. LawbStations seem nice but a lobster controlled by MiladyStation will never achieve anything without a roadmap.
+          Lawbstations: low poly Lawbsters viewed through various cathode-ray tubes built on <a href="https://www.miladystation2.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>MiladyStation</a> technology. Inspired by Milady, Allstarz, Rusty Rollers, Cigawrette Packs, SPX6900 and Radbro. Brought to you in part by PortionClub and Mony Corp Group. LawbStations seem nice but a lobster controlled by MiladyStation will never achieve anything without a roadmap.
         </p>
         <p style={{marginBottom: '10px'}}>Chain: Solana</p>
         <p style={{marginBottom: '10px'}}>
@@ -508,7 +546,7 @@ function App() {
       
       <Popup id="nexus-popup" isOpen={activePopup === 'nexus-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <p style={{marginBottom: '10px'}}>
-          1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://magiceden.us/marketplace/lawbnexus" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+          1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://magiceden.us/marketplace/lawbnexus" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
         <video controls src="/assets/nexusminting.mp4" style={{ width: '100%' }} />
@@ -516,11 +554,11 @@ function App() {
 
       <Popup id="lawbsters-popup" isOpen={activePopup === 'lawbsters-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <p style={{marginBottom: '10px'}}>
-          420 Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap. A <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Cigawrette Packs</a> derivative.
+          420 Lawbsters seem nice but a human controlled by a lobster would never amount to anything without a roadmap. A <a href="https://www.cigawrettepacks.shop/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Cigawrette Packs</a> derivative.
         </p>
         <p>Chain: Ethereum</p>
         <p style={{marginBottom: '10px'}}>
-          Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>NFTX</a>
+          Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>NFTX</a>
         </p>
         <div style={{ maxWidth: '400px', margin: '0 auto' }}>
           <Tweet id="1620879129850834944" />
@@ -538,15 +576,15 @@ function App() {
           return (
             <>
               <p style={{marginBottom: '10px'}}>
-                PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={handleCollectHere}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>SCATTER.ART</a>
+                PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={handleCollectHere}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>SCATTER.ART</a>
               </p>
               <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} preload="none" poster="/assets/pixelawbsintro.png" />
               <p style={{marginBottom: '10px'}}>
-                2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>PixeladyMaker</a>
+                2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
               </p>
               <p style={{marginBottom: '10px'}}>Chain: Ethereum</p>
               <p style={{marginBottom: '10px'}}>
-                Collect on <a href="https://magiceden.us/collections/ethereum/0x2d278e95b2fc67d4b27a276807e24e479d9707f6" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+                Collect on <a href="https://magiceden.us/collections/ethereum/0x2d278e95b2fc67d4b27a276807e24e479d9707f6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
               </p>
               <img src="/assets/mint.gif" alt="Mint" style={{ maxWidth: '100%' }} />
             </>
@@ -631,7 +669,7 @@ function App() {
         </p>
         <p style={{marginBottom: '10px'}}>Chain: Base</p>
         <p style={{marginBottom: '10px'}}>
-          Collect on <a href="https://magiceden.us/collections/base/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>Secondary</a>
+          Collect on <a href="https://magiceden.us/collections/base/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
         <div ref={tiktokRef} style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -662,7 +700,7 @@ function App() {
           }}>🦞 $LAWB</a>
         </h1>
         <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
-          $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>pump.fun</a>.
+          $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
         </p>
         <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
         <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
@@ -671,12 +709,12 @@ function App() {
         <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
         <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
         <p style={{marginBottom: '10px'}}>
-          if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>https://portalbridge.com/</a>
+          if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://portalbridge.com/</a>
         </p>
         <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
         <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
         <p style={{marginBottom: '10px'}}>step 3. select token quantity, confirm transactions.</p>
-        <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{color: 'blue', textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
+        <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
         <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
         <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
         <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
