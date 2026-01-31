@@ -1254,6 +1254,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1165',message:'lastAIMoveRef reset to false',data:{lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
       // #endregion
     }
+    // RECOVERY: Stuck state - AI moved (lastAIMoveRef true) but setCurrentPlayer never committed
+    // Force turn to blue so player can move
+    if (gameMode === 'ai' && currentPlayer === 'red' && lastAIMoveRef.current && !isAIMovingRef.current && !apiCallInProgressRef.current) {
+      addMobileDebug(`RECOVERY: forcing cp=blue (stuck state)`);
+      lastAIMoveRef.current = false;
+      setCurrentPlayer('blue');
+    }
   }, [currentPlayer, gameMode, addMobileDebug]);
 
   // AI move effect - trigger AI move when it's red's turn
