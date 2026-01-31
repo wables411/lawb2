@@ -1255,10 +1255,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       // #endregion
     }
     // RECOVERY: Stuck state - AI moved (lastAIMoveRef true) but setCurrentPlayer never committed
-    // Force turn to blue so player can move
+    // Force turn to blue so player can move. Do NOT reset lastAIMoveRef here - the AI effect
+    // runs in the same pass and would see lastAI=false + cp=red and start another move.
+    // The normal block above will reset lastAIMoveRef once currentPlayer commits to blue.
     if (gameMode === 'ai' && currentPlayer === 'red' && lastAIMoveRef.current && !isAIMovingRef.current && !apiCallInProgressRef.current) {
       addMobileDebug(`RECOVERY: forcing cp=blue (stuck state)`);
-      lastAIMoveRef.current = false;
       setCurrentPlayer('blue');
     }
   }, [currentPlayer, gameMode, addMobileDebug]);
