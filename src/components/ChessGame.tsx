@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 import { 
@@ -1192,26 +1193,34 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     
     
-    // Switch players
-    setCurrentPlayer(prev => {
-      const newPlayer = prev === 'blue' ? 'red' : 'blue';
-      addMobileDebug(`setCP ${prev}->${newPlayer} ai=${isAIMove}`);
-      const playerSwitchData = {prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current};
-      console.log('[DEBUG] Player switched to:', newPlayer, playerSwitchData);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:playerSwitchData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      // Check game end for the player who is about to move (after switch)
-      checkGameEnd(newBoard, newPlayer);
-      
-      // Reset timer for the new player's turn - reset to 60 minutes
-      const now = Date.now();
-      setLastMoveTime(now);
-      setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Reset to full 60 minutes
-      console.log('[TIMER] Move completed, timer reset for', newPlayer, 'turn');
-      
-      return newPlayer;
-    });
+    // Switch players - use flushSync for AI moves to force turn switch on mobile
+    // (React batching can defer/drop the update, leaving currentPlayer stuck at red)
+    const doSwitch = () => {
+      setCurrentPlayer(prev => {
+        const newPlayer = prev === 'blue' ? 'red' : 'blue';
+        addMobileDebug(`setCP ${prev}->${newPlayer} ai=${isAIMove}`);
+        const playerSwitchData = {prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current};
+        console.log('[DEBUG] Player switched to:', newPlayer, playerSwitchData);
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:playerSwitchData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        // Check game end for the player who is about to move (after switch)
+        checkGameEnd(newBoard, newPlayer);
+        
+        // Reset timer for the new player's turn - reset to 60 minutes
+        const now = Date.now();
+        setLastMoveTime(now);
+        setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Reset to full 60 minutes
+        console.log('[TIMER] Move completed, timer reset for', newPlayer, 'turn');
+        
+        return newPlayer;
+      });
+    };
+    if (isAIMove) {
+      flushSync(doSwitch);
+    } else {
+      doSwitch();
+    }
     
     // Check game end conditions
     checkGameEnd(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
