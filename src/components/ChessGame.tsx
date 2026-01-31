@@ -335,6 +335,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const aiTimeoutRef = useRef<number | null>(null);
   const lastAIMoveRef = useRef(false);
   const apiCallInProgressRef = useRef(false);
+  const playerMoveInProgressRef = useRef(false);
 
   // Add showDifficulty state
   const [showDifficulty, setShowDifficulty] = useState(false);
@@ -1038,8 +1039,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
-    if (gameState !== 'active' || isAIMovingRef.current) {
-      addMobileDebug(`BLOCKED: gs=${gameState} aiM=${isAIMovingRef.current}`);
+    if (gameState !== 'active' || isAIMovingRef.current || playerMoveInProgressRef.current) {
+      addMobileDebug(`BLOCKED: gs=${gameState} aiM=${isAIMovingRef.current} playerM=${playerMoveInProgressRef.current}`);
       console.log('[DEBUG] handleSquareClick BLOCKED: gameState or isAIMovingRef', {gameState,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1008',message:'handleSquareClick blocked: gameState or isAIMovingRef',data:{gameState,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -1064,6 +1065,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // If a piece is selected and we click on a legal move
     if (selectedPiece && legalMoves.some(move => move.row === row && move.col === col)) {
       addMobileDebug(`MOVE ${selectedPiece.row}${selectedPiece.col}->${row}${col}`);
+      playerMoveInProgressRef.current = true;
       makeMove(selectedPiece, { row, col });
       return;
     }
@@ -1119,6 +1121,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     if (!piece) {
       addMobileDebug(`ERR: executeMove no piece at ${from.row}${from.col}`);
+      playerMoveInProgressRef.current = false;
       return;
     }
     
@@ -1186,6 +1189,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       addMobileDebug(`PLAYER MOVE prev=${currentPlayer}->red`);
       isAIMovingRef.current = false;
       lastAIMoveRef.current = false;
+      playerMoveInProgressRef.current = false; // Allow clicks after move completes
     }
     
     // Update piece state
@@ -1787,8 +1791,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         key={`${row}-${col}`}
         className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
         onClick={() => handleSquareClick(row, col)}
-        onTouchStart={(e) => handleTouchStart(row, col, e)}
-        onTouchMove={handleTouchMove}
+        style={isMobile ? { touchAction: 'manipulation' } : undefined}
       >
         {piece && pieceImageUrl && (
           <img
@@ -2458,18 +2461,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const handlePromotion = (promotionPiece: string) => {
     playSound('upgrade');
     // ... existing promotion logic ...
-  };
-
-  // Mobile touch handling for better piece selection
-  const handleTouchStart = (row: number, col: number, event: React.TouchEvent) => {
-    // Prevent default to avoid double-tap zoom on mobile
-    event.preventDefault();
-    handleSquareClick(row, col);
-  };
-
-  const handleTouchMove = (event: React.TouchEvent) => {
-    // Prevent scrolling when touching the chessboard
-    event.preventDefault();
   };
 
   if (isOnline) {
