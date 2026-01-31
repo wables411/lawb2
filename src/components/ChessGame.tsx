@@ -364,6 +364,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [openingSuggestions, setOpeningSuggestions] = useState<any[]>([]);
   const [isUpdatingBoard, setIsUpdatingBoard] = useState(false);
 
+  // Mobile debug log - visible in overlay for screenshot debugging
+  const [mobileDebugLog, setMobileDebugLog] = useState<string[]>([]);
+  const mobileDebugSeqRef = useRef(0);
+  const addMobileDebug = useCallback((msg: string) => {
+    if (!isMobile) return;
+    mobileDebugSeqRef.current += 1;
+    const ts = new Date().toISOString().slice(11, 23);
+    setMobileDebugLog(prev => [`${ts} #${mobileDebugSeqRef.current} ${msg}`, ...prev].slice(0, 18));
+  }, [isMobile]);
+
   // Add state for random chessboard selection
   const [selectedChessboard, setSelectedChessboard] = useState<string>(() => {
     const chessboards = [
@@ -1021,12 +1031,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Handle square click
   const handleSquareClick = (row: number, col: number) => {
+    addMobileDebug(`click r${row}c${col} cp=${currentPlayer} aiM=${isAIMovingRef.current} lastAI=${lastAIMoveRef.current}`);
     const logData = {row,col,gameState,isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current,lastAIMoveRef:lastAIMoveRef.current};
     console.log('[DEBUG] handleSquareClick entry', logData);
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
     if (gameState !== 'active' || isAIMovingRef.current) {
+      addMobileDebug(`BLOCKED: gs=${gameState} aiM=${isAIMovingRef.current}`);
       console.log('[DEBUG] handleSquareClick BLOCKED: gameState or isAIMovingRef', {gameState,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1008',message:'handleSquareClick blocked: gameState or isAIMovingRef',data:{gameState,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -1037,6 +1049,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // CRITICAL FIX: In AI mode, player (blue) should only be able to move when it's their turn
     // Prevent player from clicking when it's AI's turn (red)
     if (gameMode === 'ai' && currentPlayer !== 'blue') {
+      addMobileDebug(`BLOCKED: not blue turn cp=${currentPlayer}`);
       console.log('[DEBUG] handleSquareClick BLOCKED: currentPlayer not blue', {gameMode,currentPlayer});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1012',message:'handleSquareClick blocked: currentPlayer not blue',data:{gameMode,currentPlayer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
@@ -1049,12 +1062,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     // If a piece is selected and we click on a legal move
     if (selectedPiece && legalMoves.some(move => move.row === row && move.col === col)) {
+      addMobileDebug(`MOVE ${selectedPiece.row}${selectedPiece.col}->${row}${col}`);
       makeMove(selectedPiece, { row, col });
       return;
     }
     
     // If we click on a piece of the current player
     if (piece && pieceColor === currentPlayer) {
+      addMobileDebug(`SELECT r${row}c${col} ${piece}`);
       const moves = getLegalMoves({ row, col });
       setSelectedPiece({ row, col });
       setLegalMoves(moves);
@@ -1101,7 +1116,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const newBoard = board.map(row => [...row]);
     const piece = newBoard[from.row][from.col];
     
-    if (!piece) return;
+    if (!piece) {
+      addMobileDebug(`ERR: executeMove no piece at ${from.row}${from.col}`);
+      return;
+    }
     
     // Handle pawn promotion BEFORE moving the piece to avoid display delay
     let pieceToPlace = piece;
@@ -1157,12 +1175,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (isAIMove) {
       lastAIMoveRef.current = true; // Block useEffect from triggering again
       isAIMovingRef.current = false; // Allow player to move
+      addMobileDebug(`AI MOVE done lastAI=T prev=${currentPlayer}->blue`);
       console.log('[DEBUG] executeMoveAfterAnimation AI move flags set', {isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current});
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1123',message:'executeMoveAfterAnimation AI move flags set',data:{isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
     } else {
       // Player made a move - reset all flags so AI can move next
+      addMobileDebug(`PLAYER MOVE prev=${currentPlayer}->red`);
       isAIMovingRef.current = false;
       lastAIMoveRef.current = false;
     }
@@ -1175,6 +1195,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Switch players
     setCurrentPlayer(prev => {
       const newPlayer = prev === 'blue' ? 'red' : 'blue';
+      addMobileDebug(`setCP ${prev}->${newPlayer} ai=${isAIMove}`);
       const playerSwitchData = {prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current};
       console.log('[DEBUG] Player switched to:', newPlayer, playerSwitchData);
       // #region agent log
@@ -1204,17 +1225,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1157',message:'executeMoveAfterAnimation end flags reset',data:endFlagData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
-  }, [board, currentPlayer, moveHistory, getOpeningData]);
+  }, [board, currentPlayer, moveHistory, getOpeningData, addMobileDebug]);
 
   // Reset lastAIMoveRef when it becomes player's turn (blue)
   // This ensures the flag is cleared after the state updates from AI move
   useEffect(() => {
+    addMobileDebug(`lastAI effect cp=${currentPlayer} lastAI=${lastAIMoveRef.current}`);
     const resetData = {gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isAIMovingRef:isAIMovingRef.current};
     console.log('[DEBUG] lastAIMoveRef reset useEffect', resetData);
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1162',message:'lastAIMoveRef reset useEffect',data:resetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
     // #endregion
     if (gameMode === 'ai' && currentPlayer === 'blue' && lastAIMoveRef.current) {
+      addMobileDebug(`lastAI RESET->false (blue turn)`);
       // Player's turn now - reset the flag that was blocking double AI moves
       lastAIMoveRef.current = false;
       console.log('[DEBUG] lastAIMoveRef reset to false', {lastAIMoveRef:lastAIMoveRef.current});
@@ -1222,10 +1245,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1165',message:'lastAIMoveRef reset to false',data:{lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
       // #endregion
     }
-  }, [currentPlayer, gameMode]);
+  }, [currentPlayer, gameMode, addMobileDebug]);
 
   // AI move effect - trigger AI move when it's red's turn
   useEffect(() => {
+    addMobileDebug(`AI effect cp=${currentPlayer} lastAI=${lastAIMoveRef.current} aiM=${isAIMovingRef.current}`);
     const aiEffectData = {isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current};
     console.log('[DEBUG] AI useEffect triggered', aiEffectData);
     // #region agent log
@@ -1235,6 +1259,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // When AI moves, setCurrentPlayer is async. The useEffect might run again before
     // currentPlayer updates from 'red' to 'blue'. lastAIMoveRef blocks this.
     if (!isAIMovingRef.current && gameMode === 'ai' && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
+      addMobileDebug(`AI START move (Stockfish)`);
       isAIMovingRef.current = true;
       console.log('[DEBUG] AI useEffect starting AI move', {difficulty,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
@@ -1313,6 +1338,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             apiCallInProgressRef.current = false;
           }
         }).catch(async (error) => {
+          addMobileDebug(`ERR: Stockfish API ${(error as Error)?.message?.slice(0, 30) || 'unknown'}`);
           console.error('[STOCKFISH] API error:', error);
           const errorData = {error:error?.message,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
           console.log('[DEBUG] AI Stockfish API error', errorData);
@@ -1345,7 +1371,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         });
       }
     }
-  }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady, getStockfishMove, getCloudflareStockfishMove]);
+  }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady, getStockfishMove, getCloudflareStockfishMove, addMobileDebug]);
 
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
@@ -1639,6 +1665,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setShowDifficulty(false);
     setShowPieceSetSelector(false);
     setStatus(`Match started! Your turn`);
+    setMobileDebugLog([]);
+    mobileDebugSeqRef.current = 0;
+    addMobileDebug(`GAME START AI ${difficulty}`);
     const newChessboard = selectRandomChessboard();
     setSelectedChessboard(newChessboard);
     console.log('[DEBUG] Match started with chessboard:', newChessboard);
@@ -3320,9 +3349,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               color: '#00ff00',
               fontFamily: 'monospace',
               zIndex: 999999,
-              maxHeight: '150px',
+              maxHeight: '220px',
               overflowY: 'auto',
-              lineHeight: '1.4'
+              lineHeight: '1.3'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff0000' }}>DEBUG FLAGS:</div>
               <div>isAIMovingRef: {isAIMovingRef.current ? 'TRUE' : 'false'}</div>
@@ -3332,6 +3361,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <div>lastAIMoveRef: {lastAIMoveRef.current ? 'TRUE' : 'false'}</div>
               <div>apiCallInProgress: {apiCallInProgressRef.current ? 'TRUE' : 'false'}</div>
               <div>gameMode: {gameMode}</div>
+              <div style={{ fontWeight: 'bold', marginTop: '6px', marginBottom: '2px', color: '#ffaa00' }}>EVENT LOG (newest first):</div>
+              {mobileDebugLog.length === 0 ? (
+                <div style={{ color: '#888', fontSize: '9px' }}>no events yet</div>
+              ) : (
+                mobileDebugLog.map((line, i) => (
+                  <div key={i} style={{ fontSize: '9px', color: line.startsWith('ERR') ? '#ff6666' : line.startsWith('BLOCKED') ? '#ffaa00' : '#00ff00' }}>{line}</div>
+                ))
+              )}
             </div>
           )}
           {/* Game Info Bar - Compact */}
