@@ -97,7 +97,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
           y: START_TOP + row * (ICON_HEIGHT + ICON_VGAP),
         };
         row++;
-        if (row >= 4) { row = 0; col++; }
+        if (row >= 3) { row = 0; col++; }
       });
     }
     return positions;

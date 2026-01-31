@@ -192,9 +192,10 @@ interface LinuxNavBarProps {
   onOpenChessPieceInfo?: () => void;
   onChessClose?: () => void;
   showChessMenu?: boolean;
+  onClawbClick?: () => void;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu, onClawbClick }) => {
   // Debug: log props on mount
   useEffect(() => {
     console.log('[LINUXNAVBAR] Props received:', { 
@@ -271,6 +272,16 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
           >
             Chess
           </button>
+          {onClawbClick && (
+            <button
+              className={classes.navButton}
+              onClick={onClawbClick}
+              type="button"
+              aria-label="Clawb - click to change animation"
+            >
+              Clawb
+            </button>
+          )}
         </div>
         
         <div className={classes.rightSection}>
@@ -309,6 +320,15 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             <span>♟️</span>
             <span>Chess</span>
           </button>
+          {onClawbClick && (
+            <button
+              className={classes.menuItem}
+              onClick={() => handleMenuLinkClick(undefined, onClawbClick)}
+            >
+              <span>🦞</span>
+              <span>Clawb</span>
+            </button>
+          )}
           <hr className={classes.menuSeparator} />
           {onOpenPublicChat && (
             <button

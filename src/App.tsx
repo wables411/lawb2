@@ -13,6 +13,8 @@ import { ChessPieceSetProvider } from './contexts/ChessPieceSetContext';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
+import type { ClawbHandle } from './components/Clawb';
+const Clawb = lazy(() => import('./components/Clawb'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
@@ -62,6 +64,7 @@ function App() {
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
+  const clawbRef = useRef<ClawbHandle>(null);
 
   // Add timeout for chess loading
   useEffect(() => {
@@ -430,7 +433,13 @@ function App() {
           console.log('[APP] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
           setShowChessPieceInfo(true);
         }}
+        onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
+
+      {/* Clawb - 3D helper in bottom-right, desktop only; click Clawb nav button to cycle */}
+      <Suspense fallback={null}>
+        <Clawb ref={clawbRef} />
+      </Suspense>
 
       {/* Public Chat - Functional Firebase Chat Component */}
       <Suspense fallback={<div>Loading chat...</div>}>
