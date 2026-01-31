@@ -1963,12 +1963,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
                   style={{background:difficulty==='easy'?'#4299e1':'#2d3748',color:'#e2e8f0',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:4,border:'1px solid #4a5568',cursor:'pointer',letterSpacing:1}}
                   onClick={()=>setDifficulty('easy')}
-                >Easy</button>
+                >Easy Mode</button>
                 <button
                   className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
                   style={{background:difficulty==='hard'?'#4299e1':'#2d3748',color:'#e2e8f0',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:4,border:'1px solid #4a5568',cursor:'pointer',letterSpacing:1}}
                   onClick={()=>setDifficulty('hard')}
-                >Hard</button>
+                >vs Clawb</button>
               </div>
             </div>
 
@@ -2030,12 +2030,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
               style={{background:difficulty==='easy'?'#ff0000':'transparent',color:difficulty==='easy'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='easy'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
               onClick={()=>setDifficulty('easy')}
-            >Easy</button>
+            >Easy Mode</button>
             <button
               className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
               style={{background:difficulty==='hard'?'#ff0000':'transparent',color:difficulty==='hard'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
               onClick={()=>setDifficulty('hard')}
-            >Hard</button>
+            >vs Clawb</button>
           </div>
           <button 
             className={`difficulty-btn start-btn`}
@@ -2302,7 +2302,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Get player names
     const playerName = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Player';
     const opponentName = gameMode === GameMode.AI 
-      ? `${difficulty === 'easy' ? 'Easy' : 'Hard'} AI`
+      ? (difficulty === 'easy' ? 'Easy Mode' : 'Clawb')
       : 'Opponent';
     
     // Determine winner (the one who didn't lose - red wins when blue loses)
@@ -3382,7 +3382,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {gameMode === GameMode.AI && (
                 <span className="mode-play">
-                  {difficulty === 'easy' ? 'Easy' : 'Hard'} AI
+                  {difficulty === 'easy' ? 'Easy Mode' : 'Clawb'}
                 </span>
               )}
               {isOnline && (

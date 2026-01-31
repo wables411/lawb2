@@ -31,7 +31,7 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
         </ul>
         <p><strong>Match Modes:</strong></p>
         <ul style={{ margin: '5px 0', paddingLeft: '20px', fontSize: '12px' }}>
-          <li><strong>Single Player:</strong> Choose easy or Hard difficulty and practice against the computer.</li>
+          <li><strong>Single Player:</strong> Choose Easy Mode or vs Clawb and practice against the computer.</li>
           <li><strong>Multiplayer:</strong> wage tokens and challenge other players. Winner takes the pot minus 5% house fee.</li>
         </ul>
         <p><strong>Multiplayer Flow:</strong></p>
