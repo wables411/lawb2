@@ -3334,43 +3334,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         {/* Desktop Sidebar removed - using menu popup and windows instead */}
         {/* Center Area - Always Show Chess Board */}
         <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
-          {/* Debug Overlay - Mobile Only */}
-          {isMobile && showGame && gameMode === 'ai' && (
-            <div style={{
-              position: 'fixed',
-              top: '60px',
-              left: '8px',
-              right: '8px',
-              backgroundColor: 'rgba(0, 0, 0, 0.85)',
-              border: '2px solid #ff0000',
-              borderRadius: '4px',
-              padding: '8px',
-              fontSize: '10px',
-              color: '#00ff00',
-              fontFamily: 'monospace',
-              zIndex: 999999,
-              maxHeight: '220px',
-              overflowY: 'auto',
-              lineHeight: '1.3'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff0000' }}>DEBUG FLAGS:</div>
-              <div>isAIMovingRef: {isAIMovingRef.current ? 'TRUE' : 'false'}</div>
-              <div>currentPlayer: {currentPlayer}</div>
-              <div>gameState: {gameState}</div>
-              <div>isUpdatingBoard: {isUpdatingBoard ? 'TRUE' : 'false'}</div>
-              <div>lastAIMoveRef: {lastAIMoveRef.current ? 'TRUE' : 'false'}</div>
-              <div>apiCallInProgress: {apiCallInProgressRef.current ? 'TRUE' : 'false'}</div>
-              <div>gameMode: {gameMode}</div>
-              <div style={{ fontWeight: 'bold', marginTop: '6px', marginBottom: '2px', color: '#ffaa00' }}>EVENT LOG (newest first):</div>
-              {mobileDebugLog.length === 0 ? (
-                <div style={{ color: '#888', fontSize: '9px' }}>no events yet</div>
-              ) : (
-                mobileDebugLog.map((line, i) => (
-                  <div key={i} style={{ fontSize: '9px', color: line.startsWith('ERR') ? '#ff6666' : line.startsWith('BLOCKED') ? '#ffaa00' : '#00ff00' }}>{line}</div>
-                ))
-              )}
-            </div>
-          )}
           {/* Game Info Bar - Compact */}
           {showGame && (
             <div className="game-info-compact" style={{ marginTop: '0px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -3442,7 +3405,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           )}
           {/* Main Game Area */}
           {showGame ? (
-            <div className="chess-main-area" style={{ height: 'calc(100vh - 100px)', minHeight: 'calc(100vh - 100px)', paddingTop: '0px', paddingBottom: '40px' }}>
+            <div className="chess-main-area" style={{ 
+              height: 'calc(100vh - 100px)', 
+              minHeight: 'calc(100vh - 100px)', 
+              paddingTop: '0px', 
+              paddingBottom: '40px',
+              ...(isMobile && gameMode === 'ai' ? { display: 'flex', flexDirection: 'column', overflowY: 'auto', alignItems: 'center' } : {})
+            }}>
               <div className="chessboard-container" style={{ 
                 width: 'min(85vh, 85vw, 700px)',
                 height: 'min(85vh, 85vw, 700px)',
@@ -3451,7 +3420,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                ...(isMobile && gameMode === 'ai' ? { flexShrink: 0 } : {})
               }}>
                 <div 
                   className="chessboard"
@@ -3501,6 +3471,42 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   )}
                 </div>
               </div>
+              {/* Debug Log - Mobile Only, below chessboard, zero overlap */}
+              {isMobile && gameMode === 'ai' && (
+                <div style={{
+                  width: '100%',
+                  maxWidth: 'min(85vh, 85vw, 700px)',
+                  margin: '8px auto 0',
+                  padding: '8px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                  border: '2px solid #ff0000',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  color: '#00ff00',
+                  fontFamily: 'monospace',
+                  maxHeight: '180px',
+                  overflowY: 'auto',
+                  lineHeight: '1.3',
+                  flexShrink: 0
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff0000' }}>DEBUG FLAGS:</div>
+                  <div>isAIMovingRef: {isAIMovingRef.current ? 'TRUE' : 'false'}</div>
+                  <div>currentPlayer: {currentPlayer}</div>
+                  <div>gameState: {gameState}</div>
+                  <div>isUpdatingBoard: {isUpdatingBoard ? 'TRUE' : 'false'}</div>
+                  <div>lastAIMoveRef: {lastAIMoveRef.current ? 'TRUE' : 'false'}</div>
+                  <div>apiCallInProgress: {apiCallInProgressRef.current ? 'TRUE' : 'false'}</div>
+                  <div>gameMode: {gameMode}</div>
+                  <div style={{ fontWeight: 'bold', marginTop: '6px', marginBottom: '2px', color: '#ffaa00' }}>EVENT LOG (newest first):</div>
+                  {mobileDebugLog.length === 0 ? (
+                    <div style={{ color: '#888', fontSize: '9px' }}>no events yet</div>
+                  ) : (
+                    mobileDebugLog.map((line, i) => (
+                      <div key={i} style={{ fontSize: '9px', color: line.startsWith('ERR') ? '#ff6666' : line.startsWith('BLOCKED') ? '#ffaa00' : '#00ff00' }}>{line}</div>
+                    ))
+                  )}
+                </div>
+              )}
               {/* Desktop game controls removed - use menu button instead */}
             </div>
           ) : showPieceSetSelector ? (
