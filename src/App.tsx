@@ -5,6 +5,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
 import { useAppKitSafe } from './hooks/useAppKitSafe';
+import { useConnectionDisplay } from './hooks/useConnectionDisplay';
 import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +39,7 @@ function App() {
   const classes = useStyles();
   const { open } = useAppKitSafe();
   const { address, isConnected } = useAccount();
+  const connectionDisplay = useConnectionDisplay();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -272,7 +274,7 @@ function App() {
     <div style={{ position: 'relative' }}>
       <div 
         onClick={() => {
-          if (!isConnected) {
+          if (!connectionDisplay.connected) {
             // Open wallet connection modal
             void open({ view: 'Connect' });
           } else {
@@ -284,7 +286,7 @@ function App() {
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          color: isConnected ? 'limegreen' : 'red',
+          color: connectionDisplay.connected ? 'limegreen' : 'red',
           fontWeight: 'bold'
         }}
       >
@@ -292,13 +294,13 @@ function App() {
           height: '10px',
           width: '10px',
           borderRadius: '50%',
-          backgroundColor: isConnected ? 'limegreen' : 'red',
+          backgroundColor: connectionDisplay.connected ? 'limegreen' : 'red',
           marginRight: '8px',
           border: '1px solid black'
         }}></span>
-        {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Disconnected'}
+        {connectionDisplay.connected ? `${connectionDisplay.address?.slice(0, 6)}...${connectionDisplay.address?.slice(-4)}` : 'Disconnected'}
       </div>
-      {isConnected && showWalletMenu && (
+      {connectionDisplay.connected && showWalletMenu && (
         <div style={{
           position: 'absolute',
           bottom: '100%',
@@ -423,9 +425,9 @@ function App() {
       <LinuxNavBar
         walletButton={walletButton}
         connectionStatus={{
-          connected: isConnected,
-          address: address,
-          ens: undefined
+          connected: connectionDisplay.connected,
+          address: connectionDisplay.address,
+          ens: connectionDisplay.ens
         }}
         onOpenPublicChat={openPublicChat}
         onOpenProfile={() => setShowProfile(true)}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useAccount, useConnect, useDisconnect, useEnsName, useChainId } from 'wagmi';
+import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { mainnet } from 'wagmi/chains';
 import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
 import MobileNFTGallery from './MobileNFTGallery';
@@ -246,9 +247,10 @@ const Mobile = () => {
   const classes = useStyles();
   const { open } = useAppKit();
   const { address, isConnected } = useAccount();
+  const { data: ens } = useEnsName({ address });
+  const connectionDisplay = useConnectionDisplay(ens ?? undefined);
   const { isPending, connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: ens } = useEnsName({ address });
   const chainId = useChainId();
   
   // Web browser mobile - no Base app auto-connect
@@ -745,7 +747,7 @@ const Mobile = () => {
         walletButton={
           <div 
             onClick={() => {
-              if (!isConnected) {
+              if (!connectionDisplay.connected) {
                 void open({ view: 'Connect' });
               } else {
                 void open({ view: 'Account' });
@@ -757,19 +759,19 @@ const Mobile = () => {
               height: '8px',
               width: '8px',
               borderRadius: '50%',
-              backgroundColor: isConnected ? '#48bb78' : '#f56565',
+              backgroundColor: connectionDisplay.connected ? '#48bb78' : '#f56565',
               border: '1px solid rgba(0, 0, 0, 0.3)',
               display: 'inline-block',
             }}></span>
             <span style={{ fontSize: '11px', color: '#cbd5e0' }}>
-              {isConnected ? (ens || `${address?.slice(0, 6)}...${address?.slice(-4)}`) : 'Disconnected'}
+              {connectionDisplay.connected ? (connectionDisplay.ens || `${connectionDisplay.address?.slice(0, 6)}...${connectionDisplay.address?.slice(-4)}`) : 'Disconnected'}
             </span>
           </div>
         }
         connectionStatus={{
-          connected: isConnected,
-          address: address,
-          ens: ens || undefined
+          connected: connectionDisplay.connected,
+          address: connectionDisplay.address,
+          ens: connectionDisplay.ens
         }}
         onOpenPublicChat={() => setShowPublicChat(true)}
         onOpenProfile={() => setShowProfile(true)}

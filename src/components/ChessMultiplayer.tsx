@@ -30,6 +30,7 @@ import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
+import { debugIngest } from '../utils/debugIngest';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -5899,20 +5900,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const boardEl = chessboardRef.current;
     if (!boardEl) {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessMultiplayer.tsx:chessboard-ref-missing',message:'chessboard ref missing',data:{gameMode,selectedChessboard},timestamp:Date.now()})}).catch(()=>{});
+      debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessMultiplayer.tsx:chessboard-ref-missing',message:'chessboard ref missing',data:{gameMode,selectedChessboard},timestamp:Date.now()});
       // #endregion
       return;
     }
     const boardStyle = window.getComputedStyle(boardEl);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessMultiplayer.tsx:chessboard-style',message:'chessboard computed style',data:{selectedChessboard,inlineBg:boardEl.style.backgroundImage,cssVarBg:boardEl.style.getPropertyValue('--chessboard-bg-image'),bg:boardStyle.backgroundImage,bgSize:boardStyle.backgroundSize,bgRepeat:boardStyle.backgroundRepeat,boxSizing:boardStyle.boxSizing,border:boardStyle.borderTopWidth,padding:boardStyle.paddingTop,width:boardEl.clientWidth,height:boardEl.clientHeight},timestamp:Date.now()})}).catch(()=>{});
+    debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessMultiplayer.tsx:chessboard-style',message:'chessboard computed style',data:{selectedChessboard,inlineBg:boardEl.style.backgroundImage,cssVarBg:boardEl.style.getPropertyValue('--chessboard-bg-image'),bg:boardStyle.backgroundImage,bgSize:boardStyle.backgroundSize,bgRepeat:boardStyle.backgroundRepeat,boxSizing:boardStyle.boxSizing,border:boardStyle.borderTopWidth,padding:boardStyle.paddingTop,width:boardEl.clientWidth,height:boardEl.clientHeight},timestamp:Date.now()});
     // #endregion
     const squares = boardEl.querySelectorAll('.square');
     const squareWithBg = Array.from(squares).filter((el) => window.getComputedStyle(el as Element).backgroundImage !== 'none').length;
     const firstSquare = squares[0] as HTMLElement | undefined;
     const firstSquareStyle = firstSquare ? window.getComputedStyle(firstSquare) : null;
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'ChessMultiplayer.tsx:square-style',message:'square background sampling',data:{squareCount:squares.length,squareWithBg,sampleBg:firstSquareStyle?.backgroundImage,bgSize:firstSquareStyle?.backgroundSize,bgRepeat:firstSquareStyle?.backgroundRepeat},timestamp:Date.now()})}).catch(()=>{});
+    debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'ChessMultiplayer.tsx:square-style',message:'square background sampling',data:{squareCount:squares.length,squareWithBg,sampleBg:firstSquareStyle?.backgroundImage,bgSize:firstSquareStyle?.backgroundSize,bgRepeat:firstSquareStyle?.backgroundRepeat},timestamp:Date.now()});
     // #endregion
   }, [gameMode, selectedChessboard]);
 

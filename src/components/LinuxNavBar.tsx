@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
+import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 
 interface LinuxNavBarStyleProps {
   isOpen: boolean;
@@ -182,7 +183,8 @@ const useStyles = createUseStyles({
 
 interface LinuxNavBarProps {
   walletButton?: React.ReactNode;
-  connectionStatus: {
+  /** Optional override - when not provided, uses useConnectionDisplay (single source of truth) */
+  connectionStatus?: {
     connected: boolean;
     address?: string;
     ens?: string;
@@ -195,7 +197,10 @@ interface LinuxNavBarProps {
   onClawbClick?: () => void;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu, onClawbClick }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus: connectionStatusProp, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu, onClawbClick }) => {
+  // Single source of truth: useConnectionDisplay handles reconnecting state to avoid navbar/Reown modal mismatch
+  const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
+  const connectionStatus = connectionDisplay;
   // Debug: log props on mount
   useEffect(() => {
     console.log('[LINUXNAVBAR] Props received:', { 

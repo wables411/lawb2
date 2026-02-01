@@ -21,6 +21,7 @@ import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
+import { debugIngest } from '../utils/debugIngest';
 
 import './ChessGame.css';
 import './ChessGameModern.css';
@@ -397,20 +398,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const boardEl = chessboardRef.current;
     if (!boardEl) {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessGame.tsx:chessboard-ref-missing',message:'chessboard ref missing',data:{showGame,selectedChessboard},timestamp:Date.now()})}).catch(()=>{});
+      debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessGame.tsx:chessboard-ref-missing',message:'chessboard ref missing',data:{showGame,selectedChessboard},timestamp:Date.now()});
       // #endregion
       return;
     }
     const boardStyle = window.getComputedStyle(boardEl);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessGame.tsx:chessboard-style',message:'chessboard computed style',data:{selectedChessboard,inlineBg:boardEl.style.backgroundImage,cssVarBg:boardEl.style.getPropertyValue('--chessboard-bg-image'),bg:boardStyle.backgroundImage,bgSize:boardStyle.backgroundSize,bgRepeat:boardStyle.backgroundRepeat,boxSizing:boardStyle.boxSizing,border:boardStyle.borderTopWidth,padding:boardStyle.paddingTop,width:boardEl.clientWidth,height:boardEl.clientHeight},timestamp:Date.now()})}).catch(()=>{});
+    debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'ChessGame.tsx:chessboard-style',message:'chessboard computed style',data:{selectedChessboard,inlineBg:boardEl.style.backgroundImage,cssVarBg:boardEl.style.getPropertyValue('--chessboard-bg-image'),bg:boardStyle.backgroundImage,bgSize:boardStyle.backgroundSize,bgRepeat:boardStyle.backgroundRepeat,boxSizing:boardStyle.boxSizing,border:boardStyle.borderTopWidth,padding:boardStyle.paddingTop,width:boardEl.clientWidth,height:boardEl.clientHeight},timestamp:Date.now()});
     // #endregion
     const squares = boardEl.querySelectorAll('.square');
     const squareWithBg = Array.from(squares).filter((el) => window.getComputedStyle(el as Element).backgroundImage !== 'none').length;
     const firstSquare = squares[0] as HTMLElement | undefined;
     const firstSquareStyle = firstSquare ? window.getComputedStyle(firstSquare) : null;
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'ChessGame.tsx:square-style',message:'square background sampling',data:{squareCount:squares.length,squareWithBg,sampleBg:firstSquareStyle?.backgroundImage,bgSize:firstSquareStyle?.backgroundSize,bgRepeat:firstSquareStyle?.backgroundRepeat},timestamp:Date.now()})}).catch(()=>{});
+    debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'ChessGame.tsx:square-style',message:'square background sampling',data:{squareCount:squares.length,squareWithBg,sampleBg:firstSquareStyle?.backgroundImage,bgSize:firstSquareStyle?.backgroundSize,bgRepeat:firstSquareStyle?.backgroundRepeat},timestamp:Date.now()});
     // #endregion
   }, [showGame, selectedChessboard]);
 
@@ -429,7 +430,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (showGame || showDifficulty || showPieceSetSelector) return;
     if (!isMobile) return;
     const emit = (phase: string) => {
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'mobile-topspace-pre',hypothesisId:'H3',location:'ChessGame.tsx:useEffect(home-view)',message:`Home view mobile layout snapshot (${phase})`,data:(()=>{const home=document.querySelector('.game-stable-layout.home-view') as HTMLElement|null;const panel=document.querySelector('.game-mode-panel-streamlined') as HTMLElement|null;const btn=document.querySelector('.mode-selection-compact button') as HTMLElement|null;const cs=(el:HTMLElement|null)=>el?window.getComputedStyle(el):null;const rect=(el:HTMLElement|null)=>el?{top:Math.round(el.getBoundingClientRect().top),w:Math.round(el.getBoundingClientRect().width),h:Math.round(el.getBoundingClientRect().height)}:null;const hcs=cs(home);const pcs=cs(panel);return{bodyClass:document.body.className,home:rect(home),panel:rect(panel),btn:rect(btn),homeStyles:hcs?{display:hcs.display,alignItems:(hcs as any).alignItems,justifyContent:(hcs as any).justifyContent,paddingTop:hcs.paddingTop,marginTop:hcs.marginTop}:null,panelStyles:pcs?{display:pcs.display,alignItems:(pcs as any).alignItems,justifyContent:(pcs as any).justifyContent,paddingTop:pcs.paddingTop,marginTop:pcs.marginTop}:null,scrollY:window.scrollY,innerH:window.innerHeight}})(),timestamp:Date.now()})}).catch(()=>{});
+      debugIngest({sessionId:'debug-session',runId:'mobile-topspace-pre',hypothesisId:'H3',location:'ChessGame.tsx:useEffect(home-view)',message:`Home view mobile layout snapshot (${phase})`,data:(()=>{const home=document.querySelector('.game-stable-layout.home-view') as HTMLElement|null;const panel=document.querySelector('.game-mode-panel-streamlined') as HTMLElement|null;const btn=document.querySelector('.mode-selection-compact button') as HTMLElement|null;const cs=(el:HTMLElement|null)=>el?window.getComputedStyle(el):null;const rect=(el:HTMLElement|null)=>el?{top:Math.round(el.getBoundingClientRect().top),w:Math.round(el.getBoundingClientRect().width),h:Math.round(el.getBoundingClientRect().height)}:null;const hcs=cs(home);const pcs=cs(panel);return{bodyClass:document.body.className,home:rect(home),panel:rect(panel),btn:rect(btn),homeStyles:hcs?{display:hcs.display,alignItems:(hcs as any).alignItems,justifyContent:(hcs as any).justifyContent,paddingTop:hcs.paddingTop,marginTop:hcs.marginTop}:null,panelStyles:pcs?{display:pcs.display,alignItems:(pcs as any).alignItems,justifyContent:(pcs as any).justifyContent,paddingTop:pcs.paddingTop,marginTop:pcs.marginTop}:null,scrollY:window.scrollY,innerH:window.innerHeight}})(),timestamp:Date.now()});
     };
     emit('immediate');
     requestAnimationFrame(() => emit('rAF'));
@@ -1037,13 +1038,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const logData = {row,col,gameState,isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current,lastAIMoveRef:lastAIMoveRef.current};
     console.log('[DEBUG] handleSquareClick entry', logData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    debugIngest({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
     // #endregion
     if (gameState !== 'active' || isAIMovingRef.current || playerMoveInProgressRef.current) {
       addMobileDebug(`BLOCKED: gs=${gameState} aiM=${isAIMovingRef.current} playerM=${playerMoveInProgressRef.current}`);
       console.log('[DEBUG] handleSquareClick BLOCKED: gameState or isAIMovingRef', {gameState,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1008',message:'handleSquareClick blocked: gameState or isAIMovingRef',data:{gameState,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      debugIngest({location:'ChessGame.tsx:1008',message:'handleSquareClick blocked: gameState or isAIMovingRef',data:{gameState,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
       // #endregion
       return;
     }
@@ -1054,7 +1055,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       addMobileDebug(`BLOCKED: not blue turn cp=${currentPlayer}`);
       console.log('[DEBUG] handleSquareClick BLOCKED: currentPlayer not blue', {gameMode,currentPlayer});
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1012',message:'handleSquareClick blocked: currentPlayer not blue',data:{gameMode,currentPlayer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      debugIngest({location:'ChessGame.tsx:1012',message:'handleSquareClick blocked: currentPlayer not blue',data:{gameMode,currentPlayer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
       // #endregion
       return;
     }
@@ -1174,7 +1175,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const flagDataBefore = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard,currentPlayer};
     console.log('[DEBUG] executeMoveAfterAnimation before flag update', flagDataBefore);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1121',message:'executeMoveAfterAnimation before flag update',data:flagDataBefore,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    debugIngest({location:'ChessGame.tsx:1121',message:'executeMoveAfterAnimation before flag update',data:flagDataBefore,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
     // #endregion
     if (isAIMove) {
       lastAIMoveRef.current = true; // Block useEffect from triggering again
@@ -1182,7 +1183,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       addMobileDebug(`AI MOVE done lastAI=T prev=${currentPlayer}->blue`);
       console.log('[DEBUG] executeMoveAfterAnimation AI move flags set', {isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current});
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1123',message:'executeMoveAfterAnimation AI move flags set',data:{isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      debugIngest({location:'ChessGame.tsx:1123',message:'executeMoveAfterAnimation AI move flags set',data:{isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
       // #endregion
     } else {
       // Player made a move - reset all flags so AI can move next
@@ -1206,7 +1207,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const playerSwitchData = {prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current};
         console.log('[DEBUG] Player switched to:', newPlayer, playerSwitchData);
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:playerSwitchData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        debugIngest({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:playerSwitchData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
         // #endregion
         // Check game end for the player who is about to move (after switch)
         checkGameEnd(newBoard, newPlayer);
@@ -1236,7 +1237,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const endFlagData = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard:false};
     console.log('[DEBUG] executeMoveAfterAnimation end flags reset', endFlagData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1157',message:'executeMoveAfterAnimation end flags reset',data:endFlagData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    debugIngest({location:'ChessGame.tsx:1157',message:'executeMoveAfterAnimation end flags reset',data:endFlagData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'});
     // #endregion
   }, [board, currentPlayer, moveHistory, getOpeningData, addMobileDebug]);
 
@@ -1247,7 +1248,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const resetData = {gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isAIMovingRef:isAIMovingRef.current};
     console.log('[DEBUG] lastAIMoveRef reset useEffect', resetData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1162',message:'lastAIMoveRef reset useEffect',data:resetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    debugIngest({location:'ChessGame.tsx:1162',message:'lastAIMoveRef reset useEffect',data:resetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'});
     // #endregion
     if (gameMode === 'ai' && currentPlayer === 'blue' && lastAIMoveRef.current) {
       addMobileDebug(`lastAI RESET->false (blue turn)`);
@@ -1255,7 +1256,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       lastAIMoveRef.current = false;
       console.log('[DEBUG] lastAIMoveRef reset to false', {lastAIMoveRef:lastAIMoveRef.current});
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1165',message:'lastAIMoveRef reset to false',data:{lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      debugIngest({location:'ChessGame.tsx:1165',message:'lastAIMoveRef reset to false',data:{lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'});
       // #endregion
     }
     // RECOVERY: Stuck state - AI moved (lastAIMoveRef true) but setCurrentPlayer never committed
@@ -1274,7 +1275,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const aiEffectData = {isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current};
     console.log('[DEBUG] AI useEffect triggered', aiEffectData);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1170',message:'AI useEffect triggered',data:aiEffectData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    debugIngest({location:'ChessGame.tsx:1170',message:'AI useEffect triggered',data:aiEffectData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
     // #endregion
     // CRITICAL: Check lastAIMoveRef to prevent double moves
     // When AI moves, setCurrentPlayer is async. The useEffect might run again before
@@ -1284,7 +1285,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       isAIMovingRef.current = true;
       console.log('[DEBUG] AI useEffect starting AI move', {difficulty,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1175',message:'AI useEffect starting AI move',data:{difficulty,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      debugIngest({location:'ChessGame.tsx:1175',message:'AI useEffect starting AI move',data:{difficulty,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       // #endregion
       if (difficulty === 'easy') {
         // Easy: random move
@@ -1323,7 +1324,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 const stockfishMoveData = {moveObj,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
                 console.log('[DEBUG] AI making valid Stockfish move', stockfishMoveData);
                 // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1210',message:'AI making valid Stockfish move',data:stockfishMoveData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                debugIngest({location:'ChessGame.tsx:1210',message:'AI making valid Stockfish move',data:stockfishMoveData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
                 // #endregion
                 makeMove(moveObj.from, moveObj.to, true);
               } else {
@@ -1331,7 +1332,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 const fallbackData = {isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
                 console.log('[DEBUG] AI invalid move fallback', fallbackData);
                 // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1212',message:'AI invalid move fallback',data:fallbackData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                debugIngest({location:'ChessGame.tsx:1212',message:'AI invalid move fallback',data:fallbackData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
                 // #endregion
                 const fallbackMove = getRandomAIMove(boardRef.current);
                 if (fallbackMove) {
@@ -1364,7 +1365,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           const errorData = {error:error?.message,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
           console.log('[DEBUG] AI Stockfish API error', errorData);
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1238',message:'AI Stockfish API error',data:errorData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          debugIngest({location:'ChessGame.tsx:1238',message:'AI Stockfish API error',data:errorData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
           // #endregion
           // Check if it's a DNS/network error
           const isNetworkError = error?.message?.includes('Failed to fetch') || 
@@ -1387,7 +1388,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           const errorResetData = {isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
           console.log('[DEBUG] AI error fallback flags reset', errorResetData);
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e2a7d14a-30cd-4ed1-a169-f9e947c14591',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChessGame.tsx:1257',message:'AI error fallback flags reset',data:errorResetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          debugIngest({location:'ChessGame.tsx:1257',message:'AI error fallback flags reset',data:errorResetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
           // #endregion
         });
       }
