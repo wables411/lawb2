@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { useLocation } from 'react-router-dom';
 import { database } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast, get } from 'firebase/database';
 import { getDisplayName as getDisplayNameUtil } from '../utils/displayName';
 import { firebaseProfiles } from '../firebaseProfiles';
+import {
+  sendClawbMessage,
+  listenToClawbResponses,
+  listenToVisitorMessages as listenToClawbVisitorMessages,
+  listenToClawbStatus,
+  type ClawbChatMessage,
+  type ClawbStatus,
+} from '../firebaseClawb';
 // Removed blocking connection test - loading data directly with timeout
 import './ChessChat.css';
 
@@ -25,6 +34,8 @@ interface ChessChatProps {
   isDraggable?: boolean;
   isResizable?: boolean;
   isMobile?: boolean;
+  /** Which tab to show when the chat opens. Defaults to 'public'. */
+  initialTab?: 'public' | 'clawb';
 }
 
 export const ChessChat: React.FC<ChessChatProps> = ({
@@ -33,9 +44,11 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   currentInviteCode,
   isDraggable = true,
   isResizable = true,
-  isMobile = false
+  isMobile = false,
+  initialTab = 'public'
 }) => {
   const { address: walletAddress, isConnected } = useAccount();
+  const location = useLocation();
   
   // Always false - no Base Mini App support
   const isBaseMiniApp = false;
@@ -43,12 +56,19 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [currentRoom, setCurrentRoom] = useState<'public' | 'private'>('public');
+  const [currentRoom, setCurrentRoom] = useState<'public' | 'private' | 'clawb'>('public');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [displayNameMap, setDisplayNameMap] = useState<Record<string, string>>({});
   const [profilePictureMap, setProfilePictureMap] = useState<Record<string, string>>({});
+
+  // Clawb chat state
+  const [clawbStatus, setClawbStatus] = useState<ClawbStatus | null>(null);
+  const [clawbMessages, setClawbMessages] = useState<ClawbChatMessage[]>([]);
+  const [clawbVisitorMessages, setClawbVisitorMessages] = useState<ClawbChatMessage[]>([]);
+  const [clawbInput, setClawbInput] = useState('');
+  const [clawbSending, setClawbSending] = useState(false);
   
   // Draggable/Resizable state
   const [position, setPosition] = useState({ x: 20, y: 20 });
@@ -218,6 +238,69 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
   }, [isOpen, currentRoom, currentInviteCode, isMobile]);
   
+  // --- Clawb tab: Firebase subscriptions ---
+  // Always subscribe to status when chat is open (for the tab status dot)
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = listenToClawbStatus(setClawbStatus);
+    return unsub;
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || currentRoom !== 'clawb') return;
+    const unsub = listenToClawbResponses(setClawbMessages);
+    return unsub;
+  }, [isOpen, currentRoom]);
+
+  useEffect(() => {
+    if (!isOpen || currentRoom !== 'clawb') return;
+    const unsub = listenToClawbVisitorMessages(setClawbVisitorMessages);
+    return unsub;
+  }, [isOpen, currentRoom]);
+
+  // Merged Clawb display messages
+  const clawbDisplayMessages = React.useMemo(() => {
+    const merged: { id: string; author: string; message: string; timestamp: number; isClawb: boolean }[] = [];
+    for (const msg of clawbMessages) {
+      merged.push({
+        id: msg.id,
+        author: 'Clawb',
+        message: msg.message,
+        timestamp: typeof msg.timestamp === 'number' ? msg.timestamp : 0,
+        isClawb: true,
+      });
+    }
+    for (const msg of clawbVisitorMessages) {
+      merged.push({
+        id: msg.id,
+        author: msg.author === 'anonymous' ? 'anon' : `${msg.author.slice(0, 6)}...${msg.author.slice(-4)}`,
+        message: msg.message,
+        timestamp: typeof msg.timestamp === 'number' ? msg.timestamp : 0,
+        isClawb: false,
+      });
+    }
+    merged.sort((a, b) => a.timestamp - b.timestamp);
+    return merged;
+  }, [clawbMessages, clawbVisitorMessages]);
+
+  // Send message to Clawb
+  const sendClawbMsg = useCallback(async () => {
+    const text = clawbInput.trim();
+    if (!text || clawbSending) return;
+    setClawbSending(true);
+    setClawbInput('');
+    try {
+      const author = walletAddress || 'anonymous';
+      const page = location.pathname;
+      await sendClawbMessage(text, author, page);
+    } catch (err) {
+      console.error('[ClawbChat] Failed to send:', err);
+      setClawbInput(text);
+    } finally {
+      setClawbSending(false);
+    }
+  }, [clawbInput, clawbSending, walletAddress, location.pathname]);
+
   // Send message to Firebase
   const sendMessage = async () => {
     if (!newMessage.trim() || !isConnected || !walletAddress) return;
@@ -321,7 +404,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
   }, [isResizing, resizeStart]);
   
-  // Switch between public and private chat
+  // Switch between public, private, and clawb chat
   const switchToPublic = () => {
     setCurrentRoom('public');
   };
@@ -330,6 +413,10 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     if (currentInviteCode) {
       setCurrentRoom('private');
     }
+  };
+
+  const switchToClawb = () => {
+    setCurrentRoom('clawb');
   };
   
   // Effects
@@ -362,6 +449,13 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Scroll to bottom when Clawb messages update
+  useEffect(() => {
+    if (currentRoom === 'clawb') {
+      scrollToBottom();
+    }
+  }, [clawbDisplayMessages, currentRoom]);
   
   // Fetch display names and profile pictures for all unique wallet addresses in messages
   useEffect(() => {
@@ -415,21 +509,28 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     void fetchDisplayNamesAndPictures();
   }, [messages, displayNameMap]);
   
+  // When initialTab prop changes (e.g. clicking Clawb model), switch to that tab
+  useEffect(() => {
+    if (isOpen && initialTab === 'clawb') {
+      setCurrentRoom('clawb');
+    }
+  }, [initialTab, isOpen]);
+
   // Auto-switch to private chat when in a game, or ensure public when no invite code
   useEffect(() => {
     if (currentInviteCode && currentRoom === 'public') {
       setCurrentRoom('private');
     } else if (!currentInviteCode) {
-      // Always default to public when there's no invite code
-      if (currentRoom !== 'public') {
+      // Default to public when there's no invite code (but not if on clawb tab)
+      if (currentRoom === 'private') {
         setCurrentRoom('public');
       }
     }
   }, [currentInviteCode]);
   
-  // Reset to public room when chat opens without invite code
+  // Reset to public room when chat opens without invite code (but not if on clawb tab)
   useEffect(() => {
-    if (isOpen && !currentInviteCode && currentRoom !== 'public') {
+    if (isOpen && !currentInviteCode && currentRoom === 'private') {
       setCurrentRoom('public');
     }
   }, [isOpen, currentInviteCode, currentRoom]);
@@ -586,7 +687,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           className={`chat-tab ${currentRoom === 'public' ? 'active' : ''}`}
           onClick={switchToPublic}
         >
-          Public
+          Public Chat
         </button>
         {currentInviteCode && (
           <button
@@ -596,128 +697,210 @@ export const ChessChat: React.FC<ChessChatProps> = ({
             Game
           </button>
         )}
-      </div>
-      
-      {/* Messages Area */}
-      <div className="chat-messages">
-        {/* Connection Status */}
-        {connectionStatus === 'checking' && (
-          <div className="chat-status" style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
-            Checking connection...
-          </div>
-        )}
-        {connectionStatus === 'disconnected' && !error && (
-          <div className="chat-status" style={{ padding: '10px', textAlign: 'center', color: '#d00', fontWeight: 'bold' }}>
-            ⚠️ Disconnected from Firebase
-          </div>
-        )}
-        
-        {isLoading && (
-          <div className="chat-loading" style={{ padding: '10px', textAlign: 'center' }}>
-            Loading messages... {connectionStatus === 'checking' && '(Testing connection)'}
-          </div>
-        )}
-        
-        {error && (
-          <div className="chat-error" style={{ 
-            padding: '15px', 
-            margin: '10px', 
-            background: '#fee', 
-            border: '1px solid #fcc',
-            borderRadius: '4px',
-            textAlign: 'center'
-          }}>
-            <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>{error}</div>
-            <button
-              onClick={() => {
-                setError(null);
-                void loadMessages();
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold'
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
-        
-        {!isConnected && (
-          <div className="chat-notice">
-            Connect your wallet to send messages
-          </div>
-        )}
-        
-        {messages.map((message) => {
-          const walletAddr = message.walletAddress?.toLowerCase() || '';
-          const displayName = displayNameMap[walletAddr] || message.displayName;
-          const profilePicture = profilePictureMap[walletAddr] || '/images/sticker4.png';
-          return (
-            <div key={message.id} className="chat-message">
-              <div className="message-header">
-                {!isMobile && (
-                  <img 
-                    src={profilePicture}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.src = '/images/sticker4.png';
-                    }}
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '0',
-                      objectFit: 'cover',
-                      border: '2px solid rgba(0, 0, 0, 0.3)',
-                      marginRight: '10px',
-                      flexShrink: 0,
-                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
-                    }}
-                  />
-                )}
-                <span className="message-author">
-                  {displayName}
-                </span>
-                <span className="message-time">
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-              <div className="message-content">
-                {message.message}
-              </div>
-            </div>
-          );
-        })}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Input Area */}
-      <div className="chat-input-area">
-        <input
-          ref={inputRef}
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder={isConnected ? "Type your message..." : "Connect wallet to chat"}
-          disabled={!isConnected}
-          className="chat-input"
-        />
         <button
-          onClick={() => void sendMessage()}
-          disabled={!isConnected || !newMessage.trim()}
-          className="chat-send-btn"
+          className={`chat-tab ${currentRoom === 'clawb' ? 'active' : ''}`}
+          onClick={switchToClawb}
         >
-          Send
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            Clawb
+            <span
+              className={`clawb-tab-status-dot ${clawbStatus?.online ? 'online' : 'offline'}`}
+              title={clawbStatus?.online ? (clawbStatus.current_activity || 'online') : 'offline'}
+            />
+          </span>
         </button>
       </div>
+      
+      {/* Messages Area — Public / Private */}
+      {currentRoom !== 'clawb' && (
+        <>
+          <div className="chat-messages">
+            {/* Connection Status */}
+            {connectionStatus === 'checking' && (
+              <div className="chat-status" style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+                Checking connection...
+              </div>
+            )}
+            {connectionStatus === 'disconnected' && !error && (
+              <div className="chat-status" style={{ padding: '10px', textAlign: 'center', color: '#d00', fontWeight: 'bold' }}>
+                ⚠️ Disconnected from Firebase
+              </div>
+            )}
+            
+            {isLoading && (
+              <div className="chat-loading" style={{ padding: '10px', textAlign: 'center' }}>
+                Loading messages... {connectionStatus === 'checking' && '(Testing connection)'}
+              </div>
+            )}
+            
+            {error && (
+              <div className="chat-error" style={{ 
+                padding: '15px', 
+                margin: '10px', 
+                background: '#fee', 
+                border: '1px solid #fcc',
+                borderRadius: '4px',
+                textAlign: 'center'
+              }}>
+                <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>{error}</div>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    void loadMessages();
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            
+            {!isConnected && (
+              <div className="chat-notice">
+                Connect your wallet to send messages
+              </div>
+            )}
+            
+            {messages.map((message) => {
+              const walletAddr = message.walletAddress?.toLowerCase() || '';
+              const displayName = displayNameMap[walletAddr] || message.displayName;
+              const profilePicture = profilePictureMap[walletAddr] || '/images/sticker4.png';
+              return (
+                <div key={message.id} className="chat-message">
+                  <div className="message-header">
+                    {!isMobile && (
+                      <img 
+                        src={profilePicture}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.src = '/images/sticker4.png';
+                        }}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '0',
+                          objectFit: 'cover',
+                          border: '2px solid rgba(0, 0, 0, 0.3)',
+                          marginRight: '10px',
+                          flexShrink: 0,
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
+                        }}
+                      />
+                    )}
+                    <span className="message-author">
+                      {displayName}
+                    </span>
+                    <span className="message-time">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="message-content">
+                    {message.message}
+                  </div>
+                </div>
+              );
+            })}
+            
+            <div ref={messagesEndRef} />
+          </div>
+          
+          {/* Input Area — Public / Private */}
+          <div className="chat-input-area">
+            <input
+              ref={inputRef}
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={isConnected ? "Type your message..." : "Connect wallet to chat"}
+              disabled={!isConnected}
+              className="chat-input"
+            />
+            <button
+              onClick={() => void sendMessage()}
+              disabled={!isConnected || !newMessage.trim()}
+              className="chat-send-btn"
+            >
+              Send
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Messages Area — Clawb */}
+      {currentRoom === 'clawb' && (
+        <>
+          <div className="chat-messages clawb-messages">
+            {clawbDisplayMessages.length === 0 && (
+              <div className="clawb-chat-welcome-inline">
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🦞</div>
+                <div>the sea remembers. ask me anything about lawb.xyz, chess, minting, or just say hi.</div>
+              </div>
+            )}
+
+            {clawbDisplayMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`chat-message clawb-msg ${msg.isClawb ? 'clawb-author' : 'visitor-author'}`}
+              >
+                <div className="message-header">
+                  <span className="message-author" style={msg.isClawb ? { color: '#48bb78' } : undefined}>
+                    {msg.isClawb ? '🦞 Clawb' : msg.author}
+                  </span>
+                  {msg.timestamp > 0 && (
+                    <span className="message-time">
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+                <div className="message-content" style={msg.isClawb ? {
+                  fontFamily: '"Orbitron", "Share Tech Mono", "Liberation Mono", monospace',
+                  fontSize: '11px',
+                  paddingLeft: '0',
+                } : { paddingLeft: '0' }}>
+                  {msg.message}
+                </div>
+              </div>
+            ))}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area — Clawb */}
+          <div className="chat-input-area">
+            <input
+              type="text"
+              value={clawbInput}
+              onChange={(e) => setClawbInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendClawbMsg();
+                }
+              }}
+              placeholder={clawbStatus?.online ? 'ask clawb something...' : 'clawb is offline — leave a message'}
+              disabled={clawbSending}
+              className="chat-input"
+            />
+            <button
+              onClick={() => void sendClawbMsg()}
+              disabled={!clawbInput.trim() || clawbSending}
+              className="chat-send-btn"
+            >
+              {clawbSending ? '...' : 'Send'}
+            </button>
+          </div>
+        </>
+      )}
       
       {/* Resize Handle */}
       {isResizable && !isBaseMiniApp && (

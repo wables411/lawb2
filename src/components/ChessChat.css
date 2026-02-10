@@ -416,6 +416,47 @@
   }
 }
 
+/* --- Clawb tab styles --- */
+
+/* Status dot in the Clawb tab label */
+.clawb-tab-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.clawb-tab-status-dot.online {
+  background-color: #48bb78;
+  box-shadow: 0 0 4px #48bb78;
+}
+
+.clawb-tab-status-dot.offline {
+  background-color: #a0aec0;
+}
+
+/* Welcome message inside the Clawb messages area */
+.clawb-chat-welcome-inline {
+  text-align: center;
+  padding: 28px 16px;
+  color: #a0aec0;
+  font-style: italic;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Clawb author messages get a subtle green-tinted left border */
+.clawb-msg.clawb-author {
+  border-left: 3px solid #48bb78;
+}
+
+/* Visitor messages in clawb chat get a blue-tinted left border */
+.clawb-msg.visitor-author {
+  border-left: 3px solid #4299e1;
+}
+
 /* Mobile chat styles */
 .chess-chat-window {
   z-index: 999998 !important; /* Below navbar (999999) */

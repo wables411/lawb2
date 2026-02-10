@@ -57,7 +57,11 @@ export interface ClawbHandle {
   cycleAnimation: () => void;
 }
 
-const Clawb = forwardRef<ClawbHandle>((_, ref) => {
+interface ClawbProps {
+  onChatOpen?: () => void;
+}
+
+const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onChatOpen }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -428,6 +432,7 @@ const Clawb = forwardRef<ClawbHandle>((_, ref) => {
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!pointerDownRef.current) return;
+    const wasDragging = isDraggingRef.current;
     try {
       (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
     } catch {
@@ -435,7 +440,12 @@ const Clawb = forwardRef<ClawbHandle>((_, ref) => {
     }
     pointerDownRef.current = false;
     isDraggingRef.current = false;
-  }, []);
+
+    // Non-drag click → open chat
+    if (!wasDragging && onChatOpen) {
+      onChatOpen();
+    }
+  }, [onChatOpen]);
 
   useImperativeHandle(ref, () => ({
     cycleAnimation,
@@ -698,7 +708,7 @@ const Clawb = forwardRef<ClawbHandle>((_, ref) => {
           onPointerLeave={handlePointerUp}
           role="button"
           tabIndex={0}
-          aria-label="Clawb - drag to rotate"
+          aria-label="Clawb - click to chat, drag to rotate"
           style={{
             position: 'absolute',
             inset: 0,

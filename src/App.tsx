@@ -61,7 +61,7 @@ function App() {
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
-
+  const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -264,8 +264,19 @@ function App() {
   };
 
   const openPublicChat = useCallback(() => {
+    setChatInitialTab('public');
     setShowPublicChat(true);
     setShowWalletMenu(false);
+  }, []);
+
+  const openClawbChat = useCallback(() => {
+    setChatInitialTab('clawb');
+    setShowPublicChat(true);
+    setMinimizedPopups(prev => {
+      const newSet = new Set(prev);
+      newSet.delete('chat-popup');
+      return newSet;
+    });
   }, []);
 
 
@@ -438,9 +449,9 @@ function App() {
         onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
 
-      {/* Clawb - 3D helper in bottom-right, desktop only; click Clawb nav button to cycle */}
+      {/* Clawb - 3D helper in bottom-right; click to chat, nav button to cycle animation */}
       <Suspense fallback={null}>
-        <Clawb ref={clawbRef} />
+        <Clawb ref={clawbRef} onChatOpen={openClawbChat} />
       </Suspense>
 
       {/* Public Chat - Functional Firebase Chat Component */}
@@ -452,6 +463,7 @@ function App() {
           isDraggable={true}
           isResizable={true}
           isMobile={false}
+          initialTab={chatInitialTab}
         />
       </Suspense>
 
