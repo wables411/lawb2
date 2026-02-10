@@ -13,6 +13,7 @@ import { lazy, Suspense } from 'react';
 
 // Lazy load components
 const ChessPage = lazy(() => import('./components/ChessPage'));
+const ClawbWorld = lazy(() => import('./components/ClawbWorld'));
 
 import { wagmiAdapter, initializeAppKit } from './appkit.ts';
 import { config as wagmiConfig } from './wagmi';
@@ -93,6 +94,11 @@ const AppWithWagmi = () => {
                 <Route path="/chess" element={
                   <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
                     <ChessPage />
+                  </Suspense>
+                } />
+                <Route path="/world" element={
+                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px', background: '#0a1628', color: '#e2e8f0' }}>Entering Clawb's World...</div>}>
+                    <ClawbWorld />
                   </Suspense>
                 } />
               </>

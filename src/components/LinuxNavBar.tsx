@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
+
+const RetakeLiveBadge = lazy(() => import('./RetakeLiveBadge'));
 
 interface LinuxNavBarStyleProps {
   isOpen: boolean;
@@ -303,6 +305,9 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
               </span>
             )}
           </div>
+          <Suspense fallback={null}>
+            <RetakeLiveBadge />
+          </Suspense>
           <div className={classes.clock}>
             {formatTime(currentTime)}
           </div>

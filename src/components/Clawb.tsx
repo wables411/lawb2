@@ -53,15 +53,29 @@ const getBubbleText = (url: string): string | null => {
   return null;
 };
 
+export type EmoteAnimationId = 'idle' | 'dance1' | 'dance2' | 'dance3' | 'walk' | 'death';
+
+/** Map emote IDs to animation sequence indices */
+const EMOTE_INDEX_MAP: Record<EmoteAnimationId, number> = {
+  idle: 0,
+  dance1: 1,
+  dance2: 4,
+  dance3: 8,
+  walk: 2,
+  death: 10,
+};
+
 export interface ClawbHandle {
   cycleAnimation: () => void;
+  playEmote: (emoteId: EmoteAnimationId) => void;
 }
 
 interface ClawbProps {
-  onChatOpen?: () => void;
+  /** Called when Clawb is clicked (non-drag) — receives screen position for emote wheel */
+  onClawbClick?: (screenPos: { x: number; y: number }) => void;
 }
 
-const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onChatOpen }, ref) => {
+const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -441,15 +455,58 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onChatOpen }, ref) => {
     pointerDownRef.current = false;
     isDraggingRef.current = false;
 
-    // Non-drag click → open chat
-    if (!wasDragging && onChatOpen) {
-      onChatOpen();
+    // Non-drag click → open emote wheel at Clawb's position
+    if (!wasDragging && onClawbClick) {
+      // Calculate screen position of the model's head
+      if (modelRef.current && cameraRef.current && containerRef.current) {
+        const headPos = new THREE.Vector3(
+          modelRef.current.position.x,
+          modelRef.current.position.y + 2,
+          0
+        );
+        headPos.project(cameraRef.current);
+        const rect = containerRef.current.getBoundingClientRect();
+        const screenX = ((headPos.x + 1) / 2) * rect.width + rect.left;
+        const screenY = ((-headPos.y + 1) / 2) * rect.height + rect.top;
+        onClawbClick({ x: screenX, y: screenY });
+      } else {
+        // Fallback: use pointer position
+        onClawbClick({ x: e.clientX, y: e.clientY - 120 });
+      }
     }
-  }, [onChatOpen]);
+  }, [onClawbClick]);
+
+  const playEmote = useCallback(async (emoteId: EmoteAnimationId) => {
+    const targetIndex = EMOTE_INDEX_MAP[emoteId];
+    if (targetIndex === undefined) return;
+
+    // If it's a walk animation, start walk mode
+    if (WALK_INDICES.has(targetIndex)) {
+      animationIndexRef.current = targetIndex;
+      startWalkMode();
+      return;
+    }
+
+    // Otherwise load and play the specific animation
+    const url = ANIMATION_SEQUENCE[targetIndex];
+    const stayX = modelRef.current?.position.x;
+    const bubbleTextVal = getBubbleText(url);
+    try {
+      const object = await loadModel(url);
+      await displayModel(object, {
+        ...(stayX !== undefined ? { positionX: stayX } : {}),
+        bubbleText: bubbleTextVal,
+      });
+      animationIndexRef.current = targetIndex;
+    } catch (err) {
+      console.warn('[Clawb] Failed to play emote:', emoteId, err);
+    }
+  }, [loadModel, displayModel, startWalkMode]);
 
   useImperativeHandle(ref, () => ({
     cycleAnimation,
-  }), [cycleAnimation]);
+    playEmote,
+  }), [cycleAnimation, playEmote]);
 
   const animate = useCallback(() => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
@@ -708,7 +765,7 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onChatOpen }, ref) => {
           onPointerLeave={handlePointerUp}
           role="button"
           tabIndex={0}
-          aria-label="Clawb - click to chat, drag to rotate"
+          aria-label="Clawb - click to open emote wheel, drag to rotate"
           style={{
             position: 'absolute',
             inset: 0,

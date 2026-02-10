@@ -14,13 +14,15 @@ import { ChessPieceSetProvider } from './contexts/ChessPieceSetContext';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
-import type { ClawbHandle } from './components/Clawb';
+import type { ClawbHandle, EmoteAnimationId } from './components/Clawb';
 const Clawb = lazy(() => import('./components/Clawb'));
+const ClawbEmoteWheel = lazy(() => import('./components/ClawbEmoteWheel'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 const ChessChat = lazy(() => import('./components/ChessChat').then(m => ({ default: m.ChessChat })));
 const ChessPieceInfo = lazy(() => import('./components/ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
+const WorldBackground = lazy(() => import('./components/WorldBackground'));
 
 const useStyles = createUseStyles({
   body: {
@@ -62,6 +64,8 @@ function App() {
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
+  const [emoteWheelOpen, setEmoteWheelOpen] = useState(false);
+  const [emoteWheelPos, setEmoteWheelPos] = useState({ x: 0, y: 0 });
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -279,6 +283,33 @@ function App() {
     });
   }, []);
 
+  const handleClawbClick = useCallback((screenPos: { x: number; y: number }) => {
+    setEmoteWheelPos(screenPos);
+    setEmoteWheelOpen(prev => !prev);
+  }, []);
+
+  const handleEmoteSelect = useCallback((segmentId: string) => {
+    setEmoteWheelOpen(false);
+    switch (segmentId) {
+      case 'help':
+        openClawbChat();
+        break;
+      case 'world':
+        navigate('/world');
+        break;
+      case 'idle':
+      case 'dance1':
+      case 'dance2':
+      case 'dance3':
+      case 'walk':
+      case 'death':
+        clawbRef.current?.playEmote(segmentId as EmoteAnimationId);
+        break;
+      default:
+        break;
+    }
+  }, [openClawbChat, navigate]);
+
 
 
   const walletButton = (
@@ -368,6 +399,11 @@ function App() {
   return (
     <ChessPieceSetProvider>
       <div className={classes.body}>
+      {/* Clawb's World — 3D underwater desktop background */}
+      <Suspense fallback={null}>
+        <WorldBackground />
+      </Suspense>
+
       {showChessLoading && (
         <div style={{
           position: 'fixed',
@@ -449,9 +485,19 @@ function App() {
         onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
 
-      {/* Clawb - 3D helper in bottom-right; click to chat, nav button to cycle animation */}
+      {/* Clawb - 3D helper in bottom-right; click for emote wheel, nav button to cycle animation */}
       <Suspense fallback={null}>
-        <Clawb ref={clawbRef} onChatOpen={openClawbChat} />
+        <Clawb ref={clawbRef} onClawbClick={handleClawbClick} />
+      </Suspense>
+
+      {/* Clawb Emote Wheel — radial menu */}
+      <Suspense fallback={null}>
+        <ClawbEmoteWheel
+          isOpen={emoteWheelOpen}
+          onClose={() => setEmoteWheelOpen(false)}
+          onSelect={handleEmoteSelect}
+          position={emoteWheelPos}
+        />
       </Suspense>
 
       {/* Public Chat - Functional Firebase Chat Component */}
