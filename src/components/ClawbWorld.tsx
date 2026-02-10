@@ -23,7 +23,17 @@ const ROOM_OFFSETS: Record<string, THREE.Vector3> = {
   vault: new THREE.Vector3(0, 0, -25),
 };
 
-const ROOM_FILES: Record<string, string> = {
+// Firebase RTDB URLs for live world state (synced from Clawb's machine every 60s)
+const FIREBASE_DB = 'https://chess-220ee-default-rtdb.firebaseio.com';
+const ROOM_URLS: Record<string, string> = {
+  main: `${FIREBASE_DB}/world/main.json`,
+  bedroom: `${FIREBASE_DB}/world/bedroom.json`,
+  workshop: `${FIREBASE_DB}/world/workshop.json`,
+  vault: `${FIREBASE_DB}/world/vault.json`,
+};
+
+// Fallback to static files if Firebase is unavailable
+const ROOM_FILES_FALLBACK: Record<string, string> = {
   main: '/world/world-state-main.json',
   bedroom: '/world/world-state-bedroom.json',
   workshop: '/world/world-state-workshop.json',
@@ -235,15 +245,28 @@ const ClawbWorld: React.FC = () => {
     scene.add(bubbles);
     bubblesRef.current = bubbles;
 
-    // Load all rooms
-    for (const [roomName, filePath] of Object.entries(ROOM_FILES)) {
+    // Load all rooms (Firebase first, fallback to static files)
+    for (const [roomName, firebaseUrl] of Object.entries(ROOM_URLS)) {
       const offset = ROOM_OFFSETS[roomName];
-      fetch(filePath)
+      fetch(firebaseUrl)
         .then((res) => res.json())
         .then((data: WorldState) => {
-          renderWorldState(scene, data, offset);
+          if (data && data.objects) {
+            renderWorldState(scene, data, offset);
+          } else {
+            throw new Error('Invalid Firebase response');
+          }
         })
-        .catch((err) => console.warn(`[ClawbWorld] Failed to load ${roomName}:`, err));
+        .catch(() => {
+          // Fallback to static file
+          const fallback = ROOM_FILES_FALLBACK[roomName];
+          if (fallback) {
+            fetch(fallback)
+              .then((res) => res.json())
+              .then((data: WorldState) => renderWorldState(scene, data, offset))
+              .catch((err) => console.warn(`[ClawbWorld] Failed to load ${roomName}:`, err));
+          }
+        });
     }
 
     // Load Clawb NPC

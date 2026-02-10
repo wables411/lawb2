@@ -60,6 +60,14 @@
         ".validate": "newData.hasChildren(['wallet_address']) && newData.child('wallet_address').isString() && $username.length >= 3 && $username.length <= 20"
       }
     },
+    "world": {
+      ".read": true,
+      ".write": true
+    },
+    "clawb": {
+      ".read": true,
+      ".write": true
+    },
     "$other": {
       ".read": false,
       ".write": false
