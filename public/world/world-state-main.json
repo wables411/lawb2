@@ -1,0 +1,1191 @@
+{
+  "version": 1,
+  "objectCount": 74,
+  "objects": [
+    {
+      "id": "obj_9",
+      "type": "coral_branch",
+      "position": [
+        -1.5,
+        -2.8,
+        -1.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_10",
+      "type": "rock_boulder",
+      "position": [
+        1.8,
+        -2.9,
+        -2.0
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_11",
+      "type": "treasure_chest",
+      "position": [
+        0.5,
+        -2.8,
+        -2.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_12",
+      "type": "anemone",
+      "position": [
+        -0.8,
+        -2.7,
+        -1.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_13",
+      "type": "starfish",
+      "position": [
+        2.2,
+        -2.9,
+        -1.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_14",
+      "type": "seagrass",
+      "position": [
+        0,
+        -3.2,
+        -2.6
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_15",
+      "type": "rock_cluster",
+      "position": [
+        -0.7,
+        -2.8,
+        -2.1
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_16",
+      "type": "rock_cluster",
+      "position": [
+        2.9,
+        -3,
+        -2.3
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_17",
+      "type": "coral_fan",
+      "position": [
+        1.1,
+        -2.8,
+        0.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_18",
+      "type": "coral_tube",
+      "position": [
+        -2.6,
+        -2.9,
+        -2.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_19",
+      "type": "bubbler",
+      "position": [
+        0.2,
+        -3.2,
+        -1.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_20",
+      "type": "rock_slab",
+      "position": [
+        1.3,
+        -2.8,
+        -1.4
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_21",
+      "type": "anemone",
+      "position": [
+        -1.2,
+        -2.7,
+        -0.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_22",
+      "type": "coral_branch",
+      "position": [
+        -2.9,
+        -3.1,
+        -2.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_23",
+      "type": "rock_boulder",
+      "position": [
+        2.3,
+        -2.9,
+        -1.7
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_24",
+      "type": "seagrass",
+      "position": [
+        0.8,
+        -3,
+        -2.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_25",
+      "type": "coral_brain",
+      "position": [
+        -1.8,
+        -3.2,
+        -2.6
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_26",
+      "type": "rock_cluster",
+      "position": [
+        2.3,
+        -2.6,
+        -1.9
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_27",
+      "type": "coral_tube",
+      "position": [
+        -1.9,
+        -3.2,
+        -2.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_28",
+      "type": "rock_boulder",
+      "position": [
+        1.7,
+        -3,
+        -1.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_29",
+      "type": "coral_brain",
+      "position": [
+        -2.1,
+        -3.1,
+        -2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_30",
+      "type": "coral_bulb",
+      "position": [
+        -2.4,
+        -3,
+        -2.1
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_31",
+      "type": "rock_boulder",
+      "position": [
+        2,
+        -2.8,
+        -2.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_32",
+      "type": "rock_cluster",
+      "position": [
+        2.1,
+        -2.7,
+        -2.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_33",
+      "type": "starfish",
+      "position": [
+        2.4,
+        -3.2,
+        -0.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_34",
+      "type": "bubbler",
+      "position": [
+        0.5,
+        -2.6,
+        -1.9
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_35",
+      "type": "seagrass",
+      "position": [
+        0.6,
+        -2.9,
+        -2.6
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_36",
+      "type": "coral_tube",
+      "position": [
+        -1.5,
+        -2.7,
+        -2.1
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_37",
+      "type": "anemone",
+      "position": [
+        1.1,
+        -3,
+        -3.3
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_38",
+      "type": "shell",
+      "position": [
+        1.1,
+        -3,
+        -0.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_39",
+      "type": "shell",
+      "position": [
+        2.3,
+        -2.8,
+        -0.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_40",
+      "type": "rock_boulder",
+      "position": [
+        2.1,
+        -2.8,
+        -2.9
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_41",
+      "type": "rock_cluster",
+      "position": [
+        1.9,
+        -2.7,
+        -2.7
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_42",
+      "type": "seagrass",
+      "position": [
+        -1.6,
+        -2.6,
+        -2.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_43",
+      "type": "starfish",
+      "position": [
+        1,
+        -3.2,
+        -0.7
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_44",
+      "type": "coral_brain",
+      "position": [
+        -2.6,
+        -2.6,
+        -1.3
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_45",
+      "type": "starfish",
+      "position": [
+        2,
+        -3.2,
+        -0.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_46",
+      "type": "treasure_chest",
+      "position": [
+        2.3,
+        -2.9,
+        -0.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_47",
+      "type": "coral_brain",
+      "position": [
+        -1.4,
+        -2.5,
+        -2.3
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_48",
+      "type": "rock_cluster",
+      "position": [
+        -0.3,
+        -2.7,
+        -2.3
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_49",
+      "type": "bubbler",
+      "position": [
+        -0.6,
+        -2.6,
+        -2.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_50",
+      "type": "coral_fan",
+      "position": [
+        -0.1,
+        -2.9,
+        -0.7
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_51",
+      "type": "starfish",
+      "position": [
+        1.2,
+        -3.2,
+        0
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_52",
+      "type": "shell",
+      "position": [
+        -2.6,
+        -3,
+        -2.6
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_53",
+      "type": "starfish",
+      "position": [
+        2.9,
+        -2.9,
+        -0.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_54",
+      "type": "coral_fan",
+      "position": [
+        -0.8,
+        -3,
+        -1.1
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_55",
+      "type": "coral_tube",
+      "position": [
+        -2.4,
+        -2.5,
+        -2.6
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.0
+    },
+    {
+      "id": "obj_56",
+      "type": "treasure_chest",
+      "position": [
+        2.5,
+        -2.9,
+        -2.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1
+    },
+    {
+      "id": "obj_57",
+      "type": "seagrass",
+      "position": [
+        2.3,
+        -3.1,
+        -2.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1
+    },
+    {
+      "id": "obj_58",
+      "type": "seagrass",
+      "position": [
+        2.7,
+        -3,
+        -2.9
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1
+    },
+    {
+      "id": "obj_59",
+      "type": "coral_branch",
+      "position": [
+        2.6,
+        -2.7,
+        -2.6
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1
+    },
+    {
+      "id": "obj_60",
+      "type": "coral_brain",
+      "position": [
+        0,
+        -3,
+        -1.5
+      ],
+      "color": "#ff6699",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 4.5
+    },
+    {
+      "id": "obj_61",
+      "type": "coral_tube",
+      "position": [
+        -2.5,
+        -2.5,
+        -1.8
+      ],
+      "color": "#00ffcc",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 5
+    },
+    {
+      "id": "obj_62",
+      "type": "coral_tube",
+      "position": [
+        2.5,
+        -2.5,
+        -1.8
+      ],
+      "color": "#0099ff",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 5
+    },
+    {
+      "id": "obj_63",
+      "type": "coral_fan",
+      "position": [
+        -2.8,
+        -2.2,
+        -1
+      ],
+      "color": "#ff8844",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 3.5
+    },
+    {
+      "id": "obj_64",
+      "type": "coral_fan",
+      "position": [
+        2.8,
+        -2.2,
+        -1
+      ],
+      "color": "#ffaa44",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 3.5
+    },
+    {
+      "id": "obj_65",
+      "type": "coral_brain",
+      "position": [
+        -2.8,
+        -2.8,
+        -2.8
+      ],
+      "color": "#8844ff",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 6
+    },
+    {
+      "id": "obj_66",
+      "type": "coral_brain",
+      "position": [
+        2.8,
+        -2.8,
+        -2.8
+      ],
+      "color": "#ff44aa",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 6
+    },
+    {
+      "id": "obj_67",
+      "type": "rock_boulder",
+      "position": [
+        -2.9,
+        -2.9,
+        -2.5
+      ],
+      "color": "#3a4a6a",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 4.5
+    },
+    {
+      "id": "obj_68",
+      "type": "rock_boulder",
+      "position": [
+        2.9,
+        -2.9,
+        -2.5
+      ],
+      "color": "#4a5a7a",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 4.5
+    },
+    {
+      "id": "obj_69",
+      "type": "seagrass",
+      "position": [
+        -1.5,
+        -1.8,
+        -1.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 3
+    },
+    {
+      "id": "obj_70",
+      "type": "seagrass",
+      "position": [
+        1.5,
+        -1.8,
+        -1.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 3
+    },
+    {
+      "id": "obj_71",
+      "type": "seagrass",
+      "position": [
+        0,
+        -1.8,
+        -2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 3.5
+    },
+    {
+      "id": "obj_72",
+      "type": "rock_slab",
+      "position": [
+        -1.5,
+        -2.2,
+        -2.5
+      ],
+      "color": "#2a3a4a",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 4
+    },
+    {
+      "id": "obj_73",
+      "type": "coral_fan",
+      "position": [
+        0.5,
+        -2.5,
+        0.8
+      ],
+      "color": "#ff8844",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 3
+    },
+    {
+      "id": "obj_74",
+      "type": "coral_fan",
+      "position": [
+        -0.8,
+        -2.4,
+        0.9
+      ],
+      "color": "#ffaa66",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 2.8
+    },
+    {
+      "id": "obj_75",
+      "type": "treasure_chest",
+      "position": [
+        1.8,
+        -3,
+        -0.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.5
+    },
+    {
+      "id": "obj_76",
+      "type": "treasure_chest",
+      "position": [
+        -2.2,
+        -3,
+        -1.2
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.3
+    },
+    {
+      "id": "obj_77",
+      "type": "coral_bulb",
+      "position": [
+        -1.5,
+        -2.3,
+        -2.3
+      ],
+      "color": "#00ffaa",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 2
+    },
+    {
+      "id": "obj_78",
+      "type": "coral_branch",
+      "position": [
+        -1.6,
+        -2.6,
+        -2.4
+      ],
+      "color": "#0088ff",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.5
+    },
+    {
+      "id": "obj_79",
+      "type": "coral_branch",
+      "position": [
+        -1.4,
+        -2.5,
+        -2.5
+      ],
+      "color": "#ff4488",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 2
+    },
+    {
+      "id": "obj_80",
+      "type": "coral_bulb",
+      "position": [
+        -1.7,
+        -2.4,
+        -2.6
+      ],
+      "color": "#00ffdd",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 2.5
+    },
+    {
+      "id": "obj_81",
+      "type": "shell",
+      "position": [
+        1.2,
+        -3,
+        0.5
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.5
+    },
+    {
+      "id": "obj_82",
+      "type": "starfish",
+      "position": [
+        -1.5,
+        -3.2,
+        0.8
+      ],
+      "color": null,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.2
+    }
+  ],
+  "nextId": 83
+}
