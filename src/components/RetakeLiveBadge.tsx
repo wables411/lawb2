@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { listenToClawbStatus } from '../firebaseClawb';
 
+const RETAKE_STREAM_URL = 'https://retake.tv/clawb';
+
 const RetakeLiveBadge: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
 
@@ -13,7 +15,7 @@ const RetakeLiveBadge: React.FC = () => {
 
   return (
     <div
-      onClick={() => window.open('https://retake.tv/clawb', '_blank', 'noopener,noreferrer')}
+      onClick={() => window.open(RETAKE_STREAM_URL, '_blank', 'noopener,noreferrer')}
       title={isLive ? 'Clawb is LIVE on Retake TV — click to watch' : 'Retake TV — click to visit'}
       style={{
         display: 'flex',
