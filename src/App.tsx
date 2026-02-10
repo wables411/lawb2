@@ -65,7 +65,6 @@ function App() {
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
   const [emoteWheelOpen, setEmoteWheelOpen] = useState(false);
-  const [emoteWheelPos, setEmoteWheelPos] = useState({ x: 0, y: 0 });
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -283,8 +282,7 @@ function App() {
     });
   }, []);
 
-  const handleClawbClick = useCallback((screenPos: { x: number; y: number }) => {
-    setEmoteWheelPos(screenPos);
+  const handleClawbClick = useCallback(() => {
     setEmoteWheelOpen(prev => !prev);
   }, []);
 
@@ -496,7 +494,6 @@ function App() {
           isOpen={emoteWheelOpen}
           onClose={() => setEmoteWheelOpen(false)}
           onSelect={handleEmoteSelect}
-          position={emoteWheelPos}
         />
       </Suspense>
 

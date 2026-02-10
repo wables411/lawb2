@@ -72,8 +72,8 @@ export interface ClawbHandle {
 }
 
 interface ClawbProps {
-  /** Called when Clawb is clicked (non-drag) — receives screen position for emote wheel */
-  onClawbClick?: (screenPos: { x: number; y: number }) => void;
+  /** Called when Clawb is clicked (non-drag) — toggles emote wheel */
+  onClawbClick?: () => void;
 }
 
 const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
@@ -462,22 +462,7 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
     // Treat as click: either no drag detected, or quick tap (< 300ms even with slight movement)
     const isClick = !wasDragging || elapsed < CLICK_TIME_THRESHOLD_MS;
     if (isClick && onClawbClick) {
-      // Calculate screen position of the model's head
-      if (modelRef.current && cameraRef.current && containerRef.current) {
-        const headPos = new THREE.Vector3(
-          modelRef.current.position.x,
-          modelRef.current.position.y + 2,
-          0
-        );
-        headPos.project(cameraRef.current);
-        const rect = containerRef.current.getBoundingClientRect();
-        const screenX = ((headPos.x + 1) / 2) * rect.width + rect.left;
-        const screenY = ((-headPos.y + 1) / 2) * rect.height + rect.top;
-        onClawbClick({ x: screenX, y: screenY });
-      } else {
-        // Fallback: use pointer position
-        onClawbClick({ x: e.clientX, y: e.clientY - 120 });
-      }
+      onClawbClick();
     }
   }, [onClawbClick]);
 

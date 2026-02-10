@@ -28,15 +28,12 @@ interface ClawbEmoteWheelProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (segmentId: string) => void;
-  /** Screen position (center of where the wheel appears) */
-  position: { x: number; y: number };
 }
 
 const ClawbEmoteWheel: React.FC<ClawbEmoteWheelProps> = ({
   isOpen,
   onClose,
   onSelect,
-  position,
 }) => {
   const wheelRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
@@ -71,19 +68,14 @@ const ClawbEmoteWheel: React.FC<ClawbEmoteWheelProps> = ({
 
   if (!isOpen) return null;
 
-  // Position the wheel so it's centered above the click point
-  // Clamp to viewport so it doesn't go off-screen
-  const wheelX = Math.max(WHEEL_SIZE / 2 + 8, Math.min(window.innerWidth - WHEEL_SIZE / 2 - 8, position.x));
-  const wheelY = Math.max(WHEEL_SIZE / 2 + 8, Math.min(window.innerHeight - WHEEL_SIZE / 2 - 60, position.y - RADIUS - 20));
-
   return (
     <div className="emote-wheel-backdrop" onClick={handleBackdropClick}>
       <div
         ref={wheelRef}
         className="emote-wheel"
         style={{
-          left: wheelX - WHEEL_SIZE / 2,
-          top: wheelY - WHEEL_SIZE / 2,
+          right: 16,
+          top: 16,
           width: WHEEL_SIZE,
           height: WHEEL_SIZE,
         }}

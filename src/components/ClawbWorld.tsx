@@ -37,6 +37,7 @@ const ROOM_LABELS: Record<string, string> = {
   vault: 'Vault',
 };
 
+const PSX_RESOLUTION_SCALE = 0.35; // Render at ~1/3 res for PSX look (slightly higher than bg for playability)
 const PLAYER_HEIGHT = 0.5;
 const PLAYER_SPEED = 5;
 const WORLD_BOUNDS = 28;
@@ -162,11 +163,11 @@ const ClawbWorld: React.FC = () => {
       if (clawbPosXRef.current > 3) {
         clawbPosXRef.current = 3;
         clawbWalkDirRef.current = -1;
-        clawbRef.current.rotation.y = Math.PI / 2;
+        clawbRef.current.rotation.y = -Math.PI / 2; // Face left
       } else if (clawbPosXRef.current < -3) {
         clawbPosXRef.current = -3;
         clawbWalkDirRef.current = 1;
-        clawbRef.current.rotation.y = -Math.PI / 2;
+        clawbRef.current.rotation.y = Math.PI / 2; // Face right
       }
       clawbRef.current.position.x = clawbPosXRef.current;
 
@@ -193,14 +194,16 @@ const ClawbWorld: React.FC = () => {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // Renderer
+    // Renderer — PSX style: low internal res, no AA
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
-      antialias: true,
+      antialias: false,
       alpha: false,
     });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const psxWidth = Math.floor(width * PSX_RESOLUTION_SCALE);
+    const psxHeight = Math.floor(height * PSX_RESOLUTION_SCALE);
+    renderer.setSize(psxWidth, psxHeight, false);
+    renderer.setPixelRatio(1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     rendererRef.current = renderer;
 
@@ -250,7 +253,7 @@ const ClawbWorld: React.FC = () => {
       (object) => {
         object.scale.setScalar(CLAWB_SCALE);
         object.position.set(0, FLOOR_Y + 0.2, 0);
-        object.rotation.y = -Math.PI / 2;
+        object.rotation.y = Math.PI / 2; // Face right (initial walk direction is +X)
         object.traverse((child: THREE.Object3D) => {
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
@@ -258,6 +261,12 @@ const ClawbWorld: React.FC = () => {
             mats.forEach((m) => {
               m.side = THREE.DoubleSide;
               m.transparent = false;
+              // PSX: nearest-neighbor texture filtering
+              const stdMat = m as THREE.MeshStandardMaterial;
+              if (stdMat.map) {
+                stdMat.map.magFilter = THREE.NearestFilter;
+                stdMat.map.minFilter = THREE.NearestFilter;
+              }
             });
           }
         });
@@ -304,13 +313,17 @@ const ClawbWorld: React.FC = () => {
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
 
-    // Resize
+    // Resize — maintain PSX resolution
     const handleResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      renderer.setSize(
+        Math.floor(w * PSX_RESOLUTION_SCALE),
+        Math.floor(h * PSX_RESOLUTION_SCALE),
+        false
+      );
     };
     window.addEventListener('resize', handleResize);
 

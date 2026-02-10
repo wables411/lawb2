@@ -11,6 +11,7 @@ import {
   type WorldState,
 } from '../utils/worldObjects';
 
+const PSX_RESOLUTION_SCALE = 0.25; // Render at 1/4 res for pixelated PS1 look
 const CAMERA_DRIFT_SPEED = 0.03;
 const CLAWB_WALK_SPEED = 1.2;
 const CLAWB_PATROL_RANGE = 4;
@@ -91,11 +92,11 @@ const WorldBackground: React.FC = () => {
       if (clawbPosXRef.current > CLAWB_PATROL_RANGE) {
         clawbPosXRef.current = CLAWB_PATROL_RANGE;
         clawbWalkDirRef.current = -1;
-        clawbModelRef.current.rotation.y = Math.PI / 2;
+        clawbModelRef.current.rotation.y = -Math.PI / 2; // Face left
       } else if (clawbPosXRef.current < -CLAWB_PATROL_RANGE) {
         clawbPosXRef.current = -CLAWB_PATROL_RANGE;
         clawbWalkDirRef.current = 1;
-        clawbModelRef.current.rotation.y = -Math.PI / 2;
+        clawbModelRef.current.rotation.y = Math.PI / 2; // Face right
       }
       clawbModelRef.current.position.x = clawbPosXRef.current;
     }
@@ -120,15 +121,18 @@ const WorldBackground: React.FC = () => {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // Renderer
+    // Renderer — PSX style: low internal res, no AA, nearest-neighbor upscale
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
       antialias: false,
       alpha: false,
       powerPreference: 'low-power',
     });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    // Render at low resolution, CSS stretches the canvas → pixelated look
+    const psxWidth = Math.floor(width * PSX_RESOLUTION_SCALE);
+    const psxHeight = Math.floor(height * PSX_RESOLUTION_SCALE);
+    renderer.setSize(psxWidth, psxHeight, false);
+    renderer.setPixelRatio(1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     rendererRef.current = renderer;
 
@@ -184,9 +188,9 @@ const WorldBackground: React.FC = () => {
       (object) => {
         object.scale.setScalar(CLAWB_SCALE);
         object.position.set(0, -2.8, 0);
-        object.rotation.y = -Math.PI / 2;
+        object.rotation.y = Math.PI / 2; // Face right (initial walk direction is +X)
 
-        // Fix materials
+        // Fix materials — PSX nearest-neighbor textures
         object.traverse((child: THREE.Object3D) => {
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
@@ -195,6 +199,12 @@ const WorldBackground: React.FC = () => {
               m.side = THREE.DoubleSide;
               (m as THREE.MeshStandardMaterial).opacity = 1;
               m.transparent = false;
+              // PSX: nearest-neighbor texture filtering
+              const stdMat = m as THREE.MeshStandardMaterial;
+              if (stdMat.map) {
+                stdMat.map.magFilter = THREE.NearestFilter;
+                stdMat.map.minFilter = THREE.NearestFilter;
+              }
             });
           }
         });
@@ -218,13 +228,17 @@ const WorldBackground: React.FC = () => {
       (err) => console.warn('[WorldBackground] Failed to load Clawb FBX:', err)
     );
 
-    // Resize handler
+    // Resize handler — maintain PSX resolution
     const handleResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      renderer.setSize(
+        Math.floor(w * PSX_RESOLUTION_SCALE),
+        Math.floor(h * PSX_RESOLUTION_SCALE),
+        false
+      );
     };
     window.addEventListener('resize', handleResize);
 
@@ -267,6 +281,7 @@ const WorldBackground: React.FC = () => {
           width: '100%',
           height: '100%',
           display: 'block',
+          imageRendering: 'pixelated',
         }}
       />
     </div>
