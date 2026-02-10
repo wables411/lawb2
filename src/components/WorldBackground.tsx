@@ -14,7 +14,7 @@ import {
 const CAMERA_DRIFT_SPEED = 0.03;
 const CLAWB_WALK_SPEED = 1.2;
 const CLAWB_PATROL_RANGE = 4;
-const CLAWB_SCALE = 0.08; // Distant Clawb — smaller than the foreground one
+const CLAWB_SCALE = 0.025; // Small distant Clawb patrolling the reef
 
 const WorldBackground: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,15 +62,15 @@ const WorldBackground: React.FC = () => {
     const { ambient, directional } = lightRefs.current;
 
     // Update fog
-    const fogColor = isDarkMode ? '#0a1628' : '#1a3a5c';
-    scene.fog = new THREE.FogExp2(fogColor, 0.04);
+    const fogColor = isDarkMode ? '#0c1e36' : '#1a4a6c';
+    scene.fog = new THREE.FogExp2(fogColor, 0.025);
     scene.background = new THREE.Color(fogColor);
 
     // Update lighting
-    ambient.color.set(isDarkMode ? '#1a2a44' : '#4466aa');
-    ambient.intensity = isDarkMode ? 0.4 : 0.6;
-    directional.color.set(isDarkMode ? '#88aacc' : '#ffffee');
-    directional.intensity = isDarkMode ? 0.5 : 0.8;
+    ambient.color.set(isDarkMode ? '#2a4a6a' : '#6688bb');
+    ambient.intensity = isDarkMode ? 0.6 : 0.8;
+    directional.color.set(isDarkMode ? '#99bbdd' : '#ffffee');
+    directional.intensity = isDarkMode ? 0.7 : 1.0;
   }, [isDarkMode]);
 
   // Animation loop
@@ -100,14 +100,14 @@ const WorldBackground: React.FC = () => {
       clawbModelRef.current.position.x = clawbPosXRef.current;
     }
 
-    // Slowly drift camera
+    // Slowly drift camera around the reef
     cameraAngleRef.current += CAMERA_DRIFT_SPEED * delta;
     const cam = cameraRef.current;
-    const radius = 12;
     const baseAngle = cameraAngleRef.current;
-    cam.position.x = Math.sin(baseAngle) * radius * 0.3;
-    cam.position.z = Math.cos(baseAngle) * radius * 0.3 + 6;
-    cam.lookAt(0, -2, 0);
+    cam.position.x = Math.sin(baseAngle) * 4;
+    cam.position.z = Math.cos(baseAngle) * 4 + 8;
+    cam.position.y = 3 + Math.sin(baseAngle * 0.5) * 0.5; // Gentle vertical bob
+    cam.lookAt(0, -2.5, -1);
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
     frameIdRef.current = requestAnimationFrame(animate);
@@ -136,17 +136,26 @@ const WorldBackground: React.FC = () => {
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Fog + background
-    setupUnderwaterFog(scene, isDarkMode);
+    // Fog + background — balanced so reef is visible but not overwhelming
+    const fogColor = isDarkMode ? '#0c1e36' : '#1a4a6c';
+    scene.fog = new THREE.FogExp2(fogColor, 0.025);
+    scene.background = new THREE.Color(fogColor);
 
-    // Camera — overhead ~35 degree angle
+    // Camera — gentle overhead angle
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-    camera.position.set(0, 8, 8);
-    camera.lookAt(0, -2, 0);
+    camera.position.set(0, 3, 10);
+    camera.lookAt(0, -2.5, 0);
     cameraRef.current = camera;
 
-    // Lighting
-    lightRefs.current = setupUnderwaterLighting(scene, isDarkMode);
+    // Lighting (brighter for desktop background)
+    const ambientColor = isDarkMode ? '#2a4a6a' : '#6688bb';
+    const ambient = new THREE.AmbientLight(ambientColor, isDarkMode ? 0.6 : 0.8);
+    scene.add(ambient);
+    const dirColor = isDarkMode ? '#99bbdd' : '#ffffee';
+    const directional = new THREE.DirectionalLight(dirColor, isDarkMode ? 0.7 : 1.0);
+    directional.position.set(5, 8, 5);
+    scene.add(directional);
+    lightRefs.current = { ambient, directional };
 
     // Sand floor
     const floor = createSandFloor(30);

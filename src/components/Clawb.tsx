@@ -9,7 +9,8 @@ const CONTAINER_HEIGHT = BUBBLE_ZONE_HEIGHT + CANVAS_HEIGHT;
 const BUBBLE_TOP_OFFSET = 12;
 const BUBBLE_MAX_WIDTH = 320;
 const ROTATE_SENSITIVITY = 0.005;
-const DRAG_THRESHOLD = 5;
+const DRAG_THRESHOLD = 10;
+const CLICK_TIME_THRESHOLD_MS = 300; // Quick taps always count as click
 const TYPING_SPEED_MS = 45;
 const WALK_SPEED = 4;
 const FACE_CAMERA = 0;
@@ -119,6 +120,7 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
 
   const pointerDownRef = useRef(false);
   const pointerStartRef = useRef({ x: 0, y: 0 });
+  const pointerDownTimeRef = useRef(0);
   const isDraggingRef = useRef(false);
   const lastPointerXRef = useRef(0);
   const rotationYRef = useRef(FACE_CAMERA);
@@ -427,6 +429,7 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     pointerDownRef.current = true;
     pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    pointerDownTimeRef.current = Date.now();
     isDraggingRef.current = false;
     lastPointerXRef.current = e.clientX;
   }, []);
@@ -447,6 +450,7 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!pointerDownRef.current) return;
     const wasDragging = isDraggingRef.current;
+    const elapsed = Date.now() - pointerDownTimeRef.current;
     try {
       (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
     } catch {
@@ -455,8 +459,9 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
     pointerDownRef.current = false;
     isDraggingRef.current = false;
 
-    // Non-drag click → open emote wheel at Clawb's position
-    if (!wasDragging && onClawbClick) {
+    // Treat as click: either no drag detected, or quick tap (< 300ms even with slight movement)
+    const isClick = !wasDragging || elapsed < CLICK_TIME_THRESHOLD_MS;
+    if (isClick && onClawbClick) {
       // Calculate screen position of the model's head
       if (modelRef.current && cameraRef.current && containerRef.current) {
         const headPos = new THREE.Vector3(

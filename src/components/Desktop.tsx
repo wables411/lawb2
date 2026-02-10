@@ -123,9 +123,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
       position: 'relative',
       width: '100vw',
       height: '100vh',
-      background: isDarkMode ? '#000000' : "url('/assets/background.gif') no-repeat center center fixed",
-      backgroundSize: 'cover',
-      backgroundImage: isDarkMode ? 'none' : "url('/assets/background.gif')",
+      background: 'transparent',
       overflow: 'hidden',
     }}>
       <div style={{ 

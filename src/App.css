@@ -10,8 +10,7 @@ body:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: url('/assets/background.gif') no-repeat center center fixed;
-  background-size: cover;
+  background: #1a3a5c; /* Fallback color — WorldBackground 3D canvas renders over this */
   font-family: 'MS Sans Serif', Arial, sans-serif;
   color: #000;
   cursor: url('/assets/lawbpointer.png'), auto;

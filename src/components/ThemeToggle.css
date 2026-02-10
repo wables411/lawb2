@@ -26,14 +26,12 @@
   transform: scale(0.95);
 }
 
-/* Light Mode - Stock colorway with animated background (formerly Underwater) */
+/* Light Mode - 3D WorldBackground renders behind desktop; fallback solid color */
 /* Note: Light mode is the default (no class), but these rules apply if light mode class is present */
 .lawb-app-light-mode body,
 .lawb-app-light-mode html,
 .lawb-app-light-mode #root {
-  background: url('/assets/background.gif') no-repeat center center fixed !important;
-  background-size: cover !important;
-  background-attachment: fixed !important;
+  background: #1a3a5c !important;
   color: #000000 !important;
   overflow: hidden !important;
 }
@@ -60,11 +58,10 @@ body:not(.lawb-app-dark-mode) [class*="board-row"] {
 }
 
 /* Default (no theme class) - this is light mode */
-/* No class = light mode (default state) */
+/* No class = light mode (default state) — 3D WorldBackground renders behind desktop */
 body:not(.lawb-app-dark-mode),
 html:not(.lawb-app-dark-mode) {
-  background: url('/assets/background.gif') no-repeat center center fixed !important;
-  background-size: cover !important;
+  background: #1a3a5c !important;
   color: #000000 !important;
 }
 
