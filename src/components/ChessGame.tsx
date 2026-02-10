@@ -4057,7 +4057,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <ChessChat
             isOpen={true}
             onMinimize={() => closeWindow('chat')}
-            currentInviteCode={undefined}
+            currentInviteCode={vsClawbInviteCode || undefined}
             isDraggable={false}
             isResizable={false}
             isMobile={false}
