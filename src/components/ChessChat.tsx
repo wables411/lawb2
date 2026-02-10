@@ -258,22 +258,65 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     return unsub;
   }, [isOpen, currentRoom]);
 
+  // Fetch display names + pfps for Clawb visitor messages
+  useEffect(() => {
+    if (clawbVisitorMessages.length === 0) return;
+    const fetchClawbVisitorNames = async () => {
+      const uniqueAddresses = new Set<string>();
+      clawbVisitorMessages.forEach(msg => {
+        if (msg.author && msg.author !== 'anonymous' && msg.author.startsWith('0x')) {
+          uniqueAddresses.add(msg.author.toLowerCase());
+        }
+      });
+      const addressesToFetch = Array.from(uniqueAddresses).filter(addr =>
+        !fetchedAddressesRef.current.has(addr) && !displayNameMap[addr]
+      );
+      if (addressesToFetch.length === 0) return;
+      const newNames: Record<string, string> = {};
+      const newPics: Record<string, string> = {};
+      const promises = addressesToFetch.map(async (addr) => {
+        fetchedAddressesRef.current.add(addr);
+        try {
+          const dn = await getDisplayNameUtil(addr);
+          newNames[addr] = dn;
+          try {
+            const profile = await firebaseProfiles.getProfile(addr);
+            newPics[addr] = profile?.profile_picture?.image_url || '/images/sticker4.png';
+          } catch { newPics[addr] = '/images/sticker4.png'; }
+        } catch {
+          newNames[addr] = formatAddress(addr);
+          newPics[addr] = '/images/sticker4.png';
+        }
+      });
+      await Promise.all(promises);
+      setDisplayNameMap(prev => ({ ...prev, ...newNames }));
+      setProfilePictureMap(prev => ({ ...prev, ...newPics }));
+    };
+    void fetchClawbVisitorNames();
+  }, [clawbVisitorMessages, displayNameMap]);
+
   // Merged Clawb display messages
   const clawbDisplayMessages = React.useMemo(() => {
-    const merged: { id: string; author: string; message: string; timestamp: number; isClawb: boolean }[] = [];
+    const merged: { id: string; author: string; authorAddress: string; message: string; timestamp: number; isClawb: boolean }[] = [];
     for (const msg of clawbMessages) {
       merged.push({
         id: msg.id,
         author: 'Clawb',
+        authorAddress: '',
         message: msg.message,
         timestamp: typeof msg.timestamp === 'number' ? msg.timestamp : 0,
         isClawb: true,
       });
     }
     for (const msg of clawbVisitorMessages) {
+      const addr = msg.author?.toLowerCase() || '';
+      const resolvedName = msg.author === 'anonymous'
+        ? 'anon'
+        : displayNameMap[addr] || `${msg.author.slice(0, 6)}...${msg.author.slice(-4)}`;
       merged.push({
         id: msg.id,
-        author: msg.author === 'anonymous' ? 'anon' : `${msg.author.slice(0, 6)}...${msg.author.slice(-4)}`,
+        author: resolvedName,
+        authorAddress: addr,
         message: msg.message,
         timestamp: typeof msg.timestamp === 'number' ? msg.timestamp : 0,
         isClawb: false,
@@ -281,7 +324,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
     merged.sort((a, b) => a.timestamp - b.timestamp);
     return merged;
-  }, [clawbMessages, clawbVisitorMessages]);
+  }, [clawbMessages, clawbVisitorMessages, displayNameMap]);
 
   // Send message to Clawb
   const sendClawbMsg = useCallback(async () => {
@@ -847,12 +890,29 @@ export const ChessChat: React.FC<ChessChatProps> = ({
               </div>
             )}
 
-            {clawbDisplayMessages.map((msg) => (
+            {clawbDisplayMessages.map((msg) => {
+              const visitorPfp = !msg.isClawb && msg.authorAddress
+                ? (profilePictureMap[msg.authorAddress] || '/images/sticker4.png')
+                : '';
+              return (
               <div
                 key={msg.id}
                 className={`chat-message clawb-msg ${msg.isClawb ? 'clawb-author' : 'visitor-author'}`}
               >
                 <div className="message-header">
+                  {!msg.isClawb && !isMobile && (
+                    <img
+                      src={visitorPfp}
+                      alt=""
+                      onError={(e) => { e.currentTarget.src = '/images/sticker4.png'; }}
+                      style={{
+                        width: '20px', height: '20px', borderRadius: '50%',
+                        objectFit: 'cover', marginRight: '4px', flexShrink: 0,
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  )}
                   <span className="message-author" style={msg.isClawb ? { color: '#48bb78' } : undefined}>
                     {msg.isClawb ? '🦞 Clawb' : msg.author}
                   </span>
@@ -870,7 +930,8 @@ export const ChessChat: React.FC<ChessChatProps> = ({
                   {msg.message}
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <div ref={messagesEndRef} />
           </div>
