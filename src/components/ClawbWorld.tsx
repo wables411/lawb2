@@ -42,7 +42,7 @@ const PLAYER_HEIGHT = 0.5;
 const PLAYER_SPEED = 5;
 const WORLD_BOUNDS = 28;
 const CLAWB_GREET_DISTANCE = 3;
-const CLAWB_SCALE = 0.06;
+const CLAWB_SCALE = 0.018; // Sized to match reef objects
 const FLOOR_Y = -3;
 
 const ClawbWorld: React.FC = () => {
@@ -252,7 +252,7 @@ const ClawbWorld: React.FC = () => {
       '/assets/lawbWalk.fbx',
       (object) => {
         object.scale.setScalar(CLAWB_SCALE);
-        object.position.set(0, FLOOR_Y + 0.2, 0);
+        object.position.set(0, FLOOR_Y, 0); // Feet on the sand
         object.rotation.y = Math.PI / 2; // Face right (initial walk direction is +X)
         object.traverse((child: THREE.Object3D) => {
           if ((child as THREE.Mesh).isMesh) {
