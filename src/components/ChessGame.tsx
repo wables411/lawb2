@@ -14,8 +14,12 @@ import { firebaseProfiles } from '../firebaseProfiles';
 import { getOpenSeaNFTs, getCollectionNFTs } from '../mint';
 // Removed blocking connection test - loading data directly with timeout
 import { ChessMultiplayer } from './ChessMultiplayer';
+import { firebaseChess } from '../firebaseChess';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
+
+// Clawb's wallet address for vs Clawb games
+const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
@@ -340,6 +344,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Add showDifficulty state
   const [showDifficulty, setShowDifficulty] = useState(false);
+  
+  // vs Clawb Firebase game tracking
+  const [vsClawbInviteCode, setVsClawbInviteCode] = useState<string | null>(null);
 
 
   // Add state for leaderboard updated message
@@ -1234,6 +1241,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setBoard(newBoard);
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);
+    
+    // Sync move to Firebase for vs Clawb tracking
+    if (vsClawbInviteCode && difficulty === 'hard') {
+      const nextPlayer = currentPlayer === 'blue' ? 'red' : 'blue';
+      firebaseChess.updateGame(vsClawbInviteCode, {
+        board: { positions: boardToPositions(newBoard), rows: 8, cols: 8 },
+        current_player: nextPlayer,
+        last_move: { from: { row: from.row, col: from.col }, to: { row: to.row, col: to.col } },
+        last_move_timestamp: Date.now(),
+      }).catch((err: any) => console.warn('[VS-CLAWB] Firebase sync failed:', err));
+    }
     const endFlagData = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard:false};
     console.log('[DEBUG] executeMoveAfterAnimation end flags reset', endFlagData);
     // #region agent log
@@ -1395,6 +1413,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady, getStockfishMove, getCloudflareStockfishMove, addMobileDebug]);
 
+  // Update Clawb's leaderboard + Firebase game when vs Clawb game ends
+  const handleVsClawbGameEnd = (winner: 'blue' | 'red' | 'draw', endReason: string) => {
+    if (difficulty !== 'hard') return;
+    // Update Clawb's leaderboard entry
+    const clawbResult = winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
+    void updateLeaderboardEntry(CLAWB_WALLET, clawbResult as 'win' | 'loss' | 'draw');
+    console.log('[VS-CLAWB] Updated Clawb leaderboard:', clawbResult);
+    // Update Firebase game state
+    if (vsClawbInviteCode) {
+      firebaseChess.updateGame(vsClawbInviteCode, {
+        game_state: 'finished',
+        winner,
+        end_reason: endReason,
+      }).catch((err: any) => console.warn('[VS-CLAWB] Firebase game end update failed:', err));
+    }
+  };
+
   // Check game end
   const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
     console.log('Checking game end for player:', playerToMove);
@@ -1408,6 +1443,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       setGameState('checkmate');
       setStatus('King captured! Red wins!');
       void updateScore('loss');
+      handleVsClawbGameEnd('red', 'checkmate');
       setShowLeaderboardUpdated(true);
       setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       return 'checkmate';
@@ -1418,6 +1454,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       setGameState('checkmate');
       setStatus('King captured! You win!');
       void updateScore('win');
+      handleVsClawbGameEnd('blue', 'checkmate');
       setShowLeaderboardUpdated(true);
       setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       return 'checkmate';
@@ -1440,10 +1477,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setVictoryCelebration(true);
         triggerVictoryCelebration();
         void updateScore('win');
+        handleVsClawbGameEnd('blue', 'checkmate');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
-        setStatus(`Checkmate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
+        setStatus(`Checkmate! ${winner === 'red' ? (difficulty === 'hard' ? 'Clawb' : 'AI') : 'Opponent'} wins!`);
         playSound('loser');
         // Add 3-second delay before showing defeat overlay
         setDefeatDelayActive(true);
@@ -1452,6 +1490,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           setDefeatDelayActive(false);
         }, 3000);
         void updateScore('loss');
+        handleVsClawbGameEnd('red', 'checkmate');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       }
@@ -1475,10 +1514,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setVictoryCelebration(true);
         triggerVictoryCelebration();
         void updateScore('win');
+        handleVsClawbGameEnd('blue', 'stalemate');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
-        setStatus(`Stalemate! ${winner === 'red' ? 'AI' : 'Opponent'} wins!`);
+        setStatus(`Stalemate! ${winner === 'red' ? (difficulty === 'hard' ? 'Clawb' : 'AI') : 'Opponent'} wins!`);
         playSound('loser');
         // Add 3-second delay before showing defeat overlay
         setDefeatDelayActive(true);
@@ -1487,6 +1527,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           setDefeatDelayActive(false);
         }, 3000);
         void updateScore('loss');
+        handleVsClawbGameEnd('red', 'stalemate');
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       }
@@ -1577,6 +1618,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Game control functions
   const resetGame = () => {
+    // Clean up vs Clawb Firebase game if it was active but not finished
+    if (vsClawbInviteCode && gameState === 'active') {
+      firebaseChess.updateGame(vsClawbInviteCode, {
+        game_state: 'cancelled',
+      }).catch(() => {});
+    }
+    setVsClawbInviteCode(null);
     setBoard(JSON.parse(JSON.stringify(initialBoard)));
     setCurrentPlayer('blue');
     setSelectedPiece(null);
@@ -1699,6 +1747,29 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setGameStartTime(now); // Track game start time for stats
     setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Initialize countdown to full time
     console.log('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
+    
+    // Create Firebase game for "vs Clawb" mode so Clawb is tracked as a player
+    if (difficulty === 'hard' && walletAddress) {
+      const inviteCode = generateVsClawbInviteCode();
+      setVsClawbInviteCode(inviteCode);
+      console.log('[VS-CLAWB] Creating Firebase game:', inviteCode);
+      firebaseChess.createGame({
+        invite_code: inviteCode,
+        game_title: `vs Clawb — ${inviteCode.slice(-6)}`,
+        game_type: 'vs_clawb',
+        game_state: 'active',
+        blue_player: walletAddress,
+        red_player: CLAWB_WALLET,
+        red_is_agent: true,
+        board: {
+          positions: boardToPositions(JSON.parse(JSON.stringify(initialBoard))),
+          rows: 8,
+          cols: 8,
+        },
+        current_player: 'blue',
+        is_public: false,
+      }).catch((err: any) => console.error('[VS-CLAWB] Failed to create Firebase game:', err));
+    }
   };
 
   // Timer functions
@@ -4060,4 +4131,24 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
   return fen;
 }
 
+// Convert board array to Firebase positions format
+function boardToPositions(board: (string | null)[][]): Record<string, string> {
+  const positions: Record<string, string> = {};
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece) {
+        positions[`${row}_${col}`] = piece;
+      }
+    }
+  }
+  return positions;
+}
+
+// Generate a random invite code for vs Clawb games
+function generateVsClawbInviteCode(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
