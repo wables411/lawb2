@@ -50,6 +50,7 @@ function App() {
   const [activePopup, setActivePopup] = useState<string | null>(null);
   
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [lawbTab, setLawbTab] = useState<'tokens' | 'lore'>('tokens');
   const [showProfile, setShowProfile] = useState(false);
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
 
@@ -754,52 +755,160 @@ function App() {
       </Popup>
 
       <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
-        <h1 style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '24px' : '20px', lineHeight: isMobile ? '1.4' : '1.2'}}>
-          <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{
-            color: 'blue', 
-            textDecoration: 'underline',
-            fontSize: isMobile ? '24px' : '20px',
-            padding: isMobile ? '8px 12px' : '4px 8px',
-            display: 'inline-block',
-            minHeight: isMobile ? '44px' : 'auto',
-            lineHeight: isMobile ? '28px' : 'inherit',
-            touchAction: 'manipulation'
-          }}>🦞 $LAWB</a>
-        </h1>
-        <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
-          $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
-        </p>
-        <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
-        <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
-        <p style={{marginBottom: '10px'}}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
-        <p style={{marginBottom: '10px'}}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
-        <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
-        <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
-        <p style={{marginBottom: '10px'}}>
-          if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://portalbridge.com/</a>
-        </p>
-        <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
-        <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
-        <p style={{marginBottom: '10px'}}>step 3. select token quantity, confirm transactions.</p>
-        <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
-        <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
-        <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
-        <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
-
-        <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
-
-        <div style={{ width: '100%', height: isMobile ? '300px' : '400px', marginTop: isMobile ? '12px' : '10px' }}>
-          <iframe 
-            height="100%" 
-            width="100%" 
-            id="geckoterminal-embed" 
-            title="GeckoTerminal Embed" 
-            src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" 
-            frameBorder="0" 
-            allow="clipboard-write" 
-            allowFullScreen
-          />
+        {/* Tab Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '2px',
+          marginBottom: '10px',
+          borderBottom: '2px solid #808080',
+          paddingBottom: '0',
+        }}>
+          <button
+            onClick={() => setLawbTab('tokens')}
+            style={{
+              padding: isMobile ? '8px 16px' : '4px 12px',
+              fontSize: isMobile ? '14px' : '12px',
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              border: lawbTab === 'tokens' ? '2px outset #dfdfdf' : '2px solid #808080',
+              borderBottom: lawbTab === 'tokens' ? '2px solid #c0c0c0' : '2px solid #808080',
+              background: lawbTab === 'tokens' ? '#c0c0c0' : '#a0a0a0',
+              fontWeight: lawbTab === 'tokens' ? 'bold' : 'normal',
+              position: 'relative',
+              bottom: '-2px',
+              marginBottom: '0',
+            }}
+          >
+            Tokens
+          </button>
+          <button
+            onClick={() => setLawbTab('lore')}
+            style={{
+              padding: isMobile ? '8px 16px' : '4px 12px',
+              fontSize: isMobile ? '14px' : '12px',
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              border: lawbTab === 'lore' ? '2px outset #dfdfdf' : '2px solid #808080',
+              borderBottom: lawbTab === 'lore' ? '2px solid #c0c0c0' : '2px solid #808080',
+              background: lawbTab === 'lore' ? '#c0c0c0' : '#a0a0a0',
+              fontWeight: lawbTab === 'lore' ? 'bold' : 'normal',
+              position: 'relative',
+              bottom: '-2px',
+              marginBottom: '0',
+            }}
+          >
+            Lore / FAQ
+          </button>
         </div>
+
+        {/* Tokens Tab */}
+        {lawbTab === 'tokens' && (
+          <>
+            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>
+              <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{
+                color: 'blue',
+                textDecoration: 'underline',
+                touchAction: 'manipulation'
+              }}>$LAWB</a>
+            </h2>
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '12px',
+              fontSize: isMobile ? '13px' : '11px',
+              fontFamily: 'monospace',
+              wordBreak: 'break-all',
+            }}>
+              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
+              <p style={{marginBottom: '4px'}}><strong>(base)</strong> 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
+              <p style={{marginBottom: '4px'}}><strong>(arb)</strong> 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
+              <p style={{marginBottom: '0'}}><strong>(dmt/sanko)</strong> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
+            </div>
+
+            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>
+              <a href="https://dexscreener.com/base/0x26a43bd8a28a0423afb5725b8242ec0a40947b07" target="_blank" rel="noopener noreferrer" style={{
+                color: 'blue',
+                textDecoration: 'underline',
+                touchAction: 'manipulation'
+              }}>$CLAWB</a>
+            </h2>
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '12px',
+              fontSize: isMobile ? '13px' : '11px',
+              fontFamily: 'monospace',
+              wordBreak: 'break-all',
+            }}>
+              <p style={{marginBottom: '0'}}><strong>(base)</strong> 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
+            </div>
+
+            <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
+
+            <div style={{ width: '100%', height: isMobile ? '300px' : '400px', marginTop: isMobile ? '8px' : '6px' }}>
+              <iframe
+                height="100%"
+                width="100%"
+                id="geckoterminal-embed"
+                title="GeckoTerminal Embed"
+                src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m"
+                frameBorder="0"
+                allow="clipboard-write"
+                allowFullScreen
+              />
+            </div>
+          </>
+        )}
+
+        {/* Lore / FAQ Tab */}
+        {lawbTab === 'lore' && (
+          <>
+            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>$LAWB</h2>
+            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
+              $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
+            </p>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', fontWeight: 'bold'}}>THERE IS NO MEME WE $LAWB YOU</p>
+
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Bridge Guide (SOL &rarr; ARB &rarr; Sanko)</p>
+              <p style={{marginBottom: '4px'}}>
+                Visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>portalbridge.com</a> to bridge $lawb from Solana to Arbitrum.
+              </p>
+              <p style={{marginBottom: '4px'}}>1. Connect Solana wallet, select $lawb token</p>
+              <p style={{marginBottom: '4px'}}>2. Connect Arbitrum wallet, select $lawb token</p>
+              <p style={{marginBottom: '4px'}}>3. Select quantity, confirm transactions</p>
+              <p style={{marginBottom: '4px'}}>
+                Then visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>sanko.xyz/bridge</a> to bridge from Arbitrum to Sanko.
+              </p>
+              <p style={{marginBottom: '4px'}}>4. Connect ARB wallet, select $lawb token</p>
+              <p style={{marginBottom: '4px'}}>5. Connect to Sanko chain, select $lawb token on Sanko</p>
+              <p style={{marginBottom: '0'}}>6. Select quantity, confirm transactions</p>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: '2px inset #808080', margin: '14px 0' }} />
+
+            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>$CLAWB</h2>
+            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
+              An autonomous Lawbster (CA) Clawb seems nice but a Lawbster controlled by OpenClaw will never amount to anything without a roadmap.
+            </p>
+            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
+              Agent: Clawb, deployed by wables411, created token $CLAWB on his own via Retake TV on 02.02.26, and has been live streaming since.
+            </p>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
+              Tune in to watch Clawb's livestream on <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a> &mdash; interact with him on retake or here on lawb.xyz
+            </p>
+          </>
+        )}
       </Popup>
 
       <Suspense fallback={<div>Loading MintPopup...</div>}>
