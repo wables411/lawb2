@@ -442,68 +442,64 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         });
       }
       
-      // If Firebase data is missing player addresses, use contract data
-      const currentContractData = getCurrentContractGameData();
-      if (!winnerAddress && currentContractData) {
-        // Also try using Firebase winner color with contract player addresses
-        if (gameData.winner && (gameData.winner === 'blue' || gameData.winner === 'red')) {
-          console.log('[CLAIM] Using Firebase winner color with contract player addresses');
-          let player1, player2, isActive, winner, inviteCodeContract, wagerAmount;
-          if (Array.isArray(currentContractData)) {
-            [player1, player2, isActive, winner, inviteCodeContract, wagerAmount] = currentContractData;
-          } else {
-            console.error('[CLAIM] Unexpected contract data format:', currentContractData);
-            alert('Failed to verify winner. Please try again.');
-            return;
-          }
-          winnerAddress = gameData.winner === 'blue' ? player1 : player2;
-          console.log('[CLAIM] Winner from Firebase color + contract addresses:', { 
-            winnerColor: gameData.winner, 
-            winnerAddress, 
-            player1, 
-            player2 
+      // If Firebase data is missing player addresses, read contract directly using this game's invite code
+      // CRITICAL FIX: Do NOT use getCurrentContractGameData() - it may return stale data from a previous game
+      if (!winnerAddress && publicClient && currentInviteCode) {
+        try {
+          console.log('[CLAIM] Reading contract directly for invite code:', currentInviteCode);
+          const directClaimData = await publicClient.readContract({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'games',
+            args: [currentInviteCode as `0x${string}`]
           });
-        } else {
-          console.log('[CLAIM] Using contract data for winner verification');
-          console.log('[CLAIM] Full contract data:', currentContractData);
-          let player1, player2, isActive, winner, inviteCodeContract, wagerAmount;
-          if (Array.isArray(currentContractData)) {
-            [player1, player2, isActive, winner, inviteCodeContract, wagerAmount] = currentContractData;
-          } else {
-            console.error('[CLAIM] Unexpected contract data format:', currentContractData);
-            alert('Failed to verify winner. Please try again.');
-            return;
-          }
           
-          // Map winner to player address
-          // Contract winner could be: address, color string, or number
-          const winnerStr = String(winner);
-          if (winnerStr.startsWith('0x')) {
-            // Winner is already an address
-            winnerAddress = winnerStr;
-          } else if (winnerStr === 'blue' || winnerStr === 'red') {
-            // Winner is a color string
-            winnerAddress = winnerStr === 'blue' ? player1 : player2;
-          } else if (winnerStr === '1' || winnerStr === '2') {
-            // Winner is a number (1=blue, 2=red)
-            winnerAddress = winnerStr === '1' ? player1 : player2;
-          } else {
-            // Unknown winner format
-            console.error('[CLAIM] Unknown winner format:', winner, 'as string:', winnerStr);
-            alert('Failed to verify winner. Please try again.');
-            return;
+          if (directClaimData && Array.isArray(directClaimData)) {
+            const [player1, player2, isActive, winner, inviteCodeContract, wagerAmount] = directClaimData;
+            
+            if (gameData.winner && (gameData.winner === 'blue' || gameData.winner === 'red')) {
+              console.log('[CLAIM] Using Firebase winner color with contract player addresses');
+              winnerAddress = gameData.winner === 'blue' ? player1 : player2;
+              console.log('[CLAIM] Winner from Firebase color + contract addresses:', { 
+                winnerColor: gameData.winner, 
+                winnerAddress, 
+                player1, 
+                player2 
+              });
+            } else {
+              console.log('[CLAIM] Using contract data for winner verification');
+              
+              // Map winner to player address
+              // Contract winner could be: address, color string, or number
+              const winnerStr = String(winner);
+              if (winnerStr.startsWith('0x')) {
+                winnerAddress = winnerStr;
+              } else if (winnerStr === 'blue' || winnerStr === 'red') {
+                winnerAddress = winnerStr === 'blue' ? player1 : player2;
+              } else if (winnerStr === '1' || winnerStr === '2') {
+                winnerAddress = winnerStr === '1' ? player1 : player2;
+              } else {
+                console.error('[CLAIM] Unknown winner format:', winner, 'as string:', winnerStr);
+                alert('Failed to verify winner. Please try again.');
+                return;
+              }
+              
+              console.log('[CLAIM] Winner from contract:', { 
+                winner, 
+                winnerAddress, 
+                player1, 
+                player2, 
+                winnerType: typeof winner,
+                winnerValue: winner,
+                address,
+                addressType: typeof address
+              });
+            }
           }
-          
-          console.log('[CLAIM] Winner from contract:', { 
-            winner, 
-            winnerAddress, 
-            player1, 
-            player2, 
-            winnerType: typeof winner,
-            winnerValue: winner,
-            address,
-            addressType: typeof address
-          });
+        } catch (error) {
+          console.error('[CLAIM] Error reading contract directly for winner:', error);
+          alert('Failed to verify winner from contract. Please try again.');
+          return;
         }
       }
       
@@ -548,19 +544,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Use the current inviteCode (from state or contract fallback)
       let bytes6InviteCode = currentInviteCode;
       
-      // If we still don't have an invite code, try to get it from contract data as fallback
-      if (!bytes6InviteCode && currentContractData) {
-        console.log('[CLAIM] Using invite code from contract data as fallback');
-        let player1, player2, isActive, winner, inviteCodeContract, wagerAmount;
-        if (Array.isArray(currentContractData)) {
-          [player1, player2, isActive, winner, inviteCodeContract, wagerAmount] = currentContractData;
-          bytes6InviteCode = inviteCodeContract;
-        } else {
-          console.error('[CLAIM] Unexpected contract data format for invite code:', currentContractData);
-          alert('Failed to get invite code. Please try again.');
-          return;
-        }
-      }
+      // Note: currentInviteCode is guaranteed to be set (function returns early at line 409 if not)
+      // No fallback to cached contract data needed here
       
       // Ensure the invite code is properly formatted as bytes6
       if (!bytes6InviteCode || typeof bytes6InviteCode !== 'string') {
@@ -1142,10 +1127,34 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Determine winner based on who was waiting
     const winner = currentPlayer === 'blue' ? 'red' : 'blue';
-    const currentContractData = getCurrentContractGameData();
-    const winnerAddress = winner === 'blue' ? currentContractData?.[0] : currentContractData?.[1];
     
-    if (winnerAddress) {
+    // CRITICAL FIX: Read contract directly using this game's invite code instead of stale cached data
+    let winnerAddress: string | null = null;
+    if (publicClient) {
+      try {
+        const directData = await publicClient.readContract({
+          address: chessContractAddress as `0x${string}`,
+          abi: CHESS_CONTRACT_ABI,
+          functionName: 'games',
+          args: [inviteCode as `0x${string}`]
+        });
+        if (directData && Array.isArray(directData)) {
+          const [player1, player2] = directData;
+          winnerAddress = winner === 'blue' ? player1 : player2;
+          console.log('[TIMEOUT] Direct contract read - winner address:', winnerAddress);
+        }
+      } catch (error) {
+        console.error('[TIMEOUT] Error reading contract directly:', error);
+        // Fallback to cached data
+        const currentContractData = getCurrentContractGameData();
+        winnerAddress = (winner === 'blue' ? currentContractData?.[0] : currentContractData?.[1]) as string | null ?? null;
+      }
+    } else {
+      const currentContractData = getCurrentContractGameData();
+      winnerAddress = (winner === 'blue' ? currentContractData?.[0] : currentContractData?.[1]) as string | null ?? null;
+    }
+    
+    if (winnerAddress && winnerAddress !== '0x0000000000000000000000000000000000000000') {
       console.log('[TIMEOUT] Ending game with winner:', winnerAddress);
       
       // Update Firebase FIRST to mark game as finished (will be confirmed when transaction completes)
@@ -1170,6 +1179,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       setGameStatus(`Game ended due to timeout. ${winner === 'red' ? 'Red' : 'Blue'} wins!`);
       setGameMode(GameMode.FINISHED);
+    } else {
+      console.error('[TIMEOUT] Could not determine winner address, cannot end game');
     }
   };
 
@@ -1453,8 +1464,30 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         });
       }
       
+      // CRITICAL FIX: Refetch playerToGame to clear stale invite code mapping
+      // After endGame, the contract may clear playerToGame or it may still point to the old game.
+      // Either way, we need fresh data so checkPlayerGameState doesn't reload this finished game.
+      if (refetchPlayerGame) {
+        console.log('[CLAIM] Refetching playerGameInviteCode after endGame');
+        refetchPlayerGame();
+      }
+      
       // Reset claiming state
       setIsClaimingWinnings(false);
+      
+      // CRITICAL FIX: Clean up game state to prevent ghost game reloading
+      // After endGame confirms, transition to lobby after a short delay for UI feedback
+      setTimeout(() => {
+        console.log('[CLAIM] Post-endGame cleanup: transitioning to lobby');
+        setGameMode(GameMode.LOBBY);
+        setShowGame(false);
+        setHasLoadedGame(false); // Allow fresh game state detection on next check
+        // Clean up Firebase subscription
+        if (gameChannel.current) {
+          gameChannel.current();
+          gameChannel.current = null;
+        }
+      }, 5000); // 5 second delay to show the claim success message
     }
   }, [endGameHash, isWaitingForEndReceipt, inviteCode]);
 
@@ -1524,6 +1557,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             firebaseChess.createGame(reconstructedGameData).then(() => {
               console.log('[FIREBASE] Game created successfully with reconstructed data');
               
+              // CRITICAL FIX: Refetch playerToGame so contractGameData updates to the new game
+              if (refetchPlayerGame) {
+                console.log('[CREATE_SUCCESS_RECONSTRUCTED] Refetching playerGameInviteCode to update contract data');
+                refetchPlayerGame();
+              }
+              
               // Update UI
               setInviteCode(reconstructedGameData.invite_code);
               setPlayerColor('blue');
@@ -1572,6 +1611,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         
         firebaseChess.createGame(gameDataWithWaitingState).then(() => {
           console.log('[FIREBASE] Game created successfully after transaction confirmation');
+          
+          // CRITICAL FIX: Refetch playerToGame so contractGameData updates to the new game
+          if (refetchPlayerGame) {
+            console.log('[CREATE_SUCCESS] Refetching playerGameInviteCode to update contract data');
+            refetchPlayerGame();
+          }
           
           // Update UI
           setInviteCode(gameDataToSave.invite_code);
@@ -1941,6 +1986,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setBoard(reconstructBoard(boardData));
             setCurrentPlayer(firebaseGame.current_player || 'blue');
           }
+        } else if (firebaseGame.game_state === 'finished' || firebaseGame.game_state === 'ended') {
+          // CRITICAL FIX: Explicitly handle finished games - do NOT treat as active
+          console.log('[GAME_STATE] Game is finished/ended, returning to lobby. State:', firebaseGame.game_state);
+          setGameMode(GameMode.LOBBY);
+          setHasLoadedGame(true);
+          console.log('[GAME_STATE] ========== checkPlayerGameState END (game finished in Firebase) ==========');
+          return;
         } else {
           console.log('[GAME_STATE] Unknown game state:', firebaseGame.game_state, '- treating as active');
           setGameMode(GameMode.ACTIVE);
@@ -2059,6 +2111,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setBoard(reconstructBoard(boardData));
             setCurrentPlayer(game.current_player || 'blue');
           }
+        } else if (game.game_state === 'finished' || game.game_state === 'ended') {
+          // CRITICAL FIX: Explicitly handle finished games - do NOT treat as active
+          console.log('[GAME_STATE] Game is finished/ended in Firebase check, returning to lobby. State:', game.game_state);
+          setGameMode(GameMode.LOBBY);
+          setHasLoadedGame(true);
+          return;
         } else {
           console.log('[GAME_STATE] Unknown game state in Firebase check:', game.game_state, '- treating as active');
           setGameMode(GameMode.ACTIVE);
@@ -3161,16 +3219,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } else {
         if (playerColor && (playerColor === 'blue' || playerColor === 'red')) {
           // Preserve existing valid playerColor
-        } else if (currentAddress) {
-          const currentContractData = getCurrentContractGameData();
-          if (currentContractData && Array.isArray(currentContractData)) {
-            const [player1, player2] = currentContractData;
-            if (player1 && player2) {
-              const playerColorFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? 'blue' : 'red';
-              const opponentFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? player2 : player1;
-              setPlayerColor(playerColorFromContract as 'blue' | 'red');
-              setOpponent(opponentFromContract);
+        } else if (currentAddress && publicClient && inviteCode) {
+          // CRITICAL FIX: Read contract directly using this game's invite code instead of stale cached data
+          try {
+            const directData = await publicClient.readContract({
+              address: chessContractAddress as `0x${string}`,
+              abi: CHESS_CONTRACT_ABI,
+              functionName: 'games',
+              args: [inviteCode as `0x${string}`]
+            });
+            if (directData && Array.isArray(directData)) {
+              const [player1, player2] = directData;
+              if (player1 && player2) {
+                const playerColorFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? 'blue' : 'red';
+                const opponentFromContract = player1.toLowerCase() === currentAddress.toLowerCase() ? player2 : player1;
+                setPlayerColor(playerColorFromContract as 'blue' | 'red');
+                setOpponent(opponentFromContract);
+              }
             }
+          } catch (error) {
+            console.error('[FIREBASE_SUB] Error reading contract for player color fallback:', error);
           }
         }
         
@@ -3313,41 +3381,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         console.log('[FIREBASE_SUB] Previous game mode:', gameMode);
         
         // CRITICAL FIX: Check contract state before setting game to active
-        // If contract shows game is ended, don't load it even if Firebase shows active
-        const currentContractData = getCurrentContractGameData();
+        // Always use direct contract read with THIS game's invite code to avoid stale cached data
         let contractIsActive = true; // Default to true if we can't check
         
-        if (currentContractData && Array.isArray(currentContractData)) {
-          const [, , isActive, winner] = currentContractData;
-          contractIsActive = isActive;
-          console.log('[FIREBASE_SUB] Contract state check:', { isActive, winner });
-          
-          if (!isActive) {
-            console.log('[FIREBASE_SUB] ❌ Contract shows game is ended (isActive=false). NOT LOADING GAME.');
-            console.log('[FIREBASE_SUB] Firebase shows active but contract shows ended - syncing Firebase...');
-            
-            // Sync Firebase to match contract
-            try {
-              await firebaseChess.updateGame(inviteCode, {
-                game_state: 'finished',
-                winner: winner || null,
-                updated_at: new Date().toISOString()
-              });
-              console.log('[FIREBASE_SUB] ✅ Firebase synced to finished state');
-            } catch (error) {
-              console.error('[FIREBASE_SUB] ❌ Error syncing Firebase:', error);
-            }
-            
-            // Don't set game to active - return to lobby
-            setGameMode(GameMode.LOBBY);
-            setGameStatus('Game has ended. Returning to lobby.');
-            return; // Exit early, don't load the game
-          }
-        } else if (inviteCode) {
-          // If we don't have contract data, try to read it directly
-          console.log('[FIREBASE_SUB] No contract data in state, reading directly...');
+        if (inviteCode && publicClient) {
           try {
-            const directContractData = await publicClient?.readContract({
+            console.log('[FIREBASE_SUB] Reading contract directly for active state check, invite code:', inviteCode);
+            const directContractData = await publicClient.readContract({
               address: chessContractAddress as `0x${string}`,
               abi: CHESS_CONTRACT_ABI,
               functionName: 'games',
@@ -3355,30 +3395,35 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             });
             
             if (directContractData && Array.isArray(directContractData)) {
-              const [, , isActiveDirect, winnerDirect] = directContractData;
-              contractIsActive = isActiveDirect;
-              console.log('[FIREBASE_SUB] Direct contract read:', { isActive: contractIsActive, winner: winnerDirect });
+              const [, , isActive, winner] = directContractData;
+              contractIsActive = isActive;
+              console.log('[FIREBASE_SUB] Contract state check:', { isActive, winner, inviteCode });
               
-              if (!isActiveDirect) {
-                console.log('[FIREBASE_SUB] ❌ Direct contract read shows game is ended. NOT LOADING GAME.');
+              if (!isActive) {
+                console.log('[FIREBASE_SUB] ❌ Contract shows game is ended (isActive=false). NOT LOADING GAME.');
+                console.log('[FIREBASE_SUB] Firebase shows active but contract shows ended - syncing Firebase...');
+                
+                // Sync Firebase to match contract
                 try {
                   await firebaseChess.updateGame(inviteCode, {
                     game_state: 'finished',
-                    winner: winnerDirect || null,
+                    winner: winner || null,
                     updated_at: new Date().toISOString()
                   });
                   console.log('[FIREBASE_SUB] ✅ Firebase synced to finished state');
                 } catch (error) {
                   console.error('[FIREBASE_SUB] ❌ Error syncing Firebase:', error);
                 }
+                
+                // Don't set game to active - return to lobby
                 setGameMode(GameMode.LOBBY);
                 setGameStatus('Game has ended. Returning to lobby.');
-                return;
+                return; // Exit early, don't load the game
               }
             }
           } catch (error) {
             console.error('[FIREBASE_SUB] Error reading contract directly:', error);
-            // Continue if contract read fails, but log it
+            // Continue if contract read fails - default contractIsActive remains true
           }
         }
         
@@ -3578,16 +3623,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             gameData.red_player && 
                             gameData.red_player !== '0x0000000000000000000000000000000000000000';
         
-        // If red_player is missing from Firebase, check contract
-        if (!hasBothPlayers && gameData.blue_player) {
+        // If red_player is missing from Firebase, check contract DIRECTLY using this game's invite code
+        // CRITICAL FIX: Do NOT use getCurrentContractGameData() here - it may return stale data
+        // from a previous game if playerGameInviteCode hasn't been refetched yet
+        if (!hasBothPlayers && gameData.blue_player && publicClient) {
           try {
-            const currentContractData = getCurrentContractGameData();
-            if (currentContractData && Array.isArray(currentContractData)) {
-              const [player1, player2] = currentContractData;
-              if (player1 && player2 && 
+            console.log('[FIREBASE_SUB] Reading contract directly for invite code:', inviteCode);
+            const directContractData = await publicClient.readContract({
+              address: chessContractAddress as `0x${string}`,
+              abi: CHESS_CONTRACT_ABI,
+              functionName: 'games',
+              args: [inviteCode as `0x${string}`]
+            });
+            if (directContractData && Array.isArray(directContractData)) {
+              const [player1, player2, , , contractInviteCode] = directContractData;
+              // CRITICAL: Validate the contract data matches THIS game's invite code
+              const inviteCodeMatches = !contractInviteCode || contractInviteCode === inviteCode;
+              if (inviteCodeMatches && player1 && player2 && 
                   player1 !== '0x0000000000000000000000000000000000000000' && 
                   player2 !== '0x0000000000000000000000000000000000000000') {
-                console.log('[FIREBASE_SUB] Contract shows both players, but Firebase missing red_player - syncing');
+                console.log('[FIREBASE_SUB] Direct contract read shows both players for game:', inviteCode);
                 hasBothPlayers = true;
                 // Update Firebase with red_player from contract
                 // player1 is always blue_player (creator), player2 is always red_player (joiner)
@@ -3599,10 +3654,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 }).catch((error) => {
                   console.error('[FIREBASE_SUB] Error syncing red_player from contract:', error);
                 });
+              } else {
+                console.log('[FIREBASE_SUB] Direct contract read - no second player yet for game:', inviteCode, {
+                  player1, player2, contractInviteCode, inviteCodeMatches
+                });
               }
             }
           } catch (error) {
-            console.error('[FIREBASE_SUB] Error checking contract for players:', error);
+            console.error('[FIREBASE_SUB] Error reading contract directly for players:', error);
           }
         }
         
@@ -3634,11 +3693,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       if (gameData.bet_amount && !isNaN(parseFloat(gameData.bet_amount))) {
         wagerValue = convertWagerFromWei(gameData.bet_amount, tokenSymbol);
-      } else {
-        const currentContractData = getCurrentContractGameData();
-        if (currentContractData && Array.isArray(currentContractData) && currentContractData[5]) {
-          // Get wager from contract data (index 5 is wager amount in wei)
-          wagerValue = convertWagerFromWei(currentContractData[5].toString(), tokenSymbol);
+      } else if (publicClient && inviteCode) {
+        // CRITICAL FIX: Read contract directly using this game's invite code instead of stale cached data
+        try {
+          const directWagerData = await publicClient.readContract({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'games',
+            args: [inviteCode as `0x${string}`]
+          });
+          if (directWagerData && Array.isArray(directWagerData) && directWagerData[5]) {
+            // Index 5 is wager amount in wei
+            wagerValue = convertWagerFromWei(directWagerData[5].toString(), tokenSymbol);
+          }
+        } catch (error) {
+          console.error('[FIREBASE_SUB] Error reading contract for wager fallback:', error);
         }
       }
       
@@ -5566,15 +5635,61 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     console.log('[RESUME] ========== resumeGame END (success) ==========');
   };
 
-  // Check for stuck games
+  // Check for stuck games on page load - detect games in Firebase that are finished on-chain
   const checkStuckGames = async () => {
+    if (!address || !publicClient) {
+      console.log('[STUCK GAMES] No address or publicClient, skipping');
+      return;
+    }
     try {
-      // This function previously used firebaseChess.getGames, which does not exist.
-      // You can use getActiveGames or getOpenGames instead, or remove this check if not needed.
-      // For now, we'll just log that this is a stub.
-      console.warn('[STUCK GAMES] checkStuckGames is not implemented.');
+      console.log('[STUCK GAMES] Checking for stuck games for player:', address);
+      const activeGames = await firebaseChess.getActiveGames();
+      
+      // Find games where the current player is involved
+      const playerGames = activeGames.filter((game: any) => 
+        game.blue_player?.toLowerCase() === address?.toLowerCase() || 
+        game.red_player?.toLowerCase() === address?.toLowerCase()
+      );
+      
+      if (playerGames.length === 0) {
+        console.log('[STUCK GAMES] No active games found for player');
+        return;
+      }
+      
+      console.log('[STUCK GAMES] Found', playerGames.length, 'active games for player');
+      
+      for (const game of playerGames as any[]) {
+        try {
+          // Read the on-chain state for this game
+          const contractData = await publicClient.readContract({
+            address: chessContractAddress as `0x${string}`,
+            abi: CHESS_CONTRACT_ABI,
+            functionName: 'games',
+            args: [game.invite_code as `0x${string}`]
+          });
+          
+          if (contractData && Array.isArray(contractData)) {
+            const [, , isActive, winner] = contractData;
+            
+            // If contract says game is NOT active but Firebase says it is, sync Firebase
+            if (!isActive && (game.game_state === 'active' || game.game_state === 'waiting_for_join')) {
+              console.log('[STUCK GAMES] Found stuck game:', game.invite_code, 
+                '- Firebase:', game.game_state, 'Contract: ended');
+              
+              await firebaseChess.updateGame(game.invite_code, {
+                game_state: 'finished',
+                winner: winner || null,
+                updated_at: new Date().toISOString()
+              });
+              console.log('[STUCK GAMES] ✅ Synced Firebase to finished for:', game.invite_code);
+            }
+          }
+        } catch (gameError) {
+          console.error('[STUCK GAMES] Error checking game:', game.invite_code, gameError);
+        }
+      }
     } catch (error) {
-      console.error('Error checking stuck games:', error);
+      console.error('[STUCK GAMES] Error checking stuck games:', error);
     }
   };
 
