@@ -100,6 +100,7 @@
 }
 
 .clawb-world-greeting-text {
+  display: block;
   background: linear-gradient(to bottom, #2d3748, #1a202c);
   border: 1px solid #4a5568;
   border-radius: 6px;
@@ -109,6 +110,137 @@
   font-size: 12px;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.clawb-world-greeting-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #88aacc;
+  opacity: 0.9;
+}
+
+.clawb-world-talk-btn {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: #3182ce;
+  border: 1px solid #2b6cb0;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Chat panel */
+.clawb-world-chat-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(400px, 90vw);
+  max-height: 280px;
+  background: linear-gradient(to bottom, #2d3748, #1a202c);
+  border: 2px outset #c0c0c0;
+  border-radius: 6px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  font-family: 'MS Sans Serif', 'DejaVu Sans', Arial, sans-serif;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.clawb-world-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #0a1628;
+  border-bottom: 1px solid #4a5568;
+  font-size: 13px;
+  font-weight: bold;
+  color: #e2e8f0;
+}
+
+.clawb-world-chat-close {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.clawb-world-chat-close:hover {
+  color: #fff;
+}
+
+.clawb-world-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  min-height: 80px;
+  max-height: 140px;
+  font-size: 12px;
+}
+
+.clawb-world-chat-placeholder {
+  color: #718096;
+  font-style: italic;
+}
+
+.clawb-world-chat-msg {
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.clawb-world-chat-msg.visitor .clawb-world-chat-author {
+  color: #90cdf4;
+}
+
+.clawb-world-chat-msg.clawb .clawb-world-chat-author {
+  color: #9ae6b4;
+}
+
+.clawb-world-chat-author {
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+.clawb-world-chat-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid #4a5568;
+}
+
+.clawb-world-chat-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  background: #1a202c;
+  color: #e2e8f0;
+  font-size: 12px;
+}
+
+.clawb-world-chat-input::placeholder {
+  color: #718096;
+}
+
+.clawb-world-chat-send {
+  padding: 6px 14px;
+  background: #3182ce;
+  border: 1px solid #2b6cb0;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.clawb-world-chat-send:hover {
+  background: #2b6cb0;
 }
 
 @keyframes clawb-greet-fadein {
@@ -139,6 +271,32 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.clawb-world-swim-buttons {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
+}
+
+.clawb-world-swim-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 20px;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.clawb-world-swim-btn:active {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Responsive */
