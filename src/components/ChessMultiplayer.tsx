@@ -1240,6 +1240,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   }, [sidebarView, isMobile]);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  const [checkmateAnnouncement, setCheckmateAnnouncement] = useState<string | null>(null);
+  const [isWinningMove, setIsWinningMove] = useState(false); // True when lastMove is the game-ending move
+  
+  // Delay before showing victory/defeat overlay so the player can see the winning move
+  const CELEBRATION_DELAY_MS = 4000; // 4 seconds
+  const celebrationDelayTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Refs
   const gameChannel = useRef<any>(null);
@@ -1856,6 +1862,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       if (celebrationTimeout.current) {
         clearTimeout(celebrationTimeout.current);
+      }
+      if (celebrationDelayTimeout.current) {
+        clearTimeout(celebrationDelayTimeout.current);
       }
     };
   }, []);
@@ -3312,6 +3321,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               if (fromSquare && toSquare) {
                 const isCapture = capturedPiece !== null;
                 
+                // Highlight the opponent's last move on the board
+                setLastMove({ from: fromSquare, to: toSquare });
+                
                 if (isCapture) {
                   console.log('[OPPONENT_MOVE] Opponent capture detected, playing capture sound and animation');
                   playMoveSoundAndAnimation('capture', toSquare);
@@ -3329,6 +3341,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 // Fallback: play move sound if we can't determine the move type
                 console.log('[OPPONENT_MOVE] Could not determine move type, playing move sound');
                 playMoveSoundAndAnimation('move');
+                
+                // Still try to highlight from Firebase last_move data
+                if (gameData.last_move && gameData.last_move.from && gameData.last_move.to) {
+                  setLastMove(gameData.last_move);
+                }
               }
             }
             
@@ -3541,13 +3558,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
-        setGameStatus('Game finished');
         setGameJustFinished(true); // Prevent excessive lobby loading
         
         // Clear the flag after 30 seconds to allow normal lobby loading
         setTimeout(() => {
           setGameJustFinished(false);
         }, 30000);
+        
+        // Highlight the winning move from Firebase
+        if (gameData.last_move && gameData.last_move.from && gameData.last_move.to) {
+          setLastMove(gameData.last_move);
+          setIsWinningMove(true);
+          console.log('[GAME_END] Winning move highlighted:', gameData.last_move);
+        }
+        
+        // Show checkmate announcement banner
+        setGameStatus('Checkmate!');
+        setCheckmateAnnouncement('CHECKMATE!');
         
         // CRITICAL FIX: Enhanced game end notification logic
         console.log('[GAME_END] Game finished via Firebase subscription. Game data:', {
@@ -3558,19 +3585,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           hasPlayerColor: !!playerColor
         });
         
-        // Trigger victory/defeat animations for both players when game ends
+        // Helper to trigger the appropriate celebration
+        const triggerCelebrationForWinner = (winnerIsPlayer: boolean) => {
+          if (celebrationDelayTimeout.current) clearTimeout(celebrationDelayTimeout.current);
+          celebrationDelayTimeout.current = setTimeout(() => {
+            setCheckmateAnnouncement(null);
+            if (winnerIsPlayer) {
+              console.log('[GAME_END] Player won! Triggering victory celebration after delay');
+              playSound('victory');
+              triggerVictoryCelebration();
+            } else {
+              console.log('[GAME_END] Player lost! Triggering defeat celebration after delay');
+              playSound('loser');
+              triggerDefeatCelebration();
+            }
+          }, CELEBRATION_DELAY_MS);
+        };
+        
+        // Trigger delayed victory/defeat animations for both players when game ends
         if (gameData.winner && playerColor) {
-          console.log('[GAME_END] Winner and player color available, triggering celebrations');
-          
-          if (gameData.winner === playerColor) {
-            console.log('[GAME_END] Player won! Triggering victory celebration');
-            playSound('victory');
-            triggerVictoryCelebration();
-          } else {
-            console.log('[GAME_END] Player lost! Triggering defeat celebration');
-            playSound('loser');
-            triggerDefeatCelebration();
-          }
+          console.log('[GAME_END] Winner and player color available, scheduling celebration after delay');
+          triggerCelebrationForWinner(gameData.winner === playerColor);
         } else {
           // FALLBACK: If winner is not set but game is finished, try to determine winner from board state
           console.log('[GAME_END] Winner not set in Firebase, attempting to determine from board state');
@@ -3595,21 +3630,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               console.log('[GAME_END] King status - Blue king found:', blueKingFound, 'Red king found:', redKingFound);
               
               if (!blueKingFound && playerColor === 'red') {
-                console.log('[GAME_END] Blue king missing, red player wins! Triggering victory celebration');
-                playSound('victory');
-                triggerVictoryCelebration();
+                console.log('[GAME_END] Blue king missing, red player wins!');
+                triggerCelebrationForWinner(true);
               } else if (!redKingFound && playerColor === 'blue') {
-                console.log('[GAME_END] Red king missing, blue player wins! Triggering victory celebration');
-                playSound('victory');
-                triggerVictoryCelebration();
+                console.log('[GAME_END] Red king missing, blue player wins!');
+                triggerCelebrationForWinner(true);
               } else if (!blueKingFound && playerColor === 'blue') {
-                console.log('[GAME_END] Blue king missing, blue player loses! Triggering defeat celebration');
-                playSound('loser');
-                triggerDefeatCelebration();
+                console.log('[GAME_END] Blue king missing, blue player loses!');
+                triggerCelebrationForWinner(false);
               } else if (!redKingFound && playerColor === 'red') {
-                console.log('[GAME_END] Red king missing, red player loses! Triggering defeat celebration');
-                playSound('loser');
-                triggerDefeatCelebration();
+                console.log('[GAME_END] Red king missing, red player loses!');
+                triggerCelebrationForWinner(false);
               }
             } catch (error) {
               console.error('[GAME_END] Error determining winner from board state:', error);
@@ -3955,20 +3986,45 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           if (gameData && gameData.game_state === 'finished' && gameMode === GameMode.ACTIVE) {
             console.log('[GAME_END_CHECK] Game finished detected via periodic check:', gameData);
             
-            // Force game end notification if not already triggered
-            if (gameData.winner && gameData.winner !== playerColor) {
-              console.log('[GAME_END_CHECK] Player lost! Triggering defeat celebration');
-              playSound('loser');
-              triggerDefeatCelebration();
-            } else if (gameData.winner && gameData.winner === playerColor) {
-              console.log('[GAME_END_CHECK] Player won! Triggering victory celebration');
-              playSound('victory');
-              triggerVictoryCelebration();
+            // FIRST: Sync the final board state so the player sees the checkmate position
+            if (gameData.board) {
+              try {
+                const reconstructedBoard = reconstructBoard(gameData.board);
+                if (isValidBoardState(reconstructedBoard)) {
+                  setBoard(reconstructedBoard);
+                  console.log('[GAME_END_CHECK] Final board state synced');
+                }
+              } catch (error) {
+                console.error('[GAME_END_CHECK] Error syncing final board:', error);
+              }
             }
             
-            // Update game mode to finished
+            // SECOND: Highlight the winning move
+            if (gameData.last_move && gameData.last_move.from && gameData.last_move.to) {
+              setLastMove(gameData.last_move);
+              setIsWinningMove(true);
+              console.log('[GAME_END_CHECK] Winning move highlighted:', gameData.last_move);
+            }
+            
+            // Update game mode to finished and show announcement
             setGameMode(GameMode.FINISHED);
-            setGameStatus('Game finished');
+            setGameStatus('Checkmate!');
+            setCheckmateAnnouncement('CHECKMATE!');
+            
+            // DELAY celebrations so the player can see the winning move on the board
+            if (celebrationDelayTimeout.current) clearTimeout(celebrationDelayTimeout.current);
+            celebrationDelayTimeout.current = setTimeout(() => {
+              setCheckmateAnnouncement(null);
+              if (gameData.winner && gameData.winner !== playerColor) {
+                console.log('[GAME_END_CHECK] Player lost! Triggering defeat celebration after delay');
+                playSound('loser');
+                triggerDefeatCelebration();
+              } else if (gameData.winner && gameData.winner === playerColor) {
+                console.log('[GAME_END_CHECK] Player won! Triggering victory celebration after delay');
+                playSound('victory');
+                triggerVictoryCelebration();
+              }
+            }, CELEBRATION_DELAY_MS);
           }
         } catch (error) {
           console.error('[GAME_END_CHECK] Error checking game end state:', error);
@@ -4006,6 +4062,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               } catch (error) {
                 console.error('[BOARD_SYNC_CHECK] Error reconstructing board:', error);
               }
+            }
+            
+            // Sync last_move from Firebase to highlight opponent's moves
+            if (gameData.last_move && gameData.last_move.from && gameData.last_move.to) {
+              setLastMove(gameData.last_move);
             }
             
             // Update current player if it changed
@@ -4992,6 +5053,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Update move history
     const moveNotation = getMoveNotation(from, to, pieceString, newBoard);
+    const updatedMoveHistory = [...moveHistory, moveNotation];
     setMoveHistory(prev => {
       const updated = [...prev, moveNotation];
       console.log('[MOVE HISTORY UPDATED]', updated);
@@ -5010,7 +5072,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     // Check for game end
     let gameState = 'active';
-    let winner = null;
+    let winner: 'blue' | 'red' | null = null;
           if (isCheckmate(nextPlayer, newBoard)) {
         console.log('[CHECKMATE] Checkmate detected! Setting winner:', currentPlayer);
         gameState = 'finished';
@@ -5023,13 +5085,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           setGameJustFinished(false);
         }, 30000);
         
-        if (currentPlayer === playerColor) {
-          playSound('victory');
-          triggerVictoryCelebration();
-        } else {
-          playSound('loser');
-          triggerDefeatCelebration();
-        }
+        // Mark this as the winning move and show announcement
+        setIsWinningMove(true);
+        setCheckmateAnnouncement('CHECKMATE!');
+        
+        // DELAY the celebration so the player can see the winning move on the board
+        if (celebrationDelayTimeout.current) clearTimeout(celebrationDelayTimeout.current);
+        celebrationDelayTimeout.current = setTimeout(() => {
+          setCheckmateAnnouncement(null);
+          if (currentPlayer === playerColor) {
+            playSound('victory');
+            triggerVictoryCelebration();
+          } else {
+            playSound('loser');
+            triggerDefeatCelebration();
+          }
+        }, CELEBRATION_DELAY_MS);
       
       // Update scores for both players
       const currentContractData = getCurrentContractGameData();
@@ -5053,11 +5124,11 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           await loadLeaderboard();
       }
       
-      // Trigger contract payout for the winner
+      // Trigger contract payout for the winner (after celebration delay + buffer)
       if (winner === playerColor) {
         setTimeout(() => {
           claimWinnings();
-        }, 2000); // Small delay to ensure UI updates first
+        }, CELEBRATION_DELAY_MS + 2000); // After celebration delay + small buffer
       }
     } else if (isStalemate(nextPlayer, newBoard)) {
       // Stalemate = loss for the player who gets stalemated
@@ -5072,13 +5143,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         setGameJustFinished(false);
       }, 30000);
       
-      if (winner === playerColor) {
-        playSound('victory');
-        triggerVictoryCelebration();
-      } else {
-        playSound('loser');
-        triggerDefeatCelebration();
-      }
+      // Mark this as the winning move and show announcement
+      setIsWinningMove(true);
+      setCheckmateAnnouncement('STALEMATE!');
+      
+      // DELAY the celebration so the player can see the board
+      if (celebrationDelayTimeout.current) clearTimeout(celebrationDelayTimeout.current);
+      celebrationDelayTimeout.current = setTimeout(() => {
+        setCheckmateAnnouncement(null);
+        if (winner === playerColor) {
+          playSound('victory');
+          triggerVictoryCelebration();
+        } else {
+          playSound('loser');
+          triggerDefeatCelebration();
+        }
+      }, CELEBRATION_DELAY_MS);
       
       // Update Firebase FIRST (critical for winner field)
       try {
@@ -5111,7 +5191,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           current_player: nextPlayer,
           game_state: gameState,
           winner: winner,
-          last_move: { from, to }
+          last_move: { from, to },
+          move_history: updatedMoveHistory
         });
         
         console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
@@ -5195,7 +5276,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           current_player: nextPlayer,
           game_state: gameState,
           winner: winner,
-          last_move: { from, to }
+          last_move: { from, to },
+          move_history: updatedMoveHistory
         });
         
         console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
@@ -5231,6 +5313,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setShowVictory(false);
     setShowDefeat(false);
     setVictoryCelebration(false);
+    setCheckmateAnnouncement(null);
+    setIsWinningMove(false);
+    if (celebrationDelayTimeout.current) {
+      clearTimeout(celebrationDelayTimeout.current);
+      celebrationDelayTimeout.current = null;
+    }
   };
 
   // Victory celebration
@@ -6048,6 +6136,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const isSelected = selectedSquare?.row === row && selectedSquare?.col === col;
     const isValidMove = validMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && ((lastMove.from.row === row && lastMove.from.col === col) || (lastMove.to.row === row && lastMove.to.col === col));
+    const isWinningMoveSquare = isWinningMove && isLastMove;
     const isInCheck = piece && piece.toUpperCase() === 'K' && isKingInCheck(board, getPieceColor(piece));
     
     // Debug logging for piece rendering
@@ -6060,7 +6149,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     return (
       <div
         key={`${row}-${col}`}
-        className={`square ${isSelected ? 'selected' : ''} ${isValidMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''} ${isInCheck ? 'square-in-check' : ''}`}
+        className={`square ${isSelected ? 'selected' : ''} ${isValidMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''} ${isWinningMoveSquare ? 'winning-move' : ''} ${isInCheck ? 'square-in-check' : ''}`}
         onClick={() => handleSquareClick(row, col)}
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
@@ -6361,6 +6450,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       if (celebrationTimeout.current) {
         clearTimeout(celebrationTimeout.current);
+      }
+      if (celebrationDelayTimeout.current) {
+        clearTimeout(celebrationDelayTimeout.current);
       }
     };
   }, [gameMode, inviteCode, gameJustFinished]);
@@ -7415,6 +7507,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       {/* Modals and Overlays */}
       {renderPromotionDialog()}
+      
+      {/* Checkmate Announcement Banner - shows before victory/defeat overlay */}
+      {checkmateAnnouncement && !showVictory && !showDefeat && (
+        <div className="checkmate-announcement-overlay">
+          <div className="checkmate-announcement-banner">
+            <div className="checkmate-announcement-text">{checkmateAnnouncement}</div>
+            <div className="checkmate-announcement-subtext">
+              {gameStatus}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Victory/Defeat Overlays */}
       {showVictory && (
