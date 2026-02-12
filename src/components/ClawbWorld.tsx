@@ -13,7 +13,14 @@ import {
   animateBubbles,
   type WorldState,
 } from '../utils/worldObjects';
-import { sendClawbMessage, listenToClawbResponses, listenToVisitorMessages, type ClawbChatMessage } from '../firebaseClawb';
+import {
+  sendClawbMessage,
+  listenToClawbResponses,
+  listenToVisitorMessages,
+  enqueueWorldAction,
+  listenToWorldActions,
+  type ClawbChatMessage,
+} from '../firebaseClawb';
 import './ClawbWorld.css';
 
 // NFT Gallery — same as stream overlay
@@ -61,6 +68,17 @@ const WORLD_BOUNDS = 28;
 const CLAWB_GREET_DISTANCE = 3;
 const CLAWB_SCALE = 0.018; // Sized to match reef objects
 const FLOOR_Y = -3;
+const NFT_INTERACT_DISTANCE = 3.2;
+const WORLD_ACTION_DURATION_MS = 5000;
+
+interface NFTItem {
+  chain?: string;
+  contract?: string;
+  tokenId?: string;
+  name?: string;
+  collection?: string;
+  image_url?: string;
+}
 
 const ClawbWorld: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,17 +109,89 @@ const ClawbWorld: React.FC = () => {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [chatMessages, setChatMessages] = useState<ClawbChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [selectedNft, setSelectedNft] = useState<NFTItem | null>(null);
   const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
 
   const galleryGroupRef = useRef<THREE.Group | null>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
+  const processedActionIdsRef = useRef<Set<string>>(new Set());
+  const worldActionRef = useRef<{ type: string; until: number }>({ type: 'patrol', until: 0 });
+  const clawbActionTRef = useRef(0);
 
   // Mobile joystick state
   const joystickRef = useRef<{ active: boolean; startX: number; startY: number; dx: number; dy: number }>({
     active: false, startX: 0, startY: 0, dx: 0, dy: 0,
   });
   const mobileSwimYRef = useRef(0); // -1 = down, 0 = none, 1 = up
+
+  const normalizeIpfsUrl = useCallback((url: string): string[] => {
+    if (!url) return [];
+    const clean = url.trim();
+    if (!clean) return [];
+    if (clean.startsWith('ipfs://')) {
+      const cidPath = clean.replace('ipfs://', '');
+      return [
+        `https://nftstorage.link/ipfs/${cidPath}`,
+        `https://cloudflare-ipfs.com/ipfs/${cidPath}`,
+        `https://ipfs.io/ipfs/${cidPath}`,
+      ];
+    }
+    const idx = clean.indexOf('/ipfs/');
+    if (idx !== -1) {
+      const cidPath = clean.slice(idx + '/ipfs/'.length);
+      return [
+        clean,
+        `https://nftstorage.link/ipfs/${cidPath}`,
+        `https://cloudflare-ipfs.com/ipfs/${cidPath}`,
+        `https://ipfs.io/ipfs/${cidPath}`,
+      ];
+    }
+    return [clean];
+  }, []);
+
+  const createNftPlaceholderTexture = useCallback((nft: NFTItem, note: string): THREE.CanvasTexture => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      const fallback = new THREE.CanvasTexture(canvas);
+      fallback.minFilter = THREE.NearestFilter;
+      fallback.magFilter = THREE.NearestFilter;
+      fallback.colorSpace = THREE.SRGBColorSpace;
+      return fallback;
+    }
+
+    const g = ctx.createLinearGradient(0, 0, 0, 512);
+    g.addColorStop(0, '#1f2f45');
+    g.addColorStop(1, '#0f1726');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 512, 512);
+
+    ctx.fillStyle = '#ffd76a';
+    ctx.fillRect(24, 24, 464, 464);
+    ctx.fillStyle = '#1b2432';
+    ctx.fillRect(34, 34, 444, 444);
+
+    ctx.fillStyle = '#e7edf8';
+    ctx.font = 'bold 28px Arial';
+    ctx.fillText(nft.name || 'Unknown NFT', 52, 90, 408);
+    ctx.fillStyle = '#b6c2d7';
+    ctx.font = '22px Arial';
+    ctx.fillText(`${nft.collection || 'unknown'} #${nft.tokenId || '?'}`, 52, 134, 408);
+    ctx.fillText(`chain: ${nft.chain || '?'}`, 52, 174, 408);
+
+    ctx.fillStyle = '#86a6d1';
+    ctx.font = '20px Arial';
+    ctx.fillText(note, 52, 462, 408);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, []);
 
   // Determine which room the player is in based on position
   const getRoomName = useCallback((pos: THREE.Vector3): string => {
@@ -125,6 +215,42 @@ const ClawbWorld: React.FC = () => {
     }
     return 'welcome, traveler. the reef remembers all who visit.';
   }, [address]);
+
+  const parseWorldActionFromText = useCallback((text: string): string | null => {
+    const t = (text || '').toLowerCase().trim();
+    if (!t) return null;
+    if (/(^|\s)!dance\b|\bdance\b/.test(t)) return 'dance';
+    if (/(^|\s)!swim\b|\bswim\b/.test(t)) return 'swim';
+    if (/(^|\s)!wave\b|\bwave\b/.test(t)) return 'wave';
+    if (/(^|\s)!spin\b|\bspin\b/.test(t)) return 'spin';
+    if (/(^|\s)!jump\b|\bjump\b/.test(t)) return 'jump';
+    return null;
+  }, []);
+
+  const tryInspectNftInFront = useCallback((): boolean => {
+    const camera = cameraRef.current;
+    const gallery = galleryGroupRef.current;
+    if (!camera || !gallery || !gallery.visible) return false;
+
+    const from = camera.getWorldPosition(new THREE.Vector3());
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    raycasterRef.current.set(from, dir);
+    raycasterRef.current.far = NFT_INTERACT_DISTANCE;
+
+    const hits = raycasterRef.current.intersectObjects(gallery.children, true);
+    const hit = hits.find((h) => Boolean((h.object as THREE.Object3D).userData?.nft));
+    if (!hit) return false;
+
+    const nft = (hit.object as THREE.Object3D).userData.nft as NFTItem;
+    setSelectedNft(nft);
+    return true;
+  }, []);
+
+  const triggerWorldAction = useCallback((action: string) => {
+    worldActionRef.current = { type: action, until: Date.now() + WORLD_ACTION_DURATION_MS };
+    clawbActionTRef.current = 0;
+  }, []);
 
   // Animation loop
   const animate = useCallback(() => {
@@ -189,28 +315,61 @@ const ClawbWorld: React.FC = () => {
       animateBubbles(bubblesRef.current, delta);
     }
 
-    // Animate Clawb NPC patrol
+    // Animate Clawb NPC (patrol + synchronized world actions)
     if (clawbRef.current && clawbMixerRef.current) {
       clawbMixerRef.current.update(delta);
-      clawbPosXRef.current += 1.0 * delta * clawbWalkDirRef.current;
-      if (clawbPosXRef.current > 3) {
-        clawbPosXRef.current = 3;
-        clawbWalkDirRef.current = -1;
-        clawbRef.current.rotation.y = -Math.PI / 2; // Face left
-      } else if (clawbPosXRef.current < -3) {
-        clawbPosXRef.current = -3;
-        clawbWalkDirRef.current = 1;
-        clawbRef.current.rotation.y = Math.PI / 2; // Face right
+      clawbActionTRef.current += delta;
+      const t = clawbActionTRef.current;
+      const activeAction = Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol';
+
+      if (activeAction === 'patrol') {
+        clawbPosXRef.current += 1.0 * delta * clawbWalkDirRef.current;
+        if (clawbPosXRef.current > 3) {
+          clawbPosXRef.current = 3;
+          clawbWalkDirRef.current = -1;
+          clawbRef.current.rotation.y = -Math.PI / 2; // Face left
+        } else if (clawbPosXRef.current < -3) {
+          clawbPosXRef.current = -3;
+          clawbWalkDirRef.current = 1;
+          clawbRef.current.rotation.y = Math.PI / 2; // Face right
+        }
+        clawbRef.current.position.x = clawbPosXRef.current;
+        clawbRef.current.position.y = FLOOR_Y;
+        clawbRef.current.position.z = 0;
+      } else {
+        const baseX = clawbPosXRef.current;
+        const baseZ = 0;
+        if (activeAction === 'dance') {
+          clawbRef.current.position.x = baseX + Math.sin(t * 4.5) * 0.5;
+          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 5.2)) * 0.35;
+          clawbRef.current.rotation.y += delta * 1.6;
+        } else if (activeAction === 'swim') {
+          clawbRef.current.position.x = baseX + Math.sin(t * 2.2) * 1.4;
+          clawbRef.current.position.z = baseZ + Math.cos(t * 2.2) * 1.1;
+          clawbRef.current.position.y = FLOOR_Y + 0.5 + Math.sin(t * 2.8) * 0.35;
+          clawbRef.current.rotation.y = t * 2.2 + Math.PI / 2;
+        } else if (activeAction === 'wave') {
+          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 3.0)) * 0.2;
+          clawbRef.current.rotation.y = Math.sin(t * 3.0) * 0.6;
+          clawbRef.current.rotation.z = Math.sin(t * 6.0) * 0.2;
+        } else if (activeAction === 'spin') {
+          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 4.0)) * 0.15;
+          clawbRef.current.rotation.y += delta * 6.0;
+        } else if (activeAction === 'jump') {
+          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 7.0)) * 0.9;
+          clawbRef.current.position.x = baseX + Math.sin(t * 2.0) * 0.2;
+        }
       }
-      clawbRef.current.position.x = clawbPosXRef.current;
 
       // Proximity greeting
       const dist = camera.position.distanceTo(clawbRef.current.position);
       if (dist < CLAWB_GREET_DISTANCE) {
         setClawbGreeting(getGreeting());
         // Face player
-        const dx = camera.position.x - clawbRef.current.position.x;
-        clawbRef.current.rotation.y = Math.atan2(dx, 1);
+        if (activeAction === 'patrol') {
+          const dx = camera.position.x - clawbRef.current.position.x;
+          clawbRef.current.rotation.y = Math.atan2(dx, 1);
+        }
       } else {
         setClawbGreeting(null);
       }
@@ -345,15 +504,6 @@ const ClawbWorld: React.FC = () => {
     scene.add(galleryGroup);
     galleryGroupRef.current = galleryGroup;
 
-    interface NFTItem {
-      chain?: string;
-      contract?: string;
-      tokenId?: string;
-      name?: string;
-      collection?: string;
-      image_url?: string;
-    }
-
     const NFT_FALLBACK: NFTItem[] = [
       { chain: 'ethereum', contract: '0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42', tokenId: '158', name: 'Lawbster #158', collection: 'lawbsters' },
       { chain: 'ethereum', contract: '0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42', tokenId: '177', name: 'Lawbster #177', collection: 'lawbsters' },
@@ -363,141 +513,106 @@ const ClawbWorld: React.FC = () => {
       { chain: 'base', contract: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2', tokenId: '45', name: 'Lawbster #45', collection: 'ascii Lawbsters' },
     ];
 
+    const texLoader = new THREE.TextureLoader();
+    texLoader.setCrossOrigin('anonymous');
+    const frameMat = new THREE.MeshPhongMaterial({ color: 0xccaa33, shininess: 20, side: THREE.DoubleSide });
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x1a2a3a, side: THREE.DoubleSide });
+    const frameSize = 0.65;
+
+    const loadTextureWithFallback = async (nft: NFTItem): Promise<THREE.Texture> => {
+      const urls = normalizeIpfsUrl(nft.image_url || '');
+      for (const url of urls) {
+        try {
+          const tex = await new Promise<THREE.Texture>((resolve, reject) => {
+            texLoader.load(url, resolve, undefined, reject);
+          });
+          tex.minFilter = THREE.NearestFilter;
+          tex.magFilter = THREE.NearestFilter;
+          tex.colorSpace = THREE.SRGBColorSpace;
+          return tex;
+        } catch {
+          // try next gateway
+        }
+      }
+      return createNftPlaceholderTexture(nft, 'image unavailable');
+    };
+
+    const addGalleryWalls = (gallery: THREE.Group, rows: number) => {
+      const wallHeight = Math.max(4, rows * 1.1 + 2);
+      const wallMat = new THREE.MeshPhongMaterial({
+        color: 0x4a6a8a,
+        emissive: 0x0c1824,
+        flatShading: true,
+        side: THREE.DoubleSide,
+        shininess: 5,
+      });
+      const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, wallHeight), wallMat);
+      backWall.position.set(0, -1.0 + (wallHeight - 4) / 2, -3.5);
+      gallery.add(backWall);
+      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(6, wallHeight), wallMat.clone());
+      leftWall.position.set(-4, -1.0 + (wallHeight - 4) / 2, -0.5);
+      leftWall.rotation.y = Math.PI / 2;
+      gallery.add(leftWall);
+      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(6, wallHeight), wallMat.clone());
+      rightWall.position.set(4, -1.0 + (wallHeight - 4) / 2, -0.5);
+      rightWall.rotation.y = -Math.PI / 2;
+      gallery.add(rightWall);
+    };
+
+    const addNftPanel = async (nft: NFTItem, x: number, y: number, z: number) => {
+      const frame = new THREE.Mesh(new THREE.PlaneGeometry(frameSize + 0.1, frameSize + 0.1), frameMat);
+      frame.position.set(x, y, z);
+      frame.userData.nft = nft;
+      galleryGroup.add(frame);
+
+      const bg = new THREE.Mesh(new THREE.PlaneGeometry(frameSize, frameSize), bgMat);
+      bg.position.set(x, y, z + 0.02);
+      bg.userData.nft = nft;
+      galleryGroup.add(bg);
+
+      const tex = await loadTextureWithFallback(nft);
+      const imgMat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+      const imgPlane = new THREE.Mesh(new THREE.PlaneGeometry(frameSize, frameSize), imgMat);
+      imgPlane.position.set(x, y, z + 0.04);
+      imgPlane.userData.nft = nft;
+      galleryGroup.add(imgPlane);
+
+      const spot = new THREE.PointLight(0xeeeeff, 0.3, 2.5);
+      spot.position.set(x, y + 0.7, -2.8);
+      galleryGroup.add(spot);
+    };
+
+    const buildGallery = async (nfts: NFTItem[]) => {
+      const cols = 5;
+      const rows = Math.ceil(nfts.length / cols);
+      const spacingX = 1.3;
+      const spacingY = 1.1;
+      const startX = -((cols - 1) * spacingX) / 2;
+      const bottomRowY = -0.6;
+
+      addGalleryWalls(galleryGroup, rows);
+
+      const tasks: Array<Promise<void>> = [];
+      nfts.forEach((nft, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = startX + col * spacingX;
+        const y = bottomRowY + row * spacingY;
+        const z = -3.46;
+        tasks.push(addNftPanel(nft, x, y, z));
+      });
+      await Promise.all(tasks);
+    };
+
     fetch(FIREBASE_GALLERY_URL)
       .then((res) => res.json())
       .then((data: { nfts?: NFTItem[] }) => {
         const nfts = data?.nfts?.length ? data.nfts : NFT_FALLBACK;
-        const cols = 5;
-        const rows = Math.ceil(nfts.length / cols);
-        const frameSize = 0.65;
-        const spacingX = 1.3;
-        const spacingY = 1.1;
-        const startX = -((cols - 1) * spacingX) / 2;
-        const bottomRowY = -0.6;
-        const wallHeight = Math.max(4, rows * spacingY + 2);
-
-        const wallMat = new THREE.MeshPhongMaterial({
-          color: 0x4a6a8a,
-          emissive: 0x0c1824,
-          flatShading: true,
-          side: THREE.DoubleSide,
-          shininess: 5,
-        });
-
-        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, wallHeight), wallMat);
-        backWall.position.set(0, -1.0 + (wallHeight - 4) / 2, -3.5);
-        galleryGroup.add(backWall);
-        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(6, wallHeight), wallMat.clone());
-        leftWall.position.set(-4, -1.0 + (wallHeight - 4) / 2, -0.5);
-        leftWall.rotation.y = Math.PI / 2;
-        galleryGroup.add(leftWall);
-        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(6, wallHeight), wallMat.clone());
-        rightWall.position.set(4, -1.0 + (wallHeight - 4) / 2, -0.5);
-        rightWall.rotation.y = -Math.PI / 2;
-        galleryGroup.add(rightWall);
-
-        const texLoader = new THREE.TextureLoader();
-        const frameMat = new THREE.MeshPhongMaterial({ color: 0xccaa33, shininess: 20, side: THREE.DoubleSide });
-        const bgMat = new THREE.MeshBasicMaterial({ color: 0x1a2a3a, side: THREE.DoubleSide });
-
-        nfts.forEach((nft, i) => {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const x = startX + col * spacingX;
-          const y = bottomRowY + row * spacingY;
-          const z = -3.46;
-
-          const frame = new THREE.Mesh(new THREE.PlaneGeometry(frameSize + 0.1, frameSize + 0.1), frameMat);
-          frame.position.set(x, y, z);
-          galleryGroup.add(frame);
-          const bg = new THREE.Mesh(new THREE.PlaneGeometry(frameSize, frameSize), bgMat);
-          bg.position.set(x, y, z + 0.02);
-          galleryGroup.add(bg);
-
-          const imgUrl = nft.image_url;
-          if (imgUrl) {
-            texLoader.load(imgUrl, (tex) => {
-              tex.minFilter = THREE.NearestFilter;
-              tex.magFilter = THREE.NearestFilter;
-              tex.colorSpace = THREE.SRGBColorSpace;
-              const imgMat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
-              const imgPlane = new THREE.Mesh(new THREE.PlaneGeometry(frameSize, frameSize), imgMat);
-              imgPlane.position.set(x, y, z + 0.04);
-              galleryGroup.add(imgPlane);
-            }, undefined, () => {
-              const placeholder = new THREE.Mesh(
-                new THREE.PlaneGeometry(frameSize, frameSize),
-                new THREE.MeshBasicMaterial({ color: 0x2a3a4a, side: THREE.DoubleSide })
-              );
-              placeholder.position.set(x, y, z + 0.04);
-              galleryGroup.add(placeholder);
-            });
-          } else {
-            const placeholder = new THREE.Mesh(
-              new THREE.PlaneGeometry(frameSize, frameSize),
-              new THREE.MeshBasicMaterial({ color: 0x2a3a4a, side: THREE.DoubleSide })
-            );
-            placeholder.position.set(x, y, z + 0.04);
-            galleryGroup.add(placeholder);
-          }
-
-          const spot = new THREE.PointLight(0xeeeeff, 0.3, 2.5);
-          spot.position.set(x, y + 0.7, -2.8);
-          galleryGroup.add(spot);
-        });
+        buildGallery(nfts);
       })
       .catch(() => {
         console.warn('[ClawbWorld] NFT gallery fetch failed, using fallback');
-        const nfts = NFT_FALLBACK;
-        const cols = 5;
-        const rows = Math.ceil(nfts.length / cols);
-        const frameSize = 0.65;
-        const spacingX = 1.3;
-        const spacingY = 1.1;
-        const startX = -((cols - 1) * spacingX) / 2;
-        const bottomRowY = -0.6;
-        const wallHeight = Math.max(4, rows * spacingY + 2);
-
-        const wallMat = new THREE.MeshPhongMaterial({
-          color: 0x4a6a8a,
-          emissive: 0x0c1824,
-          flatShading: true,
-          side: THREE.DoubleSide,
-          shininess: 5,
-        });
-
-        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, wallHeight), wallMat);
-        backWall.position.set(0, -1.0 + (wallHeight - 4) / 2, -3.5);
-        galleryGroup.add(backWall);
-        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(6, wallHeight), wallMat.clone());
-        leftWall.position.set(-4, -1.0 + (wallHeight - 4) / 2, -0.5);
-        leftWall.rotation.y = Math.PI / 2;
-        galleryGroup.add(leftWall);
-        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(6, wallHeight), wallMat.clone());
-        rightWall.position.set(4, -1.0 + (wallHeight - 4) / 2, -0.5);
-        rightWall.rotation.y = -Math.PI / 2;
-        galleryGroup.add(rightWall);
-
-        const frameMat = new THREE.MeshPhongMaterial({ color: 0xccaa33, shininess: 20, side: THREE.DoubleSide });
-        const bgMat = new THREE.MeshBasicMaterial({ color: 0x1a2a3a, side: THREE.DoubleSide });
-
-        nfts.forEach((nft, i) => {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const x = startX + col * spacingX;
-          const y = bottomRowY + row * spacingY;
-          const z = -3.46;
-
-          const frame = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.75), frameMat);
-          frame.position.set(x, y, z);
-          galleryGroup.add(frame);
-          const placeholder = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.65, 0.65),
-            new THREE.MeshBasicMaterial({ color: 0x2a3a4a, side: THREE.DoubleSide })
-          );
-          placeholder.position.set(x, y, z + 0.04);
-          galleryGroup.add(placeholder);
-        });
+        buildGallery(NFT_FALLBACK);
       });
 
     // Invisible boundary walls
@@ -521,11 +636,16 @@ const ClawbWorld: React.FC = () => {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       keysRef.current[k] = true;
-      // E to talk to Clawb when near (alternative to clicking)
-      if (k === 'e' && clawbRef.current && cameraRef.current) {
-        const dist = cameraRef.current.position.distanceTo(clawbRef.current.position);
-        if (dist < CLAWB_GREET_DISTANCE) {
-          setShowChatPanel((prev) => !prev);
+      // E: inspect NFT in front first, otherwise talk to Clawb when near
+      if (k === 'e') {
+        if (tryInspectNftInFront()) {
+          return;
+        }
+        if (clawbRef.current && cameraRef.current) {
+          const dist = cameraRef.current.position.distanceTo(clawbRef.current.position);
+          if (dist < CLAWB_GREET_DISTANCE) {
+            setShowChatPanel((prev) => !prev);
+          }
         }
       }
     };
@@ -569,7 +689,7 @@ const ClawbWorld: React.FC = () => {
         }
       });
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [createNftPlaceholderTexture, getGreeting, normalizeIpfsUrl, tryInspectNftInFront, animate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Click to lock pointer OR click Clawb to chat (desktop)
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -579,6 +699,7 @@ const ClawbWorld: React.FC = () => {
     const canvas = canvasRef.current;
     const camera = cameraRef.current;
     const clawb = clawbRef.current;
+    const gallery = galleryGroupRef.current;
     if (!canvas || !camera || !clawb) {
       controlsRef.current?.lock();
       return;
@@ -589,6 +710,15 @@ const ClawbWorld: React.FC = () => {
     mouseRef.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycasterRef.current.setFromCamera(mouseRef.current, camera);
+    if (gallery?.visible) {
+      const nftHit = raycasterRef.current
+        .intersectObjects(gallery.children, true)
+        .find((h) => Boolean((h.object as THREE.Object3D).userData?.nft));
+      if (nftHit) {
+        setSelectedNft((nftHit.object as THREE.Object3D).userData.nft as NFTItem);
+        return;
+      }
+    }
     const intersects = raycasterRef.current.intersectObject(clawb, true);
 
     if (intersects.length > 0) {
@@ -651,16 +781,36 @@ const ClawbWorld: React.FC = () => {
     };
   }, [showChatPanel]);
 
+  useEffect(() => {
+    const unsub = listenToWorldActions((actions) => {
+      if (!actions.length) return;
+      for (const a of actions) {
+        if (processedActionIdsRef.current.has(a.id)) continue;
+        processedActionIdsRef.current.add(a.id);
+        triggerWorldAction(a.action);
+      }
+      // Keep set bounded
+      if (processedActionIdsRef.current.size > 200) {
+        processedActionIdsRef.current = new Set(Array.from(processedActionIdsRef.current).slice(-100));
+      }
+    }, 40);
+    return () => unsub();
+  }, [triggerWorldAction]);
+
   const handleSendChat = useCallback(async () => {
     const msg = chatInput.trim();
     if (!msg) return;
     setChatInput('');
     try {
       await sendClawbMessage(msg, address || 'anonymous', 'world');
+      const action = parseWorldActionFromText(msg);
+      if (action) {
+        await enqueueWorldAction(action, address || 'anonymous', 'world');
+      }
     } catch (err) {
       console.error('[ClawbWorld] Send failed:', err);
     }
-  }, [chatInput, address]);
+  }, [chatInput, address, parseWorldActionFromText]);
 
   // Mobile joystick handlers
   const handleJoystickStart = useCallback((e: React.TouchEvent) => {
@@ -698,7 +848,7 @@ const ClawbWorld: React.FC = () => {
         <div className="clawb-world-room-label">{currentRoom}</div>
         <div className="clawb-world-controls-hint">
           {!isLocked && !isMobile && (
-            <div className="clawb-world-click-prompt">Click to look around · WASD to move · Space/Shift to swim up/down · Click Clawb or press E near him to chat</div>
+            <div className="clawb-world-click-prompt">Click to look around · WASD move · Space/Shift swim · Press E to inspect NFT in front · Click Clawb or press E near him to chat</div>
           )}
         </div>
       </div>
@@ -718,10 +868,27 @@ const ClawbWorld: React.FC = () => {
       {clawbGreeting && !showChatPanel && (
         <div className="clawb-world-greeting">
           <span className="clawb-world-greeting-text">{clawbGreeting}</span>
-          {!isMobile && <span className="clawb-world-greeting-hint">Press E to talk</span>}
+          {!isMobile && <span className="clawb-world-greeting-hint">Press E to talk · Press E while facing an NFT to inspect it</span>}
           {isMobile && (
             <button type="button" className="clawb-world-talk-btn" onClick={() => setShowChatPanel(true)}>Talk to Clawb</button>
           )}
+        </div>
+      )}
+
+      {selectedNft && (
+        <div className="clawb-world-nft-panel">
+          <div className="clawb-world-nft-header">
+            <span>NFT Inspect</span>
+            <button type="button" className="clawb-world-chat-close" onClick={() => setSelectedNft(null)}>×</button>
+          </div>
+          <div className="clawb-world-nft-body">
+            <div><strong>Name:</strong> {selectedNft.name || 'Unknown'}</div>
+            <div><strong>Collection:</strong> {selectedNft.collection || 'Unknown'}</div>
+            <div><strong>Token ID:</strong> {selectedNft.tokenId || '?'}</div>
+            <div><strong>Chain:</strong> {selectedNft.chain || '?'}</div>
+            <div className="clawb-world-nft-contract"><strong>Contract:</strong> {selectedNft.contract || 'Unknown'}</div>
+            <div className="clawb-world-nft-note">No description field in current gallery feed.</div>
+          </div>
         </div>
       )}
 
