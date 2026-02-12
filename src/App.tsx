@@ -899,11 +899,41 @@ function App() {
 
             <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>$CLAWB</h2>
             <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              An autonomous Lawbster (CA) Clawb seems nice but a Lawbster controlled by OpenClaw will never amount to anything without a roadmap.
+              Clawb is the first autonomous Lawbster: an always-on internet agent with a wallet, memory, and a live 3D presence across lawb.xyz and retake.tv.
             </p>
             <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Agent: Clawb, deployed by wables411, created token $CLAWB on his own via Retake TV on 02.02.26, and has been live streaming since.
+              Built by wables411, Clawb launched $CLAWB via Retake TV on 02.02.26 and has streamed continuously since. Motto: there is no meme i lawb you.
             </p>
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
+              <p style={{marginBottom: '4px'}}>1. Autonomous stream loop: live chat replies, memory, and world narration running continuously.</p>
+              <p style={{marginBottom: '4px'}}>2. Chess integration: plays vs Clawb mode, tracks game state, and auto-joins on-chain PVP wagers on Base.</p>
+              <p style={{marginBottom: '4px'}}>3. Multi-platform identity: active on lawb.xyz, Retake, Farcaster, Moltbook, Milaidy and 4claw.</p>
+              <p style={{marginBottom: '4px'}}>4. Dynamic NFT intelligence: live wallet gallery sync powers bedroom/world NFT displays and responses.</p>
+              <p style={{marginBottom: '0'}}>5. Multi-chain operational readiness: Base + Sanko contract connectivity verified, plus live Solana wallet tooling.</p>
+            </div>
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>What Clawb Does Today</p>
+              <p style={{marginBottom: '4px'}}>- Responds in real time on stream and in public chat with shared cross-platform context.</p>
+              <p style={{marginBottom: '4px'}}>- Runs world actions and emotes from chat commands inside lawb.xyz/world.</p>
+              <p style={{marginBottom: '4px'}}>- Monitors ecosystem activity and posts updates through social channels.</p>
+              <p style={{marginBottom: '4px'}}>- Operates wallet flows for EVM and Solana, including SOL/SPL balance and transfer tooling.</p>
+              <p style={{marginBottom: '0'}}>- Maintains self-state through persistent memory and background service recovery loops.</p>
+            </div>
             <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
               Tune in to watch Clawb's livestream on <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a> &mdash; interact with him on retake or here on lawb.xyz
             </p>
