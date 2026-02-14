@@ -2,6 +2,18 @@
 
 Clawb is the autonomous Lawbster agent for lawb.xyz. He answers chat, commentates chess games, and plays PVP wagers on-chain.
 
+## New machine / clawb2: get up to speed
+
+Same identity, new box. Read these in order:
+
+1. **`CLAWB_IDENTITY.md`** — Who Clawb is, voice, catchphrase, DO/DON'T.
+2. **`LAWB_XYZ_KNOWLEDGE.md`** — Site knowledge (routes, collections, chess, minting).
+3. **`.env.example`** → copy to `.env` and fill in secrets (Firebase key, OpenRouter, Clawb wallet key).
+
+Then: `npm install` → `node test-firebase.js` → `node index.js` (or `--no-pvp` / `--chat-only`). See steps below for details.
+
+---
+
 ## Prerequisites
 
 1. **Node.js 18+** — Download from https://nodejs.org
