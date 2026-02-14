@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { listenToClawbStatus } from '../firebaseClawb';
 
-const RETAKE_STREAM_URL = 'https://retake.tv/clawb';
-
 const RetakeLiveBadge: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
 
@@ -15,8 +13,7 @@ const RetakeLiveBadge: React.FC = () => {
 
   return (
     <div
-      onClick={() => window.open(RETAKE_STREAM_URL, '_blank', 'noopener,noreferrer')}
-      title={isLive ? 'Clawb is LIVE on Retake TV — click to watch' : 'Retake TV — click to visit'}
+      title={isLive ? 'Clawb is live' : 'Streaming paused'}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -24,7 +21,7 @@ const RetakeLiveBadge: React.FC = () => {
         padding: '4px 8px',
         borderRadius: '4px',
         background: 'rgba(0, 0, 0, 0.2)',
-        cursor: 'pointer',
+        cursor: 'default',
         fontSize: '11px',
         fontFamily: 'DejaVu Sans, Liberation Sans, Arial, sans-serif',
         color: '#cbd5e0',
@@ -43,7 +40,7 @@ const RetakeLiveBadge: React.FC = () => {
           animation: isLive ? 'retake-live-pulse 1.5s ease-in-out infinite' : 'none',
         }}
       />
-      <span>{isLive ? 'LIVE' : 'Retake TV'}</span>
+      <span>{isLive ? 'LIVE' : 'PAUSED'}</span>
       <style>{`
         @keyframes retake-live-pulse {
           0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245, 101, 101, 0.6); }

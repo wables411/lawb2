@@ -19,7 +19,12 @@ import {
   listenToVisitorMessages,
   enqueueWorldAction,
   listenToWorldActions,
+  listenToWorldPlayers,
+  upsertWorldPresence,
+  removeWorldPresence,
+  registerWorldPresenceDisconnectCleanup,
   type ClawbChatMessage,
+  type WorldPlayerPresence,
 } from '../firebaseClawb';
 import './ClawbWorld.css';
 
@@ -70,6 +75,17 @@ const CLAWB_SCALE = 0.018; // Sized to match reef objects
 const FLOOR_Y = -3;
 const NFT_INTERACT_DISTANCE = 3.2;
 const WORLD_ACTION_DURATION_MS = 5000;
+const CLAWB_PATROL_SPEED = 1.2;
+const CLAWB_PATROL_PAUSE_MS = 1200;
+const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
+const PATROL_POINTS = [
+  new THREE.Vector3(-2.6, FLOOR_Y, -1.4),
+  new THREE.Vector3(-0.8, FLOOR_Y, 1.0),
+  new THREE.Vector3(1.9, FLOOR_Y, 0.5),
+  new THREE.Vector3(2.7, FLOOR_Y, -1.8),
+  new THREE.Vector3(0.2, FLOOR_Y, -2.4),
+];
+const PRESENCE_WRITE_INTERVAL_MS = 250;
 
 interface NFTItem {
   chain?: string;
@@ -95,8 +111,10 @@ const ClawbWorld: React.FC = () => {
   const bubblesRef = useRef<THREE.Points | null>(null);
   const clawbRef = useRef<THREE.Group | null>(null);
   const clawbMixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const clawbWalkDirRef = useRef(1);
-  const clawbPosXRef = useRef(0);
+  const clawbPosRef = useRef(PATROL_POINTS[0].clone());
+  const clawbPatrolPointIdxRef = useRef(1);
+  const clawbPatrolPauseUntilRef = useRef(0);
+  const lightsRef = useRef<{ ambient: THREE.AmbientLight; directional: THREE.DirectionalLight } | null>(null);
 
   // Movement keys state
   const keysRef = useRef<Record<string, boolean>>({});
@@ -118,6 +136,11 @@ const ClawbWorld: React.FC = () => {
   const processedActionIdsRef = useRef<Set<string>>(new Set());
   const worldActionRef = useRef<{ type: string; until: number }>({ type: 'patrol', until: 0 });
   const clawbActionTRef = useRef(0);
+  const remotePlayersRef = useRef<Map<string, THREE.Group>>(new Map());
+  const remoteTargetsRef = useRef<Map<string, WorldPlayerPresence>>(new Map());
+  const remoteMixersRef = useRef<Map<string, THREE.AnimationMixer>>(new Map());
+  const presenceLastWriteAtRef = useRef(0);
+  const localRoomRef = useRef('Main Reef');
 
   // Mobile joystick state
   const joystickRef = useRef<{ active: boolean; startX: number; startY: number; dx: number; dy: number }>({
@@ -219,6 +242,8 @@ const ClawbWorld: React.FC = () => {
   const parseWorldActionFromText = useCallback((text: string): string | null => {
     const t = (text || '').toLowerCase().trim();
     if (!t) return null;
+    if (/(^|\s)!day\b/.test(t)) return 'day';
+    if (/(^|\s)!night\b/.test(t)) return 'night';
     if (/(^|\s)!dance\b|\bdance\b/.test(t)) return 'dance';
     if (/(^|\s)!swim\b|\bswim\b/.test(t)) return 'swim';
     if (/(^|\s)!wave\b|\bwave\b/.test(t)) return 'wave';
@@ -248,9 +273,62 @@ const ClawbWorld: React.FC = () => {
   }, []);
 
   const triggerWorldAction = useCallback((action: string) => {
+    const scene = sceneRef.current;
+    const lights = lightsRef.current;
+    if (scene && lights && (action === 'day' || action === 'night')) {
+      const isNight = action === 'night';
+      setupUnderwaterFog(scene, isNight);
+      lights.ambient.color.set(isNight ? '#1a2a44' : '#4466aa');
+      lights.ambient.intensity = isNight ? 0.4 : 0.6;
+      lights.directional.color.set(isNight ? '#88aacc' : '#ffffee');
+      lights.directional.intensity = isNight ? 0.5 : 0.8;
+      worldActionRef.current = { type: 'patrol', until: 0 };
+      return;
+    }
     worldActionRef.current = { type: action, until: Date.now() + WORLD_ACTION_DURATION_MS };
     clawbActionTRef.current = 0;
   }, []);
+
+  const applyBlueTint = useCallback((object: THREE.Group) => {
+    object.traverse((child: THREE.Object3D) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mesh.material = mats.map((m) => {
+          const clone = m.clone() as THREE.MeshStandardMaterial;
+          if (clone.color) clone.color.set('#66aaff');
+          if ('emissive' in clone && clone.emissive) clone.emissive.set('#0b1d33');
+          return clone;
+        });
+      }
+    });
+  }, []);
+
+  const ensureRemotePlayer = useCallback(async (wallet: string, scene: THREE.Scene): Promise<THREE.Group> => {
+    const existing = remotePlayersRef.current.get(wallet);
+    if (existing) return existing;
+
+    const loader = new FBXLoader();
+    const model = await new Promise<THREE.Group>((resolve, reject) => {
+      loader.load('/assets/lawbWalk.fbx', resolve, undefined, reject);
+    });
+    model.scale.setScalar(CLAWB_SCALE);
+    model.position.set(0, FLOOR_Y, 0);
+    applyBlueTint(model);
+    scene.add(model);
+    remotePlayersRef.current.set(wallet, model);
+
+    if (model.animations?.length > 0) {
+      const mixer = new THREE.AnimationMixer(model);
+      const clip = model.animations[0].clone();
+      clip.tracks = clip.tracks.filter((t) => !t.name.toLowerCase().includes('.position'));
+      if (clip.tracks.length > 0) clip.resetDuration();
+      mixer.clipAction(clip).play();
+      remoteMixersRef.current.set(wallet, mixer);
+    }
+
+    return model;
+  }, [applyBlueTint]);
 
   // Animation loop
   const animate = useCallback(() => {
@@ -309,10 +387,43 @@ const ClawbWorld: React.FC = () => {
     // Update room name (every frame)
     const roomName = getRoomName(camera.position);
     setCurrentRoom(roomName);
+    localRoomRef.current = roomName;
 
     // Animate bubbles
     if (bubblesRef.current) {
       animateBubbles(bubblesRef.current, delta);
+    }
+
+    // Animate remote players + sync local presence
+    if (WORLD_MULTIPLAYER_ENABLED && sceneRef.current) {
+      for (const mixer of remoteMixersRef.current.values()) {
+        mixer.update(delta);
+      }
+
+      for (const [wallet, target] of remoteTargetsRef.current.entries()) {
+        const model = remotePlayersRef.current.get(wallet);
+        if (!model) continue;
+        const targetPos = new THREE.Vector3(target.x, target.y, target.z);
+        model.position.lerp(targetPos, Math.min(1, delta * 6));
+        model.rotation.y = target.rotationY;
+      }
+    }
+
+    if (
+      WORLD_MULTIPLAYER_ENABLED &&
+      address &&
+      Date.now() - presenceLastWriteAtRef.current > PRESENCE_WRITE_INTERVAL_MS
+    ) {
+      presenceLastWriteAtRef.current = Date.now();
+      upsertWorldPresence(address, {
+        room: localRoomRef.current,
+        x: camera.position.x,
+        y: camera.position.y - PLAYER_HEIGHT,
+        z: camera.position.z,
+        rotationY: camera.rotation.y,
+      }).catch(() => {
+        // non-blocking
+      });
     }
 
     // Animate Clawb NPC (patrol + synchronized world actions)
@@ -323,22 +434,30 @@ const ClawbWorld: React.FC = () => {
       const activeAction = Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol';
 
       if (activeAction === 'patrol') {
-        clawbPosXRef.current += 1.0 * delta * clawbWalkDirRef.current;
-        if (clawbPosXRef.current > 3) {
-          clawbPosXRef.current = 3;
-          clawbWalkDirRef.current = -1;
-          clawbRef.current.rotation.y = -Math.PI / 2; // Face left
-        } else if (clawbPosXRef.current < -3) {
-          clawbPosXRef.current = -3;
-          clawbWalkDirRef.current = 1;
-          clawbRef.current.rotation.y = Math.PI / 2; // Face right
+        const now = Date.now();
+        if (now >= clawbPatrolPauseUntilRef.current) {
+          const target = PATROL_POINTS[clawbPatrolPointIdxRef.current];
+          const toTarget = new THREE.Vector3().subVectors(target, clawbPosRef.current);
+          const dist = toTarget.length();
+          if (dist < 0.18) {
+            clawbPatrolPointIdxRef.current = (clawbPatrolPointIdxRef.current + 1) % PATROL_POINTS.length;
+            clawbPatrolPauseUntilRef.current = now + CLAWB_PATROL_PAUSE_MS;
+          } else {
+            toTarget.normalize();
+            clawbPosRef.current.x += toTarget.x * CLAWB_PATROL_SPEED * delta;
+            clawbPosRef.current.z += toTarget.z * CLAWB_PATROL_SPEED * delta;
+            clawbRef.current.rotation.y = Math.atan2(toTarget.x, toTarget.z);
+          }
         }
-        clawbRef.current.position.x = clawbPosXRef.current;
-        clawbRef.current.position.y = FLOOR_Y;
-        clawbRef.current.position.z = 0;
+        clawbRef.current.position.x = clawbPosRef.current.x;
+        clawbRef.current.position.z = clawbPosRef.current.z;
+        clawbRef.current.position.y =
+          Date.now() < clawbPatrolPauseUntilRef.current
+            ? FLOOR_Y + Math.abs(Math.sin(t * 3.2)) * 0.08
+            : FLOOR_Y;
       } else {
-        const baseX = clawbPosXRef.current;
-        const baseZ = 0;
+        const baseX = clawbPosRef.current.x;
+        const baseZ = clawbPosRef.current.z;
         if (activeAction === 'dance') {
           clawbRef.current.position.x = baseX + Math.sin(t * 4.5) * 0.5;
           clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 5.2)) * 0.35;
@@ -408,7 +527,7 @@ const ClawbWorld: React.FC = () => {
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     setupUnderwaterFog(scene, true); // Always dark underwater
-    setupUnderwaterLighting(scene, true);
+    lightsRef.current = setupUnderwaterLighting(scene, true);
 
     // Camera
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 200);
@@ -462,7 +581,7 @@ const ClawbWorld: React.FC = () => {
       '/assets/lawbWalk.fbx',
       (object) => {
         object.scale.setScalar(CLAWB_SCALE);
-        object.position.set(0, FLOOR_Y, 0); // Feet on the sand
+        object.position.copy(clawbPosRef.current); // Feet on the sand
         object.rotation.y = Math.PI / 2; // Face right (initial walk direction is +X)
         object.traverse((child: THREE.Object3D) => {
           if ((child as THREE.Mesh).isMesh) {
@@ -495,6 +614,40 @@ const ClawbWorld: React.FC = () => {
       undefined,
       (err) => console.warn('[ClawbWorld] Failed to load Clawb:', err)
     );
+
+    // Listen to other players in world
+    const unsubPlayers = WORLD_MULTIPLAYER_ENABLED
+      ? listenToWorldPlayers((players) => {
+          const mine = (address || '').toLowerCase();
+          const now = Date.now();
+          const seen = new Set<string>();
+
+          for (const p of players) {
+            if (!p?.wallet) continue;
+            if (p.wallet === mine) continue;
+            if (now - (p.updatedAt || 0) > 20_000) continue; // stale presence
+            seen.add(p.wallet);
+            remoteTargetsRef.current.set(p.wallet, p);
+            ensureRemotePlayer(p.wallet, scene).catch(() => {
+              // non-blocking
+            });
+          }
+
+          // Cleanup players that disappeared
+          for (const [wallet, model] of remotePlayersRef.current.entries()) {
+            if (!seen.has(wallet)) {
+              scene.remove(model);
+              remotePlayersRef.current.delete(wallet);
+              remoteTargetsRef.current.delete(wallet);
+              const mixer = remoteMixersRef.current.get(wallet);
+              if (mixer) {
+                mixer.stopAllAction();
+                remoteMixersRef.current.delete(wallet);
+              }
+            }
+          }
+        })
+      : () => {};
 
     // NFT Gallery — bedroom only (same as stream overlay)
     const BEDROOM_OFFSET = ROOM_OFFSETS.bedroom;
@@ -674,6 +827,7 @@ const ClawbWorld: React.FC = () => {
     frameIdRef.current = requestAnimationFrame(animate);
 
     return () => {
+      unsubPlayers();
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', handleResize);
@@ -688,8 +842,27 @@ const ClawbWorld: React.FC = () => {
           mats.forEach((m) => m.dispose());
         }
       });
+
+      if (WORLD_MULTIPLAYER_ENABLED && address) {
+        removeWorldPresence(address).catch(() => {
+          // non-blocking
+        });
+      }
     };
-  }, [createNftPlaceholderTexture, getGreeting, normalizeIpfsUrl, tryInspectNftInFront, animate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [address, createNftPlaceholderTexture, getGreeting, normalizeIpfsUrl, tryInspectNftInFront, animate, ensureRemotePlayer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ensure stale sessions are removed if tab/browser disconnects.
+  useEffect(() => {
+    if (!WORLD_MULTIPLAYER_ENABLED || !address) return;
+    registerWorldPresenceDisconnectCleanup(address).catch(() => {
+      // non-blocking
+    });
+    return () => {
+      removeWorldPresence(address).catch(() => {
+        // non-blocking
+      });
+    };
+  }, [address]);
 
   // Click to lock pointer OR click Clawb to chat (desktop)
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -914,9 +1087,10 @@ const ClawbWorld: React.FC = () => {
             <input
               type="text"
               className="clawb-world-chat-input"
-              placeholder="Type a message..."
+              placeholder="Try !day, !night, !scene bedroom, !build coral..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
+              maxLength={300}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSendChat(); } }}
             />
             <button type="button" className="clawb-world-chat-send" onClick={handleSendChat}>Send</button>

@@ -1,4 +1,15 @@
-import { ref, push, set, onValue, serverTimestamp, query, orderByChild, limitToLast } from 'firebase/database';
+import {
+  ref,
+  push,
+  set,
+  onValue,
+  serverTimestamp,
+  query,
+  orderByChild,
+  limitToLast,
+  onDisconnect,
+  remove,
+} from 'firebase/database';
 import { database } from './firebaseApp';
 
 // --- Types ---
@@ -24,6 +35,16 @@ export interface ClawbWorldAction {
   by: string; // wallet address or anonymous
   source: string; // world | stream | system
   timestamp: number;
+}
+
+export interface WorldPlayerPresence {
+  wallet: string;
+  room: string;
+  x: number;
+  y: number;
+  z: number;
+  rotationY: number;
+  updatedAt: number;
 }
 
 // --- Clawb Status ---
@@ -164,5 +185,55 @@ export const listenToWorldActions = (
     callback(actions);
   });
 
+  return unsubscribe;
+};
+
+// --- Multiplayer World Presence ---
+
+const presencePathForWallet = (wallet: string): string => {
+  return `world/players/${wallet.toLowerCase()}`;
+};
+
+/** Publish this player's world presence. */
+export const upsertWorldPresence = async (
+  wallet: string,
+  payload: Omit<WorldPlayerPresence, 'wallet' | 'updatedAt'>
+): Promise<void> => {
+  if (!wallet) return;
+  const data: WorldPlayerPresence = {
+    wallet: wallet.toLowerCase(),
+    ...payload,
+    updatedAt: Date.now(),
+  };
+  await set(ref(database, presencePathForWallet(wallet)), data);
+};
+
+/** Remove this player's world presence (on leave). */
+export const removeWorldPresence = async (wallet: string): Promise<void> => {
+  if (!wallet) return;
+  await remove(ref(database, presencePathForWallet(wallet)));
+};
+
+/** Register an onDisconnect cleanup for this wallet's world presence. */
+export const registerWorldPresenceDisconnectCleanup = async (wallet: string): Promise<void> => {
+  if (!wallet) return;
+  await onDisconnect(ref(database, presencePathForWallet(wallet))).remove();
+};
+
+/** Listen to all current world players. */
+export const listenToWorldPlayers = (
+  callback: (players: WorldPlayerPresence[]) => void
+): (() => void) => {
+  const playersRef = ref(database, 'world/players');
+  const unsubscribe = onValue(playersRef, (snapshot) => {
+    const players: WorldPlayerPresence[] = [];
+    snapshot.forEach((child) => {
+      const data = child.val();
+      if (data && data.wallet && typeof data.x === 'number' && typeof data.y === 'number' && typeof data.z === 'number') {
+        players.push(data as WorldPlayerPresence);
+      }
+    });
+    callback(players);
+  });
   return unsubscribe;
 };
