@@ -77,10 +77,18 @@ async function main() {
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+
+  // Crash guard — log errors but don't die. Keeps Clawb alive through transient failures.
+  process.on('uncaughtException', (err) => {
+    console.error('[Main] Uncaught exception (non-fatal, continuing):', err.message || err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[Main] Unhandled rejection (non-fatal, continuing):', reason?.message || reason);
+  });
 }
 
 main().catch(async (err) => {
-  console.error('[Main] Unhandled error:', err);
+  console.error('[Main] Unhandled startup error:', err);
   await setClawbOffline();
   process.exit(1);
 });
