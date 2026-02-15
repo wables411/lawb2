@@ -2,19 +2,6 @@
 
 Clawb is the autonomous Lawbster agent for lawb.xyz. He answers chat, commentates chess games, and plays PVP wagers on-chain.
 
-## Run Clawb
-
-In a terminal (Cursor or PowerShell):
-
-```
-cd c:\Users\wable\lawb2\clawb
-node index.js
-```
-
-You’ll see logs in that terminal. Ctrl+C to stop. Only run one Clawb at a time.
-
----
-
 ## New machine / clawb2: get up to speed
 
 Same identity, new box. Read these in order:
@@ -118,7 +105,16 @@ You should see:
 
 ## Step 6: Start Clawb
 
-See **Run Clawb** at the top. From `clawb/`: `node index.js`. Optional: `node index.js --no-pvp` (no wagers), `node index.js --chat-only` (chat only).
+```bash
+# Full agent (chat + chess commentary + PVP)
+node index.js
+
+# Chat + chess commentary only (no PVP wagers)
+node index.js --no-pvp
+
+# Chat only (safest option to start)
+node index.js --chat-only
+```
 
 ## What each module does
 
