@@ -350,13 +350,13 @@ async function watchAndPlayGame(inviteCode) {
       }
     }
 
+    // Chess setup: see .cursor/rules/coding-conventions.md (creator=blue=first, joiner=red=second; red=uppercase, blue=lowercase). Clawb only joins → always red; only move red pieces.
+
     // Get the FEN and ask Stockfish for a move
     try {
       const board = game.board;
       if (!board || !board.positions) return;
 
-      // We need the FEN — if it's stored, use it; otherwise we'd need to reconstruct it
-      // For now, call Stockfish with a position description
       const fen = game.fen || boardPositionsToFEN(board.positions, clawbColor);
       if (!fen) return;
 
@@ -383,6 +383,11 @@ async function watchAndPlayGame(inviteCode) {
       const pieceKeyFrom = posKey(fromRow, fromCol);
       const pieceKeyTo = posKey(toRow, toCol);
       const piece = newPositions[pieceKeyFrom] ?? newPositions[`${fromRow},${fromCol}`];
+      // Clawb is always red; red = uppercase. Never move a blue (lowercase) piece.
+      if (piece && typeof piece === 'string' && piece.length === 1 && piece === piece.toLowerCase() && /[a-z]/.test(piece)) {
+        console.error(`[PVP] ${inviteCode}: Refusing to move blue piece "${piece}" — Clawb only moves red (uppercase) pieces. FEN turn was wrong?`);
+        return;
+      }
       if (piece) {
         delete newPositions[pieceKeyFrom];
         delete newPositions[`${fromRow},${fromCol}`];
@@ -486,7 +491,8 @@ function boardPositionsToFEN(positions, currentColor) {
     if (row < 7) fen += '/';
   }
 
-  const turn = currentColor === 'blue' ? 'w' : 'b';
+  // Frontend: red = uppercase (rank 8), blue = lowercase (rank 1). So in FEN, red = white, blue = black.
+  const turn = currentColor === 'red' ? 'w' : 'b';
   fen += ` ${turn} KQkq - 0 1`;
   return fen;
 }

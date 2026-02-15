@@ -44,9 +44,9 @@ src/
 ## Chess Specifics
 
 - Board representation: `{ positions: { "row,col": "piece" }, rows: 8, cols: 8 }`
-- Pieces: Uppercase = blue (bottom), lowercase = red (top). K/k = King, Q/q = Queen, etc.
+- Pieces: Uppercase = red (top, rank 8–7), lowercase = blue (bottom, rank 1–2). K/k = King, Q/q = Queen, etc. Blue (creator) moves first; red (joiner) moves second.
 - Game states: `waiting_for_join` → `active` → `finished`
-- Players: `blue_player` (creator), `red_player` (joiner)
+- Players: `blue_player` (creator, moves first), `red_player` (joiner)
 - FEN strings used for Stockfish communication and chess.js validation.
 
 ## Platform Notes
