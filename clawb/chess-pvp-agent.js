@@ -495,7 +495,7 @@ export async function startPvpAgent() {
   }
 
   console.log('[PVP] Starting Clawb PVP agent...');
-  console.log(`[PVP] Max wager: ${MAX_WAGER_ETH} ETH, ${MAX_WAGER_ERC20} ERC20`);
+  console.log(`[PVP] Max wager: 50% of balance per token`);
   console.log(`[PVP] Max concurrent games: ${MAX_CONCURRENT_GAMES}`);
   if (openrouter) {
     console.log('[PVP] Commentary enabled (mid-game + end-game in chat).');

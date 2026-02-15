@@ -1978,7 +1978,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             setCurrentPlayer(firebaseGame.current_player || 'blue');
           }
         } else if (firebaseGame.game_state === 'finished' || firebaseGame.game_state === 'ended') {
-          // CRITICAL FIX: Explicitly handle finished games - do NOT treat as active
+          // Contract says waiting for opponent — Firebase "finished" is stale; trust contract and show waiting room
+          if (player2 === '0x0000000000000000000000000000000000000000' || !player2) {
+            console.log('[GAME_STATE] Firebase says finished but contract has no red player — treating as waiting_for_join and fixing Firebase');
+            try {
+              await firebaseChess.updateGame(inviteCode, { game_state: 'waiting_for_join' });
+            } catch (e) {
+              console.warn('[GAME_STATE] Could not fix Firebase state:', e);
+            }
+            setInviteCode(inviteCode);
+            setPlayerColor(playerColor as 'blue' | 'red');
+            debugSetWager(convertWagerFromWei(firebaseGame.bet_amount, firebaseGame.bet_token || 'DMT'), 'checkPlayerGameState Firebase');
+            setOpponent(opponent);
+            setGameMode(GameMode.WAITING);
+            setGameStatus('Waiting for opponent to join...');
+            setHasLoadedGame(true);
+            return;
+          }
           console.log('[GAME_STATE] Game is finished/ended, returning to lobby. State:', firebaseGame.game_state);
           setGameMode(GameMode.LOBBY);
           setHasLoadedGame(true);
@@ -3540,25 +3556,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       } else if (gameData.game_state === 'finished') {
         setGameMode(GameMode.FINISHED);
-        setGameJustFinished(true); // Prevent excessive lobby loading
+        setGameJustFinished(true);
+        setTimeout(() => setGameJustFinished(false), 30000);
         
-        // Clear the flag after 30 seconds to allow normal lobby loading
-        setTimeout(() => {
-          setGameJustFinished(false);
-        }, 30000);
+        // Only run win/loss celebration if we were actually in an active game (not on reload from lobby/waiting)
+        const wasInActiveGame = gameMode === GameMode.ACTIVE;
         
-        // Highlight the winning move from Firebase
         if (gameData.last_move && gameData.last_move.from && gameData.last_move.to) {
           setLastMove(gameData.last_move);
           setIsWinningMove(true);
           console.log('[GAME_END] Winning move highlighted:', gameData.last_move);
         }
-        
-        // Show checkmate announcement banner
         setGameStatus('Checkmate!');
         setCheckmateAnnouncement('CHECKMATE!');
         
-        // CRITICAL FIX: Enhanced game end notification logic
+        if (!wasInActiveGame) {
+          console.log('[GAME_END] Skipping celebration — not in active game (reload/lobby)');
+          return;
+        }
+        
         console.log('[GAME_END] Game finished via Firebase subscription. Game data:', {
           winner: gameData.winner,
           playerColor: playerColor,
@@ -5739,10 +5755,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           });
           
           if (contractData && Array.isArray(contractData)) {
-            const [, , isActive, winner] = contractData;
+            const [player1, player2, isActive, winner] = contractData;
+            const hasRedPlayer = player2 && player2 !== '0x0000000000000000000000000000000000000000';
             
-            // If contract says game is NOT active but Firebase says it is, sync Firebase
-            if (!isActive && (game.game_state === 'active' || game.game_state === 'waiting_for_join')) {
+            // Only sync to finished when the game actually ended (had two players, then contract marked inactive).
+            // If there's no red player, contract isActive=false just means "waiting for join" — do NOT mark finished.
+            if (!isActive && hasRedPlayer && (game.game_state === 'active' || game.game_state === 'waiting_for_join')) {
               console.log('[STUCK GAMES] Found stuck game:', game.invite_code, 
                 '- Firebase:', game.game_state, 'Contract: ended');
               
