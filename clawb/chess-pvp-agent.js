@@ -391,7 +391,11 @@ async function watchAndPlayGame(inviteCode) {
       if (piece) {
         delete newPositions[pieceKeyFrom];
         delete newPositions[`${fromRow},${fromCol}`];
-        newPositions[pieceKeyTo] = piece;
+        // Pawn promotion: if pawn reaches rank 1 (row 0) or rank 8 (row 7), promote to queen
+        let finalPiece = piece;
+        if (piece === 'P' && toRow === 0) finalPiece = 'Q'; // Red pawn promotes
+        if (piece === 'p' && toRow === 7) finalPiece = 'q'; // Blue pawn promotes
+        newPositions[pieceKeyTo] = finalPiece;
       }
 
       await updateGame(inviteCode, {
@@ -455,6 +459,10 @@ function posKey(row, col) {
 }
 
 // --- FEN helper: reads Firebase positions (keys "row_col" or "row,col"), values "K"/"p" etc. ---
+// Lawb board convention:
+//   Blue = lowercase in Firebase, rows 6-7 (bottom), moves FIRST  → White in FEN (uppercase)
+//   Red  = UPPERCASE in Firebase, rows 0-1 (top),    moves SECOND → Black in FEN (lowercase)
+// So we must SWAP case when building the FEN string.
 function boardPositionsToFEN(positions, currentColor) {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
 
@@ -468,12 +476,23 @@ function boardPositionsToFEN(positions, currentColor) {
     }
   }
 
+  // Long-form piece names (legacy) mapped to FEN with correct color swap
   const pieceToFen = {
     'white-king': 'K', 'white-queen': 'Q', 'white-rook': 'R', 'white-bishop': 'B', 'white-knight': 'N', 'white-pawn': 'P',
     'black-king': 'k', 'black-queen': 'q', 'black-rook': 'r', 'black-bishop': 'b', 'black-knight': 'n', 'black-pawn': 'p',
     'blue-king': 'K', 'blue-queen': 'Q', 'blue-rook': 'R', 'blue-bishop': 'B', 'blue-knight': 'N', 'blue-pawn': 'P',
     'red-king': 'k', 'red-queen': 'q', 'red-rook': 'r', 'red-bishop': 'b', 'red-knight': 'n', 'red-pawn': 'p',
   };
+
+  // Swap case for single-char pieces: blue lowercase→UPPER (white), red UPPER→lowercase (black)
+  function swapCase(ch, row) {
+    // Auto-promote pawns stuck on edge rows (invalid in chess)
+    if (row === 0 && ch === 'P') ch = 'Q'; // Red pawn on rank 8 → queen
+    if (row === 7 && ch === 'p') ch = 'q'; // Blue pawn on rank 1 → queen
+    if (ch >= 'a' && ch <= 'z') return ch.toUpperCase(); // blue → white
+    if (ch >= 'A' && ch <= 'Z') return ch.toLowerCase(); // red  → black
+    return ch;
+  }
 
   let fen = '';
   for (let row = 0; row < 8; row++) {
@@ -484,15 +503,15 @@ function boardPositionsToFEN(positions, currentColor) {
         empty++;
       } else {
         if (empty > 0) { fen += empty; empty = 0; }
-        fen += (p.length === 1 ? p : pieceToFen[p]) || '?';
+        fen += (p.length === 1 ? swapCase(p, row) : pieceToFen[p]) || '?';
       }
     }
     if (empty > 0) fen += empty;
     if (row < 7) fen += '/';
   }
 
-  // Frontend: red = uppercase (rank 8), blue = lowercase (rank 1). So in FEN, red = white, blue = black.
-  const turn = currentColor === 'red' ? 'w' : 'b';
+  // Blue moves first = white in FEN; Red moves second = black in FEN
+  const turn = currentColor === 'blue' ? 'w' : 'b';
   fen += ` ${turn} KQkq - 0 1`;
   return fen;
 }
@@ -531,6 +550,27 @@ export async function startPvpAgent() {
 
   const stopListening = onOpenPvpGames(handleOpenGame);
   console.log('[PVP] Watching for open PVP games.');
+
+  // Resume any active games where Clawb is already a player (e.g. after restart)
+  try {
+    const gamesSnap = await db.ref('chess_games').orderByChild('game_state').equalTo('active').once('value');
+    const allActive = gamesSnap.val() || {};
+    let resumed = 0;
+    for (const [code, game] of Object.entries(allActive)) {
+      const isRed = game.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase();
+      const isBlue = game.blue_player?.toLowerCase() === CLAWB_WALLET.toLowerCase();
+      if (isRed || isBlue) {
+        const clawbColor = isRed ? 'red' : 'blue';
+        console.log(`[PVP] Resumed active game ${code} (Clawb is ${clawbColor}).`);
+        activeGames++;
+        watchAndPlayGame(code);
+        resumed++;
+      }
+    }
+    if (resumed > 0) console.log(`[PVP] Resumed ${resumed} active game(s).`);
+  } catch (err) {
+    console.error('[PVP] Error resuming active games:', err.message);
+  }
 
   return stopListening;
 }

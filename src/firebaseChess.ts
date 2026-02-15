@@ -1,6 +1,40 @@
 import { database } from './firebaseApp';
 import { ref, set, get, onValue, off, remove, update } from 'firebase/database';
 
+// Board positions keys historically existed in two formats:
+// - legacy: "row,col" (comma)
+// - current: "row_col" (underscore) used by the UI
+// Normalize on read so old games keep working.
+const normalizePositionsKeys = (positions: unknown) => {
+  if (!positions || typeof positions !== 'object') return positions;
+  const entries = Object.entries(positions as Record<string, unknown>);
+  let changed = false;
+  const normalized: Record<string, unknown> = {};
+
+  for (const [key, value] of entries) {
+    const nextKey = key.includes(',') ? key.replace(',', '_') : key;
+    if (nextKey !== key) changed = true;
+    normalized[nextKey] = value;
+  }
+
+  return changed ? normalized : positions;
+};
+
+const normalizeGameData = (gameData: any) => {
+  const positions = gameData?.board?.positions;
+  const normalizedPositions = normalizePositionsKeys(positions);
+  if (normalizedPositions !== positions) {
+    return {
+      ...gameData,
+      board: {
+        ...gameData.board,
+        positions: normalizedPositions
+      }
+    };
+  }
+  return gameData;
+};
+
 // Helper function to check if database is available
 const getDatabaseOrThrow = () => {
   if (!database) {
@@ -17,7 +51,7 @@ export const firebaseChess = {
       const db = getDatabaseOrThrow();
       const gameRef = ref(db, `chess_games/${inviteCode}`);
       const snapshot = await get(gameRef);
-      return snapshot.exists() ? snapshot.val() : null;
+      return snapshot.exists() ? normalizeGameData(snapshot.val()) : null;
     } catch (error) {
       console.error('[FIREBASE] Error getting game:', error);
       return null;
@@ -51,7 +85,7 @@ export const firebaseChess = {
       
       const unsubscribe = onValue(gameRef, (snapshot) => {
         if (snapshot.exists()) {
-          const gameData = snapshot.val();
+          const gameData = normalizeGameData(snapshot.val());
           callback(gameData);
         }
       });
@@ -124,10 +158,10 @@ export const firebaseChess = {
         game_state: 'waiting_for_join',
         board: { 
           positions: {
-            '0,0': 'R', '0,1': 'N', '0,2': 'B', '0,3': 'Q', '0,4': 'K', '0,5': 'B', '0,6': 'N', '0,7': 'R',
-            '1,0': 'P', '1,1': 'P', '1,2': 'P', '1,3': 'P', '1,4': 'P', '1,5': 'P', '1,6': 'P', '1,7': 'P',
-            '6,0': 'p', '6,1': 'p', '6,2': 'p', '6,3': 'p', '6,4': 'p', '6,5': 'p', '6,6': 'p', '6,7': 'p',
-            '7,0': 'r', '7,1': 'n', '7,2': 'b', '7,3': 'q', '7,4': 'k', '7,5': 'b', '7,6': 'n', '7,7': 'r'
+            '0_0': 'R', '0_1': 'N', '0_2': 'B', '0_3': 'Q', '0_4': 'K', '0_5': 'B', '0_6': 'N', '0_7': 'R',
+            '1_0': 'P', '1_1': 'P', '1_2': 'P', '1_3': 'P', '1_4': 'P', '1_5': 'P', '1_6': 'P', '1_7': 'P',
+            '6_0': 'p', '6_1': 'p', '6_2': 'p', '6_3': 'p', '6_4': 'p', '6_5': 'p', '6_6': 'p', '6_7': 'p',
+            '7_0': 'r', '7_1': 'n', '7_2': 'b', '7_3': 'q', '7_4': 'k', '7_5': 'b', '7_6': 'n', '7_7': 'r'
           }, 
           rows: 8, 
           cols: 8 
@@ -282,10 +316,13 @@ export const findGameByPlayer = async (playerAddress: string) => {
     const snapshot = await get(gamesRef);
     if (!snapshot.exists()) return null;
     const games = snapshot.val();
+    const needle = (playerAddress || '').toLowerCase();
     // Find the first game where a player is involved
     for (const key in games) {
-      if (games[key].red_player === playerAddress || games[key].white_player === playerAddress) {
-        return { ...games[key], invite_code: key };
+      const red = (games[key]?.red_player || '').toLowerCase();
+      const blue = (games[key]?.blue_player || '').toLowerCase();
+      if (red === needle || blue === needle) {
+        return { ...normalizeGameData(games[key]), invite_code: key };
       }
     }
     return null;
