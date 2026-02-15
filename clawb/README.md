@@ -14,6 +14,22 @@ Then: `npm install` → `node test-firebase.js` → `node index.js` (or `--no-pv
 
 ---
 
+## Getting latest updates (stay up to speed)
+
+The lawb2 repo deploys from **`main`**. To run the latest Clawb agent (50% balance rule, move validation, 60‑min timeout, etc.):
+
+```bash
+cd C:\Users\wable\lawb2
+git pull origin main
+cd clawb
+npm install
+node index.js
+```
+
+If you have local changes: `git stash` first, then pull, then `npm install` and restart.
+
+---
+
 ## Prerequisites
 
 1. **Node.js 18+** — Download from https://nodejs.org
