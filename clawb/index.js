@@ -14,6 +14,7 @@ import { setClawbOnline, setClawbOffline, heartbeat } from './lawb-firebase.js';
 import { startChatResponder } from './lawb-chat-responder.js';
 import { startChessWatcher } from './chess-clawb-watcher.js';
 import { startPvpAgent } from './chess-pvp-agent.js';
+import { startWorldResponder } from './world-responder.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
@@ -50,7 +51,10 @@ async function main() {
       console.log('[Main] PVP agent disabled' + (noPvp ? ' (--no-pvp flag)' : ' (--chat-only flag)'));
     }
 
-    // 5. Heartbeat every 30s
+    // 5. Start world responder (always)
+    await startWorldResponder();
+
+    // 6. Heartbeat every 30s
     const heartbeatInterval = setInterval(() => heartbeat(), 30_000);
     cleanups.push(() => clearInterval(heartbeatInterval));
 
