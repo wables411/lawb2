@@ -136,6 +136,16 @@ function initWallet() {
   return true;
 }
 
+// Use full token address for contract calls (Firebase may have bet_token as symbol or truncated)
+function getWagerTokenAddress(game) {
+  const addr = game.bet_token_address || game.bet_token;
+  if (!addr) return ethers.ZeroAddress;
+  const s = String(addr).trim();
+  if (s === '0x0000000000000000000000000000000000000000') return ethers.ZeroAddress;
+  if (/^0x[0-9a-fA-F]{40}$/.test(s)) return s;
+  return null; // not a valid full address (truncated or symbol)
+}
+
 // --- Evaluate whether to join a game ---
 async function shouldJoinGame(game) {
   // Only Base chain
@@ -155,9 +165,12 @@ async function shouldJoinGame(game) {
     return false;
   }
 
-  // Wager must not exceed 50% of Clawb's current balance for that token
   const wagerAmount = BigInt(game.bet_amount || 0);
-  const wagerToken = game.bet_token || ethers.ZeroAddress;
+  const wagerToken = getWagerTokenAddress(game);
+  if (wagerToken === null) {
+    console.log(`[PVP] Skipping ${game.id}: invalid or truncated token address (use bet_token_address)`);
+    return false;
+  }
   const isNativeETH = wagerToken === ethers.ZeroAddress || wagerToken === '0x0000000000000000000000000000000000000000';
 
   try {
@@ -210,7 +223,11 @@ async function endGameOnChain(inviteCode, winnerAddress) {
 async function joinGameOnChain(game) {
   const inviteCode = game.invite_code || game.id;
   const wagerAmount = game.bet_amount || 0;
-  const wagerToken = game.bet_token || ethers.ZeroAddress;
+  const wagerToken = getWagerTokenAddress(game);
+  if (wagerToken === null) {
+    console.log(`[PVP] Cannot join ${inviteCode}: invalid or truncated token address`);
+    return false;
+  }
   const isNativeETH = wagerToken === ethers.ZeroAddress || wagerToken === '0x0000000000000000000000000000000000000000';
 
   console.log(`[PVP] Joining game ${inviteCode} (wager: ${wagerAmount}, token: ${wagerToken})`);
