@@ -16,6 +16,7 @@ import {
   postClawbMessage,
   setClawbOnline,
   heartbeat,
+  db,
 } from './lawb-firebase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +113,29 @@ async function handleVisitorMessage(msg) {
   try {
     const pageHint = PAGE_CONTEXT[page] || PAGE_CONTEXT['/'];
 
+    // Inject live game context when visitor is on /chess
+    let liveGameContext = '';
+    if (page === '/chess') {
+      try {
+        const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
+        const snap = await db.ref('chess_games').orderByChild('game_state').equalTo('active').once('value');
+        const activeGames = snap.val() || {};
+        const clawbGames = Object.entries(activeGames).filter(([, g]) =>
+          g.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ||
+          g.blue_player?.toLowerCase() === CLAWB_WALLET.toLowerCase()
+        );
+        if (clawbGames.length > 0) {
+          const [code, g] = clawbGames[0];
+          const clawbColor = g.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ? 'red' : 'blue';
+          liveGameContext = `\n[LIVE GAME] You are currently playing game ${code}. You are ${clawbColor}. Turn: ${g.current_player}. State: ${g.game_state}. Your PVP agent is handling moves automatically.`;
+        } else {
+          liveGameContext = '\n[LIVE GAME] You have no active chess games right now.';
+        }
+      } catch (e) {
+        // Don't break chat if game lookup fails
+      }
+    }
+
     const response = await openrouter.chat.completions.create({
       model: CHAT_MODEL,
       max_tokens: 200,
@@ -119,7 +143,7 @@ async function handleVisitorMessage(msg) {
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `[Page: ${page}] ${pageHint}\n\nVisitor (${author === 'anonymous' ? 'anonymous' : author.slice(0, 6) + '...'}): ${message}`,
+          content: `[Page: ${page}] ${pageHint}${liveGameContext}\n\nVisitor (${author === 'anonymous' ? 'anonymous' : author.slice(0, 6) + '...'}): ${message}`,
         },
       ],
     });
