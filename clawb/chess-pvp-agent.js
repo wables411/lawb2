@@ -27,11 +27,10 @@ const CHESS_CONTRACT_BASE = '0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11';
 const BASE_CHAIN_ID = 8453;
 const STOCKFISH_API = process.env.STOCKFISH_API_URL || 'https://chess.lawb.xyz/api/stockfish';
 
-// Safety limits — adjust these as you get comfortable
-const MAX_WAGER_ETH = 0.001;           // Max ETH per game
-const MAX_WAGER_ERC20 = 10_000_000;    // Max ERC20 (raw, check decimals)
+// Safety limits
 const MAX_CONCURRENT_GAMES = 1;        // Only 1 game at a time
 const ONLY_BASE_CHAIN = true;          // Only join games on Base
+// Join only if wager <= 50% of Clawb's balance for the match's token
 
 // 60-minute per-move timeout (matches frontend)
 const GAME_TIMEOUT_MS = 60 * 60 * 1000;
@@ -156,40 +155,33 @@ async function shouldJoinGame(game) {
     return false;
   }
 
-  // Check wager limits
-  const wagerAmount = game.bet_amount || 0;
+  // Wager must not exceed 50% of Clawb's current balance for that token
+  const wagerAmount = BigInt(game.bet_amount || 0);
   const wagerToken = game.bet_token || ethers.ZeroAddress;
   const isNativeETH = wagerToken === ethers.ZeroAddress || wagerToken === '0x0000000000000000000000000000000000000000';
 
-  if (isNativeETH) {
-    const wagerEth = parseFloat(ethers.formatEther(wagerAmount.toString()));
-    if (wagerEth > MAX_WAGER_ETH) {
-      console.log(`[PVP] Skipping ${game.id}: wager ${wagerEth} ETH exceeds limit ${MAX_WAGER_ETH}`);
-      return false;
-    }
-  } else {
-    if (BigInt(wagerAmount) > BigInt(MAX_WAGER_ERC20)) {
-      console.log(`[PVP] Skipping ${game.id}: wager exceeds ERC20 limit`);
-      return false;
-    }
-  }
-
-  // Check if we can afford it
   try {
+    let balance;
     if (isNativeETH) {
-      const balance = await provider.getBalance(wallet.address);
-      const needed = BigInt(wagerAmount) + ethers.parseEther('0.001'); // buffer for gas
-      if (balance < needed) {
-        console.log(`[PVP] Skipping ${game.id}: insufficient ETH balance`);
+      balance = await provider.getBalance(wallet.address);
+      const gasBuffer = ethers.parseEther('0.001');
+      if (balance < wagerAmount + gasBuffer) {
+        console.log(`[PVP] Skipping ${game.id}: insufficient ETH (need wager + gas)`);
         return false;
       }
     } else {
       const token = new ethers.Contract(wagerToken, ERC20_ABI, wallet);
-      const balance = await token.balanceOf(wallet.address);
-      if (balance < BigInt(wagerAmount)) {
+      balance = await token.balanceOf(wallet.address);
+      if (balance < wagerAmount) {
         console.log(`[PVP] Skipping ${game.id}: insufficient token balance`);
         return false;
       }
+    }
+
+    const maxWagerAllowed = balance / 2n; // 50% of balance
+    if (wagerAmount > maxWagerAllowed) {
+      console.log(`[PVP] Skipping ${game.id}: wager exceeds 50% of Clawb's balance for this token`);
+      return false;
     }
   } catch (err) {
     console.error(`[PVP] Balance check failed for ${game.id}:`, err.message);

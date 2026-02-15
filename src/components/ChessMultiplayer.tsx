@@ -1515,98 +1515,79 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Try to get game data from pendingGameData or reconstruct it
       let gameDataToSave = pendingGameData;
       
-      if (!gameDataToSave && publicClient) {
-        console.log('[CREATE DEBUG] No pendingGameData, attempting to reconstruct game data');
-        // Try to get the game data from the contract
-        // Note: createGameHash is the transaction hash, not the invite code
-        // We need to use the pendingGameData.invite_code instead
-        const actualInviteCode = pendingGameData?.invite_code;
-        if (!actualInviteCode) {
-          console.error('[CREATE DEBUG] No invite code available in pendingGameData');
-          setGameStatus('Transaction confirmed but no invite code available');
-          setPendingGameData(null);
-          setIsCreatingGame(false);
-          setIsGameCreationInProgress(false);
-          return;
-        }
-        console.log('[CREATE DEBUG] Using invite code for contract read:', actualInviteCode);
-        
-        publicClient.readContract({
-          address: chessContractAddress as `0x${string}`,
-          abi: CHESS_CONTRACT_ABI,
-          functionName: 'games',
-          args: [actualInviteCode as `0x${string}`],
-        }).then((contractGame) => {
-          if (contractGame && Array.isArray(contractGame) && contractGame[0] !== '0x0000000000000000000000000000000000000000') {
-            // Reconstruct game data from contract
-            const reconstructedGameData = {
-              invite_code: actualInviteCode,
-              game_title: `Chess Game ${actualInviteCode.slice(-6)}`,
-              bet_amount: contractGame[2]?.toString() || '0',
-              bet_token: contractGame[1] || '',
-              blue_player: contractGame[0] || '',
-              red_player: '0x0000000000000000000000000000000000000000',
-              game_state: 'waiting_for_join', // Changed: Only mark as waiting for join, not active
-              board: { 
-                positions: flattenBoard(initialBoard), 
-                rows: 8, 
-                cols: 8 
-              },
-              current_player: 'blue',
-              chain: 'sanko',
-              contract_address: chessContractAddress,
-              is_public: true,
-              created_at: new Date().toISOString()
-            };
-            console.log('[CREATE DEBUG] Reconstructed game data:', reconstructedGameData);
-            
-            // Create the game in Firebase with reconstructed data
-            firebaseChess.createGame(reconstructedGameData).then(() => {
+      if (!gameDataToSave && publicClient && address) {
+        (async () => {
+          console.log('[CREATE DEBUG] No pendingGameData, reconstructing from contract (playerToGame + games)');
+          let actualInviteCode: string | null = null;
+          try {
+            actualInviteCode = await publicClient.readContract({
+              address: chessContractAddress as `0x${string}`,
+              abi: CHESS_CONTRACT_ABI,
+              functionName: 'playerToGame',
+              args: [address as `0x${string}`],
+            }) as string;
+          } catch (e) {
+            console.error('[CREATE DEBUG] playerToGame read failed:', e);
+          }
+          if (!actualInviteCode || actualInviteCode === '0x000000000000') {
+            console.error('[CREATE DEBUG] No invite code available from playerToGame');
+            setGameStatus('Transaction confirmed but no invite code available');
+            setPendingGameData(null);
+            setIsCreatingGame(false);
+            setIsGameCreationInProgress(false);
+            return;
+          }
+          console.log('[CREATE DEBUG] Using invite code for contract read:', actualInviteCode);
+          try {
+            const contractGame = await publicClient.readContract({
+              address: chessContractAddress as `0x${string}`,
+              abi: CHESS_CONTRACT_ABI,
+              functionName: 'games',
+              args: [actualInviteCode as `0x${string}`],
+            });
+            if (contractGame && Array.isArray(contractGame) && contractGame[0] !== '0x0000000000000000000000000000000000000000') {
+              const gameChain = chainId === NETWORKS.base.chainId ? 'base' : chainId === NETWORKS.arbitrum.chainId ? 'arbitrum' : 'sanko';
+              const reconstructedGameData = {
+                invite_code: actualInviteCode,
+                game_title: `Chess Game ${actualInviteCode.slice(-6)}`,
+                bet_amount: (contractGame as any)[5]?.toString() || '0',
+                bet_token: (contractGame as any)[6] || '',
+                bet_token_address: (contractGame as any)[6] || '',
+                blue_player: (contractGame as any)[0] || '',
+                red_player: '0x0000000000000000000000000000000000000000',
+                game_state: 'waiting_for_join',
+                board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
+                current_player: 'blue',
+                chain: gameChain,
+                contract_address: chessContractAddress,
+                is_public: true,
+                created_at: new Date().toISOString()
+              };
+              console.log('[CREATE DEBUG] Reconstructed game data:', reconstructedGameData);
+              await firebaseChess.createGame(reconstructedGameData);
               console.log('[FIREBASE] Game created successfully with reconstructed data');
-              
-              // CRITICAL FIX: Refetch playerToGame so contractGameData updates to the new game
-              if (refetchPlayerGame) {
-                console.log('[CREATE_SUCCESS_RECONSTRUCTED] Refetching playerGameInviteCode to update contract data');
-                refetchPlayerGame();
-              }
-              
-              // Update UI
+              if (refetchPlayerGame) refetchPlayerGame();
               setInviteCode(reconstructedGameData.invite_code);
               setPlayerColor('blue');
-              console.log('[CREATE_SUCCESS_RECONSTRUCTED] Setting currentGameToken to:', reconstructedGameData.bet_token);
               setCurrentGameToken(reconstructedGameData.bet_token as TokenSymbol);
               debugSetWager(gameWager, 'create game success');
               setGameMode(GameMode.WAITING);
               setGameStatus('Waiting for opponent to join...');
-              
-              // Subscribe to game updates
               subscribeToGame(reconstructedGameData.invite_code);
-              
-              // Refresh lobby to show the new match
-              setTimeout(() => {
-                loadOpenGames();
-              }, 1000);
-              
-              // Clear pending data
+              setTimeout(() => loadOpenGames(), 1000);
               setPendingGameData(null);
               setIsCreatingGame(false);
               setIsGameCreationInProgress(false);
-            }).catch((error) => {
-              console.error('[FIREBASE] Error creating game with reconstructed data:', error);
-              setGameStatus('Transaction confirmed but failed to create game in database');
-              setPendingGameData(null);
-              setIsCreatingGame(false);
-              setIsGameCreationInProgress(false);
-            });
+            }
+          } catch (error) {
+            console.error('[CREATE DEBUG] Error reconstructing game data:', error);
+            setGameStatus('Transaction confirmed but game data not available');
+            setPendingGameData(null);
+            setIsCreatingGame(false);
+            setIsGameCreationInProgress(false);
           }
-        }).catch((error) => {
-          console.error('[CREATE DEBUG] Error reconstructing game data:', error);
-          setGameStatus('Transaction confirmed but game data not available');
-          setPendingGameData(null);
-          setIsCreatingGame(false);
-          setIsGameCreationInProgress(false);
-        });
-        return; // Exit early since we're handling the async operation
+        })();
+        return;
       }
       
       if (gameDataToSave) {
@@ -2021,26 +2002,27 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             console.log('[GAME_STATE] Game state from Firebase:', firebaseGame.game_state);
             return;
           } else {
-            // Game exists in contract but not in Firebase - DON'T sync it to avoid race conditions
-            console.log('[GAME_STATE] Game exists in contract but not in Firebase - waiting for transaction confirmation');
-            console.log('[GAME_STATE] This prevents ghost games from failed transactions');
-            return;
+            // Game exists in contract but not in Firebase — sync from contract so user sees their game and Clawb can discover it
+            console.log('[GAME_STATE] Game exists in contract but not in Firebase — syncing to Firebase');
+            const gameChain = chainId === NETWORKS.base.chainId ? 'base' : chainId === NETWORKS.arbitrum.chainId ? 'arbitrum' : 'sanko';
+            const wagerTokenAddr = (currentContractData as any)?.[6];
             const gameData = {
               invite_code: inviteCode,
               game_title: `Game ${inviteCode.slice(-6)}`,
               bet_amount: wagerAmount ? wagerAmount.toString() : '0',
-              bet_token: 'DMT', // Default to DMT if not specified
+              bet_token: wagerTokenAddr || 'DMT',
+              bet_token_address: wagerTokenAddr,
               blue_player: player1,
               red_player: player2,
-              game_state: isActive ? 'active' : 'waiting',
+              game_state: isActive ? 'active' : 'waiting_for_join',
               board: { positions: flattenBoard(initialBoard), rows: 8, cols: 8 },
               current_player: 'blue',
-              chain: 'sanko',
+              chain: gameChain,
               contract_address: chessContractAddress,
               is_public: true
             };
             await firebaseChess.createGame(gameData);
-            console.log('[GAME_STATE] Successfully synced game to Firebase:', gameData);
+            console.log('[GAME_STATE] Successfully synced game to Firebase');
             setInviteCode(inviteCode);
             setPlayerColor(playerColor as 'blue' | 'red');
             const defaultTokenForGame = gameData.chain === 'base' ? 'ETH' : 
@@ -2051,18 +2033,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             if (isActive) {
               setGameMode(GameMode.ACTIVE);
               setGameStatus('Game in progress');
+              setShowGame(true);
+              if (gameData.board) {
+                setBoard(reconstructBoard(gameData.board));
+                setCurrentPlayer((gameData.current_player as 'blue' | 'red') || 'blue');
+              }
             } else {
               setGameMode(GameMode.WAITING);
               setGameStatus('Waiting for opponent to join...');
             }
-            if (gameData.board) {
-              const boardData = gameData.board;
-              setBoard(reconstructBoard(boardData));
-              setCurrentPlayer((gameData.current_player as 'blue' | 'red') || 'blue');
-            }
-            // Don't create subscription here - it will be created by the main useEffect
             setHasLoadedGame(true);
-            console.log('[GAME_STATE] Game state loaded after sync');
+            console.log('[GAME_STATE] Game state loaded after sync from contract');
             return;
           }
         }
