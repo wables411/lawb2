@@ -523,33 +523,17 @@ function boardPositionsToFEN(positions, currentColor) {
         empty++;
       } else {
         if (empty > 0) { fen += empty; empty = 0; }
-        // Firebase/Frontend encoding: red = UPPERCASE (top), blue = lowercase (bottom).
-        // Standard FEN encoding: white = UPPERCASE (bottom), black = lowercase (top).
-        // Convert so Stockfish/chess.js get standard pawn direction:
-        // - blue (lowercase in Firebase) -> white (UPPERCASE in FEN)
-        // - red  (UPPERCASE in Firebase) -> black (lowercase in FEN)
-        if (typeof p === 'string' && p.length === 1) {
-          if (/[a-z]/.test(p)) fen += p.toUpperCase();
-          else if (/[A-Z]/.test(p)) fen += p.toLowerCase();
-          else fen += p;
-        } else {
-          fen += pieceToFen[p] || '?';
-        }
+        fen += (p.length === 1 ? p : pieceToFen[p]) || '?';
       }
     }
     if (empty > 0) fen += empty;
     if (row < 7) fen += '/';
   }
 
-  // After conversion above: blue = white, red = black.
-  const turn = currentColor === 'blue' ? 'w' : 'b';
+  // Frontend: red = uppercase (rank 8), blue = lowercase (rank 1). So in FEN, red = white, blue = black.
+  const turn = currentColor === 'red' ? 'w' : 'b';
   fen += ` ${turn} KQkq - 0 1`;
-  try {
-    new Chess(fen);
-    return fen;
-  } catch {
-    return null;
-  }
+  return fen;
 }
 
 // --- Game evaluator ---
