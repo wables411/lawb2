@@ -398,7 +398,15 @@ async function watchAndPlayGame(inviteCode) {
       if (piece) {
         delete newPositions[pieceKeyFrom];
         delete newPositions[`${fromRow},${fromCol}`];
-        newPositions[pieceKeyTo] = piece;
+        // Handle pawn promotion (Stockfish uses UCI like g7g8q).
+        if (validated.promotion) {
+          const promoMap = { q: 'q', r: 'r', b: 'b', n: 'n' };
+          const promo = promoMap[String(validated.promotion).toLowerCase()] || 'q';
+          const promoPiece = clawbColor === 'red' ? promo.toUpperCase() : promo; // frontend: red=uppercase, blue=lowercase
+          newPositions[pieceKeyTo] = promoPiece;
+        } else {
+          newPositions[pieceKeyTo] = piece;
+        }
       }
 
       await updateGame(inviteCode, {
@@ -408,7 +416,7 @@ async function watchAndPlayGame(inviteCode) {
         last_move_timestamp: Date.now(),
       });
 
-      console.log(`[PVP] ${inviteCode}: Played ${validated.from}${validated.to}`);
+      console.log(`[PVP] ${inviteCode}: Played ${validated.from}${validated.to}${validated.promotion ? validated.promotion : ''}`);
     } catch (err) {
       console.error(`[PVP] ${inviteCode}: Error making move:`, err.message);
     }
@@ -426,13 +434,13 @@ function validateMove(fen, moveUCI) {
     const to = uci.slice(2, 4);
     const promotion = 'qnrb'.includes(uci[4]) ? uci[4] : undefined;
     const move = chess.move({ from, to, promotion });
-    if (move) return { from: move.from, to: move.to };
+    if (move) return { from: move.from, to: move.to, promotion: move.promotion };
     // Illegal: try first legal move as fallback
     const moves = chess.moves({ verbose: true });
     if (moves.length > 0) {
       const first = moves[0];
       console.warn(`[PVP] Stockfish move ${uci} illegal for FEN; using fallback ${first.from}${first.to}`);
-      return { from: first.from, to: first.to };
+      return { from: first.from, to: first.to, promotion: first.promotion };
     }
   } catch (err) {
     console.error('[PVP] validateMove error:', err.message);
