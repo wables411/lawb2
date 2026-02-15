@@ -11,6 +11,7 @@
  */
 
 import { ethers } from 'ethers';
+import { Chess } from 'chess.js';
 import OpenAI from 'openai';
 import {
   onOpenPvpGames,
@@ -32,9 +33,13 @@ const MAX_WAGER_ERC20 = 10_000_000;    // Max ERC20 (raw, check decimals)
 const MAX_CONCURRENT_GAMES = 1;        // Only 1 game at a time
 const ONLY_BASE_CHAIN = true;          // Only join games on Base
 
-// --- Contract ABI (minimal for joinGame + reading) ---
+// 60-minute per-move timeout (matches frontend)
+const GAME_TIMEOUT_MS = 60 * 60 * 1000;
+
+// --- Contract ABI (minimal for joinGame, endGame + reading) ---
 const CHESS_ABI = [
   'function joinGame(bytes6 inviteCode) payable',
+  'function endGame(bytes6 inviteCode, address winner)',
   'function games(bytes6) view returns (address player1, address player2, bool isActive, address winner, bytes6 inviteCode, uint256 wagerAmount, address wagerToken, uint8 wagerType, uint256 player1TokenId, uint256 player2TokenId)',
   'function playerToGame(address) view returns (bytes6)',
 ];
@@ -45,6 +50,14 @@ const ERC20_ABI = [
   'function decimals() view returns (uint8)',
   'function allowance(address owner, address spender) view returns (uint256)',
 ];
+
+// Convert Firebase invite_code (string or 0x hex) to bytes6 for contract calls
+function inviteCodeToBytes6(inviteCode) {
+  const raw = (inviteCode || '').toString();
+  if (raw.startsWith('0x') && raw.length === 14) return raw;
+  const bytes = ethers.hexlify(ethers.toUtf8Bytes(raw.slice(0, 6)));
+  return bytes.padEnd(14, '0');
+}
 
 // --- Commentary (optional: same voice as vs_clawb watcher) ---
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -186,6 +199,21 @@ async function shouldJoinGame(game) {
   return true;
 }
 
+// --- End game on-chain (e.g. when opponent times out) ---
+async function endGameOnChain(inviteCode, winnerAddress) {
+  try {
+    const inviteBytes = inviteCodeToBytes6(inviteCode);
+    const tx = await chessContract.endGame(inviteBytes, winnerAddress);
+    console.log(`[PVP] endGame TX sent: ${tx.hash}`);
+    await tx.wait();
+    console.log(`[PVP] endGame confirmed for ${inviteCode}, winner: ${winnerAddress}`);
+    return true;
+  } catch (err) {
+    console.error(`[PVP] endGame failed for ${inviteCode}:`, err.message);
+    return false;
+  }
+}
+
 // --- Join a game on-chain ---
 async function joinGameOnChain(game) {
   const inviteCode = game.invite_code || game.id;
@@ -208,11 +236,8 @@ async function joinGameOnChain(game) {
       }
     }
 
-    // Convert invite code to bytes6
-    const inviteBytes = ethers.hexlify(ethers.toUtf8Bytes(inviteCode.slice(0, 6)));
-    const padded = inviteBytes.padEnd(14, '0'); // bytes6 = 12 hex chars + 0x prefix
-
-    const tx = await chessContract.joinGame(padded, {
+    const inviteBytes = inviteCodeToBytes6(inviteCode);
+    const tx = await chessContract.joinGame(inviteBytes, {
       value: isNativeETH ? wagerAmount : 0,
     });
     console.log(`[PVP] Join TX sent: ${tx.hash}`);
@@ -271,10 +296,32 @@ async function watchAndPlayGame(inviteCode) {
       return;
     }
 
-    // Is it Clawb's turn?
-    if (game.current_player !== clawbColor) return;
+    // Opponent's turn: check 60-minute timeout (opponent didn't move in time → Clawb wins)
+    if (game.current_player !== clawbColor) {
+      const lastTs = game.last_move_timestamp;
+      if (lastTs && (Date.now() - lastTs > GAME_TIMEOUT_MS)) {
+        console.log(`[PVP] ${inviteCode}: Opponent timed out (60 min). Claiming win for Clawb.`);
+        gameRef.off('value', listener);
+        const ok = await endGameOnChain(inviteCode, CLAWB_WALLET);
+        if (ok) {
+          await updateGame(inviteCode, {
+            game_state: 'finished',
+            winner: CLAWB_WALLET,
+            end_reason: 'Opponent timed out (60 min)',
+          });
+          await postGameChatMessage(inviteCode, 'the clock ran out. the lawb endures. there is no meme i lawb you.');
+        }
+        activeGames = Math.max(0, activeGames - 1);
+        await updateClawbActivity('idle');
+        pvpCommentedEndGame.add(inviteCode);
+        pvpLastCommentedMove.delete(inviteCode);
+        pvpCommentCount.delete(inviteCode);
+        return;
+      }
+      return; // Opponent's turn, not timed out — wait for their move
+    }
 
-    // Opponent just moved — optionally comment (throttled)
+    // Clawb's turn — optionally comment on opponent's last move (throttled)
     const lastTs = game.last_move_timestamp;
     if (lastTs && openrouter) {
       const alreadyCommented = pvpLastCommentedMove.get(inviteCode) === lastTs;
@@ -305,17 +352,22 @@ async function watchAndPlayGame(inviteCode) {
       if (!fen) return;
 
       console.log(`[PVP] ${inviteCode}: Clawb's turn. FEN: ${fen}`);
-      const move = await getStockfishMove(fen);
-      if (!move) {
+      const moveUCI = await getStockfishMove(fen);
+      if (!moveUCI) {
         console.error(`[PVP] ${inviteCode}: No move from Stockfish`);
         return;
       }
 
-      // Parse the move (e.g., "e2e4") into board coordinates
-      const fromCol = move.charCodeAt(0) - 97;
-      const fromRow = 8 - parseInt(move[1]);
-      const toCol = move.charCodeAt(2) - 97;
-      const toRow = 8 - parseInt(move[3]);
+      const validated = validateMove(fen, moveUCI);
+      if (!validated) {
+        console.error(`[PVP] ${inviteCode}: Could not validate move "${moveUCI}" (no fallback)`);
+        return;
+      }
+      // Convert SAN squares to row/col (a1 = 7,0; h8 = 0,7)
+      const fromCol = validated.from.charCodeAt(0) - 97;
+      const fromRow = 8 - (parseInt(validated.from[1]));
+      const toCol = validated.to.charCodeAt(0) - 97;
+      const toRow = 8 - (parseInt(validated.to[1]));
 
       // Update the game in Firebase (frontend uses "row_col" keys, e.g. "0_0")
       const newPositions = { ...board.positions };
@@ -335,11 +387,36 @@ async function watchAndPlayGame(inviteCode) {
         last_move_timestamp: Date.now(),
       });
 
-      console.log(`[PVP] ${inviteCode}: Played ${move}`);
+      console.log(`[PVP] ${inviteCode}: Played ${validated.from}${validated.to}`);
     } catch (err) {
       console.error(`[PVP] ${inviteCode}: Error making move:`, err.message);
     }
   });
+}
+
+// --- Move validation (chess.js): returns valid { from, to } or null; fallback to first legal move ---
+function validateMove(fen, moveUCI) {
+  if (!fen || !moveUCI || typeof moveUCI !== 'string') return null;
+  const uci = moveUCI.trim().toLowerCase();
+  if (uci.length < 4) return null;
+  try {
+    const chess = new Chess(fen);
+    const from = uci.slice(0, 2);
+    const to = uci.slice(2, 4);
+    const promotion = 'qnrb'.includes(uci[4]) ? uci[4] : undefined;
+    const move = chess.move({ from, to, promotion });
+    if (move) return { from: move.from, to: move.to };
+    // Illegal: try first legal move as fallback
+    const moves = chess.moves({ verbose: true });
+    if (moves.length > 0) {
+      const first = moves[0];
+      console.warn(`[PVP] Stockfish move ${uci} illegal for FEN; using fallback ${first.from}${first.to}`);
+      return { from: first.from, to: first.to };
+    }
+  } catch (err) {
+    console.error('[PVP] validateMove error:', err.message);
+  }
+  return null;
 }
 
 // --- Stockfish helper ---
