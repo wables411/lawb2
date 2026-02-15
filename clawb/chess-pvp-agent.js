@@ -254,6 +254,15 @@ async function joinGameOnChain(game) {
     console.log(`[PVP] Joined game ${inviteCode}! Block: ${receipt.blockNumber}`);
 
     activeGames++;
+
+    // Update Firebase so the creator's frontend sees the join in real-time
+    await updateGame(inviteCode, {
+      red_player: CLAWB_WALLET,
+      game_state: 'active',
+      current_player: 'blue', // blue (creator) moves first
+    });
+    console.log(`[PVP] Firebase updated: game_state=active, red_player=Clawb`);
+
     await updateClawbActivity('playing chess (pvp)');
     await postGameChatMessage(inviteCode, 'the lawbster has entered. there is no meme i lawb you.');
 
