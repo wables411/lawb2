@@ -532,6 +532,34 @@ export async function startPvpAgent() {
   const stopListening = onOpenPvpGames(handleOpenGame);
   console.log('[PVP] Watching for open PVP games.');
 
+  // Resume any active games where Clawb is red (e.g. after agent restart mid-game)
+  try {
+    const gamesSnap = await db.ref('chess_games').once('value');
+    if (gamesSnap.exists()) {
+      const games = gamesSnap.val();
+      let resumed = 0;
+      for (const [inviteCode, game] of Object.entries(games)) {
+        if (!game || game.game_state !== 'active') continue;
+        const isClawbRed = game.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase();
+        if (!isClawbRed) continue;
+        if (activeGames >= MAX_CONCURRENT_GAMES) {
+          console.log(`[PVP] Resume: already at max games (${MAX_CONCURRENT_GAMES}), skipping ${inviteCode}`);
+          break;
+        }
+        activeGames++;
+        watchAndPlayGame(inviteCode);
+        resumed++;
+        console.log(`[PVP] Resumed active game ${inviteCode} (Clawb is red).`);
+      }
+      if (resumed > 0) {
+        await updateClawbActivity('playing chess (pvp)');
+        console.log(`[PVP] Resumed ${resumed} active game(s).`);
+      }
+    }
+  } catch (err) {
+    console.error('[PVP] Resume active games check failed:', err.message);
+  }
+
   return stopListening;
 }
 
