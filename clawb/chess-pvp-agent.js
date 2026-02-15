@@ -407,12 +407,68 @@ async function watchAndPlayGame(inviteCode) {
         newPositions[pieceKeyTo] = finalPiece;
       }
 
-      await updateGame(inviteCode, {
-        board: { positions: newPositions, rows: 8, cols: 8 },
-        current_player: clawbColor === 'red' ? 'blue' : 'red',
-        last_move: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
-        last_move_timestamp: Date.now(),
-      });
+      // Check if this move results in checkmate/stalemate/draw
+      const opponentColor = clawbColor === 'red' ? 'blue' : 'red';
+      const postMoveFEN = boardPositionsToFEN(newPositions, opponentColor);
+      let isGameOver = false;
+      let gameEndReason = '';
+      let gameWinner = null;
+      try {
+        const postChess = new Chess(postMoveFEN);
+        if (postChess.isCheckmate()) {
+          isGameOver = true;
+          gameEndReason = 'checkmate';
+          gameWinner = clawbColor; // Clawb delivered checkmate
+          console.log(`[PVP] ${inviteCode}: CHECKMATE! Clawb wins.`);
+        } else if (postChess.isStalemate()) {
+          isGameOver = true;
+          gameEndReason = 'stalemate';
+          console.log(`[PVP] ${inviteCode}: Stalemate (draw).`);
+        } else if (postChess.isDraw()) {
+          isGameOver = true;
+          gameEndReason = 'draw';
+          console.log(`[PVP] ${inviteCode}: Draw.`);
+        }
+      } catch (fenErr) {
+        console.warn(`[PVP] ${inviteCode}: Could not check game end (FEN parse): ${fenErr.message}`);
+      }
+
+      if (isGameOver) {
+        // End game in Firebase
+        await updateGame(inviteCode, {
+          board: { positions: newPositions, rows: 8, cols: 8 },
+          last_move: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
+          last_move_timestamp: Date.now(),
+          game_state: 'finished',
+          winner: gameWinner,
+          end_reason: gameEndReason,
+        });
+        // End game on-chain
+        const winnerAddress = gameWinner === 'red'
+          ? (game.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ? CLAWB_WALLET : game.red_player)
+          : gameWinner === 'blue'
+            ? game.blue_player
+            : CLAWB_WALLET; // draw: either can call
+        await endGameOnChain(inviteCode, winnerAddress);
+        // Post end-game comment
+        const comment = await generatePvpComment(
+          gameEndReason === 'checkmate'
+            ? `You just delivered checkmate. Brief victory comment.`
+            : `Game ended in ${gameEndReason}. Brief comment.`
+        );
+        if (comment) {
+          await postGameChatMessage(inviteCode, comment);
+          console.log(`[PVP] ${inviteCode} (end): "${comment}"`);
+        }
+        pvpCommentedEndGame.add(inviteCode);
+      } else {
+        await updateGame(inviteCode, {
+          board: { positions: newPositions, rows: 8, cols: 8 },
+          current_player: opponentColor,
+          last_move: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
+          last_move_timestamp: Date.now(),
+        });
+      }
 
       console.log(`[PVP] ${inviteCode}: Played ${validated.from}${validated.to}`);
     } catch (err) {
