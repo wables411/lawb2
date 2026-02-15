@@ -172,9 +172,13 @@ export function onOpenPvpGames(callback) {
 
 /**
  * Update a chess game's data.
+ * Always set updated_at so frontend sync is consistent.
  */
 export async function updateGame(inviteCode, data) {
-  await db.ref(`chess_games/${inviteCode}`).update(data);
+  await db.ref(`chess_games/${inviteCode}`).update({
+    ...data,
+    updated_at: new Date().toISOString(),
+  });
 }
 
 /**

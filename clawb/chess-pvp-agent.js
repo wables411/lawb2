@@ -3,6 +3,7 @@
  *
  * Watches Firebase for open PVP games, evaluates whether to join,
  * joins on-chain with Clawb's wallet, then plays moves via Stockfish.
+ * Observes the board and commentates in game chat (mid-game + end-game).
  *
  * SAFETY: Conservative defaults. Max wager limits enforced. Base chain only.
  *
@@ -10,6 +11,7 @@
  */
 
 import { ethers } from 'ethers';
+import OpenAI from 'openai';
 import {
   onOpenPvpGames,
   updateGame,
@@ -43,6 +45,56 @@ const ERC20_ABI = [
   'function decimals() view returns (uint8)',
   'function allowance(address owner, address spender) view returns (uint256)',
 ];
+
+// --- Commentary (optional: same voice as vs_clawb watcher) ---
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+let openrouter = null;
+if (OPENROUTER_API_KEY) {
+  openrouter = new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: OPENROUTER_API_KEY,
+    defaultHeaders: {
+      'HTTP-Referer': 'https://lawb.xyz',
+      'X-Title': 'Clawb Agent',
+    },
+  });
+}
+const CHESS_COMMENTARY_MODEL = process.env.CLAWB_CHESS_MODEL || 'anthropic/claude-3.5-haiku';
+
+const CHESS_SYSTEM = `You are Clawb, a lobster playing chess. Brief, warm, slightly cocky.
+You're playing as red or blue in a PVP wager game. Generate a 1-sentence comment about the game.
+No emojis. No exclamation marks on every sentence. Your catchphrase: "there is no meme i lawb you."
+
+Examples:
+- "nice fork. the ocean teaches patience."
+- "you took my bishop. bold."
+- "the position opens up. i see things you don't."
+- "gg. the lawb endures."
+- "careful where you step. the board remembers."`;
+
+// Per-game commentary state: end-game posted, last move timestamp we commented on, comment count (for throttle)
+const pvpCommentedEndGame = new Set();
+const pvpLastCommentedMove = new Map(); // inviteCode -> last_move_timestamp
+const pvpCommentCount = new Map();       // inviteCode -> number of mid-game comments we've done
+const PVP_COMMENT_EVERY_N_MOVES = 3;     // comment roughly every 3rd opponent move
+
+async function generatePvpComment(situationPrompt) {
+  if (!openrouter) return null;
+  try {
+    const response = await openrouter.chat.completions.create({
+      model: CHESS_COMMENTARY_MODEL,
+      max_tokens: 100,
+      messages: [
+        { role: 'system', content: CHESS_SYSTEM },
+        { role: 'user', content: situationPrompt },
+      ],
+    });
+    return response.choices?.[0]?.message?.content?.trim() || null;
+  } catch (err) {
+    console.error('[PVP] Commentary OpenRouter error:', err.message);
+    return null;
+  }
+}
 
 // --- State ---
 let activeGames = 0;
@@ -169,7 +221,7 @@ async function joinGameOnChain(game) {
 
     activeGames++;
     await updateClawbActivity('playing chess (pvp)');
-    await postGameChatMessage(inviteCode, 'the lobster has entered. there is no meme i lawb you.');
+    await postGameChatMessage(inviteCode, 'the lawbster has entered. there is no meme i lawb you.');
 
     // Start playing this game
     watchAndPlayGame(inviteCode);
@@ -188,18 +240,59 @@ async function watchAndPlayGame(inviteCode) {
     const game = snapshot.val();
     if (!game) return;
 
-    // Game over
+    const clawbColor = game.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ? 'red' : 'blue';
+
+    // Game over — comment then cleanup
     if (game.game_state === 'finished' || game.game_state === 'cancelled') {
+      if (game.game_state === 'finished' && !pvpCommentedEndGame.has(inviteCode)) {
+        pvpCommentedEndGame.add(inviteCode);
+        const winner = game.winner;
+        const endReason = game.end_reason || 'game over';
+        let prompt;
+        if (winner?.toLowerCase() === CLAWB_WALLET.toLowerCase()) {
+          prompt = `You won the PVP chess game. ${endReason}. Brief victory comment.`;
+        } else if (winner) {
+          prompt = `You lost the PVP chess game. ${endReason}. Brief gracious loss comment.`;
+        } else {
+          prompt = `The PVP chess game ended in a draw. ${endReason}. Brief comment.`;
+        }
+        const comment = await generatePvpComment(prompt);
+        if (comment) {
+          await postGameChatMessage(inviteCode, comment);
+          console.log(`[PVP] ${inviteCode} (end): "${comment}"`);
+        }
+      }
       gameRef.off('value', listener);
       activeGames = Math.max(0, activeGames - 1);
       await updateClawbActivity('idle');
+      pvpLastCommentedMove.delete(inviteCode);
+      pvpCommentCount.delete(inviteCode);
       console.log(`[PVP] Game ${inviteCode} ended: ${game.game_state}`);
       return;
     }
 
     // Is it Clawb's turn?
-    const clawbColor = game.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ? 'red' : 'blue';
     if (game.current_player !== clawbColor) return;
+
+    // Opponent just moved — optionally comment (throttled)
+    const lastTs = game.last_move_timestamp;
+    if (lastTs && openrouter) {
+      const alreadyCommented = pvpLastCommentedMove.get(inviteCode) === lastTs;
+      if (!alreadyCommented) {
+        pvpLastCommentedMove.set(inviteCode, lastTs);
+        const count = (pvpCommentCount.get(inviteCode) || 0) + 1;
+        pvpCommentCount.set(inviteCode, count);
+        if (count % PVP_COMMENT_EVERY_N_MOVES === 0) {
+          const comment = await generatePvpComment(
+            'Opponent just moved. It\'s your turn. Comment on the game state in 1 sentence.'
+          );
+          if (comment) {
+            await postGameChatMessage(inviteCode, comment);
+            console.log(`[PVP] ${inviteCode}: "${comment}"`);
+          }
+        }
+      }
+    }
 
     // Get the FEN and ask Stockfish for a move
     try {
@@ -224,13 +317,15 @@ async function watchAndPlayGame(inviteCode) {
       const toCol = move.charCodeAt(2) - 97;
       const toRow = 8 - parseInt(move[3]);
 
-      // Update the game in Firebase
+      // Update the game in Firebase (frontend uses "row_col" keys, e.g. "0_0")
       const newPositions = { ...board.positions };
-      const pieceKey = `${fromRow},${fromCol}`;
-      const piece = newPositions[pieceKey];
+      const pieceKeyFrom = posKey(fromRow, fromCol);
+      const pieceKeyTo = posKey(toRow, toCol);
+      const piece = newPositions[pieceKeyFrom] ?? newPositions[`${fromRow},${fromCol}`];
       if (piece) {
-        delete newPositions[pieceKey];
-        newPositions[`${toRow},${toCol}`] = piece;
+        delete newPositions[pieceKeyFrom];
+        delete newPositions[`${fromRow},${fromCol}`];
+        newPositions[pieceKeyTo] = piece;
       }
 
       await updateGame(inviteCode, {
@@ -263,51 +358,50 @@ async function getStockfishMove(fen, movetime = 5000) {
   }
 }
 
-// --- FEN helper (simplified) ---
+// Position key: frontend uses "row_col" (e.g. "0_0")
+function posKey(row, col) {
+  return `${row}_${col}`;
+}
+
+// --- FEN helper: reads Firebase positions (keys "row_col" or "row,col"), values "K"/"p" etc. ---
 function boardPositionsToFEN(positions, currentColor) {
-  // Build an 8x8 board from positions map
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
 
   for (const [key, piece] of Object.entries(positions)) {
-    const [row, col] = key.split(',').map(Number);
-    if (row >= 0 && row < 8 && col >= 0 && col < 8) {
-      board[row][col] = piece;
+    const parts = key.split(/[,_]/).map(Number);
+    if (parts.length >= 2) {
+      const [row, col] = parts;
+      if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+        board[row][col] = piece;
+      }
     }
   }
 
-  // Convert to FEN
-  const pieceMap = {
-    'white-king': 'K', 'white-queen': 'Q', 'white-rook': 'R',
-    'white-bishop': 'B', 'white-knight': 'N', 'white-pawn': 'P',
-    'black-king': 'k', 'black-queen': 'q', 'black-rook': 'r',
-    'black-bishop': 'b', 'black-knight': 'n', 'black-pawn': 'p',
-    // Lawb chess uses blue/red
-    'blue-king': 'K', 'blue-queen': 'Q', 'blue-rook': 'R',
-    'blue-bishop': 'B', 'blue-knight': 'N', 'blue-pawn': 'P',
-    'red-king': 'k', 'red-queen': 'q', 'red-rook': 'r',
-    'red-bishop': 'b', 'red-knight': 'n', 'red-pawn': 'p',
+  const pieceToFen = {
+    'white-king': 'K', 'white-queen': 'Q', 'white-rook': 'R', 'white-bishop': 'B', 'white-knight': 'N', 'white-pawn': 'P',
+    'black-king': 'k', 'black-queen': 'q', 'black-rook': 'r', 'black-bishop': 'b', 'black-knight': 'n', 'black-pawn': 'p',
+    'blue-king': 'K', 'blue-queen': 'Q', 'blue-rook': 'R', 'blue-bishop': 'B', 'blue-knight': 'N', 'blue-pawn': 'P',
+    'red-king': 'k', 'red-queen': 'q', 'red-rook': 'r', 'red-bishop': 'b', 'red-knight': 'n', 'red-pawn': 'p',
   };
 
   let fen = '';
   for (let row = 0; row < 8; row++) {
     let empty = 0;
     for (let col = 0; col < 8; col++) {
-      const piece = board[row][col];
-      if (!piece) {
+      const p = board[row][col];
+      if (!p) {
         empty++;
       } else {
         if (empty > 0) { fen += empty; empty = 0; }
-        fen += pieceMap[piece] || '?';
+        fen += (p.length === 1 ? p : pieceToFen[p]) || '?';
       }
     }
     if (empty > 0) fen += empty;
     if (row < 7) fen += '/';
   }
 
-  // Add turn, castling, en passant, halfmove, fullmove (simplified)
   const turn = currentColor === 'blue' ? 'w' : 'b';
   fen += ` ${turn} KQkq - 0 1`;
-
   return fen;
 }
 
@@ -334,6 +428,11 @@ export async function startPvpAgent() {
   console.log('[PVP] Starting Clawb PVP agent...');
   console.log(`[PVP] Max wager: ${MAX_WAGER_ETH} ETH, ${MAX_WAGER_ERC20} ERC20`);
   console.log(`[PVP] Max concurrent games: ${MAX_CONCURRENT_GAMES}`);
+  if (openrouter) {
+    console.log('[PVP] Commentary enabled (mid-game + end-game in chat).');
+  } else {
+    console.log('[PVP] Commentary disabled (set OPENROUTER_API_KEY in .env to enable).');
+  }
 
   const balance = await provider.getBalance(wallet.address);
   console.log(`[PVP] ETH balance: ${ethers.formatEther(balance)}`);

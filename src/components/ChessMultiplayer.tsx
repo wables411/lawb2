@@ -30,6 +30,7 @@ import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
+import ClawbDanceLoop from './ClawbDanceLoop';
 import { debugIngest } from '../utils/debugIngest';
 
 // Get contract address based on current network
@@ -6293,10 +6294,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     );
   };
 
+  // Ref for piece set dropdown click-outside
+  const pieceSetDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close piece set dropdown when clicking outside
+  useEffect(() => {
+    if (!showPieceSetDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pieceSetDropdownRef.current && !pieceSetDropdownRef.current.contains(e.target as Node)) {
+        setShowPieceSetDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPieceSetDropdown]);
+
   // Render piece set selector
   const renderPieceSetSelector = () => {
-    console.log('[PIECE SET SELECTOR] renderPieceSetSelector() function called');
-    console.log('[PIECE SET SELECTOR] Current state:', { showPieceSetSelector, address, isConnected, selectedPieceSet: selectedPieceSet?.id });
     const handlePieceSetSelect = (pieceSet: ChessPieceSet) => {
       setSelectedPieceSet(pieceSet);
       setShowPieceSetDropdown(false);
@@ -6327,8 +6341,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               </div>
             )}
             
-            {/* Piece Set Dropdown */}
-            <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
+            {/* Piece Set Dropdown - opens downward so it stays visible */}
+            <div ref={pieceSetDropdownRef} style={{display:'flex',justifyContent:'center',marginBottom:24, position: 'relative'}}>
               <div style={{ position: 'relative', minWidth: '200px' }}>
                 <button
                   type="button"
@@ -6346,17 +6360,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   }}
                 >
                   {getPieceSetDisplayName(selectedPieceSet.id)}
-                  <span style={{ float: 'right' }}>▲</span>
+                  <span style={{ float: 'right' }}>{showPieceSetDropdown ? '▼' : '▲'}</span>
                 </button>
                 
                 {showPieceSetDropdown && (
                   <div style={{
                     position: 'absolute',
-                    bottom: '100%',
+                    top: '100%',
                     left: 0,
+                    marginTop: '2px',
                     background: '#000000',
                     border: '2px outset #fff',
-                    zIndex: 10,
+                    zIndex: 9999,
                     minWidth: '200px'
                   }}>
                     {availablePieceSets.map((pieceSet) => (
@@ -7146,7 +7161,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                 if ((wagerType === 'token' && gameWager > 0) || (wagerType === 'nft' && selectedNFT)) {
                                   if (!isGameCreationInProgress) {
                                     console.log('[CREATE BUTTON] ✅ Validation passed, showing piece set selector inline');
-                                    console.log('[CREATE BUTTON] Current showPieceSetSelector state:', showPieceSetSelector);
+                                    setShowPieceSetDropdown(false);
                                     setShowPieceSetSelector(true);
                                   } else {
                                     console.log('[CREATE BUTTON] ⚠️ Game creation already in progress, ignoring click');
@@ -7205,6 +7220,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               setIsCreatingGame(false);
                               setIsGameCreationInProgress(false);
                               setShowPieceSetSelector(false);
+                              setShowPieceSetDropdown(false);
                             }}
                             style={{
                               padding: '8px 16px',
@@ -7374,14 +7390,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   marginTop: '20px',
                   width: '100%'
                 }}>
-                  <img 
-                    src="/assets/stardance.gif" 
-                    alt="Star dance animation" 
-                    style={{
-                      width: '100%',
-                      height: 'auto'
-                    }}
-                  />
+                  <ClawbDanceLoop style={{ maxWidth: '400px' }} />
                 </div>
               </div>
             </div>
