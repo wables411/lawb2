@@ -36,6 +36,7 @@
 | File | Purpose |
 |------|---------|
 | `LAWB_XYZ_KNOWLEDGE.md` | Site knowledge: routes, collections, chess, minting, $LAWB |
+| `LAWB_LORE.md` | Full lore, links, chains, history, /world, chess contracts — everything for answering lawb.xyz questions |
 | `.env` | Copy from `.env.example` — Firebase, OpenRouter, wallet key, RPC, Stockfish URL |
 | `README.md` | Full setup: clone, install, secrets, run, pm2 |
 

@@ -40,12 +40,18 @@ const openrouter = new OpenAI({
 // Model for chat responses (fast + cheap)
 const CHAT_MODEL = process.env.CLAWB_CHAT_MODEL || 'anthropic/claude-3.5-haiku';
 
-// Load knowledge base
+// Load knowledge base (site summary + full lore/links/chains/history)
 let knowledge = '';
 try {
   knowledge = readFileSync(resolve(__dirname, 'LAWB_XYZ_KNOWLEDGE.md'), 'utf-8');
 } catch {
-  console.warn('[Chat] LAWB_XYZ_KNOWLEDGE.md not found — running without knowledge base');
+  console.warn('[Chat] LAWB_XYZ_KNOWLEDGE.md not found');
+}
+try {
+  const lore = readFileSync(resolve(__dirname, 'LAWB_LORE.md'), 'utf-8');
+  knowledge = knowledge ? `${knowledge}\n\n--- FULL LORE & REFERENCE ---\n${lore}` : lore;
+} catch {
+  console.warn('[Chat] LAWB_LORE.md not found — running without full lore');
 }
 
 // --- System Prompt ---
