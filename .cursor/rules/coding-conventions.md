@@ -52,7 +52,7 @@ src/
 ## Platform Notes
 
 - **macOS dev machine**: Use standard Unix commands. No PowerShell-specific syntax.
-- **Netlify deploys**: Auto-deploy from `main` branch. `netlify.toml` configures build.
+- **Netlify deploys**: Auto-deploy from `main` branch only. `netlify.toml` configures build. **All lawb.xyz site changes (chess, PVP, Firebase, UI) must be on `main` to go live.** Work on a branch only for experiments; merge to `main` and push before expecting a deploy.
 - **Cloudflare**: DNS + CDN. chess.lawb.xyz is a separate subdomain pointing to the DigitalOcean droplet.
 - **DigitalOcean**: Stockfish API runs in Docker. nginx reverse proxy + Let's Encrypt SSL.
 
