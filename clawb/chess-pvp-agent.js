@@ -355,10 +355,17 @@ async function watchAndPlayGame(inviteCode) {
     // Get the FEN and ask Stockfish for a move
     try {
       const board = game.board;
-      if (!board || !board.positions) return;
+      if (!board || !board.positions) {
+        console.error(`[PVP] ${inviteCode}: No board or positions`);
+        return;
+      }
 
-      const fen = game.fen || boardPositionsToFEN(board.positions, clawbColor);
-      if (!fen) return;
+      let fen = game.fen || boardPositionsToFEN(board.positions, clawbColor);
+      if (!fen) {
+        console.error(`[PVP] ${inviteCode}: Could not build FEN from positions (missing or invalid)`);
+        return;
+      }
+      if (!game.fen) console.log(`[PVP] ${inviteCode}: Using FEN from board positions (none stored)`);
 
       console.log(`[PVP] ${inviteCode}: Clawb's turn. FEN: ${fen}`);
       const moveUCI = await getStockfishMove(fen);
@@ -442,7 +449,11 @@ async function getStockfishMove(fen, movetime = 5000) {
       body: JSON.stringify({ fen, movetime }),
     });
     const data = await res.json();
-    return data.bestmove || null;
+    const move = data.bestmove ?? data.best_move ?? data.move ?? null;
+    if (!move && res.ok) {
+      console.error(`[PVP] Stockfish API returned no move. Response: ${JSON.stringify(data).slice(0, 200)}`);
+    }
+    return move || null;
   } catch (err) {
     console.error('[PVP] Stockfish API error:', err.message);
     return null;
@@ -455,11 +466,31 @@ function posKey(row, col) {
 }
 
 // --- FEN helper: reads Firebase positions (keys "row_col" or "row,col"), values "K"/"p" etc. ---
+function normalizePositions(positions) {
+  if (!positions || typeof positions !== 'object') return null;
+  // Frontend sends { "0_0": "R", ... }. If Firebase has array of rows, convert to same shape.
+  if (Array.isArray(positions) && positions.length === 8) {
+    const out = {};
+    for (let row = 0; row < 8; row++) {
+      const r = positions[row];
+      if (!Array.isArray(r) || r.length !== 8) return null;
+      for (let col = 0; col < 8; col++) {
+        if (r[col]) out[`${row}_${col}`] = r[col];
+      }
+    }
+    return out;
+  }
+  return positions;
+}
+
 function boardPositionsToFEN(positions, currentColor) {
+  const normalized = normalizePositions(positions);
+  if (!normalized) return null;
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
 
-  for (const [key, piece] of Object.entries(positions)) {
-    const parts = key.split(/[,_]/).map(Number);
+  for (const [key, piece] of Object.entries(normalized)) {
+    if (piece === null || piece === undefined) continue;
+    const parts = String(key).split(/[,_]/).map(Number);
     if (parts.length >= 2) {
       const [row, col] = parts;
       if (row >= 0 && row < 8 && col >= 0 && col < 8) {
