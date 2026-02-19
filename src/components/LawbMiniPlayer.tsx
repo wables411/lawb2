@@ -175,7 +175,7 @@ const useStyles = createUseStyles({
     color: '#00ff66',
     height: '100%',
     width: '100%',
-    padding: '6px 8px',
+    padding: 0,
     boxSizing: 'border-box',
     overflow: 'hidden',
     fontFamily: 'monospace',
@@ -183,6 +183,13 @@ const useStyles = createUseStyles({
     lineHeight: (p: StyleProps) => (p.isFullscreen ? (p.isMobile ? '14px' : '16px') : '12px'),
     whiteSpace: 'pre',
     userSelect: 'none',
+    display: 'flex',
+    alignItems: 'stretch',
+  },
+  asciiCanvas: {
+    width: '100%',
+    height: '100%',
+    display: 'block',
   },
   strobe: {
     // Intentionally loud; short-lived per beat.
@@ -250,134 +257,7 @@ function resampleBars(bars: number[], targetCount: number): number[] {
   return out;
 }
 
-function buildOceanEqAscii(opts: {
-  eqBars: number[];
-  tick: number;
-  cols: number;
-  rows: number;
-  beat: boolean;
-}): string {
-  // Oceanic equalizer scene with lobster emojis + anti-surveillance flavor.
-  // Note: emojis are user-requested; alignment varies by font.
-  const { eqBars, tick, cols, rows, beat } = opts;
-  const w = Math.max(24, Math.min(140, Math.floor(cols)));
-  const h = Math.max(10, Math.min(60, Math.floor(rows)));
-
-  const energy = eqBars.reduce((a, b) => a + b, 0) / Math.max(1, eqBars.length); // 0..1
-  const lvl = Math.round(energy * 99);
-
-  const mulberry32 = (seed: number) => () => {
-    let t = seed += 0x6D2B79F5;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  const rand = mulberry32(0x0CE4A + (tick * 733)); // stable-ish motion
-
-  const grid: string[][] = Array.from({ length: h }, () => Array.from({ length: w }, () => ' '));
-
-  const put = (x: number, y: number, ch: string) => {
-    if (y < 0 || y >= h) return;
-    if (x < 0 || x >= w) return;
-    grid[y]![x] = ch;
-  };
-
-  const waterY = Math.max(2, Math.min(h - 6, Math.floor(h * 0.22)));
-
-  // Header line (kept readable, not random).
-  const header = `LAWBAMP  LVL:${String(lvl).padStart(2, '0')}  NO CCTV`;
-  for (let i = 0; i < Math.min(w, header.length); i++) put(i, 0, header[i]!);
-  put(0, 0, '🦞');
-  put(Math.max(0, w - 2), 0, '🔒');
-
-  // Sky: satellites / drones / "eye" hints.
-  const skyY = 1;
-  const satX = (tick * 2) % Math.max(1, w - 2);
-  put(satX, skyY, '🛰️');
-  if (energy > 0.55) put((satX + 13) % Math.max(1, w - 2), skyY, '👁️');
-  put(w - 2, skyY, '🔒');
-
-  const colsBars = resampleBars(eqBars, w);
-
-  // Water surface: moving waves (modulated per column by EQ).
-  for (let x = 0; x < w; x++) {
-    const v = colsBars[x] ?? 0;
-    const phase = (x * 0.22) + (tick * 0.35);
-    const amp = 0.7 + (energy * 1.6) + (v * 2.4);
-    const dy = Math.round(Math.sin(phase) * amp);
-    const y = waterY + dy;
-    put(x, y, '~');
-    if (energy > 0.35 && rand() < 0.02) put(x, y - 1, '*'); // tiny spray
-  }
-
-  // Second surface layer for more motion/texture.
-  for (let x = 0; x < w; x++) {
-    const v = colsBars[x] ?? 0;
-    const phase = (x * 0.14) + (tick * 0.22);
-    const amp = 0.4 + (energy * 0.9) + (v * 1.2);
-    const dy = Math.round(Math.cos(phase) * amp);
-    const y = waterY + dy + 1;
-    if (y > 1 && y < h - 3) put(x, y, rand() < 0.15 ? '=' : '-');
-  }
-
-  // Sonar sweep (anti-surveillance vs surveillance tug-of-war).
-  const sweepX = (tick * 3) % Math.max(1, w);
-  for (let y = waterY + 2; y < h - 3; y++) {
-    if (rand() < 0.25) put(sweepX, y, '|');
-  }
-  if (beat) {
-    put(sweepX, waterY - 1, '🦞');
-  }
-
-  // Equalizer as kelp "bars" rising from ocean floor.
-  const floorY = h - 2;
-  for (let x = 0; x < w; x++) {
-    const v = colsBars[x] ?? 0;
-    const kelpMax = Math.max(3, (h - waterY - 4));
-    const kelpH = Math.max(1, Math.round(v * kelpMax));
-    for (let k = 0; k < kelpH; k++) {
-      const y = floorY - k;
-      const ch = k % 3 === 0 ? '|' : k % 3 === 1 ? ':' : ';';
-      put(x, y, ch);
-    }
-    // A lobster pops up when the beat hits (or energy is high).
-    const peakY = floorY - kelpH - 1;
-    if (beat && v > 0.72 && peakY > waterY) {
-      put(x, peakY, '🦞');
-    }
-  }
-
-  // Bubbles drifting upward (animated by tick).
-  const bubbleCount = Math.max(3, Math.round((w / 16) * (0.8 + energy)));
-  for (let i = 0; i < bubbleCount; i++) {
-    const bx = Math.floor(rand() * w);
-    const by = waterY + 1 + ((tick + (i * 17)) % Math.max(1, h - waterY - 3));
-    const y = (h - 3) - (by - (waterY + 1));
-    if (y > waterY + 1 && y < h - 3) put(bx, y, rand() < 0.5 ? 'o' : '.');
-  }
-
-  // Little fish / data packets moving with the current.
-  const fishCount = Math.max(2, Math.round(w / 30));
-  for (let i = 0; i < fishCount; i++) {
-    const dir = i % 2 === 0 ? 1 : -1;
-    const fx = dir > 0
-      ? ((tick * 2) + (i * 19)) % Math.max(1, w - 4)
-      : (w - 4) - (((tick * 2) + (i * 19)) % Math.max(1, w - 4));
-    const fy = waterY + 3 + ((i * 5) % Math.max(1, h - waterY - 7));
-    const isPacket = energy > 0.5 && rand() < 0.4;
-    const fish = isPacket ? (dir > 0 ? '>>>' : '<<<') : (dir > 0 ? '><>' : '<><');
-    for (let k = 0; k < fish.length; k++) put(fx + k, fy, fish[k]!);
-  }
-
-  // Ocean floor line + "encrypted seabed" footer.
-  for (let x = 0; x < w; x++) put(x, h - 1, x % 2 === 0 ? '_' : '-');
-  const footer = energy > 0.45 ? ':: SEA ENCRYPTED ::' : ':: ENCRYPT THE OCEAN ::';
-  const footerStart = Math.max(0, Math.floor((w - footer.length) / 2));
-  for (let i = 0; i < Math.min(w - footerStart, footer.length); i++) put(footerStart + i, h - 2, footer[i]!);
-  put(0, h - 2, '🦞');
-
-  return grid.map((row) => row.join('')).join('\n');
-}
+type Bubble = { x: number; y: number; vy: number; ch: string; life: number };
 
 const LawbMiniPlayer: React.FC = () => {
   const { state, actions } = useLawbAudio();
@@ -453,15 +333,6 @@ const LawbMiniPlayer: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
 
-  // Drive ASCII motion even when EQ data is flat/blocked.
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (vizMode !== 'ascii') return;
-    if (!state.isPlaying) return;
-    const t = window.setInterval(() => setTick((x) => (x + 1) % 10_000), 120);
-    return () => window.clearInterval(t);
-  }, [vizMode, state.isPlaying]);
-
   const title = state.currentTrack
     ? `${state.currentTrack.user?.username ? `${state.currentTrack.user.username} - ` : ''}${state.currentTrack.title}`
     : 'Lawb Player';
@@ -496,14 +367,245 @@ const LawbMiniPlayer: React.FC = () => {
     }
   }, [eqBars, beatStrobeEnabled, state.isPlaying]);
 
-  const barsForDisplay = useMemo(() => resampleBars(eqBars, isFullscreen ? (isMobile ? 64 : 96) : (isMobile ? 24 : 32)), [eqBars, isFullscreen, isMobile]);
-  const ascii = useMemo(() => buildOceanEqAscii({
-    eqBars,
-    tick,
-    cols: isFullscreen ? (isMobile ? 84 : 128) : (isMobile ? 48 : 64),
-    rows: isFullscreen ? (isMobile ? 26 : 40) : (isMobile ? 14 : 16),
-    beat: beatStrobeEnabled && strobeOn,
-  }), [beatStrobeEnabled, eqBars, isFullscreen, isMobile, strobeOn, tick]);
+  const barsForDisplay = useMemo(
+    () => resampleBars(eqBars, isFullscreen ? (isMobile ? 64 : 96) : (isMobile ? 24 : 32)),
+    [eqBars, isFullscreen, isMobile]
+  );
+
+  // Canvas ASCII visualizer state (more advanced animation without React re-renders).
+  const supportsAsciiCanvas = useMemo(() => {
+    try {
+      if (typeof document === 'undefined') return false;
+      const c = document.createElement('canvas');
+      return !!c.getContext && !!c.getContext('2d');
+    } catch {
+      return false;
+    }
+  }, []);
+  const asciiHostRef = React.useRef<HTMLDivElement | null>(null);
+  const asciiCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const asciiGridRef = React.useRef<string[][]>([]);
+  const asciiDimsRef = React.useRef({ cols: 0, rows: 0, cellW: 10, cellH: 14, padX: 10, padY: 10 });
+  const bubblesRef = React.useRef<Bubble[]>([]);
+  const smoothBarsRef = React.useRef<number[]>(Array.from({ length: 96 }, () => 0));
+  const rafRef = React.useRef<number | null>(null);
+  const lastFrameMsRef = React.useRef<number>(0);
+
+  const eqBarsRef = React.useRef<number[]>(eqBars);
+  const beatRef = React.useRef<boolean>(false);
+  const playingRef = React.useRef<boolean>(false);
+  useEffect(() => { eqBarsRef.current = eqBars; }, [eqBars]);
+  useEffect(() => { beatRef.current = beatStrobeEnabled && strobeOn; }, [beatStrobeEnabled, strobeOn]);
+  useEffect(() => { playingRef.current = state.isPlaying; }, [state.isPlaying]);
+
+  // Resize canvas + (re)build grid to match available pixels.
+  useEffect(() => {
+    const host = asciiHostRef.current;
+    const canvas = asciiCanvasRef.current;
+    if (!host || !canvas) return;
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const recompute = () => {
+      const r = host.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const w = Math.max(1, Math.floor(r.width));
+      const h = Math.max(1, Math.floor(r.height));
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const fontPx = isFullscreen ? (isMobile ? 12 : 15) : (isMobile ? 11 : 12);
+      ctx.font = `${fontPx}px ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`;
+      ctx.textBaseline = 'top';
+
+      const m = ctx.measureText('M');
+      const cellW = Math.max(6, Math.floor(m.width));
+      const cellH = Math.max(10, Math.floor(fontPx * 1.15));
+      const padX = isMobile ? 6 : 10;
+      const padY = isMobile ? 6 : 10;
+      const cols = Math.max(24, Math.floor((w - padX * 2) / cellW));
+      const rows = Math.max(10, Math.floor((h - padY * 2) / cellH));
+
+      asciiDimsRef.current = { cols, rows, cellW, cellH, padX, padY };
+      asciiGridRef.current = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
+      // Keep bubbles within bounds on resize.
+      bubblesRef.current = bubblesRef.current.filter((b) => b.x >= 0 && b.x < cols && b.y >= 0 && b.y < rows);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(() => recompute());
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [isFullscreen, isMobile, vizMode]);
+
+  useEffect(() => {
+    if (vizMode !== 'ascii') return;
+    if (!supportsAsciiCanvas) return;
+    const canvas = asciiCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = (nowMs: number) => {
+      rafRef.current = requestAnimationFrame(draw);
+
+      // Throttle: 30fps target for mobile/low-end.
+      if (nowMs - lastFrameMsRef.current < (isMobile ? 50 : 33)) return;
+      lastFrameMsRef.current = nowMs;
+
+      const { cols, rows, cellW, cellH, padX, padY } = asciiDimsRef.current;
+      const grid = asciiGridRef.current;
+      if (!cols || !rows || grid.length !== rows) return;
+
+      // Background (slight trail for "water smear" feel).
+      const beat = beatRef.current;
+      ctx.fillStyle = beat ? 'rgba(0, 20, 10, 0.55)' : 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+      // Clear grid.
+      for (let y = 0; y < rows; y++) grid[y]!.fill(' ');
+
+      const bars = eqBarsRef.current;
+      const colBars = resampleBars(bars, cols);
+      // Smooth bars so it feels watery.
+      const smooth = smoothBarsRef.current;
+      if (smooth.length !== cols) smoothBarsRef.current = Array.from({ length: cols }, () => 0);
+      const smooth2 = smoothBarsRef.current;
+      for (let x = 0; x < cols; x++) {
+        const target = colBars[x] ?? 0;
+        const prev = smooth2[x] ?? 0;
+        const next = prev * 0.82 + target * 0.18;
+        smooth2[x] = next;
+      }
+
+      const energy = smooth2.reduce((a, b) => a + b, 0) / Math.max(1, smooth2.length);
+      const lvl = Math.round(energy * 99);
+      const t = nowMs / 1000;
+
+      const waterY = Math.max(2, Math.floor(rows * 0.22));
+      const floorY = rows - 2;
+
+      // Header + footer.
+      const header = `LAWBAMP LVL:${String(lvl).padStart(2, '0')}  NO CCTV`;
+      for (let i = 0; i < Math.min(cols, header.length); i++) grid[0]![i] = header[i]!;
+      grid[0]![0] = '🦞';
+      if (cols > 3) grid[0]![cols - 2] = '🔒';
+      const footer = energy > 0.45 ? ':: SEA ENCRYPTED ::' : ':: ENCRYPT THE OCEAN ::';
+      const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
+      for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2]![footerStart + i] = footer[i]!;
+
+      // Parallax surfaces.
+      for (let x = 0; x < cols; x++) {
+        const v = smooth2[x] ?? 0;
+        const amp1 = 0.6 + energy * 1.6 + v * 2.2;
+        const amp2 = 0.3 + energy * 0.9 + v * 1.1;
+        const y1 = waterY + Math.round(Math.sin(x * 0.22 + t * 2.1) * amp1);
+        const y2 = waterY + 1 + Math.round(Math.cos(x * 0.14 + t * 1.4) * amp2);
+        if (y1 > 1 && y1 < rows - 3) grid[y1]![x] = '~';
+        if (y2 > 1 && y2 < rows - 3 && grid[y2]![x] === ' ') grid[y2]![x] = (Math.random() < 0.15 ? '=' : '-');
+        if (energy > 0.35 && Math.random() < 0.008) {
+          const ys = y1 - 1;
+          if (ys > 1 && ys < rows - 3) grid[ys]![x] = '*';
+        }
+      }
+
+      // Sonar sweep.
+      const sweepX = Math.floor((t * 18) % Math.max(1, cols));
+      for (let y = waterY + 2; y < floorY; y++) {
+        if (Math.random() < 0.18) grid[y]![sweepX] = '|';
+      }
+      if (beat && waterY - 1 > 0) grid[waterY - 1]![sweepX] = '🦞';
+
+      // Kelp EQ bars.
+      for (let x = 0; x < cols; x++) {
+        const v = smooth2[x] ?? 0;
+        const kelpMax = Math.max(3, rows - waterY - 6);
+        const kelpH = Math.max(1, Math.round(v * kelpMax));
+        for (let k = 0; k < kelpH; k++) {
+          const y = floorY - k;
+          if (y <= waterY + 1) break;
+          grid[y]![x] = k % 3 === 0 ? '|' : k % 3 === 1 ? ':' : ';';
+        }
+        const peakY = floorY - kelpH - 1;
+        if (beat && v > 0.72 && peakY > waterY + 1) grid[peakY]![x] = '🦞';
+      }
+
+      // Bubble particles.
+      const bubbles = bubblesRef.current;
+      const spawn = Math.min(3, Math.round((cols / 90) * (0.5 + energy * 2)));
+      for (let i = 0; i < spawn; i++) {
+        if (Math.random() < 0.25 + energy * 0.25) {
+          bubbles.push({
+            x: Math.random() * cols,
+            y: floorY - 1,
+            vy: 0.35 + Math.random() * 0.6 + energy * 0.4,
+            ch: Math.random() < 0.6 ? 'o' : '.',
+            life: 3 + Math.random() * 4,
+          });
+        }
+      }
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i]!;
+        b.y -= b.vy;
+        b.x += Math.sin(t * 1.7 + i) * 0.015;
+        b.life -= 0.05;
+        const bx = Math.floor(b.x);
+        const by = Math.floor(b.y);
+        if (by > waterY + 2 && by < floorY && bx >= 0 && bx < cols) grid[by]![bx] = b.ch;
+        if (b.y < waterY + 2 || b.life <= 0) bubbles.splice(i, 1);
+      }
+
+      // Fish / packets.
+      const fishCount = Math.max(2, Math.round(cols / 34));
+      for (let i = 0; i < fishCount; i++) {
+        const dir = i % 2 === 0 ? 1 : -1;
+        const base = (t * 10 + i * 7) % Math.max(1, cols - 4);
+        const fx = dir > 0 ? Math.floor(base) : (cols - 4) - Math.floor(base);
+        const fy = waterY + 4 + (i * 3) % Math.max(1, rows - waterY - 8);
+        const isPacket = energy > 0.5 && Math.random() < 0.25;
+        const fish = isPacket ? (dir > 0 ? '>>>' : '<<<') : (dir > 0 ? '><>' : '<><');
+        for (let k = 0; k < fish.length; k++) {
+          const x = fx + k;
+          if (x >= 0 && x < cols && fy >= 0 && fy < rows) grid[fy]![x] = fish[k]!;
+        }
+      }
+
+      // Seabed.
+      for (let x = 0; x < cols; x++) grid[rows - 1]![x] = x % 2 === 0 ? '_' : '-';
+
+      // Draw.
+      ctx.fillStyle = beat ? '#b9fff0' : (energy > 0.55 ? '#00f0ff' : '#00ff66');
+      ctx.font = ctx.font; // keep from resize recompute
+      ctx.textBaseline = 'top';
+      for (let y = 0; y < rows; y++) {
+        const line = grid[y]!.join('');
+        ctx.fillText(line, padX, padY + y * cellH);
+      }
+
+      // Scanlines overlay.
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      for (let y = 0; y < canvas.clientHeight; y += 4) {
+        ctx.fillRect(0, y, canvas.clientWidth, 1);
+      }
+
+      // If not playing, keep it calmer (but still rendered).
+      if (!playingRef.current) {
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [isMobile, supportsAsciiCanvas, vizMode]);
 
   const toggleFullscreen = async () => {
     const el = document.querySelector('[data-popup-id="lawb-mini-player"]') as HTMLElement | null;
@@ -616,8 +718,15 @@ const LawbMiniPlayer: React.FC = () => {
             <div
               className={`${classes.asciiViz} ${strobeOn ? classes.strobe : ''}`}
               title="ASCII Ocean EQ (toggle via VIZ button)"
+              ref={asciiHostRef}
             >
-              {ascii}
+              {supportsAsciiCanvas ? (
+                <canvas ref={asciiCanvasRef} className={classes.asciiCanvas} />
+              ) : (
+                <div style={{ padding: 10, color: '#00ff66', fontFamily: 'monospace', fontSize: 12 }}>
+                  ASCII mode requires canvas support.
+                </div>
+              )}
             </div>
           ) : (
             <div
