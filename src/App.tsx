@@ -11,6 +11,7 @@ import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { ChessPieceSetProvider } from './contexts/ChessPieceSetContext';
+import { useLawbAudio } from './contexts/LawbAudioContext';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
@@ -66,6 +67,7 @@ function App() {
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
   const [emoteWheelOpen, setEmoteWheelOpen] = useState(false);
+  const { actions: audioActions } = useLawbAudio();
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -296,6 +298,12 @@ function App() {
       case 'world':
         navigate('/world');
         break;
+      case 'music':
+        void audioActions.togglePlay();
+        break;
+      case 'player':
+        audioActions.toggleMiniPlayer();
+        break;
       case 'idle':
       case 'dance1':
       case 'dance2':
@@ -307,7 +315,7 @@ function App() {
       default:
         break;
     }
-  }, [openClawbChat, navigate]);
+  }, [openClawbChat, navigate, audioActions]);
 
 
 

@@ -3,6 +3,7 @@ import { createUseStyles } from 'react-jss';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
+import { useLawbAudio } from '../contexts/LawbAudioContext';
 
 const RetakeLiveBadge = lazy(() => import('./RetakeLiveBadge'));
 
@@ -43,6 +44,46 @@ const useStyles = createUseStyles({
     gap: '4px',
     flex: 1,
     justifyContent: 'center',
+  },
+  musicSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '4px 6px' : '2px 6px',
+    marginLeft: '8px',
+    marginRight: '8px',
+    borderRadius: '6px',
+    background: 'rgba(0, 0, 0, 0.18)',
+    border: '1px solid rgba(0, 0, 0, 0.25)',
+    maxWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '42vw' : '36vw',
+    overflow: 'hidden',
+  },
+  musicBtn: {
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '4px',
+    color: '#e2e8f0',
+    padding: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '6px 8px' : '4px 6px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    fontFamily: 'DejaVu Sans, Liberation Sans, Arial, sans-serif',
+    lineHeight: 1,
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.12)',
+    },
+    '&:disabled': {
+      opacity: 0.6,
+      cursor: 'not-allowed',
+    },
+  },
+  nowPlaying: {
+    color: '#cbd5e0',
+    fontSize: '11px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '24vw' : '22vw',
+    userSelect: 'none',
   },
   rightSection: {
     display: 'flex',
@@ -203,6 +244,7 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
   // Single source of truth: useConnectionDisplay handles reconnecting state to avoid navbar/Reown modal mismatch
   const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
   const connectionStatus = connectionDisplay;
+  const { state: audioState, actions: audioActions } = useLawbAudio();
   // Debug: log props on mount
   useEffect(() => {
     console.log('[LINUXNAVBAR] Props received:', { 
@@ -289,6 +331,38 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
               Clawb
             </button>
           )}
+
+          <div className={classes.musicSection} title={audioState.currentTrack ? `${audioState.currentTrack.title}` : 'Lawb Player'}>
+            <button
+              className={classes.musicBtn}
+              type="button"
+              onClick={() => { void audioActions.togglePlay(); }}
+              disabled={!audioState.isReady || audioState.isLoading}
+            >
+              {audioState.isPlaying ? '||' : '>'}
+            </button>
+            <button
+              className={classes.musicBtn}
+              type="button"
+              onClick={() => { void audioActions.next(); }}
+              disabled={!audioState.isReady || audioState.isLoading || audioState.queueSize === 0}
+            >
+              {'>>'}
+            </button>
+            <button
+              className={classes.musicBtn}
+              type="button"
+              onClick={() => audioActions.toggleMiniPlayer()}
+              disabled={!audioState.isReady}
+            >
+              {audioState.showMiniPlayer ? 'UI-' : 'UI+'}
+            </button>
+            <div className={classes.nowPlaying}>
+              {audioState.currentTrack
+                ? `${audioState.currentTrack.user?.username ? `${audioState.currentTrack.user.username} - ` : ''}${audioState.currentTrack.title}`
+                : 'Lawb Player'}
+            </div>
+          </div>
         </div>
         
         <div className={classes.rightSection}>

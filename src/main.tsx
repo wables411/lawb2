@@ -17,6 +17,8 @@ const ClawbWorld = lazy(() => import('./components/ClawbWorld'));
 
 import { wagmiAdapter, initializeAppKit } from './appkit.ts';
 import { config as wagmiConfig } from './wagmi';
+import { LawbAudioProvider } from './contexts/LawbAudioContext';
+import LawbMiniPlayer from './components/LawbMiniPlayer';
 const queryClient = new QueryClient();
 
 const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
@@ -80,31 +82,34 @@ const AppWithWagmi = () => {
   return (
     <WagmiProvider key={configKey} config={currentConfig}>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Routes>
-            {isChessSubdomain ? (
-              <Route path="/*" element={
-                <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                  <ChessPage />
-                </Suspense>
-              } />
-            ) : (
-              <>
-                <Route path="/" element={<Root />} />
-                <Route path="/chess" element={
+        <LawbAudioProvider>
+          <BrowserRouter>
+            <Routes>
+              {isChessSubdomain ? (
+                <Route path="/*" element={
                   <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
                     <ChessPage />
                   </Suspense>
                 } />
-                <Route path="/world" element={
-                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px', background: '#0a1628', color: '#e2e8f0' }}>Entering Clawb's World...</div>}>
-                    <ClawbWorld />
-                  </Suspense>
-                } />
-              </>
-            )}
-          </Routes>
-        </BrowserRouter>
+              ) : (
+                <>
+                  <Route path="/" element={<Root />} />
+                  <Route path="/chess" element={
+                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
+                      <ChessPage />
+                    </Suspense>
+                  } />
+                  <Route path="/world" element={
+                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px', background: '#0a1628', color: '#e2e8f0' }}>Entering Clawb's World...</div>}>
+                      <ClawbWorld />
+                    </Suspense>
+                  } />
+                </>
+              )}
+            </Routes>
+          </BrowserRouter>
+          <LawbMiniPlayer />
+        </LawbAudioProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
