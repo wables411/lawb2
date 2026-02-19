@@ -27,6 +27,7 @@ import {
   type WorldPlayerPresence,
 } from '../firebaseClawb';
 import './ClawbWorld.css';
+import LinuxNavBar from './LinuxNavBar';
 
 // NFT Gallery — same as stream overlay
 const FIREBASE_GALLERY_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/clawb/nft_gallery.json';
@@ -1129,6 +1130,9 @@ const ClawbWorld: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Global bottom navbar (includes now-playing music controls) */}
+      <LinuxNavBar />
     </div>
   );
 };

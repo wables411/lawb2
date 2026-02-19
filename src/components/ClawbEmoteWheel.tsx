@@ -14,6 +14,8 @@ const EMOTE_SEGMENTS: EmoteSegment[] = [
   { id: 'dance3', label: 'Vibe', icon: 'd3' },
   { id: 'walk', label: 'Walk', icon: '>>' },
   { id: 'death', label: 'RIP', icon: 'x_x' },
+  { id: 'music', label: 'Music', icon: 'amp' },
+  { id: 'player', label: 'Player', icon: 'ui' },
   { id: 'help', label: 'Ask Clawb', icon: '?' },
   { id: 'world', label: 'Visit World', icon: '~o~' },
 ];
