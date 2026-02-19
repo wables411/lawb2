@@ -9,6 +9,8 @@ const LS_VIZ_MODE = 'lawbamp_viz_mode';
 const LS_BEAT_STROBE = 'lawbamp_beat_strobe';
 type VizMode = 'bars' | 'ascii';
 
+type StyleProps = { pct: number; isFullscreen: boolean; uiScale: number };
+
 const useStyles = createUseStyles({
   container: {
     display: 'flex',
@@ -25,8 +27,8 @@ const useStyles = createUseStyles({
     marginBottom: 10,
   },
   artBox: {
-    width: 96,
-    height: 96,
+    width: (p: StyleProps) => (p.isFullscreen ? 64 : 96),
+    height: (p: StyleProps) => (p.isFullscreen ? 64 : 96),
     border: '2px inset #fff',
     background: '#000',
     display: 'flex',
@@ -82,6 +84,7 @@ const useStyles = createUseStyles({
   btnRow: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
     marginBottom: 10,
   },
@@ -89,9 +92,10 @@ const useStyles = createUseStyles({
     border: '2px outset #fff',
     background: '#c0c0c0',
     color: '#000',
-    padding: '6px 10px',
+    padding: (p: StyleProps) => `${Math.max(6, Math.round(6 * p.uiScale))}px ${Math.max(8, Math.round(10 * p.uiScale))}px`,
     cursor: 'pointer',
-    fontSize: 12,
+    fontSize: (p: StyleProps) => Math.max(12, Math.min(16, Math.round(12 * p.uiScale))),
+    lineHeight: '1.1',
     '&:active': {
       border: '2px inset #c0c0c0',
     },
@@ -101,7 +105,7 @@ const useStyles = createUseStyles({
     },
   },
   slimBtn: {
-    padding: '6px 8px',
+    padding: (p: StyleProps) => `${Math.max(6, Math.round(6 * p.uiScale))}px ${Math.max(6, Math.round(8 * p.uiScale))}px`,
     minWidth: 40,
     textAlign: 'center',
   },
@@ -119,12 +123,18 @@ const useStyles = createUseStyles({
     top: 0,
     bottom: 0,
     background: 'linear-gradient(90deg, #00ff66, #00b7ff)',
-    width: (p: { pct: number }) => `${p.pct}%`,
+    width: (p: StyleProps) => `${p.pct}%`,
+  },
+  vizWrap: {
+    // In fullscreen, the viz becomes the main content.
+    flex: (p: StyleProps) => (p.isFullscreen ? '1 1 auto' : '0 0 auto'),
+    minHeight: (p: StyleProps) => (p.isFullscreen ? 260 : 84),
+    marginBottom: 10,
   },
   eq: {
     border: '2px inset #fff',
     background: '#0b0b0b',
-    height: 40,
+    height: '100%',
     display: 'flex',
     alignItems: 'flex-end',
     gap: 2,
@@ -159,13 +169,13 @@ const useStyles = createUseStyles({
     border: '2px inset #fff',
     background: '#000',
     color: '#00ff66',
-    height: 84,
+    height: '100%',
     padding: '6px 8px',
     boxSizing: 'border-box',
     overflow: 'hidden',
     fontFamily: 'monospace',
-    fontSize: 11,
-    lineHeight: '12px',
+    fontSize: (p: StyleProps) => (p.isFullscreen ? 14 : 11),
+    lineHeight: (p: StyleProps) => (p.isFullscreen ? '16px' : '12px'),
     whiteSpace: 'pre',
     userSelect: 'none',
   },
@@ -178,7 +188,7 @@ const useStyles = createUseStyles({
     display: 'flex',
     gap: 10,
     alignItems: 'center',
-    marginTop: 'auto',
+    marginTop: (p: StyleProps) => (p.isFullscreen ? 0 : 'auto'),
   },
   label: {
     fontSize: 12,
@@ -219,98 +229,115 @@ function fmtBars(eq: number[], bands = 16): number[] {
   return src.map((v) => clamp01(v));
 }
 
-function buildLawbsterAscii(eqBars: number[], tick: number): string {
-  // Neochibi lobster techno matrix anti-surveillance-state core.
-  // Note: includes emojis by user request; width alignment will vary by font.
-  const width = 34;
+function resampleBars(bars: number[], targetCount: number): number[] {
+  if (targetCount <= 0) return [];
+  if (!bars.length) return Array.from({ length: targetCount }, () => 0);
+  if (bars.length === targetCount) return bars.slice();
+  const out: number[] = [];
+  for (let i = 0; i < targetCount; i++) {
+    const t = (i / Math.max(1, targetCount - 1)) * (bars.length - 1);
+    const a = Math.floor(t);
+    const b = Math.min(bars.length - 1, a + 1);
+    const f = t - a;
+    const v = (bars[a] ?? 0) * (1 - f) + (bars[b] ?? 0) * f;
+    out.push(clamp01(v));
+  }
+  return out;
+}
 
-  const heights = eqBars.map((v) => Math.max(0, Math.min(8, Math.round(v * 8))));
-  const energy = heights.reduce((a, b) => a + b, 0) / Math.max(1, heights.length * 8); // 0..1
+function buildOceanEqAscii(opts: {
+  eqBars: number[];
+  tick: number;
+  cols: number;
+  rows: number;
+  beat: boolean;
+}): string {
+  // Oceanic equalizer scene with lobster emojis + anti-surveillance flavor.
+  // Note: emojis are user-requested; alignment varies by font.
+  const { eqBars, tick, cols, rows, beat } = opts;
+  const w = Math.max(24, Math.min(140, Math.floor(cols)));
+  const h = Math.max(10, Math.min(60, Math.floor(rows)));
+
+  const energy = eqBars.reduce((a, b) => a + b, 0) / Math.max(1, eqBars.length); // 0..1
   const lvl = Math.round(energy * 99);
 
-  // Deterministic pseudo-random based on tick so it "moves" predictably.
   const mulberry32 = (seed: number) => () => {
     let t = seed += 0x6D2B79F5;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const rand = mulberry32(0xC1A0B + (tick * 1337));
+  const rand = mulberry32(0x0CE4A + (tick * 733)); // stable-ish motion
 
-  const glyphs = '01LAWB$#@*+=-.:';
-  const density = 0.25 + (energy * 0.55); // 0.25..0.8
-  const glitchChance = 0.05 + (energy * 0.15);
+  const grid: string[][] = Array.from({ length: h }, () => Array.from({ length: w }, () => ' '));
 
-  const matrixLine = (salt: number): string => {
-    const r = mulberry32(0x5EED + salt + (tick * 97));
-    let s = '';
-    for (let i = 0; i < width; i++) {
-      const p = r();
-      if (p > density) { s += ' '; continue; }
-      const g = glyphs[Math.floor(r() * glyphs.length)] || '0';
-      s += g;
-    }
-    // occasional "glitch injection"
-    if (r() < glitchChance) {
-      const pos = Math.floor(r() * Math.max(1, width - 6));
-      const stamp = r() < 0.5 ? '🛰️' : '🔒';
-      s = s.slice(0, pos) + stamp + s.slice(pos + 2);
-    }
-    return s;
+  const put = (x: number, y: number, ch: string) => {
+    if (y < 0 || y >= h) return;
+    if (x < 0 || x >= w) return;
+    grid[y]![x] = ch;
   };
 
-  const slogans = [
-    'NO EYES NO SPIES',
-    'ANTI-SURVEILLANCE CORE',
-    'ENCRYPT THE OCEAN',
-    'LAWBS IN THE WIRES',
-    'DISABLE THE 👁️',
-    'SEALED SIGNAL 🔒',
-    'MATRIX LOBSTER MODE 🦞',
-  ];
-  const slogan = slogans[Math.floor(rand() * slogans.length)] || slogans[0];
+  const waterY = Math.max(2, Math.min(h - 6, Math.floor(h * 0.22)));
 
-  const wavePhase = tick % width;
-  const waveChars = Array.from({ length: width }, (_, i) => {
-    const d = Math.abs(i - wavePhase);
-    if (d === 0) return '#';
-    if (d === 1) return '=';
-    if (d === 2) return '-';
-    return (rand() < 0.02 && energy > 0.35) ? '*' : ' ';
-  }).join('');
+  // Header line (kept readable, not random).
+  const header = `LAWBAMP  LVL:${String(lvl).padStart(2, '0')}  NO CCTV`;
+  for (let i = 0; i < Math.min(w, header.length); i++) put(i, 0, header[i]!);
+  put(0, 0, '🦞');
+  put(Math.max(0, w - 2), 0, '🔒');
 
-  const eye = energy > 0.65 ? '◉' : energy > 0.35 ? 'o' : '.';
-  const blush = energy > 0.5 ? '^' : "'";
-  const mouth = energy > 0.55 ? '_' : '.';
-  const clawL = energy > 0.7 ? '≋≋' : energy > 0.4 ? '≡' : '-';
-  const clawR = energy > 0.7 ? '≋≋' : energy > 0.4 ? '≡' : '-';
-  const heart = energy > 0.75 ? '♥' : energy > 0.55 ? '<3' : '  ';
+  // Sky: satellites / drones / "eye" hints.
+  const skyY = 1;
+  const satX = (tick * 2) % Math.max(1, w - 2);
+  put(satX, skyY, '🛰️');
+  if (energy > 0.55) put((satX + 13) % Math.max(1, w - 2), skyY, '👁️');
+  put(w - 2, skyY, '🔒');
 
-  const lines: string[] = [];
-  lines.push(`NEOCHIBI🦞 LAWBAMP  [${String(lvl).padStart(2, '0')}]`.padEnd(width));
-  lines.push(matrixLine(11));
-  lines.push(matrixLine(22));
-  lines.push(`${slogan}`.slice(0, width).padEnd(width));
-  lines.push(waveChars);
-
-  // Spectrum (6 rows tall, compact)
-  for (let row = 6; row >= 1; row--) {
-    let s = '';
-    for (let i = 0; i < 16; i++) {
-      const h = heights[i] ?? 0;
-      s += h >= row ? '|' : '.';
-      s += i % 2 === 1 ? ' ' : '';
-    }
-    lines.push(s.trimEnd().padEnd(width));
+  // Water surface: moving waves.
+  for (let x = 0; x < w; x++) {
+    const phase = (x * 0.22) + (tick * 0.35);
+    const amp = 0.9 + (energy * 2.0);
+    const dy = Math.round(Math.sin(phase) * amp);
+    const y = waterY + dy;
+    put(x, y, '~');
+    if (energy > 0.35 && rand() < 0.02) put(x, y - 1, '*'); // tiny spray
   }
 
-  // Chibi lobster "face" footer (techno cute)
-  const wob = tick % 3;
-  const pad = wob === 0 ? '' : wob === 1 ? ' ' : '  ';
-  lines.push(`${pad}${clawL}  ( ${eye}${blush}${mouth}${blush}${eye} )  ${clawR}   ${heart} 🛰️🔒`.slice(0, width).padEnd(width));
-  lines.push(`${pad}  \\___/  /__LAWB__\\  \\___/   :: NO CCTV ::`.slice(0, width).padEnd(width));
+  // Equalizer as kelp "bars" rising from ocean floor.
+  const colsBars = resampleBars(eqBars, w);
+  const floorY = h - 2;
+  for (let x = 0; x < w; x++) {
+    const v = colsBars[x] ?? 0;
+    const kelpMax = Math.max(3, (h - waterY - 4));
+    const kelpH = Math.max(1, Math.round(v * kelpMax));
+    for (let k = 0; k < kelpH; k++) {
+      const y = floorY - k;
+      const ch = k % 3 === 0 ? '|' : k % 3 === 1 ? ':' : ';';
+      put(x, y, ch);
+    }
+    // A lobster pops up when the beat hits (or energy is high).
+    const peakY = floorY - kelpH - 1;
+    if (beat && v > 0.72 && peakY > waterY) {
+      put(x, peakY, '🦞');
+    }
+  }
 
-  return lines.slice(0, 11).join('\n');
+  // Bubbles drifting upward (animated by tick).
+  const bubbleCount = Math.max(3, Math.round((w / 16) * (0.8 + energy)));
+  for (let i = 0; i < bubbleCount; i++) {
+    const bx = Math.floor(rand() * w);
+    const by = waterY + 1 + ((tick + (i * 17)) % Math.max(1, h - waterY - 3));
+    const y = (h - 3) - (by - (waterY + 1));
+    if (y > waterY + 1 && y < h - 3) put(bx, y, rand() < 0.5 ? 'o' : '.');
+  }
+
+  // Ocean floor line + "encrypted seabed" footer.
+  for (let x = 0; x < w; x++) put(x, h - 1, x % 2 === 0 ? '_' : '-');
+  const footer = energy > 0.45 ? ':: SEA ENCRYPTED ::' : ':: ENCRYPT THE OCEAN ::';
+  const footerStart = Math.max(0, Math.floor((w - footer.length) / 2));
+  for (let i = 0; i < Math.min(w - footerStart, footer.length); i++) put(footerStart + i, h - 2, footer[i]!);
+  put(0, h - 2, '🦞');
+
+  return grid.map((row) => row.join('')).join('\n');
 }
 
 const LawbMiniPlayer: React.FC = () => {
@@ -319,7 +346,30 @@ const LawbMiniPlayer: React.FC = () => {
     if (!state.durationSec) return 0;
     return Math.max(0, Math.min(100, (state.currentTimeSec / state.durationSec) * 100));
   }, [state.currentTimeSec, state.durationSec]);
-  const classes = useStyles({ pct });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [uiScale, setUiScale] = useState(1);
+  const classes = useStyles({ pct, isFullscreen, uiScale });
+
+  // Keep control text legible across popup sizes by scaling up (never down).
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const recompute = () => {
+      const r = el.getBoundingClientRect();
+      const baseW = 380; // matches initialSize width
+      const raw = r.width / baseW;
+      const next = Math.max(1, Math.min(1.35, raw)); // cap around 16px button text
+      setUiScale(next);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(() => recompute());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const [vizMode, setVizMode] = useState<VizMode>(() => {
     try {
@@ -346,7 +396,6 @@ const LawbMiniPlayer: React.FC = () => {
     try { localStorage.setItem(LS_BEAT_STROBE, String(beatStrobeEnabled)); } catch {}
   }, [beatStrobeEnabled]);
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
     const onFs = () => {
       const el = document.fullscreenElement;
@@ -374,7 +423,6 @@ const LawbMiniPlayer: React.FC = () => {
   const eq = state.eqBands && state.eqBands.length ? state.eqBands : Array.from({ length: 16 }, () => 0);
   const eqLooksDead = state.isPlaying && eq.every((v) => v <= 0.01);
   const eqBars = useMemo(() => fmtBars(eq, 16), [eq]);
-  const ascii = useMemo(() => buildLawbsterAscii(eqBars, tick), [eqBars, tick]);
 
   // Beat strobe: detect quick energy jumps; flash for ~90ms.
   const [strobeOn, setStrobeOn] = useState(false);
@@ -401,6 +449,15 @@ const LawbMiniPlayer: React.FC = () => {
     }
   }, [eqBars, beatStrobeEnabled, state.isPlaying]);
 
+  const barsForDisplay = useMemo(() => resampleBars(eqBars, isFullscreen ? 96 : 32), [eqBars, isFullscreen]);
+  const ascii = useMemo(() => buildOceanEqAscii({
+    eqBars,
+    tick,
+    cols: isFullscreen ? 96 : 48,
+    rows: isFullscreen ? 26 : 12,
+    beat: beatStrobeEnabled && strobeOn,
+  }), [beatStrobeEnabled, eqBars, isFullscreen, strobeOn, tick]);
+
   const toggleFullscreen = async () => {
     const el = document.querySelector('[data-popup-id="lawb-mini-player"]') as HTMLElement | null;
     if (!el) return;
@@ -426,7 +483,7 @@ const LawbMiniPlayer: React.FC = () => {
       initialSize={{ width: 380, height: 240 }}
       zIndex={999998}
     >
-      <div className={classes.container}>
+      <div ref={containerRef} className={classes.container}>
         <div className={classes.heroRow}>
           <div className={classes.artBox} title={state.currentTrack ? 'Track artwork' : 'LAWB'}>
             <img className={classes.artImg} src={artUrl} alt="Artwork" />
@@ -441,22 +498,6 @@ const LawbMiniPlayer: React.FC = () => {
                 <img className={classes.mascot} src={MASCOT_URL} alt="Lawb" title="Lawb" />
               </div>
             </div>
-
-            {vizMode === 'ascii' ? (
-              <div className={`${classes.asciiViz} ${strobeOn ? classes.strobe : ''}`} title="ASCII Visualizer (toggle via VIZ button)">
-                {ascii}
-              </div>
-            ) : (
-              <div className={`${classes.eq} ${eqLooksDead ? classes.eqFallback : ''} ${strobeOn ? classes.strobe : ''}`} title="Equalizer">
-                {eqBars.slice(0, 16).map((v, i) => (
-                  <div
-                    key={i}
-                    className={classes.eqBar}
-                    style={eqLooksDead ? undefined : { height: `${Math.max(4, Math.round(v * 100))}%` }}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -521,6 +562,30 @@ const LawbMiniPlayer: React.FC = () => {
 
         <div className={classes.meter} title={`${fmtTime(state.currentTimeSec)} / ${fmtTime(state.durationSec)}`}>
           <div className={classes.meterFill} />
+        </div>
+
+        <div className={classes.vizWrap}>
+          {vizMode === 'ascii' ? (
+            <div
+              className={`${classes.asciiViz} ${strobeOn ? classes.strobe : ''}`}
+              title="ASCII Ocean EQ (toggle via VIZ button)"
+            >
+              {ascii}
+            </div>
+          ) : (
+            <div
+              className={`${classes.eq} ${eqLooksDead ? classes.eqFallback : ''} ${strobeOn ? classes.strobe : ''}`}
+              title="Equalizer"
+            >
+              {barsForDisplay.map((v, i) => (
+                <div
+                  key={i}
+                  className={classes.eqBar}
+                  style={eqLooksDead ? undefined : { height: `${Math.max(4, Math.round(v * 100))}%` }}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <div className={classes.metaRow}>

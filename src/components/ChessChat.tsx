@@ -578,40 +578,9 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
   }, [isOpen, currentInviteCode, currentRoom]);
   
-  // Debug logging
-  useEffect(() => {
-    if (isOpen) {
-      console.log('[ChessChat] Chat is OPEN', { isMobile, isBaseMiniApp, isOpen });
-    } else {
-      console.log('[ChessChat] Chat is CLOSED', { isMobile, isBaseMiniApp, isOpen });
-    }
-  }, [isOpen, isMobile, isBaseMiniApp]);
-  
-  // Log after render to verify element exists (MUST be before early return to follow React hooks rules)
   const mobileStyle = isMobile || isBaseMiniApp;
-  useEffect(() => {
-    if (!isOpen) return; // Early return inside effect is fine
-    if (chatRef.current) {
-      const rect = chatRef.current.getBoundingClientRect();
-      const styles = window.getComputedStyle(chatRef.current);
-      console.log('[ChessChat] Element rendered:', {
-        exists: !!chatRef.current,
-        visible: styles.display !== 'none' && styles.visibility !== 'hidden' && styles.opacity !== '0',
-        dimensions: { width: rect.width, height: rect.height },
-        position: { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom },
-        zIndex: styles.zIndex,
-        display: styles.display,
-        visibility: styles.visibility,
-        opacity: styles.opacity,
-        pointerEvents: styles.pointerEvents
-      });
-    } else {
-      console.warn('[ChessChat] Element ref is null after render!');
-    }
-  }, [isOpen, mobileStyle]);
   
   if (!isOpen) {
-    console.log('[ChessChat] Returning null because isOpen is false');
     return null;
   }
   
@@ -689,16 +658,6 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     pointerEvents: 'auto' as const,
     visibility: 'visible' as const,
     opacity: 1
-  });
-  
-  console.log('[ChessChat] Rendering chat window', { 
-    mobileStyle, 
-    chatStyle, 
-    isOpen, 
-    isMobile,
-    isBaseMiniApp,
-    className: `chess-chat-window ${mobileStyle ? 'mobile' : 'desktop'}`,
-    showPublicChat: 'N/A (BaseApp context)' 
   });
   
   return (

@@ -245,15 +245,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
   const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
   const connectionStatus = connectionDisplay;
   const { state: audioState, actions: audioActions } = useLawbAudio();
-  // Debug: log props on mount
-  useEffect(() => {
-    console.log('[LINUXNAVBAR] Props received:', { 
-      hasOnOpenChessPieceInfo: !!onOpenChessPieceInfo,
-      hasOnOpenProfile: !!onOpenProfile,
-      hasOnOpenPublicChat: !!onOpenPublicChat,
-      showChessMenu 
-    });
-  }, [onOpenChessPieceInfo, onOpenProfile, onOpenPublicChat, showChessMenu]);
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -435,14 +426,8 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
           <button
             className={classes.menuItem}
             onClick={() => {
-              console.log('[LINUXNAVBAR] Chess Piece Info clicked, onOpenChessPieceInfo:', onOpenChessPieceInfo);
               setIsMenuOpen(false);
-              if (onOpenChessPieceInfo) {
-                console.log('[LINUXNAVBAR] Calling onOpenChessPieceInfo');
-                onOpenChessPieceInfo();
-              } else {
-                console.warn('[LINUXNAVBAR] onOpenChessPieceInfo is not defined!');
-              }
+              onOpenChessPieceInfo?.();
             }}
           >
             <span>♟️</span>

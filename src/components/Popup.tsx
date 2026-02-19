@@ -231,16 +231,6 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   const classes = useStyles({ isOpen });
   const nodeRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
-  
-  
-  // Debug: log when popup should be visible
-  React.useEffect(() => {
-    if (isOpen) {
-      console.log(`[POPUP] ${id} is now OPEN`);
-    } else {
-      console.log(`[POPUP] ${id} is now CLOSED`);
-    }
-  }, [isOpen, id]);
 
   const handleMinimize = () => {
     if (onMinimize) {
@@ -320,14 +310,6 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
   const handleDrag = (e: any, data: any) => {
     setPosition({ x: data.x, y: data.y });
   };
-  
-  // Debug: log when popup renders
-  React.useEffect(() => {
-    if (isOpen && nodeRef.current) {
-      console.log(`[POPUP] ${id} rendered, position:`, position, 'nodeRef:', nodeRef.current);
-      console.log(`[POPUP] ${id} computed styles:`, window.getComputedStyle(nodeRef.current));
-    }
-  }, [isOpen, id, position]);
 
   // Render popup content (extracted for reuse)
   const renderPopupContent = () => {
