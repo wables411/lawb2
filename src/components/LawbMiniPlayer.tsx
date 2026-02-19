@@ -135,6 +135,7 @@ const useStyles = createUseStyles({
     border: '2px inset #fff',
     background: '#0b0b0b',
     height: '100%',
+    width: '100%',
     display: 'flex',
     alignItems: 'flex-end',
     gap: 2,
@@ -170,6 +171,7 @@ const useStyles = createUseStyles({
     background: '#000',
     color: '#00ff66',
     height: '100%',
+    width: '100%',
     padding: '6px 8px',
     boxSizing: 'border-box',
     overflow: 'hidden',
@@ -292,18 +294,39 @@ function buildOceanEqAscii(opts: {
   if (energy > 0.55) put((satX + 13) % Math.max(1, w - 2), skyY, '👁️');
   put(w - 2, skyY, '🔒');
 
-  // Water surface: moving waves.
+  const colsBars = resampleBars(eqBars, w);
+
+  // Water surface: moving waves (modulated per column by EQ).
   for (let x = 0; x < w; x++) {
+    const v = colsBars[x] ?? 0;
     const phase = (x * 0.22) + (tick * 0.35);
-    const amp = 0.9 + (energy * 2.0);
+    const amp = 0.7 + (energy * 1.6) + (v * 2.4);
     const dy = Math.round(Math.sin(phase) * amp);
     const y = waterY + dy;
     put(x, y, '~');
     if (energy > 0.35 && rand() < 0.02) put(x, y - 1, '*'); // tiny spray
   }
 
+  // Second surface layer for more motion/texture.
+  for (let x = 0; x < w; x++) {
+    const v = colsBars[x] ?? 0;
+    const phase = (x * 0.14) + (tick * 0.22);
+    const amp = 0.4 + (energy * 0.9) + (v * 1.2);
+    const dy = Math.round(Math.cos(phase) * amp);
+    const y = waterY + dy + 1;
+    if (y > 1 && y < h - 3) put(x, y, rand() < 0.15 ? '=' : '-');
+  }
+
+  // Sonar sweep (anti-surveillance vs surveillance tug-of-war).
+  const sweepX = (tick * 3) % Math.max(1, w);
+  for (let y = waterY + 2; y < h - 3; y++) {
+    if (rand() < 0.25) put(sweepX, y, '|');
+  }
+  if (beat) {
+    put(sweepX, waterY - 1, '🦞');
+  }
+
   // Equalizer as kelp "bars" rising from ocean floor.
-  const colsBars = resampleBars(eqBars, w);
   const floorY = h - 2;
   for (let x = 0; x < w; x++) {
     const v = colsBars[x] ?? 0;
@@ -328,6 +351,19 @@ function buildOceanEqAscii(opts: {
     const by = waterY + 1 + ((tick + (i * 17)) % Math.max(1, h - waterY - 3));
     const y = (h - 3) - (by - (waterY + 1));
     if (y > waterY + 1 && y < h - 3) put(bx, y, rand() < 0.5 ? 'o' : '.');
+  }
+
+  // Little fish / data packets moving with the current.
+  const fishCount = Math.max(2, Math.round(w / 30));
+  for (let i = 0; i < fishCount; i++) {
+    const dir = i % 2 === 0 ? 1 : -1;
+    const fx = dir > 0
+      ? ((tick * 2) + (i * 19)) % Math.max(1, w - 4)
+      : (w - 4) - (((tick * 2) + (i * 19)) % Math.max(1, w - 4));
+    const fy = waterY + 3 + ((i * 5) % Math.max(1, h - waterY - 7));
+    const isPacket = energy > 0.5 && rand() < 0.4;
+    const fish = isPacket ? (dir > 0 ? '>>>' : '<<<') : (dir > 0 ? '><>' : '<><');
+    for (let k = 0; k < fish.length; k++) put(fx + k, fy, fish[k]!);
   }
 
   // Ocean floor line + "encrypted seabed" footer.
@@ -453,8 +489,8 @@ const LawbMiniPlayer: React.FC = () => {
   const ascii = useMemo(() => buildOceanEqAscii({
     eqBars,
     tick,
-    cols: isFullscreen ? 96 : 48,
-    rows: isFullscreen ? 26 : 12,
+    cols: isFullscreen ? 128 : 64,
+    rows: isFullscreen ? 40 : 16,
     beat: beatStrobeEnabled && strobeOn,
   }), [beatStrobeEnabled, eqBars, isFullscreen, strobeOn, tick]);
 
