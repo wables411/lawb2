@@ -1,6 +1,5 @@
-import { ref as dbRef, push, set, serverTimestamp, query, limitToLast, get } from 'firebase/database';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { database, storage } from './firebaseApp';
+import { ref as dbRef, query, limitToLast, get } from 'firebase/database';
+import { database } from './firebaseApp';
 import { assertDurationWithinLawbampCap, getMediaDurationSec } from './utils/mediaDuration';
 
 export type LawbampUploadEntry = {
@@ -26,11 +25,53 @@ function sanitizeFilename(raw: string): string {
   return base.replace(/[^\w.\-() ]+/g, '_');
 }
 
+function buildAuthMessage(p: { address: string; nonce: string; issuedAt: number; expiresAt: number }): string {
+  return [
+    'LAWBAMP_UPLOAD',
+    `address:${p.address}`,
+    `nonce:${p.nonce}`,
+    `issuedAt:${p.issuedAt}`,
+    `expiresAt:${p.expiresAt}`,
+  ].join('\n');
+}
+
+function xhrPut(url: string, file: File, headers: Record<string, string>, onProgress?: (pct01: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+    xhr.upload.onprogress = (e) => {
+      if (!onProgress) return;
+      if (!e.lengthComputable) return;
+      onProgress(e.total > 0 ? e.loaded / e.total : 0);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error('Upload network error'));
+    xhr.send(file);
+  });
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  const text = await res.text().catch(() => '');
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!res.ok) {
+    const msg = (data && (data.message || data.error)) ? String(data.message || data.error) : `${res.status} ${res.statusText}`;
+    throw new Error(msg);
+  }
+  return data as T;
+}
+
 export async function uploadLawbampMedia(args: {
   uploaderAddress: string;
   file: File;
   title?: string;
   onProgress?: (pct01: number) => void;
+  signMessageAsync: (args: { message: string }) => Promise<`0x${string}`>;
 }): Promise<LawbampUploadEntry> {
   const uploader = (args.uploaderAddress || '').toLowerCase();
   if (!uploader.startsWith('0x') || uploader.length < 10) throw new Error('Connect wallet to upload');
@@ -49,65 +90,62 @@ export async function uploadLawbampMedia(args: {
   const filename = sanitizeFilename(file.name);
   const title = sanitizeTitle(args.title || file.name);
 
-  // Create DB entry id up front so storage path and metadata share the same id.
-  const entryRef = push(dbRef(database, 'lawbamp_uploads'));
-  const entryId = entryRef.key;
-  if (!entryId) throw new Error('Could not allocate upload id');
+  // 1) Get an auth token for this address.
+  const authUrl = new URL('/.netlify/functions/lawbamp-upload-auth', window.location.origin);
+  authUrl.searchParams.set('address', uploader);
+  const auth = await fetchJson<{ token: string; payload: { address: string; nonce: string; issuedAt: number; expiresAt: number } }>(authUrl.toString());
 
-  const key = `lawbamp_uploads/${uploader}/${entryId}/${filename}`;
-  const sRef = storageRef(storage, key);
+  // 2) Sign the canonical message (server verifies signature).
+  const message = buildAuthMessage(auth.payload);
+  const signature = await args.signMessageAsync({ message });
 
-  const task = uploadBytesResumable(sRef, file, {
-    contentType: file.type || undefined,
-    customMetadata: {
-      uploader,
-      entryId,
+  // 3) Init upload: server checks Lawbsters/Lawbstarz, returns a signed PUT URL into Firebase Storage.
+  const initUrl = new URL('/.netlify/functions/lawbamp-upload-init', window.location.origin);
+  const initRes = await fetchJson<{
+    entryId: string;
+    objectPath: string;
+    uploadUrl: string;
+    requiredHeaders: Record<string, string>;
+    downloadUrl: string;
+  }>(initUrl.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address: uploader,
+      token: auth.token,
+      signature,
       title,
       filename,
-      durationSec: String(Math.round(durationSec)),
-    },
+      mime: file.type || 'application/octet-stream',
+      bytes: file.size,
+      duration_sec: Math.round(durationSec),
+    }),
   });
 
-  await new Promise<void>((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (snap) => {
-        if (!args.onProgress) return;
-        const pct = snap.totalBytes > 0 ? snap.bytesTransferred / snap.totalBytes : 0;
-        args.onProgress(pct);
-      },
-      (err) => reject(err),
-      () => resolve()
-    );
+  // 4) Upload bytes directly to signed URL (no Netlify payload limits).
+  await xhrPut(initRes.uploadUrl, file, initRes.requiredHeaders || { 'content-type': file.type || 'application/octet-stream' }, args.onProgress);
+
+  // 5) Finalize: server writes the RTDB metadata (clients cannot).
+  const finalizeUrl = new URL('/.netlify/functions/lawbamp-upload-finalize', window.location.origin);
+  const fin = await fetchJson<{ ok: boolean; entry: LawbampUploadEntry }>(finalizeUrl.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address: uploader,
+      token: auth.token,
+      signature,
+      entryId: initRes.entryId,
+      filename,
+      title,
+      mime: file.type || 'application/octet-stream',
+      bytes: file.size,
+      duration_sec: Math.round(durationSec),
+      downloadUrl: initRes.downloadUrl,
+      objectPath: initRes.objectPath,
+    }),
   });
 
-  const downloadUrl = await getDownloadURL(task.snapshot.ref);
-  const now = Date.now();
-
-  const entry: LawbampUploadEntry = {
-    id: entryId,
-    uploader,
-    title,
-    filename,
-    mime: file.type || 'application/octet-stream',
-    bytes: file.size,
-    duration_sec: Math.round(durationSec),
-    created_at: now,
-    storage_url: downloadUrl,
-  };
-
-  // Store metadata in RTDB (this is what Lawbamp and profiles will list).
-  // Note: RTDB rules should validate `duration_sec <= 1800`.
-  await set(entryRef, {
-    ...entry,
-    // Keep a server-side timestamp too (optional).
-    created_at_server: serverTimestamp(),
-  });
-
-  // Secondary index for profile pages.
-  await set(dbRef(database, `lawbamp_uploads_by_user/${uploader}/${entryId}`), true);
-
-  return entry;
+  return fin.entry;
 }
 
 export async function fetchRecentLawbampUploads(limit = 25): Promise<LawbampUploadEntry[]> {

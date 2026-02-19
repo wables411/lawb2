@@ -4,7 +4,7 @@ import Popup from './Popup';
 import { useLawbAudio } from '../contexts/LawbAudioContext';
 import { uploadLawbampMedia } from '../firebaseLawbampUploads';
 import { LAWBAMP_MAX_UPLOAD_DURATION_SEC } from '../utils/mediaDuration';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignMessage } from 'wagmi';
 
 const FALLBACK_ART_URL = '/images/lawb-logo.png';
 const MASCOT_URL = '/assets/asciilawb.GIF';
@@ -270,6 +270,7 @@ type Bubble = { x: number; y: number; vy: number; ch: string; life: number };
 const LawbMiniPlayer: React.FC = () => {
   const { state, actions } = useLawbAudio();
   const { address } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const pct = useMemo(() => {
     if (!state.durationSec) return 0;
     return Math.max(0, Math.min(100, (state.currentTimeSec / state.durationSec) * 100));
@@ -670,6 +671,7 @@ const LawbMiniPlayer: React.FC = () => {
       await uploadLawbampMedia({
         uploaderAddress: address || '',
         file,
+        signMessageAsync,
         onProgress: (p) => setUploadPct(Math.round(p * 100)),
       });
       setUploadPct(null);
@@ -767,7 +769,6 @@ const LawbMiniPlayer: React.FC = () => {
             </a>
           )}
 
-          {/* Token-gated uploads are implemented separately; for now we require a connected wallet and enforce a hard 30-min cap. */}
           <label className={classes.btn} title={`Upload MP3/MP4 (max ${maxMins} minutes)`} style={{ display: 'inline-flex', alignItems: 'center' }}>
             Upload
             <input
