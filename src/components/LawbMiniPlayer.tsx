@@ -131,8 +131,13 @@ const useStyles = createUseStyles({
   vizWrap: {
     // In fullscreen, the viz becomes the main content.
     flex: (p: StyleProps) => (p.isFullscreen ? '1 1 auto' : '0 0 auto'),
+    // When not fullscreen, give it an actual height; otherwise `height: 100%` children can
+    // end up measuring 0px after toggling fullscreen on some browsers/sizes.
+    height: (p: StyleProps) => (p.isFullscreen ? 'auto' : 84),
     minHeight: (p: StyleProps) => (p.isFullscreen ? 260 : 84),
     marginBottom: 10,
+    display: 'flex',
+    alignItems: 'stretch',
   },
   eq: {
     border: '2px inset #fff',
@@ -385,7 +390,16 @@ const LawbMiniPlayer: React.FC = () => {
   const asciiHostRef = React.useRef<HTMLDivElement | null>(null);
   const asciiCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const asciiGridRef = React.useRef<string[][]>([]);
-  const asciiDimsRef = React.useRef({ cols: 0, rows: 0, cellW: 10, cellH: 14, padX: 10, padY: 10 });
+  const asciiDimsRef = React.useRef({
+    cols: 0,
+    rows: 0,
+    cellW: 10,
+    cellH: 14,
+    padX: 10,
+    padY: 10,
+    pxW: 0, // CSS pixels
+    pxH: 0, // CSS pixels
+  });
   const bubblesRef = React.useRef<Bubble[]>([]);
   const smoothBarsRef = React.useRef<number[]>(Array.from({ length: 96 }, () => 0));
   const rafRef = React.useRef<number | null>(null);
@@ -431,7 +445,7 @@ const LawbMiniPlayer: React.FC = () => {
       const cols = Math.max(24, Math.floor((w - padX * 2) / cellW));
       const rows = Math.max(10, Math.floor((h - padY * 2) / cellH));
 
-      asciiDimsRef.current = { cols, rows, cellW, cellH, padX, padY };
+      asciiDimsRef.current = { cols, rows, cellW, cellH, padX, padY, pxW: w, pxH: h };
       asciiGridRef.current = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
       // Keep bubbles within bounds on resize.
       bubblesRef.current = bubblesRef.current.filter((b) => b.x >= 0 && b.x < cols && b.y >= 0 && b.y < rows);
@@ -458,14 +472,15 @@ const LawbMiniPlayer: React.FC = () => {
       if (nowMs - lastFrameMsRef.current < (isMobile ? 50 : 33)) return;
       lastFrameMsRef.current = nowMs;
 
-      const { cols, rows, cellW, cellH, padX, padY } = asciiDimsRef.current;
+      const { cols, rows, cellW, cellH, padX, padY, pxW, pxH } = asciiDimsRef.current;
       const grid = asciiGridRef.current;
       if (!cols || !rows || grid.length !== rows) return;
 
       // Background (slight trail for "water smear" feel).
       const beat = beatRef.current;
       ctx.fillStyle = beat ? 'rgba(0, 20, 10, 0.55)' : 'rgba(0, 0, 0, 0.55)';
-      ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      // Use measured CSS pixel size; `clientWidth/Height` can briefly be 0 when exiting fullscreen.
+      ctx.fillRect(0, 0, pxW || 1, pxH || 1);
 
       // Clear grid.
       for (let y = 0; y < rows; y++) grid[y]!.fill(' ');
@@ -589,14 +604,14 @@ const LawbMiniPlayer: React.FC = () => {
 
       // Scanlines overlay.
       ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      for (let y = 0; y < canvas.clientHeight; y += 4) {
-        ctx.fillRect(0, y, canvas.clientWidth, 1);
+      for (let y = 0; y < (pxH || 1); y += 4) {
+        ctx.fillRect(0, y, pxW || 1, 1);
       }
 
       // If not playing, keep it calmer (but still rendered).
       if (!playingRef.current) {
         ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+        ctx.fillRect(0, 0, pxW || 1, pxH || 1);
       }
     };
 
