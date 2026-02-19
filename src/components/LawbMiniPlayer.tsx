@@ -270,11 +270,15 @@ const LawbMiniPlayer: React.FC = () => {
     if (!state.durationSec) return 0;
     return Math.max(0, Math.min(100, (state.currentTimeSec / state.durationSec) * 100));
   }, [state.currentTimeSec, state.durationSec]);
+  // Native fullscreen (Fullscreen API) is flaky / unavailable on some mobile browsers.
+  // We support a "pseudo fullscreen" mode that maximizes the viz within the popup.
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 768 : false));
+  const effectiveFullscreen = isFullscreen || isPseudoFullscreen;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [uiScale, setUiScale] = useState(1);
-  const classes = useStyles({ pct, isFullscreen, isMobile, uiScale });
+  const classes = useStyles({ pct, isFullscreen: effectiveFullscreen, isMobile, uiScale });
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -331,12 +335,18 @@ const LawbMiniPlayer: React.FC = () => {
   useEffect(() => {
     const onFs = () => {
       const el = document.fullscreenElement;
-      setIsFullscreen(!!el && (el as HTMLElement).dataset?.popupId === 'lawb-mini-player');
+      const isMine = !!el && (el as HTMLElement).dataset?.popupId === 'lawb-mini-player';
+      setIsFullscreen(isMine);
+      if (isMine) setIsPseudoFullscreen(false); // prefer native fullscreen when active
     };
     document.addEventListener('fullscreenchange', onFs);
     onFs();
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
+  useEffect(() => {
+    // If the window closes while pseudo-fullscreen is on, reset it.
+    if (!state.showMiniPlayer && isPseudoFullscreen) setIsPseudoFullscreen(false);
+  }, [state.showMiniPlayer, isPseudoFullscreen]);
 
   const title = state.currentTrack
     ? `${state.currentTrack.user?.username ? `${state.currentTrack.user.username} - ` : ''}${state.currentTrack.title}`
@@ -373,8 +383,8 @@ const LawbMiniPlayer: React.FC = () => {
   }, [eqBars, beatStrobeEnabled, state.isPlaying]);
 
   const barsForDisplay = useMemo(
-    () => resampleBars(eqBars, isFullscreen ? (isMobile ? 64 : 96) : (isMobile ? 24 : 32)),
-    [eqBars, isFullscreen, isMobile]
+    () => resampleBars(eqBars, effectiveFullscreen ? (isMobile ? 64 : 96) : (isMobile ? 24 : 32)),
+    [eqBars, effectiveFullscreen, isMobile]
   );
 
   // Canvas ASCII visualizer state (more advanced animation without React re-renders).
@@ -433,8 +443,9 @@ const LawbMiniPlayer: React.FC = () => {
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const fontPx = isFullscreen ? (isMobile ? 12 : 15) : (isMobile ? 11 : 12);
-      ctx.font = `${fontPx}px ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`;
+      const fontPx = effectiveFullscreen ? (isMobile ? 12 : 15) : (isMobile ? 11 : 12);
+      // Include emoji-capable fallbacks so 🦞 / 🔒 render reliably (some monospace stacks omit emoji glyphs).
+      ctx.font = `${fontPx}px ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
       ctx.textBaseline = 'top';
 
       const m = ctx.measureText('M');
@@ -455,7 +466,7 @@ const LawbMiniPlayer: React.FC = () => {
     const ro = new ResizeObserver(() => recompute());
     ro.observe(host);
     return () => ro.disconnect();
-  }, [isFullscreen, isMobile, vizMode]);
+  }, [effectiveFullscreen, isMobile, vizMode]);
 
   useEffect(() => {
     if (vizMode !== 'ascii') return;
@@ -630,9 +641,17 @@ const LawbMiniPlayer: React.FC = () => {
         await document.exitFullscreen();
         return;
       }
-      await el.requestFullscreen();
+      // Mobile browsers (especially iOS Safari) can reject fullscreen requests for arbitrary elements.
+      // In that case, we toggle a pseudo-fullscreen mode instead.
+      const canNative = !isMobile && typeof el.requestFullscreen === 'function';
+      if (canNative) {
+        await el.requestFullscreen();
+        return;
+      }
+      setIsPseudoFullscreen((v) => !v);
     } catch {
-      // Fullscreen can fail due to permissions or browser limitations; ignore.
+      // Fullscreen can fail due to permissions or browser limitations; fall back to pseudo-fullscreen.
+      setIsPseudoFullscreen((v) => !v);
     }
   };
 
@@ -685,7 +704,7 @@ const LawbMiniPlayer: React.FC = () => {
             type="button"
             onClick={() => setVizMode((m) => (m === 'bars' ? 'ascii' : 'bars'))}
             title="Toggle visualization"
-            disabled={!state.isReady}
+            disabled={state.isLoading}
           >
             {vizMode === 'ascii' ? 'VIZ:ASCII' : 'VIZ:BARS'}
           </button>
@@ -695,7 +714,7 @@ const LawbMiniPlayer: React.FC = () => {
             type="button"
             onClick={() => setBeatStrobeEnabled((v) => !v)}
             title="Beat strobe (flash on beats)"
-            disabled={!state.isReady}
+            disabled={state.isLoading}
           >
             {beatStrobeEnabled ? 'BEAT:ON' : 'BEAT:OFF'}
           </button>
@@ -705,9 +724,9 @@ const LawbMiniPlayer: React.FC = () => {
             type="button"
             onClick={() => { void toggleFullscreen(); }}
             title="Fullscreen"
-            disabled={!state.isReady}
+            disabled={state.isLoading}
           >
-            {isFullscreen ? 'FS:EXIT' : 'FS:ON'}
+            {effectiveFullscreen ? 'FS:EXIT' : 'FS:ON'}
           </button>
 
           {state.currentTrack?.permalink_url && (
