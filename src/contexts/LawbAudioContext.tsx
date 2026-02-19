@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { SoundCloudTrack } from '../utils/soundcloud';
-import { fetchSoundCloudLikedTracks, getSoundCloudProfileUrl } from '../utils/soundcloud';
+import { getSoundCloudProfileUrl } from '../utils/soundcloud';
 
 type LawbAudioState = {
   isReady: boolean;
@@ -80,6 +80,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const widgetRef = useRef<any>(null);
   const widgetIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const nextRef = useRef<(() => Promise<void>) | null>(null);
   const [queue, setQueue] = useState<SoundCloudTrack[]>([]);
   const [order, setOrder] = useState<number[]>([]); // indices into queue
   const [orderPos, setOrderPos] = useState<number>(0);
@@ -89,6 +90,8 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedTrackIdRef = useRef<number | null>(null);
+  const readyResolveRef = useRef<(() => void) | null>(null);
+  const readyPromiseRef = useRef<Promise<void> | null>(null);
 
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [durationSec, setDurationSec] = useState(0);
@@ -101,6 +104,22 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const queueIdx = order[orderPos];
     return queue[queueIdx] ?? null;
   }, [queue, order, orderPos]);
+
+  const getLikesUrl = useCallback((): string => {
+    const profile = getSoundCloudProfileUrl();
+    // Accept either profile URL or /likes URL via env.
+    return profile.endsWith('/likes') ? profile : `${profile.replace(/\/+$/, '')}/likes`;
+  }, []);
+
+  const ensureWidgetReady = useCallback(async () => {
+    if (isReady) return;
+    if (!readyPromiseRef.current) {
+      readyPromiseRef.current = new Promise<void>((resolve) => {
+        readyResolveRef.current = resolve;
+      });
+    }
+    await readyPromiseRef.current;
+  }, [isReady]);
 
   // Init SoundCloud widget once.
   useEffect(() => {
@@ -138,7 +157,9 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         iframe.style.opacity = '0';
         iframe.style.pointerEvents = 'none';
         iframe.style.zIndex = '-1';
-        iframe.src = 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false';
+        // NOTE: url must be fully URL-encoded or the widget returns 404.
+        const likesUrl = getLikesUrl();
+        iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(likesUrl)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false`;
         document.body.appendChild(iframe);
 
         widgetIframeRef.current = iframe;
@@ -151,17 +172,31 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         widget.bind(Events.READY, () => {
           setIsReady(true);
           widget.setVolume(Math.round(volume * 100));
+          if (readyResolveRef.current) {
+            readyResolveRef.current();
+            readyResolveRef.current = null;
+          }
+
+          // Some profiles/pages can report READY before sounds are hydrated.
+          // Nudge-load the likes URL again if getSounds is empty.
+          try {
+            widget.getSounds((sounds: any[]) => {
+              const list = Array.isArray(sounds) ? sounds : [];
+              if (list.length > 0) return;
+              widget.load(likesUrl, { auto_play: false, visual: false }, () => {});
+            });
+          } catch {}
         });
         widget.bind(Events.PLAY, () => setIsPlaying(true));
         widget.bind(Events.PAUSE, () => setIsPlaying(false));
-        widget.bind(Events.FINISH, () => { void next(); });
+        widget.bind(Events.FINISH, () => { void nextRef.current?.(); });
         widget.bind(Events.PLAY_PROGRESS, (e: any) => {
           if (typeof e?.currentPosition === 'number') setCurrentTimeSec(e.currentPosition / 1000);
           if (typeof e?.duration === 'number') setDurationSec(e.duration / 1000);
         });
         widget.bind(Events.ERROR, () => {
           setError('SoundCloud playback error. Trying next track.');
-          void next();
+          void nextRef.current?.();
         });
       } catch (e: any) {
         setError(e?.message || 'Failed to initialize SoundCloud player');
@@ -180,7 +215,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         widgetIframeRef.current = null;
       }
     };
-  }, []);
+  }, [getLikesUrl, volume]);
 
   // Persist prefs.
   useEffect(() => {
@@ -219,12 +254,27 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const ensureQueueLoaded = useCallback(async () => {
     if (queue.length) return;
+    await ensureWidgetReady();
     setIsLoading(true);
     setError(null);
     try {
-      const profileUrl = getSoundCloudProfileUrl();
-      const res = await fetchSoundCloudLikedTracks(profileUrl);
-      const tracks = (res.tracks || []).filter((t) => !!t?.permalink_url);
+      const widget = widgetRef.current;
+      if (!widget) throw new Error('SoundCloud widget not ready');
+
+      const tracks = await new Promise<SoundCloudTrack[]>((resolve) => {
+        widget.getSounds((sounds: any[]) => {
+          const list = Array.isArray(sounds) ? sounds : [];
+          resolve(list.map((s) => ({
+            id: s.id,
+            title: s.title,
+            permalink_url: s.permalink_url,
+            artwork_url: s.artwork_url || null,
+            duration_ms: s.duration || null,
+            user: s.user ? { username: s.user.username, permalink_url: s.user.permalink_url } : undefined,
+          })).filter((t) => !!t.id && !!t.title && !!t.permalink_url));
+        });
+      });
+
       setQueue(tracks);
 
       // Prefer last track if it exists (nice continuity).
@@ -242,7 +292,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setIsLoading(false);
     }
-  }, [queue.length, rebuildOrder]);
+  }, [queue.length, rebuildOrder, ensureWidgetReady]);
 
   const playTrack = useCallback(async (track: SoundCloudTrack) => {
     const widget = widgetRef.current;
@@ -250,20 +300,17 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setError(null);
     setIsLoading(true);
     try {
-      await new Promise<void>((resolve) => {
-        widget.load(track.permalink_url, {
-          auto_play: true,
-          show_artwork: false,
-          visual: false,
-        }, () => resolve());
-      });
+      // Widget is loaded with /likes which is a playlist; use skip(index) for stable playback.
+      const idx = queue.findIndex((t) => t.id === track.id);
+      if (idx < 0) throw new Error('Track not found in current SoundCloud playlist');
+      widget.skip(idx);
       widget.setVolume(Math.round(volume * 100));
       widget.play();
       loadedTrackIdRef.current = track.id;
     } finally {
       setIsLoading(false);
     }
-  }, [volume]);
+  }, [volume, queue]);
 
   const play = useCallback(async () => {
     const widget = widgetRef.current;
@@ -313,6 +360,11 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     }
   }, [queue, order, orderPos, ensureQueueLoaded, playTrack]);
+
+  // Allow the widget event handlers (created earlier) to always call the latest next().
+  useEffect(() => {
+    nextRef.current = next;
+  }, [next]);
 
   const prev = useCallback(async () => {
     const widget = widgetRef.current;
