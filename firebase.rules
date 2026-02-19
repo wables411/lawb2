@@ -68,6 +68,17 @@
       ".read": true,
       ".write": true
     },
+    "lawbamp_uploads": {
+      ".read": true,
+      ".write": true,
+      "$entryId": {
+        ".validate": "newData.hasChildren(['uploader','title','filename','mime','bytes','duration_sec','created_at','storage_url']) && newData.child('uploader').isString() && newData.child('uploader').val().matches(/^0x[0-9a-fA-F]{40}$/) && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('filename').isString() && newData.child('filename').val().length > 0 && newData.child('filename').val().length <= 120 && newData.child('mime').isString() && (newData.child('mime').val().matches(/^audio\\//) || newData.child('mime').val().matches(/^video\\//)) && newData.child('bytes').isNumber() && newData.child('bytes').val() > 0 && newData.child('duration_sec').isNumber() && newData.child('duration_sec').val() > 0 && newData.child('duration_sec').val() <= 1800 && newData.child('created_at').isNumber() && newData.child('created_at').val() > 0 && newData.child('storage_url').isString() && newData.child('storage_url').val().matches(/^https:\\/\\/.+/)"
+      }
+    },
+    "lawbamp_uploads_by_user": {
+      ".read": true,
+      ".write": true
+    },
     "$other": {
       ".read": false,
       ".write": false

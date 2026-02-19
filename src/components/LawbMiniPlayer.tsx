@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createUseStyles } from 'react-jss';
 import Popup from './Popup';
 import { useLawbAudio } from '../contexts/LawbAudioContext';
+import { uploadLawbampMedia } from '../firebaseLawbampUploads';
+import { LAWBAMP_MAX_UPLOAD_DURATION_SEC } from '../utils/mediaDuration';
+import { useAccount } from 'wagmi';
 
 const FALLBACK_ART_URL = '/images/lawb-logo.png';
 const MASCOT_URL = '/assets/asciilawb.GIF';
@@ -266,6 +269,7 @@ type Bubble = { x: number; y: number; vy: number; ch: string; life: number };
 
 const LawbMiniPlayer: React.FC = () => {
   const { state, actions } = useLawbAudio();
+  const { address } = useAccount();
   const pct = useMemo(() => {
     if (!state.durationSec) return 0;
     return Math.max(0, Math.min(100, (state.currentTimeSec / state.durationSec) * 100));
@@ -655,6 +659,27 @@ const LawbMiniPlayer: React.FC = () => {
     }
   };
 
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const maxMins = Math.floor(LAWBAMP_MAX_UPLOAD_DURATION_SEC / 60);
+  const onUploadPick = async (file: File | null) => {
+    if (!file) return;
+    setUploadError(null);
+    setUploadPct(0);
+    try {
+      await uploadLawbampMedia({
+        uploaderAddress: address || '',
+        file,
+        onProgress: (p) => setUploadPct(Math.round(p * 100)),
+      });
+      setUploadPct(null);
+      setUploadError(null);
+    } catch (e: any) {
+      setUploadPct(null);
+      setUploadError(e?.message || 'Upload failed');
+    }
+  };
+
   return (
     <Popup
       id="lawb-mini-player"
@@ -741,6 +766,23 @@ const LawbMiniPlayer: React.FC = () => {
               SC
             </a>
           )}
+
+          {/* Token-gated uploads are implemented separately; for now we require a connected wallet and enforce a hard 30-min cap. */}
+          <label className={classes.btn} title={`Upload MP3/MP4 (max ${maxMins} minutes)`} style={{ display: 'inline-flex', alignItems: 'center' }}>
+            Upload
+            <input
+              type="file"
+              accept="audio/*,video/mp4,video/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                // Reset so picking the same file twice still triggers change.
+                e.target.value = '';
+                void onUploadPick(f);
+              }}
+              disabled={state.isLoading}
+            />
+          </label>
         </div>
 
         <div className={classes.meter} title={`${fmtTime(state.currentTimeSec)} / ${fmtTime(state.durationSec)}`}>
@@ -797,6 +839,19 @@ const LawbMiniPlayer: React.FC = () => {
             {state.error}
           </div>
         )}
+        {uploadPct != null && (
+          <div className={classes.smallNote}>
+            Uploading… {uploadPct}%
+          </div>
+        )}
+        {uploadError && (
+          <div className={classes.smallNote} style={{ color: '#a10000' }}>
+            {uploadError}
+          </div>
+        )}
+        <div className={classes.smallNote}>
+          Upload cap: max {maxMins} minutes per file.
+        </div>
         {!state.currentTrack && (
           <div className={classes.smallNote}>
             Click Play to load SoundCloud likes and start shuffling.

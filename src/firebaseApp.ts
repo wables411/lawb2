@@ -2,6 +2,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 import type { Database } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
+import type { FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAed5bn78c6Mb5Y3ezULH9CEg7IAKYFAps",
@@ -24,6 +26,7 @@ if (typeof window !== 'undefined' && window.innerWidth <= 768) {
 // Initialize Firebase with error handling
 let app: FirebaseApp;
 let database: Database;
+let storage: FirebaseStorage;
 
 try {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -37,6 +40,9 @@ try {
   } else {
     database = getDatabase(app);
   }
+
+  // Storage is used for Lawbamp user uploads (mp3/mp4).
+  storage = getStorage(app);
   
   console.log('[FIREBASE] Initialized successfully', isMobile ? '(mobile)' : '(desktop)');
   console.log('[FIREBASE] Database URL:', firebaseConfig.databaseURL);
@@ -48,4 +54,4 @@ try {
   throw error;
 }
 
-export { app, database }; 
+export { app, database, storage };
