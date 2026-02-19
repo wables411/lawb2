@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { SoundCloudTrack } from '../utils/soundcloud';
-import { fetchSoundCloudLikedTracks, getSoundCloudProfileUrl, resolveSoundCloudProgressiveStreamUrl } from '../utils/soundcloud';
+import { fetchSoundCloudLikedTracks, getSoundCloudProfileUrl } from '../utils/soundcloud';
 
 type LawbAudioState = {
   isReady: boolean;
@@ -78,7 +78,8 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const widgetRef = useRef<any>(null);
+  const widgetIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [queue, setQueue] = useState<SoundCloudTrack[]>([]);
   const [order, setOrder] = useState<number[]>([]); // indices into queue
   const [orderPos, setOrderPos] = useState<number>(0);
@@ -87,6 +88,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadedTrackIdRef = useRef<number | null>(null);
 
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [durationSec, setDurationSec] = useState(0);
@@ -100,49 +102,84 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return queue[queueIdx] ?? null;
   }, [queue, order, orderPos]);
 
-  // Init audio element once.
+  // Init SoundCloud widget once.
   useEffect(() => {
-    const a = new Audio();
-    a.preload = 'none';
-    a.crossOrigin = 'anonymous';
-    a.volume = volume;
-    audioRef.current = a;
+    let cancelled = false;
 
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onTime = () => setCurrentTimeSec(a.currentTime || 0);
-    const onDur = () => setDurationSec(Number.isFinite(a.duration) ? a.duration : 0);
-    const onEnded = () => {
-      // Fire and forget; state will update from events.
-      void next();
+    const loadScript = () =>
+      new Promise<void>((resolve, reject) => {
+        if ((window as any).SC?.Widget) return resolve();
+        const existing = document.querySelector('script[data-lawb-soundcloud-widget="1"]') as HTMLScriptElement | null;
+        if (existing && (window as any).SC?.Widget) return resolve();
+
+        const s = document.createElement('script');
+        s.src = 'https://w.soundcloud.com/player/api.js';
+        s.async = true;
+        s.defer = true;
+        s.dataset.lawbSoundcloudWidget = '1';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load SoundCloud widget script'));
+        document.head.appendChild(s);
+      });
+
+    const initWidget = async () => {
+      try {
+        await loadScript();
+        if (cancelled) return;
+
+        const iframe = document.createElement('iframe');
+        iframe.title = 'Lawb SoundCloud Player';
+        iframe.allow = 'autoplay';
+        iframe.style.position = 'fixed';
+        iframe.style.left = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        iframe.style.opacity = '0';
+        iframe.style.pointerEvents = 'none';
+        iframe.style.zIndex = '-1';
+        iframe.src = 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false';
+        document.body.appendChild(iframe);
+
+        widgetIframeRef.current = iframe;
+
+        const SC = (window as any).SC;
+        const widget = SC.Widget(iframe);
+        widgetRef.current = widget;
+
+        const Events = SC.Widget.Events;
+        widget.bind(Events.READY, () => {
+          setIsReady(true);
+          widget.setVolume(Math.round(volume * 100));
+        });
+        widget.bind(Events.PLAY, () => setIsPlaying(true));
+        widget.bind(Events.PAUSE, () => setIsPlaying(false));
+        widget.bind(Events.FINISH, () => { void next(); });
+        widget.bind(Events.PLAY_PROGRESS, (e: any) => {
+          if (typeof e?.currentPosition === 'number') setCurrentTimeSec(e.currentPosition / 1000);
+          if (typeof e?.duration === 'number') setDurationSec(e.duration / 1000);
+        });
+        widget.bind(Events.ERROR, () => {
+          setError('SoundCloud playback error. Trying next track.');
+          void next();
+        });
+      } catch (e: any) {
+        setError(e?.message || 'Failed to initialize SoundCloud player');
+      }
     };
-    const onError = () => {
-      // Keep message simple; browser error objects aren't consistent.
-      setError('Audio playback error. Trying next track.');
-      void next();
-    };
 
-    a.addEventListener('play', onPlay);
-    a.addEventListener('pause', onPause);
-    a.addEventListener('timeupdate', onTime);
-    a.addEventListener('durationchange', onDur);
-    a.addEventListener('ended', onEnded);
-    a.addEventListener('error', onError);
-
-    setIsReady(true);
+    void initWidget();
 
     return () => {
-      a.pause();
-      a.src = '';
-      a.removeEventListener('play', onPlay);
-      a.removeEventListener('pause', onPause);
-      a.removeEventListener('timeupdate', onTime);
-      a.removeEventListener('durationchange', onDur);
-      a.removeEventListener('ended', onEnded);
-      a.removeEventListener('error', onError);
-      audioRef.current = null;
+      cancelled = true;
+      try {
+        widgetRef.current = null;
+      } catch {}
+      if (widgetIframeRef.current) {
+        widgetIframeRef.current.remove();
+        widgetIframeRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist prefs.
@@ -208,33 +245,34 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [queue.length, rebuildOrder]);
 
   const playTrack = useCallback(async (track: SoundCloudTrack) => {
-    const a = audioRef.current;
-    if (!a) return;
+    const widget = widgetRef.current;
+    if (!widget) return;
     setError(null);
-
-    if (!track.progressive_transcoding_url) {
-      throw new Error('Track has no playable stream (missing progressive transcoding).');
-    }
-
     setIsLoading(true);
     try {
-      const streamUrl = await resolveSoundCloudProgressiveStreamUrl(track.progressive_transcoding_url);
-      a.src = streamUrl;
-      a.volume = volume;
-      await a.play();
+      await new Promise<void>((resolve) => {
+        widget.load(track.permalink_url, {
+          auto_play: true,
+          show_artwork: false,
+          visual: false,
+        }, () => resolve());
+      });
+      widget.setVolume(Math.round(volume * 100));
+      widget.play();
+      loadedTrackIdRef.current = track.id;
     } finally {
       setIsLoading(false);
     }
   }, [volume]);
 
   const play = useCallback(async () => {
-    const a = audioRef.current;
-    if (!a) return;
+    const widget = widgetRef.current;
+    if (!widget) return;
     setError(null);
 
-    // If we already have a src, just resume.
-    if (a.src) {
-      await a.play();
+    // If we already loaded a track in this session, just resume.
+    if (loadedTrackIdRef.current != null) {
+      widget.play();
       return;
     }
 
@@ -244,20 +282,20 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [ensureQueueLoaded, currentTrack, playTrack]);
 
   const pause = useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.pause();
+    const widget = widgetRef.current;
+    if (!widget) return;
+    widget.pause();
   }, []);
 
   const togglePlay = useCallback(async () => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (!a.paused) {
-      a.pause();
+    const widget = widgetRef.current;
+    if (!widget) return;
+    if (isPlaying) {
+      widget.pause();
       return;
     }
     await play();
-  }, [play]);
+  }, [play, isPlaying]);
 
   const next = useCallback(async () => {
     if (!queue.length) {
@@ -277,9 +315,9 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [queue, order, orderPos, ensureQueueLoaded, playTrack]);
 
   const prev = useCallback(async () => {
-    const a = audioRef.current;
-    if (a && a.currentTime > 3) {
-      a.currentTime = 0;
+    const widget = widgetRef.current;
+    if (widget && currentTimeSec > 3) {
+      widget.seekTo(0);
       return;
     }
     if (!queue.length) {
@@ -296,13 +334,13 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setError(e?.message || 'Failed to play previous track');
       }
     }
-  }, [queue, order, orderPos, ensureQueueLoaded, playTrack]);
+  }, [queue, order, orderPos, ensureQueueLoaded, playTrack, currentTimeSec]);
 
   const setVolume = useCallback((v: number) => {
     const vv = clamp01(v);
     setVolumeState(vv);
-    const a = audioRef.current;
-    if (a) a.volume = vv;
+    const widget = widgetRef.current;
+    if (widget) widget.setVolume(Math.round(vv * 100));
   }, []);
 
   const toggleShuffle = useCallback(() => {
