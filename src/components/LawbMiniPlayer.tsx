@@ -9,14 +9,14 @@ const LS_VIZ_MODE = 'lawbamp_viz_mode';
 const LS_BEAT_STROBE = 'lawbamp_beat_strobe';
 type VizMode = 'bars' | 'ascii';
 
-type StyleProps = { pct: number; isFullscreen: boolean; uiScale: number };
+type StyleProps = { pct: number; isFullscreen: boolean; isMobile: boolean; uiScale: number };
 
 const useStyles = createUseStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: 10,
+    padding: (p: StyleProps) => (p.isMobile ? 8 : 10),
     boxSizing: 'border-box',
     fontFamily: 'MS Sans Serif, Arial, sans-serif',
   },
@@ -96,6 +96,9 @@ const useStyles = createUseStyles({
     cursor: 'pointer',
     fontSize: (p: StyleProps) => Math.max(12, Math.min(16, Math.round(12 * p.uiScale))),
     lineHeight: '1.1',
+    minHeight: (p: StyleProps) => (p.isMobile ? 40 : 32),
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
     '&:active': {
       border: '2px inset #c0c0c0',
     },
@@ -106,7 +109,7 @@ const useStyles = createUseStyles({
   },
   slimBtn: {
     padding: (p: StyleProps) => `${Math.max(6, Math.round(6 * p.uiScale))}px ${Math.max(6, Math.round(8 * p.uiScale))}px`,
-    minWidth: 40,
+    minWidth: (p: StyleProps) => (p.isMobile ? 44 : 40),
     textAlign: 'center',
   },
   meter: {
@@ -176,8 +179,8 @@ const useStyles = createUseStyles({
     boxSizing: 'border-box',
     overflow: 'hidden',
     fontFamily: 'monospace',
-    fontSize: (p: StyleProps) => (p.isFullscreen ? 14 : 11),
-    lineHeight: (p: StyleProps) => (p.isFullscreen ? '16px' : '12px'),
+    fontSize: (p: StyleProps) => (p.isFullscreen ? (p.isMobile ? 12 : 14) : 11),
+    lineHeight: (p: StyleProps) => (p.isFullscreen ? (p.isMobile ? '14px' : '16px') : '12px'),
     whiteSpace: 'pre',
     userSelect: 'none',
   },
@@ -383,9 +386,17 @@ const LawbMiniPlayer: React.FC = () => {
     return Math.max(0, Math.min(100, (state.currentTimeSec / state.durationSec) * 100));
   }, [state.currentTimeSec, state.durationSec]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 768 : false));
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [uiScale, setUiScale] = useState(1);
-  const classes = useStyles({ pct, isFullscreen, uiScale });
+  const classes = useStyles({ pct, isFullscreen, isMobile, uiScale });
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    onResize();
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Keep control text legible across popup sizes by scaling up (never down).
   useEffect(() => {
@@ -485,14 +496,14 @@ const LawbMiniPlayer: React.FC = () => {
     }
   }, [eqBars, beatStrobeEnabled, state.isPlaying]);
 
-  const barsForDisplay = useMemo(() => resampleBars(eqBars, isFullscreen ? 96 : 32), [eqBars, isFullscreen]);
+  const barsForDisplay = useMemo(() => resampleBars(eqBars, isFullscreen ? (isMobile ? 64 : 96) : (isMobile ? 24 : 32)), [eqBars, isFullscreen, isMobile]);
   const ascii = useMemo(() => buildOceanEqAscii({
     eqBars,
     tick,
-    cols: isFullscreen ? 128 : 64,
-    rows: isFullscreen ? 40 : 16,
+    cols: isFullscreen ? (isMobile ? 84 : 128) : (isMobile ? 48 : 64),
+    rows: isFullscreen ? (isMobile ? 26 : 40) : (isMobile ? 14 : 16),
     beat: beatStrobeEnabled && strobeOn,
-  }), [beatStrobeEnabled, eqBars, isFullscreen, strobeOn, tick]);
+  }), [beatStrobeEnabled, eqBars, isFullscreen, isMobile, strobeOn, tick]);
 
   const toggleFullscreen = async () => {
     const el = document.querySelector('[data-popup-id="lawb-mini-player"]') as HTMLElement | null;

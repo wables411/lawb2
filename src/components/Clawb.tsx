@@ -477,6 +477,13 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
       return;
     }
 
+    // If we're currently in walk mode, stop it before switching emotes.
+    // Otherwise the render loop keeps applying walk translation ("conveyor belt").
+    if (isWalkingRef.current) {
+      await stopWalkAndLoadNext(targetIndex);
+      return;
+    }
+
     // Otherwise load and play the specific animation
     const url = ANIMATION_SEQUENCE[targetIndex];
     const stayX = modelRef.current?.position.x;
@@ -491,7 +498,7 @@ const Clawb = forwardRef<ClawbHandle, ClawbProps>(({ onClawbClick }, ref) => {
     } catch (err) {
       console.warn('[Clawb] Failed to play emote:', emoteId, err);
     }
-  }, [loadModel, displayModel, startWalkMode]);
+  }, [loadModel, displayModel, startWalkMode, stopWalkAndLoadNext]);
 
   useImperativeHandle(ref, () => ({
     cycleAnimation,
