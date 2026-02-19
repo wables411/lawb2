@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import Draggable from 'react-draggable';
 import { createUseStyles } from 'react-jss';
 
@@ -273,8 +273,10 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
       if (!isResizing) return;
       const width = startWidth + (e.clientX - startX);
       const height = startHeight + (e.clientY - startY);
-      const minWidth = 360;
-      const minHeight = 240;
+      // Don't force a "jump" to a larger minimum than the current size.
+      // (Lawbamp starts small, but should still be resizable.)
+      const minWidth = Math.min(360, startWidth);
+      const minHeight = Math.min(240, startHeight);
       popup.style.width = `${Math.max(minWidth, width)}px`;
       popup.style.height = `${Math.max(minHeight, height)}px`;
     };
@@ -353,7 +355,7 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
         <div className={classes.content}>
           {children}
         </div>
-        <div className={classes.resizeHandle} />
+        <div ref={resizeRef} className={classes.resizeHandle} />
       </>
     );
   };
@@ -371,6 +373,8 @@ function Popup({ id, isOpen, onClose, onMinimize, children, title, initialPositi
     >
       <div 
         ref={nodeRef} 
+        id={id}
+        data-popup-id={id}
         className={classes.popup}
         style={{ 
           width: initialSize?.width,

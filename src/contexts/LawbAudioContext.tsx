@@ -18,6 +18,7 @@ type LawbAudioState = {
   shuffleEnabled: boolean;
   showMiniPlayer: boolean;
   queueSize: number;
+  eqBands: number[]; // 0..1 (visualizer)
 };
 
 type LawbAudioActions = {
@@ -83,6 +84,11 @@ function shuffleArray<T>(arr: T[]): T[] {
 
 export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const eqRafRef = useRef<number | null>(null);
+
   const [queue, setQueue] = useState<SoundCloudTrack[]>([]);
   const [order, setOrder] = useState<number[]>([]); // indices into queue
   const [orderPos, setOrderPos] = useState<number>(0);
@@ -98,6 +104,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [volume, setVolumeState] = useState(() => clamp01(tryReadNumber(LS_KEYS.volume, 0.8)));
   const [shuffleEnabled, setShuffleEnabled] = useState(() => tryReadBool(LS_KEYS.shuffle, true));
   const [showMiniPlayer, setShowMiniPlayer] = useState(() => tryReadBool(LS_KEYS.showMiniPlayer, false));
+  const [eqBands, setEqBands] = useState<number[]>(() => Array.from({ length: 16 }, () => 0));
 
   const currentTrack = useMemo(() => {
     if (!queue.length || !order.length) return null;
@@ -144,9 +151,107 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       a.removeEventListener('ended', onEnded);
       a.removeEventListener('error', onError);
       audioRef.current = null;
+
+      if (eqRafRef.current != null) {
+        cancelAnimationFrame(eqRafRef.current);
+        eqRafRef.current = null;
+      }
+      analyserRef.current = null;
+      sourceRef.current = null;
+      if (audioCtxRef.current) {
+        // Best-effort cleanup (close can throw if already closed).
+        try { void audioCtxRef.current.close(); } catch {}
+        audioCtxRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const ensureAnalyser = useCallback(async () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (typeof window === 'undefined') return;
+
+    const Ctx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+    if (!Ctx) return;
+
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new Ctx();
+    }
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+
+    // iOS/Safari often starts suspended until a user gesture.
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch {}
+    }
+
+    if (!analyserRef.current) {
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.75;
+      analyserRef.current = analyser;
+    }
+
+    if (!sourceRef.current) {
+      // MediaElementAudioSourceNode can only be created once per <audio>.
+      try {
+        const src = ctx.createMediaElementSource(a);
+        sourceRef.current = src;
+        src.connect(analyserRef.current);
+        analyserRef.current.connect(ctx.destination);
+      } catch {
+        // If this fails (CORS or node already created), we just won't have a real analyser.
+        sourceRef.current = null;
+      }
+    }
+  }, []);
+
+  // Visualizer loop (best-effort: may be all zeros if CORS blocks analyser).
+  useEffect(() => {
+    if (!isPlaying) {
+      setEqBands((prev) => (prev.some((v) => v !== 0) ? prev.map(() => 0) : prev));
+      return;
+    }
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let last = 0;
+
+    const tick = (t: number) => {
+      eqRafRef.current = requestAnimationFrame(tick);
+      // Throttle updates to reduce render churn.
+      if (t - last < 50) return;
+      last = t;
+      try {
+        analyser.getByteFrequencyData(data);
+      } catch {
+        return;
+      }
+
+      const bands = 16;
+      const step = Math.max(1, Math.floor(data.length / bands));
+      const next: number[] = [];
+      for (let i = 0; i < bands; i++) {
+        let sum = 0;
+        const start = i * step;
+        const end = Math.min(data.length, start + step);
+        for (let j = start; j < end; j++) sum += data[j];
+        const avg = sum / Math.max(1, end - start);
+        next.push(Math.max(0, Math.min(1, avg / 255)));
+      }
+      setEqBands(next);
+    };
+
+    eqRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (eqRafRef.current != null) {
+        cancelAnimationFrame(eqRafRef.current);
+        eqRafRef.current = null;
+      }
+    };
+  }, [isPlaying]);
 
   // Persist prefs.
   useEffect(() => {
@@ -221,12 +326,13 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const streamUrl = await resolveSoundCloudProgressiveStreamUrl(track.progressive_transcoding_url, profileUrl);
       a.src = streamUrl;
       a.volume = volume;
+      await ensureAnalyser();
       await a.play();
       loadedTrackIdRef.current = track.id;
     } finally {
       setIsLoading(false);
     }
-  }, [volume]);
+  }, [volume, ensureAnalyser]);
 
   const play = useCallback(async () => {
     const a = audioRef.current;
@@ -235,6 +341,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // If we already loaded a track in this session, just resume.
     if (loadedTrackIdRef.current != null) {
+      await ensureAnalyser();
       await a.play();
       return;
     }
@@ -242,7 +349,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await ensureQueueLoaded();
     if (!currentTrack) throw new Error('No tracks available to play');
     await playTrack(currentTrack);
-  }, [ensureQueueLoaded, currentTrack, playTrack]);
+  }, [ensureQueueLoaded, currentTrack, playTrack, ensureAnalyser]);
 
   const pause = useCallback(() => {
     const a = audioRef.current;
@@ -341,6 +448,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       shuffleEnabled,
       showMiniPlayer,
       queueSize: queue.length,
+      eqBands,
     },
     actions: {
       togglePlay,
@@ -365,6 +473,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     shuffleEnabled,
     showMiniPlayer,
     queue.length,
+    eqBands,
     togglePlay,
     play,
     pause,
@@ -400,6 +509,7 @@ export const useLawbAudio = (): LawbAudioContextValue => {
         shuffleEnabled: true,
         showMiniPlayer: false,
         queueSize: 0,
+        eqBands: Array.from({ length: 16 }, () => 0),
       },
       actions: {
         togglePlay: async () => {},
