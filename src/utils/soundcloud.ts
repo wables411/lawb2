@@ -10,6 +10,11 @@ export type SoundCloudTrack = {
   artwork_url?: string | null;
   duration_ms?: number;
   user?: SoundCloudTrackUser;
+  /**
+   * SoundCloud API v2 transcoding URL for a progressive stream.
+   * Not directly playable; must be resolved server-side.
+   */
+  progressive_transcoding_url?: string | null;
 };
 
 export type SoundCloudLikesResponse = {
@@ -42,5 +47,22 @@ export async function fetchSoundCloudLikedTracks(profileUrl: string = getSoundCl
     throw new Error('soundcloud-likes returned invalid payload');
   }
   return data;
+}
+
+export async function resolveSoundCloudProgressiveStreamUrl(transcodingUrl: string, profileUrl: string = getSoundCloudProfileUrl()): Promise<string> {
+  const url = new URL('/.netlify/functions/soundcloud-stream', window.location.origin);
+  url.searchParams.set('transcodingUrl', transcodingUrl);
+  url.searchParams.set('profileUrl', profileUrl);
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+  }
+  const data = (await res.json()) as { url?: string };
+  if (!data?.url) throw new Error('soundcloud-stream returned no url');
+  return data.url;
 }
 

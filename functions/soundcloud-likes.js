@@ -1,8 +1,8 @@
-// Netlify function: fetch liked tracks from a SoundCloud profile by scraping
-// the public /likes page hydration payload.
+// Netlify function: fetch liked tracks from a SoundCloud profile.
 //
-// This avoids SoundCloud API v2 client_id restrictions and is compatible with
-// playing tracks via the official SoundCloud Widget on the frontend.
+// SoundCloud often blocks arbitrary client_ids with 403. The most reliable trick
+// is to extract the current site apiClient id from the public HTML and use it
+// for api-v2 calls.
 
 const DEFAULT_PROFILE_URL = 'https://soundcloud.com/companioncube143';
 
@@ -39,31 +39,59 @@ function normalizeProfileLikesUrl(profileUrl) {
   return `https://soundcloud.com/${username}/likes`;
 }
 
-function extractHydrationJson(html) {
+function extractScHydration(html) {
   const marker = 'window.__sc_hydration =';
   const idx = html.indexOf(marker);
   if (idx < 0) return null;
   const start = html.indexOf('[', idx);
   if (start < 0) return null;
-
   let depth = 0;
   let end = -1;
   for (let i = start; i < html.length; i++) {
     const ch = html[i];
     if (ch === '[') depth++;
     if (ch === ']') depth--;
-    if (depth === 0) {
-      end = i + 1;
-      break;
-    }
+    if (depth === 0) { end = i + 1; break; }
   }
   if (end < 0) return null;
-  const json = html.slice(start, end);
   try {
-    return JSON.parse(json);
+    return JSON.parse(html.slice(start, end));
   } catch {
     return null;
   }
+}
+
+async function scJson(url) {
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'lawb.xyz-netlify-function',
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`SoundCloud API error: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+async function extractApiClientIdFromLikesPage(likesUrl) {
+  const res = await fetch(likesUrl, {
+    method: 'GET',
+    headers: { 'Accept': 'text/html', 'User-Agent': 'lawb.xyz-netlify-function' },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`SoundCloud likes page error: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  const html = await res.text();
+  const hyd = extractScHydration(html);
+  if (!Array.isArray(hyd)) throw new Error('Could not extract SoundCloud hydration payload');
+  const apiClient = hyd.find((h) => h && h.hydratable === 'apiClient' && h.data && h.data.id);
+  const id = apiClient && apiClient.data && apiClient.data.id;
+  if (!id || typeof id !== 'string') throw new Error('Could not extract SoundCloud apiClient id');
+  return id;
 }
 
 exports.handler = async (event) => {
@@ -81,42 +109,53 @@ exports.handler = async (event) => {
   }
 
   try {
-    const res = await fetch(likesUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/html',
-        'User-Agent': 'lawb.xyz-netlify-function',
-      },
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`SoundCloud likes page error: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-    }
-    const html = await res.text();
-    const hydration = extractHydrationJson(html);
-    if (!Array.isArray(hydration)) {
-      throw new Error('Could not extract SoundCloud hydration payload');
-    }
+    const clientId = await extractApiClientIdFromLikesPage(likesUrl);
+
+    // Resolve user id
+    const resolved = await scJson(
+      `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(profileUrl)}&client_id=${encodeURIComponent(clientId)}`
+    );
+    const userId = resolved && resolved.kind === 'user' ? resolved.id : null;
+    if (!userId) throw new Error('Could not resolve SoundCloud user');
 
     const tracks = [];
-    const seen = new Set();
     const MAX_TRACKS = 300;
+    let nextHref = `https://api-v2.soundcloud.com/users/${userId}/likes?limit=50&linked_partitioning=1&client_id=${encodeURIComponent(clientId)}`;
+    let pages = 0;
+    const MAX_PAGES = 15;
 
-    for (const h of hydration) {
-      const d = h && h.data;
-      if (!d || d.kind !== 'track') continue;
-      if (!d.permalink_url || !d.title || !d.id) continue;
-      if (seen.has(d.id)) continue;
-      seen.add(d.id);
-      tracks.push({
-        id: d.id,
-        title: d.title,
-        permalink_url: d.permalink_url,
-        artwork_url: d.artwork_url || null,
-        duration_ms: d.duration || null,
-        user: d.user ? { username: d.user.username, permalink_url: d.user.permalink_url } : undefined,
-      });
-      if (tracks.length >= MAX_TRACKS) break;
+    while (nextHref && tracks.length < MAX_TRACKS && pages < MAX_PAGES) {
+      pages++;
+      const page = await scJson(nextHref);
+      const collection = Array.isArray(page && page.collection) ? page.collection : [];
+      for (const item of collection) {
+        const t = item && item.track;
+        if (!t || t.kind !== 'track') continue;
+        if (!t.id || !t.title || !t.permalink_url) continue;
+
+        // Find a progressive transcoding URL for direct audio playback
+        let progressive = null;
+        const trans = t.media && Array.isArray(t.media.transcodings) ? t.media.transcodings : [];
+        for (const tr of trans) {
+          if (tr && tr.format && tr.format.protocol === 'progressive' && tr.url) {
+            progressive = tr.url;
+            break;
+          }
+        }
+
+        tracks.push({
+          id: t.id,
+          title: t.title,
+          permalink_url: t.permalink_url,
+          artwork_url: t.artwork_url || null,
+          duration_ms: t.duration || null,
+          user: t.user ? { username: t.user.username, permalink_url: t.user.permalink_url } : undefined,
+          progressive_transcoding_url: progressive,
+        });
+
+        if (tracks.length >= MAX_TRACKS) break;
+      }
+      nextHref = page && page.next_href ? `${page.next_href}&client_id=${encodeURIComponent(clientId)}` : null;
     }
 
     return json(
@@ -124,6 +163,7 @@ exports.handler = async (event) => {
       {
         profileUrl,
         fetchedAt: Date.now(),
+        clientIdHint: clientId,
         tracks,
       },
       {
@@ -135,23 +175,3 @@ exports.handler = async (event) => {
     return json(500, { error: 'Failed to fetch SoundCloud likes', message: err && err.message ? err.message : String(err) });
   }
 };
-
-// --- Old API v2 approach (blocked by 403 for some client_ids) removed ---
-
-/* eslint-disable no-unreachable */
-async function scFetch(url) {
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-      // Some edges behave better with a UA.
-      'User-Agent': 'lawb.xyz-netlify-function',
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`SoundCloud API error: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-  }
-  return res.json();
-}
-/* eslint-enable no-unreachable */

@@ -24,17 +24,53 @@ function safeUrl(raw) {
   }
 }
 
+function extractScHydration(html) {
+  const marker = 'window.__sc_hydration =';
+  const idx = html.indexOf(marker);
+  if (idx < 0) return null;
+  const start = html.indexOf('[', idx);
+  if (start < 0) return null;
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (ch === '[') depth++;
+    if (ch === ']') depth--;
+    if (depth === 0) { end = i + 1; break; }
+  }
+  if (end < 0) return null;
+  try {
+    return JSON.parse(html.slice(start, end));
+  } catch {
+    return null;
+  }
+}
+
+async function extractApiClientId(profileUrl) {
+  const likesUrl = profileUrl.endsWith('/likes') ? profileUrl : `${profileUrl.replace(/\/+$/, '')}/likes`;
+  const res = await fetch(likesUrl, {
+    method: 'GET',
+    headers: { 'Accept': 'text/html', 'User-Agent': 'lawb.xyz-netlify-function' },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`SoundCloud page error: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  const html = await res.text();
+  const hyd = extractScHydration(html);
+  if (!Array.isArray(hyd)) throw new Error('Could not extract SoundCloud hydration payload');
+  const apiClient = hyd.find((h) => h && h.hydratable === 'apiClient' && h.data && h.data.id);
+  const id = apiClient && apiClient.data && apiClient.data.id;
+  if (!id || typeof id !== 'string') throw new Error('Could not extract SoundCloud apiClient id');
+  return id;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return json(200, {}, { 'Content-Type': 'text/plain' });
   }
   if (event.httpMethod !== 'GET') {
     return json(405, { error: 'Method not allowed' });
-  }
-
-  const clientId = process.env.SOUNDCLOUD_CLIENT_ID;
-  if (!clientId) {
-    return json(500, { error: 'Missing SOUNDCLOUD_CLIENT_ID env var' });
   }
 
   const transcodingUrlRaw = event.queryStringParameters && event.queryStringParameters.transcodingUrl;
@@ -48,9 +84,11 @@ exports.handler = async (event) => {
   }
 
   const url = new URL(parsed.toString());
-  url.searchParams.set('client_id', clientId);
+  const profileUrl = (event.queryStringParameters && event.queryStringParameters.profileUrl) || 'https://soundcloud.com/companioncube143';
 
   try {
+    const clientId = await extractApiClientId(profileUrl);
+    url.searchParams.set('client_id', clientId);
     const res = await fetch(url.toString(), {
       method: 'GET',
       headers: {
@@ -68,7 +106,7 @@ exports.handler = async (event) => {
     }
     return json(
       200,
-      { url: data.url },
+      { url: data.url, clientIdHint: clientId },
       { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' }
     );
   } catch (err) {
