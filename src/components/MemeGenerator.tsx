@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs } from '../mint';
+import type { NFT } from '../mint';
 import { v4 as uuidv4 } from 'uuid';
 import { ipfsToHttp } from '../utils/ipfs';
 
@@ -254,6 +255,24 @@ const STOCK_STICKERS = [
 
 // Canvas size will be dynamic based on container
 const DEFAULT_CANVAS_SIZE = 400;
+
+function resolveNftImageUrl(nft: Partial<NFT> & Record<string, any>): string | null {
+  const direct = nft.image || nft.image_url || nft.image_url_shrunk || nft.old_image_url;
+  if (typeof direct === 'string' && direct.trim()) return ipfsToHttp(direct.trim());
+
+  // Some providers embed image only in stringified metadata.
+  const rawMeta = nft.metadata;
+  if (typeof rawMeta === 'string' && rawMeta.trim()) {
+    try {
+      const parsed = JSON.parse(rawMeta);
+      const metaImage = parsed?.image || parsed?.image_url || parsed?.imageUrl;
+      if (typeof metaImage === 'string' && metaImage.trim()) return ipfsToHttp(metaImage.trim());
+    } catch {
+      // ignore malformed metadata payloads
+    }
+  }
+  return null;
+}
 
 function MemeGenerator() {
   const classes = useStyles();
@@ -804,10 +823,19 @@ function MemeGenerator() {
         console.log('Scatter response:', resp);
       }
       if (nfts && nfts.length > 0) {
-        const randomNft = nfts[Math.floor(Math.random() * nfts.length)];
-        const rawImageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
-        // Normalize ipfs:// to https://gateway URL so CSP img-src https: can load it.
-        const imageUrl = typeof rawImageUrl === 'string' ? ipfsToHttp(rawImageUrl.trim()) : rawImageUrl;
+        // Scatter can return entries with null image fields; only pick from resolvable image URLs.
+        const candidates = nfts
+          .map((nft) => ({ nft, imageUrl: resolveNftImageUrl(nft as any) }))
+          .filter((x) => typeof x.imageUrl === 'string' && !!x.imageUrl) as Array<{ nft: any; imageUrl: string }>;
+
+        if (!candidates.length) {
+          alert('No valid image URLs were found for this collection right now. Try again.');
+          return;
+        }
+
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        const randomNft = pick.nft;
+        const imageUrl = pick.imageUrl;
         console.log('Selected NFT:', randomNft);
         console.log('Image URL:', imageUrl);
         setNftImage(imageUrl);
