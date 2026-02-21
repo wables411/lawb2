@@ -1,4 +1,4 @@
-export const LAWBAMP_MAX_UPLOAD_DURATION_SEC = 30 * 60;
+export const LAWBAMP_MAX_UPLOAD_DURATION_SEC = 90 * 60;
 
 type MediaKind = 'audio' | 'video';
 

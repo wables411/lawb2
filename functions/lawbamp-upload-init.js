@@ -141,8 +141,8 @@ exports.handler = async (event) => {
     if (!filename) throw new Error('Missing filename');
     assertAllowedMime(mime);
     if (!Number.isFinite(bytes) || bytes <= 0) throw new Error('Invalid bytes');
-    if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > 1800) {
-      throw new Error('Invalid duration (max 30 minutes)');
+    if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > 5400) {
+      throw new Error('Invalid duration (max 90 minutes)');
     }
 
     const t = verifyAndParseToken(secret, token);
