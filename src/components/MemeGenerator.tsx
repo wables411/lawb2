@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs } from '../mint';
 import { v4 as uuidv4 } from 'uuid';
+import { ipfsToHttp } from '../utils/ipfs';
 
 const useStyles = createUseStyles({
   container: {
@@ -804,7 +805,9 @@ function MemeGenerator() {
       }
       if (nfts && nfts.length > 0) {
         const randomNft = nfts[Math.floor(Math.random() * nfts.length)];
-        const imageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
+        const rawImageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
+        // Normalize ipfs:// to https://gateway URL so CSP img-src https: can load it.
+        const imageUrl = typeof rawImageUrl === 'string' ? ipfsToHttp(rawImageUrl.trim()) : rawImageUrl;
         console.log('Selected NFT:', randomNft);
         console.log('Image URL:', imageUrl);
         setNftImage(imageUrl);
