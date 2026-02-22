@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData } from '../firebaseProfiles';
+import { fetchLawbampUploadsForUser, type LawbampUploadEntry } from '../firebaseLawbampUploads';
 import { fetchNFTInventory } from '../utils/nftInventory';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
@@ -24,6 +25,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
   const [profileImageSize, setProfileImageSize] = useState<{ width: number; height: number } | null>(null);
   const [statsVisible, setStatsVisible] = useState(true);
+  const [playlistEntries, setPlaylistEntries] = useState<LawbampUploadEntry[]>([]);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [playlistError, setPlaylistError] = useState<string | null>(null);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -214,6 +218,26 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     };
     
     loadProfile();
+  }, [address]);
+
+  useEffect(() => {
+    if (!address) {
+      setPlaylistEntries([]);
+      return;
+    }
+    const loadPlaylistEntries = async () => {
+      setPlaylistLoading(true);
+      setPlaylistError(null);
+      try {
+        const entries = await fetchLawbampUploadsForUser(address, 50);
+        setPlaylistEntries(entries);
+      } catch (e: any) {
+        setPlaylistError(e?.message || 'Failed to load playlist entries');
+      } finally {
+        setPlaylistLoading(false);
+      }
+    };
+    void loadPlaylistEntries();
   }, [address]);
 
   // Check username availability as user types
@@ -929,6 +953,49 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           </div>
         </>
       )}
+
+      <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
+        <h4 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '13px' : '14px' }}>Playlist entries ({playlistEntries.length})</h4>
+        {playlistLoading && (
+          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>Loading playlist entries...</div>
+        )}
+        {playlistError && (
+          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#a10000' }}>{playlistError}</div>
+        )}
+        {!playlistLoading && !playlistError && playlistEntries.length === 0 && (
+          <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666', fontStyle: 'italic' }}>
+            No uploads yet.
+          </div>
+        )}
+        {!playlistLoading && !playlistError && playlistEntries.length > 0 && (
+          <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+            {playlistEntries.slice(0, 25).map((entry) => (
+              <a
+                key={entry.id}
+                href={entry.storage_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'block',
+                  textDecoration: 'none',
+                  color: '#000',
+                  background: '#fff',
+                  border: '1px solid #bbb',
+                  borderRadius: '3px',
+                  padding: '6px 8px',
+                  marginBottom: '6px',
+                  fontSize: isMobile ? '11px' : '12px',
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{entry.title || entry.filename}</div>
+                <div style={{ color: '#555', marginTop: '2px' }}>
+                  {entry.mime.startsWith('video/') ? 'Video' : 'Audio'} • {Math.round((entry.duration_sec || 0) / 60)} min
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

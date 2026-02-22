@@ -2,15 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createUseStyles } from 'react-jss';
 import Popup from './Popup';
 import { useLawbAudio } from '../contexts/LawbAudioContext';
-import { uploadLawbampMedia } from '../firebaseLawbampUploads';
+import { fetchRecentLawbampUploads, type LawbampUploadEntry, uploadLawbampMedia } from '../firebaseLawbampUploads';
 import { LAWBAMP_MAX_UPLOAD_DURATION_SEC } from '../utils/mediaDuration';
 import { useAccount, useSignMessage } from 'wagmi';
+import { firebaseProfiles } from '../firebaseProfiles';
 
 const FALLBACK_ART_URL = '/images/lawb-logo.png';
 const MASCOT_URL = '/assets/asciilawb.GIF';
 const LS_VIZ_MODE = 'lawbamp_viz_mode';
 const LS_BEAT_STROBE = 'lawbamp_beat_strobe';
 type VizMode = 'bars' | 'ascii';
+type PlayerTab = 'soundcloud' | 'lawb_playlist';
 
 type StyleProps = { pct: number; isFullscreen: boolean; isMobile: boolean; uiScale: number };
 
@@ -90,6 +92,61 @@ const useStyles = createUseStyles({
     flexWrap: 'wrap',
     gap: 6,
     marginBottom: 10,
+  },
+  tabRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  tabBtn: {
+    border: '2px outset #fff',
+    background: '#c0c0c0',
+    color: '#000',
+    padding: '5px 8px',
+    cursor: 'pointer',
+    fontSize: 11,
+    '&:active': {
+      border: '2px inset #c0c0c0',
+    },
+  },
+  tabBtnActive: {
+    border: '2px inset #c0c0c0',
+    background: '#d9d9d9',
+    fontWeight: 700,
+  },
+  listWrap: {
+    border: '2px inset #fff',
+    background: '#f7f7f7',
+    padding: 6,
+    maxHeight: 220,
+    overflowY: 'auto',
+    marginBottom: 8,
+  },
+  listItem: {
+    width: '100%',
+    textAlign: 'left',
+    border: '1px solid #999',
+    background: '#fff',
+    padding: '6px 8px',
+    marginBottom: 6,
+    cursor: 'pointer',
+    fontSize: 11,
+    '&:hover': {
+      background: '#eef6ff',
+    },
+  },
+  mediaFrame: {
+    border: '2px inset #fff',
+    background: '#111',
+    padding: 6,
+    marginBottom: 8,
+  },
+  mediaTitle: {
+    fontSize: 11,
+    color: '#000',
+    marginBottom: 6,
   },
   btn: {
     border: '2px outset #fff',
@@ -662,7 +719,51 @@ const LawbMiniPlayer: React.FC = () => {
 
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PlayerTab>('soundcloud');
+  const [playlistEntries, setPlaylistEntries] = useState<LawbampUploadEntry[]>([]);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [playlistError, setPlaylistError] = useState<string | null>(null);
+  const [selectedPlaylistEntry, setSelectedPlaylistEntry] = useState<LawbampUploadEntry | null>(null);
+  const [uploaderLabels, setUploaderLabels] = useState<Record<string, string>>({});
   const maxMins = Math.floor(LAWBAMP_MAX_UPLOAD_DURATION_SEC / 60);
+
+  const loadLawbPlaylist = React.useCallback(async () => {
+    setPlaylistLoading(true);
+    setPlaylistError(null);
+    try {
+      const entries = await fetchRecentLawbampUploads(50);
+      setPlaylistEntries(entries);
+      setSelectedPlaylistEntry((prev) => {
+        if (!prev) return entries[0] || null;
+        return entries.find((e) => e.id === prev.id) || entries[0] || null;
+      });
+    } catch (e: any) {
+      setPlaylistError(e?.message || 'Failed to load Lawb Playlist');
+    } finally {
+      setPlaylistLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!state.showMiniPlayer) return;
+    void loadLawbPlaylist();
+  }, [state.showMiniPlayer, loadLawbPlaylist]);
+
+  useEffect(() => {
+    const uploaders = Array.from(new Set(playlistEntries.map((e) => (e.uploader || '').toLowerCase()).filter(Boolean)));
+    if (!uploaders.length) return;
+    void (async () => {
+      const pairs = await Promise.all(
+        uploaders.map(async (wallet) => {
+          const profile = await firebaseProfiles.getProfile(wallet);
+          const label = profile?.username ? `@${profile.username}` : `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+          return [wallet, label] as const;
+        })
+      );
+      setUploaderLabels((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    })();
+  }, [playlistEntries]);
+
   const onUploadPick = async (file: File | null) => {
     if (!file) return;
     setUploadError(null);
@@ -676,6 +777,8 @@ const LawbMiniPlayer: React.FC = () => {
       });
       setUploadPct(null);
       setUploadError(null);
+      setActiveTab('lawb_playlist');
+      await loadLawbPlaylist();
     } catch (e: any) {
       setUploadPct(null);
       setUploadError(e?.message || 'Upload failed');
@@ -790,50 +893,122 @@ const LawbMiniPlayer: React.FC = () => {
           <div className={classes.meterFill} />
         </div>
 
-        <div className={classes.vizWrap}>
-          {vizMode === 'ascii' ? (
-            <div
-              className={`${classes.asciiViz} ${strobeOn ? classes.strobe : ''}`}
-              title="ASCII Ocean EQ (toggle via VIZ button)"
-              ref={asciiHostRef}
-            >
-              {supportsAsciiCanvas ? (
-                <canvas ref={asciiCanvasRef} className={classes.asciiCanvas} />
+        <div className={classes.tabRow}>
+          <button
+            type="button"
+            className={`${classes.tabBtn} ${activeTab === 'soundcloud' ? classes.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('soundcloud')}
+          >
+            SoundCloud
+          </button>
+          <button
+            type="button"
+            className={`${classes.tabBtn} ${activeTab === 'lawb_playlist' ? classes.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('lawb_playlist')}
+          >
+            Lawb Playlist
+          </button>
+          <button type="button" className={classes.tabBtn} onClick={() => { void loadLawbPlaylist(); }}>
+            Refresh
+          </button>
+        </div>
+
+        {activeTab === 'soundcloud' ? (
+          <>
+            <div className={classes.vizWrap}>
+              {vizMode === 'ascii' ? (
+                <div
+                  className={`${classes.asciiViz} ${strobeOn ? classes.strobe : ''}`}
+                  title="ASCII Ocean EQ (toggle via VIZ button)"
+                  ref={asciiHostRef}
+                >
+                  {supportsAsciiCanvas ? (
+                    <canvas ref={asciiCanvasRef} className={classes.asciiCanvas} />
+                  ) : (
+                    <div style={{ padding: 10, color: '#00ff66', fontFamily: 'monospace', fontSize: 12 }}>
+                      ASCII mode requires canvas support.
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div style={{ padding: 10, color: '#00ff66', fontFamily: 'monospace', fontSize: 12 }}>
-                  ASCII mode requires canvas support.
+                <div
+                  className={`${classes.eq} ${eqLooksDead ? classes.eqFallback : ''} ${strobeOn ? classes.strobe : ''}`}
+                  title="Equalizer"
+                >
+                  {barsForDisplay.map((v, i) => (
+                    <div
+                      key={i}
+                      className={classes.eqBar}
+                      style={eqLooksDead ? undefined : { height: `${Math.max(4, Math.round(v * 100))}%` }}
+                    />
+                  ))}
                 </div>
               )}
             </div>
-          ) : (
-            <div
-              className={`${classes.eq} ${eqLooksDead ? classes.eqFallback : ''} ${strobeOn ? classes.strobe : ''}`}
-              title="Equalizer"
-            >
-              {barsForDisplay.map((v, i) => (
-                <div
-                  key={i}
-                  className={classes.eqBar}
-                  style={eqLooksDead ? undefined : { height: `${Math.max(4, Math.round(v * 100))}%` }}
-                />
-              ))}
+            <div className={classes.metaRow}>
+              <div className={classes.label}>Vol</div>
+              <input
+                className={classes.slider}
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={state.volume}
+                onChange={(e) => actions.setVolume(Number(e.target.value))}
+              />
+              <div className={classes.label}>{fmtTime(state.currentTimeSec)}</div>
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <>
+            {selectedPlaylistEntry && (
+              <div className={classes.mediaFrame}>
+                <div className={classes.mediaTitle}>
+                  Now selected: <strong>{selectedPlaylistEntry.title || selectedPlaylistEntry.filename}</strong>
+                </div>
+                {selectedPlaylistEntry.mime.startsWith('video/') ? (
+                  <video
+                    controls
+                    src={selectedPlaylistEntry.storage_url}
+                    style={{ width: '100%', maxHeight: effectiveFullscreen ? '58vh' : 180, background: '#000' }}
+                  />
+                ) : (
+                  <audio controls src={selectedPlaylistEntry.storage_url} style={{ width: '100%' }} />
+                )}
+              </div>
+            )}
 
-        <div className={classes.metaRow}>
-          <div className={classes.label}>Vol</div>
-          <input
-            className={classes.slider}
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={state.volume}
-            onChange={(e) => actions.setVolume(Number(e.target.value))}
-          />
-          <div className={classes.label}>{fmtTime(state.currentTimeSec)}</div>
-        </div>
+            <div className={classes.listWrap}>
+              {playlistLoading && <div className={classes.smallNote}>Loading Lawb Playlist...</div>}
+              {playlistError && <div className={classes.smallNote} style={{ color: '#a10000' }}>{playlistError}</div>}
+              {!playlistLoading && !playlistEntries.length && (
+                <div className={classes.smallNote}>No uploads yet. Holders can upload from the Upload button.</div>
+              )}
+              {playlistEntries.map((entry) => {
+                const uploader = (entry.uploader || '').toLowerCase();
+                const uploaderLabel = uploaderLabels[uploader] || `${uploader.slice(0, 6)}...${uploader.slice(-4)}`;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={classes.listItem}
+                    onClick={() => {
+                      setSelectedPlaylistEntry(entry);
+                      actions.pause();
+                    }}
+                    title={entry.storage_url}
+                  >
+                    {entry.title || entry.filename} {' '}
+                    <span style={{ color: '#444' }}>({Math.round((entry.duration_sec || 0) / 60)}m)</span>
+                    <div style={{ color: '#666', marginTop: 2 }}>
+                      by {uploaderLabel}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {state.error && (
           <div className={classes.smallNote} style={{ color: '#a10000' }}>

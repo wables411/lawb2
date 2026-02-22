@@ -159,3 +159,31 @@ export async function fetchRecentLawbampUploads(limit = 25): Promise<LawbampUplo
   return entries;
 }
 
+export async function fetchLawbampUploadsForUser(walletAddress: string, limit = 25): Promise<LawbampUploadEntry[]> {
+  const uploader = (walletAddress || '').toLowerCase();
+  if (!uploader.startsWith('0x') || uploader.length !== 42) return [];
+
+  const byUserRef = dbRef(database, `lawbamp_uploads_by_user/${uploader}`);
+  const byUserSnap = await get(byUserRef);
+  if (!byUserSnap.exists()) return [];
+
+  const indexVal = byUserSnap.val() as Record<string, boolean>;
+  const entryIds = Object.entries(indexVal)
+    .filter(([, present]) => present === true)
+    .map(([entryId]) => entryId);
+
+  if (!entryIds.length) return [];
+
+  const entries = await Promise.all(
+    entryIds.map(async (entryId) => {
+      const entrySnap = await get(dbRef(database, `lawbamp_uploads/${entryId}`));
+      if (!entrySnap.exists()) return null;
+      return { id: entryId, ...(entrySnap.val() as any) } as LawbampUploadEntry;
+    })
+  );
+
+  const present = entries.filter((e): e is LawbampUploadEntry => !!e);
+  present.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  return present.slice(0, Math.max(1, Math.min(100, limit)));
+}
+
