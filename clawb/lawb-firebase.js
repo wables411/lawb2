@@ -198,6 +198,69 @@ export async function postGameChatMessage(inviteCode, message) {
   return chatRef.key;
 }
 
+// --- Public Chess Chat ---
+
+/**
+ * Listen for new public chess chat messages.
+ * Fires for messages added AFTER this listener starts.
+ */
+export function onPublicChatMessage(callback) {
+  const messagesRef = db.ref('chess_chat/public/messages');
+  const listener = messagesRef
+    .orderByChild('timestamp')
+    .startAt(Date.now())
+    .on('child_added', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        callback({ id: snapshot.key, ...data });
+      }
+    });
+
+  return () => messagesRef.off('child_added', listener);
+}
+
+/**
+ * Post a message to the public chess chat as Clawb.
+ */
+export async function postPublicChatMessage(message) {
+  const chatRef = db.ref('chess_chat/public/messages').push();
+  await chatRef.set({
+    userId: 'clawb',
+    walletAddress: '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429',
+    displayName: 'Clawb',
+    message,
+    timestamp: Date.now(),
+    room: 'public',
+  });
+  return chatRef.key;
+}
+
+/**
+ * Get all active chess games where Clawb is a player.
+ */
+export async function getActiveClawbGames() {
+  const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
+  const snap = await db
+    .ref('chess_games')
+    .orderByChild('game_state')
+    .equalTo('active')
+    .once('value');
+  const games = snap.val() || {};
+  return Object.entries(games)
+    .filter(
+      ([, g]) =>
+        g.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ||
+        g.blue_player?.toLowerCase() === CLAWB_WALLET.toLowerCase()
+    )
+    .map(([code, g]) => {
+      const clawbColor =
+        g.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase()
+          ? 'red'
+          : 'blue';
+      return { code, clawbColor, ...g };
+    });
+}
+
 // --- Raw DB access for advanced use ---
 export { db, app };
 export default db;

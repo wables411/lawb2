@@ -54,7 +54,7 @@ Examples:
 
 // --- Handler ---
 async function handleGameUpdate(game) {
-  const { id, game_state, game_type, current_player, last_move_timestamp, winner, end_reason } = game;
+  const { id, game_state, game_type, current_player, last_move_timestamp, winner, end_reason, board, last_move, fen } = game;
 
   // Only care about vs_clawb games
   if (game_type !== 'vs_clawb') return;
@@ -63,7 +63,7 @@ async function handleGameUpdate(game) {
   if (game_state === 'active' && !commentedGames.has(id)) {
     commentedGames.add(id);
     await updateClawbActivity('playing chess');
-    const greeting = await generateComment('Game just started. You are red. The visitor made the opening move. Greet them briefly.');
+    const greeting = await generateComment('Game just started. You are red (the AI). The visitor made the opening move. Greet them briefly.');
     if (greeting) {
       await postGameChatMessage(id, greeting);
       console.log(`[Chess] ${id}: "${greeting}"`);
@@ -74,18 +74,18 @@ async function handleGameUpdate(game) {
   // Game finished
   if (game_state === 'finished') {
     const lastComment = commentedMoves.get(id);
-    if (lastComment === 'finished') return; // Already commented
+    if (lastComment === 'finished') return;
     commentedMoves.set(id, 'finished');
 
     await updateClawbActivity('idle');
 
     let prompt;
     if (winner === 'red') {
-      prompt = `You won the chess game. ${end_reason || 'checkmate'}. Brief victory comment.`;
+      prompt = `You won the chess game by ${end_reason || 'checkmate'}. Brief victory comment.`;
     } else if (winner === 'blue') {
-      prompt = `You lost the chess game. ${end_reason || 'checkmate'}. Brief gracious loss comment.`;
+      prompt = `You lost the chess game (${end_reason || 'checkmate'}). Brief gracious loss comment.`;
     } else {
-      prompt = `The chess game ended in a draw. ${end_reason || 'stalemate'}. Brief comment.`;
+      prompt = `The chess game ended in a draw (${end_reason || 'stalemate'}). Brief comment.`;
     }
 
     const comment = await generateComment(prompt);
@@ -106,18 +106,24 @@ async function handleGameUpdate(game) {
   // Mid-game move — only comment occasionally (not every move)
   if (game_state === 'active' && last_move_timestamp) {
     const lastCommented = commentedMoves.get(id);
-    if (lastCommented === last_move_timestamp) return; // Already commented on this move
+    if (lastCommented === last_move_timestamp) return;
 
-    // Comment roughly every 3rd move (random chance)
     if (Math.random() > 0.35) {
       commentedMoves.set(id, last_move_timestamp);
-      return; // Skip this move
+      return;
     }
 
     commentedMoves.set(id, last_move_timestamp);
 
-    const turnInfo = current_player === 'blue' ? "It's the visitor's turn now (you just moved)." : "It's your turn (visitor just moved).";
-    const prompt = `Mid-game chess position. ${turnInfo} Comment on the game state in 1 sentence.`;
+    const turnInfo = current_player === 'blue'
+      ? "It's the visitor's turn now (you just moved)."
+      : "It's your turn (visitor just moved).";
+    const pieceCount = board?.positions ? Object.keys(board.positions).length : '?';
+    const moveDesc = last_move
+      ? ` Last move: (${last_move.from?.row},${last_move.from?.col}) to (${last_move.to?.row},${last_move.to?.col}).`
+      : '';
+    const fenDesc = fen ? ` FEN: ${fen}.` : '';
+    const prompt = `Mid-game chess position. ${pieceCount} pieces remaining.${moveDesc}${fenDesc} ${turnInfo} Comment on the game state in 1 sentence.`;
     const comment = await generateComment(prompt);
     if (comment) {
       await postGameChatMessage(id, comment);

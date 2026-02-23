@@ -16,7 +16,9 @@ import {
   postClawbMessage,
   setClawbOnline,
   heartbeat,
-  db,
+  onPublicChatMessage,
+  postPublicChatMessage,
+  getActiveClawbGames,
 } from './lawb-firebase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -90,51 +92,55 @@ const PAGE_CONTEXT = {
   '/mint': 'The visitor is on a minting page. They likely need help minting NFTs.',
 };
 
+function normalizePage(page) {
+  return (page || '/').replace(/\/+$/, '') || '/';
+}
+
 // --- Rate limiting ---
 const recentMessages = new Map(); // messageId -> timestamp
-const DEDUP_WINDOW_MS = 5000; // Ignore duplicate messages within 5s
+const DEDUP_WINDOW_MS = 5000;
 
-// --- Message Handler ---
-async function handleVisitorMessage(msg) {
-  const { id, author, message, page } = msg;
-
-  // Dedup — skip if we already processed this message
-  if (recentMessages.has(id)) return;
+function dedup(id) {
+  if (recentMessages.has(id)) return true;
   recentMessages.set(id, Date.now());
-
-  // Clean up old entries
   const cutoff = Date.now() - DEDUP_WINDOW_MS;
   for (const [key, ts] of recentMessages) {
     if (ts < cutoff) recentMessages.delete(key);
   }
+  return false;
+}
 
-  console.log(`[Chat] Visitor (${author}) on ${page}: "${message}"`);
+// --- Live game context (always fetched, not just on /chess) ---
+async function getLiveGameContext() {
+  try {
+    const clawbGames = await getActiveClawbGames();
+    if (clawbGames.length > 0) {
+      const g = clawbGames[0];
+      const turnStr =
+        g.current_player === g.clawbColor ? "your turn" : "opponent's turn";
+      return `\n[LIVE GAME] You are currently playing a PVP wager match (game ${g.code}). You are ${g.clawbColor}. It is ${turnStr}. Your PVP agent is handling moves automatically via Stockfish.`;
+    }
+    return '';
+  } catch (e) {
+    console.error('[Chat] Game lookup failed:', e.message);
+    return '';
+  }
+}
+
+// Detect if a public chat message is directed at Clawb
+const CLAWB_TRIGGERS = /\bclawb\b|\blawbster\b|\b@clawb\b/i;
+
+// --- Clawb Chawt handler (visitor_messages) ---
+async function handleVisitorMessage(msg) {
+  const { id, author, message, page } = msg;
+  if (dedup(id)) return;
+
+  const normalPage = normalizePage(page);
+  console.log(`[Chat] Visitor (${author}) on ${normalPage}: "${message}"`);
 
   try {
-    const pageHint = PAGE_CONTEXT[page] || PAGE_CONTEXT['/'];
-
-    // Inject live game context when visitor is on /chess
-    let liveGameContext = '';
-    if (page === '/chess') {
-      try {
-        const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
-        const snap = await db.ref('chess_games').orderByChild('game_state').equalTo('active').once('value');
-        const activeGames = snap.val() || {};
-        const clawbGames = Object.entries(activeGames).filter(([, g]) =>
-          g.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ||
-          g.blue_player?.toLowerCase() === CLAWB_WALLET.toLowerCase()
-        );
-        if (clawbGames.length > 0) {
-          const [code, g] = clawbGames[0];
-          const clawbColor = g.red_player?.toLowerCase() === CLAWB_WALLET.toLowerCase() ? 'red' : 'blue';
-          liveGameContext = `\n[LIVE GAME] You are currently playing game ${code}. You are ${clawbColor}. Turn: ${g.current_player}. State: ${g.game_state}. Your PVP agent is handling moves automatically.`;
-        } else {
-          liveGameContext = '\n[LIVE GAME] You have no active chess games right now.';
-        }
-      } catch (e) {
-        // Don't break chat if game lookup fails
-      }
-    }
+    const pageHint = PAGE_CONTEXT[normalPage] || PAGE_CONTEXT['/'];
+    const liveGameContext = await getLiveGameContext();
 
     const response = await openrouter.chat.completions.create({
       model: CHAT_MODEL,
@@ -143,7 +149,7 @@ async function handleVisitorMessage(msg) {
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `[Page: ${page}] ${pageHint}${liveGameContext}\n\nVisitor (${author === 'anonymous' ? 'anonymous' : author.slice(0, 6) + '...'}): ${message}`,
+          content: `[Page: ${normalPage}] ${pageHint}${liveGameContext}\n\nVisitor (${author === 'anonymous' ? 'anonymous' : author.slice(0, 6) + '...'}): ${message}`,
         },
       ],
     });
@@ -155,11 +161,55 @@ async function handleVisitorMessage(msg) {
     }
 
     console.log(`[Chat] Clawb: "${reply}"`);
-    await postClawbMessage(reply, id, page || '/');
+    await postClawbMessage(reply, id, normalPage);
   } catch (err) {
     console.error('[Chat] Error generating response:', err.message);
-    // Post a fallback so the visitor doesn't get silence
-    await postClawbMessage('the sea is deep and sometimes words get lost. try again.', id, page || '/');
+    await postClawbMessage(
+      'the sea is deep and sometimes words get lost. try again.',
+      id,
+      normalPage
+    );
+  }
+}
+
+// --- Public chess chat handler ---
+async function handlePublicChatMessage(msg) {
+  const { id, userId, walletAddress, displayName, message } = msg;
+
+  // Never reply to our own messages
+  if (userId === 'clawb') return;
+  if (dedup(`pub_${id}`)) return;
+
+  // Only respond if Clawb is mentioned or someone asks a question
+  const mentioned = CLAWB_TRIGGERS.test(message);
+  const isQuestion = message.trim().endsWith('?');
+  if (!mentioned && !isQuestion) return;
+
+  const author = displayName || (walletAddress ? `${walletAddress.slice(0, 6)}...` : 'anon');
+  console.log(`[PublicChat] ${author}: "${message}"`);
+
+  try {
+    const liveGameContext = await getLiveGameContext();
+
+    const response = await openrouter.chat.completions.create({
+      model: CHAT_MODEL,
+      max_tokens: 200,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `[Public Chess Chat] The visitor is in the public chess chat room on lawb.xyz/chess.${liveGameContext}\n\n${author}: ${message}`,
+        },
+      ],
+    });
+
+    const reply = response.choices?.[0]?.message?.content?.trim();
+    if (!reply) return;
+
+    console.log(`[PublicChat] Clawb: "${reply}"`);
+    await postPublicChatMessage(reply);
+  } catch (err) {
+    console.error('[PublicChat] Error generating response:', err.message);
   }
 }
 
@@ -168,15 +218,17 @@ export async function startChatResponder() {
   console.log(`[Chat] Starting Clawb chat responder (model: ${CHAT_MODEL})...`);
   await setClawbOnline('idle');
 
-  const stopListening = onVisitorMessage(handleVisitorMessage);
+  const stopVisitor = onVisitorMessage(handleVisitorMessage);
+  const stopPublic = onPublicChatMessage(handlePublicChatMessage);
 
   // Heartbeat every 30s
   const heartbeatInterval = setInterval(() => heartbeat('idle'), 30_000);
 
-  console.log('[Chat] Listening for visitor messages. Clawb is online.');
+  console.log('[Chat] Listening for visitor messages + public chess chat. Clawb is online.');
 
   return () => {
-    stopListening();
+    stopVisitor();
+    stopPublic();
     clearInterval(heartbeatInterval);
   };
 }

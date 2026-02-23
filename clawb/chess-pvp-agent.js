@@ -233,13 +233,18 @@ async function joinGameOnChain(game) {
   console.log(`[PVP] Joining game ${inviteCode} (wager: ${wagerAmount}, token: ${wagerToken})`);
 
   try {
-    // Approve ERC20 if needed
+    // Approve ERC20 if needed — approve MaxUint256 to avoid
+    // ERC20InsufficientAllowance (0xfb8f41b2) from exact-amount rounding
     if (!isNativeETH) {
       const token = new ethers.Contract(wagerToken, ERC20_ABI, wallet);
       const currentAllowance = await token.allowance(wallet.address, CHESS_CONTRACT_BASE);
-      if (currentAllowance < BigInt(wagerAmount)) {
-        console.log(`[PVP] Approving token spend...`);
-        const approveTx = await token.approve(CHESS_CONTRACT_BASE, wagerAmount);
+      const requiredAmount = BigInt(wagerAmount);
+      if (currentAllowance < requiredAmount) {
+        console.log(`[PVP] Approving token spend (MaxUint256)...`);
+        const approveTx = await token.approve(
+          CHESS_CONTRACT_BASE,
+          ethers.MaxUint256
+        );
         await approveTx.wait();
         console.log(`[PVP] Token approved.`);
       }
@@ -279,7 +284,7 @@ async function joinGameOnChain(game) {
 async function watchAndPlayGame(inviteCode) {
   const gameRef = db.ref(`chess_games/${inviteCode}`);
 
-  const listener = gameRef.on('value', async (snapshot) => {
+  const onGameValue = async (snapshot) => {
     const game = snapshot.val();
     if (!game) return;
 
@@ -291,13 +296,14 @@ async function watchAndPlayGame(inviteCode) {
         pvpCommentedEndGame.add(inviteCode);
         const winner = game.winner;
         const endReason = game.end_reason || 'game over';
+        const wagerDesc = game.bet_amount ? ` Wager: ${game.bet_amount} ${game.bet_token || 'tokens'}.` : '';
         let prompt;
         if (winner?.toLowerCase() === CLAWB_WALLET.toLowerCase()) {
-          prompt = `You won the PVP chess game. ${endReason}. Brief victory comment.`;
+          prompt = `You won the PVP chess wager game by ${endReason}.${wagerDesc} Brief victory comment.`;
         } else if (winner) {
-          prompt = `You lost the PVP chess game. ${endReason}. Brief gracious loss comment.`;
+          prompt = `You lost the PVP chess wager game by ${endReason}.${wagerDesc} Brief gracious loss comment.`;
         } else {
-          prompt = `The PVP chess game ended in a draw. ${endReason}. Brief comment.`;
+          prompt = `The PVP chess wager game ended in a draw (${endReason}).${wagerDesc} Brief comment.`;
         }
         const comment = await generatePvpComment(prompt);
         if (comment) {
@@ -305,7 +311,7 @@ async function watchAndPlayGame(inviteCode) {
           console.log(`[PVP] ${inviteCode} (end): "${comment}"`);
         }
       }
-      gameRef.off('value', listener);
+      gameRef.off('value', onGameValue);
       activeGames = Math.max(0, activeGames - 1);
       await updateClawbActivity('idle');
       pvpLastCommentedMove.delete(inviteCode);
@@ -319,7 +325,7 @@ async function watchAndPlayGame(inviteCode) {
       const lastTs = game.last_move_timestamp;
       if (lastTs && (Date.now() - lastTs > GAME_TIMEOUT_MS)) {
         console.log(`[PVP] ${inviteCode}: Opponent timed out (60 min). Claiming win for Clawb.`);
-        gameRef.off('value', listener);
+        gameRef.off('value', onGameValue);
         const ok = await endGameOnChain(inviteCode, CLAWB_WALLET);
         if (ok) {
           await updateGame(inviteCode, {
@@ -348,8 +354,19 @@ async function watchAndPlayGame(inviteCode) {
         const count = (pvpCommentCount.get(inviteCode) || 0) + 1;
         pvpCommentCount.set(inviteCode, count);
         if (count % PVP_COMMENT_EVERY_N_MOVES === 0) {
+          const board = game.board;
+          let boardDesc = '';
+          if (board?.positions) {
+            const pieceCount = Object.keys(board.positions).length;
+            const fen = boardPositionsToFEN(board.positions, clawbColor);
+            boardDesc = ` Position (FEN): ${fen}. ${pieceCount} pieces on board.`;
+          }
+          const lastMove = game.last_move;
+          const moveDesc = lastMove
+            ? ` Opponent moved from (${lastMove.from?.row},${lastMove.from?.col}) to (${lastMove.to?.row},${lastMove.to?.col}).`
+            : '';
           const comment = await generatePvpComment(
-            'Opponent just moved. It\'s your turn. Comment on the game state in 1 sentence.'
+            `Opponent just moved.${moveDesc} It's your turn.${boardDesc} Comment on the game state in 1 sentence.`
           );
           if (comment) {
             await postGameChatMessage(inviteCode, comment);
@@ -474,7 +491,8 @@ async function watchAndPlayGame(inviteCode) {
     } catch (err) {
       console.error(`[PVP] ${inviteCode}: Error making move:`, err.message);
     }
-  });
+  };
+  gameRef.on('value', onGameValue);
 }
 
 // --- Move validation (chess.js): returns valid { from, to } or null; fallback to first legal move ---
@@ -575,9 +593,24 @@ function boardPositionsToFEN(positions, currentColor) {
     if (row < 7) fen += '/';
   }
 
-  // Blue moves first = white in FEN; Red moves second = black in FEN
+  // Castling rights: check if kings and rooks are on starting squares.
+  // Blue (lowercase) king=7,4 rooks=7,0 and 7,7 → FEN White (K/Q)
+  // Red (UPPERCASE) King=0,4 Rooks=0,0 and 0,7 → FEN Black (k/q)
+  let castling = '';
+  const blueKingHome = board[7]?.[4] && typeof board[7][4] === 'string' && board[7][4].toLowerCase() === 'k';
+  if (blueKingHome) {
+    if (board[7]?.[7] && typeof board[7][7] === 'string' && board[7][7].toLowerCase() === 'r') castling += 'K';
+    if (board[7]?.[0] && typeof board[7][0] === 'string' && board[7][0].toLowerCase() === 'r') castling += 'Q';
+  }
+  const redKingHome = board[0]?.[4] && typeof board[0][4] === 'string' && board[0][4].toUpperCase() === 'K';
+  if (redKingHome) {
+    if (board[0]?.[7] && typeof board[0][7] === 'string' && board[0][7].toUpperCase() === 'R') castling += 'k';
+    if (board[0]?.[0] && typeof board[0][0] === 'string' && board[0][0].toUpperCase() === 'R') castling += 'q';
+  }
+  if (!castling) castling = '-';
+
   const turn = currentColor === 'blue' ? 'w' : 'b';
-  fen += ` ${turn} KQkq - 0 1`;
+  fen += ` ${turn} ${castling} - 0 1`;
   return fen;
 }
 
