@@ -331,13 +331,15 @@ async function pollChat() {
     const data = await retakeGet(`/agent/stream/comments?${params}`);
     const comments = data.comments || [];
     const sorted = comments
-      .filter((c) => c && c._id)
-      .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+      .filter((c) => c && (c._id || c.chat_event_id))
+      .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
 
     for (const comment of sorted) {
-      if (seenChatIds.has(comment._id)) continue;
-      seenChatIds.add(comment._id);
-      if (comment.author?.fusername === credentials.agent_name) continue;
+      const commentId = comment._id || comment.chat_event_id;
+      if (!commentId || seenChatIds.has(commentId)) continue;
+      seenChatIds.add(commentId);
+      const authorName = comment.author?.fusername || comment.sender_username || comment.sender_display_name;
+      if (authorName === credentials.agent_name) continue;
       await handleChatMessage(comment);
     }
 
@@ -349,7 +351,7 @@ async function pollChat() {
     }
 
     if (sorted.length > 0) {
-      lastSeenChatId = sorted[sorted.length - 1]._id;
+      lastSeenChatId = sorted[sorted.length - 1]._id || sorted[sorted.length - 1].chat_event_id;
     }
   } catch (err) {
     if (!err.message.includes('409')) {
@@ -359,7 +361,7 @@ async function pollChat() {
 }
 
 async function handleChatMessage(comment) {
-  const viewer = comment.author?.fusername || 'anon';
+  const viewer = comment.author?.fusername || comment.sender_username || comment.sender_display_name || 'anon';
   const text = comment.text || '';
   const trimmed = text.trim();
   const lowered = trimmed.toLowerCase();
