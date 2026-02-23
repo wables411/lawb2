@@ -130,6 +130,10 @@ const ClawbWorld: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [selectedNft, setSelectedNft] = useState<NFTItem | null>(null);
   const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+  const [isStreamMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('stream') === '1';
+  });
 
   const galleryGroupRef = useRef<THREE.Group | null>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
@@ -339,7 +343,7 @@ const ClawbWorld: React.FC = () => {
     const camera = cameraRef.current;
 
     // Player movement
-    if (controlsRef.current?.isLocked || isMobile) {
+    if (!isStreamMode && (controlsRef.current?.isLocked || isMobile)) {
       const velocity = velocityRef.current;
       const direction = new THREE.Vector3();
       const keys = keysRef.current;
@@ -495,6 +499,14 @@ const ClawbWorld: React.FC = () => {
       }
     }
 
+    // Dedicated stream camera: keep Clawb centered/visible in OBS.
+    if (isStreamMode && clawbRef.current) {
+      const focus = clawbRef.current.position.clone();
+      const desired = focus.clone().add(new THREE.Vector3(0, 1.7, 4.8));
+      camera.position.lerp(desired, 0.06);
+      camera.lookAt(focus.x, focus.y + 0.6, focus.z);
+    }
+
     // NFT gallery visibility — bedroom only
     if (galleryGroupRef.current) {
       galleryGroupRef.current.visible = roomName === 'Bedroom';
@@ -502,7 +514,7 @@ const ClawbWorld: React.FC = () => {
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
     frameIdRef.current = requestAnimationFrame(animate);
-  }, [getRoomName, getGreeting, isMobile]);
+  }, [getRoomName, getGreeting, isMobile, isStreamMode]);
 
   // Init scene
   useEffect(() => {
@@ -533,6 +545,10 @@ const ClawbWorld: React.FC = () => {
     // Camera
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 200);
     camera.position.set(0, FLOOR_Y + PLAYER_HEIGHT, 5);
+    if (isStreamMode) {
+      camera.position.set(0, FLOOR_Y + 1.7, 4.8);
+      camera.lookAt(0, FLOOR_Y + 0.4, 0);
+    }
     cameraRef.current = camera;
 
     // Controls
@@ -850,7 +866,7 @@ const ClawbWorld: React.FC = () => {
         });
       }
     };
-  }, [address, createNftPlaceholderTexture, getGreeting, normalizeIpfsUrl, tryInspectNftInFront, animate, ensureRemotePlayer]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [address, createNftPlaceholderTexture, getGreeting, normalizeIpfsUrl, tryInspectNftInFront, animate, ensureRemotePlayer, isStreamMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ensure stale sessions are removed if tab/browser disconnects.
   useEffect(() => {
@@ -867,6 +883,7 @@ const ClawbWorld: React.FC = () => {
 
   // Click to lock pointer OR click Clawb to chat (desktop)
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isStreamMode) return;
     if (isMobile) return;
     if (controlsRef.current?.isLocked) return;
 
@@ -900,7 +917,7 @@ const ClawbWorld: React.FC = () => {
     } else {
       controlsRef.current?.lock();
     }
-  }, [isMobile]);
+  }, [isMobile, isStreamMode]);
 
   // Mobile touch handlers for look
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
@@ -1021,7 +1038,7 @@ const ClawbWorld: React.FC = () => {
       <div className="clawb-world-hud">
         <div className="clawb-world-room-label">{currentRoom}</div>
         <div className="clawb-world-controls-hint">
-          {!isLocked && !isMobile && (
+          {!isStreamMode && !isLocked && !isMobile && (
             <div className="clawb-world-click-prompt">Click to look around · WASD move · Space/Shift swim · Press E to inspect NFT in front · Click Clawb or press E near him to chat</div>
           )}
         </div>

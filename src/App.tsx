@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { ChessPieceSetProvider } from './contexts/ChessPieceSetContext';
 import { useLawbAudio } from './contexts/LawbAudioContext';
+import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+import { database } from './firebaseApp';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
@@ -39,6 +41,7 @@ const useStyles = createUseStyles({
 });
 
 function App() {
+  const LS_VIZ_MODE = 'lawbamp_viz_mode';
   const classes = useStyles();
   const { open } = useAppKitSafe();
   const { address, isConnected } = useAccount();
@@ -67,12 +70,93 @@ function App() {
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
   const [emoteWheelOpen, setEmoteWheelOpen] = useState(false);
-  const { actions: audioActions } = useLawbAudio();
+  const { state: audioState, actions: audioActions } = useLawbAudio();
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
   const clawbRef = useRef<ClawbHandle>(null);
+
+  // Stream mode automation for OBS browser sources.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const isStreamMode = params.get('stream') === '1';
+    if (!isStreamMode) return;
+
+    const wantsMiniPlayer = params.get('openPlayer') === '1';
+    const wantsAutoplay = params.get('autoplay') === '1';
+    const wantsViz = params.get('viz');
+
+    if (wantsMiniPlayer && !audioState.showMiniPlayer) {
+      audioActions.toggleMiniPlayer();
+    }
+
+    if (wantsViz === 'ascii' || wantsViz === 'bars') {
+      try {
+        localStorage.setItem(LS_VIZ_MODE, wantsViz);
+        window.dispatchEvent(new CustomEvent('lawbamp-viz-mode', { detail: { mode: wantsViz } }));
+      } catch {
+        // non-blocking
+      }
+    }
+
+    if (wantsAutoplay) {
+      setTimeout(() => {
+        void audioActions.play().catch(() => {
+          // Browser autoplay restrictions are common; command bridge can retry.
+        });
+      }, 1000);
+    }
+  }, [audioActions, audioState.showMiniPlayer]);
+
+  // Listen for Clawb stream music commands (from retake-streamer.js).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const isStreamMode = params.get('stream') === '1';
+    if (!isStreamMode) return;
+
+    const processed = new Set<string>();
+    const cmdsRef = query(ref(database, 'clawb/stream/lawbamp_commands'), orderByChild('timestamp'), limitToLast(30));
+
+    const unsubscribe = onValue(cmdsRef, (snapshot) => {
+      const commands: Array<{ id: string; command?: string; mode?: string; timestamp?: number }> = [];
+      snapshot.forEach((child) => {
+        const data = child.val();
+        commands.push({ id: child.key || '', ...data });
+      });
+      commands.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+      for (const cmd of commands) {
+        if (!cmd.id || processed.has(cmd.id)) continue;
+        processed.add(cmd.id);
+
+        if (cmd.command === 'play') {
+          void audioActions.play().catch(() => {});
+        } else if (cmd.command === 'next') {
+          void audioActions.next().catch(() => {});
+        } else if (cmd.command === 'eq') {
+          const mode = cmd.mode === 'ascii' || cmd.mode === 'bars' ? cmd.mode : cmd.mode === 'toggle' ? null : null;
+          try {
+            if (mode) {
+              localStorage.setItem(LS_VIZ_MODE, mode);
+              window.dispatchEvent(new CustomEvent('lawbamp-viz-mode', { detail: { mode } }));
+            } else if (cmd.mode === 'toggle') {
+              const current = localStorage.getItem(LS_VIZ_MODE) === 'ascii' ? 'ascii' : 'bars';
+              const next = current === 'ascii' ? 'bars' : 'ascii';
+              localStorage.setItem(LS_VIZ_MODE, next);
+              window.dispatchEvent(new CustomEvent('lawbamp-viz-mode', { detail: { mode: next } }));
+            }
+          } catch {
+            // non-blocking
+          }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [audioActions]);
 
   // Add timeout for chess loading
   useEffect(() => {

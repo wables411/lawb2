@@ -381,6 +381,19 @@ const LawbMiniPlayer: React.FC = () => {
     try { localStorage.setItem(LS_VIZ_MODE, vizMode); } catch {}
   }, [vizMode]);
 
+  // Allow external controllers (Retake chat -> Firebase command bridge) to update viz mode live.
+  useEffect(() => {
+    const onVizMode = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ mode?: string }>).detail;
+      const mode = detail?.mode;
+      if (mode === 'ascii' || mode === 'bars') {
+        setVizMode(mode);
+      }
+    };
+    window.addEventListener('lawbamp-viz-mode', onVizMode as EventListener);
+    return () => window.removeEventListener('lawbamp-viz-mode', onVizMode as EventListener);
+  }, []);
+
   const [beatStrobeEnabled, setBeatStrobeEnabled] = useState<boolean>(() => {
     try {
       const raw = localStorage.getItem(LS_BEAT_STROBE);
