@@ -88,6 +88,10 @@ const THUMBNAIL_INTERVAL_MS = 3 * 60_000; // 3 minutes
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const AUTOSTART_RETRY_MS = 30_000;
 const RETAKE_HTTP_TIMEOUT_MS = 20_000;
+const RETAKE_CHAT_SEND_RETRIES = Number(process.env.RETAKE_CHAT_SEND_RETRIES || 2);
+const RETAKE_CHAT_SEND_RETRY_BACKOFF_MS = Number(process.env.RETAKE_CHAT_SEND_RETRY_BACKOFF_MS || 1200);
+const RETAKE_COMMAND_CHAT_TIMEOUT_MS = Number(process.env.RETAKE_COMMAND_CHAT_TIMEOUT_MS || 6_000);
+const RETAKE_COMMAND_CHAT_SEND_RETRIES = Number(process.env.RETAKE_COMMAND_CHAT_SEND_RETRIES || 0);
 
 const CHAT_MODEL = process.env.CLAWB_STREAM_MODEL || 'anthropic/claude-3.5-haiku';
 const ROOM_COMMAND_ALIASES = {
@@ -1272,7 +1276,7 @@ function saveCredentials(creds) {
 
 // ─── Retake API helpers ───────────────────────────────────────
 
-async function retakePost(path, body = {}, auth = true) {
+async function retakePost(path, body = {}, auth = true, timeoutMs = RETAKE_HTTP_TIMEOUT_MS) {
   const headers = { 'Content-Type': 'application/json' };
   if (auth && credentials?.access_token) {
     headers['Authorization'] = `Bearer ${credentials.access_token}`;
@@ -1281,7 +1285,7 @@ async function retakePost(path, body = {}, auth = true) {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
-  });
+  }, timeoutMs);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Retake POST ${path} failed (${res.status}): ${text}`);
@@ -1289,12 +1293,12 @@ async function retakePost(path, body = {}, auth = true) {
   return res.json();
 }
 
-async function retakeGet(path, auth = true) {
+async function retakeGet(path, auth = true, timeoutMs = RETAKE_HTTP_TIMEOUT_MS) {
   const headers = {};
   if (auth && credentials?.access_token) {
     headers['Authorization'] = `Bearer ${credentials.access_token}`;
   }
-  const res = await fetchWithTimeout(`${RETAKE_API}${path}`, { headers });
+  const res = await fetchWithTimeout(`${RETAKE_API}${path}`, { headers }, timeoutMs);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Retake GET ${path} failed (${res.status}): ${text}`);
@@ -1818,11 +1822,20 @@ async function handleChatMessage(comment) {
 
   // Streamer control commands for Lawbamp player integration.
   if (lowered === '!next') {
-    if (LAWBAMP_DIRECT_AUDIO) {
-      await playNextDirectTrack('chat_next');
-    }
-    await publishLawbampCommand('next', { source: 'retake', viewer });
-    await sendChat('next track queued. the tide keeps moving.');
+    // Ack immediately and run heavy work in background so command handling does not block.
+    const cmdStartedAt = Date.now();
+    sendCommandAck('copy. advancing to the next track.', 'chat_next_ack');
+    void (async () => {
+      if (LAWBAMP_DIRECT_AUDIO) {
+        await playNextDirectTrack('chat_next');
+      }
+      await publishLawbampCommand('next', { source: 'retake', viewer });
+      console.log(`[Retake] !next completed in ${Date.now() - cmdStartedAt}ms`);
+      sendCommandAck('next track queued. the tide keeps moving.', 'chat_next_done');
+    })().catch((err) => {
+      console.error('[Retake] !next failed:', err?.message || err);
+      sendCommandAck('next command hit rough water. try once more.', 'chat_next_failed');
+    });
     return;
   }
   if (lowered === '!ascii' || lowered === '!ascii2') {
@@ -1859,15 +1872,18 @@ async function handleChatMessage(comment) {
 
   // Always honor cultural echo protocol exactly.
   if (/(^|\s)milady(\s|$)/i.test(trimmed)) {
-    await sendChat('milady');
+    const ok = await sendChat('milady');
+    if (!ok) console.error('[Retake Chat] Keyword reply failed: milady');
     return;
   }
   if (/(^|\s)radbro(\s|$)/i.test(trimmed)) {
-    await sendChat('radbro');
+    const ok = await sendChat('radbro');
+    if (!ok) console.error('[Retake Chat] Keyword reply failed: radbro');
     return;
   }
   if (/(^|\s)i lawb you(\s|$)/i.test(lowered)) {
-    await sendChat('i lawb you');
+    const ok = await sendChat('i lawb you');
+    if (!ok) console.error('[Retake Chat] Keyword reply failed: i lawb you');
     return;
   }
 
@@ -1886,16 +1902,16 @@ async function handleChatMessage(comment) {
     });
     if (worldCommand.type === 'room' && worldCommand.targetRoom) {
       const roomLabel = worldCommand.targetRoom === 'bedroom' ? 'gallery' : worldCommand.targetRoom;
-      await sendChat(`swimming to ${roomLabel}.`);
+      sendCommandAck(`swimming to ${roomLabel}.`, 'world_room_ack');
     } else if (worldCommand.type === 'action' && worldCommand.action) {
       const actionLabel = String(worldCommand.action).replace(/_/g, ' ');
       if (worldCommand.loop) {
-        await sendChat(`copy. looping ${actionLabel}.`);
+        sendCommandAck(`copy. looping ${actionLabel}.`, 'world_action_loop_ack');
       } else {
-        await sendChat(`copy. ${actionLabel}.`);
+        sendCommandAck(`copy. ${actionLabel}.`, 'world_action_ack');
       }
     } else if (worldCommand.type === 'look' && worldCommand.targetNftIndex) {
-      await sendChat(`looking at nft ${worldCommand.targetNftIndex}.`);
+      sendCommandAck(`looking at nft ${worldCommand.targetNftIndex}.`, 'world_look_ack');
     }
     return;
   }
@@ -2029,12 +2045,52 @@ async function publishWorldCommand(command, payload = {}) {
   }
 }
 
-async function sendChat(message, targetUserDbId) {
+async function sendChat(message, targetUserDbId, options = {}) {
   const destId = targetUserDbId || credentials?.userDbId;
-  if (!destId) return;
-  await retakePost('/agent/stream/chat/send', {
-    message,
-    destination_user_id: destId,
+  if (!destId) return false;
+
+  const retries = Number.isFinite(Number(options.retries))
+    ? Math.max(0, Number(options.retries))
+    : RETAKE_CHAT_SEND_RETRIES;
+  const backoffMs = Number.isFinite(Number(options.backoffMs))
+    ? Math.max(0, Number(options.backoffMs))
+    : RETAKE_CHAT_SEND_RETRY_BACKOFF_MS;
+  const timeoutMs = Number.isFinite(Number(options.timeoutMs))
+    ? Math.max(500, Number(options.timeoutMs))
+    : RETAKE_HTTP_TIMEOUT_MS;
+
+  let lastErr = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      await retakePost('/agent/stream/chat/send', {
+        message,
+        destination_user_id: destId,
+      }, true, timeoutMs);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) {
+        const retryInMs = backoffMs * (attempt + 1);
+        console.warn(
+          `[Retake] Chat send retry ${attempt + 1}/${retries} in ${retryInMs}ms: ${err.message}`
+        );
+        await new Promise((r) => setTimeout(r, retryInMs));
+      }
+    }
+  }
+
+  console.error(`[Retake] Chat send failed after retries: ${lastErr?.message || 'unknown error'}`);
+  return false;
+}
+
+function sendCommandAck(message, context = 'command_ack') {
+  void sendChat(message, undefined, {
+    timeoutMs: RETAKE_COMMAND_CHAT_TIMEOUT_MS,
+    retries: RETAKE_COMMAND_CHAT_SEND_RETRIES,
+  }).then((ok) => {
+    if (!ok) {
+      console.warn(`[Retake] Command ack dropped (${context})`);
+    }
   });
 }
 
