@@ -84,13 +84,13 @@ const ROOM_TRANSITION_DURATION_MS = 4200;
 const CLAWB_STEP_SPEED = 0.9;
 const CLAWB_SWIM_STEP_SPEED = 1.3;
 const STREAM_CAMERA_DEFAULT_DISTANCE = 3.2;
-const STREAM_CAMERA_MIN_DISTANCE = 0.45;
-const STREAM_CAMERA_MAX_DISTANCE = 18.0;
-const STREAM_CAMERA_ZOOM_STEP = 0.9;
+const STREAM_CAMERA_MIN_DISTANCE = 1.1;
+const STREAM_CAMERA_MAX_DISTANCE = 8.5;
+const STREAM_CAMERA_ZOOM_STEP = 0.38;
 const STREAM_CAMERA_NEAR_FOV = 108; // close-up fish-eye feel
 const STREAM_CAMERA_FAR_FOV = 42; // distant "security camera" feel
 const STREAM_CAMERA_NEAR_Y = 0.78; // eye-level closeup
-const STREAM_CAMERA_FAR_Y = 10.5; // overhead security-cam height
+const STREAM_CAMERA_FAR_Y = 4.6; // gentler overhead feel
 const STREAM_CAMERA_NEAR_Z_SCALE = 1.0; // keep true distance at close range
 const STREAM_CAMERA_FAR_Z_SCALE = 0.32; // pull toward top-down at far range
 const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
@@ -670,12 +670,10 @@ const ClawbWorld: React.FC = () => {
       if (activeAction === 'patrol') {
         requestClawbModelRef.current(isStreamMode ? 'idle' : 'walk');
         if (isStreamMode) {
-          const anchor = getPatrolTarget(0);
-          clawbPosRef.current.lerp(anchor, 0.06);
           clawbRef.current.position.x = clawbPosRef.current.x;
           clawbRef.current.position.z = clawbPosRef.current.z;
           clawbRef.current.position.y = FLOOR_Y;
-          // Keep Clawb visually composed in stream mode instead of roaming.
+          // In stream mode, keep current location so movement commands persist.
           const dx = camera.position.x - clawbRef.current.position.x;
           clawbRef.current.rotation.y = Math.atan2(dx, 1);
           clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.2);
