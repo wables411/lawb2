@@ -25,6 +25,19 @@ export type SoundCloudLikesResponse = {
 
 const DEFAULT_PROFILE_URL = 'https://soundcloud.com/companioncube143';
 
+function getSoundCloudApiBase(): string {
+  const fromEnv = (import.meta as any)?.env?.VITE_SOUNDCLOUD_API_BASE as string | undefined;
+  const envBase = (fromEnv && fromEnv.trim()) ? fromEnv.trim() : '';
+  if (envBase) return envBase;
+  try {
+    const qp = new URLSearchParams(window.location.search).get('apiBase');
+    if (qp && qp.trim()) return qp.trim();
+  } catch {
+    // ignore and fall back
+  }
+  return window.location.origin;
+}
+
 export const getSoundCloudProfileUrl = (): string => {
   // Vite env (optional). Keep a sane default so prod doesn't break if env isn't set.
   const fromEnv = (import.meta as any)?.env?.VITE_SOUNDCLOUD_PROFILE_URL as string | undefined;
@@ -32,7 +45,7 @@ export const getSoundCloudProfileUrl = (): string => {
 };
 
 export async function fetchSoundCloudLikedTracks(profileUrl: string = getSoundCloudProfileUrl()): Promise<SoundCloudLikesResponse> {
-  const url = new URL('/.netlify/functions/soundcloud-likes', window.location.origin);
+  const url = new URL('/.netlify/functions/soundcloud-likes', getSoundCloudApiBase());
   url.searchParams.set('profileUrl', profileUrl);
 
   const res = await fetch(url.toString(), {
@@ -50,7 +63,7 @@ export async function fetchSoundCloudLikedTracks(profileUrl: string = getSoundCl
 }
 
 export async function resolveSoundCloudProgressiveStreamUrl(transcodingUrl: string, profileUrl: string = getSoundCloudProfileUrl()): Promise<string> {
-  const url = new URL('/.netlify/functions/soundcloud-stream', window.location.origin);
+  const url = new URL('/.netlify/functions/soundcloud-stream', getSoundCloudApiBase());
   url.searchParams.set('transcodingUrl', transcodingUrl);
   url.searchParams.set('profileUrl', profileUrl);
 

@@ -6,8 +6,9 @@
  * 2. Chess watcher — posts commentary on vs Clawb games
  * 3. PVP agent — joins and plays on-chain wager games (optional)
  * 4. Status heartbeat — keeps Clawb's online status fresh
+ * 5. Retake.TV streamer — streaming via OBS (optional)
  *
- * Usage: node index.js [--no-pvp] [--chat-only]
+ * Usage: node index.js [--no-pvp] [--chat-only] [--no-stream]
  */
 
 import { setClawbOnline, setClawbOffline, heartbeat } from './lawb-firebase.js';
@@ -15,10 +16,12 @@ import { startChatResponder } from './lawb-chat-responder.js';
 import { startChessWatcher } from './chess-clawb-watcher.js';
 import { startPvpAgent } from './chess-pvp-agent.js';
 import { startWorldResponder } from './world-responder.js';
+import { startRetakeStreamer } from './retake-streamer.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
 const chatOnly = args.includes('--chat-only');
+const noStream = args.includes('--no-stream');
 
 async function main() {
   console.log('');
@@ -54,7 +57,15 @@ async function main() {
     // 5. Start world responder (always)
     await startWorldResponder();
 
-    // 6. Heartbeat every 30s
+    // 6. Start Retake.TV streamer (unless disabled)
+    if (!noStream && !chatOnly) {
+      const stopStream = await startRetakeStreamer();
+      cleanups.push(stopStream);
+    } else if (noStream) {
+      console.log('[Main] Retake streamer disabled (--no-stream flag)');
+    }
+
+    // 7. Heartbeat every 30s
     const heartbeatInterval = setInterval(() => heartbeat(), 30_000);
     cleanups.push(() => clearInterval(heartbeatInterval));
 

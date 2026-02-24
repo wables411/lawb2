@@ -35,6 +35,10 @@ export interface ClawbWorldAction {
   by: string; // wallet address or anonymous
   source: string; // world | stream | system
   timestamp: number;
+  command?: string;
+  targetRoom?: string;
+  targetNftIndex?: number;
+  [key: string]: unknown;
 }
 
 export interface WorldPlayerPresence {
@@ -149,7 +153,8 @@ export const listenToVisitorMessages = (
 export const enqueueWorldAction = async (
   action: string,
   by: string,
-  source: string = 'world'
+  source: string = 'world',
+  extra: Record<string, unknown> = {}
 ): Promise<string> => {
   const actionsRef = ref(database, 'clawb/world/actions');
   const newActionRef = push(actionsRef);
@@ -158,6 +163,7 @@ export const enqueueWorldAction = async (
     action: (action || '').toLowerCase().trim(),
     by,
     source,
+    ...extra,
     timestamp: serverTimestamp(),
   });
   return actionId;

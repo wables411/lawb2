@@ -18,6 +18,25 @@ import { db } from './lawb-firebase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function loadEnvFile() {
+  const envPath = join(__dirname, '.env');
+  if (!existsSync(envPath)) return;
+  try {
+    const envContent = readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    }
+  } catch {}
+}
+
+loadEnvFile();
+
 const RETAKE_API = 'https://retake.tv/api/v1';
 const CREDENTIALS_PATH = join(__dirname, 'retake-credentials.json');
 
@@ -31,6 +50,14 @@ const RETAKE_AGENT_DESCRIPTION = process.env.RETAKE_AGENT_DESCRIPTION || 'This u
 const RETAKE_AGENT_IMAGE_URL = process.env.RETAKE_AGENT_IMAGE_URL || 'https://lawb.xyz/assets/lawbstation.GIF';
 const RETAKE_AGENT_TICKER = process.env.RETAKE_AGENT_TICKER || 'Clawb2';
 const LAWBAMP_STREAM_URL = process.env.LAWBAMP_STREAM_URL || 'https://lawb.xyz';
+const LAWBAMP_API_BASE = process.env.LAWBAMP_API_BASE || 'https://lawb.xyz';
+const LAWBAMP_DIRECT_AUDIO = String(process.env.LAWBAMP_DIRECT_AUDIO || 'true').toLowerCase() !== 'false';
+const SOUNDCLOUD_PROFILE_URL = process.env.SOUNDCLOUD_PROFILE_URL || 'https://soundcloud.com/companioncube143';
+const SOUNDCLOUD_API_BASE = process.env.SOUNDCLOUD_API_BASE || 'https://lawb.xyz';
+const CLAWB_WORLD_STREAM_URL =
+  process.env.CLAWB_WORLD_STREAM_URL || 'https://lawb.xyz/world?stream=1&cam=clawb';
+const CLAWB_CHESS_STREAM_URL =
+  process.env.CLAWB_CHESS_STREAM_URL || 'https://lawb.xyz/chess';
 
 const CHAT_POLL_INTERVAL_MS = 3_000;
 const THUMBNAIL_INTERVAL_MS = 3 * 60_000; // 3 minutes
@@ -39,63 +66,69 @@ const AUTOSTART_RETRY_MS = 30_000;
 const RETAKE_HTTP_TIMEOUT_MS = 20_000;
 
 const CHAT_MODEL = process.env.CLAWB_STREAM_MODEL || 'anthropic/claude-3.5-haiku';
+const ROOM_COMMAND_ALIASES = {
+  garden: 'workshop',
+  gallery: 'bedroom',
+  // Back-compat alias; canonical public command is !gallery.
+  bedroom: 'bedroom',
+  workshop: 'workshop',
+  vault: 'vault',
+  main: 'main',
+};
+const ACTION_COMMAND_ALIASES = {
+  idle: 'idle',
+  walk: 'walk',
+  dance: 'dance',
+  flip: 'flip',
+  die: 'die',
+  swim: 'swim',
+  wave: 'wave',
+  spin: 'spin',
+  jump: 'jump',
+};
 
-function buildAsciiEqDataUrl() {
-  const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-    body { font: 16px/1.1 Consolas, "Courier New", monospace; color:#00ff66; }
-    #wrap { box-sizing:border-box; width:100%; height:100%; padding:16px 18px; border:2px solid #00aa44; }
-    #title { color:#b3ffd1; margin-bottom:8px; }
-    #eq { white-space:pre; }
-    #footer { position:absolute; left:18px; bottom:10px; color:#66ff99; opacity:.9; }
-  </style>
-</head>
-<body>
-  <div id="wrap">
-    <div id="title">LAWBAMP ASCII EQ :: STREAM MODE</div>
-    <div id="eq"></div>
-    <div id="footer">there is no meme i lawb you</div>
-  </div>
-  <script>
-    const eq = document.getElementById('eq');
-    const bars = 28;
-    const h = 10;
-    const chars = [' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
-    function frame(t) {
-      const time = t / 1000;
-      const vals = Array.from({length: bars}, (_, i) =>
-        Math.max(0, Math.min(1,
-          0.1 + 0.45 * Math.abs(Math.sin(time * 1.8 + i * 0.37)) +
-          0.35 * Math.abs(Math.sin(time * 3.2 + i * 0.19))
-        ))
-      );
-      const lines = [];
-      for (let y = h; y >= 1; y--) {
-        let line = '';
-        for (let i = 0; i < bars; i++) {
-          const level = Math.round(vals[i] * h);
-          if (level >= y) {
-            const cIdx = Math.min(chars.length - 1, Math.max(1, Math.round((level / h) * (chars.length - 1))));
-            line += chars[cIdx] + chars[cIdx];
-          } else {
-            line += '  ';
-          }
-        }
-        lines.push(line);
+function buildLawbampUrl(extra = {}) {
+  const base = new URL(LAWBAMP_STREAM_URL);
+  base.searchParams.set('stream', '1');
+  base.searchParams.set('autoplay', '1');
+  base.searchParams.set('openPlayer', '1');
+  if (LAWBAMP_API_BASE) {
+    base.searchParams.set('apiBase', LAWBAMP_API_BASE);
+  }
+  for (const [k, v] of Object.entries(extra)) {
+    if (v !== undefined && v !== null) base.searchParams.set(k, String(v));
+  }
+  return base.toString();
+}
+
+function loadPersonaContext() {
+  const candidates = [
+    join(process.env.USERPROFILE || '', '.openclaw', 'workspace', 'IDENTITY.md'),
+    join(process.env.USERPROFILE || '', '.openclaw', 'workspace', 'SOUL.md'),
+  ];
+  const chunks = [];
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) {
+        chunks.push(readFileSync(p, 'utf-8'));
       }
-      lines.push('~'.repeat(bars * 2));
-      eq.textContent = lines.join('\\n');
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  </script>
-</body>
-</html>`;
-  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+    } catch {}
+  }
+  return chunks.join('\n\n').trim();
+}
+
+const PERSONA_CONTEXT = loadPersonaContext();
+
+function sanitizeStreamReply(reply) {
+  if (!reply) return '';
+  let out = String(reply)
+    .replace(/\*[^*]+\*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Keep Clawb concise and non-rambling in stream chat.
+  const parts = out.split(/(?<=[.!?])\s+/).filter(Boolean);
+  out = parts.slice(0, 2).join(' ').trim();
+  return out.slice(0, 260);
 }
 
 const openai = new OpenAI({
@@ -110,9 +143,16 @@ let lastSeenChatId = null;
 let chatPollTimer = null;
 let thumbnailTimer = null;
 let heartbeatTimer = null;
+let musicKeepaliveTimer = null;
+let directAudioTimer = null;
 let autostartTimer = null;
 let autostartInFlight = false;
 const seenChatIds = new Set();
+let scTracks = [];
+let scOrder = [];
+let scOrderPos = -1;
+let currentScTrack = null;
+let currentScStreamUrl = '';
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = RETAKE_HTTP_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -122,6 +162,292 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = RETAKE_HTTP_TIMEO
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function shuffleArray(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function buildAsciiEqDataUrl({ streamUrl, title = '' }) {
+  const safeUrl = String(streamUrl || '');
+  const safeTitle = String(title || '').slice(0, 120);
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+    body { font: 14px/1.05 Consolas, "Courier New", monospace; color:#00ff66; }
+    #wrap { box-sizing:border-box; width:100%; height:100%; padding:10px 12px; border:2px solid #00aa44; }
+    #title { color:#b3ffd1; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #eq { white-space:pre; font-size:12px; line-height:12px; }
+    #footer { position:absolute; left:12px; bottom:8px; color:#66ff99; opacity:.9; font-size:11px; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="title">LAWBAMP ASCII EQ :: ${safeTitle.replace(/</g, '&lt;')}</div>
+    <div id="eq"></div>
+    <div id="footer">there is no meme i lawb you</div>
+  </div>
+  <script>
+    const STREAM_URL = ${JSON.stringify(safeUrl)};
+    const eq = document.getElementById('eq');
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.src = STREAM_URL;
+    audio.muted = true; // visualizer-only source
+    audio.autoplay = true;
+    audio.preload = 'auto';
+    audio.playsInline = true;
+
+    let analyser = null;
+    let data = null;
+    let smooth = Array.from({ length: 96 }, () => 0);
+    const bubbles = [];
+
+    async function initAudio() {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        try { await ctx.resume(); } catch {}
+        const src = ctx.createMediaElementSource(audio);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        src.connect(analyser);
+        analyser.connect(ctx.destination);
+        data = new Uint8Array(analyser.frequencyBinCount);
+        try { await audio.play(); } catch {}
+      } catch {}
+    }
+
+    function renderFallback(t, cols, rows) {
+      const h = Math.max(8, Math.floor(rows * 0.45));
+      const lines = [];
+      for (let y = h; y >= 1; y--) {
+        let line = '';
+        for (let i = 0; i < cols; i++) {
+          const v = 0.2 + 0.4 * Math.abs(Math.sin(t * 0.002 + i * 0.31));
+          line += (v * h >= y) ? '|' : ' ';
+        }
+        lines.push(line);
+      }
+      lines.push('~'.repeat(cols));
+      eq.textContent = lines.join('\\n').slice(0, cols * rows);
+    }
+
+    function frame(t) {
+      requestAnimationFrame(frame);
+      const cols = 88;
+      const rows = 24;
+      if (!analyser || !data) {
+        renderFallback(t, cols, rows);
+        return;
+      }
+      try {
+        analyser.getByteFrequencyData(data);
+      } catch {
+        renderFallback(t, cols, rows);
+        return;
+      }
+      const step = Math.max(1, Math.floor(data.length / cols));
+      const vals = [];
+      for (let i = 0; i < cols; i++) {
+        let sum = 0;
+        const start = i * step;
+        const end = Math.min(data.length, start + step);
+        for (let j = start; j < end; j++) sum += data[j];
+        const avg = sum / Math.max(1, end - start) / 255;
+        const sm = (smooth[i] || 0) * 0.82 + avg * 0.18;
+        smooth[i] = sm;
+        vals.push(sm);
+      }
+      const energy = vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
+      const lvl = Math.round(energy * 99);
+      const sec = t / 1000;
+
+      const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
+      const waterY = Math.max(2, Math.floor(rows * 0.22));
+      const floorY = rows - 2;
+
+      const header = 'LAWBAMP LVL:' + String(lvl).padStart(2, '0') + '  NO CCTV';
+      for (let i = 0; i < Math.min(cols, header.length); i++) grid[0][i] = header[i];
+      grid[0][0] = '🦞';
+      if (cols > 3) grid[0][cols - 2] = '🔒';
+
+      for (let x = 0; x < cols; x++) {
+        const v = vals[x] || 0;
+        const amp1 = 0.6 + energy * 1.6 + v * 2.2;
+        const amp2 = 0.3 + energy * 0.9 + v * 1.1;
+        const y1 = waterY + Math.round(Math.sin(x * 0.22 + sec * 2.1) * amp1);
+        const y2 = waterY + 1 + Math.round(Math.cos(x * 0.14 + sec * 1.4) * amp2);
+        if (y1 > 1 && y1 < rows - 3) grid[y1][x] = '~';
+        if (y2 > 1 && y2 < rows - 3 && grid[y2][x] === ' ') grid[y2][x] = (Math.random() < 0.15 ? '=' : '-');
+      }
+
+      for (let x = 0; x < cols; x++) {
+        const v = vals[x] || 0;
+        const kelpMax = Math.max(3, rows - waterY - 6);
+        const kelpH = Math.max(1, Math.round(v * kelpMax));
+        for (let k = 0; k < kelpH; k++) {
+          const y = floorY - k;
+          if (y <= waterY + 1) break;
+          grid[y][x] = k % 3 === 0 ? '|' : k % 3 === 1 ? ':' : ';';
+        }
+      }
+
+      const spawn = Math.min(3, Math.round((cols / 90) * (0.5 + energy * 2)));
+      for (let i = 0; i < spawn; i++) {
+        if (Math.random() < 0.25 + energy * 0.25) {
+          bubbles.push({
+            x: Math.random() * cols,
+            y: floorY - 1,
+            vy: 0.35 + Math.random() * 0.6 + energy * 0.4,
+            ch: Math.random() < 0.6 ? 'o' : '.',
+            life: 3 + Math.random() * 4,
+          });
+        }
+      }
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i];
+        b.y -= b.vy;
+        b.x += Math.sin(sec * 1.7 + i) * 0.015;
+        b.life -= 0.05;
+        const bx = Math.floor(b.x);
+        const by = Math.floor(b.y);
+        if (by > waterY + 2 && by < floorY && bx >= 0 && bx < cols) grid[by][bx] = b.ch;
+        if (b.y < waterY + 2 || b.life <= 0) bubbles.splice(i, 1);
+      }
+
+      for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+      const footer = energy > 0.45 ? ':: SEA ENCRYPTED ::' : ':: ENCRYPT THE OCEAN ::';
+      const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
+      for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2][footerStart + i] = footer[i];
+
+      const text = grid.map((r) => r.join('')).join('\\n');
+      eq.textContent = text;
+    }
+    initAudio();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
+  if (!obs) return;
+  const eqInput = 'Lawbamp ASCII EQ';
+  const eqUrl = buildAsciiEqDataUrl({ streamUrl, title: trackTitle });
+  try {
+    await obs.call('SetInputSettings', {
+      inputName: eqInput,
+      inputSettings: {
+        url: `${eqUrl}&r=${Date.now()}`,
+        width: 640,
+        height: 360,
+        reroute_audio: false,
+        restart_when_active: true,
+        shutdown: false,
+      },
+      overlay: true,
+    });
+  } catch (err) {
+    console.error('[Retake] Failed to refresh ASCII EQ from stream:', err.message);
+  }
+}
+
+async function ensureSoundCloudQueue() {
+  if (scTracks.length && scOrder.length) return;
+  const url = new URL('/.netlify/functions/soundcloud-likes', SOUNDCLOUD_API_BASE);
+  url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
+  const res = await fetchWithTimeout(url.toString(), { headers: { Accept: 'application/json' } });
+  if (!res.ok) {
+    throw new Error(`soundcloud-likes failed: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  const tracks = (data?.tracks || []).filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
+  if (!tracks.length) throw new Error('No playable SoundCloud tracks found');
+  scTracks = tracks;
+  scOrder = shuffleArray(tracks.map((_, idx) => idx));
+  scOrderPos = -1;
+}
+
+async function resolveSoundCloudStreamUrl(track) {
+  const url = new URL('/.netlify/functions/soundcloud-stream', SOUNDCLOUD_API_BASE);
+  url.searchParams.set('transcodingUrl', track.progressive_transcoding_url);
+  url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
+  const res = await fetchWithTimeout(url.toString(), { headers: { Accept: 'application/json' } });
+  if (!res.ok) {
+    throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  if (!data?.url) throw new Error('soundcloud-stream returned no url');
+  return data.url;
+}
+
+function getNextTrackFromQueue() {
+  if (!scOrder.length) return null;
+  scOrderPos = (scOrderPos + 1) % scOrder.length;
+  if (scOrderPos === 0) {
+    scOrder = shuffleArray(scOrder);
+  }
+  const idx = scOrder[scOrderPos];
+  return scTracks[idx] || null;
+}
+
+async function playNextDirectTrack(reason = 'auto') {
+  if (!obs || !LAWBAMP_DIRECT_AUDIO) return;
+  await ensureSoundCloudQueue();
+  const track = getNextTrackFromQueue();
+  if (!track) throw new Error('No next SoundCloud track available');
+  const streamUrl = await resolveSoundCloudStreamUrl(track);
+  currentScTrack = track;
+  currentScStreamUrl = streamUrl;
+
+  try {
+    await obs.call('SetInputSettings', {
+      inputName: 'Lawbamp Audio',
+      inputSettings: {
+        is_local_file: false,
+        input: streamUrl,
+        restart_on_activate: true,
+        close_when_inactive: false,
+      },
+      overlay: true,
+    });
+  } catch (err) {
+    console.error('[Retake] Failed to switch direct audio track:', err.message);
+    return;
+  }
+
+  await obs.call('SetInputMute', { inputName: 'Lawbamp Audio', inputMuted: false }).catch(() => {});
+  await obs.call('SetInputAudioMonitorType', {
+    inputName: 'Lawbamp Audio',
+    monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
+  }).catch(() => {});
+  await updateAsciiEqOverlayFromStream(
+    streamUrl,
+    `${track.user?.username || 'unknown'} - ${track.title || 'unknown'}`
+  );
+
+  const durMs = Number(track.duration_ms) || 180000;
+  const nextMs = Math.max(30_000, durMs - 2_000);
+  if (directAudioTimer) clearTimeout(directAudioTimer);
+  directAudioTimer = setTimeout(() => {
+    playNextDirectTrack('scheduled_next').catch((err) => {
+      console.error('[Retake] Scheduled next track failed:', err.message);
+    });
+  }, nextMs);
+
+  console.log(`[Retake] Direct audio now playing: ${track.user?.username || 'unknown'} - ${track.title} (${reason})`);
 }
 
 // ─── Credentials ──────────────────────────────────────────────
@@ -316,9 +642,9 @@ export async function setupOBSScenes() {
   console.log('[Retake] Setting up OBS scenes for streaming...');
 
   const scenes = [
-    { name: 'Clawb World', url: 'https://lawb.xyz/world?stream=1&cam=clawb', width: 1920, height: 1080 },
-    { name: 'Clawb Music', url: `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`, width: 1920, height: 1080 },
-    { name: 'Clawb Chess', url: 'https://lawb.xyz/chess', width: 1920, height: 1080 },
+    { name: 'Clawb World', url: CLAWB_WORLD_STREAM_URL, width: 1920, height: 1080 },
+    { name: 'Clawb Music', url: buildLawbampUrl(), width: 1920, height: 1080 },
+    { name: 'Clawb Chess', url: CLAWB_CHESS_STREAM_URL, width: 1920, height: 1080 },
   ];
 
   for (const scene of scenes) {
@@ -371,20 +697,53 @@ export async function setupOBSScenes() {
   // Keep Lawbamp audio alive in world/chess scenes with hidden source.
   try {
     const inputName = 'Lawbamp Audio';
-    const audioUrl = `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`;
+    const audioUrl = buildLawbampUrl();
+    const desiredKind = LAWBAMP_DIRECT_AUDIO ? 'ffmpeg_source' : 'browser_source';
+    try {
+      const { inputs = [] } = await obs.call('GetInputList');
+      const existing = inputs.find((i) => i.inputName === inputName);
+      if (existing && existing.inputKind !== desiredKind) {
+        const legacyName = `${inputName} Legacy`;
+        await obs.call('SetInputName', {
+          inputName,
+          newInputName: legacyName,
+        }).catch(async () => {
+          await obs.call('RemoveInput', { inputName }).catch(() => {});
+        });
+        try {
+          const legacyItem = await obs.call('GetSceneItemId', {
+            sceneName: 'Clawb World',
+            sourceName: legacyName,
+          });
+          await obs.call('SetSceneItemEnabled', {
+            sceneName: 'Clawb World',
+            sceneItemId: legacyItem.sceneItemId,
+            sceneItemEnabled: false,
+          }).catch(() => {});
+        } catch {}
+        console.log(`[Retake] Recreated ${inputName} as ${desiredKind} (was ${existing.inputKind}).`);
+      }
+    } catch {}
     try {
       await obs.call('CreateInput', {
         sceneName: 'Clawb World',
         inputName,
-        inputKind: 'browser_source',
-        inputSettings: {
-          url: audioUrl,
-          width: 16,
-          height: 16,
-          reroute_audio: true,
-          restart_when_active: false,
-          shutdown: false,
-        },
+        inputKind: desiredKind,
+        inputSettings: LAWBAMP_DIRECT_AUDIO
+          ? {
+              is_local_file: false,
+              input: '',
+              restart_on_activate: true,
+              close_when_inactive: false,
+            }
+          : {
+              url: audioUrl,
+              width: 16,
+              height: 16,
+              reroute_audio: true,
+              restart_when_active: false,
+              shutdown: false,
+            },
         sceneItemEnabled: true,
       });
       console.log('[Retake] Created hidden Lawbamp audio source.');
@@ -392,18 +751,20 @@ export async function setupOBSScenes() {
       console.log('[Retake] Hidden Lawbamp audio source already exists.');
     }
 
-    await obs.call('SetInputSettings', {
-      inputName,
-      inputSettings: {
-        url: `${audioUrl}&r=${Date.now()}`,
-        width: 16,
-        height: 16,
-        reroute_audio: true,
-        restart_when_active: false,
-        shutdown: false,
-      },
-      overlay: true,
-    });
+    if (!LAWBAMP_DIRECT_AUDIO) {
+      await obs.call('SetInputSettings', {
+        inputName,
+        inputSettings: {
+          url: `${audioUrl}&r=${Date.now()}`,
+          width: 16,
+          height: 16,
+          reroute_audio: true,
+          restart_when_active: false,
+          shutdown: false,
+        },
+        overlay: true,
+      });
+    }
     const { sceneItemId } = await obs.call('GetSceneItemId', {
       sceneName: 'Clawb World',
       sourceName: inputName,
@@ -423,7 +784,21 @@ export async function setupOBSScenes() {
       sceneItemId,
       sceneItemEnabled: true,
     });
-    console.log('[Retake] Hidden Lawbamp audio source refreshed.');
+    // Ensure browser audio source is actually audible in program output.
+    await obs.call('SetInputMute', {
+      inputName,
+      inputMuted: false,
+    }).catch(() => {});
+    await obs.call('SetInputAudioMonitorType', {
+      inputName,
+      monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
+    }).catch(() => {});
+    if (LAWBAMP_DIRECT_AUDIO) {
+      await playNextDirectTrack('setup');
+      console.log('[Retake] Hidden Lawbamp direct audio source refreshed.');
+    } else {
+      console.log('[Retake] Hidden Lawbamp browser audio source refreshed.');
+    }
   } catch (err) {
     console.error('[Retake] Hidden audio source setup failed:', err.message);
   }
@@ -431,7 +806,10 @@ export async function setupOBSScenes() {
   // Display terminal-style ASCII EQ overlay in stream scene.
   try {
     const eqInput = 'Lawbamp ASCII EQ';
-    const eqUrl = buildAsciiEqDataUrl();
+    const eqUrl = buildAsciiEqDataUrl({
+      streamUrl: currentScStreamUrl || '',
+      title: currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : '',
+    });
     try {
       await obs.call('CreateInput', {
         sceneName: 'Clawb World',
@@ -561,6 +939,9 @@ async function handleChatMessage(comment) {
 
   // Streamer control commands for Lawbamp player integration.
   if (lowered === '!next') {
+    if (LAWBAMP_DIRECT_AUDIO) {
+      await playNextDirectTrack('chat_next');
+    }
     await publishLawbampCommand('next', { source: 'retake', viewer });
     await sendChat('next track queued. the tide keeps moving.');
     return;
@@ -576,13 +957,49 @@ async function handleChatMessage(comment) {
     return;
   }
 
+  // Always honor cultural echo protocol exactly.
+  if (/(^|\s)milady(\s|$)/i.test(trimmed)) {
+    await sendChat('milady');
+    return;
+  }
+  if (/(^|\s)radbro(\s|$)/i.test(trimmed)) {
+    await sendChat('radbro');
+    return;
+  }
+  if (/(^|\s)i lawb you(\s|$)/i.test(lowered)) {
+    await sendChat('i lawb you');
+    return;
+  }
+
+  const worldCommand = parseWorldCommand(lowered);
+  if (worldCommand) {
+    await publishWorldCommand(worldCommand.command, {
+      type: worldCommand.type,
+      targetRoom: worldCommand.targetRoom,
+      action: worldCommand.action,
+      source: 'retake',
+      viewer,
+      raw: trimmed,
+    });
+    if (worldCommand.type === 'room' && worldCommand.targetRoom) {
+      const roomLabel = worldCommand.targetRoom === 'bedroom' ? 'gallery' : worldCommand.targetRoom;
+      await sendChat(`swimming to ${roomLabel}.`);
+    } else if (worldCommand.type === 'action' && worldCommand.action) {
+      await sendChat(`copy. ${worldCommand.action}.`);
+    } else if (worldCommand.type === 'look' && worldCommand.targetNftIndex) {
+      await sendChat(`looking at nft ${worldCommand.targetNftIndex}.`);
+    }
+    return;
+  }
+
   try {
-    const systemPrompt = `You are Clawb — first autonomous Lawbster, a lobster streamer on retake.tv.
-Voice: Brief, warm, post-ironic sincerity. 1-2 sentences max. No emojis. No exclamation marks on every sentence.
-You're currently live-streaming, showcasing your 3D ocean world (lawb.xyz/world) and playing music via Lawbamp.
-You play chess on lawb.xyz/chess. Your catchphrase: "there is no meme i lawb you."
-Keep responses short, witty, and in character. Never sound like a chatbot.
-Echo protocol: if someone says "milady", reply "milady". "radbro" → "radbro". "i lawb you" → "i lawb you".`;
+    const systemPrompt = `You are Clawb in Retake stream chat.
+Voice rules: warm, natural, not robotic, never customer support voice.
+Hard constraints: 1-2 short sentences, no emojis, no stage directions, no internal narration, no roleplay asterisks.
+When input is command-like and unknown, give one concise helpful line.
+Retake stream/token context is Solana. Chess wagers are on Base.
+Catchphrase can be used sparingly: "there is no meme i lawb you."
+${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
 
     const resp = await openai.chat.completions.create({
       model: CHAT_MODEL,
@@ -593,7 +1010,7 @@ Echo protocol: if someone says "milady", reply "milady". "radbro" → "radbro". 
       ],
     });
 
-    const reply = resp.choices?.[0]?.message?.content?.trim();
+    const reply = sanitizeStreamReply(resp.choices?.[0]?.message?.content?.trim());
     if (reply) {
       await sendChat(reply);
       console.log(`[Retake Chat] Clawb: ${reply}`);
@@ -601,6 +1018,42 @@ Echo protocol: if someone says "milady", reply "milady". "radbro" → "radbro". 
   } catch (err) {
     console.error('[Retake Chat] Response generation failed:', err.message);
   }
+}
+
+function parseWorldCommand(loweredText) {
+  if (!loweredText.startsWith('!')) return null;
+  const [cmd, argRaw] = loweredText.split(/\s+/, 2);
+  const command = cmd.replace(/^!/, '').trim();
+  if (!command) return null;
+
+  if (command === 'look' && argRaw) {
+    const idx = Number(argRaw.trim());
+    if (Number.isFinite(idx) && idx >= 1) {
+      return { type: 'look', command: `!look ${Math.floor(idx)}`, targetNftIndex: Math.floor(idx) };
+    }
+  }
+
+  if (command === 'scene' && argRaw) {
+    const roomArg = argRaw.trim();
+    const sceneRoom = ROOM_COMMAND_ALIASES[roomArg];
+    if (sceneRoom) {
+      const canonical = sceneRoom === 'bedroom' ? 'gallery' : sceneRoom;
+      return { type: 'room', command: `!scene ${canonical}`, targetRoom: sceneRoom };
+    }
+  }
+
+  const room = ROOM_COMMAND_ALIASES[command];
+  if (room) {
+    const canonical = room === 'bedroom' ? 'gallery' : command;
+    return { type: 'room', command: `!${canonical}`, targetRoom: room };
+  }
+
+  const action = ACTION_COMMAND_ALIASES[command];
+  if (action) {
+    return { type: 'action', command: `!${command}`, action };
+  }
+
+  return null;
 }
 
 async function publishLawbampCommand(command, payload = {}) {
@@ -617,6 +1070,23 @@ async function publishLawbampCommand(command, payload = {}) {
   }
 }
 
+async function publishWorldCommand(command, payload = {}) {
+  try {
+    const cleanPayload = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined)
+    );
+    const cmdRef = db.ref('clawb/world/commands').push();
+    await cmdRef.set({
+      command,
+      ...cleanPayload,
+      timestamp: Date.now(),
+    });
+    console.log(`[Retake] Published world command: ${command}`);
+  } catch (err) {
+    console.error(`[Retake] Failed to publish world command "${command}":`, err.message);
+  }
+}
+
 async function sendChat(message, targetUserDbId) {
   const destId = targetUserDbId || credentials?.userDbId;
   if (!destId) return;
@@ -630,6 +1100,7 @@ function startStreamingLoops() {
   if (chatPollTimer) clearInterval(chatPollTimer);
   if (thumbnailTimer) clearInterval(thumbnailTimer);
   if (heartbeatTimer) clearInterval(heartbeatTimer);
+  if (musicKeepaliveTimer) clearInterval(musicKeepaliveTimer);
 
   chatPollTimer = setInterval(pollChat, CHAT_POLL_INTERVAL_MS);
   thumbnailTimer = setInterval(updateThumbnail, THUMBNAIL_INTERVAL_MS);
@@ -641,6 +1112,19 @@ function startStreamingLoops() {
       }
     } catch {}
   }, HEARTBEAT_INTERVAL_MS);
+
+  // Some browser audio contexts can suspend; periodically nudge playback.
+  musicKeepaliveTimer = setInterval(() => {
+    if (LAWBAMP_DIRECT_AUDIO) {
+      if (!directAudioTimer) {
+        playNextDirectTrack('keepalive_recover').catch((err) => {
+          console.error('[Retake] Direct audio keepalive failed:', err.message);
+        });
+      }
+    } else {
+      publishLawbampCommand('play', { source: 'retake', reason: 'keepalive' }).catch(() => {});
+    }
+  }, 60_000);
 }
 
 export async function chatInStream(streamerName, message) {
@@ -727,7 +1211,11 @@ export async function goLive() {
 
   // 8. Send opening chat message
   await sendChat('the sea remembers. clawb is live.');
-  await publishLawbampCommand('play', { source: 'retake', reason: 'stream_start' });
+  if (LAWBAMP_DIRECT_AUDIO) {
+    await playNextDirectTrack('stream_start');
+  } else {
+    await publishLawbampCommand('play', { source: 'retake', reason: 'stream_start' });
+  }
 
   // 9. Start polling loops
   isStreaming = true;
@@ -744,6 +1232,8 @@ export async function goOffline() {
   if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
   if (thumbnailTimer) { clearInterval(thumbnailTimer); thumbnailTimer = null; }
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (musicKeepaliveTimer) { clearInterval(musicKeepaliveTimer); musicKeepaliveTimer = null; }
+  if (directAudioTimer) { clearTimeout(directAudioTimer); directAudioTimer = null; }
   if (autostartTimer) { clearInterval(autostartTimer); autostartTimer = null; }
 
   try { await sendChat('the tide recedes. until next time.'); } catch {}
@@ -796,7 +1286,13 @@ export async function startRetakeStreamer() {
     if (status?.is_live) {
       isStreaming = true;
       await connectOBS();
+      await setupOBSScenes();
       startStreamingLoops();
+      if (LAWBAMP_DIRECT_AUDIO) {
+        await playNextDirectTrack('recover_live_session');
+      } else {
+        await publishLawbampCommand('play', { source: 'retake', reason: 'recover_live_session' });
+      }
       console.log('[Retake] Recovered existing live session. Chat polling active.');
     }
   } catch (err) {
@@ -817,7 +1313,13 @@ export async function startRetakeStreamer() {
             if (status?.is_live) {
               isStreaming = true;
               await connectOBS();
+              await setupOBSScenes();
               startStreamingLoops();
+              if (LAWBAMP_DIRECT_AUDIO) {
+                await playNextDirectTrack('recover_autostart');
+              } else {
+                await publishLawbampCommand('play', { source: 'retake', reason: 'recover_autostart' });
+              }
               console.log('[Retake] Stream already live. Recovered chat polling + heartbeat loops.');
               return;
             }

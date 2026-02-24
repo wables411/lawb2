@@ -1,40 +1,101 @@
 /**
- * world-responder.js — Clawb's world presence
- * 
- * Listens to world actions (dance, swim, etc.) and can respond
- * Could also post to world chat when actions happen
+ * world-responder.js — world command consumer
+ *
+ * Converts inbound world commands into canonical world actions
+ * so all world clients animate from the same event shape.
  */
 
 import { db } from './lawb-firebase.js';
 
-const ACTIONS_TO_ACKNOWLEDGE = ['dance', 'wave', 'spin'];
+const ROOM_TO_ACTION = {
+  main: 'room_main',
+  bedroom: 'room_bedroom',
+  workshop: 'room_workshop',
+  vault: 'room_vault',
+};
 
-async function handleWorldAction(action) {
-  const { id, action: actionType, by, source, timestamp } = action;
-  
-  // Only acknowledge certain actions
-  if (!ACTIONS_TO_ACKNOWLEDGE.includes(actionType)) return;
-  
-  // Don't respond to old actions (>1 min ago)
-  if (Date.now() - timestamp > 60000) return;
-  
-  console.log(`[World] ${by} performed ${actionType} from ${source}`);
-  
-  // Could post a chat message or perform a counter-action
-  // For now just log it
+const ACTION_ALIASES = {
+  idle: 'idle',
+  walk: 'walk',
+  dance: 'dance',
+  flip: 'flip',
+  die: 'die',
+  swim: 'swim',
+  wave: 'wave',
+  spin: 'spin',
+  jump: 'jump',
+};
+
+function normalizeCommand(command) {
+  const rawType = String(command?.type || '').toLowerCase().trim();
+  const rawRoom = String(command?.targetRoom || '').toLowerCase().trim();
+  const rawAction = String(command?.action || '').toLowerCase().trim();
+  const by = command.viewer || command.by || 'anon';
+  const source = command.source || 'world';
+  const timestamp = Number(command.timestamp) || Date.now();
+
+  if (rawType === 'room' && ROOM_TO_ACTION[rawRoom]) {
+    return {
+      action: ROOM_TO_ACTION[rawRoom],
+      by,
+      source,
+      command: command.command || '',
+      targetRoom: rawRoom,
+      timestamp,
+    };
+  }
+
+  if (rawType === 'action' && ACTION_ALIASES[rawAction]) {
+    return {
+      action: ACTION_ALIASES[rawAction],
+      by,
+      source,
+      command: command.command || '',
+      timestamp,
+    };
+  }
+
+  if (rawType === 'look') {
+    const targetNftIndex = Number(command.targetNftIndex);
+    if (Number.isFinite(targetNftIndex) && targetNftIndex >= 1) {
+      return {
+        action: 'look_nft',
+        by,
+        source,
+        command: command.command || '',
+        targetNftIndex: Math.floor(targetNftIndex),
+        // Looking at NFTs only makes sense in the gallery room.
+        targetRoom: 'bedroom',
+        timestamp,
+      };
+    }
+  }
+
+  return null;
+}
+
+async function publishWorldAction(payload) {
+  const ref = db.ref('clawb/world/actions').push();
+  await ref.set(payload);
 }
 
 export async function startWorldResponder() {
   console.log('[World] Starting world responder...');
-  
-  // Listen for world actions
-  db.ref('clawb/world/actions')
+
+  db.ref('clawb/world/commands')
     .orderByChild('timestamp')
     .startAt(Date.now())
-    .on('child_added', (snapshot) => {
-      const action = { id: snapshot.key, ...snapshot.val() };
-      handleWorldAction(action);
+    .on('child_added', async (snapshot) => {
+      const command = { id: snapshot.key, ...snapshot.val() };
+      try {
+        const canonical = normalizeCommand(command);
+        if (!canonical) return;
+        await publishWorldAction(canonical);
+        console.log(`[World] command ${canonical.command || canonical.action} -> ${canonical.action}`);
+      } catch (err) {
+        console.error('[World] Failed to process command:', err.message);
+      }
     });
-  
-  console.log('[World] Listening for world actions.');
+
+  console.log('[World] Listening for world commands.');
 }

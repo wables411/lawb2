@@ -82,6 +82,19 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+async function safeAutoplay(audio: HTMLAudioElement): Promise<void> {
+  try {
+    await audio.play();
+    return;
+  } catch {
+    // OBS/Chromium can still block unmuted autoplay. Start muted, then unmute.
+    const prevMuted = audio.muted;
+    audio.muted = true;
+    await audio.play();
+    audio.muted = prevMuted;
+  }
+}
+
 export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -295,7 +308,9 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const profileUrl = getSoundCloudProfileUrl();
       const res = await fetchSoundCloudLikedTracks(profileUrl);
-      const tracks = (res.tracks || []).filter((t) => !!t?.permalink_url);
+      const tracks = (res.tracks || []).filter(
+        (t) => !!t?.permalink_url && !!t?.progressive_transcoding_url
+      );
       setQueue(tracks);
 
       // Prefer last track if it exists (nice continuity).
@@ -325,9 +340,10 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!track.progressive_transcoding_url) throw new Error('Track has no progressive stream');
       const streamUrl = await resolveSoundCloudProgressiveStreamUrl(track.progressive_transcoding_url, profileUrl);
       a.src = streamUrl;
+      a.autoplay = true;
       a.volume = volume;
       await ensureAnalyser();
-      await a.play();
+      await safeAutoplay(a);
       loadedTrackIdRef.current = track.id;
     } finally {
       setIsLoading(false);
@@ -342,13 +358,30 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // If we already loaded a track in this session, just resume.
     if (loadedTrackIdRef.current != null) {
       await ensureAnalyser();
-      await a.play();
+      await safeAutoplay(a);
       return;
     }
 
     await ensureQueueLoaded();
-    if (!currentTrack) throw new Error('No tracks available to play');
-    await playTrack(currentTrack);
+    let track = currentTrack;
+
+    // First autoplay in stream mode can race React state updates after queue load.
+    // Fallback to a direct fetch so OBS always gets a track on first command.
+    if (!track) {
+      const profileUrl = getSoundCloudProfileUrl();
+      const res = await fetchSoundCloudLikedTracks(profileUrl);
+      const tracks = (res.tracks || []).filter(
+        (t) => !!t?.permalink_url && !!t?.progressive_transcoding_url
+      );
+      if (!tracks.length) throw new Error('No SoundCloud likes available to play');
+      track = tracks[0] || null;
+      setQueue((prev) => (prev.length ? prev : tracks));
+      setOrder((prev) => (prev.length ? prev : tracks.map((_, idx) => idx)));
+      setOrderPos((prev) => (Number.isFinite(prev) ? prev : 0));
+    }
+
+    if (!track) throw new Error('No tracks available to play');
+    await playTrack(track);
   }, [ensureQueueLoaded, currentTrack, playTrack, ensureAnalyser]);
 
   const pause = useCallback(() => {
