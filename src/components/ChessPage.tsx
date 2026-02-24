@@ -13,8 +13,16 @@ import './ChessPageSimple.css';
 const ChessPieceInfo = lazy(() => import('./ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
 const ChessChat = lazy(() => import('./ChessChat').then(m => ({ default: m.ChessChat })));
 const PlayerProfile = lazy(() => import('./PlayerProfile').then(m => ({ default: m.PlayerProfile })));
+const ChessSpectator = lazy(() => import('./ChessSpectator').then(m => ({ default: m.ChessSpectator })));
 
-const ChessPage: React.FC = () => {
+const isSpectatorMode = (() => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('stream') === '1' || params.get('spectate') === '1';
+})();
+
+/** Wallet-connected chess page — the normal player experience. */
+const ChessPageConnected: React.FC = () => {
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -267,4 +275,19 @@ const ChessPage: React.FC = () => {
   );
 };
 
-export default ChessPage; 
+/** Top-level route component — routes to spectator or connected player view. */
+const ChessPage: React.FC = () => {
+  if (isSpectatorMode) {
+    return (
+      <ChessPieceSetProvider>
+        <Suspense fallback={<div style={{ background: '#0a0a0a', width: '100vw', height: '100vh' }} />}>
+          <ChessSpectator />
+        </Suspense>
+      </ChessPieceSetProvider>
+    );
+  }
+
+  return <ChessPageConnected />;
+};
+
+export default ChessPage;

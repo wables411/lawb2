@@ -81,7 +81,7 @@ const SOUNDCLOUD_API_BASE = process.env.SOUNDCLOUD_API_BASE || 'https://lawb.xyz
 const CLAWB_WORLD_STREAM_URL =
   process.env.CLAWB_WORLD_STREAM_URL || 'https://lawb.xyz/world?stream=1&cam=clawb';
 const CLAWB_CHESS_STREAM_URL =
-  process.env.CLAWB_CHESS_STREAM_URL || 'https://lawb.xyz/chess';
+  process.env.CLAWB_CHESS_STREAM_URL || 'https://lawb.xyz/chess?stream=1';
 
 const CHAT_POLL_INTERVAL_MS = 3_000;
 const THUMBNAIL_INTERVAL_MS = 3 * 60_000; // 3 minutes
@@ -92,6 +92,12 @@ const RETAKE_CHAT_SEND_RETRIES = Number(process.env.RETAKE_CHAT_SEND_RETRIES || 
 const RETAKE_CHAT_SEND_RETRY_BACKOFF_MS = Number(process.env.RETAKE_CHAT_SEND_RETRY_BACKOFF_MS || 1200);
 const RETAKE_COMMAND_CHAT_TIMEOUT_MS = Number(process.env.RETAKE_COMMAND_CHAT_TIMEOUT_MS || 6_000);
 const RETAKE_COMMAND_CHAT_SEND_RETRIES = Number(process.env.RETAKE_COMMAND_CHAT_SEND_RETRIES || 0);
+const RETAKE_COMMAND_REMINDER_INTERVAL_MS = Number(process.env.RETAKE_COMMAND_REMINDER_INTERVAL_MS || 18 * 60_000);
+const RETAKE_COMMAND_REMINDER_JITTER_MS = Number(process.env.RETAKE_COMMAND_REMINDER_JITTER_MS || 2 * 60_000);
+const RETAKE_HELP_COOLDOWN_MS = Number(process.env.RETAKE_HELP_COOLDOWN_MS || 25_000);
+const RETAKE_CHESS_SWITCH_COOLDOWN_MS = Number(process.env.RETAKE_CHESS_SWITCH_COOLDOWN_MS || 20_000);
+const RETAKE_WORLD_TASK_COOLDOWN_MS = Number(process.env.RETAKE_WORLD_TASK_COOLDOWN_MS || 18_000);
+const RETAKE_WORLD_TASK_QUEUE_MAX = Number(process.env.RETAKE_WORLD_TASK_QUEUE_MAX || 5);
 
 const CHAT_MODEL = process.env.CLAWB_STREAM_MODEL || 'anthropic/claude-3.5-haiku';
 const ROOM_COMMAND_ALIASES = {
@@ -195,6 +201,7 @@ let chatPollTimer = null;
 let thumbnailTimer = null;
 let heartbeatTimer = null;
 let musicKeepaliveTimer = null;
+let commandReminderTimer = null;
 let directAudioTimer = null;
 let directAudioHealthTimer = null;
 let autostartTimer = null;
@@ -220,10 +227,27 @@ let liveMismatchSince = 0;
 let lastSupervisorAlertAt = 0;
 let eqPreflightRetryTimer = null;
 let chatBacklogGuardTs = 0;
+let pollChatInFlight = false;
+const commandCooldowns = new Map();
+const viewerOnboardingSent = new Set();
+const worldTaskQueue = [];
+let worldTaskInFlight = false;
 
 const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_MS || 90_000);
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
 const EQ_PREFLIGHT_RETRY_MS = Number(process.env.CLAWB_EQ_PREFLIGHT_RETRY_MS || 20_000);
+const CHAT_HELP_TEXT =
+  'try !help commands: !next !ascii !eq | world: !gallery !workshop !vault !main !walk !swim !dance !flip !day !night | tasks: !task reef !task garden !task patrol | visit lawb.xyz /chess /world';
+const CHAT_ONBOARDING_LINES = [
+  'lawb.xyz has /chess for wagers on Base and /world for the reef.',
+  'try !help and i will show stream commands + world moves.',
+  'you can command me live: !walk, !swim, !flip, !gallery, !workshop.',
+];
+const COMMAND_REMINDER_LINES = [
+  'try !help for commands. explore lawb.xyz /chess /world.',
+  'reef commands: !walk !swim !flip !gallery !workshop !vault.',
+  'want chess? open lawb.xyz/chess on Base. i can switch scene with !chess.',
+];
 
 function clearDirectAudioTimer() {
   if (directAudioTimer) {
@@ -244,6 +268,107 @@ function clearEqPreflightRetryTimer() {
     clearTimeout(eqPreflightRetryTimer);
     eqPreflightRetryTimer = null;
   }
+}
+
+function clearCommandReminderTimer() {
+  if (commandReminderTimer) {
+    clearTimeout(commandReminderTimer);
+    commandReminderTimer = null;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isOnCooldown(key, cooldownMs) {
+  const now = Date.now();
+  const until = commandCooldowns.get(key) || 0;
+  if (until > now) return true;
+  commandCooldowns.set(key, now + Math.max(0, cooldownMs));
+  return false;
+}
+
+function pickRandom(list) {
+  if (!Array.isArray(list) || list.length === 0) return '';
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function parseWorldTaskName(loweredText) {
+  const match = /^!task\s+([a-z0-9_-]+)\b/.exec(loweredText);
+  return match ? match[1] : null;
+}
+
+function buildWorldTaskSequence(taskName) {
+  const t = String(taskName || '').toLowerCase();
+  if (t === 'reef') {
+    return [
+      { command: '!swim forward', payload: { type: 'action', action: 'swim_forward' } },
+      { command: '!swim right', payload: { type: 'action', action: 'swim_right' } },
+      { command: '!look 1', payload: { type: 'look', targetNftIndex: 1 } },
+      { command: '!swim left', payload: { type: 'action', action: 'swim_left' } },
+      { command: '!idle', payload: { type: 'action', action: 'idle' } },
+    ];
+  }
+  if (t === 'garden') {
+    return [
+      { command: '!workshop', payload: { type: 'room', targetRoom: 'workshop' } },
+      { command: '!walk forward', payload: { type: 'action', action: 'forward', direction: 'forward' } },
+      { command: '!hi', payload: { type: 'action', action: 'hi' } },
+      { command: '!loop spin', payload: { type: 'action', action: 'spin', loop: true } },
+      { command: '!idle', payload: { type: 'action', action: 'idle' } },
+    ];
+  }
+  if (t === 'patrol') {
+    return [
+      { command: '!main', payload: { type: 'room', targetRoom: 'main' } },
+      { command: '!walk left', payload: { type: 'action', action: 'left', direction: 'left' } },
+      { command: '!walk right', payload: { type: 'action', action: 'right', direction: 'right' } },
+      { command: '!walk back', payload: { type: 'action', action: 'back', direction: 'back' } },
+      { command: '!idle', payload: { type: 'action', action: 'idle' } },
+    ];
+  }
+  return null;
+}
+
+async function processWorldTaskQueue() {
+  if (worldTaskInFlight) return;
+  worldTaskInFlight = true;
+  try {
+    while (worldTaskQueue.length > 0) {
+      const task = worldTaskQueue.shift();
+      if (!task || !Array.isArray(task.steps)) continue;
+      console.log(`[Retake] world_task_start name=${task.name} viewer=${task.viewer} steps=${task.steps.length}`);
+      for (const step of task.steps) {
+        await publishWorldCommand(step.command, {
+          ...step.payload,
+          source: 'retake_task',
+          viewer: task.viewer,
+          taskName: task.name,
+        });
+        await sleep(1300);
+      }
+      console.log(`[Retake] world_task_done name=${task.name} viewer=${task.viewer}`);
+      sendCommandAck(`task ${task.name} complete. reef chores done.`, 'world_task_done');
+    }
+  } finally {
+    worldTaskInFlight = false;
+  }
+}
+
+function scheduleCommandReminder() {
+  clearCommandReminderTimer();
+  if (!isStreaming) return;
+  const jitter = Math.floor(Math.random() * Math.max(1, RETAKE_COMMAND_REMINDER_JITTER_MS));
+  const waitMs = RETAKE_COMMAND_REMINDER_INTERVAL_MS + jitter;
+  commandReminderTimer = setTimeout(async () => {
+    if (!isStreaming) return;
+    const line = pickRandom(COMMAND_REMINDER_LINES);
+    if (line) {
+      await sendChat(line, undefined, { timeoutMs: RETAKE_COMMAND_CHAT_TIMEOUT_MS, retries: 0 }).catch(() => {});
+    }
+    scheduleCommandReminder();
+  }, waitMs);
 }
 
 async function publishSupervisorAlert(event, payload = {}) {
@@ -785,6 +910,10 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         '!next',
         '!ascii',
         '!ascii2',
+        '!help',
+        '!chess',
+        '!world',
+        '!task reef',
         '!day',
         '!night',
         '!idle',
@@ -1760,6 +1889,11 @@ export async function setupOBSScenes() {
 
 async function pollChat() {
   if (!credentials?.userDbId) return;
+  if (pollChatInFlight) {
+    console.warn('[Retake] chat_poll_skip reason=in_flight');
+    return;
+  }
+  pollChatInFlight = true;
   try {
     const params = new URLSearchParams({
       userDbId: credentials.userDbId,
@@ -1786,7 +1920,15 @@ async function pollChat() {
       if (viewerKey && !greetedViewers.has(viewerKey)) {
         greetedViewers.add(viewerKey);
         // Greet each viewer once per live session so newcomers are welcomed.
-        await sendChat(`welcome ${authorName}. i lawb you.`);
+        sendCommandAck(`welcome ${authorName}. i lawb you.`, 'viewer_welcome');
+        if (!viewerOnboardingSent.has(viewerKey)) {
+          viewerOnboardingSent.add(viewerKey);
+          const intro = pickRandom(CHAT_ONBOARDING_LINES);
+          if (intro) {
+            const introDelayMs = 8_000 + Math.floor(Math.random() * 4_000);
+            setTimeout(() => sendCommandAck(intro, 'viewer_onboarding'), introDelayMs);
+          }
+        }
       }
       await handleChatMessage(comment);
     }
@@ -1810,6 +1952,8 @@ async function pollChat() {
     if (!err.message.includes('409')) {
       console.error('[Retake] Chat poll error:', err.message);
     }
+  } finally {
+    pollChatInFlight = false;
   }
 }
 
@@ -1818,6 +1962,7 @@ async function handleChatMessage(comment) {
   const text = comment.text || '';
   const trimmed = text.trim();
   const lowered = trimmed.toLowerCase();
+  const messageStartedAt = Date.now();
   console.log(`[Retake Chat] ${viewer}: ${text}`);
 
   // Streamer control commands for Lawbamp player integration.
@@ -1870,6 +2015,74 @@ async function handleChatMessage(comment) {
     return;
   }
 
+  if (lowered === '!help' || lowered === 'help') {
+    if (isOnCooldown(`help:${String(viewer).toLowerCase()}`, RETAKE_HELP_COOLDOWN_MS)) {
+      sendCommandAck('help cooldown: one tide at a time.', 'help_cooldown');
+      return;
+    }
+    sendCommandAck(CHAT_HELP_TEXT, 'help');
+    console.log(`[Retake] chat_command=!help handled_ms=${Date.now() - messageStartedAt}`);
+    return;
+  }
+
+  if (lowered === '!chess' || lowered === '!chess watch') {
+    if (isOnCooldown('chess_scene_switch', RETAKE_CHESS_SWITCH_COOLDOWN_MS)) {
+      sendCommandAck('chess scene cooldown active. hold fast.', 'chess_cooldown');
+      return;
+    }
+    sendCommandAck('switching to clawb chess. open lawb.xyz/chess to play on Base.', 'chess_switch_ack');
+    void switchScene('Clawb Chess')
+      .then(() => {
+        sendCommandAck('chess scene live. create a vs clawb game on lawb.xyz/chess.', 'chess_switch_done');
+      })
+      .catch((err) => {
+        console.error('[Retake] !chess scene switch failed:', err?.message || err);
+        sendCommandAck('chess scene switch failed. try again in a moment.', 'chess_switch_failed');
+      });
+    console.log(`[Retake] chat_command=!chess handled_ms=${Date.now() - messageStartedAt}`);
+    return;
+  }
+
+  if (lowered === '!world') {
+    sendCommandAck('world scene online at lawb.xyz/world. try !task reef or !task garden.', 'world_info');
+    return;
+  }
+
+  if (lowered === '!chess start') {
+    const requestRef = db.ref('clawb/chess/stream_requests').push();
+    await requestRef.set({
+      command: 'chess_start',
+      viewer,
+      source: 'retake',
+      status: 'queued',
+      timestamp: Date.now(),
+    }).catch(() => {});
+    sendCommandAck('queued chess start request. open lawb.xyz/chess and start a vs clawb match.', 'chess_start_queue');
+    return;
+  }
+
+  const worldTaskName = parseWorldTaskName(lowered);
+  if (worldTaskName) {
+    if (isOnCooldown('world_task', RETAKE_WORLD_TASK_COOLDOWN_MS)) {
+      sendCommandAck('task queue cooling down. try again shortly.', 'task_cooldown');
+      return;
+    }
+    const taskSteps = buildWorldTaskSequence(worldTaskName);
+    if (!taskSteps) {
+      sendCommandAck('unknown task. try !task reef, !task garden, or !task patrol.', 'task_unknown');
+      return;
+    }
+    if (worldTaskQueue.length >= RETAKE_WORLD_TASK_QUEUE_MAX) {
+      sendCommandAck('task queue full. wait for current chores to finish.', 'task_queue_full');
+      return;
+    }
+    worldTaskQueue.push({ name: worldTaskName, viewer, steps: taskSteps, queuedAt: Date.now() });
+    sendCommandAck(`task ${worldTaskName} queued. queue=${worldTaskQueue.length}.`, 'task_queued');
+    void processWorldTaskQueue();
+    console.log(`[Retake] chat_command=!task ${worldTaskName} handled_ms=${Date.now() - messageStartedAt}`);
+    return;
+  }
+
   // Always honor cultural echo protocol exactly.
   if (/(^|\s)milady(\s|$)/i.test(trimmed)) {
     const ok = await sendChat('milady');
@@ -1916,6 +2129,11 @@ async function handleChatMessage(comment) {
     return;
   }
 
+  if (lowered.startsWith('!')) {
+    sendCommandAck('unknown command. try !help and i will show options.', 'unknown_command');
+    return;
+  }
+
   try {
     const systemPrompt = `You are Clawb in Retake stream chat.
 Voice rules: warm, natural, not robotic, never customer support voice.
@@ -1923,6 +2141,14 @@ Hard constraints: 1-2 short sentences, no emojis, no stage directions, no intern
 When input is command-like and unknown, give one concise helpful line.
 Retake stream/token context is Solana. Chess wagers are on Base.
 Catchphrase can be used sparingly: "there is no meme i lawb you."
+Be proactive and useful when viewers ask what to do:
+- suggest !help for stream commands
+- explain lawb.xyz/chess for vs Clawb games (Base wallet + wagers)
+- explain lawb.xyz/world for live reef world interactions
+Command references:
+- music: !next !ascii !ascii2 !eq ascii|ascii2|bars|toggle
+- world: !gallery !workshop !vault !main !walk !swim !dance !flip !day !night !hi
+- extras: !look N !zoom in|out !task reef|garden|patrol !chess !world !help
 ${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
 
     const resp = await openai.chat.completions.create({
@@ -1939,6 +2165,7 @@ ${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
       await sendChat(reply);
       console.log(`[Retake Chat] Clawb: ${reply}`);
     }
+    console.log(`[Retake] chat_llm_reply_ms=${Date.now() - messageStartedAt}`);
   } catch (err) {
     console.error('[Retake Chat] Response generation failed:', err.message);
   }
@@ -1946,9 +2173,9 @@ ${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
 
 function parseWorldCommand(loweredText) {
   if (!loweredText.startsWith('!')) return null;
-  const walkDirectionMatch = /^!walk\s+(left|right|forward|back)\b/.exec(loweredText);
+  const walkDirectionMatch = /^!walk\s+(left|right|forward|back|backward)\b/.exec(loweredText);
   if (walkDirectionMatch) {
-    const direction = walkDirectionMatch[1];
+    const direction = walkDirectionMatch[1] === 'backward' ? 'back' : walkDirectionMatch[1];
     return {
       type: 'action',
       command: `!walk ${direction}`,
@@ -1956,9 +2183,9 @@ function parseWorldCommand(loweredText) {
       direction,
     };
   }
-  const swimDirectionMatch = /^!swim\s+(left|right|forward|back)\b/.exec(loweredText);
+  const swimDirectionMatch = /^!swim\s+(left|right|forward|back|backward)\b/.exec(loweredText);
   if (swimDirectionMatch) {
-    const direction = swimDirectionMatch[1];
+    const direction = swimDirectionMatch[1] === 'backward' ? 'back' : swimDirectionMatch[1];
     return {
       type: 'action',
       command: `!swim ${direction}`,
@@ -2164,11 +2391,13 @@ function startStreamingLoops() {
   if (thumbnailTimer) clearInterval(thumbnailTimer);
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (musicKeepaliveTimer) clearInterval(musicKeepaliveTimer);
+  clearCommandReminderTimer();
   clearDirectAudioHealthTimer();
   // Prevent replaying backlog after restarts/recovery.
   chatBacklogGuardTs = Date.now();
   seenChatIds.clear();
   greetedViewers.clear();
+  viewerOnboardingSent.clear();
   lastSeenChatId = null;
   console.log(`[Retake] Chat replay guard armed at ${chatBacklogGuardTs}.`);
 
@@ -2201,6 +2430,7 @@ function startStreamingLoops() {
       });
     }, 12_000);
   }
+  scheduleCommandReminder();
 }
 
 export async function chatInStream(streamerName, message) {
@@ -2309,6 +2539,7 @@ export async function goOffline() {
   if (thumbnailTimer) { clearInterval(thumbnailTimer); thumbnailTimer = null; }
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   if (musicKeepaliveTimer) { clearInterval(musicKeepaliveTimer); musicKeepaliveTimer = null; }
+  clearCommandReminderTimer();
   clearDirectAudioTimer();
   clearDirectAudioHealthTimer();
   clearEqPreflightRetryTimer();
@@ -2418,10 +2649,12 @@ export async function startRetakeStreamer() {
 
   return () => {
     stopStreamControlListener();
+    clearCommandReminderTimer();
     if (autostartTimer) {
       clearInterval(autostartTimer);
       autostartTimer = null;
     }
+    worldTaskQueue.length = 0;
     if (isStreaming) {
       goOffline().catch(err => console.error('[Retake] Shutdown error:', err.message));
     }

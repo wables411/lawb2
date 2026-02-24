@@ -304,6 +304,43 @@ export const firebaseChess = {
       console.error('[FIREBASE] Error subscribing to leaderboard:', error);
       return () => {}; // Return empty unsubscribe function
     }
+  },
+
+  async getActiveVsClawbGame() {
+    try {
+      const db = getDatabaseOrThrow();
+      const gamesRef = ref(db, 'chess_games');
+      const snapshot = await get(gamesRef);
+      if (!snapshot.exists()) return null;
+      const games = snapshot.val();
+      const vsClawb = Object.entries(games)
+        .filter(([, g]: [string, any]) =>
+          g.game_type === 'vs_clawb' && g.game_state === 'active'
+        )
+        .map(([key, g]: [string, any]) => ({ ...normalizeGameData(g), invite_code: key }));
+      vsClawb.sort((a: any, b: any) =>
+        new Date(b.updated_at || b.created_at || 0).getTime() -
+        new Date(a.updated_at || a.created_at || 0).getTime()
+      );
+      return vsClawb[0] || null;
+    } catch (error) {
+      console.error('[FIREBASE] Error getting active vs_clawb game:', error);
+      return null;
+    }
+  },
+
+  subscribeToAllGames(callback: (games: Record<string, any>) => void) {
+    try {
+      const db = getDatabaseOrThrow();
+      const gamesRef = ref(db, 'chess_games');
+      return onValue(gamesRef, (snapshot) => {
+        if (snapshot.exists()) callback(snapshot.val());
+        else callback({});
+      });
+    } catch (error) {
+      console.error('[FIREBASE] Error subscribing to all games:', error);
+      return () => {};
+    }
   }
 };
 
