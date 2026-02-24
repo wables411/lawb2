@@ -200,6 +200,7 @@ let streamControlListenerHandler = null;
 let eqProxyServer = null;
 const EQ_PROXY_PORT = Number(process.env.LAWBAMP_EQ_PROXY_PORT || 18181);
 const seenChatIds = new Set();
+const greetedViewers = new Set();
 let scTracks = [];
 let scOrder = [];
 let scOrderPos = -1;
@@ -1777,6 +1778,12 @@ async function pollChat() {
       }
       const authorName = comment.author?.fusername || comment.sender_username || comment.sender_display_name;
       if (authorName === credentials.agent_name) continue;
+      const viewerKey = String(authorName || '').trim().toLowerCase();
+      if (viewerKey && !greetedViewers.has(viewerKey)) {
+        greetedViewers.add(viewerKey);
+        // Greet each viewer once per live session so newcomers are welcomed.
+        await sendChat(`welcome ${authorName}. i lawb you.`);
+      }
       await handleChatMessage(comment);
     }
 
@@ -1785,6 +1792,11 @@ async function pollChat() {
       const keep = new Set(Array.from(seenChatIds).slice(-300));
       seenChatIds.clear();
       for (const id of keep) seenChatIds.add(id);
+    }
+    if (greetedViewers.size > 600) {
+      const keep = new Set(Array.from(greetedViewers).slice(-300));
+      greetedViewers.clear();
+      for (const id of keep) greetedViewers.add(id);
     }
 
     if (sorted.length > 0) {
@@ -2100,6 +2112,7 @@ function startStreamingLoops() {
   // Prevent replaying backlog after restarts/recovery.
   chatBacklogGuardTs = Date.now();
   seenChatIds.clear();
+  greetedViewers.clear();
   lastSeenChatId = null;
   console.log(`[Retake] Chat replay guard armed at ${chatBacklogGuardTs}.`);
 
