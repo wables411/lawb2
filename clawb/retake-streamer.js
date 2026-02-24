@@ -14,6 +14,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { Readable } from 'stream';
+import { Keypair } from '@solana/web3.js';
 import OBSWebSocket from 'obs-websocket-js';
 import OpenAI from 'openai';
 import { db } from './lawb-firebase.js';
@@ -41,8 +42,29 @@ loadEnvFile();
 
 const RETAKE_API = 'https://retake.tv/api/v1';
 const CREDENTIALS_PATH = join(__dirname, 'retake-credentials.json');
+const DEFAULT_BANKR_SOLANA_WALLET = 'GDt1ZmAtCfqbK8iFAEyJUCbnu1TPjVeg3HaJ1wKaqhvC';
+const RETAKE_SOLANA_KEYPAIR_PATH =
+  process.env.RETAKE_SOLANA_KEYPAIR_PATH || join(__dirname, 'credentials', 'solana', 'clawb-retake-wallet.json');
 
-const CLAWB_SOLANA_WALLET = 'GDt1ZmAtCfqbK8iFAEyJUCbnu1TPjVeg3HaJ1wKaqhvC';
+function resolveRetakeSolanaWalletAddress() {
+  const explicitWallet = process.env.RETAKE_SOLANA_WALLET_ADDRESS?.trim();
+  if (explicitWallet) return explicitWallet;
+
+  if (existsSync(RETAKE_SOLANA_KEYPAIR_PATH)) {
+    try {
+      const secretBytes = JSON.parse(readFileSync(RETAKE_SOLANA_KEYPAIR_PATH, 'utf-8'));
+      if (Array.isArray(secretBytes) && secretBytes.length === 64) {
+        return Keypair.fromSecretKey(Uint8Array.from(secretBytes)).publicKey.toBase58();
+      }
+    } catch (err) {
+      console.warn('[Retake] Could not parse RETAKE_SOLANA_KEYPAIR_PATH:', err?.message || err);
+    }
+  }
+
+  return process.env.BANKR_SOLANA_WALLET_ADDRESS || DEFAULT_BANKR_SOLANA_WALLET;
+}
+
+const CLAWB_SOLANA_WALLET = resolveRetakeSolanaWalletAddress();
 
 const OBS_WS_URL = process.env.OBS_WS_URL || 'ws://127.0.0.1:4455';
 const OBS_WS_PASSWORD = process.env.OBS_WS_PASSWORD || '';

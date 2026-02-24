@@ -69,6 +69,8 @@ const ROOM_LABELS: Record<string, string> = {
 const PSX_RESOLUTION_SCALE = 0.35; // Render at ~1/3 res for PSX look (slightly higher than bg for playability)
 const PLAYER_HEIGHT = 0.5;
 const PLAYER_SPEED = 5;
+const PLAYER_ACCEL_DAMP = 11;
+const PLAYER_DECEL_DAMP = 14;
 const SWIM_VERTICAL_SPEED = 3;
 const WORLD_BOUNDS = 28;
 const CLAWB_GREET_DISTANCE = 3;
@@ -83,6 +85,9 @@ const CLAWB_PATROL_PAUSE_MS = 1200;
 const ROOM_TRANSITION_DURATION_MS = 4200;
 const CLAWB_STEP_SPEED = 0.9;
 const CLAWB_SWIM_STEP_SPEED = 1.3;
+const CLAWB_COMMAND_ACCEL_DAMP = 10;
+const CLAWB_COMMAND_DECEL_DAMP = 7;
+const CLAWB_COMMAND_TURN_DAMP = 12;
 const STREAM_CAMERA_DEFAULT_DISTANCE = 3.2;
 const STREAM_CAMERA_MIN_DISTANCE = 0.45;
 const STREAM_CAMERA_MAX_DISTANCE = 18.0;
@@ -93,6 +98,8 @@ const STREAM_CAMERA_NEAR_Y = 0.78; // eye-level closeup
 const STREAM_CAMERA_FAR_Y = 10.5; // overhead security-cam height
 const STREAM_CAMERA_NEAR_Z_SCALE = 1.0; // keep true distance at close range
 const STREAM_CAMERA_FAR_Z_SCALE = 0.32; // pull toward top-down at far range
+const STREAM_CAMERA_POSITION_DAMP = 8;
+const STREAM_CAMERA_LOOK_DAMP = 10;
 const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
 type ClawbModelKey = 'idle' | 'walk' | 'swim' | 'hi' | 'dance' | 'flip' | 'die';
 const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
@@ -176,6 +183,7 @@ const ClawbWorld: React.FC = () => {
   // Movement keys state
   const keysRef = useRef<Record<string, boolean>>({});
   const velocityRef = useRef(new THREE.Vector3());
+  const clawbCommandVelocityRef = useRef(new THREE.Vector3());
 
   // UI state
   const [isLocked, setIsLocked] = useState(false);
@@ -200,6 +208,7 @@ const ClawbWorld: React.FC = () => {
   const worldActionRef = useRef<{ type: string; until: number }>({ type: 'patrol', until: 0 });
   const loopedActionRef = useRef<string | null>(null);
   const lookTargetRef = useRef<{ until: number; focus: THREE.Vector3; camera: THREE.Vector3; clawbTarget: THREE.Vector3 } | null>(null);
+  const streamCameraLookRef = useRef(new THREE.Vector3(0, FLOOR_Y + 0.75, 0));
   const streamCameraDistanceRef = useRef(STREAM_CAMERA_DEFAULT_DISTANCE);
   const clawbActionTRef = useRef(0);
   const remotePlayersRef = useRef<Map<string, THREE.Group>>(new Map());
@@ -582,8 +591,6 @@ const ClawbWorld: React.FC = () => {
       // Swim up/down (Space = up, Shift = down, or mobile buttons)
       const swimUp = keys[' '] || mobileSwimYRef.current === 1 ? 1 : 0;
       const swimDown = keys['shift'] || mobileSwimYRef.current === -1 ? 1 : 0;
-      const swimY = (swimUp - swimDown) * SWIM_VERTICAL_SPEED * delta;
-
       // Mobile joystick override
       if (isMobile && joystickRef.current.active) {
         const jDx = joystickRef.current.dx / 60; // normalize
@@ -597,17 +604,22 @@ const ClawbWorld: React.FC = () => {
 
       direction.normalize();
 
-      // Apply movement relative to camera facing
-      velocity.x = direction.x * PLAYER_SPEED * delta;
-      velocity.z = direction.z * PLAYER_SPEED * delta;
+      // Apply movement relative to camera facing with acceleration/deceleration damping.
+      const hasMoveInput = direction.lengthSq() > 0.0001;
+      const targetVelocityX = direction.x * PLAYER_SPEED;
+      const targetVelocityZ = direction.z * PLAYER_SPEED;
+      const moveDamp = hasMoveInput ? PLAYER_ACCEL_DAMP : PLAYER_DECEL_DAMP;
+      velocity.x = THREE.MathUtils.damp(velocity.x, targetVelocityX, moveDamp, delta);
+      velocity.z = THREE.MathUtils.damp(velocity.z, targetVelocityZ, moveDamp, delta);
+      velocity.y = THREE.MathUtils.damp(velocity.y, (swimUp - swimDown) * SWIM_VERTICAL_SPEED, moveDamp, delta);
 
       if (controlsRef.current) {
-        controlsRef.current.moveRight(velocity.x);
-        controlsRef.current.moveForward(-velocity.z);
+        controlsRef.current.moveRight(velocity.x * delta);
+        controlsRef.current.moveForward(-velocity.z * delta);
       }
 
       // Swim up/down
-      camera.position.y += swimY;
+      camera.position.y += velocity.y * delta;
 
       // Clamp to world bounds
       camera.position.x = Math.max(-WORLD_BOUNDS, Math.min(WORLD_BOUNDS, camera.position.x));
@@ -668,6 +680,18 @@ const ClawbWorld: React.FC = () => {
       const t = clawbActionTRef.current;
 
       if (activeAction === 'patrol') {
+        clawbCommandVelocityRef.current.x = THREE.MathUtils.damp(
+          clawbCommandVelocityRef.current.x,
+          0,
+          CLAWB_COMMAND_DECEL_DAMP,
+          delta
+        );
+        clawbCommandVelocityRef.current.z = THREE.MathUtils.damp(
+          clawbCommandVelocityRef.current.z,
+          0,
+          CLAWB_COMMAND_DECEL_DAMP,
+          delta
+        );
         requestClawbModelRef.current(isStreamMode ? 'idle' : 'walk');
         if (isStreamMode) {
           clawbRef.current.position.x = clawbPosRef.current.x;
@@ -719,19 +743,10 @@ const ClawbWorld: React.FC = () => {
         clawbRef.current.position.x = clawbPosRef.current.x;
         clawbRef.current.position.z = clawbPosRef.current.z;
         clawbRef.current.position.y = FLOOR_Y;
-        const moveForAction = (direction: THREE.Vector3, speed: number, swimMode = false) => {
-          const clawb = clawbRef.current;
-          if (!clawb) return;
-          const dir = direction.clone().normalize();
-          clawbPosRef.current.x += dir.x * speed * delta;
-          clawbPosRef.current.z += dir.z * speed * delta;
-          clawbPosRef.current.x = THREE.MathUtils.clamp(clawbPosRef.current.x, -WORLD_BOUNDS + 1.2, WORLD_BOUNDS - 1.2);
-          clawbPosRef.current.z = THREE.MathUtils.clamp(clawbPosRef.current.z, -WORLD_BOUNDS - 8.5, WORLD_BOUNDS - 1.2);
-          clawb.position.x = clawbPosRef.current.x;
-          clawb.position.z = clawbPosRef.current.z;
-          clawb.position.y = swimMode ? FLOOR_Y + 0.2 + Math.sin(t * 3.2) * 0.08 : FLOOR_Y;
-          clawb.rotation.y = Math.atan2(dir.x, dir.z);
-        };
+        let desiredDirection: THREE.Vector3 | null = null;
+        let desiredSpeed = 0;
+        let swimMode = false;
+        const commandVelocity = clawbCommandVelocityRef.current;
         if (activeAction === 'look_swim') {
           requestClawbModelRef.current('walk');
           const lookTarget = lookTargetRef.current;
@@ -742,27 +757,74 @@ const ClawbWorld: React.FC = () => {
             clawbRef.current.position.z = clawbPosRef.current.z;
             clawbRef.current.position.y = FLOOR_Y;
             const dir = new THREE.Vector3().subVectors(lookTarget.focus, clawbRef.current.position);
-            clawbRef.current.rotation.y = Math.atan2(dir.x, dir.z);
+            const targetYaw = Math.atan2(dir.x, dir.z);
+            clawbRef.current.rotation.y = THREE.MathUtils.damp(
+              clawbRef.current.rotation.y,
+              targetYaw,
+              CLAWB_COMMAND_TURN_DAMP,
+              delta
+            );
           }
         } else if (activeAction === 'walk' || activeAction === 'forward') {
-          moveForAction(new THREE.Vector3(0, 0, -1), CLAWB_STEP_SPEED);
+          desiredDirection = new THREE.Vector3(0, 0, -1);
+          desiredSpeed = CLAWB_STEP_SPEED;
         } else if (activeAction === 'back') {
-          moveForAction(new THREE.Vector3(0, 0, 1), CLAWB_STEP_SPEED);
+          desiredDirection = new THREE.Vector3(0, 0, 1);
+          desiredSpeed = CLAWB_STEP_SPEED;
         } else if (activeAction === 'left') {
-          moveForAction(new THREE.Vector3(-1, 0, 0), CLAWB_STEP_SPEED);
+          desiredDirection = new THREE.Vector3(-1, 0, 0);
+          desiredSpeed = CLAWB_STEP_SPEED;
         } else if (activeAction === 'right') {
-          moveForAction(new THREE.Vector3(1, 0, 0), CLAWB_STEP_SPEED);
+          desiredDirection = new THREE.Vector3(1, 0, 0);
+          desiredSpeed = CLAWB_STEP_SPEED;
         } else if (activeAction === 'swim' || activeAction === 'swim_forward') {
-          moveForAction(new THREE.Vector3(0, 0, -1), CLAWB_SWIM_STEP_SPEED, true);
+          desiredDirection = new THREE.Vector3(0, 0, -1);
+          desiredSpeed = CLAWB_SWIM_STEP_SPEED;
+          swimMode = true;
         } else if (activeAction === 'swim_back') {
-          moveForAction(new THREE.Vector3(0, 0, 1), CLAWB_SWIM_STEP_SPEED, true);
+          desiredDirection = new THREE.Vector3(0, 0, 1);
+          desiredSpeed = CLAWB_SWIM_STEP_SPEED;
+          swimMode = true;
         } else if (activeAction === 'swim_left') {
-          moveForAction(new THREE.Vector3(-1, 0, 0), CLAWB_SWIM_STEP_SPEED, true);
+          desiredDirection = new THREE.Vector3(-1, 0, 0);
+          desiredSpeed = CLAWB_SWIM_STEP_SPEED;
+          swimMode = true;
         } else if (activeAction === 'swim_right') {
-          moveForAction(new THREE.Vector3(1, 0, 0), CLAWB_SWIM_STEP_SPEED, true);
+          desiredDirection = new THREE.Vector3(1, 0, 0);
+          desiredSpeed = CLAWB_SWIM_STEP_SPEED;
+          swimMode = true;
         } else if (activeAction === 'hi') {
           clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 4.2)) * 0.05;
           clawbRef.current.rotation.y += Math.sin(t * 4.2) * 0.006;
+        }
+
+        if (desiredDirection) {
+          const targetVelocity = desiredDirection.normalize().multiplyScalar(desiredSpeed);
+          commandVelocity.x = THREE.MathUtils.damp(commandVelocity.x, targetVelocity.x, CLAWB_COMMAND_ACCEL_DAMP, delta);
+          commandVelocity.z = THREE.MathUtils.damp(commandVelocity.z, targetVelocity.z, CLAWB_COMMAND_ACCEL_DAMP, delta);
+        } else {
+          commandVelocity.x = THREE.MathUtils.damp(commandVelocity.x, 0, CLAWB_COMMAND_DECEL_DAMP, delta);
+          commandVelocity.z = THREE.MathUtils.damp(commandVelocity.z, 0, CLAWB_COMMAND_DECEL_DAMP, delta);
+        }
+
+        if (Math.abs(commandVelocity.x) > 0.0001 || Math.abs(commandVelocity.z) > 0.0001) {
+          clawbPosRef.current.x += commandVelocity.x * delta;
+          clawbPosRef.current.z += commandVelocity.z * delta;
+          const targetYaw = Math.atan2(commandVelocity.x, commandVelocity.z);
+          clawbRef.current.rotation.y = THREE.MathUtils.damp(
+            clawbRef.current.rotation.y,
+            targetYaw,
+            CLAWB_COMMAND_TURN_DAMP,
+            delta
+          );
+        }
+
+        clawbPosRef.current.x = THREE.MathUtils.clamp(clawbPosRef.current.x, -WORLD_BOUNDS + 1.2, WORLD_BOUNDS - 1.2);
+        clawbPosRef.current.z = THREE.MathUtils.clamp(clawbPosRef.current.z, -WORLD_BOUNDS - 8.5, WORLD_BOUNDS - 1.2);
+        clawbRef.current.position.x = clawbPosRef.current.x;
+        clawbRef.current.position.z = clawbPosRef.current.z;
+        if (swimMode) {
+          clawbRef.current.position.y = FLOOR_Y + 0.2 + Math.sin(t * 3.2) * 0.08;
         }
       }
 
@@ -786,10 +848,36 @@ const ClawbWorld: React.FC = () => {
 
     // Dedicated stream camera: keep Clawb centered/visible in OBS.
     if (isStreamMode && clawbRef.current) {
+      const smoothCameraPosition = (target: THREE.Vector3) => {
+        camera.position.x = THREE.MathUtils.damp(camera.position.x, target.x, STREAM_CAMERA_POSITION_DAMP, delta);
+        camera.position.y = THREE.MathUtils.damp(camera.position.y, target.y, STREAM_CAMERA_POSITION_DAMP, delta);
+        camera.position.z = THREE.MathUtils.damp(camera.position.z, target.z, STREAM_CAMERA_POSITION_DAMP, delta);
+      };
+      const smoothLookAt = (target: THREE.Vector3) => {
+        streamCameraLookRef.current.x = THREE.MathUtils.damp(
+          streamCameraLookRef.current.x,
+          target.x,
+          STREAM_CAMERA_LOOK_DAMP,
+          delta
+        );
+        streamCameraLookRef.current.y = THREE.MathUtils.damp(
+          streamCameraLookRef.current.y,
+          target.y,
+          STREAM_CAMERA_LOOK_DAMP,
+          delta
+        );
+        streamCameraLookRef.current.z = THREE.MathUtils.damp(
+          streamCameraLookRef.current.z,
+          target.z,
+          STREAM_CAMERA_LOOK_DAMP,
+          delta
+        );
+        camera.lookAt(streamCameraLookRef.current.x, streamCameraLookRef.current.y, streamCameraLookRef.current.z);
+      };
       const lookTarget = lookTargetRef.current;
       if (lookTarget && Date.now() < lookTarget.until) {
-        camera.position.lerp(lookTarget.camera, 0.09);
-        camera.lookAt(lookTarget.focus.x, lookTarget.focus.y, lookTarget.focus.z);
+        smoothCameraPosition(lookTarget.camera);
+        smoothLookAt(lookTarget.focus);
         const fov = THREE.MathUtils.lerp(camera.fov, 58, 0.12);
         if (Math.abs(fov - camera.fov) > 0.01) {
           camera.fov = fov;
@@ -811,8 +899,8 @@ const ClawbWorld: React.FC = () => {
         const zScale = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_Z_SCALE, STREAM_CAMERA_FAR_Z_SCALE, zoomT);
         const zOffset = streamCameraDistanceRef.current * zScale;
         const desired = focus.clone().add(new THREE.Vector3(0, yOffset, zOffset));
-        camera.position.lerp(desired, 0.06);
-        camera.lookAt(focus.x, focus.y + 0.72, focus.z);
+        smoothCameraPosition(desired);
+        smoothLookAt(focus.clone().add(new THREE.Vector3(0, 0.72, 0)));
         const targetFov = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_FOV, STREAM_CAMERA_FAR_FOV, zoomT);
         const fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.12);
         if (Math.abs(fov - camera.fov) > 0.01) {
@@ -863,6 +951,7 @@ const ClawbWorld: React.FC = () => {
     if (isStreamMode) {
       camera.position.set(0, FLOOR_Y + 1.45, 2.8);
       camera.lookAt(0, FLOOR_Y + 0.75, 0);
+      streamCameraLookRef.current.set(0, FLOOR_Y + 0.75, 0);
     }
     cameraRef.current = camera;
 
