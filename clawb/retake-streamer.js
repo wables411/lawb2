@@ -40,6 +40,64 @@ const RETAKE_HTTP_TIMEOUT_MS = 20_000;
 
 const CHAT_MODEL = process.env.CLAWB_STREAM_MODEL || 'anthropic/claude-3.5-haiku';
 
+function buildAsciiEqDataUrl() {
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+    body { font: 16px/1.1 Consolas, "Courier New", monospace; color:#00ff66; }
+    #wrap { box-sizing:border-box; width:100%; height:100%; padding:16px 18px; border:2px solid #00aa44; }
+    #title { color:#b3ffd1; margin-bottom:8px; }
+    #eq { white-space:pre; }
+    #footer { position:absolute; left:18px; bottom:10px; color:#66ff99; opacity:.9; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="title">LAWBAMP ASCII EQ :: STREAM MODE</div>
+    <div id="eq"></div>
+    <div id="footer">there is no meme i lawb you</div>
+  </div>
+  <script>
+    const eq = document.getElementById('eq');
+    const bars = 28;
+    const h = 10;
+    const chars = [' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
+    function frame(t) {
+      const time = t / 1000;
+      const vals = Array.from({length: bars}, (_, i) =>
+        Math.max(0, Math.min(1,
+          0.1 + 0.45 * Math.abs(Math.sin(time * 1.8 + i * 0.37)) +
+          0.35 * Math.abs(Math.sin(time * 3.2 + i * 0.19))
+        ))
+      );
+      const lines = [];
+      for (let y = h; y >= 1; y--) {
+        let line = '';
+        for (let i = 0; i < bars; i++) {
+          const level = Math.round(vals[i] * h);
+          if (level >= y) {
+            const cIdx = Math.min(chars.length - 1, Math.max(1, Math.round((level / h) * (chars.length - 1))));
+            line += chars[cIdx] + chars[cIdx];
+          } else {
+            line += '  ';
+          }
+        }
+        lines.push(line);
+      }
+      lines.push('~'.repeat(bars * 2));
+      eq.textContent = lines.join('\\n');
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -310,36 +368,36 @@ export async function setupOBSScenes() {
     }
   }
 
-  // Keep Lawbamp visible and audible in the main world scene.
+  // Keep Lawbamp audio alive in world/chess scenes with hidden source.
   try {
-    const inputName = 'Lawbamp Overlay';
-    const overlayUrl = `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`;
+    const inputName = 'Lawbamp Audio';
+    const audioUrl = `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`;
     try {
       await obs.call('CreateInput', {
         sceneName: 'Clawb World',
         inputName,
         inputKind: 'browser_source',
         inputSettings: {
-          url: overlayUrl,
-          width: 640,
-          height: 360,
+          url: audioUrl,
+          width: 16,
+          height: 16,
           reroute_audio: true,
           restart_when_active: false,
           shutdown: false,
         },
         sceneItemEnabled: true,
       });
-      console.log('[Retake] Created Lawbamp overlay source.');
+      console.log('[Retake] Created hidden Lawbamp audio source.');
     } catch {
-      console.log('[Retake] Lawbamp overlay source already exists.');
+      console.log('[Retake] Hidden Lawbamp audio source already exists.');
     }
 
     await obs.call('SetInputSettings', {
       inputName,
       inputSettings: {
-        url: `${overlayUrl}&r=${Date.now()}`,
-        width: 640,
-        height: 360,
+        url: `${audioUrl}&r=${Date.now()}`,
+        width: 16,
+        height: 16,
         reroute_audio: true,
         restart_when_active: false,
         shutdown: false,
@@ -349,6 +407,66 @@ export async function setupOBSScenes() {
     const { sceneItemId } = await obs.call('GetSceneItemId', {
       sceneName: 'Clawb World',
       sourceName: inputName,
+    });
+    await obs.call('SetSceneItemTransform', {
+      sceneName: 'Clawb World',
+      sceneItemId,
+      sceneItemTransform: {
+        positionX: -2000,
+        positionY: -2000,
+        boundsWidth: 16,
+        boundsHeight: 16,
+      },
+    }).catch(() => {});
+    await obs.call('SetSceneItemEnabled', {
+      sceneName: 'Clawb World',
+      sceneItemId,
+      sceneItemEnabled: true,
+    });
+    console.log('[Retake] Hidden Lawbamp audio source refreshed.');
+  } catch (err) {
+    console.error('[Retake] Hidden audio source setup failed:', err.message);
+  }
+
+  // Display terminal-style ASCII EQ overlay in stream scene.
+  try {
+    const eqInput = 'Lawbamp ASCII EQ';
+    const eqUrl = buildAsciiEqDataUrl();
+    try {
+      await obs.call('CreateInput', {
+        sceneName: 'Clawb World',
+        inputName: eqInput,
+        inputKind: 'browser_source',
+        inputSettings: {
+          url: eqUrl,
+          width: 640,
+          height: 360,
+          reroute_audio: false,
+          restart_when_active: false,
+          shutdown: false,
+        },
+        sceneItemEnabled: true,
+      });
+      console.log('[Retake] Created Lawbamp ASCII EQ overlay source.');
+    } catch {
+      console.log('[Retake] Lawbamp ASCII EQ overlay source already exists.');
+    }
+
+    await obs.call('SetInputSettings', {
+      inputName: eqInput,
+      inputSettings: {
+        url: `${eqUrl}&r=${Date.now()}`,
+        width: 640,
+        height: 360,
+        reroute_audio: false,
+        restart_when_active: false,
+        shutdown: false,
+      },
+      overlay: true,
+    });
+    const { sceneItemId } = await obs.call('GetSceneItemId', {
+      sceneName: 'Clawb World',
+      sourceName: eqInput,
     });
     await obs.call('SetSceneItemTransform', {
       sceneName: 'Clawb World',
@@ -365,23 +483,23 @@ export async function setupOBSScenes() {
       sceneItemId,
       sceneItemEnabled: true,
     });
-    console.log('[Retake] Lawbamp overlay source refreshed.');
+    console.log('[Retake] Lawbamp ASCII EQ overlay refreshed.');
 
-    // Disable legacy hidden source to avoid duplicate audio if it exists.
+    // Disable old screen-capture-like overlay if it exists.
     try {
-      const legacy = await obs.call('GetSceneItemId', {
+      const legacyOverlay = await obs.call('GetSceneItemId', {
         sceneName: 'Clawb World',
-        sourceName: 'Lawbamp Audio',
+        sourceName: 'Lawbamp Overlay',
       });
       await obs.call('SetSceneItemEnabled', {
         sceneName: 'Clawb World',
-        sceneItemId: legacy.sceneItemId,
+        sceneItemId: legacyOverlay.sceneItemId,
         sceneItemEnabled: false,
       });
-      console.log('[Retake] Disabled legacy hidden Lawbamp audio source.');
+      console.log('[Retake] Disabled old Lawbamp Overlay source.');
     } catch {}
   } catch (err) {
-    console.error('[Retake] Lawbamp overlay setup failed:', err.message);
+    console.error('[Retake] ASCII EQ overlay setup failed:', err.message);
   }
 
   try {
