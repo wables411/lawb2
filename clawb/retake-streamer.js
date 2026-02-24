@@ -310,36 +310,36 @@ export async function setupOBSScenes() {
     }
   }
 
-  // Keep Lawbamp audio alive even while showing world/chess scenes.
+  // Keep Lawbamp visible and audible in the main world scene.
   try {
-    const inputName = 'Lawbamp Audio';
-    const audioUrl = `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`;
+    const inputName = 'Lawbamp Overlay';
+    const overlayUrl = `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`;
     try {
       await obs.call('CreateInput', {
         sceneName: 'Clawb World',
         inputName,
         inputKind: 'browser_source',
         inputSettings: {
-          url: audioUrl,
-          width: 16,
-          height: 16,
+          url: overlayUrl,
+          width: 640,
+          height: 360,
           reroute_audio: true,
           restart_when_active: false,
           shutdown: false,
         },
         sceneItemEnabled: true,
       });
-      console.log('[Retake] Created hidden always-on Lawbamp audio source.');
+      console.log('[Retake] Created Lawbamp overlay source.');
     } catch {
-      console.log('[Retake] Hidden Lawbamp audio source already exists.');
+      console.log('[Retake] Lawbamp overlay source already exists.');
     }
 
     await obs.call('SetInputSettings', {
       inputName,
       inputSettings: {
-        url: `${audioUrl}&r=${Date.now()}`,
-        width: 16,
-        height: 16,
+        url: `${overlayUrl}&r=${Date.now()}`,
+        width: 640,
+        height: 360,
         reroute_audio: true,
         restart_when_active: false,
         shutdown: false,
@@ -354,10 +354,10 @@ export async function setupOBSScenes() {
       sceneName: 'Clawb World',
       sceneItemId,
       sceneItemTransform: {
-        positionX: -2000,
-        positionY: -2000,
-        boundsWidth: 16,
-        boundsHeight: 16,
+        positionX: 1260,
+        positionY: 700,
+        boundsWidth: 640,
+        boundsHeight: 360,
       },
     }).catch(() => {});
     await obs.call('SetSceneItemEnabled', {
@@ -365,9 +365,23 @@ export async function setupOBSScenes() {
       sceneItemId,
       sceneItemEnabled: true,
     });
-    console.log('[Retake] Hidden Lawbamp audio source refreshed.');
+    console.log('[Retake] Lawbamp overlay source refreshed.');
+
+    // Disable legacy hidden source to avoid duplicate audio if it exists.
+    try {
+      const legacy = await obs.call('GetSceneItemId', {
+        sceneName: 'Clawb World',
+        sourceName: 'Lawbamp Audio',
+      });
+      await obs.call('SetSceneItemEnabled', {
+        sceneName: 'Clawb World',
+        sceneItemId: legacy.sceneItemId,
+        sceneItemEnabled: false,
+      });
+      console.log('[Retake] Disabled legacy hidden Lawbamp audio source.');
+    } catch {}
   } catch (err) {
-    console.error('[Retake] Hidden audio source setup failed:', err.message);
+    console.error('[Retake] Lawbamp overlay setup failed:', err.message);
   }
 
   try {

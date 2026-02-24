@@ -1035,28 +1035,32 @@ const ClawbWorld: React.FC = () => {
       />
 
       {/* HUD */}
-      <div className="clawb-world-hud">
-        <div className="clawb-world-room-label">{currentRoom}</div>
-        <div className="clawb-world-controls-hint">
-          {!isStreamMode && !isLocked && !isMobile && (
-            <div className="clawb-world-click-prompt">Click to look around · WASD move · Space/Shift swim · Press E to inspect NFT in front · Click Clawb or press E near him to chat</div>
-          )}
+      {!isStreamMode && (
+        <div className="clawb-world-hud">
+          <div className="clawb-world-room-label">{currentRoom}</div>
+          <div className="clawb-world-controls-hint">
+            {!isLocked && !isMobile && (
+              <div className="clawb-world-click-prompt">Click to look around · WASD move · Space/Shift swim · Press E to inspect NFT in front · Click Clawb or press E near him to chat</div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Top-right buttons */}
-      <div className="clawb-world-top-buttons">
-        <button
-          className="clawb-world-btn"
-          onClick={() => navigate('/')}
-          type="button"
-        >
-          Back to Desktop
-        </button>
-      </div>
+      {!isStreamMode && (
+        <div className="clawb-world-top-buttons">
+          <button
+            className="clawb-world-btn"
+            onClick={() => navigate('/')}
+            type="button"
+          >
+            Back to Desktop
+          </button>
+        </div>
+      )}
 
       {/* Clawb greeting bubble */}
-      {clawbGreeting && !showChatPanel && (
+      {!isStreamMode && clawbGreeting && !showChatPanel && (
         <div className="clawb-world-greeting">
           <span className="clawb-world-greeting-text">{clawbGreeting}</span>
           {!isMobile && <span className="clawb-world-greeting-hint">Press E to talk · Press E while facing an NFT to inspect it</span>}
@@ -1066,7 +1070,7 @@ const ClawbWorld: React.FC = () => {
         </div>
       )}
 
-      {selectedNft && (
+      {!isStreamMode && selectedNft && (
         <div className="clawb-world-nft-panel">
           <div className="clawb-world-nft-header">
             <span>NFT Inspect</span>
@@ -1084,7 +1088,7 @@ const ClawbWorld: React.FC = () => {
       )}
 
       {/* Chat panel — click Clawb or E when near */}
-      {showChatPanel && (
+      {!isStreamMode && showChatPanel && (
         <div className="clawb-world-chat-panel">
           <div className="clawb-world-chat-header">
             <span>Ask Clawb</span>
@@ -1117,7 +1121,7 @@ const ClawbWorld: React.FC = () => {
       )}
 
       {/* Mobile joystick */}
-      {isMobile && (
+      {!isStreamMode && isMobile && (
         <>
           <div
             className="clawb-world-joystick"
@@ -1149,7 +1153,7 @@ const ClawbWorld: React.FC = () => {
       )}
 
       {/* Global bottom navbar (includes now-playing music controls) */}
-      <LinuxNavBar />
+      {!isStreamMode && <LinuxNavBar />}
     </div>
   );
 };
