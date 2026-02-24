@@ -47,6 +47,14 @@ const LS_KEYS = {
   lastTrackId: 'lawb_audio_last_track_id',
 } as const;
 
+function isWorldStreamSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname || '';
+  if (!path.startsWith('/world')) return false;
+  const params = new URLSearchParams(window.location.search || '');
+  return params.get('stream') === '1' || params.get('worldOnly') === '1';
+}
+
 function clamp01(v: number): number {
   if (Number.isNaN(v)) return 1;
   return Math.min(1, Math.max(0, v));
@@ -116,7 +124,10 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [durationSec, setDurationSec] = useState(0);
   const [volume, setVolumeState] = useState(() => clamp01(tryReadNumber(LS_KEYS.volume, 0.8)));
   const [shuffleEnabled, setShuffleEnabled] = useState(() => tryReadBool(LS_KEYS.shuffle, true));
-  const [showMiniPlayer, setShowMiniPlayer] = useState(() => tryReadBool(LS_KEYS.showMiniPlayer, false));
+  const [showMiniPlayer, setShowMiniPlayer] = useState(() => {
+    if (isWorldStreamSession()) return false;
+    return tryReadBool(LS_KEYS.showMiniPlayer, false);
+  });
   const [eqBands, setEqBands] = useState<number[]>(() => Array.from({ length: 16 }, () => 0));
 
   const currentTrack = useMemo(() => {
@@ -272,6 +283,13 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [shuffleEnabled]);
   useEffect(() => {
     try { localStorage.setItem(LS_KEYS.showMiniPlayer, String(showMiniPlayer)); } catch {}
+  }, [showMiniPlayer]);
+
+  useEffect(() => {
+    // Clawb World stream source must stay world-only (no Lawbamp popup UI).
+    if (isWorldStreamSession() && showMiniPlayer) {
+      setShowMiniPlayer(false);
+    }
   }, [showMiniPlayer]);
   useEffect(() => {
     try { localStorage.setItem(LS_KEYS.volume, String(volume)); } catch {}
