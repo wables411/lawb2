@@ -12,6 +12,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { createServer } from 'http';
+import { Readable } from 'stream';
 import OBSWebSocket from 'obs-websocket-js';
 import OpenAI from 'openai';
 import { db } from './lawb-firebase.js';
@@ -76,6 +78,8 @@ const ROOM_COMMAND_ALIASES = {
   main: 'main',
 };
 const ACTION_COMMAND_ALIASES = {
+  day: 'day',
+  night: 'night',
   idle: 'idle',
   walk: 'walk',
   dance: 'dance',
@@ -86,6 +90,20 @@ const ACTION_COMMAND_ALIASES = {
   spin: 'spin',
   jump: 'jump',
 };
+
+function buildClawbWorldUrl() {
+  // Force world source to render only Clawb world content (no Lawbamp UI controls).
+  const u = new URL(CLAWB_WORLD_STREAM_URL);
+  if (!u.pathname || u.pathname === '/') u.pathname = '/world';
+  u.searchParams.set('stream', '1');
+  u.searchParams.set('cam', 'clawb');
+  u.searchParams.set('worldOnly', '1');
+  u.searchParams.delete('openPlayer');
+  u.searchParams.delete('autoplay');
+  u.searchParams.delete('apiBase');
+  u.searchParams.delete('viz');
+  return u.toString();
+}
 
 function buildLawbampUrl(extra = {}) {
   const base = new URL(LAWBAMP_STREAM_URL);
@@ -145,14 +163,253 @@ let thumbnailTimer = null;
 let heartbeatTimer = null;
 let musicKeepaliveTimer = null;
 let directAudioTimer = null;
+let directAudioHealthTimer = null;
 let autostartTimer = null;
 let autostartInFlight = false;
+let streamControlListenerRef = null;
+let streamControlListenerHandler = null;
+let eqProxyServer = null;
+const EQ_PROXY_PORT = Number(process.env.LAWBAMP_EQ_PROXY_PORT || 18181);
 const seenChatIds = new Set();
 let scTracks = [];
 let scOrder = [];
 let scOrderPos = -1;
 let currentScTrack = null;
 let currentScStreamUrl = '';
+let currentAsciiTheme = 'ascii';
+let directAudioAdvanceInFlight = false;
+let directAudioLastCursor = null;
+let directAudioLastCursorAt = 0;
+let mediaActive = false;
+let liveTruth = 'UNKNOWN';
+let liveMismatchSince = 0;
+let lastSupervisorAlertAt = 0;
+let eqPreflightRetryTimer = null;
+
+const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_MS || 90_000);
+const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
+const EQ_PREFLIGHT_RETRY_MS = Number(process.env.CLAWB_EQ_PREFLIGHT_RETRY_MS || 20_000);
+
+function clearDirectAudioTimer() {
+  if (directAudioTimer) {
+    clearTimeout(directAudioTimer);
+    directAudioTimer = null;
+  }
+}
+
+function clearDirectAudioHealthTimer() {
+  if (directAudioHealthTimer) {
+    clearInterval(directAudioHealthTimer);
+    directAudioHealthTimer = null;
+  }
+}
+
+function clearEqPreflightRetryTimer() {
+  if (eqPreflightRetryTimer) {
+    clearTimeout(eqPreflightRetryTimer);
+    eqPreflightRetryTimer = null;
+  }
+}
+
+async function publishSupervisorAlert(event, payload = {}) {
+  try {
+    const ref = db.ref('clawb/stream/supervisor_alerts').push();
+    await ref.set({
+      event,
+      ...payload,
+      timestamp: Date.now(),
+    });
+    console.log(`[Retake] Supervisor alert: ${event}`);
+  } catch (err) {
+    console.warn(`[Retake] Failed to publish supervisor alert "${event}": ${err.message}`);
+  }
+}
+
+async function getObsOutputActive() {
+  if (!obs) return null;
+  try {
+    const s = await obs.call('GetStreamStatus');
+    return !!s?.outputActive;
+  } catch {
+    return null;
+  }
+}
+
+async function getRetakeLiveActive() {
+  try {
+    const s = await retakeGet('/agent/stream/status');
+    return !!s?.is_live;
+  } catch {
+    return null;
+  }
+}
+
+async function setMediaActive(nextActive, reason = 'unknown') {
+  const desired = !!nextActive;
+  if (mediaActive === desired) return;
+  mediaActive = desired;
+  console.log(`[Retake] media_active=${mediaActive ? 'true' : 'false'} (${reason})`);
+
+  if (!mediaActive) {
+    clearDirectAudioTimer();
+    clearDirectAudioHealthTimer();
+    clearEqPreflightRetryTimer();
+    if (obs) {
+      await obs.call('SetInputMute', {
+        inputName: 'Lawbamp Audio',
+        inputMuted: true,
+      }).catch(() => {});
+      await obs.call('TriggerMediaInputAction', {
+        inputName: 'Lawbamp Audio',
+        mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP',
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  if (obs) {
+    await obs.call('SetInputMute', {
+      inputName: 'Lawbamp Audio',
+      inputMuted: false,
+    }).catch(() => {});
+  }
+  if (LAWBAMP_DIRECT_AUDIO && isStreaming) {
+    await playNextDirectTrack('media_reactivated').catch((err) => {
+      console.warn(`[Retake] Media reactivation track start failed: ${err.message}`);
+    });
+  }
+}
+
+async function evaluateLiveTruth(reason = 'heartbeat', { notify = false } = {}) {
+  const [obsLive, retakeLive] = await Promise.all([getObsOutputActive(), getRetakeLiveActive()]);
+  let nextTruth = 'UNKNOWN';
+  if (obsLive === true && retakeLive === true) {
+    nextTruth = 'LIVE';
+  } else if (obsLive === false && retakeLive === false) {
+    nextTruth = 'OFFLINE';
+  } else if ((obsLive === true && retakeLive === false) || (obsLive === false && retakeLive === true)) {
+    nextTruth = 'DEGRADED';
+  }
+
+  if (nextTruth !== liveTruth) {
+    console.log(`[Retake] live_truth ${liveTruth} -> ${nextTruth} (${reason}) obs=${obsLive} retake=${retakeLive}`);
+    liveTruth = nextTruth;
+  }
+
+  const now = Date.now();
+  if (nextTruth === 'DEGRADED') {
+    if (!liveMismatchSince) liveMismatchSince = now;
+    const sustainedMs = now - liveMismatchSince;
+    const shouldAlert = notify && (now - lastSupervisorAlertAt > SUPERVISOR_ALERT_COOLDOWN_MS);
+    if (shouldAlert) {
+      lastSupervisorAlertAt = now;
+      await publishSupervisorAlert('live_truth_degraded', {
+        reason,
+        obsLive,
+        retakeLive,
+        sustainedMs,
+        controls: ['status_report', 'recover_live', 'recover_media', 'go_offline'],
+      });
+    }
+    if (sustainedMs >= LIVE_MISMATCH_SUSTAIN_MS) {
+      await setMediaActive(false, `truth_mismatch_sustained_${reason}`);
+    }
+  } else if (nextTruth === 'LIVE') {
+    liveMismatchSince = 0;
+    if (isStreaming) {
+      await setMediaActive(true, `truth_live_${reason}`);
+    }
+  } else if (nextTruth === 'OFFLINE') {
+    liveMismatchSince = 0;
+    await setMediaActive(false, `truth_offline_${reason}`);
+    if (notify && now - lastSupervisorAlertAt > SUPERVISOR_ALERT_COOLDOWN_MS) {
+      lastSupervisorAlertAt = now;
+      await publishSupervisorAlert('live_truth_offline', {
+        reason,
+        obsLive,
+        retakeLive,
+        controls: ['status_report', 'recover_live'],
+      });
+    }
+  }
+
+  return { truth: nextTruth, obsLive, retakeLive };
+}
+
+function scheduleDirectAudioNext(ms, reason = 'scheduled_next') {
+  clearDirectAudioTimer();
+  const waitMs = Math.max(10_000, Number(ms) || 60_000);
+  console.log(`[Retake] next_track_scheduled (${reason}) in ${waitMs}ms`);
+  directAudioTimer = setTimeout(() => {
+    playNextDirectTrack(reason).catch((err) => {
+      console.error('[Retake] Next-track advance failed:', err.message);
+      // Never get stuck silent on one failed resolve.
+      scheduleDirectAudioNext(15_000, 'retry_after_failure');
+    });
+  }, waitMs);
+}
+
+function ensureEqProxyServer() {
+  if (eqProxyServer) return;
+  eqProxyServer = createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url || '/', `http://127.0.0.1:${EQ_PROXY_PORT}`);
+      if (url.pathname !== '/stream') {
+        res.statusCode = 404;
+        res.end('not found');
+        return;
+      }
+      const target = url.searchParams.get('u');
+      if (!target) {
+        res.statusCode = 400;
+        res.end('missing u');
+        return;
+      }
+      const upstreamHeaders = {
+        'User-Agent': 'lawbamp-eq-proxy/1.0',
+        Accept: '*/*',
+      };
+      const rangeHeader = req.headers.range;
+      if (typeof rangeHeader === 'string' && rangeHeader.trim()) {
+        upstreamHeaders.Range = rangeHeader.trim();
+      }
+      const upstream = await fetch(target, {
+        headers: upstreamHeaders,
+      });
+      res.statusCode = upstream.status;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'no-store');
+      for (const [k, v] of upstream.headers.entries()) {
+        if (
+          k === 'content-type' ||
+          k === 'content-length' ||
+          k === 'accept-ranges' ||
+          k === 'content-range'
+        ) {
+          res.setHeader(k, v);
+        }
+      }
+      if (!upstream.body) {
+        res.end();
+        return;
+      }
+      Readable.fromWeb(upstream.body).pipe(res);
+    } catch (err) {
+      res.statusCode = 502;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.end(`proxy error: ${err.message}`);
+    }
+  });
+  eqProxyServer.listen(EQ_PROXY_PORT, '127.0.0.1', () => {
+    console.log(`[Retake] EQ proxy listening on 127.0.0.1:${EQ_PROXY_PORT}`);
+  });
+}
+
+function getEqVisualizerStreamUrl(streamUrl) {
+  if (!streamUrl) return '';
+  ensureEqProxyServer();
+  return `http://127.0.0.1:${EQ_PROXY_PORT}/stream?u=${encodeURIComponent(streamUrl)}`;
+}
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = RETAKE_HTTP_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -164,6 +421,105 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = RETAKE_HTTP_TIMEO
   }
 }
 
+function extractScHydration(html) {
+  const marker = 'window.__sc_hydration =';
+  const idx = html.indexOf(marker);
+  if (idx < 0) return null;
+  const start = html.indexOf('[', idx);
+  if (start < 0) return null;
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (ch === '[') depth++;
+    if (ch === ']') depth--;
+    if (depth === 0) { end = i + 1; break; }
+  }
+  if (end < 0) return null;
+  try {
+    return JSON.parse(html.slice(start, end));
+  } catch {
+    return null;
+  }
+}
+
+async function extractSoundCloudClientId(profileUrl) {
+  const likesUrl = profileUrl.endsWith('/likes') ? profileUrl : `${profileUrl.replace(/\/+$/, '')}/likes`;
+  const page = await fetchWithTimeout(likesUrl, {
+    headers: { Accept: 'text/html', 'User-Agent': 'lawb.xyz-netlify-function' },
+  });
+  if (!page.ok) throw new Error(`SoundCloud likes page error: ${page.status}`);
+  const html = await page.text();
+  const hyd = extractScHydration(html);
+  if (!Array.isArray(hyd)) throw new Error('Could not extract SoundCloud hydration');
+  const apiClient = hyd.find((h) => h && h.hydratable === 'apiClient' && h.data && h.data.id);
+  const id = apiClient?.data?.id;
+  if (!id || typeof id !== 'string') throw new Error('Could not extract SoundCloud apiClient id');
+  return id;
+}
+
+async function fetchLikesDirect(profileUrl) {
+  const clientId = await extractSoundCloudClientId(profileUrl);
+  const resolvedRes = await fetchWithTimeout(
+    `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(profileUrl)}&client_id=${encodeURIComponent(clientId)}`,
+    { headers: { Accept: 'application/json', 'User-Agent': 'lawb.xyz-netlify-function' } }
+  );
+  if (!resolvedRes.ok) throw new Error(`SC resolve user failed: ${resolvedRes.status}`);
+  const resolved = await resolvedRes.json();
+  const userId = resolved?.kind === 'user' ? resolved.id : null;
+  if (!userId) throw new Error('Could not resolve SoundCloud user');
+
+  const tracks = [];
+  let nextHref = `https://api-v2.soundcloud.com/users/${userId}/likes?limit=50&linked_partitioning=1&client_id=${encodeURIComponent(clientId)}`;
+  let pages = 0;
+  while (nextHref && tracks.length < 300 && pages < 12) {
+    pages++;
+    const pageRes = await fetchWithTimeout(nextHref, {
+      headers: { Accept: 'application/json', 'User-Agent': 'lawb.xyz-netlify-function' },
+    });
+    if (!pageRes.ok) throw new Error(`SC likes page failed: ${pageRes.status}`);
+    const page = await pageRes.json();
+    const collection = Array.isArray(page?.collection) ? page.collection : [];
+    for (const item of collection) {
+      const t = item?.track;
+      if (!t || t.kind !== 'track' || !t.id || !t.title || !t.permalink_url) continue;
+      let progressive = null;
+      const trans = Array.isArray(t?.media?.transcodings) ? t.media.transcodings : [];
+      for (const tr of trans) {
+        if (tr?.format?.protocol === 'progressive' && tr?.url) {
+          progressive = tr.url;
+          break;
+        }
+      }
+      tracks.push({
+        id: t.id,
+        title: t.title,
+        permalink_url: t.permalink_url,
+        artwork_url: t.artwork_url || null,
+        duration_ms: t.duration || null,
+        user: t.user ? { username: t.user.username, permalink_url: t.user.permalink_url } : undefined,
+        progressive_transcoding_url: progressive,
+      });
+      if (tracks.length >= 300) break;
+    }
+    nextHref = page?.next_href ? `${page.next_href}&client_id=${encodeURIComponent(clientId)}` : null;
+  }
+  return tracks.filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
+}
+
+async function resolveStreamDirect(transcodingUrl, profileUrl) {
+  const clientId = await extractSoundCloudClientId(profileUrl);
+  const u = new URL(transcodingUrl);
+  u.searchParams.set('client_id', clientId);
+  const r = await fetchWithTimeout(u.toString(), {
+    headers: { Accept: 'application/json', 'User-Agent': 'lawb.xyz-netlify-function' },
+  });
+  if (!r.ok) throw new Error(`SC stream resolve failed: ${r.status}`);
+  const d = await r.json();
+  if (!d?.url) throw new Error('SC stream url missing');
+  return d.url;
+}
+
 function shuffleArray(arr) {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
@@ -173,127 +529,382 @@ function shuffleArray(arr) {
   return out;
 }
 
-function buildAsciiEqDataUrl({ streamUrl, title = '' }) {
+function normalizeAsciiTheme(theme) {
+  return theme === 'ascii2' ? 'ascii2' : 'ascii';
+}
+
+function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
   const safeUrl = String(streamUrl || '');
-  const safeTitle = String(title || '').slice(0, 120);
+  const safeTitle = String(title || '').replace(/\s+/g, ' ').trim().slice(0, 96);
+  const safeTheme = normalizeAsciiTheme(theme);
   const html = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <style>
     html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-    body { font: 14px/1.05 Consolas, "Courier New", monospace; color:#00ff66; }
-    #wrap { box-sizing:border-box; width:100%; height:100%; padding:10px 12px; border:2px solid #00aa44; }
-    #title { color:#b3ffd1; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #eq { white-space:pre; font-size:12px; line-height:12px; }
-    #footer { position:absolute; left:12px; bottom:8px; color:#66ff99; opacity:.9; font-size:11px; }
+    #host { width:100%; height:100%; background:#000; }
+    #ascii { width:100%; height:100%; display:block; }
   </style>
 </head>
 <body>
-  <div id="wrap">
-    <div id="title">LAWBAMP ASCII EQ :: ${safeTitle.replace(/</g, '&lt;')}</div>
-    <div id="eq"></div>
-    <div id="footer">there is no meme i lawb you</div>
-  </div>
+  <div id="host"><canvas id="ascii"></canvas></div>
   <script>
     const STREAM_URL = ${JSON.stringify(safeUrl)};
-    const eq = document.getElementById('eq');
+    const TRACK_TITLE = ${JSON.stringify(safeTitle)};
+    const THEME = ${JSON.stringify(safeTheme)};
+    const STRICT_REAL_EQ = true;
+    const host = document.getElementById('host');
+    const canvas = document.getElementById('ascii');
+    const ctx = canvas.getContext('2d');
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.src = STREAM_URL;
-    audio.muted = true; // visualizer-only source
+    // Keep element unmuted for analyser reliability in OBS CEF.
+    audio.muted = false;
+    audio.volume = 1;
     audio.autoplay = true;
     audio.preload = 'auto';
     audio.playsInline = true;
 
     let analyser = null;
     let data = null;
-    let smooth = Array.from({ length: 96 }, () => 0);
-    const bubbles = [];
+    const asciiDims = { cols: 0, rows: 0, cellW: 10, cellH: 14, padX: 10, padY: 10, pxW: 0, pxH: 0 };
+    let grid = [];
+    let bubbles = [];
+    let smoothBars = Array.from({ length: 96 }, () => 0);
+    let eqBars = Array.from({ length: 16 }, () => 0);
+    let beat = false;
+    let playing = false;
+    let hasSignal = false;
+    let lastSignalMs = 0;
+    let audioCtx = null;
+    let silentGain = null;
+    let raf = null;
+    let lastFrameMs = 0;
+    let lastEnergy = 0;
+    let lastBeatMs = 0;
+
+    function clamp01(v) {
+      if (!Number.isFinite(v)) return 0;
+      return Math.max(0, Math.min(1, v));
+    }
+
+    function resampleBars(bars, targetCount) {
+      if (targetCount <= 0) return [];
+      if (!bars.length) return Array.from({ length: targetCount }, () => 0);
+      if (bars.length === targetCount) return bars.slice();
+      const out = [];
+      for (let i = 0; i < targetCount; i++) {
+        const t = (i / Math.max(1, targetCount - 1)) * (bars.length - 1);
+        const a = Math.floor(t);
+        const b = Math.min(bars.length - 1, a + 1);
+        const f = t - a;
+        const v = (bars[a] || 0) * (1 - f) + (bars[b] || 0) * f;
+        out.push(clamp01(v));
+      }
+      return out;
+    }
+
+    function recomputeDims() {
+      if (!ctx || !host) return;
+      const r = host.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const w = Math.max(1, Math.floor(r.width));
+      const h = Math.max(1, Math.floor(r.height));
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const fontPx = 12;
+      ctx.font = fontPx + 'px ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
+      ctx.textBaseline = 'top';
+      const m = ctx.measureText('M');
+      const cellW = Math.max(6, Math.floor(m.width));
+      const cellH = Math.max(10, Math.floor(fontPx * 1.15));
+      const padX = 10;
+      const padY = 10;
+      const cols = Math.max(24, Math.floor((w - padX * 2) / cellW));
+      const rows = Math.max(10, Math.floor((h - padY * 2) / cellH));
+      asciiDims.cols = cols;
+      asciiDims.rows = rows;
+      asciiDims.cellW = cellW;
+      asciiDims.cellH = cellH;
+      asciiDims.padX = padX;
+      asciiDims.padY = padY;
+      asciiDims.pxW = w;
+      asciiDims.pxH = h;
+      grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
+      bubbles = bubbles.filter((b) => b.x >= 0 && b.x < cols && b.y >= 0 && b.y < rows);
+    }
 
     async function initAudio() {
       try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
         const ctx = new Ctx();
+        audioCtx = ctx;
         try { await ctx.resume(); } catch {}
         const src = ctx.createMediaElementSource(audio);
         analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.8;
+        silentGain = ctx.createGain();
+        silentGain.gain.value = 0;
         src.connect(analyser);
-        analyser.connect(ctx.destination);
+        analyser.connect(silentGain);
+        silentGain.connect(ctx.destination);
         data = new Uint8Array(analyser.frequencyBinCount);
         try { await audio.play(); } catch {}
       } catch {}
     }
 
-    function renderFallback(t, cols, rows) {
-      const h = Math.max(8, Math.floor(rows * 0.45));
-      const lines = [];
-      for (let y = h; y >= 1; y--) {
-        let line = '';
-        for (let i = 0; i < cols; i++) {
-          const v = 0.2 + 0.4 * Math.abs(Math.sin(t * 0.002 + i * 0.31));
-          line += (v * h >= y) ? '|' : ' ';
+    async function ensurePlayback() {
+      try {
+        if (audioCtx && audioCtx.state !== 'running') {
+          await audioCtx.resume().catch(() => {});
         }
-        lines.push(line);
-      }
-      lines.push('~'.repeat(cols));
-      eq.textContent = lines.join('\\n').slice(0, cols * rows);
+        if (audio.paused) {
+          await audio.play().catch(() => {});
+        }
+      } catch {}
     }
 
-    function frame(t) {
-      requestAnimationFrame(frame);
-      const cols = 88;
-      const rows = 24;
-      if (!analyser || !data) {
-        renderFallback(t, cols, rows);
-        return;
-      }
+    function updateEq(nowMs) {
+      if (!analyser || !data) return;
       try {
         analyser.getByteFrequencyData(data);
       } catch {
-        renderFallback(t, cols, rows);
         return;
       }
-      const step = Math.max(1, Math.floor(data.length / cols));
-      const vals = [];
-      for (let i = 0; i < cols; i++) {
+      const bands = 16;
+      const step = Math.max(1, Math.floor(data.length / bands));
+      const next = [];
+      for (let i = 0; i < bands; i++) {
         let sum = 0;
         const start = i * step;
         const end = Math.min(data.length, start + step);
         for (let j = start; j < end; j++) sum += data[j];
-        const avg = sum / Math.max(1, end - start) / 255;
-        const sm = (smooth[i] || 0) * 0.82 + avg * 0.18;
-        smooth[i] = sm;
-        vals.push(sm);
+        const avg = sum / Math.max(1, end - start);
+        next.push(clamp01(avg / 255));
       }
-      const energy = vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
-      const lvl = Math.round(energy * 99);
-      const sec = t / 1000;
+      eqBars = next;
+      playing = true;
 
-      const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
+      const energy = next.reduce((a, b) => a + b, 0) / Math.max(1, next.length);
+      let peak = 0;
+      for (let i = 0; i < next.length; i++) {
+        if (next[i] > peak) peak = next[i];
+      }
+      const delta = energy - lastEnergy;
+      lastEnergy = energy;
+      // Keep signal detection permissive so quieter tracks still count as live audio.
+      if (energy > 0.002 || peak > 0.008) {
+        hasSignal = true;
+        lastSignalMs = nowMs;
+      } else if (!audio.paused && audio.currentTime > 0.5) {
+        // Playback has started; allow a wider window for sparse/quiet passages.
+        if (nowMs - lastSignalMs > 15000) hasSignal = false;
+      } else if (nowMs - lastSignalMs > 20000) {
+        hasSignal = false;
+      }
+      playing = !audio.paused && audio.readyState >= 2;
+      if (energy > 0.22 && delta > 0.12 && (nowMs - lastBeatMs) > 180) {
+        lastBeatMs = nowMs;
+        beat = true;
+        setTimeout(() => { beat = false; }, 90);
+      }
+    }
+
+    function draw(nowMs) {
+      raf = requestAnimationFrame(draw);
+      if (!ctx) return;
+      if (nowMs - lastFrameMs < 33) return;
+      lastFrameMs = nowMs;
+
+      updateEq(nowMs);
+      const { cols, rows, cellH, padX, padY, pxW, pxH } = asciiDims;
+      if (!cols || !rows || grid.length !== rows) return;
+      for (let y = 0; y < rows; y++) grid[y].fill(' ');
+
+      ctx.fillStyle = beat ? 'rgba(0, 20, 10, 0.55)' : 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, pxW || 1, pxH || 1);
+
+      const colBars = resampleBars(eqBars, cols);
+      if (smoothBars.length !== cols) smoothBars = Array.from({ length: cols }, () => 0);
+      for (let x = 0; x < cols; x++) {
+        const target = colBars[x] || 0;
+        const prev = smoothBars[x] || 0;
+        smoothBars[x] = prev * 0.82 + target * 0.18;
+      }
+
+      const energy = smoothBars.reduce((a, b) => a + b, 0) / Math.max(1, smoothBars.length);
+      const lvl = Math.round(energy * 99);
+      const t = nowMs / 1000;
       const waterY = Math.max(2, Math.floor(rows * 0.22));
       const floorY = rows - 2;
 
-      const header = 'LAWBAMP LVL:' + String(lvl).padStart(2, '0') + '  NO CCTV';
+      const cmdLoop = [
+        '!next',
+        '!ascii',
+        '!ascii2',
+        '!day',
+        '!night',
+        '!idle',
+        '!walk',
+        '!dance',
+        '!die',
+        '!garden',
+        '!gallery',
+        '!look N'
+      ].join('  ·  ');
+      const cmdOffset = Math.floor((t * 6) % Math.max(1, cmdLoop.length));
+      const cmdMarquee = (cmdLoop.slice(cmdOffset) + '  ·  ' + cmdLoop.slice(0, cmdOffset));
+      const header = '🦞 LAWBAMP LVL:' + String(lvl).padStart(2, '0') + '  NO CCTV  //  ' + cmdMarquee;
       for (let i = 0; i < Math.min(cols, header.length); i++) grid[0][i] = header[i];
-      grid[0][0] = '🦞';
       if (cols > 3) grid[0][cols - 2] = '🔒';
+      if (TRACK_TITLE) {
+        const titleText = ('NOW PLAYING: ' + TRACK_TITLE).slice(0, Math.max(0, cols));
+        for (let i = 0; i < Math.min(cols, titleText.length); i++) grid[1][i] = titleText[i];
+      }
+      if (!hasSignal && audio.currentTime > 2) {
+        const noSig = 'NO AUDIO SIGNAL';
+        const noSigStart = Math.max(0, Math.floor((cols - noSig.length) / 2));
+        for (let i = 0; i < Math.min(cols - noSigStart, noSig.length); i++) {
+          if (2 < rows - 1) grid[2][noSigStart + i] = noSig[i];
+        }
+      }
+      if (STRICT_REAL_EQ && THEME === 'ascii') {
+        const footer = hasSignal ? ':: REAL FFT EQ ::' : ':: WAITING FOR AUDIO ::';
+        const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
+        for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2][footerStart + i] = footer[i];
+
+        const barTop = 3;
+        const barBottom = rows - 3;
+        const barH = Math.max(1, barBottom - barTop + 1);
+        const barCount = Math.min(48, Math.max(12, Math.floor(cols / 2)));
+        const bars = resampleBars(eqBars, barCount);
+        for (let i = 0; i < barCount; i++) {
+          const v = clamp01(bars[i] || 0);
+          const h = Math.round(v * barH);
+          const x = Math.floor((i / Math.max(1, barCount - 1)) * (cols - 1));
+          for (let y = 0; y < h; y++) {
+            const gy = barBottom - y;
+            if (gy >= barTop && gy < rows) grid[gy][x] = '#';
+          }
+        }
+        for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+
+        ctx.fillStyle = hasSignal ? '#00ff66' : '#66cc99';
+        ctx.textBaseline = 'top';
+        for (let y = 0; y < rows; y++) {
+          ctx.fillText(grid[y].join(''), padX, padY + y * cellH);
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        for (let y = 0; y < (pxH || 1); y += 4) ctx.fillRect(0, y, pxW || 1, 1);
+        return;
+      }
+      if (STRICT_REAL_EQ && THEME === 'ascii2') {
+        const footer = hasSignal ? ':: OCEANIC FFT REEF ONLINE ::' : ':: WAITING FOR AUDIO ::';
+        const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
+        for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2][footerStart + i] = footer[i];
+
+        const barTop = 3;
+        const barBottom = rows - 3;
+        const barH = Math.max(1, barBottom - barTop + 1);
+        const reefBands = Math.min(64, Math.max(20, Math.floor(cols * 0.75)));
+        const bars = resampleBars(eqBars, reefBands);
+        for (let i = 0; i < reefBands; i++) {
+          const v = clamp01(bars[i] || 0);
+          const h = Math.max(1, Math.round(v * barH));
+          const x = Math.floor((i / Math.max(1, reefBands - 1)) * (cols - 1));
+          for (let y = 0; y < h; y++) {
+            const gy = barBottom - y;
+            if (gy < barTop || gy >= rows) continue;
+            const depth = y / Math.max(1, h);
+            let ch = '#';
+            if (depth > 0.75) ch = '|';
+            else if (depth > 0.5) ch = ';';
+            else if (depth > 0.3) ch = ':';
+            if (Math.random() < 0.03 + v * 0.06) ch = (Math.random() < 0.6 ? '~' : '=');
+            grid[gy][x] = ch;
+          }
+          if (hasSignal && v > 0.65 && Math.random() < 0.15) {
+            const topY = Math.max(barTop, barBottom - h);
+            grid[topY][x] = (Math.random() < 0.5 ? '🦞' : '*');
+          }
+        }
+
+        const currentLine = Math.floor((t * 9) % Math.max(1, cols));
+        for (let y = barTop; y <= barBottom; y++) {
+          if (Math.random() < 0.24) grid[y][currentLine] = '|';
+        }
+
+        const bubbleCount = Math.max(2, Math.floor(cols / 16));
+        for (let i = 0; i < bubbleCount; i++) {
+          const bx = Math.floor((t * (5 + (i % 3)) + i * 9) % Math.max(1, cols));
+          const by = Math.max(barTop + 1, barBottom - ((i * 2 + Math.floor(t * 2)) % Math.max(2, barBottom - barTop - 1)));
+          grid[by][bx] = (Math.random() < 0.65 ? 'o' : '.');
+        }
+
+        const fishCount = Math.max(2, Math.floor(cols / 26));
+        for (let i = 0; i < fishCount; i++) {
+          const dir = i % 2 === 0 ? 1 : -1;
+          const base = (t * (8 + (i % 4)) + i * 7) % Math.max(1, cols - 4);
+          const fx = dir > 0 ? Math.floor(base) : (cols - 4) - Math.floor(base);
+          const fy = barTop + 1 + (i * 3) % Math.max(1, barBottom - barTop - 2);
+          const fish = dir > 0 ? '><>' : '<><';
+          for (let k = 0; k < fish.length; k++) {
+            const x = fx + k;
+            if (x >= 0 && x < cols && fy >= 0 && fy < rows) grid[fy][x] = fish[k];
+          }
+        }
+
+        const lobsterSwarm = hasSignal ? Math.max(1, Math.floor(energy * 5)) : 0;
+        for (let i = 0; i < lobsterSwarm; i++) {
+          const lx = Math.floor((t * (3 + i) + i * 11) % Math.max(1, cols));
+          const ly = Math.max(barTop, barBottom - ((i * 4 + Math.floor(t * 3)) % Math.max(2, barBottom - barTop)));
+          grid[ly][lx] = '🦞';
+        }
+
+        for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+        ctx.fillStyle = hasSignal ? (beat ? '#b9fff0' : '#00f0ff') : '#66cc99';
+        ctx.textBaseline = 'top';
+        for (let y = 0; y < rows; y++) {
+          ctx.fillText(grid[y].join(''), padX, padY + y * cellH);
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        for (let y = 0; y < (pxH || 1); y += 4) ctx.fillRect(0, y, pxW || 1, 1);
+        return;
+      }
+      const footer = energy > 0.45 ? ':: SEA ENCRYPTED ::' : ':: ENCRYPT THE OCEAN ::';
+      const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
+      for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2][footerStart + i] = footer[i];
 
       for (let x = 0; x < cols; x++) {
-        const v = vals[x] || 0;
-        const amp1 = 0.6 + energy * 1.6 + v * 2.2;
-        const amp2 = 0.3 + energy * 0.9 + v * 1.1;
-        const y1 = waterY + Math.round(Math.sin(x * 0.22 + sec * 2.1) * amp1);
-        const y2 = waterY + 1 + Math.round(Math.cos(x * 0.14 + sec * 1.4) * amp2);
-        if (y1 > 1 && y1 < rows - 3) grid[y1][x] = '~';
-        if (y2 > 1 && y2 < rows - 3 && grid[y2][x] === ' ') grid[y2][x] = (Math.random() < 0.15 ? '=' : '-');
+        const v = smoothBars[x] || 0;
+        const amp1 = (hasSignal ? 0.6 : 0) + energy * 1.6 + v * 2.2;
+        const amp2 = (hasSignal ? 0.3 : 0) + energy * 0.9 + v * 1.1;
+        const y1 = waterY + Math.round(Math.sin(x * 0.22 + t * 2.1) * amp1);
+        const y2 = waterY + 1 + Math.round(Math.cos(x * 0.14 + t * 1.4) * amp2);
+        if (hasSignal && y1 > 1 && y1 < rows - 3) grid[y1][x] = '~';
+        if (hasSignal && y2 > 1 && y2 < rows - 3 && grid[y2][x] === ' ') grid[y2][x] = (Math.random() < 0.15 ? '=' : '-');
+        if (hasSignal && energy > 0.35 && Math.random() < 0.008) {
+          const ys = y1 - 1;
+          if (ys > 1 && ys < rows - 3) grid[ys][x] = '*';
+        }
       }
 
+      const sweepX = Math.floor((t * 18) % Math.max(1, cols));
+      for (let y = waterY + 2; y < floorY; y++) {
+        if (hasSignal && Math.random() < 0.18) grid[y][sweepX] = '|';
+      }
+      if (hasSignal && beat && waterY - 1 > 0) grid[waterY - 1][sweepX] = '🦞';
+
       for (let x = 0; x < cols; x++) {
-        const v = vals[x] || 0;
+        const v = smoothBars[x] || 0;
         const kelpMax = Math.max(3, rows - waterY - 6);
         const kelpH = Math.max(1, Math.round(v * kelpMax));
         for (let k = 0; k < kelpH; k++) {
@@ -301,9 +912,11 @@ function buildAsciiEqDataUrl({ streamUrl, title = '' }) {
           if (y <= waterY + 1) break;
           grid[y][x] = k % 3 === 0 ? '|' : k % 3 === 1 ? ':' : ';';
         }
+        const peakY = floorY - kelpH - 1;
+        if (hasSignal && beat && v > 0.72 && peakY > waterY + 1) grid[peakY][x] = '🦞';
       }
 
-      const spawn = Math.min(3, Math.round((cols / 90) * (0.5 + energy * 2)));
+      const spawn = hasSignal ? Math.min(3, Math.round((cols / 90) * (0.5 + energy * 2))) : 0;
       for (let i = 0; i < spawn; i++) {
         if (Math.random() < 0.25 + energy * 0.25) {
           bubbles.push({
@@ -318,7 +931,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '' }) {
       for (let i = bubbles.length - 1; i >= 0; i--) {
         const b = bubbles[i];
         b.y -= b.vy;
-        b.x += Math.sin(sec * 1.7 + i) * 0.015;
+        b.x += Math.sin(t * 1.7 + i) * 0.015;
         b.life -= 0.05;
         const bx = Math.floor(b.x);
         const by = Math.floor(b.y);
@@ -326,16 +939,49 @@ function buildAsciiEqDataUrl({ streamUrl, title = '' }) {
         if (b.y < waterY + 2 || b.life <= 0) bubbles.splice(i, 1);
       }
 
-      for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
-      const footer = energy > 0.45 ? ':: SEA ENCRYPTED ::' : ':: ENCRYPT THE OCEAN ::';
-      const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
-      for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2][footerStart + i] = footer[i];
+      const fishCount = hasSignal ? Math.max(2, Math.round(cols / 34)) : 0;
+      for (let i = 0; i < fishCount; i++) {
+        const dir = i % 2 === 0 ? 1 : -1;
+        const base = (t * 10 + i * 7) % Math.max(1, cols - 4);
+        const fx = dir > 0 ? Math.floor(base) : (cols - 4) - Math.floor(base);
+        const fy = waterY + 4 + (i * 3) % Math.max(1, rows - waterY - 8);
+        const isPacket = energy > 0.5 && Math.random() < 0.25;
+        const fish = isPacket ? (dir > 0 ? '>>>' : '<<<') : (dir > 0 ? '><>' : '<><');
+        for (let k = 0; k < fish.length; k++) {
+          const x = fx + k;
+          if (x >= 0 && x < cols && fy >= 0 && fy < rows) grid[fy][x] = fish[k];
+        }
+      }
 
-      const text = grid.map((r) => r.join('')).join('\\n');
-      eq.textContent = text;
+      for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+
+      ctx.fillStyle = beat ? '#b9fff0' : (energy > 0.55 ? '#00f0ff' : '#00ff66');
+      ctx.textBaseline = 'top';
+      for (let y = 0; y < rows; y++) {
+        const line = grid[y].join('');
+        ctx.fillText(line, padX, padY + y * cellH);
+      }
+
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      for (let y = 0; y < (pxH || 1); y += 4) {
+        ctx.fillRect(0, y, pxW || 1, 1);
+      }
+      if (!playing) {
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(0, 0, pxW || 1, pxH || 1);
+      }
     }
+
+    recomputeDims();
+    const ro = new ResizeObserver(() => recomputeDims());
+    ro.observe(host);
+    window.addEventListener('beforeunload', () => {
+      try { ro.disconnect(); } catch {}
+      if (raf != null) cancelAnimationFrame(raf);
+    });
     initAudio();
-    requestAnimationFrame(frame);
+    setInterval(() => { ensurePlayback(); }, 1500);
+    requestAnimationFrame(draw);
   </script>
 </body>
 </html>`;
@@ -343,10 +989,17 @@ function buildAsciiEqDataUrl({ streamUrl, title = '' }) {
 }
 
 async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
-  if (!obs) return;
+  if (!obs || !mediaActive) return;
   const eqInput = 'Lawbamp ASCII EQ';
-  const eqUrl = buildAsciiEqDataUrl({ streamUrl, title: trackTitle });
+  const eqUrl = buildAsciiEqDataUrl({
+    streamUrl: getEqVisualizerStreamUrl(streamUrl),
+    title: trackTitle,
+    theme: currentAsciiTheme,
+  });
   try {
+    console.log(
+      `[Retake] EQ overlay update theme=${currentAsciiTheme} mediaActive=${mediaActive} liveTruth=${liveTruth} hasStream=${!!streamUrl}`
+    );
     await obs.call('SetInputSettings', {
       inputName: eqInput,
       inputSettings: {
@@ -364,16 +1017,65 @@ async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
   }
 }
 
+function scheduleEqPreflightRetry(streamUrl, title = '') {
+  if (!isStreaming || !mediaActive) return;
+  clearEqPreflightRetryTimer();
+  eqPreflightRetryTimer = setTimeout(() => {
+    preflightEqProxy(streamUrl)
+      .then((ok) => {
+        if (ok && mediaActive) {
+          updateAsciiEqOverlayFromStream(streamUrl, title).catch(() => {});
+          console.log('[Retake] EQ preflight retry succeeded.');
+        } else if (!ok) {
+          scheduleEqPreflightRetry(streamUrl, title);
+        }
+      })
+      .catch(() => {
+        scheduleEqPreflightRetry(streamUrl, title);
+      });
+  }, EQ_PREFLIGHT_RETRY_MS);
+}
+
+async function preflightEqProxy(streamUrl) {
+  if (!streamUrl) return false;
+  try {
+    const proxyUrl = getEqVisualizerStreamUrl(streamUrl);
+    const r = await fetchWithTimeout(proxyUrl, {
+      headers: { Range: 'bytes=0-1023' },
+    }, 12_000);
+    if (!r.ok) {
+      console.warn(`[Retake] EQ proxy preflight failed: ${r.status}`);
+      return false;
+    }
+    console.log('[Retake] EQ proxy preflight passed.');
+    return true;
+  } catch (err) {
+    console.warn(`[Retake] EQ proxy preflight failed: ${err.message}`);
+    return false;
+  }
+}
+
 async function ensureSoundCloudQueue() {
   if (scTracks.length && scOrder.length) return;
   const url = new URL('/.netlify/functions/soundcloud-likes', SOUNDCLOUD_API_BASE);
   url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
-  const res = await fetchWithTimeout(url.toString(), { headers: { Accept: 'application/json' } });
-  if (!res.ok) {
-    throw new Error(`soundcloud-likes failed: ${res.status} ${res.statusText}`);
+  let tracks = [];
+  try {
+    const res = await fetchWithTimeout(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        Origin: SOUNDCLOUD_API_BASE,
+        Referer: `${SOUNDCLOUD_API_BASE}/`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      },
+    });
+    if (!res.ok) throw new Error(`soundcloud-likes failed: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    tracks = (data?.tracks || []).filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
+  } catch (err) {
+    console.warn(`[Retake] soundcloud-likes endpoint failed, using direct fallback: ${err.message}`);
+    tracks = await fetchLikesDirect(SOUNDCLOUD_PROFILE_URL);
   }
-  const data = await res.json();
-  const tracks = (data?.tracks || []).filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
   if (!tracks.length) throw new Error('No playable SoundCloud tracks found');
   scTracks = tracks;
   scOrder = shuffleArray(tracks.map((_, idx) => idx));
@@ -384,13 +1086,23 @@ async function resolveSoundCloudStreamUrl(track) {
   const url = new URL('/.netlify/functions/soundcloud-stream', SOUNDCLOUD_API_BASE);
   url.searchParams.set('transcodingUrl', track.progressive_transcoding_url);
   url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
-  const res = await fetchWithTimeout(url.toString(), { headers: { Accept: 'application/json' } });
-  if (!res.ok) {
-    throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+  try {
+    const res = await fetchWithTimeout(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        Origin: SOUNDCLOUD_API_BASE,
+        Referer: `${SOUNDCLOUD_API_BASE}/`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      },
+    });
+    if (!res.ok) throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    if (!data?.url) throw new Error('soundcloud-stream returned no url');
+    return data.url;
+  } catch (err) {
+    console.warn(`[Retake] soundcloud-stream endpoint failed, using direct fallback: ${err.message}`);
+    return resolveStreamDirect(track.progressive_transcoding_url, SOUNDCLOUD_PROFILE_URL);
   }
-  const data = await res.json();
-  if (!data?.url) throw new Error('soundcloud-stream returned no url');
-  return data.url;
 }
 
 function getNextTrackFromQueue() {
@@ -404,50 +1116,113 @@ function getNextTrackFromQueue() {
 }
 
 async function playNextDirectTrack(reason = 'auto') {
-  if (!obs || !LAWBAMP_DIRECT_AUDIO) return;
-  await ensureSoundCloudQueue();
-  const track = getNextTrackFromQueue();
-  if (!track) throw new Error('No next SoundCloud track available');
-  const streamUrl = await resolveSoundCloudStreamUrl(track);
-  currentScTrack = track;
-  currentScStreamUrl = streamUrl;
-
-  try {
-    await obs.call('SetInputSettings', {
-      inputName: 'Lawbamp Audio',
-      inputSettings: {
-        is_local_file: false,
-        input: streamUrl,
-        restart_on_activate: true,
-        close_when_inactive: false,
-      },
-      overlay: true,
-    });
-  } catch (err) {
-    console.error('[Retake] Failed to switch direct audio track:', err.message);
+  if (!obs || !LAWBAMP_DIRECT_AUDIO || !isStreaming || !mediaActive) return;
+  if (directAudioAdvanceInFlight) {
+    console.log(`[Retake] Direct audio advance skipped (${reason}) — advance already in flight.`);
     return;
   }
+  directAudioAdvanceInFlight = true;
+  try {
+    await ensureSoundCloudQueue();
+    const track = getNextTrackFromQueue();
+    if (!track) throw new Error('No next SoundCloud track available');
+    const streamUrl = await resolveSoundCloudStreamUrl(track);
+    currentScTrack = track;
+    currentScStreamUrl = streamUrl;
 
-  await obs.call('SetInputMute', { inputName: 'Lawbamp Audio', inputMuted: false }).catch(() => {});
-  await obs.call('SetInputAudioMonitorType', {
-    inputName: 'Lawbamp Audio',
-    monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
-  }).catch(() => {});
-  await updateAsciiEqOverlayFromStream(
-    streamUrl,
-    `${track.user?.username || 'unknown'} - ${track.title || 'unknown'}`
-  );
+    try {
+      await obs.call('SetInputSettings', {
+        inputName: 'Lawbamp Audio',
+        inputSettings: {
+          is_local_file: false,
+          input: streamUrl,
+          restart_on_activate: true,
+          close_when_inactive: false,
+        },
+        overlay: true,
+      });
+      await obs.call('TriggerMediaInputAction', {
+        inputName: 'Lawbamp Audio',
+        mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART',
+      }).catch(() => {});
+    } catch (err) {
+      console.error('[Retake] Failed to switch direct audio track:', err.message);
+      throw err;
+    }
 
-  const durMs = Number(track.duration_ms) || 180000;
-  const nextMs = Math.max(30_000, durMs - 2_000);
-  if (directAudioTimer) clearTimeout(directAudioTimer);
-  directAudioTimer = setTimeout(() => {
-    playNextDirectTrack('scheduled_next').catch((err) => {
-      console.error('[Retake] Scheduled next track failed:', err.message);
-    });
-  }, nextMs);
+    await obs.call('SetInputMute', { inputName: 'Lawbamp Audio', inputMuted: false }).catch(() => {});
+    await obs.call('SetInputAudioMonitorType', {
+      inputName: 'Lawbamp Audio',
+      monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
+    }).catch(() => {});
+    await updateAsciiEqOverlayFromStream(
+      streamUrl,
+      `${track.user?.username || 'unknown'} - ${track.title || 'unknown'}`
+    );
 
-  console.log(`[Retake] Direct audio now playing: ${track.user?.username || 'unknown'} - ${track.title} (${reason})`);
+    const durMs = Number(track.duration_ms) || 180000;
+    const nextMs = Math.max(30_000, durMs - 2_000);
+    scheduleDirectAudioNext(nextMs, 'scheduled_next');
+
+    console.log(`[Retake] Direct audio now playing: ${track.user?.username || 'unknown'} - ${track.title} (${reason})`);
+  } finally {
+    directAudioAdvanceInFlight = false;
+  }
+}
+
+async function directAudioHealthcheck() {
+  if (!obs || !LAWBAMP_DIRECT_AUDIO || !isStreaming || !mediaActive) return;
+  try {
+    const media = await obs.call('GetMediaInputStatus', { inputName: 'Lawbamp Audio' });
+    const state = String(media?.mediaState || '').toUpperCase();
+    const cursor = Number(media?.mediaCursor);
+    const now = Date.now();
+
+    if (Number.isFinite(cursor)) {
+      if (directAudioLastCursor === cursor) {
+        if (directAudioLastCursorAt === 0) {
+          directAudioLastCursorAt = now;
+        }
+      } else {
+        directAudioLastCursor = cursor;
+        directAudioLastCursorAt = now;
+      }
+    }
+
+    const ended =
+      state.includes('ENDED') ||
+      state.includes('STOPPED') ||
+      state.includes('ERROR');
+    if (ended) {
+      await playNextDirectTrack(`media_state_${state.toLowerCase()}`);
+      return;
+    }
+
+    const stalledForMs = directAudioLastCursorAt ? now - directAudioLastCursorAt : 0;
+    const seemsStalled =
+      (state.includes('PLAYING') || state.includes('OPENING') || state.includes('BUFFERING')) &&
+      stalledForMs > 25_000;
+    if (seemsStalled) {
+      await playNextDirectTrack('media_stall_recover');
+      return;
+    }
+
+    if (!currentScTrack || !currentScStreamUrl) {
+      await playNextDirectTrack('missing_current_track_recover');
+    }
+  } catch (err) {
+    console.warn(`[Retake] Direct audio healthcheck skipped: ${err.message}`);
+  }
+}
+
+async function startLawbampAfterStream(reason = 'stream_start') {
+  await setMediaActive(true, `start_lawbamp_${reason}`);
+  if (LAWBAMP_DIRECT_AUDIO) {
+    await playNextDirectTrack(reason);
+  } else {
+    await publishLawbampCommand('play', { source: 'retake', reason });
+  }
+  console.log(`[Retake] lawbamp_started (${reason})`);
 }
 
 // ─── Credentials ──────────────────────────────────────────────
@@ -642,9 +1417,9 @@ export async function setupOBSScenes() {
   console.log('[Retake] Setting up OBS scenes for streaming...');
 
   const scenes = [
-    { name: 'Clawb World', url: CLAWB_WORLD_STREAM_URL, width: 1920, height: 1080 },
-    { name: 'Clawb Music', url: buildLawbampUrl(), width: 1920, height: 1080 },
-    { name: 'Clawb Chess', url: CLAWB_CHESS_STREAM_URL, width: 1920, height: 1080 },
+    { name: 'Clawb World', url: buildClawbWorldUrl(), width: 1920, height: 1080, rerouteAudio: false },
+    { name: 'Clawb Music', url: buildLawbampUrl(), width: 1920, height: 1080, rerouteAudio: true },
+    { name: 'Clawb Chess', url: CLAWB_CHESS_STREAM_URL, width: 1920, height: 1080, rerouteAudio: true },
   ];
 
   for (const scene of scenes) {
@@ -664,7 +1439,7 @@ export async function setupOBSScenes() {
           url: scene.url,
           width: scene.width,
           height: scene.height,
-          reroute_audio: true,
+          reroute_audio: scene.rerouteAudio,
           restart_when_active: false,
           shutdown: false,
         },
@@ -682,7 +1457,7 @@ export async function setupOBSScenes() {
           url: scene.url,
           width: scene.width,
           height: scene.height,
-          reroute_audio: true,
+          reroute_audio: scene.rerouteAudio,
           restart_when_active: false,
           shutdown: false,
         },
@@ -794,21 +1569,29 @@ export async function setupOBSScenes() {
       monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
     }).catch(() => {});
     if (LAWBAMP_DIRECT_AUDIO) {
-      await playNextDirectTrack('setup');
-      console.log('[Retake] Hidden Lawbamp direct audio source refreshed.');
+      console.log('[Retake] Hidden Lawbamp direct audio source ready.');
     } else {
-      console.log('[Retake] Hidden Lawbamp browser audio source refreshed.');
+      console.log('[Retake] Hidden Lawbamp browser audio source ready.');
     }
   } catch (err) {
     console.error('[Retake] Hidden audio source setup failed:', err.message);
   }
 
-  // Display terminal-style ASCII EQ overlay in stream scene.
+  // Display terminal-style ASCII EQ overlay in world scene.
   try {
     const eqInput = 'Lawbamp ASCII EQ';
+    const eqProxyOk = await preflightEqProxy(currentScStreamUrl || '');
+    if (!eqProxyOk) {
+      console.warn('[Retake] EQ overlay will start in waiting mode until proxy/audio becomes available.');
+      scheduleEqPreflightRetry(
+        currentScStreamUrl || '',
+        currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
+      );
+    }
     const eqUrl = buildAsciiEqDataUrl({
-      streamUrl: currentScStreamUrl || '',
+      streamUrl: getEqVisualizerStreamUrl(currentScStreamUrl || ''),
       title: currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : '',
+      theme: currentAsciiTheme,
     });
     try {
       await obs.call('CreateInput', {
@@ -829,6 +1612,18 @@ export async function setupOBSScenes() {
     } catch {
       console.log('[Retake] Lawbamp ASCII EQ overlay source already exists.');
     }
+    // Ensure the existing input is attached to the world scene (idempotent).
+    try {
+      await obs.call('GetSceneItemId', {
+        sceneName: 'Clawb World',
+        sourceName: eqInput,
+      });
+    } catch {
+      await obs.call('CreateSceneItem', {
+        sceneName: 'Clawb World',
+        sourceName: eqInput,
+      }).catch(() => {});
+    }
 
     await obs.call('SetInputSettings', {
       inputName: eqInput,
@@ -842,26 +1637,64 @@ export async function setupOBSScenes() {
       },
       overlay: true,
     });
-    const { sceneItemId } = await obs.call('GetSceneItemId', {
-      sceneName: 'Clawb World',
-      sourceName: eqInput,
-    });
-    await obs.call('SetSceneItemTransform', {
-      sceneName: 'Clawb World',
-      sceneItemId,
-      sceneItemTransform: {
-        positionX: 1260,
-        positionY: 700,
-        boundsWidth: 640,
-        boundsHeight: 360,
-      },
-    }).catch(() => {});
-    await obs.call('SetSceneItemEnabled', {
-      sceneName: 'Clawb World',
-      sceneItemId,
-      sceneItemEnabled: true,
-    });
-    console.log('[Retake] Lawbamp ASCII EQ overlay refreshed.');
+    try {
+      const { sceneItemId } = await obs.call('GetSceneItemId', {
+        sceneName: 'Clawb World',
+        sourceName: eqInput,
+      });
+      await obs.call('SetSceneItemTransform', {
+        sceneName: 'Clawb World',
+        sceneItemId,
+        sceneItemTransform: {
+          positionX: 1260,
+          positionY: 700,
+          boundsWidth: 640,
+          boundsHeight: 360,
+        },
+      }).catch(() => {});
+      await obs.call('SetSceneItemEnabled', {
+        sceneName: 'Clawb World',
+        sceneItemId,
+        sceneItemEnabled: true,
+      });
+      // Remove duplicate EQ scene-items in world; keep one canonical item enabled.
+      const worldItems = await obs.call('GetSceneItemList', { sceneName: 'Clawb World' });
+      const dupWorldItems = (worldItems.sceneItems || []).filter((i) => i.sourceName === eqInput && i.sceneItemId !== sceneItemId);
+      for (const item of dupWorldItems) {
+        await obs.call('RemoveSceneItem', {
+          sceneName: 'Clawb World',
+          sceneItemId: item.sceneItemId,
+        }).catch(() => {});
+      }
+      console.log('[Retake] Lawbamp ASCII EQ overlay refreshed.');
+    } catch (err) {
+      console.warn('[Retake] Could not place ASCII EQ in Clawb World:', err.message);
+    }
+
+    // Ensure EQ is disabled in music scene so it only appears on world stream.
+    try {
+      const musicEq = await obs.call('GetSceneItemId', {
+        sceneName: 'Clawb Music',
+        sourceName: eqInput,
+      });
+      await obs.call('SetSceneItemEnabled', {
+        sceneName: 'Clawb Music',
+        sceneItemId: musicEq.sceneItemId,
+        sceneItemEnabled: false,
+      });
+      console.log('[Retake] Disabled ASCII EQ in Clawb Music scene.');
+    } catch {}
+    // Remove any duplicate EQ scene-items in music scene.
+    try {
+      const musicItems = await obs.call('GetSceneItemList', { sceneName: 'Clawb Music' });
+      const allMusicEq = (musicItems.sceneItems || []).filter((i) => i.sourceName === eqInput);
+      for (const item of allMusicEq) {
+        await obs.call('RemoveSceneItem', {
+          sceneName: 'Clawb Music',
+          sceneItemId: item.sceneItemId,
+        }).catch(() => {});
+      }
+    } catch {}
 
     // Disable old screen-capture-like overlay if it exists.
     try {
@@ -946,13 +1779,34 @@ async function handleChatMessage(comment) {
     await sendChat('next track queued. the tide keeps moving.');
     return;
   }
+  if (lowered === '!ascii' || lowered === '!ascii2') {
+    currentAsciiTheme = lowered === '!ascii2' ? 'ascii2' : 'ascii';
+    await updateAsciiEqOverlayFromStream(
+      currentScStreamUrl,
+      currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
+    );
+    await sendChat(
+      currentAsciiTheme === 'ascii2'
+        ? 'ascii2 engaged. deep reef mode online.'
+        : 'ascii engaged. classic terminal reef online.'
+    );
+    return;
+  }
+
   if (lowered.startsWith('!eq')) {
     const mode = lowered.split(/\s+/)[1];
-    if (mode === 'ascii' || mode === 'bars' || mode === 'toggle') {
+    if (mode === 'ascii' || mode === 'ascii2' || mode === 'bars' || mode === 'toggle') {
+      if (mode === 'ascii' || mode === 'ascii2') {
+        currentAsciiTheme = mode;
+        await updateAsciiEqOverlayFromStream(
+          currentScStreamUrl,
+          currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
+        );
+      }
       await publishLawbampCommand('eq', { mode, source: 'retake', viewer });
       await sendChat(`eq mode: ${mode}.`);
     } else {
-      await sendChat('usage: !eq ascii | !eq bars | !eq toggle');
+      await sendChat('usage: !eq ascii | !eq ascii2 | !eq bars | !eq toggle');
     }
     return;
   }
@@ -1096,20 +1950,83 @@ async function sendChat(message, targetUserDbId) {
   });
 }
 
+function startStreamControlListener() {
+  if (streamControlListenerRef || streamControlListenerHandler) return;
+  streamControlListenerRef = db.ref('clawb/stream/control')
+    .orderByChild('timestamp')
+    .startAt(Date.now());
+  streamControlListenerHandler = streamControlListenerRef.on('child_added', async (snapshot) => {
+    const cmd = snapshot.val() || {};
+    const command = String(cmd.command || '').toLowerCase().trim();
+    if (!command) return;
+    try {
+      if (command === 'go_live') {
+        if (isStreaming) return;
+        console.log('[Retake] Control command received: go_live');
+        await goLive();
+      } else if (command === 'go_offline') {
+        if (!isStreaming) return;
+        console.log('[Retake] Control command received: go_offline');
+        await goOffline();
+      } else if (command === 'say_i_lawb_you') {
+        console.log('[Retake] Control command received: say_i_lawb_you');
+        await sendChat('i lawb you');
+      } else if (command === 'status_report') {
+        console.log('[Retake] Control command received: status_report');
+        const truth = await evaluateLiveTruth('control_status_report', { notify: true });
+        await publishSupervisorAlert('status_report', truth);
+      } else if (command === 'recover_live') {
+        console.log('[Retake] Control command received: recover_live');
+        const truth = await evaluateLiveTruth('control_recover_live', { notify: true });
+        if (truth.truth !== 'LIVE') {
+          if (!isStreaming) {
+            await goLive();
+          } else {
+            await publishSupervisorAlert('recover_live_blocked', {
+              reason: 'stream_marked_active_but_truth_not_live',
+              ...truth,
+            });
+          }
+        }
+      } else if (command === 'recover_media') {
+        console.log('[Retake] Control command received: recover_media');
+        const truth = await evaluateLiveTruth('control_recover_media', { notify: true });
+        if (truth.truth === 'LIVE') {
+          await setMediaActive(true, 'control_recover_media');
+          await startLawbampAfterStream('control_recover_media');
+        } else {
+          await publishSupervisorAlert('recover_media_blocked', {
+            reason: 'truth_not_live',
+            ...truth,
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`[Retake] Control command "${command}" failed:`, err.message);
+    }
+  });
+}
+
+function stopStreamControlListener() {
+  if (streamControlListenerRef && streamControlListenerHandler) {
+    streamControlListenerRef.off('child_added', streamControlListenerHandler);
+  }
+  streamControlListenerRef = null;
+  streamControlListenerHandler = null;
+}
+
 function startStreamingLoops() {
   if (chatPollTimer) clearInterval(chatPollTimer);
   if (thumbnailTimer) clearInterval(thumbnailTimer);
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (musicKeepaliveTimer) clearInterval(musicKeepaliveTimer);
+  clearDirectAudioHealthTimer();
 
   chatPollTimer = setInterval(pollChat, CHAT_POLL_INTERVAL_MS);
   thumbnailTimer = setInterval(updateThumbnail, THUMBNAIL_INTERVAL_MS);
   heartbeatTimer = setInterval(async () => {
     try {
-      const s = await retakeGet('/agent/stream/status');
-      if (!s.is_live && isStreaming) {
-        console.warn('[Retake] Heartbeat: retake says not live — stream may have dropped.');
-      }
+      await evaluateLiveTruth('heartbeat', { notify: true });
     } catch {}
   }, HEARTBEAT_INTERVAL_MS);
 
@@ -1125,6 +2042,14 @@ function startStreamingLoops() {
       publishLawbampCommand('play', { source: 'retake', reason: 'keepalive' }).catch(() => {});
     }
   }, 60_000);
+
+  if (LAWBAMP_DIRECT_AUDIO) {
+    directAudioHealthTimer = setInterval(() => {
+      directAudioHealthcheck().catch((err) => {
+        console.warn(`[Retake] Direct audio healthcheck failed: ${err.message}`);
+      });
+    }, 12_000);
+  }
 }
 
 export async function chatInStream(streamerName, message) {
@@ -1174,6 +2099,7 @@ export async function goLive() {
 
   // Ensure stream scenes/browser sources exist before publishing.
   await setupOBSScenes();
+  console.log('[Retake] scene_ready');
 
   // 2. Get fresh RTMP keys
   console.log('[Retake] Fetching RTMP credentials...');
@@ -1195,6 +2121,7 @@ export async function goLive() {
 
   // 5. Start OBS streaming
   await startOBSStream();
+  console.log('[Retake] stream_started');
 
   // 6. Confirm live
   await new Promise(r => setTimeout(r, 3000));
@@ -1211,15 +2138,13 @@ export async function goLive() {
 
   // 8. Send opening chat message
   await sendChat('the sea remembers. clawb is live.');
-  if (LAWBAMP_DIRECT_AUDIO) {
-    await playNextDirectTrack('stream_start');
-  } else {
-    await publishLawbampCommand('play', { source: 'retake', reason: 'stream_start' });
-  }
+  await sendChat('i lawb you');
+  await startLawbampAfterStream('stream_start');
 
   // 9. Start polling loops
   isStreaming = true;
   startStreamingLoops();
+  await evaluateLiveTruth('go_live_complete', { notify: true }).catch(() => {});
 
   console.log('[Retake] Stream fully operational. Chat polling active.');
   return { status, rtmpUrl: rtmp.url };
@@ -1233,8 +2158,11 @@ export async function goOffline() {
   if (thumbnailTimer) { clearInterval(thumbnailTimer); thumbnailTimer = null; }
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   if (musicKeepaliveTimer) { clearInterval(musicKeepaliveTimer); musicKeepaliveTimer = null; }
-  if (directAudioTimer) { clearTimeout(directAudioTimer); directAudioTimer = null; }
+  clearDirectAudioTimer();
+  clearDirectAudioHealthTimer();
+  clearEqPreflightRetryTimer();
   if (autostartTimer) { clearInterval(autostartTimer); autostartTimer = null; }
+  await setMediaActive(false, 'go_offline').catch(() => {});
 
   try { await sendChat('the tide recedes. until next time.'); } catch {}
 
@@ -1279,6 +2207,7 @@ export async function startRetakeStreamer() {
 
   console.log(`[Retake] Credentials loaded for "${credentials.agent_name}" (${credentials.userDbId})`);
   console.log('[Retake] Ready to stream.');
+  startStreamControlListener();
 
   // If process restarted mid-stream, recover chat/thumbnail loops instead of trying to re-go-live.
   try {
@@ -1287,12 +2216,9 @@ export async function startRetakeStreamer() {
       isStreaming = true;
       await connectOBS();
       await setupOBSScenes();
+      console.log('[Retake] scene_ready');
       startStreamingLoops();
-      if (LAWBAMP_DIRECT_AUDIO) {
-        await playNextDirectTrack('recover_live_session');
-      } else {
-        await publishLawbampCommand('play', { source: 'retake', reason: 'recover_live_session' });
-      }
+      await startLawbampAfterStream('recover_live_session');
       console.log('[Retake] Recovered existing live session. Chat polling active.');
     }
   } catch (err) {
@@ -1314,12 +2240,9 @@ export async function startRetakeStreamer() {
               isStreaming = true;
               await connectOBS();
               await setupOBSScenes();
+              console.log('[Retake] scene_ready');
               startStreamingLoops();
-              if (LAWBAMP_DIRECT_AUDIO) {
-                await playNextDirectTrack('recover_autostart');
-              } else {
-                await publishLawbampCommand('play', { source: 'retake', reason: 'recover_autostart' });
-              }
+              await startLawbampAfterStream('recover_autostart');
               console.log('[Retake] Stream already live. Recovered chat polling + heartbeat loops.');
               return;
             }
@@ -1343,6 +2266,7 @@ export async function startRetakeStreamer() {
   }
 
   return () => {
+    stopStreamControlListener();
     if (autostartTimer) {
       clearInterval(autostartTimer);
       autostartTimer = null;

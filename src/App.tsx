@@ -83,6 +83,8 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const isStreamMode = params.get('stream') === '1';
     if (!isStreamMode) return;
+    const isWorldOnly = params.get('worldOnly') === '1';
+    if (isWorldOnly) return;
 
     const wantsMiniPlayer = params.get('openPlayer') === '1';
     const wantsAutoplay = params.get('autoplay') === '1';
@@ -116,6 +118,8 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const isStreamMode = params.get('stream') === '1';
     if (!isStreamMode) return;
+    const isWorldOnly = params.get('worldOnly') === '1';
+    if (isWorldOnly) return;
 
     const processed = new Set<string>();
     const cmdsRef = query(ref(database, 'clawb/stream/lawbamp_commands'), orderByChild('timestamp'), limitToLast(30));

@@ -15,6 +15,8 @@ const ROOM_TO_ACTION = {
 };
 
 const ACTION_ALIASES = {
+  day: 'day',
+  night: 'night',
   idle: 'idle',
   walk: 'walk',
   dance: 'dance',

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
+    "wake": "node wake-clawb.js",
     "chat": "node lawb-chat-responder.js",
     "status": "node clawb-status.js",
     "test-firebase": "node test-firebase.js"

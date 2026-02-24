@@ -83,11 +83,18 @@ const ROOM_TRANSITION_DURATION_MS = 4200;
 const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
 type ClawbModelKey = 'idle' | 'walk' | 'dance' | 'flip' | 'die';
 const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
-  idle: '/assets/lawbidle2.fbx',
+  idle: '/assets/lawbidle.fbx',
   walk: '/assets/lawbWalk.fbx',
   dance: '/assets/lawbdance1.fbx',
   flip: '/assets/lawbdance2.fbx',
   die: '/assets/lawbdeath.fbx',
+};
+const CLAWB_MODEL_FALLBACKS: Record<ClawbModelKey, string[]> = {
+  idle: ['/assets/lawbidle2.fbx', '/assets/lawbWalk.fbx'],
+  walk: ['/assets/lawbidle.fbx'],
+  dance: ['/assets/lawbdance2.fbx', '/assets/lawbidle.fbx'],
+  flip: ['/assets/lawbdance1.fbx', '/assets/lawbidle.fbx'],
+  die: ['/assets/lawbidle.fbx'],
 };
 const PATROL_POINTS = [
   new THREE.Vector3(-2.6, FLOOR_Y, -1.4),
@@ -437,6 +444,17 @@ const ClawbWorld: React.FC = () => {
     });
   }, []);
 
+  const getPlayableClip = useCallback((clip: THREE.AnimationClip): THREE.AnimationClip => {
+    const filtered = clip.clone();
+    filtered.tracks = filtered.tracks.filter((t) => !t.name.toLowerCase().includes('.position'));
+    if (filtered.tracks.length > 0) {
+      filtered.resetDuration();
+      return filtered;
+    }
+    // Some FBX files only expose root-position animation. Keep original to avoid T-pose.
+    return clip.clone();
+  }, []);
+
   const ensureRemotePlayer = useCallback(async (wallet: string, scene: THREE.Scene): Promise<THREE.Group> => {
     const existing = remotePlayersRef.current.get(wallet);
     if (existing) return existing;
@@ -453,15 +471,13 @@ const ClawbWorld: React.FC = () => {
 
     if (model.animations?.length > 0) {
       const mixer = new THREE.AnimationMixer(model);
-      const clip = model.animations[0].clone();
-      clip.tracks = clip.tracks.filter((t) => !t.name.toLowerCase().includes('.position'));
-      if (clip.tracks.length > 0) clip.resetDuration();
+      const clip = getPlayableClip(model.animations[0]);
       mixer.clipAction(clip).play();
       remoteMixersRef.current.set(wallet, mixer);
     }
 
     return model;
-  }, [applyBlueTint]);
+  }, [applyBlueTint, getPlayableClip]);
 
   // Animation loop
   const animate = useCallback(() => {
@@ -561,10 +577,11 @@ const ClawbWorld: React.FC = () => {
 
     // Animate Clawb NPC (patrol + synchronized world actions)
     if (clawbRef.current && clawbMixerRef.current) {
+      const activeAction = Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol';
+      // Keep animation mixer running in stream mode so idle/walk clips don't lock into bind pose.
       clawbMixerRef.current.update(delta);
       clawbActionTRef.current += delta;
       const t = clawbActionTRef.current;
-      const activeAction = Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol';
 
       if (activeAction === 'patrol') {
         requestClawbModelRef.current(isStreamMode ? 'idle' : 'walk');
@@ -573,7 +590,7 @@ const ClawbWorld: React.FC = () => {
           clawbPosRef.current.lerp(anchor, 0.06);
           clawbRef.current.position.x = clawbPosRef.current.x;
           clawbRef.current.position.z = clawbPosRef.current.z;
-          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 2.6)) * 0.1;
+          clawbRef.current.position.y = FLOOR_Y;
           // Keep Clawb visually composed in stream mode instead of roaming.
           const dx = camera.position.x - clawbRef.current.position.x;
           clawbRef.current.rotation.y = Math.atan2(dx, 1);
@@ -621,22 +638,22 @@ const ClawbWorld: React.FC = () => {
         const baseZ = clawbPosRef.current.z;
         if (activeAction === 'dance') {
           clawbRef.current.position.x = baseX + Math.sin(t * 4.5) * 0.5;
-          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 5.2)) * 0.35;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 5.2)) * 0.35;
           clawbRef.current.rotation.y += delta * 1.6;
         } else if (activeAction === 'swim') {
           clawbRef.current.position.x = baseX + Math.sin(t * 2.2) * 1.4;
           clawbRef.current.position.z = baseZ + Math.cos(t * 2.2) * 1.1;
-          clawbRef.current.position.y = FLOOR_Y + 0.5 + Math.sin(t * 2.8) * 0.35;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + 0.5 + Math.sin(t * 2.8) * 0.35;
           clawbRef.current.rotation.y = t * 2.2 + Math.PI / 2;
         } else if (activeAction === 'wave') {
-          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 3.0)) * 0.2;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 3.0)) * 0.2;
           clawbRef.current.rotation.y = Math.sin(t * 3.0) * 0.6;
           clawbRef.current.rotation.z = Math.sin(t * 6.0) * 0.2;
         } else if (activeAction === 'spin') {
-          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 4.0)) * 0.15;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 4.0)) * 0.15;
           clawbRef.current.rotation.y += delta * 6.0;
         } else if (activeAction === 'jump') {
-          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 7.0)) * 0.9;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 7.0)) * 0.9;
           clawbRef.current.position.x = baseX + Math.sin(t * 2.0) * 0.2;
         } else if (activeAction === 'look_swim') {
           requestClawbModelRef.current('walk');
@@ -646,22 +663,26 @@ const ClawbWorld: React.FC = () => {
             clawbPosRef.current.lerp(desired, 0.06);
             clawbRef.current.position.x = clawbPosRef.current.x;
             clawbRef.current.position.z = clawbPosRef.current.z;
-            clawbRef.current.position.y = FLOOR_Y + 0.22 + Math.sin(t * 2.8) * 0.08;
+            clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + 0.22 + Math.sin(t * 2.8) * 0.08;
             const dir = new THREE.Vector3().subVectors(lookTarget.focus, clawbRef.current.position);
             clawbRef.current.rotation.y = Math.atan2(dir.x, dir.z);
           }
         } else if (activeAction === 'flip') {
-          clawbRef.current.position.y = FLOOR_Y + 0.35 + Math.sin(t * 5.4) * 0.2;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + 0.35 + Math.sin(t * 5.4) * 0.2;
           clawbRef.current.rotation.x = t * 7.5;
           clawbRef.current.rotation.y += delta * 1.1;
           clawbRef.current.rotation.z = Math.sin(t * 2.7) * 0.15;
         } else if (activeAction === 'die') {
           clawbRef.current.position.x = baseX;
           clawbRef.current.position.z = baseZ;
-          clawbRef.current.position.y = FLOOR_Y - 0.2 + Math.sin(t * 1.8) * 0.03;
+          clawbRef.current.position.y = isStreamMode ? FLOOR_Y - 0.2 : FLOOR_Y - 0.2 + Math.sin(t * 1.8) * 0.03;
           clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.1);
           clawbRef.current.rotation.z = THREE.MathUtils.lerp(clawbRef.current.rotation.z, Math.PI / 2, 0.12);
         }
+      }
+
+      if (isStreamMode && activeAction !== 'die') {
+        clawbRef.current.position.y = FLOOR_Y;
       }
 
       // Proximity greeting
@@ -823,11 +844,7 @@ const ClawbWorld: React.FC = () => {
         clawbModelKeyRef.current = key;
         if (object.animations?.length > 0) {
           const mixer = new THREE.AnimationMixer(object);
-          let clip = object.animations[0].clone();
-          if (key === 'walk') {
-            clip.tracks = clip.tracks.filter((t) => !t.name.toLowerCase().includes('.position'));
-          }
-          if (clip.tracks.length > 0) clip.resetDuration();
+          const clip = getPlayableClip(object.animations[0]);
           mixer.clipAction(clip).play();
           clawbMixerRef.current = mixer;
         }
@@ -841,9 +858,22 @@ const ClawbWorld: React.FC = () => {
         return;
       }
       clawbModelSwapStateRef.current.inFlight = true;
-      void loadClawbModel(CLAWB_MODEL_URLS[key])
-        .then((obj) => applyClawbModel(obj, key))
-        .catch((err) => console.warn(`[ClawbWorld] Failed to load Clawb model "${key}":`, err))
+      const candidateUrls = [CLAWB_MODEL_URLS[key], ...CLAWB_MODEL_FALLBACKS[key]];
+      const loadWithFallback = async () => {
+        let lastErr: unknown = null;
+        for (const url of candidateUrls) {
+          try {
+            const obj = await loadClawbModel(url);
+            applyClawbModel(obj, key);
+            return;
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+        throw lastErr;
+      };
+      void loadWithFallback()
+        .catch((err) => console.warn(`[ClawbWorld] Failed to load Clawb model "${key}" from all candidates:`, err))
         .finally(() => {
           clawbModelSwapStateRef.current.inFlight = false;
           const pending = clawbModelSwapStateRef.current.pending;
@@ -1273,6 +1303,7 @@ const ClawbWorld: React.FC = () => {
         onTouchMove={isMobile ? handleTouchMove : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       />
+      {isStreamMode && <div className="clawb-world-crt-overlay" aria-hidden="true" />}
 
       {/* HUD */}
       {!isStreamMode && (
