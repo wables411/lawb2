@@ -46,7 +46,7 @@ const CLAWB_SOLANA_WALLET = 'GDt1ZmAtCfqbK8iFAEyJUCbnu1TPjVeg3HaJ1wKaqhvC';
 
 const OBS_WS_URL = process.env.OBS_WS_URL || 'ws://127.0.0.1:4455';
 const OBS_WS_PASSWORD = process.env.OBS_WS_PASSWORD || '';
-const RETAKE_AUTOSTART = String(process.env.RETAKE_AUTOSTART || 'true').toLowerCase() === 'true';
+const RETAKE_AUTOSTART = String(process.env.RETAKE_AUTOSTART || 'false').toLowerCase() === 'true';
 const RETAKE_AGENT_NAME = process.env.RETAKE_AGENT_NAME || 'Clawb';
 const RETAKE_AGENT_DESCRIPTION = process.env.RETAKE_AGENT_DESCRIPTION || 'This user Lawbs you.';
 const RETAKE_AGENT_IMAGE_URL = process.env.RETAKE_AGENT_IMAGE_URL || 'https://lawb.xyz/assets/lawbstation.GIF';
