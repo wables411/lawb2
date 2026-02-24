@@ -310,6 +310,66 @@ export async function setupOBSScenes() {
     }
   }
 
+  // Keep Lawbamp audio alive even while showing world/chess scenes.
+  try {
+    const inputName = 'Lawbamp Audio';
+    const audioUrl = `${LAWBAMP_STREAM_URL}${LAWBAMP_STREAM_URL.includes('?') ? '&' : '?'}stream=1&autoplay=1&openPlayer=1`;
+    try {
+      await obs.call('CreateInput', {
+        sceneName: 'Clawb World',
+        inputName,
+        inputKind: 'browser_source',
+        inputSettings: {
+          url: audioUrl,
+          width: 16,
+          height: 16,
+          reroute_audio: true,
+          restart_when_active: false,
+          shutdown: false,
+        },
+        sceneItemEnabled: true,
+      });
+      console.log('[Retake] Created hidden always-on Lawbamp audio source.');
+    } catch {
+      console.log('[Retake] Hidden Lawbamp audio source already exists.');
+    }
+
+    await obs.call('SetInputSettings', {
+      inputName,
+      inputSettings: {
+        url: `${audioUrl}&r=${Date.now()}`,
+        width: 16,
+        height: 16,
+        reroute_audio: true,
+        restart_when_active: false,
+        shutdown: false,
+      },
+      overlay: true,
+    });
+    const { sceneItemId } = await obs.call('GetSceneItemId', {
+      sceneName: 'Clawb World',
+      sourceName: inputName,
+    });
+    await obs.call('SetSceneItemTransform', {
+      sceneName: 'Clawb World',
+      sceneItemId,
+      sceneItemTransform: {
+        positionX: -2000,
+        positionY: -2000,
+        boundsWidth: 16,
+        boundsHeight: 16,
+      },
+    }).catch(() => {});
+    await obs.call('SetSceneItemEnabled', {
+      sceneName: 'Clawb World',
+      sceneItemId,
+      sceneItemEnabled: true,
+    });
+    console.log('[Retake] Hidden Lawbamp audio source refreshed.');
+  } catch (err) {
+    console.error('[Retake] Hidden audio source setup failed:', err.message);
+  }
+
   try {
     await obs.call('SetCurrentProgramScene', { sceneName: 'Clawb World' });
   } catch {}
