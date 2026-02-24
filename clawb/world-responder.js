@@ -63,7 +63,7 @@ function normalizeCommand(command) {
   if (rawType === 'action' && ACTION_ALIASES[rawAction]) {
     return {
       action: ACTION_ALIASES[rawAction],
-      direction: rawDirection || undefined,
+      ...(rawDirection ? { direction: rawDirection } : {}),
       loop,
       by,
       source,

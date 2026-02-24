@@ -314,6 +314,8 @@ const ClawbWorld: React.FC = () => {
   const parseWorldActionFromText = useCallback((text: string): string | null => {
     const t = (text || '').toLowerCase().trim();
     if (!t) return null;
+    const walkDirectionMatch = /^!walk\s+(left|right|forward|back)\b/.exec(t);
+    if (walkDirectionMatch) return walkDirectionMatch[1];
     const swimDirectionMatch = /^!swim\s+(left|right|forward|back)\b/.exec(t);
     if (swimDirectionMatch) return `swim_${swimDirectionMatch[1]}`;
     const loopMatch = /^!loop\s+([a-z0-9_]+)\b/.exec(t);

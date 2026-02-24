@@ -1896,6 +1896,16 @@ ${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
 
 function parseWorldCommand(loweredText) {
   if (!loweredText.startsWith('!')) return null;
+  const walkDirectionMatch = /^!walk\s+(left|right|forward|back)\b/.exec(loweredText);
+  if (walkDirectionMatch) {
+    const direction = walkDirectionMatch[1];
+    return {
+      type: 'action',
+      command: `!walk ${direction}`,
+      action: direction,
+      direction,
+    };
+  }
   const swimDirectionMatch = /^!swim\s+(left|right|forward|back)\b/.exec(loweredText);
   if (swimDirectionMatch) {
     const direction = swimDirectionMatch[1];
@@ -1934,7 +1944,7 @@ function parseWorldCommand(loweredText) {
   }
 
   if (command === 'zoom' && argRaw) {
-    const zoomArg = argRaw.trim();
+    const zoomArg = argRaw.trim().replace(/[^a-z]/g, '');
     if (zoomArg === 'in' || zoomArg === 'out') {
       return { type: 'action', command: `!zoom ${zoomArg}`, action: `zoom_${zoomArg}` };
     }
