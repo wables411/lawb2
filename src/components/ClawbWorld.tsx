@@ -76,24 +76,41 @@ const CLAWB_SCALE = 0.018; // Sized to match reef objects
 const FLOOR_Y = -3;
 const NFT_INTERACT_DISTANCE = 3.2;
 const WORLD_ACTION_DURATION_MS = 5000;
+const DIRECTIONAL_ACTION_DURATION_MS = 2800;
 const LOOK_FOCUS_DURATION_MS = 60_000;
 const CLAWB_PATROL_SPEED = 1.2;
 const CLAWB_PATROL_PAUSE_MS = 1200;
 const ROOM_TRANSITION_DURATION_MS = 4200;
+const CLAWB_STEP_SPEED = 0.9;
+const CLAWB_SWIM_STEP_SPEED = 1.3;
+const STREAM_CAMERA_DEFAULT_DISTANCE = 3.2;
+const STREAM_CAMERA_MIN_DISTANCE = 0.45;
+const STREAM_CAMERA_MAX_DISTANCE = 18.0;
+const STREAM_CAMERA_ZOOM_STEP = 0.9;
+const STREAM_CAMERA_NEAR_FOV = 108; // close-up fish-eye feel
+const STREAM_CAMERA_FAR_FOV = 42; // distant "security camera" feel
+const STREAM_CAMERA_NEAR_Y = 0.78; // eye-level closeup
+const STREAM_CAMERA_FAR_Y = 10.5; // overhead security-cam height
+const STREAM_CAMERA_NEAR_Z_SCALE = 1.0; // keep true distance at close range
+const STREAM_CAMERA_FAR_Z_SCALE = 0.32; // pull toward top-down at far range
 const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
-type ClawbModelKey = 'idle' | 'walk' | 'dance' | 'flip' | 'die';
+type ClawbModelKey = 'idle' | 'walk' | 'swim' | 'hi' | 'dance' | 'flip' | 'die';
 const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
   idle: '/assets/lawbidle.fbx',
   walk: '/assets/lawbWalk.fbx',
+  swim: '/assets/lawbswim.fbx',
+  hi: '/assets/lawbdance3.fbx',
   dance: '/assets/lawbdance1.fbx',
-  flip: '/assets/lawbdance2.fbx',
+  flip: '/assets/lawbflip.fbx',
   die: '/assets/lawbdeath.fbx',
 };
 const CLAWB_MODEL_FALLBACKS: Record<ClawbModelKey, string[]> = {
-  idle: ['/assets/lawbidle2.fbx', '/assets/lawbWalk.fbx'],
+  idle: ['/assets/lawbWalk.fbx'],
   walk: ['/assets/lawbidle.fbx'],
-  dance: ['/assets/lawbdance2.fbx', '/assets/lawbidle.fbx'],
-  flip: ['/assets/lawbdance1.fbx', '/assets/lawbidle.fbx'],
+  swim: ['/assets/lawbWalk.fbx'],
+  hi: ['/assets/lawbidle.fbx'],
+  dance: ['/assets/lawbidle.fbx'],
+  flip: ['/assets/lawbidle.fbx'],
   die: ['/assets/lawbidle.fbx'],
 };
 const PATROL_POINTS = [
@@ -109,6 +126,7 @@ const ROOM_ACTION_TO_KEY: Record<string, keyof typeof ROOM_OFFSETS> = {
   room_workshop: 'workshop',
   room_vault: 'vault',
 };
+const LOOPABLE_ACTIONS = new Set(['idle', 'walk', 'dance', 'flip', 'die', 'swim', 'hi', 'wave', 'spin', 'jump']);
 const PRESENCE_WRITE_INTERVAL_MS = 250;
 
 interface NFTItem {
@@ -180,7 +198,9 @@ const ClawbWorld: React.FC = () => {
   const mouseRef = useRef(new THREE.Vector2());
   const processedActionIdsRef = useRef<Set<string>>(new Set());
   const worldActionRef = useRef<{ type: string; until: number }>({ type: 'patrol', until: 0 });
+  const loopedActionRef = useRef<string | null>(null);
   const lookTargetRef = useRef<{ until: number; focus: THREE.Vector3; camera: THREE.Vector3; clawbTarget: THREE.Vector3 } | null>(null);
+  const streamCameraDistanceRef = useRef(STREAM_CAMERA_DEFAULT_DISTANCE);
   const clawbActionTRef = useRef(0);
   const remotePlayersRef = useRef<Map<string, THREE.Group>>(new Map());
   const remoteTargetsRef = useRef<Map<string, WorldPlayerPresence>>(new Map());
@@ -294,6 +314,12 @@ const ClawbWorld: React.FC = () => {
   const parseWorldActionFromText = useCallback((text: string): string | null => {
     const t = (text || '').toLowerCase().trim();
     if (!t) return null;
+    const swimDirectionMatch = /^!swim\s+(left|right|forward|back)\b/.exec(t);
+    if (swimDirectionMatch) return `swim_${swimDirectionMatch[1]}`;
+    const loopMatch = /^!loop\s+([a-z0-9_]+)\b/.exec(t);
+    if (loopMatch && LOOPABLE_ACTIONS.has(loopMatch[1])) return `loop_${loopMatch[1]}`;
+    if (/(^|\s)!zoom\s+in\b/.test(t) || /(^|\s)!zoomin\b/.test(t)) return 'zoom_in';
+    if (/(^|\s)!zoom\s+out\b/.test(t) || /(^|\s)!zoomout\b/.test(t)) return 'zoom_out';
     if (/(^|\s)!look\s+\d+\b/.test(t)) return 'look_nft';
     if (/(^|\s)!garden\b/.test(t)) return 'room_workshop';
     if (/(^|\s)!gallery\b/.test(t)) return 'room_bedroom';
@@ -303,10 +329,15 @@ const ClawbWorld: React.FC = () => {
     if (/(^|\s)!main\b/.test(t)) return 'room_main';
     if (/(^|\s)!day\b/.test(t)) return 'day';
     if (/(^|\s)!night\b/.test(t)) return 'night';
+    if (/(^|\s)!left\b/.test(t)) return 'left';
+    if (/(^|\s)!right\b/.test(t)) return 'right';
+    if (/(^|\s)!forward\b/.test(t)) return 'forward';
+    if (/(^|\s)!back\b/.test(t)) return 'back';
     if (/(^|\s)!dance\b|\bdance\b/.test(t)) return 'dance';
     if (/(^|\s)!flip\b|\bflip\b/.test(t)) return 'flip';
     if (/(^|\s)!die\b|\bdie\b/.test(t)) return 'die';
     if (/(^|\s)!swim\b|\bswim\b/.test(t)) return 'swim';
+    if (/(^|\s)!hi\b/.test(t)) return 'hi';
     if (/(^|\s)!wave\b|\bwave\b/.test(t)) return 'wave';
     if (/(^|\s)!spin\b|\bspin\b/.test(t)) return 'spin';
     if (/(^|\s)!jump\b|\bjump\b/.test(t)) return 'jump';
@@ -358,10 +389,12 @@ const ClawbWorld: React.FC = () => {
     return true;
   }, []);
 
-  const triggerWorldAction = useCallback((action: string, payload?: { targetNftIndex?: number }) => {
+  const triggerWorldAction = useCallback((action: string, payload?: { targetNftIndex?: number; loop?: unknown; direction?: unknown }) => {
+    const loopRequested = payload?.loop === true;
     const scene = sceneRef.current;
     const lights = lightsRef.current;
     if (scene && lights && (action === 'day' || action === 'night')) {
+      loopedActionRef.current = null;
       const isNight = action === 'night';
       setupUnderwaterFog(scene, isNight);
       lights.ambient.color.set(isNight ? '#1a2a44' : '#4466aa');
@@ -373,23 +406,46 @@ const ClawbWorld: React.FC = () => {
     }
     const roomKey = ROOM_ACTION_TO_KEY[action];
     if (roomKey) {
+      loopedActionRef.current = null;
       requestClawbModelRef.current('walk');
       queueRoomTransition(roomKey);
       return;
     }
+    if (action === 'zoom_in' || action === 'zoom_out') {
+      const delta = action === 'zoom_in' ? -STREAM_CAMERA_ZOOM_STEP : STREAM_CAMERA_ZOOM_STEP;
+      const next = streamCameraDistanceRef.current + delta;
+      streamCameraDistanceRef.current = Math.max(
+        STREAM_CAMERA_MIN_DISTANCE,
+        Math.min(STREAM_CAMERA_MAX_DISTANCE, next)
+      );
+      return;
+    }
     if (action === 'idle') {
       requestClawbModelRef.current('idle');
-      worldActionRef.current = { type: 'patrol', until: 0 };
+      if (loopRequested) {
+        loopedActionRef.current = 'idle';
+        worldActionRef.current = { type: 'idle', until: Number.POSITIVE_INFINITY };
+      } else {
+        loopedActionRef.current = null;
+        worldActionRef.current = { type: 'patrol', until: 0 };
+      }
       clawbActionTRef.current = 0;
       return;
     }
     if (action === 'walk') {
       requestClawbModelRef.current('walk');
-      worldActionRef.current = { type: 'swim', until: Date.now() + WORLD_ACTION_DURATION_MS };
+      if (loopRequested) {
+        loopedActionRef.current = 'walk';
+        worldActionRef.current = { type: 'walk', until: Number.POSITIVE_INFINITY };
+      } else {
+        loopedActionRef.current = null;
+        worldActionRef.current = { type: 'walk', until: Date.now() + DIRECTIONAL_ACTION_DURATION_MS };
+      }
       clawbActionTRef.current = 0;
       return;
     }
     if (action === 'look_nft') {
+      loopedActionRef.current = null;
       requestClawbModelRef.current('walk');
       const idx = Number(payload?.targetNftIndex || 0);
       if (Number.isFinite(idx) && idx >= 1) {
@@ -419,13 +475,38 @@ const ClawbWorld: React.FC = () => {
       }
       return;
     }
+    if (action === 'left' || action === 'right' || action === 'forward' || action === 'back') {
+      requestClawbModelRef.current('walk');
+    }
+    if (action === 'swim' || action === 'swim_left' || action === 'swim_right' || action === 'swim_forward' || action === 'swim_back') {
+      requestClawbModelRef.current('swim');
+    }
+    if (action === 'hi') requestClawbModelRef.current('hi');
     if (action === 'dance') requestClawbModelRef.current('dance');
     if (action === 'flip') requestClawbModelRef.current('flip');
     if (action === 'die') requestClawbModelRef.current('die');
-    if (action === 'swim' || action === 'wave' || action === 'spin' || action === 'jump') {
+    if (action === 'wave' || action === 'spin' || action === 'jump') {
       requestClawbModelRef.current('walk');
     }
-    worldActionRef.current = { type: action, until: Date.now() + WORLD_ACTION_DURATION_MS };
+    if (loopRequested && LOOPABLE_ACTIONS.has(action)) {
+      loopedActionRef.current = action;
+      worldActionRef.current = { type: action, until: Number.POSITIVE_INFINITY };
+    } else {
+      loopedActionRef.current = null;
+      const isDirectional =
+        action === 'left' ||
+        action === 'right' ||
+        action === 'forward' ||
+        action === 'back' ||
+        action === 'swim_left' ||
+        action === 'swim_right' ||
+        action === 'swim_forward' ||
+        action === 'swim_back';
+      worldActionRef.current = {
+        type: action,
+        until: Date.now() + (isDirectional ? DIRECTIONAL_ACTION_DURATION_MS : WORLD_ACTION_DURATION_MS),
+      };
+    }
     clawbActionTRef.current = 0;
   }, [queueRoomTransition]);
 
@@ -577,7 +658,8 @@ const ClawbWorld: React.FC = () => {
 
     // Animate Clawb NPC (patrol + synchronized world actions)
     if (clawbRef.current && clawbMixerRef.current) {
-      const activeAction = Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol';
+      const activeAction =
+        loopedActionRef.current || (Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol');
       // Keep animation mixer running in stream mode so idle/walk clips don't lock into bind pose.
       clawbMixerRef.current.update(delta);
       clawbActionTRef.current += delta;
@@ -634,28 +716,23 @@ const ClawbWorld: React.FC = () => {
             clawbPatrolPauseUntilRef.current = Date.now() + 400;
           }
         }
-        const baseX = clawbPosRef.current.x;
-        const baseZ = clawbPosRef.current.z;
-        if (activeAction === 'dance') {
-          clawbRef.current.position.x = baseX + Math.sin(t * 4.5) * 0.5;
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 5.2)) * 0.35;
-          clawbRef.current.rotation.y += delta * 1.6;
-        } else if (activeAction === 'swim') {
-          clawbRef.current.position.x = baseX + Math.sin(t * 2.2) * 1.4;
-          clawbRef.current.position.z = baseZ + Math.cos(t * 2.2) * 1.1;
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + 0.5 + Math.sin(t * 2.8) * 0.35;
-          clawbRef.current.rotation.y = t * 2.2 + Math.PI / 2;
-        } else if (activeAction === 'wave') {
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 3.0)) * 0.2;
-          clawbRef.current.rotation.y = Math.sin(t * 3.0) * 0.6;
-          clawbRef.current.rotation.z = Math.sin(t * 6.0) * 0.2;
-        } else if (activeAction === 'spin') {
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 4.0)) * 0.15;
-          clawbRef.current.rotation.y += delta * 6.0;
-        } else if (activeAction === 'jump') {
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + Math.abs(Math.sin(t * 7.0)) * 0.9;
-          clawbRef.current.position.x = baseX + Math.sin(t * 2.0) * 0.2;
-        } else if (activeAction === 'look_swim') {
+        clawbRef.current.position.x = clawbPosRef.current.x;
+        clawbRef.current.position.z = clawbPosRef.current.z;
+        clawbRef.current.position.y = FLOOR_Y;
+        const moveForAction = (direction: THREE.Vector3, speed: number, swimMode = false) => {
+          const clawb = clawbRef.current;
+          if (!clawb) return;
+          const dir = direction.clone().normalize();
+          clawbPosRef.current.x += dir.x * speed * delta;
+          clawbPosRef.current.z += dir.z * speed * delta;
+          clawbPosRef.current.x = THREE.MathUtils.clamp(clawbPosRef.current.x, -WORLD_BOUNDS + 1.2, WORLD_BOUNDS - 1.2);
+          clawbPosRef.current.z = THREE.MathUtils.clamp(clawbPosRef.current.z, -WORLD_BOUNDS - 8.5, WORLD_BOUNDS - 1.2);
+          clawb.position.x = clawbPosRef.current.x;
+          clawb.position.z = clawbPosRef.current.z;
+          clawb.position.y = swimMode ? FLOOR_Y + 0.2 + Math.sin(t * 3.2) * 0.08 : FLOOR_Y;
+          clawb.rotation.y = Math.atan2(dir.x, dir.z);
+        };
+        if (activeAction === 'look_swim') {
           requestClawbModelRef.current('walk');
           const lookTarget = lookTargetRef.current;
           if (lookTarget) {
@@ -663,21 +740,29 @@ const ClawbWorld: React.FC = () => {
             clawbPosRef.current.lerp(desired, 0.06);
             clawbRef.current.position.x = clawbPosRef.current.x;
             clawbRef.current.position.z = clawbPosRef.current.z;
-            clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + 0.22 + Math.sin(t * 2.8) * 0.08;
+            clawbRef.current.position.y = FLOOR_Y;
             const dir = new THREE.Vector3().subVectors(lookTarget.focus, clawbRef.current.position);
             clawbRef.current.rotation.y = Math.atan2(dir.x, dir.z);
           }
-        } else if (activeAction === 'flip') {
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y : FLOOR_Y + 0.35 + Math.sin(t * 5.4) * 0.2;
-          clawbRef.current.rotation.x = t * 7.5;
-          clawbRef.current.rotation.y += delta * 1.1;
-          clawbRef.current.rotation.z = Math.sin(t * 2.7) * 0.15;
-        } else if (activeAction === 'die') {
-          clawbRef.current.position.x = baseX;
-          clawbRef.current.position.z = baseZ;
-          clawbRef.current.position.y = isStreamMode ? FLOOR_Y - 0.2 : FLOOR_Y - 0.2 + Math.sin(t * 1.8) * 0.03;
-          clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.1);
-          clawbRef.current.rotation.z = THREE.MathUtils.lerp(clawbRef.current.rotation.z, Math.PI / 2, 0.12);
+        } else if (activeAction === 'walk' || activeAction === 'forward') {
+          moveForAction(new THREE.Vector3(0, 0, -1), CLAWB_STEP_SPEED);
+        } else if (activeAction === 'back') {
+          moveForAction(new THREE.Vector3(0, 0, 1), CLAWB_STEP_SPEED);
+        } else if (activeAction === 'left') {
+          moveForAction(new THREE.Vector3(-1, 0, 0), CLAWB_STEP_SPEED);
+        } else if (activeAction === 'right') {
+          moveForAction(new THREE.Vector3(1, 0, 0), CLAWB_STEP_SPEED);
+        } else if (activeAction === 'swim' || activeAction === 'swim_forward') {
+          moveForAction(new THREE.Vector3(0, 0, -1), CLAWB_SWIM_STEP_SPEED, true);
+        } else if (activeAction === 'swim_back') {
+          moveForAction(new THREE.Vector3(0, 0, 1), CLAWB_SWIM_STEP_SPEED, true);
+        } else if (activeAction === 'swim_left') {
+          moveForAction(new THREE.Vector3(-1, 0, 0), CLAWB_SWIM_STEP_SPEED, true);
+        } else if (activeAction === 'swim_right') {
+          moveForAction(new THREE.Vector3(1, 0, 0), CLAWB_SWIM_STEP_SPEED, true);
+        } else if (activeAction === 'hi') {
+          clawbRef.current.position.y = FLOOR_Y + Math.abs(Math.sin(t * 4.2)) * 0.05;
+          clawbRef.current.rotation.y += Math.sin(t * 4.2) * 0.006;
         }
       }
 
@@ -705,15 +790,35 @@ const ClawbWorld: React.FC = () => {
       if (lookTarget && Date.now() < lookTarget.until) {
         camera.position.lerp(lookTarget.camera, 0.09);
         camera.lookAt(lookTarget.focus.x, lookTarget.focus.y, lookTarget.focus.z);
+        const fov = THREE.MathUtils.lerp(camera.fov, 58, 0.12);
+        if (Math.abs(fov - camera.fov) > 0.01) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
       } else {
         if (lookTargetRef.current) {
           setSelectedNft(null);
         }
         lookTargetRef.current = null;
         const focus = clawbRef.current.position.clone();
-        const desired = focus.clone().add(new THREE.Vector3(0, 1.45, 2.8));
+        const zoomT = THREE.MathUtils.clamp(
+          (streamCameraDistanceRef.current - STREAM_CAMERA_MIN_DISTANCE) /
+            Math.max(0.001, STREAM_CAMERA_MAX_DISTANCE - STREAM_CAMERA_MIN_DISTANCE),
+          0,
+          1
+        );
+        const yOffset = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_Y, STREAM_CAMERA_FAR_Y, zoomT);
+        const zScale = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_Z_SCALE, STREAM_CAMERA_FAR_Z_SCALE, zoomT);
+        const zOffset = streamCameraDistanceRef.current * zScale;
+        const desired = focus.clone().add(new THREE.Vector3(0, yOffset, zOffset));
         camera.position.lerp(desired, 0.06);
-        camera.lookAt(focus.x, focus.y + 0.75, focus.z);
+        camera.lookAt(focus.x, focus.y + 0.72, focus.z);
+        const targetFov = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_FOV, STREAM_CAMERA_FAR_FOV, zoomT);
+        const fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.12);
+        if (Math.abs(fov - camera.fov) > 0.01) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
       }
     }
 
@@ -1264,9 +1369,17 @@ const ClawbWorld: React.FC = () => {
     setChatInput('');
     try {
       await sendClawbMessage(msg, address || 'anonymous', 'world');
-      const action = parseWorldActionFromText(msg);
-      if (action) {
-        await enqueueWorldAction(action, address || 'anonymous', 'world');
+      const parsedAction = parseWorldActionFromText(msg);
+      if (parsedAction) {
+        if (parsedAction.startsWith('loop_')) {
+          const loopAction = parsedAction.replace(/^loop_/, '');
+          await enqueueWorldAction(loopAction, address || 'anonymous', 'world', {
+            loop: true,
+            command: `!loop ${loopAction}`,
+          });
+        } else {
+          await enqueueWorldAction(parsedAction, address || 'anonymous', 'world');
+        }
       }
     } catch (err) {
       console.error('[ClawbWorld] Send failed:', err);

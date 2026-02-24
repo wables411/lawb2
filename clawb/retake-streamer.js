@@ -82,13 +82,20 @@ const ACTION_COMMAND_ALIASES = {
   night: 'night',
   idle: 'idle',
   walk: 'walk',
+  hi: 'hi',
   dance: 'dance',
   flip: 'flip',
   die: 'die',
   swim: 'swim',
+  left: 'left',
+  right: 'right',
+  back: 'back',
+  forward: 'forward',
   wave: 'wave',
   spin: 'spin',
   jump: 'jump',
+  zoomin: 'zoom_in',
+  zoomout: 'zoom_out',
 };
 
 function buildClawbWorldUrl() {
@@ -185,6 +192,7 @@ let liveTruth = 'UNKNOWN';
 let liveMismatchSince = 0;
 let lastSupervisorAlertAt = 0;
 let eqPreflightRetryTimer = null;
+let chatBacklogGuardTs = 0;
 
 const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_MS || 90_000);
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
@@ -1741,6 +1749,10 @@ async function pollChat() {
       const commentId = comment._id || comment.chat_event_id;
       if (!commentId || seenChatIds.has(commentId)) continue;
       seenChatIds.add(commentId);
+      const commentTs = Number(comment.timestamp || 0);
+      if (chatBacklogGuardTs > 0 && Number.isFinite(commentTs) && commentTs > 0 && commentTs <= chatBacklogGuardTs) {
+        continue;
+      }
       const authorName = comment.author?.fusername || comment.sender_username || comment.sender_display_name;
       if (authorName === credentials.agent_name) continue;
       await handleChatMessage(comment);
@@ -1830,7 +1842,10 @@ async function handleChatMessage(comment) {
     await publishWorldCommand(worldCommand.command, {
       type: worldCommand.type,
       targetRoom: worldCommand.targetRoom,
+      targetNftIndex: worldCommand.targetNftIndex,
       action: worldCommand.action,
+      direction: worldCommand.direction,
+      loop: worldCommand.loop === true,
       source: 'retake',
       viewer,
       raw: trimmed,
@@ -1839,7 +1854,12 @@ async function handleChatMessage(comment) {
       const roomLabel = worldCommand.targetRoom === 'bedroom' ? 'gallery' : worldCommand.targetRoom;
       await sendChat(`swimming to ${roomLabel}.`);
     } else if (worldCommand.type === 'action' && worldCommand.action) {
-      await sendChat(`copy. ${worldCommand.action}.`);
+      const actionLabel = String(worldCommand.action).replace(/_/g, ' ');
+      if (worldCommand.loop) {
+        await sendChat(`copy. looping ${actionLabel}.`);
+      } else {
+        await sendChat(`copy. ${actionLabel}.`);
+      }
     } else if (worldCommand.type === 'look' && worldCommand.targetNftIndex) {
       await sendChat(`looking at nft ${worldCommand.targetNftIndex}.`);
     }
@@ -1876,6 +1896,23 @@ ${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
 
 function parseWorldCommand(loweredText) {
   if (!loweredText.startsWith('!')) return null;
+  const swimDirectionMatch = /^!swim\s+(left|right|forward|back)\b/.exec(loweredText);
+  if (swimDirectionMatch) {
+    const direction = swimDirectionMatch[1];
+    return {
+      type: 'action',
+      command: `!swim ${direction}`,
+      action: `swim_${direction}`,
+      direction,
+    };
+  }
+  const loopMatch = /^!loop\s+([a-z0-9_]+)\b/.exec(loweredText);
+  if (loopMatch) {
+    const target = ACTION_COMMAND_ALIASES[loopMatch[1]];
+    if (target) {
+      return { type: 'action', command: `!loop ${loopMatch[1]}`, action: target, loop: true };
+    }
+  }
   const [cmd, argRaw] = loweredText.split(/\s+/, 2);
   const command = cmd.replace(/^!/, '').trim();
   if (!command) return null;
@@ -1893,6 +1930,13 @@ function parseWorldCommand(loweredText) {
     if (sceneRoom) {
       const canonical = sceneRoom === 'bedroom' ? 'gallery' : sceneRoom;
       return { type: 'room', command: `!scene ${canonical}`, targetRoom: sceneRoom };
+    }
+  }
+
+  if (command === 'zoom' && argRaw) {
+    const zoomArg = argRaw.trim();
+    if (zoomArg === 'in' || zoomArg === 'out') {
+      return { type: 'action', command: `!zoom ${zoomArg}`, action: `zoom_${zoomArg}` };
     }
   }
 
@@ -2021,8 +2065,14 @@ function startStreamingLoops() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (musicKeepaliveTimer) clearInterval(musicKeepaliveTimer);
   clearDirectAudioHealthTimer();
+  // Prevent replaying backlog after restarts/recovery.
+  chatBacklogGuardTs = Date.now();
+  seenChatIds.clear();
+  lastSeenChatId = null;
+  console.log(`[Retake] Chat replay guard armed at ${chatBacklogGuardTs}.`);
 
   chatPollTimer = setInterval(pollChat, CHAT_POLL_INTERVAL_MS);
+  pollChat().catch(() => {});
   thumbnailTimer = setInterval(updateThumbnail, THUMBNAIL_INTERVAL_MS);
   heartbeatTimer = setInterval(async () => {
     try {

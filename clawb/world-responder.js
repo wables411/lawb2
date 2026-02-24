@@ -19,19 +19,32 @@ const ACTION_ALIASES = {
   night: 'night',
   idle: 'idle',
   walk: 'walk',
+  hi: 'hi',
   dance: 'dance',
   flip: 'flip',
   die: 'die',
   swim: 'swim',
+  left: 'left',
+  right: 'right',
+  back: 'back',
+  forward: 'forward',
+  swim_left: 'swim_left',
+  swim_right: 'swim_right',
+  swim_forward: 'swim_forward',
+  swim_back: 'swim_back',
   wave: 'wave',
   spin: 'spin',
   jump: 'jump',
+  zoom_in: 'zoom_in',
+  zoom_out: 'zoom_out',
 };
 
 function normalizeCommand(command) {
   const rawType = String(command?.type || '').toLowerCase().trim();
   const rawRoom = String(command?.targetRoom || '').toLowerCase().trim();
   const rawAction = String(command?.action || '').toLowerCase().trim();
+  const rawDirection = String(command?.direction || '').toLowerCase().trim();
+  const loop = command?.loop === true;
   const by = command.viewer || command.by || 'anon';
   const source = command.source || 'world';
   const timestamp = Number(command.timestamp) || Date.now();
@@ -50,6 +63,8 @@ function normalizeCommand(command) {
   if (rawType === 'action' && ACTION_ALIASES[rawAction]) {
     return {
       action: ACTION_ALIASES[rawAction],
+      direction: rawDirection || undefined,
+      loop,
       by,
       source,
       command: command.command || '',
