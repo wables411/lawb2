@@ -18,6 +18,7 @@ import { startPvpAgent } from './chess-pvp-agent.js';
 import { startWorldResponder } from './world-responder.js';
 import { startRetakeStreamer } from './retake-streamer.js';
 import { startWorldAutonomousRoutines } from './world-autonomous-routines.js';
+import { startLawbPoints } from './lawb-points.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
@@ -61,6 +62,10 @@ async function main() {
     // 5.5 Start lightweight autonomous world routines
     const stopWorldAutonomy = startWorldAutonomousRoutines();
     cleanups.push(stopWorldAutonomy);
+
+    // 5.6 Start Lawb Points engine (seeds bounties on first boot)
+    const stopPoints = await startLawbPoints();
+    cleanups.push(stopPoints);
 
     // 6. Start Retake.TV streamer (unless disabled)
     if (!noStream && !chatOnly) {

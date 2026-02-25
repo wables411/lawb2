@@ -12,6 +12,7 @@ const ROOM_TO_ACTION = {
   bedroom: 'room_bedroom',
   workshop: 'room_workshop',
   vault: 'room_vault',
+  leaderboard: 'room_leaderboard',
 };
 
 const ACTION_ALIASES = {

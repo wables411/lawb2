@@ -9,6 +9,14 @@ const getDatabaseOrThrow = () => {
   return database;
 };
 
+export interface PointsBreakdown {
+  chess: number;
+  stream: number;
+  games: number;
+  holdings: number;
+  [key: string]: number; // extensible for future sources
+}
+
 export interface LeaderboardEntry {
   username: string; // wallet address
   chain_type: string;
@@ -16,7 +24,8 @@ export interface LeaderboardEntry {
   losses: number;
   draws: number;
   total_games: number;
-  points: number;
+  points: number;           // ecosystem total (sum of breakdown)
+  points_breakdown?: PointsBreakdown;
   created_at: string;
   updated_at: string;
 }
@@ -76,8 +85,22 @@ export const updateLeaderboardEntry = async (
     const existingEntry = snapshot.exists() ? snapshot.val() as LeaderboardEntry : null;
     
     // Calculate new values
-    const points = result === 'win' ? 3 : result === 'draw' ? 1 : 0;
-    
+    const chessPoints = result === 'win' ? 3 : result === 'draw' ? 1 : 0;
+
+    // Migrate existing entries: treat all legacy points as chess
+    const breakdown: PointsBreakdown = existingEntry?.points_breakdown || {
+      chess: existingEntry?.points || 0,
+      stream: 0,
+      games: 0,
+      holdings: 0,
+    };
+    breakdown.chess = (breakdown.chess || 0) + chessPoints;
+
+    const totalPoints = Object.values(breakdown).reduce(
+      (sum, v) => sum + (typeof v === 'number' ? v : 0),
+      0,
+    );
+
     const updatedEntry: LeaderboardEntry = {
       username: walletAddress,
       chain_type: 'sanko',
@@ -85,7 +108,8 @@ export const updateLeaderboardEntry = async (
       losses: (existingEntry?.losses || 0) + (result === 'loss' ? 1 : 0),
       draws: (existingEntry?.draws || 0) + (result === 'draw' ? 1 : 0),
       total_games: (existingEntry?.total_games || 0) + 1,
-      points: (existingEntry?.points || 0) + points,
+      points: totalPoints,
+      points_breakdown: breakdown,
       created_at: existingEntry?.created_at || now,
       updated_at: now
     };
@@ -218,6 +242,77 @@ export const getUserRank = async (walletAddress: string): Promise<number | null>
   }
 };
 
+// Add ecosystem points from any source (stream, games, holdings, etc.)
+export const addEcosystemPoints = async (
+  walletAddress: string,
+  source: keyof PointsBreakdown,
+  amount: number
+): Promise<boolean> => {
+  try {
+    if (!walletAddress || amount <= 0) return false;
+    if (walletAddress === '0x0000000000000000000000000000000000000000') return false;
+
+    const now = new Date().toISOString();
+    const database = getDatabaseOrThrow();
+    const entryRef = ref(database, `leaderboard/${walletAddress}`);
+
+    const snapshot = await get(entryRef);
+    const existingEntry = snapshot.exists() ? snapshot.val() as LeaderboardEntry : null;
+
+    const breakdown: PointsBreakdown = existingEntry?.points_breakdown || {
+      chess: existingEntry?.points || 0,
+      stream: 0,
+      games: 0,
+      holdings: 0,
+    };
+    breakdown[source] = (breakdown[source] || 0) + amount;
+
+    const totalPoints = Object.values(breakdown).reduce(
+      (sum, v) => sum + (typeof v === 'number' ? v : 0),
+      0,
+    );
+
+    if (existingEntry) {
+      await update(entryRef, {
+        points: totalPoints,
+        points_breakdown: breakdown,
+        updated_at: now,
+      });
+    } else {
+      await set(entryRef, {
+        username: walletAddress,
+        chain_type: 'base',
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        total_games: 0,
+        points: totalPoints,
+        points_breakdown: breakdown,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    console.log(`[LEADERBOARD] +${amount} ${source} points for ${formatAddress(walletAddress)} (total: ${totalPoints})`);
+    return true;
+  } catch (error) {
+    console.error('[LEADERBOARD] Error adding ecosystem points:', error);
+    return false;
+  }
+};
+
+// Get a user's points breakdown
+export const getUserPointsBreakdown = async (walletAddress: string): Promise<PointsBreakdown | null> => {
+  try {
+    const entry = await getUserLeaderboardEntry(walletAddress);
+    if (!entry) return null;
+    return entry.points_breakdown || { chess: entry.points || 0, stream: 0, games: 0, holdings: 0 };
+  } catch (error) {
+    console.error('[LEADERBOARD] Error getting points breakdown:', error);
+    return null;
+  }
+};
+
 // Reset a user's leaderboard entry (for testing/admin purposes)
 export const resetUserLeaderboard = async (walletAddress: string): Promise<boolean> => {
   try {
@@ -235,6 +330,7 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
       draws: 0,
       total_games: 0,
       points: 0,
+      points_breakdown: { chess: 0, stream: 0, games: 0, holdings: 0 },
       created_at: now,
       updated_at: now
     };

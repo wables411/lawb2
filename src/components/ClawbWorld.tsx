@@ -34,6 +34,12 @@ import LinuxNavBar from './LinuxNavBar';
 
 // NFT Gallery — same as stream overlay
 const FIREBASE_GALLERY_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/clawb/nft_gallery.json';
+const FIREBASE_LEADERBOARD_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/leaderboard.json';
+const FIREBASE_PROFILES_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/profiles.json?shallow=true';
+const FIREBASE_BOUNTIES_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/bounties.json';
+const LEADERBOARD_REFRESH_MS = 30_000;
+const LEADERBOARD_CANVAS_W = 1024;
+const LEADERBOARD_CANVAS_H = 1536;
 const MIN_Y = -3;
 const MAX_Y = 2;
 
@@ -43,6 +49,7 @@ const ROOM_OFFSETS: Record<string, THREE.Vector3> = {
   bedroom: new THREE.Vector3(-15, 0, -15),
   workshop: new THREE.Vector3(15, 0, -15),
   vault: new THREE.Vector3(0, 0, -25),
+  leaderboard: new THREE.Vector3(20, 0, 5),
 };
 
 // Firebase RTDB URLs for live world state (synced from Clawb's machine every 60s)
@@ -67,6 +74,7 @@ const ROOM_LABELS: Record<string, string> = {
   bedroom: 'Bedroom',
   workshop: 'Workshop',
   vault: 'Vault',
+  leaderboard: 'Leaderboard',
 };
 
 const PSX_RESOLUTION_SCALE = 0.35; // Render at ~1/3 res for PSX look (slightly higher than bg for playability)
@@ -138,6 +146,7 @@ const ROOM_ACTION_TO_KEY: Record<string, keyof typeof ROOM_OFFSETS> = {
   room_bedroom: 'bedroom',
   room_workshop: 'workshop',
   room_vault: 'vault',
+  room_leaderboard: 'leaderboard',
 };
 const LOOPABLE_ACTIONS = new Set(['idle', 'walk', 'dance', 'flip', 'die', 'swim', 'hi', 'wave', 'spin', 'jump']);
 const PRESENCE_WRITE_INTERVAL_MS = 250;
@@ -209,6 +218,11 @@ const ClawbWorld: React.FC = () => {
   const galleryGroupRef = useRef<THREE.Group | null>(null);
   const galleryNftTargetsRef = useRef<Array<{ index: number; nft: NFTItem; focus: THREE.Vector3; camera: THREE.Vector3 }>>([]);
   const pendingLookNftIndexRef = useRef<number | null>(null);
+  const leaderboardGroupRef = useRef<THREE.Group | null>(null);
+  const leaderboardTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const leaderboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const leaderboardLastRefreshRef = useRef<number>(0);
+  const leaderboardRenderFnRef = useRef<(() => void) | null>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
   const processedActionIdsRef = useRef<Set<string>>(new Set());
@@ -344,6 +358,7 @@ const ClawbWorld: React.FC = () => {
     if (/(^|\s)!bedroom\b/.test(t)) return 'room_bedroom';
     if (/(^|\s)!workshop\b/.test(t)) return 'room_workshop';
     if (/(^|\s)!vault\b/.test(t)) return 'room_vault';
+    if (/(^|\s)!leaderboard\b/.test(t)) return 'room_leaderboard';
     if (/(^|\s)!main\b/.test(t)) return 'room_main';
     if (/(^|\s)!day\b/.test(t)) return 'day';
     if (/(^|\s)!night\b/.test(t)) return 'night';
@@ -957,6 +972,25 @@ const ClawbWorld: React.FC = () => {
       galleryGroupRef.current.visible = roomName === 'Bedroom';
     }
 
+    // Leaderboard visibility + neon pulse animation
+    if (leaderboardGroupRef.current) {
+      const lbVisible = roomName === 'Leaderboard';
+      leaderboardGroupRef.current.visible = lbVisible;
+      if (lbVisible) {
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 400);
+        leaderboardGroupRef.current.children.forEach((child) => {
+          if (child instanceof THREE.PointLight) {
+            child.intensity = 1.0 + pulse * 0.8;
+          }
+        });
+        // Re-render canvas for animated elements (throttled to ~2fps for perf)
+        if (Date.now() - leaderboardLastRefreshRef.current > 500) {
+          if (leaderboardRenderFnRef.current) leaderboardRenderFnRef.current();
+          leaderboardLastRefreshRef.current = Date.now();
+        }
+      }
+    }
+
     rendererRef.current.render(sceneRef.current, cameraRef.current);
     frameIdRef.current = requestAnimationFrame(animate);
   }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode]);
@@ -1297,6 +1331,295 @@ const ClawbWorld: React.FC = () => {
         buildGallery(NFT_FALLBACK);
       });
 
+    // ---------------------------------------------------------------
+    // 3D Leaderboard Billboard — Vegas-style scoreboard
+    // ---------------------------------------------------------------
+    const LB_OFFSET = ROOM_OFFSETS.leaderboard;
+    const lbGroup = new THREE.Group();
+    lbGroup.position.copy(LB_OFFSET);
+    lbGroup.visible = false;
+    scene.add(lbGroup);
+    leaderboardGroupRef.current = lbGroup;
+
+    // Billboard canvas for dynamic text rendering
+    const lbCanvas = document.createElement('canvas');
+    lbCanvas.width = LEADERBOARD_CANVAS_W;
+    lbCanvas.height = LEADERBOARD_CANVAS_H;
+    leaderboardCanvasRef.current = lbCanvas;
+
+    const lbTexture = new THREE.CanvasTexture(lbCanvas);
+    lbTexture.minFilter = THREE.NearestFilter;
+    lbTexture.magFilter = THREE.NearestFilter;
+    lbTexture.colorSpace = THREE.SRGBColorSpace;
+    leaderboardTextureRef.current = lbTexture;
+
+    // Main billboard mesh — tall panel
+    const boardW = 6.0;
+    const boardH = 9.0;
+    const boardMat = new THREE.MeshBasicMaterial({ map: lbTexture, side: THREE.DoubleSide });
+    const boardMesh = new THREE.Mesh(new THREE.PlaneGeometry(boardW, boardH), boardMat);
+    boardMesh.position.set(0, boardH / 2 - 2.2, -3.0);
+    lbGroup.add(boardMesh);
+
+    // Neon frame around the billboard
+    const frameBorder = 0.12;
+    const neonColor = 0xff2266;
+    const neonMat = new THREE.MeshBasicMaterial({ color: neonColor });
+    const topBar = new THREE.Mesh(new THREE.BoxGeometry(boardW + frameBorder * 2, frameBorder, 0.08), neonMat);
+    topBar.position.set(0, boardH / 2 - 2.2 + boardH / 2 + frameBorder / 2, -2.98);
+    lbGroup.add(topBar);
+    const botBar = new THREE.Mesh(new THREE.BoxGeometry(boardW + frameBorder * 2, frameBorder, 0.08), neonMat);
+    botBar.position.set(0, boardH / 2 - 2.2 - boardH / 2 - frameBorder / 2, -2.98);
+    lbGroup.add(botBar);
+    const leftBar = new THREE.Mesh(new THREE.BoxGeometry(frameBorder, boardH + frameBorder * 2, 0.08), neonMat);
+    leftBar.position.set(-boardW / 2 - frameBorder / 2, boardH / 2 - 2.2, -2.98);
+    lbGroup.add(leftBar);
+    const rightBar = new THREE.Mesh(new THREE.BoxGeometry(frameBorder, boardH + frameBorder * 2, 0.08), neonMat);
+    rightBar.position.set(boardW / 2 + frameBorder / 2, boardH / 2 - 2.2, -2.98);
+    lbGroup.add(rightBar);
+
+    // Neon glow lights flanking the billboard
+    const neonGlow1 = new THREE.PointLight(0xff2266, 1.5, 8);
+    neonGlow1.position.set(-3.5, 2.0, -1.5);
+    lbGroup.add(neonGlow1);
+    const neonGlow2 = new THREE.PointLight(0x2266ff, 1.5, 8);
+    neonGlow2.position.set(3.5, 2.0, -1.5);
+    lbGroup.add(neonGlow2);
+    const topGlow = new THREE.PointLight(0xffaa00, 1.0, 6);
+    topGlow.position.set(0, boardH - 1.5, -1.5);
+    lbGroup.add(topGlow);
+
+    // Decorative pillars (Vegas-style)
+    const pillarMat = new THREE.MeshPhongMaterial({ color: 0x334466, emissive: 0x0a1020, flatShading: true });
+    for (const xSide of [-1, 1]) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, boardH + 1, 6), pillarMat);
+      pillar.position.set(xSide * (boardW / 2 + 0.4), boardH / 2 - 2.7, -3.0);
+      lbGroup.add(pillar);
+    }
+
+    // Floor accent — glowing strip
+    const stripMat = new THREE.MeshBasicMaterial({ color: 0xff2266, transparent: true, opacity: 0.4 });
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(boardW + 2, 0.3), stripMat);
+    strip.rotation.x = -Math.PI / 2;
+    strip.position.set(0, FLOOR_Y + 0.01, -1.5);
+    lbGroup.add(strip);
+
+    // Back wall behind billboard
+    const lbWallMat = new THREE.MeshPhongMaterial({ color: 0x1a2a3a, emissive: 0x050a14, flatShading: true, side: THREE.DoubleSide });
+    const lbBackWall = new THREE.Mesh(new THREE.PlaneGeometry(10, boardH + 2), lbWallMat);
+    lbBackWall.position.set(0, boardH / 2 - 2.2, -3.3);
+    lbGroup.add(lbBackWall);
+
+    // Render leaderboard data onto the canvas
+    const renderLeaderboardCanvas = (
+      entries: Array<{ username: string; points: number; wins: number; points_breakdown?: Record<string, number> }>,
+      displayNames: Record<string, string>,
+      bounties: Array<{ title: string; description: string; status: string; prize?: { amount?: number; token?: string } }>,
+    ) => {
+      const ctx = lbCanvas.getContext('2d');
+      if (!ctx) return;
+      const W = LEADERBOARD_CANVAS_W;
+      const H = LEADERBOARD_CANVAS_H;
+      const now = Date.now();
+
+      // Background — deep ocean gradient
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, '#0a0e1a');
+      bg.addColorStop(0.3, '#0d1526');
+      bg.addColorStop(1, '#060a12');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Scanline overlay for PSX/CRT feel
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      for (let y = 0; y < H; y += 4) {
+        ctx.fillRect(0, y, W, 2);
+      }
+
+      // Animated neon border pulse
+      const pulse = 0.5 + 0.5 * Math.sin(now / 400);
+      const borderAlpha = 0.4 + 0.6 * pulse;
+      ctx.strokeStyle = `rgba(255,34,102,${borderAlpha.toFixed(2)})`;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(8, 8, W - 16, H - 16);
+      ctx.strokeStyle = `rgba(34,102,255,${(0.3 + 0.3 * pulse).toFixed(2)})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(14, 14, W - 28, H - 28);
+
+      // Title
+      ctx.fillStyle = '#ff2266';
+      ctx.font = 'bold 52px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('LAWB LEADERBOARD', W / 2, 72);
+
+      // Subtitle with glow
+      ctx.fillStyle = `rgba(255,170,0,${(0.6 + 0.4 * pulse).toFixed(2)})`;
+      ctx.font = '22px monospace';
+      ctx.fillText('the reef rewards those who participate', W / 2, 104);
+
+      // Divider
+      ctx.strokeStyle = '#ff226644';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, 120);
+      ctx.lineTo(W - 40, 120);
+      ctx.stroke();
+
+      // Column headers
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#6688aa';
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('#', 40, 152);
+      ctx.fillText('PLAYER', 90, 152);
+      ctx.textAlign = 'right';
+      ctx.fillText('PTS', W - 40, 152);
+      ctx.fillText('W', W - 140, 152);
+
+      // Divider under headers
+      ctx.strokeStyle = '#334466';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, 162);
+      ctx.lineTo(W - 40, 162);
+      ctx.stroke();
+
+      // Leaderboard rows
+      const rowHeight = 42;
+      const startY = 190;
+      const maxRows = Math.min(entries.length, 15);
+
+      for (let i = 0; i < maxRows; i++) {
+        const e = entries[i];
+        const y = startY + i * rowHeight;
+
+        // Row background — alternating with rank highlights
+        if (i === 0) {
+          ctx.fillStyle = 'rgba(255,215,0,0.08)';
+        } else if (i === 1) {
+          ctx.fillStyle = 'rgba(192,192,192,0.06)';
+        } else if (i === 2) {
+          ctx.fillStyle = 'rgba(205,127,50,0.05)';
+        } else {
+          ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0)';
+        }
+        ctx.fillRect(36, y - 28, W - 72, rowHeight - 2);
+
+        // Rank number
+        ctx.textAlign = 'left';
+        const rankColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
+        ctx.fillStyle = i < 3 ? rankColors[i] : '#8899aa';
+        ctx.font = i < 3 ? 'bold 26px monospace' : '22px monospace';
+        ctx.fillText(`${i + 1}`, 44, y);
+
+        // Player name
+        const wallet = e.username || '';
+        const name = displayNames[wallet.toLowerCase()] || (wallet.length > 12 ? `${wallet.slice(0, 6)}..${wallet.slice(-4)}` : wallet);
+        ctx.fillStyle = i < 3 ? '#e8f0ff' : '#aabbcc';
+        ctx.font = i < 3 ? 'bold 24px monospace' : '22px monospace';
+        ctx.fillText(name.slice(0, 16), 90, y);
+
+        // Wins
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#66aa88';
+        ctx.font = '20px monospace';
+        ctx.fillText(`${e.wins || 0}`, W - 140, y);
+
+        // Points — large and bright for top 3
+        ctx.fillStyle = i < 3 ? '#ff4488' : '#cc88aa';
+        ctx.font = i < 3 ? 'bold 28px monospace' : '22px monospace';
+        ctx.fillText(`${e.points || 0}`, W - 40, y);
+      }
+
+      if (entries.length === 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#6688aa';
+        ctx.font = '28px monospace';
+        ctx.fillText('no players yet', W / 2, startY + 20);
+        ctx.fillText('play chess or join retake.tv/clawb', W / 2, startY + 60);
+      }
+
+      // Active bounties section
+      const bountyY = startY + maxRows * rowHeight + 30;
+      ctx.strokeStyle = '#ff226644';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, bountyY);
+      ctx.lineTo(W - 40, bountyY);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffaa00';
+      ctx.font = 'bold 30px monospace';
+      ctx.fillText('ACTIVE BOUNTIES', W / 2, bountyY + 38);
+
+      const activeBounties = bounties.filter((b) => b.status === 'active');
+      if (activeBounties.length > 0) {
+        activeBounties.slice(0, 4).forEach((b, i) => {
+          const by = bountyY + 65 + i * 52;
+          const bPulse = 0.5 + 0.5 * Math.sin((now + i * 500) / 600);
+          ctx.fillStyle = `rgba(255,${Math.floor(100 + 60 * bPulse)},0,${(0.7 + 0.3 * bPulse).toFixed(2)})`;
+          ctx.font = 'bold 22px monospace';
+          ctx.fillText(b.title, W / 2, by);
+          const prize = b.prize?.amount ? `${b.prize.amount.toLocaleString()} $${(b.prize.token || 'CLAWB').toUpperCase()}` : '';
+          ctx.fillStyle = '#88aacc';
+          ctx.font = '18px monospace';
+          ctx.fillText(`${b.description}  ${prize ? '→ ' + prize : ''}`, W / 2, by + 26);
+        });
+      } else {
+        ctx.fillStyle = '#556677';
+        ctx.font = '20px monospace';
+        ctx.fillText('no active bounties', W / 2, bountyY + 70);
+      }
+
+      // Footer
+      ctx.fillStyle = '#334455';
+      ctx.font = '16px monospace';
+      ctx.fillText('lawb.xyz/chess  ·  retake.tv/clawb  ·  !link <wallet> to earn', W / 2, H - 30);
+
+      // Mark texture dirty
+      lbTexture.needsUpdate = true;
+    };
+
+    // Fetch and render leaderboard data
+    const refreshLeaderboard = () => {
+      const fetchLeaderboard = fetch(FIREBASE_LEADERBOARD_URL)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data) return [];
+          return Object.values(data) as Array<{ username: string; points: number; wins: number; points_breakdown?: Record<string, number> }>;
+        })
+        .catch(() => [] as Array<{ username: string; points: number; wins: number }>);
+
+      const fetchNames = fetch(`${FIREBASE_DB}/profiles.json?shallow=false`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data) return {};
+          const names: Record<string, string> = {};
+          for (const [wallet, profile] of Object.entries(data as Record<string, { username?: string }>)) {
+            if (profile?.username) names[wallet.toLowerCase()] = profile.username;
+          }
+          return names;
+        })
+        .catch(() => ({}) as Record<string, string>);
+
+      const fetchBounties = fetch(FIREBASE_BOUNTIES_URL)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data) return [];
+          return Object.values(data) as Array<{ title: string; description: string; status: string; prize?: { amount?: number; token?: string } }>;
+        })
+        .catch(() => [] as Array<{ title: string; description: string; status: string }>);
+
+      Promise.all([fetchLeaderboard, fetchNames, fetchBounties]).then(([entries, names, bounties]) => {
+        entries.sort((a, b) => (b.points || 0) - (a.points || 0));
+        renderLeaderboardCanvas(entries, names, bounties);
+        leaderboardRenderFnRef.current = () => renderLeaderboardCanvas(entries, names, bounties);
+      });
+    };
+
+    refreshLeaderboard();
+    const lbRefreshInterval = setInterval(refreshLeaderboard, LEADERBOARD_REFRESH_MS);
+
     // Invisible boundary walls
     const wallMat = new THREE.MeshBasicMaterial({ visible: false });
     const wallGeo = new THREE.BoxGeometry(1, 10, WORLD_BOUNDS * 2 + 20);
@@ -1366,6 +1689,7 @@ const ClawbWorld: React.FC = () => {
     frameIdRef.current = requestAnimationFrame(animate);
 
     return () => {
+      clearInterval(lbRefreshInterval);
       unsubPlayers();
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);

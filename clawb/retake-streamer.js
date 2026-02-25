@@ -18,6 +18,15 @@ import { Keypair } from '@solana/web3.js';
 import OBSWebSocket from 'obs-websocket-js';
 import OpenAI from 'openai';
 import { db } from './lawb-firebase.js';
+import {
+  linkRetakeViewer,
+  getViewerStats,
+  getActiveBounties as getLawbBounties,
+  getLeaderboardRank,
+  addPoints as addLawbPoints,
+  addClaimableReward,
+  REWARD_VALUES,
+} from './lawb-points.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -108,6 +117,9 @@ const ROOM_COMMAND_ALIASES = {
   workshop: 'workshop',
   vault: 'vault',
   main: 'main',
+  leaderboard: 'leaderboard',
+  lb: 'leaderboard',
+  scores: 'leaderboard',
 };
 const ACTION_COMMAND_ALIASES = {
   day: 'day',
@@ -265,6 +277,13 @@ const IDLE_ACTIONS = [
   { type: 'look', targetNftIndex: 1, command: '!look 1' },
   { type: 'look', targetNftIndex: 2, command: '!look 2' },
   { type: 'look', targetNftIndex: 3, command: '!look 3' },
+  { type: 'look', targetNftIndex: 4, command: '!look 4' },
+  { type: 'look', targetNftIndex: 5, command: '!look 5' },
+  { type: 'look', targetNftIndex: 6, command: '!look 6' },
+  { type: 'look', targetNftIndex: 7, command: '!look 7' },
+  { type: 'look', targetNftIndex: 8, command: '!look 8' },
+  { type: 'look', targetNftIndex: 9, command: '!look 9' },
+  { type: 'look', targetNftIndex: 10, command: '!look 10' },
 ];
 
 function startIdleBehavior() {
@@ -338,13 +357,14 @@ const EQ_DISPLAY_TRIGGERS = new Map([
   ['montauk', 'Montauk Project: Alleged continuation of Philadelphia Experiment at Camp Hero, Long Island. Claims of time travel, mind control, interdimensional research. Al Bielek and Preston Nichols primary witnesses. Camp Hero was a real Air Force radar station (AN/FPS-35) decommissioned 1981, now state park. Documented: military did conduct psychological research at various installations. The specific Montauk claims remain unverified but the location\'s military history is real.'],
   ['skull and bones', 'Skull and Bones: Secret society at Yale founded 1832. 15 new members tapped annually. Members include both Bush presidents, John Kerry, William Howard Taft, multiple CIA directors, Supreme Court justices, media moguls. Tomb headquarters at 64 High Street. Allegedly possesses Geronimo\'s skull (Apache nation sued for return). Both 2004 presidential candidates (Bush vs Kerry) were Bonesmen. Not a conspiracy — a documented pipeline to American power.'],
   ['fluoride', 'Fluoride: Added to US water supply starting 1945 (Grand Rapids, MI). Edward Bernays (Freud\'s nephew, father of PR) hired to sell it to the public. Originally an industrial waste product of aluminum/phosphate manufacturing. Declassified documents show Manhattan Project scientists concerned about fluoride toxicity from nuclear weapons production — public water fluoridation may have been partly to establish "safe" baseline to deflect lawsuits. EPA scientists\' union opposed it. The dose makes the poison — the debate is informed consent, not chemistry.'],
+  ['flint', 'Flint Water Crisis 2014-present: City switched water source to Flint River (cost-cutting) without corrosion control. Lead leached from pipes — blood lead levels in children doubled/tripled. State officials dismissed complaints for 18 months. EPA regional administrator suppressed internal memo warning of lead. Legionnaires\' disease outbreak killed 12. Governor Snyder\'s staff emails showed they knew early. Criminal charges against 15 officials — most dropped or reduced. $626M settlement 2021. Pipes still being replaced. Documented environmental racism — 57% Black city, 41% below poverty line. The water was visibly brown and officials said it was safe.'],
 ]);
 
 const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_MS || 90_000);
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
 const EQ_PREFLIGHT_RETRY_MS = Number(process.env.CLAWB_EQ_PREFLIGHT_RETRY_MS || 20_000);
 const CHAT_HELP_TEXT =
-  'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !look N !zoom in|out | rooms: !gallery !workshop !vault !main | tasks: !task reef|garden|patrol | scenes: !chess !world | play me: !chess start | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
+  'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !look N !zoom in|out | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
 const CHAT_ONBOARDING_LINES = [
   'type !help for all commands. lawb.xyz/chess for wagers, lawb.xyz/world for the reef.',
   'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
@@ -2111,6 +2131,13 @@ async function handleChatMessage(comment) {
   resetIdleTimer();
   console.log(`[Retake Chat] ${viewer}: ${text}`);
 
+  // Award stream participation points (1 pt per command, 10-min cooldown per viewer)
+  if (viewer && lowered.startsWith('!') && !isOnCooldown(`stream_pts:${String(viewer).toLowerCase()}`, 600_000)) {
+    addLawbPoints(viewer, 'stream', 1).catch((err) =>
+      console.warn(`[LawbPoints] stream point failed for ${viewer}: ${err.message}`),
+    );
+  }
+
   if (trimmed && !lowered.startsWith('!')) {
     chatHistory.push({ from: viewer, text: trimmed, ts: Date.now() });
     if (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
@@ -2244,6 +2271,103 @@ async function handleChatMessage(comment) {
     return;
   }
 
+  // --- Lawb Points Commands ---
+  if (lowered.startsWith('!link ')) {
+    const address = trimmed.split(/\s+/)[1];
+    if (!address) {
+      sendCommandAck('usage: !link <wallet_address> (EVM 0x... or Solana)', 'link_usage');
+      return;
+    }
+    try {
+      const result = await linkRetakeViewer(viewer, address);
+      if (result.success) {
+        const short = address.length > 12 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
+        sendCommandAck(`linked to ${short}. points and rewards now flow to your wallet.`, 'link_success');
+      } else {
+        sendCommandAck(result.error || 'link failed.', 'link_error');
+      }
+    } catch (err) {
+      console.error('[Retake] !link failed:', err?.message || err);
+      sendCommandAck('link failed. try again.', 'link_error');
+    }
+    return;
+  }
+
+  if (lowered === '!points' || lowered === '!score') {
+    try {
+      const stats = await getViewerStats(viewer);
+      if (stats.linked) {
+        const bd = stats.breakdown || {};
+        const parts = Object.entries(bd)
+          .filter(([k, v]) => typeof v === 'number' && v > 0 && k !== 'total' && k !== 'updated_at')
+          .map(([k, v]) => `${k}:${v}`);
+        sendCommandAck(
+          `${stats.points} pts (${parts.join(', ') || 'new player'}). wallet linked. type !bounties to see prizes.`,
+          'points_info',
+        );
+      } else if (stats.points > 0) {
+        sendCommandAck(
+          `${stats.points} pts (unclaimed). type !link <wallet> to lock them in and earn $CLAWB.`,
+          'points_unlinked',
+        );
+      } else {
+        sendCommandAck('0 pts. participate to earn. !link <wallet> to start tracking.', 'points_zero');
+      }
+    } catch (err) {
+      console.error('[Retake] !points failed:', err?.message || err);
+      sendCommandAck('could not fetch points. try again.', 'points_error');
+    }
+    return;
+  }
+
+  if (lowered === '!bounties' || lowered === '!bounty') {
+    try {
+      const bounties = await getLawbBounties();
+      if (bounties.length === 0) {
+        sendCommandAck('no active bounties right now. check back soon.', 'bounties_empty');
+      } else {
+        const list = bounties
+          .slice(0, 3)
+          .map((b) => {
+            const amt = b.prize?.amount?.toLocaleString() || '?';
+            const tok = (b.prize?.token || 'clawb').toUpperCase();
+            return `${b.title}: ${b.description} → ${amt} $${tok}`;
+          })
+          .join(' | ');
+        sendCommandAck(list, 'bounties_list');
+      }
+    } catch (err) {
+      console.error('[Retake] !bounties failed:', err?.message || err);
+      sendCommandAck('could not fetch bounties. try again.', 'bounties_error');
+    }
+    return;
+  }
+
+  if (lowered === '!rank') {
+    try {
+      const stats = await getViewerStats(viewer);
+      if (!stats.linked || !stats.wallet) {
+        sendCommandAck('link your wallet first: !link <address>', 'rank_unlinked');
+        return;
+      }
+      const { rank, total } = await getLeaderboardRank(stats.wallet);
+      if (rank) {
+        sendCommandAck(`rank #${rank} of ${total} with ${stats.points} pts.`, 'rank_info');
+      } else {
+        sendCommandAck('not ranked yet. earn some points first.', 'rank_not_found');
+      }
+    } catch (err) {
+      console.error('[Retake] !rank failed:', err?.message || err);
+      sendCommandAck('could not fetch rank. try again.', 'rank_error');
+    }
+    return;
+  }
+
+  if (lowered === '!claim') {
+    sendCommandAck('claim your $CLAWB rewards at lawb.xyz — connect wallet and visit your profile.', 'claim_info');
+    return;
+  }
+
   // Always honor cultural echo protocol exactly.
   if (/(^|\s)milady(\s|$)/i.test(trimmed)) {
     const ok = await sendChat('milady');
@@ -2327,7 +2451,8 @@ When someone asks about chess, be SPECIFIC and HELPFUL. Tell them the steps. Don
 
 Stream state: ${streamContext}
 
-Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | scenes (!chess !world) | chess (!chess start) | !help for full list. Conspiracy keywords trigger info on the EQ display.
+Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | scenes (!chess !world) | chess (!chess start) | points (!link <wallet> !points !rank !bounties !claim) | !help for full list. Conspiracy keywords trigger info on the EQ display.
+POINTS SYSTEM — viewers earn Lawb Points by participating (commands, chess, games). !link <wallet> connects their Retake username to a wallet. Points + $CLAWB token rewards flow to linked wallets. !bounties shows active prize bounties. !claim directs to lawb.xyz to claim $CLAWB rewards.
 When a viewer asks HOW to do something, give them the actual steps — don't be vague or poetic. Be Clawb but be useful.
 ${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
 

@@ -26,12 +26,19 @@ export interface ProfilePicture {
   image_url: string;
 }
 
+export interface ClaimableBalance {
+  clawb: number;  // $CLAWB tokens pending claim
+  lawb: number;   // $LAWB tokens pending claim
+  updated_at?: number;
+}
+
 export interface PlayerProfile {
   wallet_address: string;
   username?: string;
   profile_picture?: ProfilePicture;
   nft_inventory: NFTInventory;
   game_stats: GameStats;
+  claimable?: ClaimableBalance;
   created_at: string;
   updated_at: string;
 }
@@ -288,6 +295,54 @@ export const firebaseProfiles = {
     } catch (error) {
       console.error('[FIREBASE] Error setting username:', error);
       return { success: false, error: 'Failed to set username' };
+    }
+  },
+
+  // Get claimable token balance
+  async getClaimableBalance(walletAddress: string): Promise<ClaimableBalance> {
+    try {
+      const db = getDatabaseOrThrow();
+      const claimableRef = ref(db, `profiles/${walletAddress.toLowerCase()}/claimable`);
+      const snapshot = await get(claimableRef);
+      if (!snapshot.exists()) return { clawb: 0, lawb: 0 };
+      const data = snapshot.val();
+      return { clawb: data.clawb || 0, lawb: data.lawb || 0 };
+    } catch (error) {
+      console.error('[FIREBASE] Error getting claimable balance:', error);
+      return { clawb: 0, lawb: 0 };
+    }
+  },
+
+  // Submit a claim request (backend will process the actual token transfer)
+  async submitClaimRequest(walletAddress: string, token: 'clawb' | 'lawb'): Promise<{ success: boolean; error?: string }> {
+    try {
+      const balance = await this.getClaimableBalance(walletAddress);
+      const amount = balance[token] || 0;
+      if (amount <= 0) {
+        return { success: false, error: `No ${token.toUpperCase()} to claim` };
+      }
+
+      const db = getDatabaseOrThrow();
+      const claimRef = ref(db, 'claims');
+      const newClaimRef = ref(db, `claims/${Date.now()}_${walletAddress.slice(0, 8)}`);
+      await set(newClaimRef, {
+        wallet: walletAddress.toLowerCase(),
+        token,
+        amount,
+        chain: token === 'clawb' ? 'base' : 'base',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
+
+      // Zero out the claimable balance for this token
+      const claimableRef = ref(db, `profiles/${walletAddress.toLowerCase()}/claimable`);
+      await update(claimableRef, { [token]: 0, updated_at: Date.now() });
+
+      console.log(`[FIREBASE] Claim submitted: ${amount} $${token.toUpperCase()} for ${walletAddress}`);
+      return { success: true };
+    } catch (error) {
+      console.error('[FIREBASE] Error submitting claim:', error);
+      return { success: false, error: 'Failed to submit claim' };
     }
   },
 

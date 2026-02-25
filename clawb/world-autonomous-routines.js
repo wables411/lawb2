@@ -1,4 +1,4 @@
-/**
+day/**
  * world-autonomous-routines.js
  *
  * Lightweight autonomous world behavior publisher.
@@ -18,6 +18,7 @@ const ROUTINES = [
   { command: '!look 1', payload: { type: 'look', targetNftIndex: 1 } },
   { command: '!workshop', payload: { type: 'room', targetRoom: 'workshop' } },
   { command: '!hi', payload: { type: 'action', action: 'hi' } },
+  { command: '!leaderboard', payload: { type: 'room', targetRoom: 'leaderboard' } },
   { command: '!spin', payload: { type: 'action', action: 'spin' } },
   { command: '!main', payload: { type: 'room', targetRoom: 'main' } },
   { command: '!idle', payload: { type: 'action', action: 'idle' } },
