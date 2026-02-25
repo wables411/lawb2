@@ -400,8 +400,9 @@ const ClawbWorld: React.FC = () => {
     return true;
   }, []);
 
-  const triggerWorldAction = useCallback((action: string, payload?: { targetNftIndex?: number; loop?: unknown; direction?: unknown }) => {
+  const triggerWorldAction = useCallback((action: string, payload?: { targetNftIndex?: number; loop?: unknown; direction?: unknown; source?: unknown }) => {
     const loopRequested = payload?.loop === true;
+    if (loopedActionRef.current && payload?.source === 'autonomy') return;
     const scene = sceneRef.current;
     const lights = lightsRef.current;
     if (scene && lights && (action === 'day' || action === 'night')) {
