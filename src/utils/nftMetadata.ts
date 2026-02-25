@@ -1,5 +1,5 @@
 import { NFT_COLLECTIONS } from '../config/nftCollections';
-import { getCollectionNFTs } from '../mint';
+import { getCollectionNFTs, getOpenSeaSolanaNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
 
 const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
 
@@ -107,6 +107,32 @@ export async function fetchTokenMetadata(
       } catch (openseaError) {
         if (typeof window !== 'undefined' && window.console) {
           window.console.error('[NFT METADATA] Error fetching from OpenSea API:', openseaError);
+        }
+      }
+    }
+
+    // Use Magic Eden-backed Solana fetchers for LawbStation/LawbNexus.
+    if (collectionConfig.api === 'magiceden-solana') {
+      try {
+        // tokenId is the mint address for Solana profile picture selection.
+        const isMintLike = tokenId.length >= 24;
+        const mintAddress = tokenId;
+        const response = ownerAddress
+          ? await getOpenSeaSolanaNFTsByOwner(ownerAddress, 200)
+          : await getOpenSeaSolanaNFTs(collectionConfig.slug, 200);
+        const nft = response.data.find((n) => {
+          if (isMintLike) return n.address === mintAddress || n.id === mintAddress;
+          return String(n.token_id) === tokenId;
+        });
+        if (nft?.image_url) {
+          return {
+            image_url: nft.image_url,
+            name: nft.name,
+          };
+        }
+      } catch (solanaError) {
+        if (typeof window !== 'undefined' && window.console) {
+          window.console.error('[NFT METADATA] Error fetching from Solana collection API:', solanaError);
         }
       }
     }

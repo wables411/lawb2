@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
-import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs } from '../mint';
+import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
 import type { NFT } from '../mint';
 import { v4 as uuidv4 } from 'uuid';
 import { ipfsToHttp } from '../utils/ipfs';
+import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 
 const useStyles = createUseStyles({
   container: {
@@ -230,7 +231,7 @@ const NFT_COLLECTIONS = [
   { id: 'pixelawbs', name: 'Pixelawbsters', api: 'scatter', slug: 'pixelawbs' },
   { id: 'halloween', name: 'Halloween Lawbsters', api: 'opensea', slug: 'a-lawbster-halloween', chain: 'base' },
   { id: 'asciilawbs', name: 'ASCII Lawbsters', api: 'opensea', slug: 'asciilawbs', chain: 'base' },
-  // Solana collections - using Helius API
+  // Solana collections
   { id: 'lawbstation', name: 'Lawbstation', api: 'opensea-solana', slug: 'lawbstation', chain: 'solana' },
   { id: 'nexus', name: 'Nexus', api: 'opensea-solana', slug: 'lawbnexus', chain: 'solana' },
 ];
@@ -276,6 +277,7 @@ function resolveNftImageUrl(nft: Partial<NFT> & Record<string, any>): string | n
 
 function MemeGenerator() {
   const classes = useStyles();
+  const connectionDisplay = useConnectionDisplay();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState(DEFAULT_CANVAS_SIZE);
@@ -806,10 +808,10 @@ function MemeGenerator() {
         nfts = resp.data;
         console.log('OpenSea response:', resp);
       } else if (collection.api === 'opensea-solana') {
-        console.log('Using Helius API for Solana collection:', collection.slug);
+        console.log('Using Solana collection API:', collection.slug);
         const resp = await getOpenSeaSolanaNFTs(collection.slug, 50);
         nfts = resp.data;
-        console.log('Helius Solana response:', resp);
+        console.log('Solana collection response:', resp);
         
         // If no NFTs found, show helpful message
         if (!nfts || nfts.length === 0) {
@@ -846,6 +848,62 @@ function MemeGenerator() {
     } catch (err) {
       console.error('Error fetching NFTs:', err);
       alert('Failed to fetch NFT images. Check console for details.');
+    } finally {
+      setLoadingNft(false);
+    }
+  };
+
+  const handlePickFromMyNfts = async () => {
+    if (!connectionDisplay.connected || !connectionDisplay.address) {
+      alert('Connect your wallet first to load My NFTs.');
+      return;
+    }
+
+    setLoadingNft(true);
+    setShowCollectionDropdown(false);
+    try {
+      const owner = connectionDisplay.address;
+      let nfts: NFT[] = [];
+
+      if (connectionDisplay.namespace === 'solana') {
+        const resp = await getOpenSeaSolanaNFTsByOwner(owner, 200);
+        nfts = resp.data.filter((nft) => {
+          const collection = String(nft.collection_id || '').toLowerCase();
+          return collection === 'lawbstation' || collection === 'lawbnexus';
+        });
+      } else {
+        const owned: NFT[] = [];
+        const evmCollections = NFT_COLLECTIONS.filter((collection) => collection.api !== 'opensea-solana');
+        for (const collection of evmCollections) {
+          try {
+            if (collection.api === 'opensea') {
+              const resp = await getOpenSeaNFTs(collection.slug, 40, owner);
+              owned.push(...resp.data);
+            } else {
+              const resp = await getCollectionNFTs(collection.slug, 1, 40, owner);
+              owned.push(...resp.data);
+            }
+          } catch (err) {
+            console.warn('[MemeGenerator] Failed to fetch owned NFTs for', collection.slug, err);
+          }
+        }
+        nfts = owned;
+      }
+
+      const candidates = nfts
+        .map((nft) => ({ nft, imageUrl: resolveNftImageUrl(nft as any) }))
+        .filter((x) => typeof x.imageUrl === 'string' && !!x.imageUrl) as Array<{ nft: NFT; imageUrl: string }>;
+
+      if (!candidates.length) {
+        alert('No usable NFTs found in your wallet yet.');
+        return;
+      }
+
+      const pick = candidates[Math.floor(Math.random() * candidates.length)];
+      setNftImage(pick.imageUrl);
+    } catch (err) {
+      console.error('Error fetching My NFTs:', err);
+      alert('Failed to load My NFTs. Try again in a moment.');
     } finally {
       setLoadingNft(false);
     }
@@ -953,6 +1011,9 @@ function MemeGenerator() {
                 </div>
               )}
             </div>
+            <button className={classes.button} onClick={() => { void handlePickFromMyNfts(); }}>
+              My NFTs
+            </button>
             <label className={classes.button} style={{ marginBottom: 0, width: 'auto', alignSelf: 'flex-start', padding: '2px 6px' }}>
               Upload Image
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />

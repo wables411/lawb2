@@ -301,6 +301,64 @@ export const addEcosystemPoints = async (
   }
 };
 
+// Set holdings points to an absolute value (idempotent sync).
+export const setHoldingsPoints = async (
+  walletAddress: string,
+  holdingsPoints: number
+): Promise<boolean> => {
+  try {
+    if (!walletAddress || holdingsPoints < 0) return false;
+    if (walletAddress === '0x0000000000000000000000000000000000000000') return false;
+
+    const now = new Date().toISOString();
+    const dbRef = getDatabaseOrThrow();
+    const entryRef = ref(dbRef, `leaderboard/${walletAddress}`);
+
+    const snapshot = await get(entryRef);
+    const existingEntry = snapshot.exists() ? snapshot.val() as LeaderboardEntry : null;
+
+    const breakdown: PointsBreakdown = existingEntry?.points_breakdown || {
+      chess: existingEntry?.points || 0,
+      stream: 0,
+      games: 0,
+      holdings: 0,
+    };
+    breakdown.holdings = holdingsPoints;
+
+    const totalPoints = Object.values(breakdown).reduce(
+      (sum, v) => sum + (typeof v === 'number' ? v : 0),
+      0
+    );
+
+    if (existingEntry) {
+      await update(entryRef, {
+        points: totalPoints,
+        points_breakdown: breakdown,
+        updated_at: now,
+      });
+    } else {
+      await set(entryRef, {
+        username: walletAddress,
+        chain_type: walletAddress.startsWith('0x') ? 'base' : 'solana',
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        total_games: 0,
+        points: totalPoints,
+        points_breakdown: breakdown,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    console.log(`[LEADERBOARD] holdings points synced for ${formatAddress(walletAddress)} => ${holdingsPoints}`);
+    return true;
+  } catch (error) {
+    console.error('[LEADERBOARD] Error setting holdings points:', error);
+    return false;
+  }
+};
+
 // Get a user's points breakdown
 export const getUserPointsBreakdown = async (walletAddress: string): Promise<PointsBreakdown | null> => {
   try {

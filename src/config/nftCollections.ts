@@ -33,6 +33,20 @@ export const NFT_COLLECTIONS = {
     chainId: 8453, // Base chain
     api: 'opensea' as const,
     slug: 'asciilawbs'
+  },
+  lawbstation: {
+    address: 'So11111111111111111111111111111111111111112',
+    name: 'LawbStation',
+    chainId: 1399811149, // Solana
+    api: 'magiceden-solana' as const,
+    slug: 'lawbstation'
+  },
+  lawbnexus: {
+    address: 'So11111111111111111111111111111111111111112',
+    name: 'LawbNexus',
+    chainId: 1399811149, // Solana
+    api: 'magiceden-solana' as const,
+    slug: 'lawbnexus'
   }
 } as const;
 

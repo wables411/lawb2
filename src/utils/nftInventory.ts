@@ -1,6 +1,6 @@
 import { JsonRpcProvider, Contract } from 'ethers';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
-import { getCollectionNFTs } from '../mint';
+import { getCollectionNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
 
 const ERC721_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
@@ -368,16 +368,49 @@ export interface NFTInventory {
   halloween_lawbsters: string[];
   pixelawbs: string[];
   asciilawbs: string[];
+  lawbstation: string[];
+  lawbnexus: string[];
 }
 
 export async function fetchNFTInventory(walletAddress: string): Promise<NFTInventory> {
+  const isEvmAddress = /^0x[a-fA-F0-9]{40}$/.test(walletAddress);
   const inventory: NFTInventory = {
     lawbsters: [],
     lawbstarz: [],
     halloween_lawbsters: [],
     pixelawbs: [],
-    asciilawbs: []
+    asciilawbs: [],
+    lawbstation: [],
+    lawbnexus: []
   };
+
+  // Solana wallets use a different ownership model; skip EVM scanners.
+  if (!isEvmAddress) {
+    try {
+      const solanaNfts = await getOpenSeaSolanaNFTsByOwner(walletAddress, 200);
+      for (const nft of solanaNfts.data) {
+        const collection = String(nft.collection_id || '').toLowerCase();
+        const mint = nft.address || nft.id;
+        if (!mint) continue;
+        if (collection === 'lawbstation') {
+          inventory.lawbstation.push(mint);
+        } else if (collection === 'lawbnexus') {
+          inventory.lawbnexus.push(mint);
+        }
+      }
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] Solana inventory fetched:', {
+          lawbstation: inventory.lawbstation.length,
+          lawbnexus: inventory.lawbnexus.length,
+        });
+      }
+    } catch (error) {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.error('[NFT] Error fetching Solana inventory:', error);
+      }
+    }
+    return inventory;
+  }
 
   // Fetch Pixelawbs (Ethereum) - Try Etherscan API first, then contract, then Scatter API
   try {

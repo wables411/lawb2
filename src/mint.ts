@@ -563,79 +563,44 @@ export async function getOpenSeaSingleNFT(chain: string, contractAddress: string
 
 // Function to fetch Solana NFTs using Helius DAS API
 export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: number = 50): Promise<NFTResponse> {
-  const HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=f2330fce-2a97-416b-ada9-ce0ba94ddadc";
-  
+  const MAGIC_EDEN_API_URL = 'https://api-mainnet.magiceden.dev/v2';
+
   try {
-    console.log('Using Helius DAS API for Solana collection:', collectionSlug);
-    
-    // Use collection mint addresses to fetch all NFTs in the collection
-    const collectionMints = {
-      'lawbstation': '9CU9LUX7UWkBEG4oP8YrgDUkNJKNHLt2wGdVfX6NY4EY',
-      'lawbnexus': 'AfXkPjcfTWHz9WDjvXxZBkHSWQ1H7xsg7jT2fFLkAAi'
-    };
-    
-    const collectionMint = collectionMints[collectionSlug as keyof typeof collectionMints];
-    
-    if (!collectionMint) {
-      console.log('No collection mint found for collection:', collectionSlug);
-      return {
-        page: 1,
-        pageSize: pageSize,
-        totalCount: 0,
-        totalPages: 1,
-        data: []
-      };
-    }
-    
-    // Use Helius DAS API to get NFTs by collection
-    const response = await fetch(HELIUS_RPC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'my-id',
-        method: 'getAssetsByGroup',
-        params: {
-          groupKey: 'collection',
-          groupValue: collectionMint,
-          page: 1,
-          limit: pageSize
-        }
-      })
-    });
-    
+    console.log('Using Magic Eden API for Solana collection:', collectionSlug);
+
+    const response = await fetch(
+      `${MAGIC_EDEN_API_URL}/collections/${encodeURIComponent(collectionSlug)}/listings?offset=0&limit=${Math.max(1, Math.min(100, pageSize))}`
+    );
+
     if (!response.ok) {
-      console.log('Helius DAS API response status:', response.status);
-      console.log('Helius DAS API response text:', await response.text());
-      throw new Error(`Helius DAS API error: ${response.statusText}`);
+      console.log('Magic Eden API response status:', response.status);
+      console.log('Magic Eden API response text:', await response.text());
+      throw new Error(`Magic Eden API error: ${response.statusText}`);
     }
-    
-    const data = await response.json();
-    console.log('Helius DAS API response:', data);
-    
-    if (data.error) {
-      throw new Error(`Helius DAS API error: ${data.error.message}`);
-    }
-    
-    const nfts = data.result?.items || [];
-    
+
+    const listings = await response.json() as Array<any>;
+    console.log('Magic Eden response count:', Array.isArray(listings) ? listings.length : 0);
+
     // Transform the NFTs to our standard format
-    const transformedNfts: NFT[] = nfts.map((nft: any): NFT => ({
-      id: nft.id || nft.mint || 'unknown',
-      address: nft.mint || '',
-      token_id: parseInt(nft.content?.metadata?.name?.replace(/\D/g, '') || '0', 10),
-      attributes: JSON.stringify(nft.content?.metadata?.attributes || []),
-      name: nft.content?.metadata?.name || nft.content?.files?.[0]?.name || `#${nft.mint?.slice(0, 8)}`,
-      image_url: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+    const transformedNfts: NFT[] = (Array.isArray(listings) ? listings : []).map((listing: any): NFT => {
+      const token = listing?.token || {};
+      const mint = token?.mintAddress || listing?.tokenMint || listing?.tokenAddress || '';
+      const imageUrl = token?.image || listing?.extra?.img || '';
+      const name = token?.name || `${collectionSlug} #${mint?.slice?.(0, 8) || 'unknown'}`;
+      return {
+      id: mint || listing?.pdaAddress || 'unknown',
+      address: mint || '',
+      token_id: parseInt(String(name).replace(/\D/g, '') || '0', 10),
+      attributes: JSON.stringify(token?.attributes || []),
+      name,
+      image_url: imageUrl,
       owner_of: '',
       block_minted: 0,
       contract_type: 'SOL',
-      description: nft.content?.metadata?.description || '',
-      image: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
-      image_url_shrunk: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
-      animation_url: nft.content?.metadata?.animation_url || '',
+      description: '',
+      image: imageUrl,
+      image_url_shrunk: imageUrl,
+      animation_url: '',
       metadata: '',
       chain_id: 1399811149,
       old_image_url: '',
@@ -648,8 +613,9 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       owners: []
-    }));
-    
+    };
+    });
+
     return {
       page: 1,
       pageSize: pageSize,
@@ -659,77 +625,53 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
     };
     
   } catch (error) {
-    console.error('Error getting Solana NFTs from Helius:', error);
+    console.error('Error getting Solana NFTs from Magic Eden:', error);
     throw error;
   }
 }
 
 // Function to fetch Solana NFTs by owner using Helius DAS API
 export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
-  const HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=f2330fce-2a97-416b-ada9-ce0ba94ddadc";
-  
+  const MAGIC_EDEN_API_URL = 'https://api-mainnet.magiceden.dev/v2';
+
   try {
-    console.log('Using Helius DAS API for Solana owner:', ownerAddress);
-    
-    // Use Helius DAS API to get NFTs by owner
-    const response = await fetch(HELIUS_RPC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'my-id',
-        method: 'getAssetsByOwner',
-        params: {
-          ownerAddress: ownerAddress,
-          page: 1,
-          limit: pageSize
-        }
-      })
-    });
-    
+    console.log('Using Magic Eden API for Solana owner:', ownerAddress);
+
+    const response = await fetch(
+      `${MAGIC_EDEN_API_URL}/wallets/${encodeURIComponent(ownerAddress)}/tokens?offset=0&limit=${Math.max(1, Math.min(100, pageSize))}`
+    );
+
     if (!response.ok) {
-      console.log('Helius DAS API response status:', response.status);
-      console.log('Helius DAS API response text:', await response.text());
-      throw new Error(`Helius DAS API error: ${response.statusText}`);
+      console.log('Magic Eden API response status:', response.status);
+      console.log('Magic Eden API response text:', await response.text());
+      throw new Error(`Magic Eden API error: ${response.statusText}`);
     }
-    
-    const data = await response.json();
-    console.log('Helius DAS API owner response:', data);
-    
-    if (data.error) {
-      throw new Error(`Helius DAS API error: ${data.error.message}`);
-    }
-    
-    const nfts = data.result?.items || [];
-    
-    // Filter to only include lawbstation and lawbnexus collections
-    const mintAuthorities = {
-      'lawbstation': '6cz67ciatfhDaxyWw3rdC9rZHXAxQvYnq5qkqmnG3G1Q',
-      'lawbnexus': '35pjVXpTg2PCdBZ1zdUckNfnAxULJQBRSjWLXREo6692'
-    };
-    
-    const filteredNfts = nfts.filter((nft: any) => {
-      // Check if NFT belongs to our collections by mint authority
-      const mintAuthority = nft.mintAuthority || nft.authority;
-      return mintAuthority && Object.values(mintAuthorities).includes(mintAuthority);
-    }).slice(0, pageSize);
-    
-    const transformedNfts: NFT[] = filteredNfts.map((nft: any): NFT => ({
-      id: nft.id || nft.mint || 'unknown',
-      address: nft.mint || '',
-      token_id: parseInt(nft.content?.metadata?.name?.replace(/\D/g, '') || '0', 10),
-      attributes: JSON.stringify(nft.content?.metadata?.attributes || []),
-      name: nft.content?.metadata?.name || nft.content?.files?.[0]?.name || `#${nft.mint?.slice(0, 8)}`,
-      image_url: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
+
+    const tokens = await response.json() as Array<any>;
+    console.log('Magic Eden owner token count:', Array.isArray(tokens) ? tokens.length : 0);
+
+    // Keep only Lawb Solana collections.
+    const filteredTokens = (Array.isArray(tokens) ? tokens : [])
+      .filter((token: any) => {
+        const c = String(token?.collection || '').toLowerCase();
+        return c === 'lawbstation' || c === 'lawbnexus';
+      })
+      .slice(0, pageSize);
+
+    const transformedNfts: NFT[] = filteredTokens.map((token: any): NFT => ({
+      id: token.mintAddress || 'unknown',
+      address: token.mintAddress || '',
+      token_id: parseInt(String(token?.name || '').replace(/\D/g, '') || '0', 10),
+      attributes: JSON.stringify(token.attributes || []),
+      name: token.name || `#${String(token.mintAddress || '').slice(0, 8)}`,
+      image_url: token.image || '',
       owner_of: ownerAddress,
       block_minted: 0,
       contract_type: 'SOL',
-      description: nft.content?.metadata?.description || '',
-      image: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
-      image_url_shrunk: nft.content?.files?.[0]?.uri || nft.content?.metadata?.image || '',
-      animation_url: nft.content?.metadata?.animation_url || '',
+      description: '',
+      image: token.image || '',
+      image_url_shrunk: token.image || '',
+      animation_url: '',
       metadata: '',
       chain_id: 1399811149,
       old_image_url: '',
@@ -737,7 +679,7 @@ export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize
       token_uri: '',
       log_index: 0,
       transaction_index: 0,
-      collection_id: nft.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || '',
+      collection_id: token.collection || '',
       num_items: 1,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -753,7 +695,7 @@ export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize
     };
 
   } catch (error) {
-    console.error('Error getting Solana NFTs by owner from Helius:', error);
+    console.error('Error getting Solana NFTs by owner from Magic Eden:', error);
     throw error;
   }
 }

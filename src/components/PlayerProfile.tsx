@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData } from '../firebaseProfiles';
 import { fetchLawbampUploadsForUser, type LawbampUploadEntry } from '../firebaseLawbampUploads';
 import { fetchNFTInventory } from '../utils/nftInventory';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { getUserLeaderboardEntry, getUserRank } from '../firebaseLeaderboard';
+import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -13,8 +13,13 @@ interface PlayerProfileProps {
 }
 
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
-  const { address: connectedAddress } = useAccount();
+  const connectionDisplay = useConnectionDisplay();
+  const connectedAddress = connectionDisplay.address;
   const address = viewAddress || connectedAddress; // Use provided address or fallback to connected wallet
+  const normalizeAddress = (value?: string) => {
+    if (!value) return '';
+    return value.startsWith('0x') ? value.toLowerCase() : value;
+  };
   const [profile, setProfile] = useState<PlayerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [usernameInput, setUsernameInput] = useState('');
@@ -67,7 +72,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           window.console.log('[PROFILE] Leaderboard rank:', rank);
         }
         
-        const isOwnProfile = address?.toLowerCase() === connectedAddress?.toLowerCase();
+        const isOwnProfile = normalizeAddress(address) === normalizeAddress(connectedAddress);
         
         if (!profileData) {
           // Only create profile if it's the user's own profile
@@ -80,13 +85,15 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           } else {
             // For viewing other users, create a minimal profile object with default values
             profileData = {
-              wallet_address: address.toLowerCase(),
+              wallet_address: normalizeAddress(address),
           nft_inventory: {
             lawbsters: [],
             lawbstarz: [],
             halloween_lawbsters: [],
             pixelawbs: [],
-            asciilawbs: []
+            asciilawbs: [],
+            lawbstation: [],
+            lawbnexus: []
           },
               game_stats: {
                 total_games: 0,
@@ -112,7 +119,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               lawbstarz: [],
               halloween_lawbsters: [],
               pixelawbs: [],
-              asciilawbs: []
+              asciilawbs: [],
+              lawbstation: [],
+              lawbnexus: []
             };
           }
           if (!profileData.game_stats) {
@@ -218,7 +227,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     };
     
     loadProfile();
-  }, [address]);
+  }, [address, connectedAddress]);
 
   useEffect(() => {
     if (!address) {
@@ -385,7 +394,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   }
 
   // Determine if this is own profile
-  const isOwnProfile = address?.toLowerCase() === connectedAddress?.toLowerCase();
+  const isOwnProfile = normalizeAddress(address) === normalizeAddress(connectedAddress);
 
   const displayName = profile?.username 
     ? profile.username 
@@ -407,7 +416,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     lawbstarz: profile?.nft_inventory?.lawbstarz || [],
     halloween_lawbsters: profile?.nft_inventory?.halloween_lawbsters || [],
     pixelawbs: profile?.nft_inventory?.pixelawbs || [],
-    asciilawbs: profile?.nft_inventory?.asciilawbs || []
+    asciilawbs: profile?.nft_inventory?.asciilawbs || [],
+    lawbstation: profile?.nft_inventory?.lawbstation || [],
+    lawbnexus: profile?.nft_inventory?.lawbnexus || []
   };
 
   // Debug logging
@@ -419,13 +430,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       lawbstarz: inventory.lawbstarz?.length || 0,
       halloween_lawbsters: inventory.halloween_lawbsters?.length || 0,
       pixelawbs: inventory.pixelawbs?.length || 0,
-      asciilawbs: inventory.asciilawbs?.length || 0
+      asciilawbs: inventory.asciilawbs?.length || 0,
+      lawbstation: inventory.lawbstation?.length || 0,
+      lawbnexus: inventory.lawbnexus?.length || 0
     });
   }
 
   const totalNFTs = (inventory.lawbsters?.length || 0) + (inventory.lawbstarz?.length || 0) + 
                     (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0) +
-                    (inventory.asciilawbs?.length || 0);
+                    (inventory.asciilawbs?.length || 0) + (inventory.lawbstation?.length || 0) +
+                    (inventory.lawbnexus?.length || 0);
 
   // Determine border color based on leaderboard rank
   const getBorderColor = () => {
@@ -751,6 +765,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           <div>Halloween Lawbsters: {inventory.halloween_lawbsters?.length || 0}</div>
           <div>Pixelawbs: {inventory.pixelawbs?.length || 0}</div>
           <div>ASCII Lawbsters: {inventory.asciilawbs?.length || 0}</div>
+          <div>LawbStation (SOL): {inventory.lawbstation?.length || 0}</div>
+          <div>LawbNexus (SOL): {inventory.lawbnexus?.length || 0}</div>
         </div>
         {totalNFTs === 0 && (
           <div style={{ marginTop: '8px', fontSize: isMobile ? '11px' : '12px', color: '#888', fontStyle: 'italic' }}>
@@ -768,7 +784,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                            (profile?.nft_inventory?.lawbstarz?.length || 0) + 
                            (profile?.nft_inventory?.halloween_lawbsters?.length || 0) + 
                            (profile?.nft_inventory?.pixelawbs?.length || 0) +
-                           (profile?.nft_inventory?.asciilawbs?.length || 0);
+                           (profile?.nft_inventory?.asciilawbs?.length || 0) +
+                           (profile?.nft_inventory?.lawbstation?.length || 0) +
+                           (profile?.nft_inventory?.lawbnexus?.length || 0);
           // Clear profile picture if no NFTs owned
           if (totalNFTs === 0 && profile?.profile_picture) {
             // Clear profile picture asynchronously
@@ -938,6 +956,54 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       }}
                     >
                       #{tokenId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(inventory.lawbstation?.length || 0) > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>LawbStation (SOL):</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {(inventory.lawbstation || []).slice(0, 10).map((tokenId: string) => (
+                    <button
+                      key={`lawbstation-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('lawbstation', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'lawbstation' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbstation' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      {tokenId.slice(0, 4)}...{tokenId.slice(-4)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(inventory.lawbnexus?.length || 0) > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', fontWeight: 'bold' }}>LawbNexus (SOL):</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {(inventory.lawbnexus || []).slice(0, 10).map((tokenId: string) => (
+                    <button
+                      key={`lawbnexus-${tokenId}`}
+                      onClick={() => handleSelectProfilePicture('lawbnexus', tokenId)}
+                      style={{
+                        padding: '4px 8px',
+                        background: profile?.profile_picture?.collection === 'lawbnexus' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbnexus' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        border: '1px solid #000',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        fontSize: isMobile ? '9px' : '10px'
+                      }}
+                    >
+                      {tokenId.slice(0, 4)}...{tokenId.slice(-4)}
                     </button>
                   ))}
                 </div>
