@@ -253,6 +253,7 @@ let eqDisplayText = '';
 let eqDisplayTextExpiry = 0;
 const EQ_DISPLAY_MIN_DURATION_MS = 60_000;
 const EQ_DISPLAY_CHARS_PER_SEC = 4;
+let eqOverlayRefreshCooldownUntil = 0;
 
 let lastViewerInteractionAt = Date.now();
 let idleBehaviorTimer = null;
@@ -382,6 +383,42 @@ const COMMAND_REMINDER_LINES = [
   'reef commands: !walk !swim !flip !dance !gallery !workshop !vault. !help for more.',
   'play chess vs me at lawb.xyz/chess on Base. type !chess start here.',
 ];
+
+function findEqDisplayTrigger(loweredText) {
+  if (!loweredText) return null;
+  for (const [trigger, info] of EQ_DISPLAY_TRIGGERS) {
+    if (loweredText.includes(trigger)) {
+      return { trigger, info };
+    }
+  }
+  return null;
+}
+
+function applyEqDisplayTrigger(loweredText, viewer, source = 'chat') {
+  const match = findEqDisplayTrigger(loweredText);
+  if (!match) return false;
+
+  const { trigger, info } = match;
+  eqDisplayText = info;
+  const twoPassMs = Math.ceil((info.length / EQ_DISPLAY_CHARS_PER_SEC) * 2) * 1000;
+  const durationMs = Math.max(EQ_DISPLAY_MIN_DURATION_MS, twoPassMs);
+  eqDisplayTextExpiry = Date.now() + durationMs;
+  console.log(`[Retake] EQ display triggered by "${trigger}" from ${viewer} (${Math.round(durationMs / 1000)}s) [${source}]`);
+
+  // Some OBS browser-source sessions can get stale and stop polling /display-text.
+  // A lightweight source refresh here keeps conspiracy text reliable without operator intervention.
+  if (isStreaming && mediaActive && currentScStreamUrl && Date.now() >= eqOverlayRefreshCooldownUntil) {
+    eqOverlayRefreshCooldownUntil = Date.now() + 12_000;
+    void updateAsciiEqOverlayFromStream(
+      currentScStreamUrl,
+      currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
+    ).catch((err) => {
+      console.warn(`[Retake] EQ overlay refresh after trigger failed: ${err.message}`);
+    });
+  }
+
+  return true;
+}
 
 function clearDirectAudioTimer() {
   if (directAudioTimer) {
@@ -2215,19 +2252,15 @@ async function handleChatMessage(comment) {
     );
   }
 
+  // Parse conspiracy keywords from any viewer message (commands and natural text).
+  // This keeps EQ trigger behavior consistent even when viewers prefix text with "!".
+  if (trimmed) {
+    applyEqDisplayTrigger(lowered, viewer, 'viewer_message');
+  }
+
   if (trimmed && !lowered.startsWith('!')) {
     chatHistory.push({ from: viewer, text: trimmed, ts: Date.now() });
     if (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
-
-    for (const [trigger, info] of EQ_DISPLAY_TRIGGERS) {
-      if (lowered.includes(trigger)) {
-        eqDisplayText = info;
-        const twoPassMs = Math.ceil((info.length / EQ_DISPLAY_CHARS_PER_SEC) * 2) * 1000;
-        eqDisplayTextExpiry = Date.now() + Math.max(EQ_DISPLAY_MIN_DURATION_MS, twoPassMs);
-        console.log(`[Retake] EQ display triggered by "${trigger}" from ${viewer} (${Math.round(Math.max(EQ_DISPLAY_MIN_DURATION_MS, twoPassMs) / 1000)}s)`);
-        break;
-      }
-    }
   }
 
   // Streamer control commands for Lawbamp player integration.
@@ -2555,6 +2588,7 @@ ${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
       chatHistory.push({ from: 'clawb', text: reply, ts: Date.now() });
       if (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
       console.log(`[Retake Chat] Clawb: ${reply}`);
+      applyEqDisplayTrigger(reply.toLowerCase(), 'clawb', 'clawb_reply');
     }
     console.log(`[Retake] chat_llm_reply_ms=${Date.now() - messageStartedAt}`);
   } catch (err) {

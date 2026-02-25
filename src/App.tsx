@@ -6,7 +6,8 @@ import Popup from './components/Popup';
 import { createUseStyles } from 'react-jss';
 import { useAppKitSafe } from './hooks/useAppKitSafe';
 import { useConnectionDisplay } from './hooks/useConnectionDisplay';
-import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi';
+import { useDisconnect as useAppKitDisconnect } from '@reown/appkit/react';
+import { useAccount, useChainId, useDisconnect as useWagmiDisconnect, useConnect } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from './hooks/useMediaQuery';
@@ -46,7 +47,8 @@ function App() {
   const { open } = useAppKitSafe();
   const { address, isConnected } = useAccount();
   const connectionDisplay = useConnectionDisplay();
-  const { disconnect } = useDisconnect();
+  const { disconnect: disconnectEvm } = useWagmiDisconnect();
+  const { disconnect: disconnectAppKit } = useAppKitDisconnect();
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
@@ -280,7 +282,7 @@ function App() {
         void document.body.offsetWidth;
       }
     } else if (action === 'wallet') {
-      if (!isConnected) {
+      if (!connectionDisplay.connected) {
         // Open wallet connection modal
         void open({ view: 'Connect' });
       } else {
@@ -435,7 +437,9 @@ function App() {
           marginRight: '8px',
           border: '1px solid black'
         }}></span>
-        {connectionDisplay.connected ? `${connectionDisplay.address?.slice(0, 6)}...${connectionDisplay.address?.slice(-4)}` : 'Disconnected'}
+        {connectionDisplay.connected
+          ? `${connectionDisplay.namespace === 'solana' ? 'SOL ' : ''}${connectionDisplay.address?.slice(0, 6)}...${connectionDisplay.address?.slice(-4)}`
+          : 'Disconnected'}
       </div>
       {connectionDisplay.connected && showWalletMenu && (
         <div style={{
@@ -470,7 +474,13 @@ function App() {
           </button>
           <button
             onClick={() => {
-              disconnect();
+              if (connectionDisplay.namespace === 'solana') {
+                void disconnectAppKit({ namespace: 'solana' });
+              } else if (connectionDisplay.namespace === 'eip155') {
+                disconnectEvm();
+              } else {
+                void disconnectAppKit();
+              }
               setShowWalletMenu(false);
             }}
             style={{

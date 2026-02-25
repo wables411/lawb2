@@ -33,11 +33,13 @@ export const initializeAppKit = () => {
   Promise.all([
     import('@reown/appkit/react'),
     import('@reown/appkit/networks'),
-    import('@reown/appkit-adapter-wagmi')
-  ]).then(([appkitModule, networksModule, adapterModule]) => {
+    import('@reown/appkit-adapter-wagmi'),
+    import('@reown/appkit-adapter-solana')
+  ]).then(([appkitModule, networksModule, adapterModule, solanaAdapterModule]) => {
     const { createAppKit, getAppKit } = appkitModule;
     const { mainnet, arbitrum, base, solana } = networksModule;
     const { WagmiAdapter } = adapterModule;
+    const { SolanaAdapter } = solanaAdapterModule;
     
     console.log('[AppKit] Creating WagmiAdapter and AppKit');
     
@@ -56,10 +58,12 @@ export const initializeAppKit = () => {
       }
     });
 
+    const solanaAdapter = new SolanaAdapter();
+
     appKit = createAppKit({
       projectId,
       metadata,
-      adapters: [wagmiAdapter],
+      adapters: [wagmiAdapter, solanaAdapter],
       networks: [
         mainnet,
         arbitrum,
