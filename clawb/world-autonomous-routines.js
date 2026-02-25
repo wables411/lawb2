@@ -17,7 +17,6 @@ const ROUTINES = [
   { command: '!swim left', payload: { type: 'action', action: 'swim_left', direction: 'left' } },
   { command: '!workshop', payload: { type: 'room', targetRoom: 'workshop' } },
   { command: '!hi', payload: { type: 'action', action: 'hi' } },
-  { command: '!leaderboard', payload: { type: 'room', targetRoom: 'leaderboard' } },
   { command: '!spin', payload: { type: 'action', action: 'spin' } },
   { command: '!main', payload: { type: 'room', targetRoom: 'main' } },
   { command: '!idle', payload: { type: 'action', action: 'idle' } },
