@@ -274,16 +274,6 @@ const IDLE_ACTIONS = [
   { type: 'room', targetRoom: 'workshop', command: '!workshop' },
   { type: 'room', targetRoom: 'bedroom', command: '!gallery' },
   { type: 'room', targetRoom: 'vault', command: '!vault' },
-  { type: 'look', targetNftIndex: 1, command: '!look 1' },
-  { type: 'look', targetNftIndex: 2, command: '!look 2' },
-  { type: 'look', targetNftIndex: 3, command: '!look 3' },
-  { type: 'look', targetNftIndex: 4, command: '!look 4' },
-  { type: 'look', targetNftIndex: 5, command: '!look 5' },
-  { type: 'look', targetNftIndex: 6, command: '!look 6' },
-  { type: 'look', targetNftIndex: 7, command: '!look 7' },
-  { type: 'look', targetNftIndex: 8, command: '!look 8' },
-  { type: 'look', targetNftIndex: 9, command: '!look 9' },
-  { type: 'look', targetNftIndex: 10, command: '!look 10' },
 ];
 
 function startIdleBehavior() {
@@ -363,6 +353,23 @@ const EQ_DISPLAY_TRIGGERS = new Map([
 const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_MS || 90_000);
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
 const EQ_PREFLIGHT_RETRY_MS = Number(process.env.CLAWB_EQ_PREFLIGHT_RETRY_MS || 20_000);
+const ASCII_EQ_POSITION = {
+  positionX: 1260,
+  positionY: 700,
+  boundsWidth: 640,
+  boundsHeight: 360,
+  // Force top-left anchoring and fixed bounds so restarts cannot drift placement.
+  alignment: 5,
+  boundsAlignment: 5,
+  boundsType: 'OBS_BOUNDS_STRETCH',
+  scaleX: 1,
+  scaleY: 1,
+  rotation: 0,
+  cropLeft: 0,
+  cropRight: 0,
+  cropTop: 0,
+  cropBottom: 0,
+};
 const CHAT_HELP_TEXT =
   'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !look N !zoom in|out | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
 const CHAT_ONBOARDING_LINES = [
@@ -1349,6 +1356,17 @@ async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
       },
       overlay: true,
     });
+    try {
+      const { sceneItemId } = await obs.call('GetSceneItemId', {
+        sceneName: 'Clawb World',
+        sourceName: eqInput,
+      });
+      await obs.call('SetSceneItemTransform', {
+        sceneName: 'Clawb World',
+        sceneItemId,
+        sceneItemTransform: ASCII_EQ_POSITION,
+      });
+    } catch {}
   } catch (err) {
     console.error('[Retake] Failed to refresh ASCII EQ from stream:', err.message);
   }
@@ -1983,12 +2001,7 @@ export async function setupOBSScenes() {
       await obs.call('SetSceneItemTransform', {
         sceneName: 'Clawb World',
         sceneItemId,
-        sceneItemTransform: {
-          positionX: 1260,
-          positionY: 700,
-          boundsWidth: 640,
-          boundsHeight: 360,
-        },
+        sceneItemTransform: ASCII_EQ_POSITION,
       }).catch(() => {});
       await obs.call('SetSceneItemEnabled', {
         sceneName: 'Clawb World',
