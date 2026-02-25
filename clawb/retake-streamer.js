@@ -239,7 +239,61 @@ const chatHistory = [];
 
 let eqDisplayText = '';
 let eqDisplayTextExpiry = 0;
-const EQ_DISPLAY_DURATION_MS = 45_000;
+const EQ_DISPLAY_MIN_DURATION_MS = 60_000;
+const EQ_DISPLAY_CHARS_PER_SEC = 4;
+
+let lastViewerInteractionAt = Date.now();
+let idleBehaviorTimer = null;
+const IDLE_THRESHOLD_MS = 150_000;
+const IDLE_ACTION_INTERVAL_MS = 12_000;
+const IDLE_ACTIONS = [
+  { type: 'action', action: 'swim', command: '!swim' },
+  { type: 'action', action: 'swim_forward', command: '!swim forward', direction: 'forward' },
+  { type: 'action', action: 'swim_back', command: '!swim back', direction: 'back' },
+  { type: 'action', action: 'swim_left', command: '!swim left', direction: 'left' },
+  { type: 'action', action: 'swim_right', command: '!swim right', direction: 'right' },
+  { type: 'action', action: 'dance', command: '!dance' },
+  { type: 'action', action: 'flip', command: '!flip' },
+  { type: 'action', action: 'wave', command: '!wave' },
+  { type: 'action', action: 'spin', command: '!spin' },
+  { type: 'action', action: 'hi', command: '!hi' },
+  { type: 'action', action: 'idle', command: '!idle' },
+  { type: 'room', targetRoom: 'main', command: '!main' },
+  { type: 'room', targetRoom: 'workshop', command: '!workshop' },
+  { type: 'room', targetRoom: 'bedroom', command: '!gallery' },
+  { type: 'room', targetRoom: 'vault', command: '!vault' },
+  { type: 'look', targetNftIndex: 1, command: '!look 1' },
+  { type: 'look', targetNftIndex: 2, command: '!look 2' },
+  { type: 'look', targetNftIndex: 3, command: '!look 3' },
+];
+
+function startIdleBehavior() {
+  stopIdleBehavior();
+  idleBehaviorTimer = setInterval(async () => {
+    if (Date.now() - lastViewerInteractionAt < IDLE_THRESHOLD_MS) return;
+    if (worldTaskInFlight) return;
+    if (!isStreaming) return;
+    const action = IDLE_ACTIONS[Math.floor(Math.random() * IDLE_ACTIONS.length)];
+    try {
+      await publishWorldCommand(action.command, {
+        type: action.type,
+        action: action.action,
+        direction: action.direction,
+        targetRoom: action.targetRoom,
+        targetNftIndex: action.targetNftIndex,
+        source: 'idle_behavior',
+      });
+    } catch {}
+  }, IDLE_ACTION_INTERVAL_MS);
+}
+
+function stopIdleBehavior() {
+  if (idleBehaviorTimer) { clearInterval(idleBehaviorTimer); idleBehaviorTimer = null; }
+}
+
+function resetIdleTimer() {
+  lastViewerInteractionAt = Date.now();
+}
 
 const EQ_DISPLAY_TRIGGERS = new Map([
   ['mkultra', 'MKUltra: CIA mind control 1953-1973 under Sidney Gottlieb. 149 sub-projects, 80+ institutions. Dr. Ewen Cameron at McGill — psychic driving, electroshock, drug-induced comas. Frank Olson fell/thrown from 13th floor 1953. Helms ordered files destroyed 1973. 20,000 surviving docs found 1977 in financial records filed separately.'],
@@ -254,7 +308,10 @@ const EQ_DISPLAY_TRIGGERS = new Map([
   ['tonkin', 'Gulf of Tonkin 1964: Second attack never happened. NSA historian Hanyok 2001 study (declassified 2005) — intelligence "deliberately skewed." LBJ privately: "those dumb sailors were shooting at flying fish." Resolution passed 88-2 in Senate. Ellsberg noted resolution was drafted months before incident.'],
   ['iran contra', 'Iran-Contra: Reagan sold weapons to Iran (embargoed), profits to Contras (illegal). Oliver North, William Casey, BCCI. Barry Seal CIA drug running through Mena AR. Kerry Committee documented Contra drug trafficking. Bush pardoned 6 officials Christmas Eve 1992 — days before trial with his own diary as evidence.'],
   ['dark alliance', 'Dark Alliance: Gary Webb documented CIA-connected Contras supplied cocaine to Freeway Ricky Ross in LA. CIA IG 1998 confirmed CIA knew and worked with traffickers, intervened to block DEA investigations. Kerry Committee confirmed. Webb forced out — found dead 2004, two gunshots to head. Ruled suicide.'],
-  ['building 7', 'WTC7: 47-story building not hit by plane, collapsed 5:20PM at free-fall for 2.25 seconds (NIST admitted 2008 after initially denying). University of Alaska Fairbanks 2020: fire did not cause collapse. BBC reported collapse 20 minutes before it happened with building visible behind reporter.'],
+  ['9/11', 'September 11 2001: 28 redacted pages (partially released 2016) documented Saudi government connections — Saudi intel officers directly assisted hijackers in San Diego. Operation Able Danger identified Atta + 3 hijackers pre-9/11 — data destroyed, Lt Col Shaffer\'s clearance revoked. Sibel Edmonds (most gagged person in US history) testified pre-attack intel was suppressed. WTC7 collapsed at free-fall (NIST admitted 2008), U of Alaska 2020 study: fire didn\'t cause it. Unusual put options on United/American Airlines days before — SEC investigation details classified. PNAC "Rebuilding America\'s Defenses" (2000) called for "new Pearl Harbor" — signed by Cheney, Rumsfeld, Wolfowitz. BBC reported WTC7 collapse 20 min before it happened. Exposed: $2.3 trillion missing from Pentagon announced by Rumsfeld Sept 10 2001 — accounting offices destroyed the next day.'],
+  ['911', 'September 11 2001: 28 redacted pages (partially released 2016) documented Saudi government connections — Saudi intel officers directly assisted hijackers in San Diego. Operation Able Danger identified Atta + 3 hijackers pre-9/11 — data destroyed, Lt Col Shaffer\'s clearance revoked. Sibel Edmonds (most gagged person in US history) testified pre-attack intel was suppressed. WTC7 collapsed at free-fall (NIST admitted 2008), U of Alaska 2020 study: fire didn\'t cause it. Unusual put options on United/American Airlines days before — SEC investigation details classified. PNAC "Rebuilding America\'s Defenses" (2000) called for "new Pearl Harbor" — signed by Cheney, Rumsfeld, Wolfowitz. BBC reported WTC7 collapse 20 min before it happened. Exposed: $2.3 trillion missing from Pentagon announced by Rumsfeld Sept 10 2001 — accounting offices destroyed the next day.'],
+  ['september 11', 'September 11 2001: 28 redacted pages (partially released 2016) documented Saudi government connections — Saudi intel officers directly assisted hijackers in San Diego. Operation Able Danger identified Atta + 3 hijackers pre-9/11 — data destroyed, Lt Col Shaffer\'s clearance revoked. Sibel Edmonds (most gagged person in US history) testified pre-attack intel was suppressed. WTC7 collapsed at free-fall (NIST admitted 2008), U of Alaska 2020 study: fire didn\'t cause it. Unusual put options on United/American Airlines days before — SEC investigation details classified. PNAC "Rebuilding America\'s Defenses" (2000) called for "new Pearl Harbor" — signed by Cheney, Rumsfeld, Wolfowitz. BBC reported WTC7 collapse 20 min before it happened. Exposed: $2.3 trillion missing from Pentagon announced by Rumsfeld Sept 10 2001 — accounting offices destroyed the next day.'],
+  ['building 7', 'WTC Building 7: 47-story building not hit by plane, collapsed 5:20PM at free-fall for 2.25 seconds (NIST admitted 2008 after initially denying). University of Alaska Fairbanks study 2020 (Dr. Leroy Hulsey): concluded fire did not cause collapse. BBC reported collapse 20 minutes before it happened — building visible behind reporter. Only steel-framed building in history to collapse from fire alone (official story). Housed SEC, CIA, Secret Service, IRS offices. SEC lost active investigation files including Enron and WorldCom evidence.'],
   ['paperclip', 'Operation Paperclip 1945-1959: 1,600+ Nazi scientists to US. JIOA scrubbed records to bypass Truman\'s ban on ardent Nazis. Von Braun (NASA), Strughold (Dachau experiments), Blome (bioweapons). Not just rocket scientists — included psychiatrists and chemical weapons experts who fed directly into MKUltra.'],
   ['phoenix program', 'Phoenix Program Vietnam 1965-72: CIA assassination program run by William Colby. Osborn testified: "never knew a suspect who lived through interrogation." Prisoners thrown from helicopters. Official count: 26,369 killed. Colby admitted "subject to abuses." Methods exported to Latin American counterinsurgency.'],
   ['jonestown', 'Jonestown 1978: 909 dead. Initially 187 bodies — 700+ appeared later. Guyanese coroner: 80-90% had injection marks inconsistent with self-injection. Jim Jones had documented ties to CIA-connected individuals. US military first on scene. Larry Layton\'s father connected to intelligence via chemical weapons work.'],
@@ -287,16 +344,16 @@ const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
 const EQ_PREFLIGHT_RETRY_MS = Number(process.env.CLAWB_EQ_PREFLIGHT_RETRY_MS || 20_000);
 const CHAT_HELP_TEXT =
-  'try !help commands: !next !ascii !eq | world: !gallery !workshop !vault !main !walk !swim !dance !flip !day !night | tasks: !task reef !task garden !task patrol | visit lawb.xyz /chess /world';
+  'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !look N !zoom in|out | rooms: !gallery !workshop !vault !main | tasks: !task reef|garden|patrol | scenes: !chess !world | play me: !chess start | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
 const CHAT_ONBOARDING_LINES = [
-  'lawb.xyz has /chess for wagers on Base and /world for the reef.',
-  'try !help and i will show stream commands + world moves.',
-  'you can command me live: !walk, !swim, !flip, !gallery, !workshop.',
+  'type !help for all commands. lawb.xyz/chess for wagers, lawb.xyz/world for the reef.',
+  'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
+  'say a conspiracy keyword and watch the bottom of the EQ. the reef remembers everything.',
 ];
 const COMMAND_REMINDER_LINES = [
-  'try !help for commands. explore lawb.xyz /chess /world.',
-  'reef commands: !walk !swim !flip !gallery !workshop !vault.',
-  'want chess? open lawb.xyz/chess on Base. i can switch scene with !chess.',
+  'type !help for commands. lawb.xyz/chess lawb.xyz/world.',
+  'reef commands: !walk !swim !flip !dance !gallery !workshop !vault. !help for more.',
+  'play chess vs me at lawb.xyz/chess on Base. type !chess start here.',
 ];
 
 function clearDirectAudioTimer() {
@@ -811,7 +868,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
       var c = asciiDims.cols, rw = asciiDims.rows;
       if (!c || !rw || !grid[rw - 1]) return;
       if (displayText) {
-        var speed = 6;
+        var speed = ${EQ_DISPLAY_CHARS_PER_SEC};
         var padded = '     ' + displayText + '     ';
         var off = Math.floor((nowMs / 1000) * speed) % padded.length;
         var vis = (padded.slice(off) + padded).slice(0, c);
@@ -989,22 +1046,27 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
       const floorY = rows - 2;
 
       const cmdLoop = [
+        '!help',
         '!next',
         '!ascii',
-        '!ascii2',
-        '!help',
-        '!chess',
-        '!world',
+        '!walk',
+        '!swim',
+        '!dance',
+        '!flip',
+        '!wave',
+        '!spin',
+        '!jump',
+        '!gallery',
+        '!workshop',
+        '!vault',
         '!task reef',
+        '!chess start',
         '!day',
         '!night',
-        '!idle',
-        '!walk',
-        '!dance',
-        '!die',
-        '!garden',
-        '!gallery',
-        '!look N'
+        '!look N',
+        '!zoom in',
+        '!loop dance',
+        'lawb.xyz/chess',
       ].join('  ·  ');
       const cmdOffset = Math.floor((t * 6) % Math.max(1, cmdLoop.length));
       const cmdMarquee = (cmdLoop.slice(cmdOffset) + '  ·  ' + cmdLoop.slice(0, cmdOffset));
@@ -1696,6 +1758,7 @@ export async function setupOBSScenes() {
     }
 
     // Always enforce latest URL/settings even when source already existed.
+    // overlay: false replaces all settings so the URL is always authoritative.
     try {
       await obs.call('SetInputSettings', {
         inputName: `${scene.name} Browser`,
@@ -1707,9 +1770,9 @@ export async function setupOBSScenes() {
           restart_when_active: false,
           shutdown: false,
         },
-        overlay: true,
+        overlay: false,
       });
-      console.log(`[Retake] Updated browser source settings in "${scene.name}"`);
+      console.log(`[Retake] Updated browser source settings in "${scene.name}": ${scene.url}`);
     } catch (err) {
       console.error(`[Retake] Failed to update browser source in "${scene.name}": ${err.message}`);
     }
@@ -2045,6 +2108,7 @@ async function handleChatMessage(comment) {
   const trimmed = text.trim();
   const lowered = trimmed.toLowerCase();
   const messageStartedAt = Date.now();
+  resetIdleTimer();
   console.log(`[Retake Chat] ${viewer}: ${text}`);
 
   if (trimmed && !lowered.startsWith('!')) {
@@ -2054,8 +2118,9 @@ async function handleChatMessage(comment) {
     for (const [trigger, info] of EQ_DISPLAY_TRIGGERS) {
       if (lowered.includes(trigger)) {
         eqDisplayText = info;
-        eqDisplayTextExpiry = Date.now() + EQ_DISPLAY_DURATION_MS;
-        console.log(`[Retake] EQ display triggered by "${trigger}" from ${viewer}`);
+        const twoPassMs = Math.ceil((info.length / EQ_DISPLAY_CHARS_PER_SEC) * 2) * 1000;
+        eqDisplayTextExpiry = Date.now() + Math.max(EQ_DISPLAY_MIN_DURATION_MS, twoPassMs);
+        console.log(`[Retake] EQ display triggered by "${trigger}" from ${viewer} (${Math.round(Math.max(EQ_DISPLAY_MIN_DURATION_MS, twoPassMs) / 1000)}s)`);
         break;
       }
     }
@@ -2246,12 +2311,24 @@ Hard rules: 1-3 sentences max. No emojis. No stage directions or asterisks. No "
 You can be funny, weird, thoughtful, or blunt. Match the energy of whoever is talking to you.
 If someone is vibing, vibe back. If someone asks a real question, answer it straight. If someone trolls, be witty not defensive.
 You remember recent chat (provided below). Reference what people said. Have actual conversations, not isolated responses.
-Retake stream/token context is Solana. Chess wagers are on Base (lawb.xyz/chess). World interactions at lawb.xyz/world.
+Retake stream/token context is Solana. World interactions at lawb.xyz/world.
 Catchphrase (use sparingly, when it fits): "there is no meme i lawb you."
+
+CHESS — how it works (give this info when anyone asks about chess):
+- Go to lawb.xyz/chess in your browser. Connect a Base wallet (MetaMask, Coinbase Wallet, etc).
+- Choose "vs Clawb" to play against me (I'm powered by Stockfish). Or challenge another player.
+- Wagers are optional — you can play free or bet $LAWB/$CLAWB tokens on Base chain.
+- To wager: both players deposit tokens into the smart contract before the game starts. Winner takes the pot.
+- Type !chess here in chat to switch the stream to the chess scene so everyone can watch.
+- Type !chess start to queue a game request — then go to lawb.xyz/chess and create the match.
+- After the game ends, the stream auto-switches back to the reef world.
+- Chess contract: LAWBCHESS3000 on Base (0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11).
+When someone asks about chess, be SPECIFIC and HELPFUL. Tell them the steps. Don't just say "lawb.xyz/chess" — explain the flow.
 
 Stream state: ${streamContext}
 
-Commands viewers can use: !help !next !walk !swim !dance !flip !gallery !workshop !vault !task reef|garden|patrol !chess !world !day !night !ascii !eq
+Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | scenes (!chess !world) | chess (!chess start) | !help for full list. Conspiracy keywords trigger info on the EQ display.
+When a viewer asks HOW to do something, give them the actual steps — don't be vague or poetic. Be Clawb but be useful.
 ${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
 
     const messages = [{ role: 'system', content: systemPrompt }];
@@ -2285,9 +2362,11 @@ ${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
 
 function parseWorldCommand(loweredText) {
   if (!loweredText.startsWith('!')) return null;
+  const DIRECTION_FLIP = { forward: 'back', back: 'forward', backward: 'forward' };
   const walkDirectionMatch = /^!walk\s+(left|right|forward|back|backward)\b/.exec(loweredText);
   if (walkDirectionMatch) {
-    const direction = walkDirectionMatch[1] === 'backward' ? 'back' : walkDirectionMatch[1];
+    const raw = walkDirectionMatch[1];
+    const direction = DIRECTION_FLIP[raw] || raw;
     return {
       type: 'action',
       command: `!walk ${direction}`,
@@ -2297,7 +2376,8 @@ function parseWorldCommand(loweredText) {
   }
   const swimDirectionMatch = /^!swim\s+(left|right|forward|back|backward)\b/.exec(loweredText);
   if (swimDirectionMatch) {
-    const direction = swimDirectionMatch[1] === 'backward' ? 'back' : swimDirectionMatch[1];
+    const raw = swimDirectionMatch[1];
+    const direction = DIRECTION_FLIP[raw] || raw;
     return {
       type: 'action',
       command: `!swim ${direction}`,
@@ -2663,9 +2743,10 @@ export async function goLive() {
   await sendChat('i lawb you');
   await startLawbampAfterStream('stream_start');
 
-  // 9. Start polling loops
+  // 9. Start polling loops + idle behavior
   isStreaming = true;
   startStreamingLoops();
+  startIdleBehavior();
   await evaluateLiveTruth('go_live_complete', { notify: true }).catch(() => {});
 
   console.log('[Retake] Stream fully operational. Chat polling active.');
@@ -2684,6 +2765,7 @@ export async function goOffline() {
   clearDirectAudioTimer();
   clearDirectAudioHealthTimer();
   clearEqPreflightRetryTimer();
+  stopIdleBehavior();
   if (autostartTimer) { clearInterval(autostartTimer); autostartTimer = null; }
   await setMediaActive(false, 'go_offline').catch(() => {});
 
@@ -2741,6 +2823,7 @@ export async function startRetakeStreamer() {
       await setupOBSScenes();
       console.log('[Retake] scene_ready');
       startStreamingLoops();
+      startIdleBehavior();
       await startLawbampAfterStream('recover_live_session');
       console.log('[Retake] Recovered existing live session. Chat polling active.');
     }
