@@ -38,8 +38,8 @@ const FIREBASE_LEADERBOARD_URL = 'https://chess-220ee-default-rtdb.firebaseio.co
 const FIREBASE_PROFILES_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/profiles.json?shallow=true';
 const FIREBASE_BOUNTIES_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/bounties.json';
 const LEADERBOARD_REFRESH_MS = 30_000;
-const LEADERBOARD_CANVAS_W = 1024;
-const LEADERBOARD_CANVAS_H = 1536;
+const LEADERBOARD_CANVAS_W = 1536;
+const LEADERBOARD_CANVAS_H = 1024;
 const MIN_Y = -3;
 const MAX_Y = 2;
 
@@ -946,12 +946,12 @@ const ClawbWorld: React.FC = () => {
         // Fixed leaderboard framing for stream readability.
         // Lifted slightly to avoid bottom HUD overlays obscuring text.
         const lbOff = ROOM_OFFSETS.leaderboard;
-        const bbCenter = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 3.0, lbOff.z - 6.4);
+        const bbCenter = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 1.9, lbOff.z - 6.4);
         // Camera sits in front of the board with a slight top-down tilt.
-        const camDesired = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 4.6, lbOff.z + 4.0);
+        const camDesired = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 5.2, lbOff.z + 5.2);
         smoothCameraPosition(camDesired);
         smoothLookAt(bbCenter);
-        const fov = THREE.MathUtils.lerp(camera.fov, 36, 0.1);
+        const fov = THREE.MathUtils.lerp(camera.fov, 34, 0.1);
         if (Math.abs(fov - camera.fov) > 0.01) {
           camera.fov = fov;
           camera.updateProjectionMatrix();
@@ -1392,9 +1392,9 @@ const ClawbWorld: React.FC = () => {
     // Billboard placed directly in front at Z-5.4 so camera (behind Clawb) sees it.
     const bbX = -2.6;
     const bbZ = -6.4;
-    const boardW = 7.5;
-    const boardH = 10.0;
-    const bbY = boardH / 2 - 2.5;
+    const boardW = 11.2;
+    const boardH = 6.6;
+    const bbY = boardH / 2 - 1.8;
     const boardMat = new THREE.MeshBasicMaterial({ map: lbTexture, side: THREE.DoubleSide });
     const boardMesh = new THREE.Mesh(new THREE.PlaneGeometry(boardW, boardH), boardMat);
     boardMesh.position.set(bbX, bbY, bbZ);
@@ -1539,14 +1539,14 @@ const ClawbWorld: React.FC = () => {
       ctx.lineTo(W - 40, 120);
       ctx.stroke();
 
-      // Stream-readable layout: page through leaderboard + bounties
-      const rowHeight = 92;
-      const startY = 240;
-      const rowsPerPage = 8;
+      // Stream-readable layout: horizontal arcade board with fewer, larger rows
+      const rowHeight = 120;
+      const startY = 250;
+      const rowsPerPage = 5;
       const activeBounties = bounties.filter((b) => b.status === 'active');
       const leaderboardPageCount = Math.max(1, Math.ceil(Math.max(1, entries.length) / rowsPerPage));
       const totalPages = leaderboardPageCount + 1; // final page is bounties
-      const pageEveryMs = 8_000;
+      const pageEveryMs = 9_000;
       const page = Math.floor(now / pageEveryMs) % totalPages;
       const showBounties = page === totalPages - 1;
 
@@ -1555,10 +1555,10 @@ const ClawbWorld: React.FC = () => {
       ctx.fillStyle = '#89a7c5';
       ctx.font = 'bold 30px monospace';
       if (!showBounties) {
-        ctx.fillText('#', 46, 182);
-        ctx.fillText('PLAYER', 128, 182);
+        ctx.fillText('#', 74, 182);
+        ctx.fillText('PLAYER', 186, 182);
         ctx.textAlign = 'right';
-        ctx.fillText('PTS', W - 52, 182);
+        ctx.fillText('PTS', W - 74, 182);
       } else {
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffaa00';
@@ -1586,24 +1586,24 @@ const ClawbWorld: React.FC = () => {
           else if (rank === 2) ctx.fillStyle = 'rgba(192,192,192,0.08)';
           else if (rank === 3) ctx.fillStyle = 'rgba(205,127,50,0.08)';
           else ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0)';
-          ctx.fillRect(36, y - 56, W - 72, rowHeight - 10);
+          ctx.fillRect(54, y - 72, W - 108, rowHeight - 14);
 
           ctx.textAlign = 'left';
           const rankColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
           ctx.fillStyle = rank <= 3 ? rankColors[rank - 1] : '#9cb2c8';
-          ctx.font = rank <= 3 ? 'bold 42px monospace' : 'bold 34px monospace';
-          ctx.fillText(`${rank}`, 48, y);
+          ctx.font = rank <= 3 ? 'bold 50px monospace' : 'bold 40px monospace';
+          ctx.fillText(`${rank}`, 76, y);
 
           const wallet = e.username || '';
-          const name = displayNames[wallet.toLowerCase()] || (wallet.length > 14 ? `${wallet.slice(0, 6)}..${wallet.slice(-4)}` : wallet);
+          const name = displayNames[wallet.toLowerCase()] || (wallet.length > 16 ? `${wallet.slice(0, 6)}..${wallet.slice(-4)}` : wallet);
           ctx.fillStyle = '#e8f0ff';
-          ctx.font = 'bold 34px monospace';
-          ctx.fillText(name.slice(0, 16), 132, y);
+          ctx.font = 'bold 42px monospace';
+          ctx.fillText(name.slice(0, 20), 190, y);
 
           ctx.textAlign = 'right';
           ctx.fillStyle = rank <= 3 ? '#ff5a98' : '#f5a4c4';
-          ctx.font = rank <= 3 ? 'bold 44px monospace' : 'bold 36px monospace';
-          ctx.fillText(`${e.points || 0}`, W - 52, y);
+          ctx.font = rank <= 3 ? 'bold 52px monospace' : 'bold 44px monospace';
+          ctx.fillText(`${e.points || 0}`, W - 76, y);
         }
 
         if (entries.length === 0) {
@@ -1615,26 +1615,26 @@ const ClawbWorld: React.FC = () => {
           ctx.fillText('play chess or join retake.tv/clawb', W / 2, startY + 96);
         }
       } else {
-        const bountyStartY = 280;
+        const bountyStartY = 290;
         if (activeBounties.length > 0) {
-          activeBounties.slice(0, 6).forEach((b, i) => {
-            const by = bountyStartY + i * 180;
+          activeBounties.slice(0, 3).forEach((b, i) => {
+            const by = bountyStartY + i * 220;
             const bPulse = 0.5 + 0.5 * Math.sin((now + i * 500) / 600);
             ctx.fillStyle = `rgba(255,${Math.floor(120 + 80 * bPulse)},0,0.95)`;
-            ctx.font = 'bold 34px monospace';
+            ctx.font = 'bold 44px monospace';
             ctx.textAlign = 'left';
-            ctx.fillText(`• ${String(b.title || '').slice(0, 26)}`, 54, by);
+            ctx.fillText(`• ${String(b.title || '').slice(0, 30)}`, 64, by);
 
             const prize = b.prize?.amount ? `${b.prize.amount.toLocaleString()} $${(b.prize.token || 'CLAWB').toUpperCase()}` : '';
-            const sub = `${String(b.description || '').slice(0, 54)}${prize ? `  → ${prize}` : ''}`;
+            const sub = `${String(b.description || '').slice(0, 70)}${prize ? `  → ${prize}` : ''}`;
             ctx.fillStyle = '#a8bed2';
-            ctx.font = '28px monospace';
-            ctx.fillText(sub, 84, by + 50);
+            ctx.font = '32px monospace';
+            ctx.fillText(sub, 104, by + 62);
           });
         } else {
           ctx.textAlign = 'center';
           ctx.fillStyle = '#6f8497';
-          ctx.font = 'bold 38px monospace';
+          ctx.font = 'bold 46px monospace';
           ctx.fillText('NO ACTIVE BOUNTIES', W / 2, bountyStartY + 40);
         }
       }
