@@ -1,5 +1,6 @@
 # Secrets — NEVER commit these
 .env
 service-account*.json
+retake-credentials.json
 node_modules/
 credentials/solana/

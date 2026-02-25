@@ -7,6 +7,8 @@ This is the Lawb OS. lawb.xyz is a Windows 98-style desktop web app for the Lawb
 1. Read `.cursor/rules/architecture.md` — full codebase map
 2. Read `.cursor/rules/clawb-integration.md` — how Clawb (the autonomous agent) connects
 3. Read `.cursor/rules/coding-conventions.md` — style, patterns, don'ts
+4. Read `.cursor/rules/clawb-world-and-emote-wheel.md` — 3D world spec, emote wheel, rooms
+5. Read `.cursor/rules/chess-overhaul.md` — chess issues, fixes, agent support
 
 ## The Stack
 
@@ -26,7 +28,11 @@ This is the Lawb OS. lawb.xyz is a Windows 98-style desktop web app for the Lawb
 
 - `/` — Lawb OS desktop (icons, windows, taskbar, Clawb walking)
 - `/chess` — Full chess experience (single player + PVP + chat + lobby)
+- `/chess?stream=1` — Read-only spectator view for Retake TV (no wallet, auto-discovers vs_clawb games)
+- `/world` — Full 3D explorable Clawb's World (first-person underwater scene, rooms, NFT gallery)
+- `/world?stream=1&cam=clawb` — Stream camera view of the world for Retake TV
 - `chess.lawb.xyz` — Chess subdomain (same ChessPage, direct access)
+- `retake.tv/clawb` — Clawb's 24/7 livestream (OBS on Clawb's machine → Retake)
 
 ## Contracts
 
@@ -48,6 +54,63 @@ Clawb is an AI agent running on a separate machine. He:
 **Clawb's token:** $CLAWB at `0x26a43bd8a28a0423afb5725b8242ec0a40947b07` (Base)
 
 See `.cursor/rules/clawb-integration.md` for the full integration spec.
+
+## Clawb Backend (`clawb/`)
+
+The `clawb/` directory is a Node.js application that runs on Clawb's machine (separate from the lawb.xyz frontend). It's managed with **pm2** (`pm2 start index.js --name clawb`).
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `index.js` | Entry point — boots all subsystems |
+| `lawb-firebase.js` | Firebase Admin SDK connection (shared by all modules) |
+| `retake-streamer.js` | Retake TV streaming: OBS WebSocket control, scene management, chat command handling, ASCII EQ, Twitch/Kick chat integration |
+| `world-responder.js` | Listens for `clawb/world/commands` in Firebase, normalizes them, publishes to `clawb/world/actions` for the frontend to consume |
+| `world-autonomous-routines.js` | Publishes periodic world commands (swim, spin, room changes) so Clawb appears active when no viewers are commanding. Runs every ~3-4 min. Pauses when a viewer `!loop` is active. |
+| `chess-clawb-watcher.js` | Commentary bot — watches vs_clawb games in Firebase, posts personality comments to private game chat |
+| `chess-pvp-agent.js` | Clawb's PVP agent — watches for open wager games, joins them on-chain, plays via Stockfish |
+| `lawb-chat-responder.js` | Responds to visitor questions on lawb.xyz chat (Clippy mode) |
+| `spread-lawb.js` | Social posting / community engagement automation |
+| `session-guard.js` | Keeps Clawb's session alive, handles reconnection |
+| `boot-clawb.js` | Bootstrap / initialization helpers |
+| `apply-obs-ascii-eq.js` | Generates ASCII art EQ visualizer for the stream overlay |
+| `STREAM_PERSONA.md` | Clawb's streaming personality guidelines |
+
+### Retake TV Streaming Architecture
+
+Clawb streams 24/7 on retake.tv/clawb via OBS on his machine. `retake-streamer.js` controls everything:
+
+- **OBS WebSocket** (`ws://127.0.0.1:4455`): Creates/switches scenes, manages browser sources
+- **Two main scenes**: `Clawb World` (3D underwater world at `/world?stream=1`) and `Clawb Chess` (spectator view at `/chess?stream=1`)
+- **Chat commands**: Viewers type `!walk`, `!dance`, `!chess`, `!world`, `!loop dance`, etc. → parsed → written to Firebase → consumed by frontend
+- **Auto-scene switching**: After a chess match ends, auto-switches back to the world scene after 12 seconds
+- **Music/EQ**: ASCII equalizer overlay, `!next` for track skip, `!ascii` for art mode
+
+### Firebase Paths (Clawb-specific)
+
+```
+clawb/
+  status/online              — boolean, stream live indicator
+  world/commands/{pushId}    — viewer commands written here (by retake-streamer or lawb.xyz)
+  world/actions/{pushId}     — normalized actions (written by world-responder, read by ClawbWorld.tsx)
+  world/presence/{address}   — player positions in the 3D world
+```
+
+### Environment
+
+`clawb/.env` contains secrets (Firebase creds, OBS password, API keys). Never commit.
+`clawb/retake-credentials.json` — Retake TV auth. Never commit.
+
+### Running Clawb
+
+```bash
+cd clawb
+pm2 start index.js --name clawb    # fresh start
+pm2 restart clawb                   # restart (keeps cached env)
+pm2 delete clawb && pm2 start index.js --name clawb  # full reset (picks up new .env)
+pm2 logs clawb                      # tail logs
+```
 
 ## NFT Collections
 
@@ -71,6 +134,19 @@ See `.cursor/rules/clawb-integration.md` for the full integration spec.
 | Sanko (DMT) | `0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F` |
 
 **LAWB has 6 decimals, not 18.** This matters for all parseUnits/formatUnits calls.
+
+## Clawb's 3D World (`/world`)
+
+The 3D world is a full Three.js underwater scene rendered in `src/components/ClawbWorld.tsx` (~1600 lines). Key concepts:
+
+- **Rooms**: Main reef (origin), bedroom/gallery (NFT display), workshop, vault — connected by swim transitions
+- **Objects**: Corals, rocks, plants, decorations loaded from JSON files (`public/world/world-state-*.json`), rendered as procedural Three.js geometry via `src/utils/worldObjects.ts`
+- **Clawb NPC**: FBX model that patrols, responds to commands, plays animations (walk, swim, dance, flip, hi, wave, spin, jump, die)
+- **Viewer commands**: `!walk`, `!swim forward`, `!dance`, `!loop dance`, `!gallery`, `!workshop`, `!vault`, `!main`, `!day`, `!night`, `!zoom in/out`, `!look N` (inspect Nth NFT)
+- **Stream camera**: Fixed follow cam for the Retake TV stream (`?stream=1&cam=clawb`)
+- **Multiplayer presence**: Other visitors appear as lobster models via Firebase presence sync
+- **Command flow**: Retake chat → `retake-streamer.js` → Firebase `clawb/world/commands` → `world-responder.js` → Firebase `clawb/world/actions` → `ClawbWorld.tsx` reads and executes
+- **Loop behavior**: `!loop <action>` sets the action to run indefinitely until a viewer sends another command. Autonomous routines are suppressed while a loop is active.
 
 ## Quick Commands
 
