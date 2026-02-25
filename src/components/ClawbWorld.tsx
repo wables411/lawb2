@@ -944,14 +944,14 @@ const ClawbWorld: React.FC = () => {
         if (lookTargetRef.current) setSelectedNft(null);
         lookTargetRef.current = null;
         // Fixed leaderboard framing for stream readability.
-        // Billboard center is roughly at group-relative (-2.6, 2.5, -6.4).
+        // Lifted slightly to avoid bottom HUD overlays obscuring text.
         const lbOff = ROOM_OFFSETS.leaderboard;
-        const bbCenter = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 2.5, lbOff.z - 6.4);
+        const bbCenter = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 3.0, lbOff.z - 6.4);
         // Camera sits in front of the board with a slight top-down tilt.
-        const camDesired = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 3.2, lbOff.z + 3.6);
+        const camDesired = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 4.6, lbOff.z + 4.0);
         smoothCameraPosition(camDesired);
         smoothLookAt(bbCenter);
-        const fov = THREE.MathUtils.lerp(camera.fov, 38, 0.1);
+        const fov = THREE.MathUtils.lerp(camera.fov, 36, 0.1);
         if (Math.abs(fov - camera.fov) > 0.01) {
           camera.fov = fov;
           camera.updateProjectionMatrix();
@@ -1464,15 +1464,40 @@ const ClawbWorld: React.FC = () => {
       // Background — deep ocean gradient
       const bg = ctx.createLinearGradient(0, 0, 0, H);
       bg.addColorStop(0, '#0a0e1a');
-      bg.addColorStop(0.3, '#0d1526');
+      bg.addColorStop(0.28, '#131f36');
       bg.addColorStop(1, '#060a12');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Scanline overlay for PSX/CRT feel
+      // Retro starfield + scanline overlay for 90s arcade/PSX feel
+      ctx.fillStyle = 'rgba(132, 188, 255, 0.55)';
+      for (let i = 0; i < 70; i++) {
+        const sx = ((i * 179) + Math.floor(now / 35)) % W;
+        const sy = ((i * 263) + Math.floor(now / 60)) % Math.floor(H * 0.58);
+        ctx.fillRect(sx, sy, 2, 2);
+      }
       ctx.fillStyle = 'rgba(0,0,0,0.12)';
       for (let y = 0; y < H; y += 4) {
         ctx.fillRect(0, y, W, 2);
+      }
+
+      // Faux horizon grid
+      const horizonY = Math.floor(H * 0.64);
+      ctx.strokeStyle = 'rgba(46,140,255,0.18)';
+      ctx.lineWidth = 1;
+      for (let gy = horizonY; gy < H; gy += 24) {
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(W, gy);
+        ctx.stroke();
+      }
+      for (let gx = 0; gx < W; gx += 42) {
+        const t = (gx - W / 2) / (W / 2);
+        const topX = W / 2 + t * 80;
+        ctx.beginPath();
+        ctx.moveTo(topX, horizonY);
+        ctx.lineTo(gx, H);
+        ctx.stroke();
       }
 
       // Animated neon border pulse
@@ -1485,7 +1510,9 @@ const ClawbWorld: React.FC = () => {
       ctx.lineWidth = 2;
       ctx.strokeRect(14, 14, W - 28, H - 28);
 
-      // Title
+      // Title + arcade tape
+      ctx.fillStyle = 'rgba(16,26,44,0.9)';
+      ctx.fillRect(26, 20, W - 52, 96);
       ctx.fillStyle = '#ff2266';
       ctx.font = 'bold 52px monospace';
       ctx.textAlign = 'center';
@@ -1494,7 +1521,15 @@ const ClawbWorld: React.FC = () => {
       // Subtitle with glow
       ctx.fillStyle = `rgba(255,170,0,${(0.6 + 0.4 * pulse).toFixed(2)})`;
       ctx.font = '22px monospace';
-      ctx.fillText('the reef rewards those who participate', W / 2, 104);
+      ctx.fillText('90s arcade standings // insert coin // reef mode', W / 2, 104);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#73ffbf';
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText('P1 READY', 40, 46);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ff73e4';
+      ctx.fillText('HI-SCORE', W - 40, 46);
 
       // Divider
       ctx.strokeStyle = '#ff226644';

@@ -15,7 +15,6 @@ const JITTER_MS = Number(process.env.CLAWB_WORLD_AUTONOMY_JITTER_MS || 45_000);
 const ROUTINES = [
   { command: '!swim forward', payload: { type: 'action', action: 'swim_forward', direction: 'forward' } },
   { command: '!swim left', payload: { type: 'action', action: 'swim_left', direction: 'left' } },
-  { command: '!look 1', payload: { type: 'look', targetNftIndex: 1 } },
   { command: '!workshop', payload: { type: 'room', targetRoom: 'workshop' } },
   { command: '!hi', payload: { type: 'action', action: 'hi' } },
   { command: '!leaderboard', payload: { type: 'room', targetRoom: 'leaderboard' } },
