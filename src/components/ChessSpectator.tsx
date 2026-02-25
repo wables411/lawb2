@@ -3,7 +3,7 @@ import { firebaseChess } from '../firebaseChess';
 import { database } from '../firebaseApp';
 import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
-import { getPieceSetById, getDefaultPieceSet } from '../config/chessPieceSets';
+import { getPieceSetById } from '../config/chessPieceSets';
 import './ChessGame.css';
 import './ChessGameModern.css';
 import './ChessSpectator.css';
@@ -11,6 +11,7 @@ import './ChessSpectator.css';
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 const POLL_INTERVAL_MS = 10_000;
 const GAME_OVER_LINGER_MS = 15_000;
+const PARTICLE_COUNT = 60;
 
 const CHESSBOARDS = [
   '/images/chessboard1.png',
@@ -25,6 +26,16 @@ interface ChatMessage {
   sender: string;
   timestamp: number;
   isClawb?: boolean;
+}
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  opacity: number;
+  hue: number;
 }
 
 function reconstructBoard(boardData: any): (string | null)[][] {
@@ -58,6 +69,66 @@ function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function initParticles(): Particle[] {
+  return Array.from({ length: PARTICLE_COUNT }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    vx: (Math.random() - 0.5) * 0.0003,
+    vy: -Math.random() * 0.0004 - 0.0001,
+    size: Math.random() * 2.5 + 0.5,
+    opacity: Math.random() * 0.35 + 0.05,
+    hue: Math.random() * 40 + 200,
+  }));
+}
+
+const ParticleCanvas: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>(initParticles());
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const particles = particlesRef.current;
+
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.y < -0.02) { p.y = 1.02; p.x = Math.random(); }
+        if (p.x < -0.02) p.x = 1.02;
+        if (p.x > 1.02) p.x = -0.02;
+
+        ctx.beginPath();
+        ctx.arc(p.x * canvas.width, p.y * canvas.height, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 60%, 70%, ${p.opacity})`;
+        ctx.fill();
+      }
+
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="spectator-particles" />;
+};
+
 export const ChessSpectator: React.FC = () => {
   const { currentPieceSet, setCurrentPieceSet } = useChessPieceSet();
   const pieceImages = currentPieceSet.pieceImages;
@@ -73,7 +144,10 @@ export const ChessSpectator: React.FC = () => {
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chessboard] = useState(() => CHESSBOARDS[Math.floor(Math.random() * CHESSBOARDS.length)]);
+  const [captureSquare, setCaptureSquare] = useState<string | null>(null);
+  const [moveCount, setMoveCount] = useState(0);
 
+  const prevBoardRef = useRef<(string | null)[][]>(Array.from({ length: 8 }, () => Array(8).fill(null)));
   const gameUnsubRef = useRef<(() => void) | null>(null);
   const chatUnsubRef = useRef<(() => void) | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -83,6 +157,20 @@ export const ChessSpectator: React.FC = () => {
   const cleanup = useCallback(() => {
     if (gameUnsubRef.current) { gameUnsubRef.current(); gameUnsubRef.current = null; }
     if (chatUnsubRef.current) { chatUnsubRef.current(); chatUnsubRef.current = null; }
+  }, []);
+
+  const detectCapture = useCallback((oldBoard: (string | null)[][], newBoard: (string | null)[][]) => {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const was = oldBoard[r]?.[c];
+        const now = newBoard[r]?.[c];
+        if (was && now && was !== now) {
+          setCaptureSquare(`${r}-${c}`);
+          setTimeout(() => setCaptureSquare(null), 500);
+          return;
+        }
+      }
+    }
   }, []);
 
   const subscribeToChat = useCallback((code: string) => {
@@ -109,6 +197,7 @@ export const ChessSpectator: React.FC = () => {
     cleanup();
     setInviteCode(code);
     setChatMessages([]);
+    setMoveCount(0);
 
     gameUnsubRef.current = firebaseChess.subscribeToGame(code, (gameData: any) => {
       if (!gameData) return;
@@ -119,13 +208,17 @@ export const ChessSpectator: React.FC = () => {
       }
 
       if (gameData.board) {
-        setBoard(reconstructBoard(gameData.board));
+        const newBoard = reconstructBoard(gameData.board);
+        detectCapture(prevBoardRef.current, newBoard);
+        prevBoardRef.current = newBoard;
+        setBoard(newBoard);
       }
       if (gameData.current_player) {
         setCurrentPlayer(gameData.current_player);
       }
       if (gameData.last_move) {
         setLastMove(gameData.last_move);
+        setMoveCount(prev => prev + 1);
       }
       setBluePlayer(gameData.blue_player || '');
 
@@ -139,7 +232,7 @@ export const ChessSpectator: React.FC = () => {
     });
 
     subscribeToChat(code);
-  }, [cleanup, subscribeToChat, setCurrentPieceSet]);
+  }, [cleanup, subscribeToChat, setCurrentPieceSet, detectCapture]);
 
   const findAndSubscribe = useCallback(async () => {
     const game = await firebaseChess.getActiveVsClawbGame();
@@ -149,7 +242,6 @@ export const ChessSpectator: React.FC = () => {
     }
   }, [subscribeToGame]);
 
-  // Poll for new games when idle
   useEffect(() => {
     if (gameState === 'idle') {
       findAndSubscribe();
@@ -162,7 +254,6 @@ export const ChessSpectator: React.FC = () => {
     };
   }, [gameState, findAndSubscribe]);
 
-  // When game finishes, linger then return to idle
   useEffect(() => {
     if (gameState === 'finished') {
       lingerTimerRef.current = setTimeout(() => {
@@ -170,10 +261,12 @@ export const ChessSpectator: React.FC = () => {
         setGameState('idle');
         setInviteCode(null);
         setBoard(Array.from({ length: 8 }, () => Array(8).fill(null)));
+        prevBoardRef.current = Array.from({ length: 8 }, () => Array(8).fill(null));
         setChatMessages([]);
         setLastMove(null);
         setWinner(null);
         setBluePlayer('');
+        setMoveCount(0);
       }, GAME_OVER_LINGER_MS);
     }
     return () => {
@@ -181,10 +274,8 @@ export const ChessSpectator: React.FC = () => {
     };
   }, [gameState, cleanup]);
 
-  // Cleanup on unmount
   useEffect(() => cleanup, [cleanup]);
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
@@ -196,11 +287,12 @@ export const ChessSpectator: React.FC = () => {
       (lastMove.from.row === row && lastMove.from.col === col) ||
       (lastMove.to.row === row && lastMove.to.col === col)
     );
+    const isCaptureFlash = captureSquare === `${row}-${col}`;
 
     return (
       <div
         key={`${row}-${col}`}
-        className={`square ${isLastMove ? 'last-move' : ''}`}
+        className={`square ${isLastMove ? 'last-move' : ''} ${isCaptureFlash ? 'capture-flash' : ''}`}
       >
         {piece && pieceImageUrl && (
           <img
@@ -227,10 +319,12 @@ export const ChessSpectator: React.FC = () => {
 
   const winnerLabel = winner === 'red' ? 'Clawb' : winner === 'blue' ? shortenAddress(bluePlayer) : 'Draw';
 
-  // --- Idle / Waiting Screen ---
   if (gameState === 'idle') {
     return (
       <div className="spectator-root">
+        <div className="spectator-bg" />
+        <ParticleCanvas />
+        <div className="spectator-crt-overlay" />
         <div className="spectator-idle">
           <img src="/images/redplushy.jpg" alt="Clawb" className="spectator-idle-img" />
           <div className="spectator-idle-text">Waiting for challenger...</div>
@@ -240,13 +334,14 @@ export const ChessSpectator: React.FC = () => {
     );
   }
 
-  // --- Active / Finished Game ---
   return (
     <div className="spectator-root">
+      <div className="spectator-bg" />
+      <ParticleCanvas />
+      <div className="spectator-crt-overlay" />
+
       <div className="spectator-layout">
-        {/* Board Column */}
         <div className="spectator-board-col">
-          {/* Info Bar */}
           <div className="spectator-info-bar">
             <span className="spectator-player blue">{shortenAddress(bluePlayer)}</span>
             <span className={`spectator-turn ${currentPlayer}`}>
@@ -257,8 +352,7 @@ export const ChessSpectator: React.FC = () => {
             <span className="spectator-player red">Clawb</span>
           </div>
 
-          {/* Board */}
-          <div className="spectator-board-wrapper">
+          <div className={`spectator-board-wrapper turn-${currentPlayer}`}>
             <div
               className="chessboard"
               style={{
@@ -283,9 +377,12 @@ export const ChessSpectator: React.FC = () => {
               )}
             </div>
           </div>
+
+          {moveCount > 0 && (
+            <div className="spectator-move-counter">Move {moveCount}</div>
+          )}
         </div>
 
-        {/* Chat Column */}
         <div className="spectator-chat-col">
           <div className="spectator-chat-header">Game Chat</div>
           <div className="spectator-chat-messages">
@@ -311,7 +408,6 @@ export const ChessSpectator: React.FC = () => {
         </div>
       </div>
 
-      {/* Game-over overlay */}
       {gameState === 'finished' && (
         <div className="spectator-gameover-overlay">
           <div className="spectator-gameover-box">
