@@ -1,4 +1,4 @@
-day/**
+/**
  * world-autonomous-routines.js
  *
  * Lightweight autonomous world behavior publisher.
