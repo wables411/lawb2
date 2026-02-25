@@ -11,7 +11,10 @@ import {
   setupUnderwaterFog,
   createBubbleParticles,
   animateBubbles,
+  generateCollisionBoxes,
+  resolveCollision,
   type WorldState,
+  type CollisionBox,
 } from '../utils/worldObjects';
 import {
   sendClawbMessage,
@@ -73,6 +76,9 @@ const PLAYER_ACCEL_DAMP = 11;
 const PLAYER_DECEL_DAMP = 14;
 const SWIM_VERTICAL_SPEED = 3;
 const WORLD_BOUNDS = 28;
+const CLAWB_COLLISION_RADIUS = 0.35;
+const PLAYER_COLLISION_RADIUS = 0.3;
+const GRAVITY_LERP_RATE = 0.12;
 const CLAWB_GREET_DISTANCE = 3;
 const CLAWB_SCALE = 0.018; // Sized to match reef objects
 const FLOOR_Y = -3;
@@ -179,6 +185,7 @@ const ClawbWorld: React.FC = () => {
     to: PATROL_POINTS[0].clone(),
   });
   const lightsRef = useRef<{ ambient: THREE.AmbientLight; directional: THREE.DirectionalLight } | null>(null);
+  const collisionBoxesRef = useRef<CollisionBox[]>([]);
 
   // Movement keys state
   const keysRef = useRef<Record<string, boolean>>({});
@@ -627,6 +634,16 @@ const ClawbWorld: React.FC = () => {
       camera.position.z = Math.max(-WORLD_BOUNDS - 10, Math.min(WORLD_BOUNDS, camera.position.z));
       // Clamp vertical (swim range)
       camera.position.y = Math.max(MIN_Y + PLAYER_HEIGHT, Math.min(MAX_Y, camera.position.y));
+
+      // Collision with world objects
+      const resolved = resolveCollision(
+        camera.position.x,
+        camera.position.z,
+        PLAYER_COLLISION_RADIUS,
+        collisionBoxesRef.current,
+      );
+      camera.position.x = resolved.x;
+      camera.position.z = resolved.z;
     }
 
     // Update room name (every frame)
@@ -716,6 +733,14 @@ const ClawbWorld: React.FC = () => {
             toTarget.normalize();
             clawbPosRef.current.x += toTarget.x * CLAWB_PATROL_SPEED * delta;
             clawbPosRef.current.z += toTarget.z * CLAWB_PATROL_SPEED * delta;
+            const pr = resolveCollision(
+              clawbPosRef.current.x,
+              clawbPosRef.current.z,
+              CLAWB_COLLISION_RADIUS,
+              collisionBoxesRef.current,
+            );
+            clawbPosRef.current.x = pr.x;
+            clawbPosRef.current.z = pr.z;
             clawbRef.current.rotation.y = Math.atan2(toTarget.x, toTarget.z);
           }
         }
@@ -743,7 +768,6 @@ const ClawbWorld: React.FC = () => {
         }
         clawbRef.current.position.x = clawbPosRef.current.x;
         clawbRef.current.position.z = clawbPosRef.current.z;
-        clawbRef.current.position.y = FLOOR_Y;
         let desiredDirection: THREE.Vector3 | null = null;
         let desiredSpeed = 0;
         let swimMode = false;
@@ -822,14 +846,31 @@ const ClawbWorld: React.FC = () => {
 
         clawbPosRef.current.x = THREE.MathUtils.clamp(clawbPosRef.current.x, -WORLD_BOUNDS + 1.2, WORLD_BOUNDS - 1.2);
         clawbPosRef.current.z = THREE.MathUtils.clamp(clawbPosRef.current.z, -WORLD_BOUNDS - 8.5, WORLD_BOUNDS - 1.2);
+
+        if (!roomTransitionRef.current.active) {
+          const cr = resolveCollision(
+            clawbPosRef.current.x,
+            clawbPosRef.current.z,
+            CLAWB_COLLISION_RADIUS,
+            collisionBoxesRef.current,
+          );
+          clawbPosRef.current.x = cr.x;
+          clawbPosRef.current.z = cr.z;
+        }
+
         clawbRef.current.position.x = clawbPosRef.current.x;
         clawbRef.current.position.z = clawbPosRef.current.z;
         if (swimMode) {
           clawbRef.current.position.y = FLOOR_Y + 0.2 + Math.sin(t * 3.2) * 0.08;
+        } else {
+          clawbRef.current.position.y = THREE.MathUtils.lerp(
+            clawbRef.current.position.y, FLOOR_Y, GRAVITY_LERP_RATE
+          );
         }
       }
 
-      if (isStreamMode && activeAction !== 'die') {
+      const isSwimAction = typeof activeAction === 'string' && activeAction.startsWith('swim');
+      if (isStreamMode && activeAction !== 'die' && !isSwimAction) {
         clawbRef.current.position.y = FLOOR_Y;
       }
 
@@ -974,6 +1015,10 @@ const ClawbWorld: React.FC = () => {
     bubblesRef.current = bubbles;
 
     // Load all rooms (Firebase first, fallback to static files)
+    const addRoomCollision = (data: WorldState, offset: THREE.Vector3) => {
+      const boxes = generateCollisionBoxes(data, offset.x, offset.z);
+      collisionBoxesRef.current = [...collisionBoxesRef.current, ...boxes];
+    };
     for (const [roomName, firebaseUrl] of Object.entries(ROOM_URLS)) {
       const offset = ROOM_OFFSETS[roomName];
       fetch(firebaseUrl)
@@ -981,17 +1026,20 @@ const ClawbWorld: React.FC = () => {
         .then((data: WorldState) => {
           if (data && data.objects) {
             renderWorldState(scene, data, offset);
+            addRoomCollision(data, offset);
           } else {
             throw new Error('Invalid Firebase response');
           }
         })
         .catch(() => {
-          // Fallback to static file
           const fallback = ROOM_FILES_FALLBACK[roomName];
           if (fallback) {
             fetch(fallback)
               .then((res) => res.json())
-              .then((data: WorldState) => renderWorldState(scene, data, offset))
+              .then((data: WorldState) => {
+                renderWorldState(scene, data, offset);
+                addRoomCollision(data, offset);
+              })
               .catch((err) => console.warn(`[ClawbWorld] Failed to load ${roomName}:`, err));
           }
         });
@@ -1265,6 +1313,16 @@ const ClawbWorld: React.FC = () => {
     const wallB = new THREE.Mesh(wallGeo2, wallMat);
     wallB.position.set(0, 0, -WORLD_BOUNDS - 10);
     scene.add(wallB);
+
+    // Gallery wall collision boxes (bedroom, relative to BEDROOM_OFFSET)
+    const bx = BEDROOM_OFFSET.x;
+    const bz = BEDROOM_OFFSET.z;
+    collisionBoxesRef.current = [
+      ...collisionBoxesRef.current,
+      { minX: bx - 4, maxX: bx + 4, minZ: bz - 3.7, maxZ: bz - 3.3 },   // back wall
+      { minX: bx - 4.2, maxX: bx - 3.8, minZ: bz - 3.5, maxZ: bz + 2.5 }, // left wall
+      { minX: bx + 3.8, maxX: bx + 4.2, minZ: bz - 3.5, maxZ: bz + 2.5 }, // right wall
+    ];
 
     // Keyboard input
     const onKeyDown = (e: KeyboardEvent) => {

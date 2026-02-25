@@ -458,3 +458,70 @@ export function animateBubbles(bubbles: THREE.Points, delta: number) {
   }
   pos.needsUpdate = true;
 }
+
+// --- Collision System ---
+
+export interface CollisionBox {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+const COLLISION_HALF_SIZES: Record<string, { halfX: number; halfZ: number }> = {
+  rock_boulder: { halfX: 0.4, halfZ: 0.4 },
+  rock_slab: { halfX: 0.35, halfZ: 0.25 },
+  rock_cluster: { halfX: 0.2, halfZ: 0.2 },
+  rock_arch: { halfX: 0.35, halfZ: 0.15 },
+  coral_brain: { halfX: 0.35, halfZ: 0.35 },
+  coral_bulb: { halfX: 0.3, halfZ: 0.3 },
+  treasure_chest: { halfX: 0.25, halfZ: 0.15 },
+};
+
+const MIN_COLLISION_HALF = 0.5;
+
+export function generateCollisionBoxes(
+  worldData: WorldState,
+  offsetX: number = 0,
+  offsetZ: number = 0,
+): CollisionBox[] {
+  const boxes: CollisionBox[] = [];
+  for (const obj of worldData.objects) {
+    const base = COLLISION_HALF_SIZES[obj.type];
+    if (!base) continue;
+    const hx = base.halfX * obj.scale;
+    const hz = base.halfZ * obj.scale;
+    if (hx < MIN_COLLISION_HALF && hz < MIN_COLLISION_HALF) continue;
+    const cx = obj.position[0] + offsetX;
+    const cz = obj.position[2] + offsetZ;
+    boxes.push({ minX: cx - hx, maxX: cx + hx, minZ: cz - hz, maxZ: cz + hz });
+  }
+  return boxes;
+}
+
+export function resolveCollision(
+  x: number,
+  z: number,
+  entityRadius: number,
+  boxes: ReadonlyArray<CollisionBox>,
+): { x: number; z: number } {
+  let rx = x;
+  let rz = z;
+  for (const b of boxes) {
+    const eMinX = b.minX - entityRadius;
+    const eMaxX = b.maxX + entityRadius;
+    const eMinZ = b.minZ - entityRadius;
+    const eMaxZ = b.maxZ + entityRadius;
+    if (rx <= eMinX || rx >= eMaxX || rz <= eMinZ || rz >= eMaxZ) continue;
+    const dLeft = rx - eMinX;
+    const dRight = eMaxX - rx;
+    const dFront = rz - eMinZ;
+    const dBack = eMaxZ - rz;
+    const minD = Math.min(dLeft, dRight, dFront, dBack);
+    if (minD === dLeft) rx = eMinX;
+    else if (minD === dRight) rx = eMaxX;
+    else if (minD === dFront) rz = eMinZ;
+    else rz = eMaxZ;
+  }
+  return { x: rx, z: rz };
+}
