@@ -12,6 +12,13 @@ interface PlayerProfileProps {
   address?: string; // Optional: view a specific user's profile instead of connected wallet
 }
 
+interface SolanaGalleryCard {
+  collection: 'lawbstation' | 'lawbnexus';
+  tokenId: string;
+  name: string;
+  imageUrl: string;
+}
+
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
   const connectionDisplay = useConnectionDisplay();
   const connectedAddress = connectionDisplay.address;
@@ -33,6 +40,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [playlistEntries, setPlaylistEntries] = useState<LawbampUploadEntry[]>([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [playlistError, setPlaylistError] = useState<string | null>(null);
+  const [solanaGalleryCards, setSolanaGalleryCards] = useState<SolanaGalleryCard[]>([]);
+  const [solanaGalleryLoading, setSolanaGalleryLoading] = useState(false);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -248,6 +257,75 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     };
     void loadPlaylistEntries();
   }, [address]);
+
+  useEffect(() => {
+    if (!address || !profile?.nft_inventory) {
+      setSolanaGalleryCards([]);
+      return;
+    }
+
+    const stationIds = (profile.nft_inventory.lawbstation || []).slice(0, 6);
+    const nexusIds = (profile.nft_inventory.lawbnexus || []).slice(0, 6);
+    if (stationIds.length === 0 && nexusIds.length === 0) {
+      setSolanaGalleryCards([]);
+      return;
+    }
+
+    let cancelled = false;
+    const loadGallery = async () => {
+      setSolanaGalleryLoading(true);
+      try {
+        const loadCollection = async (
+          collection: 'lawbstation' | 'lawbnexus',
+          tokenIds: string[]
+        ): Promise<SolanaGalleryCard[]> => {
+          const cards = await Promise.all(
+            tokenIds.map(async (tokenId) => {
+              try {
+                const metadata = await fetchTokenMetadata(collection, tokenId, address);
+                return {
+                  collection,
+                  tokenId,
+                  name: metadata.name || `${NFT_COLLECTIONS[collection].name}`,
+                  imageUrl: metadata.image_url || '/images/sticker4.png',
+                } as SolanaGalleryCard;
+              } catch {
+                return {
+                  collection,
+                  tokenId,
+                  name: `${NFT_COLLECTIONS[collection].name}`,
+                  imageUrl: '/images/sticker4.png',
+                } as SolanaGalleryCard;
+              }
+            })
+          );
+          return cards;
+        };
+
+        const [stationCards, nexusCards] = await Promise.all([
+          loadCollection('lawbstation', stationIds),
+          loadCollection('lawbnexus', nexusIds),
+        ]);
+
+        if (!cancelled) {
+          setSolanaGalleryCards([...stationCards, ...nexusCards]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSolanaGalleryLoading(false);
+        }
+      }
+    };
+
+    void loadGallery();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    address,
+    profile?.nft_inventory?.lawbstation,
+    profile?.nft_inventory?.lawbnexus,
+  ]);
 
   // Check username availability as user types
   useEffect(() => {
@@ -774,6 +852,77 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           </div>
         )}
       </div>
+
+      {(inventory.lawbstation.length > 0 || inventory.lawbnexus.length > 0) && (
+        <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px' }}>Solana Lawb Gallery</h4>
+            {solanaGalleryLoading && (
+              <span style={{ fontSize: isMobile ? '10px' : '11px', color: '#666' }}>Loading...</span>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: '8px' }}>
+            {solanaGalleryCards.map((card) => {
+              const selected =
+                profile?.profile_picture?.collection === card.collection &&
+                profile?.profile_picture?.token_id === card.tokenId;
+              return (
+                <button
+                  key={`${card.collection}-${card.tokenId}`}
+                  onClick={() => {
+                    if (isOwnProfile) {
+                      void handleSelectProfilePicture(card.collection, card.tokenId);
+                    }
+                  }}
+                  style={{
+                    border: selected ? '2px solid #000080' : '1px solid #999',
+                    background: '#fff',
+                    padding: '4px',
+                    borderRadius: '2px',
+                    cursor: isOwnProfile ? 'pointer' : 'default',
+                    textAlign: 'left',
+                  }}
+                  title={`${card.name} (${card.tokenId})`}
+                >
+                  <img
+                    src={card.imageUrl}
+                    alt={card.name}
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1 / 1',
+                      objectFit: 'cover',
+                      border: '1px solid #000',
+                      marginBottom: '4px',
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.src = '/images/sticker4.png';
+                    }}
+                  />
+                  <div style={{ fontSize: isMobile ? '9px' : '10px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {card.name}
+                  </div>
+                  <div style={{ fontSize: isMobile ? '8px' : '9px', color: '#555' }}>
+                    {card.collection === 'lawbstation' ? 'LawbStation' : 'LawbNexus'}
+                  </div>
+                  <div style={{ fontSize: isMobile ? '8px' : '9px', color: '#666' }}>
+                    {card.tokenId.slice(0, 4)}...{card.tokenId.slice(-4)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {!solanaGalleryLoading && solanaGalleryCards.length === 0 && (
+            <div style={{ marginTop: '8px', fontSize: isMobile ? '10px' : '11px', color: '#666' }}>
+              No Solana preview cards available yet.
+            </div>
+          )}
+          {isOwnProfile && solanaGalleryCards.length > 0 && (
+            <div style={{ marginTop: '8px', fontSize: isMobile ? '10px' : '11px', color: '#666' }}>
+              Click a card to set it as profile picture.
+            </div>
+          )}
+        </div>
+      )}
 
           {/* Profile Picture Selection */}
           <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px', width: '100%', maxWidth: '600px' }}>
