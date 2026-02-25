@@ -1058,6 +1058,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
       if (!cols || !rows || grid.length !== rows) return;
       const fontStack = 'ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
       const baseFontPx = Math.max(16, Math.floor(cellH / 1.22));
+      const topFontPx = Math.max(baseFontPx + 5, Math.floor(baseFontPx * 1.28));
       const tickerFontPx = Math.max(baseFontPx + 6, Math.floor(baseFontPx * 1.38));
       for (let y = 0; y < rows; y++) grid[y].fill(' ');
 
@@ -1150,7 +1151,15 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         ctx.textBaseline = 'top';
         ctx.fillStyle = hasSignal ? '#00ff66' : '#66cc99';
         ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
-        for (let y = 0; y < rows - 1; y++) {
+        const topBandH = Math.ceil(topFontPx * 2.2);
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, 0, pxW || 1, topBandH);
+        ctx.fillStyle = hasSignal ? '#00ff66' : '#66cc99';
+        ctx.font = 'bold ' + topFontPx + 'px ' + fontStack;
+        if (rows > 0) ctx.fillText(grid[0].join(''), padX, padY);
+        if (rows > 1) ctx.fillText(grid[1].join(''), padX, padY + cellH);
+        ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
+        for (let y = 2; y < rows - 1; y++) {
           ctx.fillText(grid[y].join(''), padX, padY + y * cellH);
         }
         const tickerY = Math.max(0, padY + (rows - 1) * cellH - 2);
@@ -1231,7 +1240,15 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         ctx.textBaseline = 'top';
         ctx.fillStyle = hasSignal ? (beat ? '#b9fff0' : '#00f0ff') : '#66cc99';
         ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
-        for (let y = 0; y < rows - 1; y++) {
+        const topBandH = Math.ceil(topFontPx * 2.2);
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, 0, pxW || 1, topBandH);
+        ctx.fillStyle = hasSignal ? (beat ? '#b9fff0' : '#00f0ff') : '#66cc99';
+        ctx.font = 'bold ' + topFontPx + 'px ' + fontStack;
+        if (rows > 0) ctx.fillText(grid[0].join(''), padX, padY);
+        if (rows > 1) ctx.fillText(grid[1].join(''), padX, padY + cellH);
+        ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
+        for (let y = 2; y < rows - 1; y++) {
           ctx.fillText(grid[y].join(''), padX, padY + y * cellH);
         }
         const tickerY = Math.max(0, padY + (rows - 1) * cellH - 2);
@@ -1324,7 +1341,15 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
       ctx.textBaseline = 'top';
       ctx.fillStyle = beat ? '#b9fff0' : (energy > 0.55 ? '#00f0ff' : '#00ff66');
       ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
-      for (let y = 0; y < rows - 1; y++) {
+      const topBandH = Math.ceil(topFontPx * 2.2);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, pxW || 1, topBandH);
+      ctx.fillStyle = beat ? '#b9fff0' : (energy > 0.55 ? '#00f0ff' : '#00ff66');
+      ctx.font = 'bold ' + topFontPx + 'px ' + fontStack;
+      if (rows > 0) ctx.fillText(grid[0].join(''), padX, padY);
+      if (rows > 1) ctx.fillText(grid[1].join(''), padX, padY + cellH);
+      ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
+      for (let y = 2; y < rows - 1; y++) {
         const line = grid[y].join('');
         ctx.fillText(line, padX, padY + y * cellH);
       }
