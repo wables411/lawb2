@@ -17,6 +17,7 @@ import { startChessWatcher } from './chess-clawb-watcher.js';
 import { startPvpAgent } from './chess-pvp-agent.js';
 import { startWorldResponder } from './world-responder.js';
 import { startRetakeStreamer } from './retake-streamer.js';
+import { startWorldAutonomousRoutines } from './world-autonomous-routines.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
@@ -56,6 +57,10 @@ async function main() {
 
     // 5. Start world responder (always)
     await startWorldResponder();
+
+    // 5.5 Start lightweight autonomous world routines
+    const stopWorldAutonomy = startWorldAutonomousRoutines();
+    cleanups.push(stopWorldAutonomy);
 
     // 6. Start Retake.TV streamer (unless disabled)
     if (!noStream && !chatOnly) {

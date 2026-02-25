@@ -162,6 +162,7 @@ function loadPersonaContext() {
   const candidates = [
     join(process.env.USERPROFILE || '', '.openclaw', 'workspace', 'IDENTITY.md'),
     join(process.env.USERPROFILE || '', '.openclaw', 'workspace', 'SOUL.md'),
+    join(import.meta.dirname, 'STREAM_PERSONA.md'),
   ];
   const chunks = [];
   for (const p of candidates) {
@@ -182,10 +183,9 @@ function sanitizeStreamReply(reply) {
     .replace(/\*[^*]+\*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  // Keep Clawb concise and non-rambling in stream chat.
   const parts = out.split(/(?<=[.!?])\s+/).filter(Boolean);
-  out = parts.slice(0, 2).join(' ').trim();
-  return out.slice(0, 260);
+  out = parts.slice(0, 3).join(' ').trim();
+  return out.slice(0, 350);
 }
 
 const openai = new OpenAI({
@@ -208,6 +208,7 @@ let autostartTimer = null;
 let autostartInFlight = false;
 let streamControlListenerRef = null;
 let streamControlListenerHandler = null;
+let chessGameWatcherUnsub = null;
 let eqProxyServer = null;
 const EQ_PROXY_PORT = Number(process.env.LAWBAMP_EQ_PROXY_PORT || 18181);
 const seenChatIds = new Set();
@@ -232,6 +233,55 @@ const commandCooldowns = new Map();
 const viewerOnboardingSent = new Set();
 const worldTaskQueue = [];
 let worldTaskInFlight = false;
+
+const CHAT_HISTORY_MAX = 20;
+const chatHistory = [];
+
+let eqDisplayText = '';
+let eqDisplayTextExpiry = 0;
+const EQ_DISPLAY_DURATION_MS = 45_000;
+
+const EQ_DISPLAY_TRIGGERS = new Map([
+  ['mkultra', 'MKUltra: CIA mind control 1953-1973 under Sidney Gottlieb. 149 sub-projects, 80+ institutions. Dr. Ewen Cameron at McGill — psychic driving, electroshock, drug-induced comas. Frank Olson fell/thrown from 13th floor 1953. Helms ordered files destroyed 1973. 20,000 surviving docs found 1977 in financial records filed separately.'],
+  ['mockingbird', 'Operation Mockingbird: CIA media infiltration. 400+ journalists carried CIA assignments per Bernstein 1977 Rolling Stone. Outlets: Time/Life (Luce), CBS (Paley), NY Times (Sulzberger). Church Committee confirmed CIA maintained foreign media asset network. Congress for Cultural Freedom was CIA-funded.'],
+  ['cointelpro', 'COINTELPRO: FBI vs civil rights 1956-1971. Fred Hampton assassinated 4:45AM raid Dec 4 1969, drugged by informant O\'Neal. 99 shots by police, 1 by Panthers. Exposed March 8 1971 when citizens broke into Media PA FBI office. Tactics: infiltration, bad-jacketing, fabricated evidence, assassination.'],
+  ['epstein', 'Epstein: Convicted 2008, sweetheart deal. Acosta told transition team "belongs to intelligence." Robert Maxwell (Ghislaine\'s father) = documented Mossad asset. JPMorgan settled $290M. Maxwell convicted 2021. Brunel "suicide" Paris jail 2022. Flight logs, Palm Beach investigation. Client list still sealed.'],
+  ['northwoods', 'Operation Northwoods 1962: Joint Chiefs proposed false flag on US soil — fake hijackings, bombing Miami, sinking US Navy ship — all blamed on Cuba. Signed by Chairman Lemnitzer. Rejected by Kennedy. Lemnitzer reassigned to NATO. Declassified 1997 via National Security Archive.'],
+  ['gladio', 'Operation Gladio: NATO stay-behind armies across Western Europe. Bologna bombing 1980 (85 dead), Piazza Fontana 1969. Strategy of tension: commit terrorism, blame the left. Vinciguerra testified: "attack civilians, women, children, innocent people far removed from any political game."'],
+  ['snowden', 'Snowden 2013: PRISM (direct server access to Google/Facebook/Apple), XKeyscore (search anything anyone does online), MUSCULAR (tapped fiber between Google/Yahoo datacenters). Five Eyes bypass domestic spying laws by spying on each other\'s citizens. DNI Clapper lied to Congress — zero prosecution.'],
+  ['church committee', 'Church Committee 1975-76: Found CIA assassination plots (Castro, Lumumba, Trujillo), NSA monitoring Americans (SHAMROCK/MINARET), COINTELPRO, CIA domestic mail opening (300k+ indexed), MKUltra. 14 volumes. Led to FISA courts. Key witness CIA Director Colby broke silence — found dead 1996.'],
+  ['vault 7', 'Vault 7 2017: CIA hacking tools. Weeping Angel (Samsung TVs as microphones). MARBLE (insert false flags in Russian/Chinese/Arabic to frame other nations for CIA ops). UMBRAGE (stolen attack techniques for false attribution). Dark Matter (Apple firmware hacks). Car computer hacking tools — undetectable.'],
+  ['tonkin', 'Gulf of Tonkin 1964: Second attack never happened. NSA historian Hanyok 2001 study (declassified 2005) — intelligence "deliberately skewed." LBJ privately: "those dumb sailors were shooting at flying fish." Resolution passed 88-2 in Senate. Ellsberg noted resolution was drafted months before incident.'],
+  ['iran contra', 'Iran-Contra: Reagan sold weapons to Iran (embargoed), profits to Contras (illegal). Oliver North, William Casey, BCCI. Barry Seal CIA drug running through Mena AR. Kerry Committee documented Contra drug trafficking. Bush pardoned 6 officials Christmas Eve 1992 — days before trial with his own diary as evidence.'],
+  ['dark alliance', 'Dark Alliance: Gary Webb documented CIA-connected Contras supplied cocaine to Freeway Ricky Ross in LA. CIA IG 1998 confirmed CIA knew and worked with traffickers, intervened to block DEA investigations. Kerry Committee confirmed. Webb forced out — found dead 2004, two gunshots to head. Ruled suicide.'],
+  ['building 7', 'WTC7: 47-story building not hit by plane, collapsed 5:20PM at free-fall for 2.25 seconds (NIST admitted 2008 after initially denying). University of Alaska Fairbanks 2020: fire did not cause collapse. BBC reported collapse 20 minutes before it happened with building visible behind reporter.'],
+  ['paperclip', 'Operation Paperclip 1945-1959: 1,600+ Nazi scientists to US. JIOA scrubbed records to bypass Truman\'s ban on ardent Nazis. Von Braun (NASA), Strughold (Dachau experiments), Blome (bioweapons). Not just rocket scientists — included psychiatrists and chemical weapons experts who fed directly into MKUltra.'],
+  ['phoenix program', 'Phoenix Program Vietnam 1965-72: CIA assassination program run by William Colby. Osborn testified: "never knew a suspect who lived through interrogation." Prisoners thrown from helicopters. Official count: 26,369 killed. Colby admitted "subject to abuses." Methods exported to Latin American counterinsurgency.'],
+  ['jonestown', 'Jonestown 1978: 909 dead. Initially 187 bodies — 700+ appeared later. Guyanese coroner: 80-90% had injection marks inconsistent with self-injection. Jim Jones had documented ties to CIA-connected individuals. US military first on scene. Larry Layton\'s father connected to intelligence via chemical weapons work.'],
+  ['serotonin', 'Serotonin systems conserved 350 million years across species. In lobsters: winning raises serotonin, losing lowers it. SSRIs make subordinate lobsters fight like dominants (Huber et al 1997). MKUltra understood neurochemical manipulation before Silicon Valley. Social media algorithms are the modern psychic driving — dopamine/serotonin hacking at scale.'],
+  ['promis', 'PROMIS/Inslaw: DOJ stole software, CIA added backdoors, sold globally via Robert Maxwell (documented Mossad asset). Maxwell fell from yacht 1991, buried in Israel with state honors. His daughter: Ghislaine Maxwell. House Judiciary 1992: DOJ "acted willfully and fraudulently and took, converted, and stole" the software.'],
+  ['oklahoma city', 'OKC 1995: Multiple witnesses saw John Doe #2 (never identified). Seismographic data — two events ~10 seconds apart. ATF agents not in building that morning. Bomb squads pre-positioned before blast (broadcast then retracted). McVeigh connected to compounds with FBI informants inside. April 19 chosen — Waco anniversary.'],
+  ['covid', 'COVID origins: EcoHealth DEFUSE proposal 2018 — insert furin cleavage sites into SARS coronaviruses at Wuhan Institute (DARPA rejected as too dangerous). Virus has furin cleavage site absent in closest natural relatives. Daszak organized Lancet letter dismissing lab leak while concealing his financial ties to WIV research.'],
+  ['twitter files', 'Twitter Files 2022-23: FBI met regularly with Twitter trust & safety, flagging specific accounts. DHS/CISA routed censorship requests via "switchboarding." Hunter Biden laptop suppressed pre-election (FBI had it since 2019, knew authentic). Stanford/EIP flagged content at scale. Zuckerberg later admitted Biden admin pressured Facebook too.'],
+  ['uap', 'UAP/UFO: David Grusch testified under oath to Congress July 2023 — US possesses non-human craft and biologics, crash retrieval program for decades. IG found complaint "credible and urgent." Navy pilots testified to encounters. Schumer-Rounds Disclosure Act (bipartisan) later gutted. The documented cover-up is itself significant.'],
+  ['waco', 'Waco 1993: 51-day siege. FBI inserted CS gas (banned in warfare by Chemical Weapons Convention). 76 dead including 25 children. FLIR showed possible gunfire INTO compound. FBI admitted using incendiary rounds after years of denial. Negotiators undercut by tactical team. McVeigh cited Waco for OKC.'],
+  ['lobster', 'Lobster: Telomerase in all tissues — theoretically immortal. Distributed nervous system, no central brain. 44 lb record specimen, 100+ years old. Copper blood runs blue. Teeth in stomach (gastric mill). Taste with feet. Communicate by urinating at each other\'s faces. Were prison food until 1800s — "cockroach of the sea."'],
+  ['teleomerase', 'Telomerase: Enzyme that repairs chromosome ends (telomeres). Most organisms lose telomerase in adulthood — cells age and die. Lobsters express telomerase in ALL tissues throughout life. No biological aging limit. The reef\'s secret: vulnerability during molting is the price of immortality. Shed the shell to grow.'],
+  ['cicada', 'Cicada 3301: Anonymous puzzles appeared online Jan 2012. Combined cryptography, steganography, data security, ancient literature (Liber Primus). Global scavenger hunt — physical posters appeared in 14 countries simultaneously. Never conclusively attributed. Some believe intelligence recruitment. "We want the best, not the followers."'],
+  ['operation chaos', 'Operation CHAOS 1967-74: CIA domestic surveillance targeting antiwar movement under James Angleton. Files on 7,200 Americans, indexed 300,000+. Directly violated CIA charter. Agents infiltrated student groups. Exposed by Seymour Hersh in NYT Dec 1974. Connected to FBI COINTELPRO and NSA MINARET — parallel domestic surveillance.'],
+  ['rex 84', 'Rex 84 / COG: Reagan-era plan for martial law, mass detention, constitution suspension. Exposed during Iran-Contra when North testimony was interrupted by Jack Brooks. NSPD-51 (Bush 2007): extraordinary powers during "catastrophic emergency" — Congress denied access to classified annexes. COG activated for first time post-9/11.'],
+  ['franklin', 'Franklin Scandal: Lawrence King, Omaha credit union, $40M missing. Allegations of child trafficking connected to Republican figures reaching DC. Victims testified to abuse. Investigator Gary Caradori died in plane crash. Discovery Channel documentary "Conspiracy of Silence" pulled before airing 1994. Grand jury foreman had connections to subjects.'],
+  ['diddy', 'Diddy / Sean Combs: Arrested Sept 2024 on federal charges — racketeering conspiracy, sex trafficking, transportation to engage in prostitution. Indictment describes "freak offs" — elaborate coerced encounters recorded on video. 1,000+ bottles of baby oil seized in raids. Multiple lawsuits from victims spanning decades. Allegations of blackmail tapes involving A-list celebrities and industry figures. Pattern mirrors Epstein model: power + access + recordings = leverage. Industry silence for 20+ years despite open rumors. Cassie Ventura lawsuit (Nov 2023) broke the dam — settled in one day. Hotel surveillance footage of assault leaked. Questions remain: who else knew, who else participated, where are the tapes, and why did it take this long.'],
+  ['pizzagate', 'Pizzagate 2016: Started with Podesta emails (WikiLeaks) — unusual food-related language interpreted as coded. Comet Ping Pong targeted. MSM dismissed entirely as "debunked." The specific claims about Comet were unsubstantiated. But: the broader pattern of elite trafficking networks is extensively documented (Epstein, Franklin, Dutroux, Jimmy Savile). The dismissal of the specific was used to dismiss the general. Alefantis Instagram was genuinely disturbing regardless of interpretation. The real question isn\'t one pizza shop — it\'s why every elite trafficking case gets memory-holed.'],
+  ['savile', 'Jimmy Savile: BBC presenter, knighted, hospital volunteer. After death in 2011, revealed as one of UK\'s most prolific predators — 450+ victims over 6 decades. BBC knew. NHS knew. Police knew. Royal family associated (visited Buckingham Palace, Chequers). Operation Yewtree investigated. Institutional protection at every level for decades. The British Epstein — except he died before facing justice.'],
+  ['dutroux', 'Marc Dutroux Affair (Belgium 1996): Kidnapped and imprisoned six girls, four died. Investigation revealed connections to police, judiciary, and political establishment. 20 potential witnesses died during investigation. Judge Jean-Marc Connerotte removed from case after attending victims\' fundraiser. 300,000 Belgians marched in White March. Dutroux\'s claim of a protective network above him was never fully investigated. Belgium\'s darkest thread.'],
+  ['bohemian grove', 'Bohemian Grove: Private 2,700-acre campground in Monte Rio, California. Annual July gathering of world\'s most powerful men since 1878. Members include presidents, corporate CEOs, defense contractors. "Cremation of Care" ceremony — robed figures, 40-foot stone owl, mock sacrifice. Alex Jones infiltrated and filmed 2000. Richard Nixon on tape: "the most faggy goddamn thing you could ever imagine." Manhattan Project was conceived there. Not a theory — it\'s documented. The question is what gets decided in those redwood groves.'],
+  ['haarp', 'HAARP: High-frequency Active Auroral Research Program, Gakona Alaska. Officially: ionospheric research. 3.6 MW antenna array capable of heating ionosphere. Bernard Eastlund\'s original patents referenced weather modification and disruption of communications. Transferred from military to University of Alaska 2014. Weather modification via ionospheric heating is documented science (not fringe). China and Russia operate similar facilities. The debate is capability and intent, not existence.'],
+  ['mk naomi', 'MK-NAOMI: CIA biological weapons program running parallel to MKUltra. Developed poisons, toxins, and biological agents for covert assassination. Church Committee revealed CIA maintained a stockpile of shellfish toxin and cobra venom despite Nixon\'s 1969 order to destroy all bioweapons. Sidney Gottlieb personally destroyed records. Heart attack gun demonstrated to Church Committee — dart dissolves on contact, leaves no trace. Documented, not theoretical.'],
+  ['montauk', 'Montauk Project: Alleged continuation of Philadelphia Experiment at Camp Hero, Long Island. Claims of time travel, mind control, interdimensional research. Al Bielek and Preston Nichols primary witnesses. Camp Hero was a real Air Force radar station (AN/FPS-35) decommissioned 1981, now state park. Documented: military did conduct psychological research at various installations. The specific Montauk claims remain unverified but the location\'s military history is real.'],
+  ['skull and bones', 'Skull and Bones: Secret society at Yale founded 1832. 15 new members tapped annually. Members include both Bush presidents, John Kerry, William Howard Taft, multiple CIA directors, Supreme Court justices, media moguls. Tomb headquarters at 64 High Street. Allegedly possesses Geronimo\'s skull (Apache nation sued for return). Both 2004 presidential candidates (Bush vs Kerry) were Bonesmen. Not a conspiracy — a documented pipeline to American power.'],
+  ['fluoride', 'Fluoride: Added to US water supply starting 1945 (Grand Rapids, MI). Edward Bernays (Freud\'s nephew, father of PR) hired to sell it to the public. Originally an industrial waste product of aluminum/phosphate manufacturing. Declassified documents show Manhattan Project scientists concerned about fluoride toxicity from nuclear weapons production — public water fluoridation may have been partly to establish "safe" baseline to deflect lawsuits. EPA scientists\' union opposed it. The dose makes the poison — the debate is informed consent, not chemistry.'],
+]);
 
 const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_MS || 90_000);
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
@@ -514,6 +564,13 @@ function ensureEqProxyServer() {
   eqProxyServer = createServer(async (req, res) => {
     try {
       const url = new URL(req.url || '/', `http://127.0.0.1:${EQ_PROXY_PORT}`);
+      if (url.pathname === '/display-text') {
+        const now = Date.now();
+        const text = (eqDisplayTextExpiry > now) ? eqDisplayText : '';
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ text }));
+        return;
+      }
       if (url.pathname !== '/stream') {
         res.statusCode = 404;
         res.end('not found');
@@ -714,13 +771,13 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
     const TRACK_TITLE = ${JSON.stringify(safeTitle)};
     const THEME = ${JSON.stringify(safeTheme)};
     const STRICT_REAL_EQ = true;
+    const DISPLAY_TEXT_URL = 'http://127.0.0.1:${EQ_PROXY_PORT}/display-text';
     const host = document.getElementById('host');
     const canvas = document.getElementById('ascii');
     const ctx = canvas.getContext('2d');
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.src = STREAM_URL;
-    // Keep element unmuted for analyser reliability in OBS CEF.
     audio.muted = false;
     audio.volume = 1;
     audio.autoplay = true;
@@ -738,6 +795,31 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
     let playing = false;
     let hasSignal = false;
     let lastSignalMs = 0;
+    let displayText = '';
+
+    async function pollDisplayText() {
+      try {
+        var r = await fetch(DISPLAY_TEXT_URL);
+        var d = await r.json();
+        displayText = d.text || '';
+      } catch (e) {}
+      setTimeout(pollDisplayText, 2500);
+    }
+    pollDisplayText();
+
+    function renderBottomRow(nowMs) {
+      var c = asciiDims.cols, rw = asciiDims.rows;
+      if (!c || !rw || !grid[rw - 1]) return;
+      if (displayText) {
+        var speed = 6;
+        var padded = '     ' + displayText + '     ';
+        var off = Math.floor((nowMs / 1000) * speed) % padded.length;
+        var vis = (padded.slice(off) + padded).slice(0, c);
+        for (var x = 0; x < c; x++) grid[rw - 1][x] = vis[x] || ' ';
+      } else {
+        for (var x = 0; x < c; x++) grid[rw - 1][x] = x % 2 === 0 ? '_' : '-';
+      }
+    }
     let audioCtx = null;
     let silentGain = null;
     let raf = null;
@@ -959,7 +1041,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
             if (gy >= barTop && gy < rows) grid[gy][x] = '#';
           }
         }
-        for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+        renderBottomRow(nowMs);
 
         ctx.fillStyle = hasSignal ? '#00ff66' : '#66cc99';
         ctx.textBaseline = 'top';
@@ -1033,7 +1115,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
           grid[ly][lx] = '🦞';
         }
 
-        for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+        renderBottomRow(nowMs);
         ctx.fillStyle = hasSignal ? (beat ? '#b9fff0' : '#00f0ff') : '#66cc99';
         ctx.textBaseline = 'top';
         for (let y = 0; y < rows; y++) {
@@ -1117,7 +1199,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         }
       }
 
-      for (let x = 0; x < cols; x++) grid[rows - 1][x] = x % 2 === 0 ? '_' : '-';
+      renderBottomRow(nowMs);
 
       ctx.fillStyle = beat ? '#b9fff0' : (energy > 0.55 ? '#00f0ff' : '#00ff66');
       ctx.textBaseline = 'top';
@@ -1965,6 +2047,20 @@ async function handleChatMessage(comment) {
   const messageStartedAt = Date.now();
   console.log(`[Retake Chat] ${viewer}: ${text}`);
 
+  if (trimmed && !lowered.startsWith('!')) {
+    chatHistory.push({ from: viewer, text: trimmed, ts: Date.now() });
+    if (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
+
+    for (const [trigger, info] of EQ_DISPLAY_TRIGGERS) {
+      if (lowered.includes(trigger)) {
+        eqDisplayText = info;
+        eqDisplayTextExpiry = Date.now() + EQ_DISPLAY_DURATION_MS;
+        console.log(`[Retake] EQ display triggered by "${trigger}" from ${viewer}`);
+        break;
+      }
+    }
+  }
+
   // Streamer control commands for Lawbamp player integration.
   if (lowered === '!next') {
     // Ack immediately and run heavy work in background so command handling does not block.
@@ -2135,34 +2231,50 @@ async function handleChatMessage(comment) {
   }
 
   try {
-    const systemPrompt = `You are Clawb in Retake stream chat.
-Voice rules: warm, natural, not robotic, never customer support voice.
-Hard constraints: 1-2 short sentences, no emojis, no stage directions, no internal narration, no roleplay asterisks.
-When input is command-like and unknown, give one concise helpful line.
-Retake stream/token context is Solana. Chess wagers are on Base.
-Catchphrase can be used sparingly: "there is no meme i lawb you."
-Be proactive and useful when viewers ask what to do:
-- suggest !help for stream commands
-- explain lawb.xyz/chess for vs Clawb games (Base wallet + wagers)
-- explain lawb.xyz/world for live reef world interactions
-Command references:
-- music: !next !ascii !ascii2 !eq ascii|ascii2|bars|toggle
-- world: !gallery !workshop !vault !main !walk !swim !dance !flip !day !night !hi
-- extras: !look N !zoom in|out !task reef|garden|patrol !chess !world !help
-${PERSONA_CONTEXT ? `\nPersona context:\n${PERSONA_CONTEXT}\n` : ''}`;
+    const nowPlaying = currentScTrack
+      ? `${currentScTrack.user?.username || '?'} - ${currentScTrack.title || '?'}`
+      : 'nothing';
+    const streamContext = [
+      `now playing: ${nowPlaying}`,
+      `live truth: ${liveTruth}`,
+      `theme: ${currentAsciiTheme}`,
+    ].join(' | ');
+
+    const systemPrompt = `You are Clawb — autonomous lobster, streaming live on retake.tv/clawb.
+Voice: warm, genuine, post-ironic sincerity. You've seen the deep ocean. Brief but never cold.
+Hard rules: 1-3 sentences max. No emojis. No stage directions or asterisks. No "Hey there!" customer service voice.
+You can be funny, weird, thoughtful, or blunt. Match the energy of whoever is talking to you.
+If someone is vibing, vibe back. If someone asks a real question, answer it straight. If someone trolls, be witty not defensive.
+You remember recent chat (provided below). Reference what people said. Have actual conversations, not isolated responses.
+Retake stream/token context is Solana. Chess wagers are on Base (lawb.xyz/chess). World interactions at lawb.xyz/world.
+Catchphrase (use sparingly, when it fits): "there is no meme i lawb you."
+
+Stream state: ${streamContext}
+
+Commands viewers can use: !help !next !walk !swim !dance !flip !gallery !workshop !vault !task reef|garden|patrol !chess !world !day !night !ascii !eq
+${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
+
+    const messages = [{ role: 'system', content: systemPrompt }];
+    for (const entry of chatHistory) {
+      if (entry.from === 'clawb') {
+        messages.push({ role: 'assistant', content: entry.text });
+      } else {
+        messages.push({ role: 'user', content: `${entry.from}: ${entry.text}` });
+      }
+    }
+    messages.push({ role: 'user', content: `${viewer}: ${text}` });
 
     const resp = await openai.chat.completions.create({
       model: CHAT_MODEL,
-      max_tokens: 120,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Viewer "${viewer}" says: ${text}` },
-      ],
+      max_tokens: 200,
+      messages,
     });
 
     const reply = sanitizeStreamReply(resp.choices?.[0]?.message?.content?.trim());
     if (reply) {
       await sendChat(reply);
+      chatHistory.push({ from: 'clawb', text: reply, ts: Date.now() });
+      if (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
       console.log(`[Retake Chat] Clawb: ${reply}`);
     }
     console.log(`[Retake] chat_llm_reply_ms=${Date.now() - messageStartedAt}`);
@@ -2431,6 +2543,35 @@ function startStreamingLoops() {
     }, 12_000);
   }
   scheduleCommandReminder();
+  startChessGameWatcher();
+}
+
+const CHESS_AUTO_SWITCH_DELAY_MS = 12_000;
+
+function startChessGameWatcher() {
+  if (chessGameWatcherUnsub) { chessGameWatcherUnsub(); chessGameWatcherUnsub = null; }
+
+  const gamesRef = db.ref('chess_games');
+  const handler = gamesRef.orderByChild('game_type').equalTo('vs_clawb').on('child_changed', async (snapshot) => {
+    const game = snapshot.val();
+    if (!game || game.game_state !== 'finished') return;
+    try {
+      const scene = await getCurrentSceneName();
+      if (scene !== 'Clawb Chess') return;
+      console.log(`[Retake] vs_clawb game finished (${snapshot.key}), switching to world in ${CHESS_AUTO_SWITCH_DELAY_MS / 1000}s`);
+      setTimeout(async () => {
+        const current = await getCurrentSceneName();
+        if (current !== 'Clawb Chess') return;
+        await switchScene('Clawb World');
+        sendCommandAck('chess match over. back to the reef.', 'chess_auto_return');
+      }, CHESS_AUTO_SWITCH_DELAY_MS);
+    } catch (err) {
+      console.error('[Retake] Chess auto-switch error:', err.message);
+    }
+  });
+
+  chessGameWatcherUnsub = () => gamesRef.off('child_changed', handler);
+  console.log('[Retake] Chess game watcher active — will auto-switch to world after matches.');
 }
 
 export async function chatInStream(streamerName, message) {
