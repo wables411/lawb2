@@ -950,12 +950,13 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
       const m = ctx.measureText('M');
       const cellW = Math.max(10, Math.floor(m.width * 1.02));
       const cellH = Math.max(16, Math.floor(fontPx * 1.22));
-      const padX = 14;
-      const padY = 14;
+      // Keep slight horizontal breathing room for glyph clipping, but no vertical inset.
+      const padX = 2;
+      const padY = 0;
       const colsRaw = Math.floor((w - padX * 2) / cellW);
       const rowsRaw = Math.floor((h - padY * 2) / cellH);
-      const cols = Math.max(36, Math.min(110, colsRaw));
-      const rows = Math.max(14, Math.min(56, rowsRaw));
+      const cols = Math.max(36, colsRaw);
+      const rows = Math.max(14, rowsRaw);
       asciiDims.cols = cols;
       asciiDims.rows = rows;
       asciiDims.cellW = cellW;
