@@ -940,6 +940,25 @@ const ClawbWorld: React.FC = () => {
           camera.fov = fov;
           camera.updateProjectionMatrix();
         }
+      } else if (roomName === 'Leaderboard') {
+        if (lookTargetRef.current) setSelectedNft(null);
+        lookTargetRef.current = null;
+        // Frame the billboard: camera behind Clawb, looking at billboard center.
+        // Billboard is at group-relative (-2.6, 2.5, -6.4), Clawb at (-2.6, -3, -1.4).
+        const lbOff = ROOM_OFFSETS.leaderboard;
+        const bbCenter = new THREE.Vector3(lbOff.x - 2.6, lbOff.y + 1.8, lbOff.z - 6.4);
+        const clawbPos = clawbRef.current.position.clone();
+        // Camera sits behind and above Clawb, looking past him at the board
+        const camDesired = new THREE.Vector3(clawbPos.x, clawbPos.y + 2.8, clawbPos.z + 5.5);
+        smoothCameraPosition(camDesired);
+        // Look at a point between Clawb and the billboard center (weighted toward billboard)
+        const lookPoint = bbCenter.clone().lerp(clawbPos.clone().add(new THREE.Vector3(0, 0.5, 0)), 0.2);
+        smoothLookAt(lookPoint);
+        const fov = THREE.MathUtils.lerp(camera.fov, 52, 0.08);
+        if (Math.abs(fov - camera.fov) > 0.01) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
       } else {
         if (lookTargetRef.current) {
           setSelectedNft(null);
@@ -986,6 +1005,7 @@ const ClawbWorld: React.FC = () => {
         // Re-render canvas for animated elements (throttled to ~2fps for perf)
         if (Date.now() - leaderboardLastRefreshRef.current > 500) {
           if (leaderboardRenderFnRef.current) leaderboardRenderFnRef.current();
+          if (leaderboardTextureRef.current) leaderboardTextureRef.current.needsUpdate = true;
           leaderboardLastRefreshRef.current = Date.now();
         }
       }
@@ -1347,67 +1367,89 @@ const ClawbWorld: React.FC = () => {
     lbCanvas.height = LEADERBOARD_CANVAS_H;
     leaderboardCanvasRef.current = lbCanvas;
 
+    // Draw immediate "loading" content so texture is never blank
+    const lbCtxInit = lbCanvas.getContext('2d');
+    if (lbCtxInit) {
+      const bg = lbCtxInit.createLinearGradient(0, 0, 0, LEADERBOARD_CANVAS_H);
+      bg.addColorStop(0, '#0a0e1a');
+      bg.addColorStop(1, '#060a12');
+      lbCtxInit.fillStyle = bg;
+      lbCtxInit.fillRect(0, 0, LEADERBOARD_CANVAS_W, LEADERBOARD_CANVAS_H);
+      lbCtxInit.fillStyle = '#ff2266';
+      lbCtxInit.font = 'bold 52px monospace';
+      lbCtxInit.textAlign = 'center';
+      lbCtxInit.fillText('LAWB LEADERBOARD', LEADERBOARD_CANVAS_W / 2, 72);
+      lbCtxInit.fillStyle = '#6688aa';
+      lbCtxInit.font = '28px monospace';
+      lbCtxInit.fillText('loading...', LEADERBOARD_CANVAS_W / 2, LEADERBOARD_CANVAS_H / 2);
+    }
+
     const lbTexture = new THREE.CanvasTexture(lbCanvas);
     lbTexture.minFilter = THREE.NearestFilter;
     lbTexture.magFilter = THREE.NearestFilter;
     lbTexture.colorSpace = THREE.SRGBColorSpace;
     leaderboardTextureRef.current = lbTexture;
 
-    // Main billboard mesh — tall panel
-    const boardW = 6.0;
-    const boardH = 9.0;
+    // Billboard centered on Clawb's arrival axis for stream camera framing.
+    // Clawb arrives at PATROL_POINTS[0] relative to room = (-2.6, FLOOR_Y, -1.4).
+    // Billboard placed directly in front at Z-5.4 so camera (behind Clawb) sees it.
+    const bbX = -2.6;
+    const bbZ = -6.4;
+    const boardW = 7.5;
+    const boardH = 10.0;
+    const bbY = boardH / 2 - 2.5;
     const boardMat = new THREE.MeshBasicMaterial({ map: lbTexture, side: THREE.DoubleSide });
     const boardMesh = new THREE.Mesh(new THREE.PlaneGeometry(boardW, boardH), boardMat);
-    boardMesh.position.set(0, boardH / 2 - 2.2, -3.0);
+    boardMesh.position.set(bbX, bbY, bbZ);
     lbGroup.add(boardMesh);
 
     // Neon frame around the billboard
-    const frameBorder = 0.12;
+    const frameBorder = 0.14;
     const neonColor = 0xff2266;
     const neonMat = new THREE.MeshBasicMaterial({ color: neonColor });
     const topBar = new THREE.Mesh(new THREE.BoxGeometry(boardW + frameBorder * 2, frameBorder, 0.08), neonMat);
-    topBar.position.set(0, boardH / 2 - 2.2 + boardH / 2 + frameBorder / 2, -2.98);
+    topBar.position.set(bbX, bbY + boardH / 2 + frameBorder / 2, bbZ + 0.02);
     lbGroup.add(topBar);
     const botBar = new THREE.Mesh(new THREE.BoxGeometry(boardW + frameBorder * 2, frameBorder, 0.08), neonMat);
-    botBar.position.set(0, boardH / 2 - 2.2 - boardH / 2 - frameBorder / 2, -2.98);
+    botBar.position.set(bbX, bbY - boardH / 2 - frameBorder / 2, bbZ + 0.02);
     lbGroup.add(botBar);
     const leftBar = new THREE.Mesh(new THREE.BoxGeometry(frameBorder, boardH + frameBorder * 2, 0.08), neonMat);
-    leftBar.position.set(-boardW / 2 - frameBorder / 2, boardH / 2 - 2.2, -2.98);
+    leftBar.position.set(bbX - boardW / 2 - frameBorder / 2, bbY, bbZ + 0.02);
     lbGroup.add(leftBar);
     const rightBar = new THREE.Mesh(new THREE.BoxGeometry(frameBorder, boardH + frameBorder * 2, 0.08), neonMat);
-    rightBar.position.set(boardW / 2 + frameBorder / 2, boardH / 2 - 2.2, -2.98);
+    rightBar.position.set(bbX + boardW / 2 + frameBorder / 2, bbY, bbZ + 0.02);
     lbGroup.add(rightBar);
 
     // Neon glow lights flanking the billboard
-    const neonGlow1 = new THREE.PointLight(0xff2266, 1.5, 8);
-    neonGlow1.position.set(-3.5, 2.0, -1.5);
+    const neonGlow1 = new THREE.PointLight(0xff2266, 2.0, 10);
+    neonGlow1.position.set(bbX - 4.5, 2.0, bbZ + 2);
     lbGroup.add(neonGlow1);
-    const neonGlow2 = new THREE.PointLight(0x2266ff, 1.5, 8);
-    neonGlow2.position.set(3.5, 2.0, -1.5);
+    const neonGlow2 = new THREE.PointLight(0x2266ff, 2.0, 10);
+    neonGlow2.position.set(bbX + 4.5, 2.0, bbZ + 2);
     lbGroup.add(neonGlow2);
-    const topGlow = new THREE.PointLight(0xffaa00, 1.0, 6);
-    topGlow.position.set(0, boardH - 1.5, -1.5);
+    const topGlow = new THREE.PointLight(0xffaa00, 1.2, 8);
+    topGlow.position.set(bbX, boardH - 1.0, bbZ + 2);
     lbGroup.add(topGlow);
 
     // Decorative pillars (Vegas-style)
     const pillarMat = new THREE.MeshPhongMaterial({ color: 0x334466, emissive: 0x0a1020, flatShading: true });
     for (const xSide of [-1, 1]) {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, boardH + 1, 6), pillarMat);
-      pillar.position.set(xSide * (boardW / 2 + 0.4), boardH / 2 - 2.7, -3.0);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, boardH + 1.5, 6), pillarMat);
+      pillar.position.set(bbX + xSide * (boardW / 2 + 0.5), bbY - 0.5, bbZ);
       lbGroup.add(pillar);
     }
 
     // Floor accent — glowing strip
     const stripMat = new THREE.MeshBasicMaterial({ color: 0xff2266, transparent: true, opacity: 0.4 });
-    const strip = new THREE.Mesh(new THREE.PlaneGeometry(boardW + 2, 0.3), stripMat);
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(boardW + 2, 0.4), stripMat);
     strip.rotation.x = -Math.PI / 2;
-    strip.position.set(0, FLOOR_Y + 0.01, -1.5);
+    strip.position.set(bbX, FLOOR_Y + 0.01, bbZ + 2);
     lbGroup.add(strip);
 
     // Back wall behind billboard
     const lbWallMat = new THREE.MeshPhongMaterial({ color: 0x1a2a3a, emissive: 0x050a14, flatShading: true, side: THREE.DoubleSide });
-    const lbBackWall = new THREE.Mesh(new THREE.PlaneGeometry(10, boardH + 2), lbWallMat);
-    lbBackWall.position.set(0, boardH / 2 - 2.2, -3.3);
+    const lbBackWall = new THREE.Mesh(new THREE.PlaneGeometry(12, boardH + 3), lbWallMat);
+    lbBackWall.position.set(bbX, bbY, bbZ - 0.3);
     lbGroup.add(lbBackWall);
 
     // Render leaderboard data onto the canvas
