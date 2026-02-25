@@ -354,10 +354,10 @@ const LIVE_MISMATCH_SUSTAIN_MS = Number(process.env.CLAWB_LIVE_MISMATCH_SUSTAIN_
 const SUPERVISOR_ALERT_COOLDOWN_MS = Number(process.env.CLAWB_SUPERVISOR_ALERT_COOLDOWN_MS || 120_000);
 const EQ_PREFLIGHT_RETRY_MS = Number(process.env.CLAWB_EQ_PREFLIGHT_RETRY_MS || 20_000);
 const ASCII_EQ_POSITION = {
-  positionX: 1260,
-  positionY: 700,
-  boundsWidth: 640,
-  boundsHeight: 360,
+  positionX: 0,
+  positionY: 0,
+  boundsWidth: 1920,
+  boundsHeight: 1080,
   // Force top-left anchoring and fixed bounds so restarts cannot drift placement.
   alignment: 5,
   boundsAlignment: 5,
@@ -1348,8 +1348,8 @@ async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
       inputName: eqInput,
       inputSettings: {
         url: `${eqUrl}&r=${Date.now()}`,
-        width: 640,
-        height: 360,
+        width: 1920,
+        height: 1080,
         reroute_audio: false,
         restart_when_active: true,
         shutdown: false,
@@ -1956,8 +1956,8 @@ export async function setupOBSScenes() {
         inputKind: 'browser_source',
         inputSettings: {
           url: eqUrl,
-          width: 640,
-          height: 360,
+          width: 1920,
+          height: 1080,
           reroute_audio: false,
           restart_when_active: false,
           shutdown: false,
@@ -1985,8 +1985,8 @@ export async function setupOBSScenes() {
       inputName: eqInput,
       inputSettings: {
         url: `${eqUrl}&r=${Date.now()}`,
-        width: 640,
-        height: 360,
+        width: 1920,
+        height: 1080,
         reroute_audio: false,
         restart_when_active: false,
         shutdown: false,
