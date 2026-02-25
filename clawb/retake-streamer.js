@@ -870,7 +870,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
 
     let analyser = null;
     let data = null;
-    const asciiDims = { cols: 0, rows: 0, cellW: 10, cellH: 14, padX: 10, padY: 10, pxW: 0, pxH: 0 };
+    const asciiDims = { cols: 0, rows: 0, cellW: 14, cellH: 20, padX: 14, padY: 14, pxW: 0, pxH: 0 };
     let grid = [];
     let bubbles = [];
     let smoothBars = Array.from({ length: 96 }, () => 0);
@@ -944,16 +944,18 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
       canvas.style.height = h + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const fontPx = 12;
-      ctx.font = fontPx + 'px ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
+      const fontPx = Math.max(18, Math.min(28, Math.floor(h / 42)));
+      ctx.font = 'bold ' + fontPx + 'px ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
       ctx.textBaseline = 'top';
       const m = ctx.measureText('M');
-      const cellW = Math.max(6, Math.floor(m.width));
-      const cellH = Math.max(10, Math.floor(fontPx * 1.15));
-      const padX = 10;
-      const padY = 10;
-      const cols = Math.max(24, Math.floor((w - padX * 2) / cellW));
-      const rows = Math.max(10, Math.floor((h - padY * 2) / cellH));
+      const cellW = Math.max(10, Math.floor(m.width * 1.02));
+      const cellH = Math.max(16, Math.floor(fontPx * 1.22));
+      const padX = 14;
+      const padY = 14;
+      const colsRaw = Math.floor((w - padX * 2) / cellW);
+      const rowsRaw = Math.floor((h - padY * 2) / cellH);
+      const cols = Math.max(36, Math.min(110, colsRaw));
+      const rows = Math.max(14, Math.min(56, rowsRaw));
       asciiDims.cols = cols;
       asciiDims.rows = rows;
       asciiDims.cellW = cellW;
