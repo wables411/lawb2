@@ -1820,14 +1820,22 @@ const ClawbWorld: React.FC = () => {
   }, [showChatPanel]);
 
   useEffect(() => {
+    let initialSnapshotHandled = false;
+    const ACTION_FRESHNESS_MS = 8_000;
     const unsub = listenToWorldActions((actions) => {
       if (!actions.length) return;
+      const now = Date.now();
       for (const a of actions) {
         if (processedActionIdsRef.current.has(a.id)) continue;
         processedActionIdsRef.current.add(a.id);
+        if (!initialSnapshotHandled) {
+          // On first snapshot, only process actions from the last few seconds
+          const age = now - (a.timestamp || 0);
+          if (age > ACTION_FRESHNESS_MS) continue;
+        }
         triggerWorldAction(a.action, a);
       }
-      // Keep set bounded
+      initialSnapshotHandled = true;
       if (processedActionIdsRef.current.size > 200) {
         processedActionIdsRef.current = new Set(Array.from(processedActionIdsRef.current).slice(-100));
       }
