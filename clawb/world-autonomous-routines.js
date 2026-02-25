@@ -11,6 +11,7 @@ import { db } from './lawb-firebase.js';
 const AUTONOMY_ENABLED = String(process.env.CLAWB_WORLD_AUTONOMY_ENABLED || 'true').toLowerCase() !== 'false';
 const BASE_INTERVAL_MS = Number(process.env.CLAWB_WORLD_AUTONOMY_INTERVAL_MS || 180_000);
 const JITTER_MS = Number(process.env.CLAWB_WORLD_AUTONOMY_JITTER_MS || 45_000);
+const MANUAL_COOLDOWN_FALLBACK_MS = Number(process.env.CLAWB_WORLD_MANUAL_COOLDOWN_FALLBACK_MS || 10_000);
 
 const ROUTINES = [
   { command: '!swim forward', payload: { type: 'action', action: 'swim_forward', direction: 'forward' } },
@@ -39,6 +40,21 @@ async function publishRoutineStep(step) {
   console.log(`[World Autonomy] published ${step.command}`);
 }
 
+async function isAutonomySuppressedNow() {
+  try {
+    const snapshot = await db.ref('clawb/world/control').once('value');
+    const control = snapshot.val() || {};
+    const now = Date.now();
+    const suppressedUntil = Number(control.autonomySuppressedUntil) || 0;
+    const manualUntil = Number(control.manualOverrideUntil) || 0;
+    const effectiveUntil = Math.max(suppressedUntil, manualUntil ? manualUntil + MANUAL_COOLDOWN_FALLBACK_MS : 0);
+    return now < effectiveUntil;
+  } catch (err) {
+    console.warn(`[World Autonomy] control read failed: ${err.message}`);
+    return false;
+  }
+}
+
 export function startWorldAutonomousRoutines() {
   if (!AUTONOMY_ENABLED) {
     console.log('[World Autonomy] disabled via CLAWB_WORLD_AUTONOMY_ENABLED=false');
@@ -54,7 +70,11 @@ export function startWorldAutonomousRoutines() {
     const step = ROUTINES[routinePos % ROUTINES.length];
     routinePos += 1;
     try {
+      if (await isAutonomySuppressedNow()) {
+        console.log('[World Autonomy] suppressed (manual/loop control active)');
+      } else {
       await publishRoutineStep(step);
+      }
     } catch (err) {
       console.warn(`[World Autonomy] publish failed: ${err.message}`);
     } finally {

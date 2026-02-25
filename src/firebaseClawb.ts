@@ -41,6 +41,20 @@ export interface ClawbWorldAction {
   [key: string]: unknown;
 }
 
+export interface ClawbWorldCommand {
+  id?: string;
+  type: 'action' | 'room' | 'look';
+  action?: string;
+  targetRoom?: string;
+  targetNftIndex?: number;
+  direction?: string;
+  loop?: boolean;
+  command?: string;
+  viewer: string;
+  source: string;
+  timestamp: number | object;
+}
+
 export interface WorldPlayerPresence {
   wallet: string;
   room: string;
@@ -149,24 +163,86 @@ export const listenToVisitorMessages = (
 
 // --- Clawb World Actions ---
 
-/** Queue a world action for Clawb to perform in /world. */
+const ROOM_ACTION_TO_TARGET: Record<string, string> = {
+  room_main: 'main',
+  room_bedroom: 'bedroom',
+  room_workshop: 'workshop',
+  room_vault: 'vault',
+  room_leaderboard: 'leaderboard',
+};
+
+const ACTION_DIRECTIONS = new Set([
+  'left',
+  'right',
+  'forward',
+  'back',
+  'swim_left',
+  'swim_right',
+  'swim_forward',
+  'swim_back',
+]);
+
+const normalizeActionToCommand = (
+  action: string,
+  by: string,
+  source: string,
+  extra: Record<string, unknown>
+): Omit<ClawbWorldCommand, 'timestamp'> => {
+  const normalizedAction = (action || '').toLowerCase().trim();
+  const command = typeof extra.command === 'string' ? extra.command : `!${normalizedAction}`;
+  const loop = extra.loop === true;
+
+  if (normalizedAction in ROOM_ACTION_TO_TARGET) {
+    return {
+      type: 'room',
+      targetRoom: ROOM_ACTION_TO_TARGET[normalizedAction],
+      command,
+      viewer: by,
+      source,
+    };
+  }
+
+  if (normalizedAction === 'look_nft') {
+    return {
+      type: 'look',
+      targetNftIndex: Number(extra.targetNftIndex) || 1,
+      command,
+      viewer: by,
+      source,
+    };
+  }
+
+  const direction = ACTION_DIRECTIONS.has(normalizedAction)
+    ? normalizedAction.replace('swim_', '')
+    : undefined;
+
+  return {
+    type: 'action',
+    action: normalizedAction,
+    ...(direction ? { direction } : {}),
+    ...(loop ? { loop: true } : {}),
+    command,
+    viewer: by,
+    source,
+  };
+};
+
+/** Queue a world command for Clawb to perform in /world. */
 export const enqueueWorldAction = async (
   action: string,
   by: string,
   source: string = 'world',
   extra: Record<string, unknown> = {}
 ): Promise<string> => {
-  const actionsRef = ref(database, 'clawb/world/actions');
-  const newActionRef = push(actionsRef);
-  const actionId = newActionRef.key!;
-  await set(newActionRef, {
-    action: (action || '').toLowerCase().trim(),
-    by,
-    source,
-    ...extra,
-    timestamp: serverTimestamp(),
+  const commandsRef = ref(database, 'clawb/world/commands');
+  const newCommandRef = push(commandsRef);
+  const commandId = newCommandRef.key!;
+  const payload = normalizeActionToCommand(action, by, source, extra);
+  await set(newCommandRef, {
+    ...payload,
+    timestamp: Date.now(),
   });
-  return actionId;
+  return commandId;
 };
 
 /** Listen to recent world actions so clients can animate Clawb consistently. */

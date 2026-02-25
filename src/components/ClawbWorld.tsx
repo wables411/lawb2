@@ -102,6 +102,7 @@ const CLAWB_SWIM_STEP_SPEED = 1.3;
 const CLAWB_COMMAND_ACCEL_DAMP = 10;
 const CLAWB_COMMAND_DECEL_DAMP = 7;
 const CLAWB_COMMAND_TURN_DAMP = 12;
+const CLAWB_HARD_STOP_THRESHOLD = 0.02;
 const STREAM_CAMERA_DEFAULT_DISTANCE = 3.2;
 const STREAM_CAMERA_MIN_DISTANCE = 0.45;
 const STREAM_CAMERA_MAX_DISTANCE = 18.0;
@@ -149,6 +150,19 @@ const ROOM_ACTION_TO_KEY: Record<string, keyof typeof ROOM_OFFSETS> = {
   room_leaderboard: 'leaderboard',
 };
 const LOOPABLE_ACTIONS = new Set(['idle', 'walk', 'dance', 'flip', 'die', 'swim', 'hi', 'wave', 'spin', 'jump']);
+const DIRECTIONAL_ACTIONS = new Set([
+  'left',
+  'right',
+  'forward',
+  'back',
+  'swim_left',
+  'swim_right',
+  'swim_forward',
+  'swim_back',
+  'walk',
+  'swim',
+  'look_swim',
+]);
 const PRESENCE_WRITE_INTERVAL_MS = 250;
 
 interface NFTItem {
@@ -228,6 +242,16 @@ const ClawbWorld: React.FC = () => {
   const processedActionIdsRef = useRef<Set<string>>(new Set());
   const worldActionRef = useRef<{ type: string; until: number }>({ type: 'patrol', until: 0 });
   const loopedActionRef = useRef<string | null>(null);
+  const movementSourceRef = useRef<'room_transition' | 'explicit_command' | 'looped_command' | 'patrol'>('patrol');
+  const lastAppliedActionRef = useRef<string>('patrol');
+  const movementDiagnosticsRef = useRef({
+    forcedVelocityResets: 0,
+    hardStops: 0,
+    malformedActionsDropped: 0,
+    staleActionsDropped: 0,
+    sourceSwitches: 0,
+    lastLogAt: 0,
+  });
   const lookTargetRef = useRef<{ until: number; focus: THREE.Vector3; camera: THREE.Vector3; clawbTarget: THREE.Vector3 } | null>(null);
   const streamCameraLookRef = useRef(new THREE.Vector3(0, FLOOR_Y + 0.75, 0));
   const streamCameraDistanceRef = useRef(STREAM_CAMERA_DEFAULT_DISTANCE);
@@ -402,6 +426,33 @@ const ClawbWorld: React.FC = () => {
     clawbActionTRef.current = 0;
   }, []);
 
+  const resetClawbCommandVelocity = useCallback((reason: string) => {
+    const v = clawbCommandVelocityRef.current;
+    if (Math.abs(v.x) > 0.0001 || Math.abs(v.z) > 0.0001) {
+      movementDiagnosticsRef.current.forcedVelocityResets += 1;
+      if (Date.now() - movementDiagnosticsRef.current.lastLogAt > 7000) {
+        movementDiagnosticsRef.current.lastLogAt = Date.now();
+        console.log(`[ClawbWorld] velocity reset (${reason})`, {
+          vx: Number(v.x.toFixed(3)),
+          vz: Number(v.z.toFixed(3)),
+        });
+      }
+    }
+    v.set(0, 0, 0);
+  }, []);
+
+  const setWorldAction = useCallback((nextType: string, until: number, reason: string) => {
+    const prevType = worldActionRef.current.type;
+    if (prevType !== nextType) {
+      const prevDirectional = DIRECTIONAL_ACTIONS.has(prevType);
+      const nextDirectional = DIRECTIONAL_ACTIONS.has(nextType);
+      if (prevDirectional && !nextDirectional) {
+        resetClawbCommandVelocity(`action-switch:${prevType}->${nextType}:${reason}`);
+      }
+    }
+    worldActionRef.current = { type: nextType, until };
+  }, [resetClawbCommandVelocity]);
+
   const tryInspectNftInFront = useCallback((): boolean => {
     const camera = cameraRef.current;
     const gallery = galleryGroupRef.current;
@@ -435,7 +486,7 @@ const ClawbWorld: React.FC = () => {
       lights.ambient.intensity = isNight ? 0.4 : 0.6;
       lights.directional.color.set(isNight ? '#88aacc' : '#ffffee');
       lights.directional.intensity = isNight ? 0.5 : 0.8;
-      worldActionRef.current = { type: 'patrol', until: 0 };
+      setWorldAction('patrol', 0, 'day-night-toggle');
       return;
     }
     const roomKey = ROOM_ACTION_TO_KEY[action];
@@ -458,10 +509,10 @@ const ClawbWorld: React.FC = () => {
       requestClawbModelRef.current('idle');
       if (loopRequested) {
         loopedActionRef.current = 'idle';
-        worldActionRef.current = { type: 'idle', until: Number.POSITIVE_INFINITY };
+        setWorldAction('idle', Number.POSITIVE_INFINITY, 'loop-idle');
       } else {
         loopedActionRef.current = null;
-        worldActionRef.current = { type: 'patrol', until: 0 };
+        setWorldAction('patrol', 0, 'idle-exit');
       }
       clawbActionTRef.current = 0;
       return;
@@ -470,10 +521,10 @@ const ClawbWorld: React.FC = () => {
       requestClawbModelRef.current('walk');
       if (loopRequested) {
         loopedActionRef.current = 'walk';
-        worldActionRef.current = { type: 'walk', until: Number.POSITIVE_INFINITY };
+        setWorldAction('walk', Number.POSITIVE_INFINITY, 'loop-walk');
       } else {
         loopedActionRef.current = null;
-        worldActionRef.current = { type: 'walk', until: Date.now() + DIRECTIONAL_ACTION_DURATION_MS };
+        setWorldAction('walk', Date.now() + DIRECTIONAL_ACTION_DURATION_MS, 'walk-command');
       }
       clawbActionTRef.current = 0;
       return;
@@ -498,7 +549,7 @@ const ClawbWorld: React.FC = () => {
             camera: target.camera.clone(),
             clawbTarget,
           };
-          worldActionRef.current = { type: 'look_swim', until: now + LOOK_FOCUS_DURATION_MS };
+          setWorldAction('look_swim', now + LOOK_FOCUS_DURATION_MS, 'look-nft');
           clawbActionTRef.current = 0;
           pendingLookNftIndexRef.current = null;
         } else {
@@ -524,7 +575,7 @@ const ClawbWorld: React.FC = () => {
     }
     if (loopRequested && LOOPABLE_ACTIONS.has(action)) {
       loopedActionRef.current = action;
-      worldActionRef.current = { type: action, until: Number.POSITIVE_INFINITY };
+      setWorldAction(action, Number.POSITIVE_INFINITY, 'loop-action');
     } else {
       loopedActionRef.current = null;
       const isDirectional =
@@ -536,13 +587,14 @@ const ClawbWorld: React.FC = () => {
         action === 'swim_right' ||
         action === 'swim_forward' ||
         action === 'swim_back';
-      worldActionRef.current = {
-        type: action,
-        until: Date.now() + (isDirectional ? DIRECTIONAL_ACTION_DURATION_MS : WORLD_ACTION_DURATION_MS),
-      };
+      setWorldAction(
+        action,
+        Date.now() + (isDirectional ? DIRECTIONAL_ACTION_DURATION_MS : WORLD_ACTION_DURATION_MS),
+        'timed-action'
+      );
     }
     clawbActionTRef.current = 0;
-  }, [queueRoomTransition]);
+  }, [queueRoomTransition, setWorldAction]);
 
   const applyBlueTint = useCallback((object: THREE.Group) => {
     object.traverse((child: THREE.Object3D) => {
@@ -705,8 +757,29 @@ const ClawbWorld: React.FC = () => {
 
     // Animate Clawb NPC (patrol + synchronized world actions)
     if (clawbRef.current && clawbMixerRef.current) {
+      const now = Date.now();
+      const explicitActive = now < worldActionRef.current.until && worldActionRef.current.type !== 'patrol';
+      const loopActive = Boolean(loopedActionRef.current);
+      const movementSource: 'room_transition' | 'explicit_command' | 'looped_command' | 'patrol' =
+        roomTransitionRef.current.active
+          ? 'room_transition'
+          : explicitActive
+            ? 'explicit_command'
+            : loopActive
+              ? 'looped_command'
+              : 'patrol';
+      if (movementSourceRef.current !== movementSource) {
+        movementDiagnosticsRef.current.sourceSwitches += 1;
+        movementSourceRef.current = movementSource;
+      }
       const activeAction =
-        loopedActionRef.current || (Date.now() < worldActionRef.current.until ? worldActionRef.current.type : 'patrol');
+        movementSource === 'room_transition'
+          ? 'swim'
+          : movementSource === 'explicit_command'
+            ? worldActionRef.current.type
+            : movementSource === 'looped_command'
+              ? (loopedActionRef.current as string)
+              : 'patrol';
       // Keep animation mixer running in stream mode so idle/walk clips don't lock into bind pose.
       clawbMixerRef.current.update(delta);
       clawbActionTRef.current += delta;
@@ -736,7 +809,6 @@ const ClawbWorld: React.FC = () => {
           clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.2);
           clawbRef.current.rotation.z = THREE.MathUtils.lerp(clawbRef.current.rotation.z, 0, 0.2);
         } else {
-        const now = Date.now();
         if (now >= clawbPatrolPauseUntilRef.current) {
           const target = getPatrolTarget(clawbPatrolPointIdxRef.current);
           const toTarget = new THREE.Vector3().subVectors(target, clawbPosRef.current);
@@ -847,6 +919,16 @@ const ClawbWorld: React.FC = () => {
           commandVelocity.z = THREE.MathUtils.damp(commandVelocity.z, 0, CLAWB_COMMAND_DECEL_DAMP, delta);
         }
 
+        if (
+          movementSource === 'patrol' &&
+          Math.abs(commandVelocity.x) + Math.abs(commandVelocity.z) < CLAWB_HARD_STOP_THRESHOLD
+        ) {
+          if (Math.abs(commandVelocity.x) > 0.0001 || Math.abs(commandVelocity.z) > 0.0001) {
+            movementDiagnosticsRef.current.hardStops += 1;
+          }
+          commandVelocity.set(0, 0, 0);
+        }
+
         if (Math.abs(commandVelocity.x) > 0.0001 || Math.abs(commandVelocity.z) > 0.0001) {
           clawbPosRef.current.x += commandVelocity.x * delta;
           clawbPosRef.current.z += commandVelocity.z * delta;
@@ -887,6 +969,26 @@ const ClawbWorld: React.FC = () => {
       const isSwimAction = typeof activeAction === 'string' && activeAction.startsWith('swim');
       if (isStreamMode && activeAction !== 'die' && !isSwimAction) {
         clawbRef.current.position.y = FLOOR_Y;
+      }
+
+      if (lastAppliedActionRef.current !== activeAction) {
+        const prev = lastAppliedActionRef.current;
+        if (DIRECTIONAL_ACTIONS.has(prev) && !DIRECTIONAL_ACTIONS.has(activeAction)) {
+          resetClawbCommandVelocity(`active-action-switch:${prev}->${activeAction}`);
+        }
+        lastAppliedActionRef.current = activeAction;
+      }
+
+      if (Date.now() - movementDiagnosticsRef.current.lastLogAt > 15000) {
+        movementDiagnosticsRef.current.lastLogAt = Date.now();
+        console.log('[ClawbWorld] motor diagnostics', {
+          source: movementSourceRef.current,
+          forcedVelocityResets: movementDiagnosticsRef.current.forcedVelocityResets,
+          hardStops: movementDiagnosticsRef.current.hardStops,
+          sourceSwitches: movementDiagnosticsRef.current.sourceSwitches,
+          malformedActionsDropped: movementDiagnosticsRef.current.malformedActionsDropped,
+          staleActionsDropped: movementDiagnosticsRef.current.staleActionsDropped,
+        });
       }
 
       // Proximity greeting
@@ -1010,7 +1112,7 @@ const ClawbWorld: React.FC = () => {
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
     frameIdRef.current = requestAnimationFrame(animate);
-  }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode]);
+  }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode, resetClawbCommandVelocity]);
 
   // Init scene
   useEffect(() => {
@@ -1894,11 +1996,30 @@ const ClawbWorld: React.FC = () => {
   useEffect(() => {
     let initialSnapshotHandled = false;
     const ACTION_FRESHNESS_MS = 8_000;
+    const ACTION_MAX_AGE_MS = 10 * 60_000;
     const unsub = listenToWorldActions((actions) => {
       if (!actions.length) return;
       const now = Date.now();
       for (const a of actions) {
         if (processedActionIdsRef.current.has(a.id)) continue;
+        if (!a || typeof a.action !== 'string' || !a.action.trim()) {
+          movementDiagnosticsRef.current.malformedActionsDropped += 1;
+          continue;
+        }
+        if (typeof a.timestamp !== 'number' || !Number.isFinite(a.timestamp)) {
+          movementDiagnosticsRef.current.malformedActionsDropped += 1;
+          continue;
+        }
+        if (typeof (a as any).expires_at === 'number' && Number.isFinite((a as any).expires_at)) {
+          if ((a as any).expires_at < now) {
+            movementDiagnosticsRef.current.staleActionsDropped += 1;
+            continue;
+          }
+        }
+        if (now - a.timestamp > ACTION_MAX_AGE_MS) {
+          movementDiagnosticsRef.current.staleActionsDropped += 1;
+          continue;
+        }
         processedActionIdsRef.current.add(a.id);
         if (!initialSnapshotHandled) {
           // On first snapshot, only process actions from the last few seconds
@@ -1927,10 +2048,18 @@ const ClawbWorld: React.FC = () => {
           const loopAction = parsedAction.replace(/^loop_/, '');
           await enqueueWorldAction(loopAction, address || 'anonymous', 'world', {
             loop: true,
-            command: `!loop ${loopAction}`,
+            command: msg,
+          });
+        } else if (parsedAction === 'look_nft') {
+          const lookMatch = /!look\s+(\d+)/i.exec(msg);
+          await enqueueWorldAction(parsedAction, address || 'anonymous', 'world', {
+            command: msg,
+            ...(lookMatch ? { targetNftIndex: Number(lookMatch[1]) } : {}),
           });
         } else {
-          await enqueueWorldAction(parsedAction, address || 'anonymous', 'world');
+          await enqueueWorldAction(parsedAction, address || 'anonymous', 'world', {
+            command: msg,
+          });
         }
       }
     } catch (err) {
