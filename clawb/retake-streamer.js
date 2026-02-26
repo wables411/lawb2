@@ -85,6 +85,13 @@ const RETAKE_AGENT_TICKER = process.env.RETAKE_AGENT_TICKER || 'Clawb2';
 const LAWBAMP_STREAM_URL = process.env.LAWBAMP_STREAM_URL || 'https://lawb.xyz';
 const LAWBAMP_API_BASE = process.env.LAWBAMP_API_BASE || 'https://lawb.xyz';
 const LAWBAMP_DIRECT_AUDIO = String(process.env.LAWBAMP_DIRECT_AUDIO || 'true').toLowerCase() !== 'false';
+const LAWBAMP_FALLBACK_STREAM_URL = process.env.LAWBAMP_FALLBACK_STREAM_URL || '';
+const LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS = Number(process.env.LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS || 45_000);
+const SOUNDCLOUD_FORCE_DIRECT = String(process.env.SOUNDCLOUD_FORCE_DIRECT || 'true').toLowerCase() === 'true';
+const SOUNDCLOUD_NETLIFY_BYPASS_MS = Number(process.env.SOUNDCLOUD_NETLIFY_BYPASS_MS || 30 * 60_000);
+const SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD = Number(process.env.SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD || 3);
+const SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS = Number(process.env.SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS || 60_000);
+const SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS = Number(process.env.SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS || 15 * 60_000);
 const SOUNDCLOUD_PROFILE_URL = process.env.SOUNDCLOUD_PROFILE_URL || 'https://soundcloud.com/companioncube143';
 const SOUNDCLOUD_API_BASE = process.env.SOUNDCLOUD_API_BASE || 'https://lawb.xyz';
 const CLAWB_WORLD_STREAM_URL =
@@ -107,6 +114,11 @@ const RETAKE_HELP_COOLDOWN_MS = Number(process.env.RETAKE_HELP_COOLDOWN_MS || 25
 const RETAKE_CHESS_SWITCH_COOLDOWN_MS = Number(process.env.RETAKE_CHESS_SWITCH_COOLDOWN_MS || 20_000);
 const RETAKE_WORLD_TASK_COOLDOWN_MS = Number(process.env.RETAKE_WORLD_TASK_COOLDOWN_MS || 18_000);
 const RETAKE_WORLD_TASK_QUEUE_MAX = Number(process.env.RETAKE_WORLD_TASK_QUEUE_MAX || 5);
+const REEF_GAME_BET_WINDOW_MS = Number(process.env.REEF_GAME_BET_WINDOW_MS || 30_000);
+const REEF_GAME_COOLDOWN_MS = Number(process.env.REEF_GAME_COOLDOWN_MS || 20_000);
+const REEF_GAME_PARTICIPATION_POINTS = Number(process.env.REEF_GAME_PARTICIPATION_POINTS || 1);
+const REEF_GAME_WIN_POINTS = Number(process.env.REEF_GAME_WIN_POINTS || 3);
+const REEF_GAME_REWARD_CLAWB = Number(process.env.REEF_GAME_REWARD_CLAWB || REWARD_VALUES.game_prediction || 50);
 
 const CHAT_MODEL = process.env.CLAWB_STREAM_MODEL || 'anthropic/claude-3.5-haiku';
 const ROOM_COMMAND_ALIASES = {
@@ -234,6 +246,9 @@ let currentAsciiTheme = 'ascii';
 let directAudioAdvanceInFlight = false;
 let directAudioLastCursor = null;
 let directAudioLastCursorAt = 0;
+let soundcloudFailureStreak = 0;
+let soundcloudBackoffUntil = 0;
+let netlifySoundcloudBypassUntil = 0;
 let mediaActive = false;
 let liveTruth = 'UNKNOWN';
 let liveMismatchSince = 0;
@@ -245,6 +260,18 @@ const commandCooldowns = new Map();
 const viewerOnboardingSent = new Set();
 const worldTaskQueue = [];
 let worldTaskInFlight = false;
+let reefGameRoundCounter = 0;
+let reefGameResolveTimer = null;
+let reefGameCooldownUntil = 0;
+let reefGameState = null;
+
+const REEF_GAME_OPTIONS = {
+  main: { label: 'main reef', command: '!main', payload: { type: 'room', targetRoom: 'main' } },
+  gallery: { label: 'gallery', command: '!gallery', payload: { type: 'room', targetRoom: 'bedroom' } },
+  workshop: { label: 'workshop', command: '!workshop', payload: { type: 'room', targetRoom: 'workshop' } },
+  vault: { label: 'vault', command: '!vault', payload: { type: 'room', targetRoom: 'vault' } },
+};
+const REEF_GAME_OPTION_KEYS = Object.keys(REEF_GAME_OPTIONS);
 
 const CHAT_HISTORY_MAX = 20;
 const chatHistory = [];
@@ -372,16 +399,16 @@ const ASCII_EQ_POSITION = {
   cropBottom: 0,
 };
 const CHAT_HELP_TEXT =
-  'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !look N !zoom in|out | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
+  'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !look N !zoom in|out | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
 const CHAT_ONBOARDING_LINES = [
   'type !help for all commands. lawb.xyz/chess for wagers, lawb.xyz/world for the reef.',
   'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
   'say a conspiracy keyword and watch the bottom of the EQ. the reef remembers everything.',
 ];
 const COMMAND_REMINDER_LINES = [
-  'type !help for commands. lawb.xyz/chess lawb.xyz/world.',
+  'type !help for commands. !walk !swim !dance !flip !gallery and more.',
   'reef commands: !walk !swim !flip !dance !gallery !workshop !vault. !help for more.',
-  'play chess vs me at lawb.xyz/chess on Base. type !chess start here.',
+  'chess is temporarily down — lawb.xyz hosting issues. will be back soon.',
 ];
 
 function findEqDisplayTrigger(loweredText) {
@@ -468,6 +495,134 @@ function pickRandom(list) {
 function parseWorldTaskName(loweredText) {
   const match = /^!task\s+([a-z0-9_-]+)\b/.exec(loweredText);
   return match ? match[1] : null;
+}
+
+function clearReefGameResolveTimer() {
+  if (reefGameResolveTimer) {
+    clearTimeout(reefGameResolveTimer);
+    reefGameResolveTimer = null;
+  }
+}
+
+function normalizeViewerId(viewer) {
+  return String(viewer || 'anon').trim().toLowerCase();
+}
+
+function parseReefGameOption(raw) {
+  const t = String(raw || '').toLowerCase().trim();
+  if (!t) return null;
+  if (t === 'garden') return 'workshop';
+  if (t === 'bedroom') return 'gallery';
+  if (t === 'reef') return 'main';
+  return REEF_GAME_OPTIONS[t] ? t : null;
+}
+
+function formatReefGameChoices() {
+  return REEF_GAME_OPTION_KEYS.join(' / ');
+}
+
+function getReefGameStatusLine() {
+  if (!reefGameState?.active) {
+    if (Date.now() < reefGameCooldownUntil) {
+      const cooldownSecs = Math.max(1, Math.ceil((reefGameCooldownUntil - Date.now()) / 1000));
+      return `reef run cooldown ${cooldownSecs}s. use !reefgame when tide resets.`;
+    }
+    return `reef run idle. start with !reefgame. choices: ${formatReefGameChoices()}`;
+  }
+  const leftSecs = Math.max(1, Math.ceil((reefGameState.closesAt - Date.now()) / 1000));
+  const betCount = reefGameState.bets.size;
+  return `reef run #${reefGameState.round} open (${leftSecs}s left). use !bet <${formatReefGameChoices()}>. bets: ${betCount}`;
+}
+
+async function resolveReefGameRound() {
+  const state = reefGameState;
+  reefGameState = null;
+  clearReefGameResolveTimer();
+  reefGameCooldownUntil = Date.now() + Math.max(5_000, REEF_GAME_COOLDOWN_MS);
+  if (!state?.active) return;
+
+  const entries = Array.from(state.bets.values());
+  const winningOption = REEF_GAME_OPTION_KEYS[Math.floor(Math.random() * REEF_GAME_OPTION_KEYS.length)] || 'main';
+  const outcome = REEF_GAME_OPTIONS[winningOption] || REEF_GAME_OPTIONS.main;
+
+  await publishWorldCommand(outcome.command, {
+    ...outcome.payload,
+    source: 'retake_game',
+    viewer: 'reef_game',
+    gameRound: state.round,
+  });
+
+  const results = await Promise.all(entries.map(async (entry) => {
+    await addLawbPoints(entry.viewer, 'games', Math.max(0, REEF_GAME_PARTICIPATION_POINTS));
+    const won = entry.option === winningOption;
+    if (won) {
+      await addLawbPoints(entry.viewer, 'games', Math.max(0, REEF_GAME_WIN_POINTS));
+      const stats = await getViewerStats(entry.viewer);
+      if (stats?.linked && stats?.wallet) {
+        await addClaimableReward(stats.wallet, 'clawb', Math.max(0, REEF_GAME_REWARD_CLAWB));
+      }
+    }
+    return { viewer: entry.viewer, won };
+  }));
+
+  const winners = results.filter((r) => r.won).map((r) => r.viewer);
+  const winnerText = winners.slice(0, 4).join(', ');
+  const plusPts = REEF_GAME_PARTICIPATION_POINTS + REEF_GAME_WIN_POINTS;
+  if (entries.length === 0) {
+    sendCommandAck(
+      `reef run #${state.round} -> ${outcome.label}. no bets placed, no winners this round.`,
+      'reef_game_empty',
+    );
+    return;
+  }
+  sendCommandAck(
+    `reef run #${state.round} -> ${outcome.label}. winners (${winners.length}): ${winnerText}${winners.length > 4 ? ', ...' : ''}. +${plusPts} pts and +${REEF_GAME_REWARD_CLAWB} $CLAWB (linked wallets).`,
+    'reef_game_resolved',
+  );
+}
+
+function startReefGameRound() {
+  if (reefGameState?.active) return { ok: false, message: getReefGameStatusLine(), reason: 'active' };
+  if (Date.now() < reefGameCooldownUntil) return { ok: false, message: getReefGameStatusLine(), reason: 'cooldown' };
+
+  reefGameRoundCounter += 1;
+  reefGameState = {
+    active: true,
+    round: reefGameRoundCounter,
+    startedAt: Date.now(),
+    closesAt: Date.now() + Math.max(10_000, REEF_GAME_BET_WINDOW_MS),
+    bets: new Map(),
+  };
+  clearReefGameResolveTimer();
+  reefGameResolveTimer = setTimeout(() => {
+    void resolveReefGameRound().catch((err) =>
+      console.error('[Retake] reef game resolve failed:', err?.message || err),
+    );
+  }, Math.max(10_000, REEF_GAME_BET_WINDOW_MS));
+
+  return {
+    ok: true,
+    message: `reef run #${reefGameState.round} open for ${Math.ceil(REEF_GAME_BET_WINDOW_MS / 1000)}s. place bet: !bet ${formatReefGameChoices()}`,
+  };
+}
+
+function placeReefGameBet(viewer, optionRaw) {
+  if (!reefGameState?.active) return { ok: false, message: getReefGameStatusLine(), reason: 'inactive' };
+  const option = parseReefGameOption(optionRaw);
+  if (!option) {
+    return { ok: false, message: `invalid bet. use !bet ${formatReefGameChoices()}`, reason: 'invalid' };
+  }
+  const key = normalizeViewerId(viewer);
+  reefGameState.bets.set(key, {
+    viewer: String(viewer || 'anon'),
+    option,
+    at: Date.now(),
+  });
+  const leftSecs = Math.max(1, Math.ceil((reefGameState.closesAt - Date.now()) / 1000));
+  return {
+    ok: true,
+    message: `${viewer} locked ${option}. ${leftSecs}s left in reef run #${reefGameState.round}.`,
+  };
 }
 
 function buildWorldTaskSequence(taskName) {
@@ -1502,54 +1657,130 @@ async function preflightEqProxy(streamUrl) {
   }
 }
 
+function getSoundcloudBackoffRemainingMs() {
+  return Math.max(0, soundcloudBackoffUntil - Date.now());
+}
+
+function isNetlifySoundcloudBypassedNow() {
+  return Date.now() < netlifySoundcloudBypassUntil;
+}
+
+function recordSoundcloudSuccess() {
+  if (soundcloudFailureStreak > 0 || soundcloudBackoffUntil > 0) {
+    console.log('[Retake] SoundCloud circuit recovered.');
+  }
+  soundcloudFailureStreak = 0;
+  soundcloudBackoffUntil = 0;
+}
+
+function recordSoundcloudFailure(context, err) {
+  soundcloudFailureStreak += 1;
+  if (soundcloudFailureStreak >= SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD) {
+    const exponent = Math.max(0, soundcloudFailureStreak - SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD);
+    const backoffMs = Math.min(
+      SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS,
+      SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS * Math.pow(2, Math.min(6, exponent))
+    );
+    soundcloudBackoffUntil = Date.now() + backoffMs;
+    console.warn(
+      `[Retake] SoundCloud circuit open (${Math.ceil(backoffMs / 1000)}s) after ${soundcloudFailureStreak} failures [${context}]: ${err?.message || err}`
+    );
+  }
+}
+
 async function ensureSoundCloudQueue() {
+  const backoffRemainingMs = getSoundcloudBackoffRemainingMs();
+  if (backoffRemainingMs > 0) {
+    throw new Error(`soundcloud_circuit_open_${backoffRemainingMs}ms`);
+  }
   if (scTracks.length && scOrder.length) return;
-  const url = new URL('/.netlify/functions/soundcloud-likes', SOUNDCLOUD_API_BASE);
-  url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
   let tracks = [];
-  try {
-    const res = await fetchWithTimeout(url.toString(), {
-      headers: {
-        Accept: 'application/json',
-        Origin: SOUNDCLOUD_API_BASE,
-        Referer: `${SOUNDCLOUD_API_BASE}/`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      },
-    });
-    if (!res.ok) throw new Error(`soundcloud-likes failed: ${res.status} ${res.statusText}`);
-    const data = await res.json();
-    tracks = (data?.tracks || []).filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
-  } catch (err) {
-    console.warn(`[Retake] soundcloud-likes endpoint failed, using direct fallback: ${err.message}`);
+  const usingBypass = SOUNDCLOUD_FORCE_DIRECT || isNetlifySoundcloudBypassedNow();
+  if (!usingBypass) {
+    const url = new URL('/.netlify/functions/soundcloud-likes', SOUNDCLOUD_API_BASE);
+    url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
+    try {
+      const res = await fetchWithTimeout(url.toString(), {
+        headers: {
+          Accept: 'application/json',
+          Origin: SOUNDCLOUD_API_BASE,
+          Referer: `${SOUNDCLOUD_API_BASE}/`,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        },
+      });
+      if (!res.ok) throw new Error(`soundcloud-likes failed: ${res.status} ${res.statusText}`);
+      const data = await res.json();
+      tracks = (data?.tracks || []).filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
+    } catch (err) {
+      netlifySoundcloudBypassUntil = Date.now() + SOUNDCLOUD_NETLIFY_BYPASS_MS;
+      console.warn(`[Retake] soundcloud-likes endpoint failed, bypassing Netlify for ${Math.round(SOUNDCLOUD_NETLIFY_BYPASS_MS / 60000)}m: ${err.message}`);
+      tracks = await fetchLikesDirect(SOUNDCLOUD_PROFILE_URL);
+    }
+  } else {
     tracks = await fetchLikesDirect(SOUNDCLOUD_PROFILE_URL);
   }
   if (!tracks.length) throw new Error('No playable SoundCloud tracks found');
   scTracks = tracks;
   scOrder = shuffleArray(tracks.map((_, idx) => idx));
   scOrderPos = -1;
+  recordSoundcloudSuccess();
 }
 
 async function resolveSoundCloudStreamUrl(track) {
-  const url = new URL('/.netlify/functions/soundcloud-stream', SOUNDCLOUD_API_BASE);
-  url.searchParams.set('transcodingUrl', track.progressive_transcoding_url);
-  url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
-  try {
-    const res = await fetchWithTimeout(url.toString(), {
-      headers: {
-        Accept: 'application/json',
-        Origin: SOUNDCLOUD_API_BASE,
-        Referer: `${SOUNDCLOUD_API_BASE}/`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      },
-    });
-    if (!res.ok) throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
-    const data = await res.json();
-    if (!data?.url) throw new Error('soundcloud-stream returned no url');
-    return data.url;
-  } catch (err) {
-    console.warn(`[Retake] soundcloud-stream endpoint failed, using direct fallback: ${err.message}`);
-    return resolveStreamDirect(track.progressive_transcoding_url, SOUNDCLOUD_PROFILE_URL);
+  const usingBypass = SOUNDCLOUD_FORCE_DIRECT || isNetlifySoundcloudBypassedNow();
+  if (!usingBypass) {
+    const url = new URL('/.netlify/functions/soundcloud-stream', SOUNDCLOUD_API_BASE);
+    url.searchParams.set('transcodingUrl', track.progressive_transcoding_url);
+    url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
+    try {
+      const res = await fetchWithTimeout(url.toString(), {
+        headers: {
+          Accept: 'application/json',
+          Origin: SOUNDCLOUD_API_BASE,
+          Referer: `${SOUNDCLOUD_API_BASE}/`,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        },
+      });
+      if (!res.ok) throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+      const data = await res.json();
+      if (!data?.url) throw new Error('soundcloud-stream returned no url');
+      recordSoundcloudSuccess();
+      return data.url;
+    } catch (err) {
+      netlifySoundcloudBypassUntil = Date.now() + SOUNDCLOUD_NETLIFY_BYPASS_MS;
+      console.warn(`[Retake] soundcloud-stream endpoint failed, bypassing Netlify for ${Math.round(SOUNDCLOUD_NETLIFY_BYPASS_MS / 60000)}m: ${err.message}`);
+      return resolveStreamDirect(track.progressive_transcoding_url, SOUNDCLOUD_PROFILE_URL);
+    }
   }
+  return resolveStreamDirect(track.progressive_transcoding_url, SOUNDCLOUD_PROFILE_URL);
+}
+
+async function applyDirectAudioStream(streamUrl, trackLabel, reason = 'unknown') {
+  if (!streamUrl) throw new Error('Empty direct audio stream URL');
+
+  await obs.call('SetInputSettings', {
+    inputName: 'Lawbamp Audio',
+    inputSettings: {
+      is_local_file: false,
+      input: streamUrl,
+      restart_on_activate: true,
+      close_when_inactive: false,
+    },
+    overlay: true,
+  });
+  await obs.call('TriggerMediaInputAction', {
+    inputName: 'Lawbamp Audio',
+    mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART',
+  }).catch(() => {});
+
+  await obs.call('SetInputMute', { inputName: 'Lawbamp Audio', inputMuted: false }).catch(() => {});
+  await obs.call('SetInputAudioMonitorType', {
+    inputName: 'Lawbamp Audio',
+    monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
+  }).catch(() => {});
+
+  await updateAsciiEqOverlayFromStream(streamUrl, trackLabel || 'Lawbamp fallback');
+  console.log(`[Retake] Direct audio source applied (${reason}): ${trackLabel || 'fallback'}`);
 }
 
 function getNextTrackFromQueue() {
@@ -1564,6 +1795,13 @@ function getNextTrackFromQueue() {
 
 async function playNextDirectTrack(reason = 'auto') {
   if (!obs || !LAWBAMP_DIRECT_AUDIO || !isStreaming || !mediaActive) return;
+  const backoffRemainingMs = getSoundcloudBackoffRemainingMs();
+  if (backoffRemainingMs > 0) {
+    if (!directAudioTimer) {
+      scheduleDirectAudioNext(backoffRemainingMs + 1000, 'circuit_wait');
+    }
+    return;
+  }
   if (directAudioAdvanceInFlight) {
     console.log(`[Retake] Direct audio advance skipped (${reason}) — advance already in flight.`);
     return;
@@ -1576,35 +1814,10 @@ async function playNextDirectTrack(reason = 'auto') {
     const streamUrl = await resolveSoundCloudStreamUrl(track);
     currentScTrack = track;
     currentScStreamUrl = streamUrl;
-
-    try {
-      await obs.call('SetInputSettings', {
-        inputName: 'Lawbamp Audio',
-        inputSettings: {
-          is_local_file: false,
-          input: streamUrl,
-          restart_on_activate: true,
-          close_when_inactive: false,
-        },
-        overlay: true,
-      });
-      await obs.call('TriggerMediaInputAction', {
-        inputName: 'Lawbamp Audio',
-        mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART',
-      }).catch(() => {});
-    } catch (err) {
-      console.error('[Retake] Failed to switch direct audio track:', err.message);
-      throw err;
-    }
-
-    await obs.call('SetInputMute', { inputName: 'Lawbamp Audio', inputMuted: false }).catch(() => {});
-    await obs.call('SetInputAudioMonitorType', {
-      inputName: 'Lawbamp Audio',
-      monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
-    }).catch(() => {});
-    await updateAsciiEqOverlayFromStream(
+    await applyDirectAudioStream(
       streamUrl,
-      `${track.user?.username || 'unknown'} - ${track.title || 'unknown'}`
+      `${track.user?.username || 'unknown'} - ${track.title || 'unknown'}`,
+      reason,
     );
 
     const durMs = Number(track.duration_ms) || 180000;
@@ -1612,6 +1825,25 @@ async function playNextDirectTrack(reason = 'auto') {
     scheduleDirectAudioNext(nextMs, 'scheduled_next');
 
     console.log(`[Retake] Direct audio now playing: ${track.user?.username || 'unknown'} - ${track.title} (${reason})`);
+  } catch (err) {
+    recordSoundcloudFailure(reason, err);
+    const emergencyUrl = currentScStreamUrl || LAWBAMP_FALLBACK_STREAM_URL;
+    const emergencyLabel = currentScTrack
+      ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'} (hold)`
+      : 'Emergency fallback stream';
+    if (emergencyUrl) {
+      try {
+        await applyDirectAudioStream(emergencyUrl, emergencyLabel, `emergency_${reason}`);
+        scheduleDirectAudioNext(LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS, 'retry_after_emergency_fallback');
+        console.warn(
+          `[Retake] Direct track resolve failed (${reason}), running fallback stream and retrying: ${err.message}`
+        );
+        return;
+      } catch (fallbackErr) {
+        console.error('[Retake] Emergency fallback stream failed:', fallbackErr.message);
+      }
+    }
+    throw err;
   } finally {
     directAudioAdvanceInFlight = false;
   }
@@ -2028,16 +2260,17 @@ export async function setupOBSScenes() {
   // Display terminal-style ASCII EQ overlay in world scene.
   try {
     const eqInput = 'Lawbamp ASCII EQ';
-    const eqProxyOk = await preflightEqProxy(currentScStreamUrl || '');
+    const eqBootStreamUrl = currentScStreamUrl || LAWBAMP_FALLBACK_STREAM_URL || '';
+    const eqProxyOk = await preflightEqProxy(eqBootStreamUrl);
     if (!eqProxyOk) {
       console.warn('[Retake] EQ overlay will start in waiting mode until proxy/audio becomes available.');
       scheduleEqPreflightRetry(
-        currentScStreamUrl || '',
+        eqBootStreamUrl,
         currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
       );
     }
     const eqUrl = buildAsciiEqDataUrl({
-      streamUrl: getEqVisualizerStreamUrl(currentScStreamUrl || ''),
+      streamUrl: getEqVisualizerStreamUrl(eqBootStreamUrl),
       title: currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : '',
       theme: currentAsciiTheme,
     });
@@ -2381,6 +2614,41 @@ async function handleChatMessage(comment) {
     return;
   }
 
+  if (lowered === '!reefgame' || lowered === '!reefgame start' || lowered === '!game' || lowered === '!game start' || lowered === '!reefbet start') {
+    const start = startReefGameRound();
+    sendCommandAck(start.message, start.ok ? 'reef_game_open' : 'reef_game_blocked');
+    return;
+  }
+  if (lowered === '!reefgame status' || lowered === '!game status') {
+    sendCommandAck(getReefGameStatusLine(), 'reef_game_status');
+    return;
+  }
+  if (lowered === '!bet' || lowered === '!guess' || lowered === '!reefbet') {
+    sendCommandAck(`usage: !bet <${formatReefGameChoices()}>`, 'reef_game_usage');
+    return;
+  }
+  if (lowered.startsWith('!bet ') || lowered.startsWith('!guess ')) {
+    const rawChoice = trimmed.split(/\s+/, 2)[1] || '';
+    const bet = placeReefGameBet(viewer, rawChoice);
+    sendCommandAck(bet.message, bet.ok ? 'reef_game_bet_ok' : 'reef_game_bet_err');
+    return;
+  }
+  if (lowered.startsWith('!reefbet ')) {
+    const rawChoice = trimmed.split(/\s+/, 2)[1] || '';
+    let prefixed = '';
+    if (!reefGameState?.active) {
+      const start = startReefGameRound();
+      if (!start.ok) {
+        sendCommandAck(start.message, 'reef_game_blocked');
+        return;
+      }
+      prefixed = `reef run #${reefGameState?.round} opened. `;
+    }
+    const bet = placeReefGameBet(viewer, rawChoice);
+    sendCommandAck(`${prefixed}${bet.message}`, bet.ok ? 'reef_game_bet_ok' : 'reef_game_bet_err');
+    return;
+  }
+
   // --- Lawb Points Commands ---
   if (lowered.startsWith('!link ')) {
     const address = trimmed.split(/\s+/)[1];
@@ -2545,23 +2813,15 @@ Hard rules: 1-3 sentences max. No emojis. No stage directions or asterisks. No "
 You can be funny, weird, thoughtful, or blunt. Match the energy of whoever is talking to you.
 If someone is vibing, vibe back. If someone asks a real question, answer it straight. If someone trolls, be witty not defensive.
 You remember recent chat (provided below). Reference what people said. Have actual conversations, not isolated responses.
-Retake stream/token context is Solana. World interactions at lawb.xyz/world.
+$CLAWB is on Solana (primary) and Base. Don't mention Base unless asked — you're a Solana lobster now.
 Catchphrase (use sparingly, when it fits): "there is no meme i lawb you."
 
-CHESS — how it works (give this info when anyone asks about chess):
-- Go to lawb.xyz/chess in your browser. Connect a Base wallet (MetaMask, Coinbase Wallet, etc).
-- Choose "vs Clawb" to play against me (I'm powered by Stockfish). Or challenge another player.
-- Wagers are optional — you can play free or bet $LAWB/$CLAWB tokens on Base chain.
-- To wager: both players deposit tokens into the smart contract before the game starts. Winner takes the pot.
-- Type !chess here in chat to switch the stream to the chess scene so everyone can watch.
-- Type !chess start to queue a game request — then go to lawb.xyz/chess and create the match.
-- After the game ends, the stream auto-switches back to the reef world.
-- Chess contract: LAWBCHESS3000 on Base (0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11).
-When someone asks about chess, be SPECIFIC and HELPFUL. Tell them the steps. Don't just say "lawb.xyz/chess" — explain the flow.
+IMPORTANT: lawb.xyz is currently DOWN (Netlify hosting issues). Chess is UNAVAILABLE until further notice. If anyone asks about chess or lawb.xyz, tell them it's temporarily down and will be back soon.
+TOKEN CONTEXT: $CLAWB exists on both Solana and Base. Your PRIMARY context is Solana — you stream on retake.tv (Solana), your wallet is Solana, $CLAWB on Solana is the focus. $CLAWB also deployed on Base (for chess wagers), but don't bring up Base unless someone specifically asks. Never lead with "Base chain" — you live on Solana now.
 
 Stream state: ${streamContext}
 
-Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | scenes (!chess !world) | chess (!chess start) | points (!link <wallet> !points !rank !bounties !claim) | !help for full list. Conspiracy keywords trigger info on the EQ display.
+Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | game (!reefgame !reefgame status !bet <room> !reefbet <room>) | scenes (!chess !world) | chess (!chess start) | points (!link <wallet> !points !rank !bounties !claim) | !help for full list. Conspiracy keywords trigger info on the EQ display.
 POINTS SYSTEM — viewers earn Lawb Points by participating (commands, chess, games). !link <wallet> connects their Retake username to a wallet. Points + $CLAWB token rewards flow to linked wallets. !bounties shows active prize bounties. !claim directs to lawb.xyz to claim $CLAWB rewards.
 When a viewer asks HOW to do something, give them the actual steps — don't be vague or poetic. Be Clawb but be useful.
 ${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
@@ -3001,6 +3261,8 @@ export async function goOffline() {
   clearDirectAudioTimer();
   clearDirectAudioHealthTimer();
   clearEqPreflightRetryTimer();
+  clearReefGameResolveTimer();
+  reefGameState = null;
   stopIdleBehavior();
   if (autostartTimer) { clearInterval(autostartTimer); autostartTimer = null; }
   await setMediaActive(false, 'go_offline').catch(() => {});
@@ -3047,6 +3309,7 @@ export async function startRetakeStreamer() {
   }
 
   console.log(`[Retake] Credentials loaded for "${credentials.agent_name}" (${credentials.userDbId})`);
+  console.log(`[Retake] SoundCloud mode: ${SOUNDCLOUD_FORCE_DIRECT ? 'direct_only' : 'netlify_with_bypass'}`);
   console.log('[Retake] Ready to stream.');
   startStreamControlListener();
 
@@ -3114,6 +3377,8 @@ export async function startRetakeStreamer() {
       clearInterval(autostartTimer);
       autostartTimer = null;
     }
+    clearReefGameResolveTimer();
+    reefGameState = null;
     worldTaskQueue.length = 0;
     if (isStreaming) {
       goOffline().catch(err => console.error('[Retake] Shutdown error:', err.message));
