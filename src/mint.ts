@@ -563,14 +563,15 @@ export async function getOpenSeaSingleNFT(chain: string, contractAddress: string
 
 // Function to fetch Solana NFTs using Helius DAS API
 export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: number = 50): Promise<NFTResponse> {
-  const MAGIC_EDEN_API_URL = 'https://api-mainnet.magiceden.dev/v2';
-
   try {
     console.log('Using Magic Eden API for Solana collection:', collectionSlug);
 
-    const response = await fetch(
-      `${MAGIC_EDEN_API_URL}/collections/${encodeURIComponent(collectionSlug)}/listings?offset=0&limit=${Math.max(1, Math.min(100, pageSize))}`
-    );
+    const proxyUrl =
+      `/.netlify/functions/magiceden-nft?mode=collection` +
+      `&collectionSlug=${encodeURIComponent(collectionSlug)}` +
+      `&offset=0` +
+      `&limit=${Math.max(1, Math.min(100, pageSize))}`;
+    const response = await fetch(proxyUrl);
 
     if (!response.ok) {
       console.log('Magic Eden API response status:', response.status);
@@ -632,14 +633,15 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
 
 // Function to fetch Solana NFTs by owner using Helius DAS API
 export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize: number = 50): Promise<NFTResponse> {
-  const MAGIC_EDEN_API_URL = 'https://api-mainnet.magiceden.dev/v2';
-
   try {
     console.log('Using Magic Eden API for Solana owner:', ownerAddress);
 
-    const response = await fetch(
-      `${MAGIC_EDEN_API_URL}/wallets/${encodeURIComponent(ownerAddress)}/tokens?offset=0&limit=${Math.max(1, Math.min(100, pageSize))}`
-    );
+    const proxyUrl =
+      `/.netlify/functions/magiceden-nft?mode=owner` +
+      `&owner=${encodeURIComponent(ownerAddress)}` +
+      `&offset=0` +
+      `&limit=${Math.max(1, Math.min(100, pageSize))}`;
+    const response = await fetch(proxyUrl);
 
     if (!response.ok) {
       console.log('Magic Eden API response status:', response.status);
