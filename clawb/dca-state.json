@@ -1,0 +1,60 @@
+{
+  "active": {
+    "id": "dca_clawb_1772232958718",
+    "inputToken": "SOL",
+    "outputToken": "CLAWB",
+    "totalAmount": 0.5,
+    "perSwapAmount": 0.027778,
+    "splits": 18,
+    "intervalMs": 300000,
+    "completedSwaps": 1,
+    "failedSwaps": 0,
+    "totalAcquired": "820278.247591",
+    "totalSpent": 0.027778,
+    "status": "running",
+    "startedAt": "2026-02-27T22:55:58.718Z",
+    "nextSwapAt": "2026-02-27T23:01:03.424Z",
+    "txHistory": [
+      "2iW5SKHtjknUgKrkw1yf4aXK2Cx7JqwGGLMqQjxpdkHyegmg3i9fiWTaErkYTmbmEDL59rFgFP2vjbbxCfrdmVBM"
+    ],
+    "pauseReason": null
+  },
+  "history": [
+    {
+      "id": "dca_lawb_1772232033266",
+      "inputToken": "SOL",
+      "outputToken": "LAWB",
+      "totalAmount": 0.25,
+      "perSwapAmount": 0.013889,
+      "splits": 18,
+      "intervalMs": 600000,
+      "completedSwaps": 0,
+      "failedSwaps": 1,
+      "totalAcquired": "0",
+      "totalSpent": 0,
+      "status": "cancelled",
+      "startedAt": "2026-02-27T22:40:33.266Z",
+      "nextSwapAt": "2026-02-27T22:40:33.266Z",
+      "txHistory": [],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_lawb_1772232085145",
+      "inputToken": "SOL",
+      "outputToken": "LAWB",
+      "totalAmount": 0.25,
+      "perSwapAmount": 0.013889,
+      "splits": 18,
+      "intervalMs": 600000,
+      "completedSwaps": 0,
+      "failedSwaps": 1,
+      "totalAcquired": "0",
+      "totalSpent": 0,
+      "status": "cancelled",
+      "startedAt": "2026-02-27T22:41:25.145Z",
+      "nextSwapAt": "2026-02-27T22:41:25.146Z",
+      "txHistory": [],
+      "pauseReason": null
+    }
+  ]
+}

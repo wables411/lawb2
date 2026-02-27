@@ -891,9 +891,11 @@ const ClawbWorld: React.FC = () => {
         let desiredDirection: THREE.Vector3 | null = null;
         let desiredSpeed = 0;
         let swimMode = false;
+        let forceSwimVisual = roomTransitionRef.current.active;
         const commandVelocity = clawbCommandVelocityRef.current;
         if (activeAction === 'look_swim') {
-          requestClawbModelRef.current('walk');
+          requestClawbModelRef.current('swim');
+          forceSwimVisual = true;
           const lookTarget = lookTargetRef.current;
           if (lookTarget) {
             const desired = lookTarget.clawbTarget;
@@ -952,6 +954,17 @@ const ClawbWorld: React.FC = () => {
           commandVelocity.z = THREE.MathUtils.damp(commandVelocity.z, 0, CLAWB_COMMAND_DECEL_DAMP, delta);
         }
 
+        // If movement speed is high, force swim animation so we never get standing/glide visuals.
+        const horizontalSpeed = Math.hypot(commandVelocity.x, commandVelocity.z);
+        const fastTraveling = horizontalSpeed > CLAWB_STEP_SPEED * 0.9;
+        if (fastTraveling) {
+          forceSwimVisual = true;
+        }
+        if (swimMode || forceSwimVisual) {
+          requestClawbModelRef.current('swim');
+          swimMode = true;
+        }
+
         if (
           movementSource === 'patrol' &&
           Math.abs(commandVelocity.x) + Math.abs(commandVelocity.z) < CLAWB_HARD_STOP_THRESHOLD
@@ -1000,7 +1013,7 @@ const ClawbWorld: React.FC = () => {
       }
 
       const isSwimAction = typeof activeAction === 'string' && activeAction.startsWith('swim');
-      if (isStreamMode && activeAction !== 'die' && !isSwimAction) {
+      if (isStreamMode && activeAction !== 'die' && !isSwimAction && !roomTransitionRef.current.active) {
         clawbRef.current.position.y = FLOOR_Y;
       }
 

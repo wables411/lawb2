@@ -2868,7 +2868,12 @@ ${walletSnapshotText}` : ''}
 Stream state: ${streamContext}
 
 Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | game (!reefgame !reefgame status !bet <room> !reefbet <room>) | scenes (!chess !world) | chess (!chess start) | points (!link <wallet> !points !rank !bounties !claim) | !help for full list. Conspiracy keywords trigger info on the EQ display.
-POINTS SYSTEM — viewers earn Lawb Points by participating (commands, chess, games). !link <wallet> connects their Retake username to a wallet. Points + $CLAWB token rewards flow to linked wallets. !bounties shows active prize bounties. !claim directs to lawb.xyz to claim $CLAWB rewards.
+POINTS SYSTEM — When a viewer asks how to earn points, link their wallet, or check the leaderboard, give them these SPECIFIC details:
+HOW TO LINK: type !link <your_wallet_address> in chat. Accepts EVM (0x...) or Solana addresses. This connects your Retake username to your wallet so points and $CLAWB rewards flow to you. You only need to link once.
+HOW TO EARN POINTS: 1) Use any ! command in chat → 1 pt (10-min cooldown). 2) Win a chess game on lawb.xyz/chess → 3 pts. Draw → 1 pt. Beat Clawb → 5 pts. 3) Play !reefgame → 1 pt for participating, +3 pts if you win. 4) Just hanging out → passive points over time.
+HOW TO CHECK: !points shows your total + breakdown. !rank shows your leaderboard position. !bounties shows active prize bounties with rewards. !claim directs to lawb.xyz to claim $CLAWB token rewards.
+$CLAWB REWARDS: Linked wallets also earn $CLAWB tokens — 50 $CLAWB per chess win, 200 for beating Clawb, 50 per game prediction win, 10 per hour watching. Top 3 weekly ranks get 1000/500/250 $CLAWB bonus.
+LEADERBOARD: viewable on lawb.xyz. Your rank depends on total points. Bounties reward milestone point totals with big $CLAWB prizes.
 ACTIVE BOUNTIES — know these and mention them when relevant:
 • Century Club: first player to 100 pts → 5,000 $CLAWB (Base)
 • Reef Legend: first player to 1,000 pts → 25,000 $CLAWB (Base)
