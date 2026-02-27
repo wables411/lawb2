@@ -890,3 +890,41 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
   return inventory;
 }
 
+export interface WalletDescriptor {
+  address: string;
+  chain: 'evm' | 'solana';
+}
+
+export async function fetchAggregatedNFTInventory(
+  wallets: WalletDescriptor[],
+): Promise<NFTInventory> {
+  const merged: NFTInventory = {
+    lawbsters: [],
+    lawbstarz: [],
+    halloween_lawbsters: [],
+    pixelawbs: [],
+    asciilawbs: [],
+    lawbstation: [],
+    lawbnexus: [],
+  };
+
+  const results = await Promise.allSettled(
+    wallets.map((w) => fetchNFTInventory(w.address)),
+  );
+
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue;
+    const inv = r.value;
+    for (const key of Object.keys(merged) as (keyof NFTInventory)[]) {
+      const existing = new Set(merged[key]);
+      for (const id of inv[key] ?? []) {
+        if (!existing.has(id)) {
+          merged[key].push(id);
+          existing.add(id);
+        }
+      }
+    }
+  }
+
+  return merged;
+}

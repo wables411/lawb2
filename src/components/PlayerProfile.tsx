@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { firebaseProfiles, type PlayerProfile as PlayerProfileData } from '../firebaseProfiles';
+import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
 import { fetchLawbampUploadsForUser, type LawbampUploadEntry } from '../firebaseLawbampUploads';
-import { fetchNFTInventory } from '../utils/nftInventory';
+import { fetchNFTInventory, fetchAggregatedNFTInventory, type WalletDescriptor } from '../utils/nftInventory';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { getUserLeaderboardEntry, getUserRank } from '../firebaseLeaderboard';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
+import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -18,6 +19,282 @@ interface SolanaGalleryCard {
   name: string;
   imageUrl: string;
 }
+
+function shortenAddr(addr: string): string {
+  if (!addr) return '';
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+const WalletLinkingSection: React.FC<{
+  isOwnProfile: boolean;
+  isMobile: boolean;
+  primaryWallet: string | null;
+  linkedWallets: LinkedWallet[];
+  connectedEvmAddress?: string;
+  connectedSolanaAddress?: string;
+  linkingWallet: boolean;
+  onLink: (address: string, chain: 'evm' | 'solana') => void;
+  onUnlink: (address: string) => void;
+}> = ({
+  isOwnProfile,
+  isMobile,
+  primaryWallet,
+  linkedWallets,
+  connectedEvmAddress,
+  connectedSolanaAddress,
+  linkingWallet,
+  onLink,
+  onUnlink,
+}) => {
+  if (!primaryWallet) return null;
+
+  const primaryChain = primaryWallet.startsWith('0x') ? 'evm' : 'solana';
+  const linkedAddrs = new Set(linkedWallets.map((w) => w.address.toLowerCase()));
+  linkedAddrs.add(primaryWallet.toLowerCase());
+
+  const canLinkEvm =
+    isOwnProfile &&
+    connectedEvmAddress &&
+    !linkedAddrs.has(connectedEvmAddress.toLowerCase()) &&
+    primaryChain !== 'evm';
+
+  const canLinkSolana =
+    isOwnProfile &&
+    connectedSolanaAddress &&
+    !linkedAddrs.has(connectedSolanaAddress.toLowerCase()) &&
+    primaryChain !== 'solana';
+
+  const hasAnythingToShow = linkedWallets.length > 0 || canLinkEvm || canLinkSolana;
+  if (!hasAnythingToShow && !isOwnProfile) return null;
+
+  return (
+    <div style={{
+      marginBottom: '20px',
+      width: '100%',
+      maxWidth: '600px',
+      padding: '12px',
+      background: '#f0f0f0',
+      borderRadius: '4px',
+    }}>
+      <h4 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '13px' : '14px' }}>
+        Linked Wallets
+      </h4>
+      <div style={{ fontSize: isMobile ? '11px' : '12px', marginBottom: '8px' }}>
+        <span style={{
+          display: 'inline-block',
+          padding: '2px 6px',
+          borderRadius: '3px',
+          background: primaryChain === 'evm' ? '#627EEA' : '#9945FF',
+          color: '#fff',
+          fontSize: isMobile ? '9px' : '10px',
+          marginRight: '6px',
+        }}>
+          {primaryChain === 'evm' ? 'EVM' : 'SOL'}
+        </span>
+        {shortenAddr(primaryWallet)} <span style={{ color: '#888' }}>(primary)</span>
+      </div>
+      {linkedWallets.map((lw) => (
+        <div
+          key={lw.address}
+          style={{
+            fontSize: isMobile ? '11px' : '12px',
+            marginBottom: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <span style={{
+            display: 'inline-block',
+            padding: '2px 6px',
+            borderRadius: '3px',
+            background: lw.chain === 'evm' ? '#627EEA' : '#9945FF',
+            color: '#fff',
+            fontSize: isMobile ? '9px' : '10px',
+          }}>
+            {lw.chain === 'evm' ? 'EVM' : 'SOL'}
+          </span>
+          {shortenAddr(lw.address)}
+          {isOwnProfile && (
+            <button
+              onClick={() => onUnlink(lw.address)}
+              disabled={linkingWallet}
+              style={{
+                padding: '1px 6px',
+                background: '#c0392b',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                fontSize: isMobile ? '9px' : '10px',
+                opacity: linkingWallet ? 0.5 : 1,
+              }}
+            >
+              Unlink
+            </button>
+          )}
+        </div>
+      ))}
+      {canLinkEvm && connectedEvmAddress && (
+        <button
+          onClick={() => onLink(connectedEvmAddress, 'evm')}
+          disabled={linkingWallet}
+          style={{
+            marginTop: '8px',
+            padding: '6px 12px',
+            background: '#627EEA',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            fontSize: isMobile ? '11px' : '12px',
+            opacity: linkingWallet ? 0.5 : 1,
+          }}
+        >
+          {linkingWallet ? 'Linking...' : `Link EVM Wallet (${shortenAddr(connectedEvmAddress)})`}
+        </button>
+      )}
+      {canLinkSolana && connectedSolanaAddress && (
+        <button
+          onClick={() => onLink(connectedSolanaAddress, 'solana')}
+          disabled={linkingWallet}
+          style={{
+            marginTop: '8px',
+            marginLeft: canLinkEvm ? '8px' : '0',
+            padding: '6px 12px',
+            background: '#9945FF',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            fontSize: isMobile ? '11px' : '12px',
+            opacity: linkingWallet ? 0.5 : 1,
+          }}
+        >
+          {linkingWallet ? 'Linking...' : `Link Solana Wallet (${shortenAddr(connectedSolanaAddress)})`}
+        </button>
+      )}
+      {!canLinkEvm && !canLinkSolana && linkedWallets.length === 0 && isOwnProfile && (
+        <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#888', fontStyle: 'italic', marginTop: '4px' }}>
+          Connect a second wallet type (EVM or Solana) to link it here.
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TokenBalancesSection: React.FC<{
+  isMobile: boolean;
+  primaryWallet: string | null;
+  linkedWallets: LinkedWallet[];
+}> = ({ isMobile, primaryWallet, linkedWallets }) => {
+  const evmAddress = (() => {
+    if (!primaryWallet) return undefined;
+    if (primaryWallet.startsWith('0x')) return primaryWallet;
+    const evmLink = linkedWallets.find((w) => w.chain === 'evm');
+    return evmLink?.address;
+  })();
+
+  const solanaAddress = (() => {
+    if (!primaryWallet) return undefined;
+    if (!primaryWallet.startsWith('0x')) return primaryWallet;
+    const solLink = linkedWallets.find((w) => w.chain === 'solana');
+    return solLink?.address;
+  })();
+
+  const balances = useMultiChainBalances(evmAddress, solanaAddress);
+
+  if (!primaryWallet) return null;
+
+  const formatBalance = (val: number): string => {
+    if (val === 0) return '0';
+    if (val < 0.01) return '<0.01';
+    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`;
+    if (val >= 1_000) return `${(val / 1_000).toFixed(2)}K`;
+    return val.toFixed(2);
+  };
+
+  const tokens = [
+    { label: '$CLAWB', chain: 'Base', value: balances.clawbBase, color: '#E74C3C', chainColor: '#627EEA', hasWallet: !!evmAddress },
+    { label: '$CLAWB', chain: 'Solana', value: balances.clawbSol, color: '#E74C3C', chainColor: '#9945FF', hasWallet: !!solanaAddress },
+    { label: '$LAWB', chain: 'Solana', value: balances.lawbSol, color: '#8B4513', chainColor: '#9945FF', hasWallet: !!solanaAddress },
+    { label: '$LAWB', chain: 'Arbitrum', value: balances.lawbArb, color: '#8B4513', chainColor: '#28A0F0', hasWallet: !!evmAddress },
+  ];
+
+  return (
+    <div style={{
+      marginBottom: '20px',
+      width: '100%',
+      maxWidth: '600px',
+      padding: '12px',
+      background: '#f0f0f0',
+      borderRadius: '4px',
+    }}>
+      <h4 style={{ margin: '0 0 10px 0', fontSize: isMobile ? '13px' : '14px' }}>
+        Token Balances {balances.loading && <span style={{ fontWeight: 400, fontSize: isMobile ? '10px' : '11px', color: '#888' }}>(loading...)</span>}
+      </h4>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr',
+        gap: '8px',
+      }}>
+        {tokens.map((t) => (
+          <div
+            key={`${t.label}-${t.chain}`}
+            style={{
+              padding: '10px',
+              background: '#fff',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              opacity: t.hasWallet ? 1 : 0.45,
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '4px',
+            }}>
+              <span style={{
+                fontWeight: 700,
+                fontSize: isMobile ? '12px' : '13px',
+                color: t.color,
+              }}>
+                {t.label}
+              </span>
+              <span style={{
+                padding: '1px 5px',
+                borderRadius: '3px',
+                background: t.chainColor,
+                color: '#fff',
+                fontSize: isMobile ? '8px' : '9px',
+                fontWeight: 600,
+              }}>
+                {t.chain}
+              </span>
+            </div>
+            <div style={{
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: 700,
+            }}>
+              {t.hasWallet ? formatBalance(t.value) : '—'}
+            </div>
+            {!t.hasWallet && (
+              <div style={{ fontSize: isMobile ? '9px' : '10px', color: '#888', fontStyle: 'italic' }}>
+                Link {t.chain === 'Solana' ? 'Solana' : 'EVM'} wallet
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {balances.error && (
+        <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#c0392b', marginTop: '6px' }}>
+          {balances.error}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
   const connectionDisplay = useConnectionDisplay();
@@ -42,6 +319,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [playlistError, setPlaylistError] = useState<string | null>(null);
   const [solanaGalleryCards, setSolanaGalleryCards] = useState<SolanaGalleryCard[]>([]);
   const [solanaGalleryLoading, setSolanaGalleryLoading] = useState(false);
+  const [linkedWallets, setLinkedWallets] = useState<LinkedWallet[]>([]);
+  const [primaryWallet, setPrimaryWallet] = useState<string | null>(null);
+  const [linkingWallet, setLinkingWallet] = useState(false);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -60,7 +340,13 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         window.console.log('[PROFILE] Loading profile for', address);
       }
       try {
-        let profileData = await firebaseProfiles.getProfile(address);
+        const resolvedPrimary = await firebaseProfiles.getPrimaryWallet(address);
+        setPrimaryWallet(resolvedPrimary);
+        const profileAddress = resolvedPrimary;
+        let profileData = await firebaseProfiles.getProfile(profileAddress);
+
+        const linked = await firebaseProfiles.getLinkedWallets(profileAddress);
+        setLinkedWallets(linked);
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[PROFILE] Profile data from Firebase:', profileData);
         }
@@ -184,38 +470,30 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           }
         }
         
-        // Always refresh NFT inventory to ensure accuracy (Etherscan/contract data is source of truth)
-        // Only refresh for own profile to avoid unnecessary API calls
         if (profileData && isOwnProfile) {
           if (typeof window !== 'undefined' && window.console) {
             window.console.log('[PROFILE] Refreshing NFT inventory to ensure accuracy...');
           }
           try {
-            const inventory = await fetchNFTInventory(address);
+            const allWallets: WalletDescriptor[] = [
+              { address: profileAddress, chain: profileAddress.startsWith('0x') ? 'evm' : 'solana' },
+              ...linked.map((lw) => ({ address: lw.address, chain: lw.chain })),
+            ];
+            const inventory = allWallets.length > 1
+              ? await fetchAggregatedNFTInventory(allWallets)
+              : await fetchNFTInventory(profileAddress);
             if (typeof window !== 'undefined' && window.console) {
               window.console.log('[PROFILE] NFT inventory fetched:', inventory);
             }
-            await firebaseProfiles.updateNFTInventory(address, inventory);
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[PROFILE] NFT inventory saved to Firebase');
-            }
-            const updated = await firebaseProfiles.getProfile(address);
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[PROFILE] Updated profile from Firebase:', updated);
-              window.console.log('[PROFILE] Updated profile nft_inventory:', updated?.nft_inventory);
-            }
+            await firebaseProfiles.updateNFTInventory(profileAddress, inventory);
+            const updated = await firebaseProfiles.getProfile(profileAddress);
             if (updated) {
               profileData = updated;
-              // Force update the state immediately
               setProfile(updated);
             }
           } catch (invError) {
             if (typeof window !== 'undefined' && window.console) {
               window.console.error('[PROFILE] Error fetching NFT inventory:', invError);
-            }
-            // If refresh fails, use existing inventory as fallback
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[PROFILE] Using existing NFT inventory as fallback:', profileData.nft_inventory);
             }
           }
         }
@@ -382,30 +660,21 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   };
 
   const handleRefreshInventory = async () => {
-    if (!address) return;
+    const targetWallet = primaryWallet || address;
+    if (!targetWallet) return;
     
     setRefreshingInventory(true);
     try {
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] Refreshing NFT inventory for', address);
-      }
-      const inventory = await fetchNFTInventory(address);
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] NFT inventory fetched:', inventory);
-      }
-      await firebaseProfiles.updateNFTInventory(address, inventory);
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] NFT inventory saved to Firebase');
-      }
-      const updatedProfile = await firebaseProfiles.getProfile(address);
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] Updated profile from Firebase:', updatedProfile);
-        window.console.log('[PROFILE] Updated profile nft_inventory:', updatedProfile?.nft_inventory);
-      }
+      const allWallets: WalletDescriptor[] = [
+        { address: targetWallet, chain: targetWallet.startsWith('0x') ? 'evm' : 'solana' },
+        ...linkedWallets.map((lw) => ({ address: lw.address, chain: lw.chain })),
+      ];
+      const inventory = allWallets.length > 1
+        ? await fetchAggregatedNFTInventory(allWallets)
+        : await fetchNFTInventory(targetWallet);
+      await firebaseProfiles.updateNFTInventory(targetWallet, inventory);
+      const updatedProfile = await firebaseProfiles.getProfile(targetWallet);
       setProfile(updatedProfile);
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] Profile state updated with inventory');
-      }
     } catch (error) {
       if (typeof window !== 'undefined' && window.console) {
         window.console.error('[PROFILE] Error refreshing NFT inventory:', error);
@@ -816,6 +1085,50 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                   </div>
                 );
               })()}
+
+              <WalletLinkingSection
+                isOwnProfile={isOwnProfile}
+                isMobile={isMobile}
+                primaryWallet={primaryWallet}
+                linkedWallets={linkedWallets}
+                connectedEvmAddress={connectionDisplay.evmConnected ? connectionDisplay.address : undefined}
+                connectedSolanaAddress={connectionDisplay.solanaConnected ? connectionDisplay.address : undefined}
+                linkingWallet={linkingWallet}
+                onLink={async (secondaryAddress, chain) => {
+                  if (!primaryWallet) return;
+                  setLinkingWallet(true);
+                  try {
+                    const result = await firebaseProfiles.linkWallet(primaryWallet, secondaryAddress, chain);
+                    if (result.success) {
+                      const updated = await firebaseProfiles.getLinkedWallets(primaryWallet);
+                      setLinkedWallets(updated);
+                    } else {
+                      alert(result.error || 'Failed to link wallet');
+                    }
+                  } finally {
+                    setLinkingWallet(false);
+                  }
+                }}
+                onUnlink={async (secondaryAddress) => {
+                  if (!primaryWallet) return;
+                  setLinkingWallet(true);
+                  try {
+                    const result = await firebaseProfiles.unlinkWallet(primaryWallet, secondaryAddress);
+                    if (result.success) {
+                      const updated = await firebaseProfiles.getLinkedWallets(primaryWallet);
+                      setLinkedWallets(updated);
+                    }
+                  } finally {
+                    setLinkingWallet(false);
+                  }
+                }}
+              />
+
+              <TokenBalancesSection
+                isMobile={isMobile}
+                primaryWallet={primaryWallet}
+                linkedWallets={linkedWallets}
+              />
 
               <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>

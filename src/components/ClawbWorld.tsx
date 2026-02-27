@@ -112,7 +112,14 @@ type LeaderboardBounty = {
   title: string;
   description: string;
   status: string;
-  prize?: { amount?: number; token?: string; token_id?: string | number; collection?: string };
+  prize?: {
+    amount?: number;
+    token?: string;
+    token_id?: string | number;
+    collection?: string;
+    contract?: string;
+    chain?: string;
+  };
 };
 
 const ClawbWorld: React.FC = () => {
@@ -195,6 +202,10 @@ const ClawbWorld: React.FC = () => {
   const bountySparklePointsRef = useRef<THREE.Points | null>(null);
   const bountySparkleVelRef = useRef<Float32Array | null>(null);
   const bountySparkleMatRef = useRef<THREE.PointsMaterial | null>(null);
+  const bountyGoldPointsRef = useRef<THREE.Points | null>(null);
+  const bountyGoldVelRef = useRef<Float32Array | null>(null);
+  const bountyGoldMatRef = useRef<THREE.PointsMaterial | null>(null);
+  const bountyDisplayLastRenderAtRef = useRef(0);
   const bountyBurstStartedAtRef = useRef(0);
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
@@ -1058,23 +1069,19 @@ const ClawbWorld: React.FC = () => {
       const now = Date.now();
       const showcaseActive = now < bountyShowcaseRef.current.until;
       const lookTarget = lookTargetRef.current;
-      if (showcaseActive && bountyChestGroupRef.current && bountyScrollGroupRef.current) {
-        const chestPos = bountyChestGroupRef.current.getWorldPosition(new THREE.Vector3());
-        const scrollPos = bountyScrollGroupRef.current.getWorldPosition(new THREE.Vector3());
-        // Slow vertical scan so viewers can read the entire bounty scroll.
-        const scanT = (Date.now() - bountyShowcaseRef.current.startedAt) / 1000;
-        const scan = Math.sin(scanT * 0.7); // ~9s up/down cycle
-        const camDesired = chestPos.clone().add(new THREE.Vector3(0, 2.95 + scan * 0.62, 4.4));
-        const lookAt = scrollPos.clone().add(new THREE.Vector3(0, 0.95 - scan * 0.72, -0.08));
-        // Showcase transition should feel cinematic, not a snap-cut.
-        camera.position.x = THREE.MathUtils.damp(camera.position.x, camDesired.x, 2.2, delta);
-        camera.position.y = THREE.MathUtils.damp(camera.position.y, camDesired.y, 2.2, delta);
-        camera.position.z = THREE.MathUtils.damp(camera.position.z, camDesired.z, 2.2, delta);
-        streamCameraLookRef.current.x = THREE.MathUtils.damp(streamCameraLookRef.current.x, lookAt.x, 2.6, delta);
-        streamCameraLookRef.current.y = THREE.MathUtils.damp(streamCameraLookRef.current.y, lookAt.y, 2.6, delta);
-        streamCameraLookRef.current.z = THREE.MathUtils.damp(streamCameraLookRef.current.z, lookAt.z, 2.6, delta);
+      if (showcaseActive && bountyScrollGroupRef.current) {
+        // Drone shot: strict overhead camera for readable, always-visible bounty board.
+        const boardPos = bountyScrollGroupRef.current.getWorldPosition(new THREE.Vector3());
+        const camDesired = boardPos.clone().add(new THREE.Vector3(0, 11.6, 0.04));
+        const lookAt = boardPos.clone().add(new THREE.Vector3(0, -0.5, 0));
+        camera.position.x = THREE.MathUtils.damp(camera.position.x, camDesired.x, 2.8, delta);
+        camera.position.y = THREE.MathUtils.damp(camera.position.y, camDesired.y, 2.8, delta);
+        camera.position.z = THREE.MathUtils.damp(camera.position.z, camDesired.z, 2.8, delta);
+        streamCameraLookRef.current.x = THREE.MathUtils.damp(streamCameraLookRef.current.x, lookAt.x, 3.0, delta);
+        streamCameraLookRef.current.y = THREE.MathUtils.damp(streamCameraLookRef.current.y, lookAt.y, 3.0, delta);
+        streamCameraLookRef.current.z = THREE.MathUtils.damp(streamCameraLookRef.current.z, lookAt.z, 3.0, delta);
         camera.lookAt(streamCameraLookRef.current.x, streamCameraLookRef.current.y, streamCameraLookRef.current.z);
-        const fov = THREE.MathUtils.lerp(camera.fov, 40, 0.12);
+        const fov = THREE.MathUtils.lerp(camera.fov, 50, 0.12);
         if (Math.abs(fov - camera.fov) > 0.01) {
           camera.fov = fov;
           camera.updateProjectionMatrix();
@@ -1159,6 +1166,15 @@ const ClawbWorld: React.FC = () => {
     if (bountyChestLidRef.current && bountyScrollGroupRef.current && bountyChestGroupRef.current) {
       const active = Date.now() < bountyShowcaseRef.current.until;
       const tNow = Date.now() / 1000;
+      const bountyList = leaderboardBountiesRef.current;
+      const sortedBounties = [...bountyList].sort((a, b) => {
+        const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
+        return score(String(a.status || '')) - score(String(b.status || ''));
+      });
+      const currentBounty = sortedBounties.length
+        ? sortedBounties[Math.floor(Date.now() / 5000) % sortedBounties.length]
+        : null;
+      const clawbGoldMode = String(currentBounty?.prize?.token || '').toUpperCase() === 'CLAWB';
       if (active && !bountyShowcaseWasActiveRef.current) {
         bountyBurstStartedAtRef.current = Date.now();
         const bubblePoints = bountyBubblePointsRef.current;
@@ -1219,16 +1235,22 @@ const ClawbWorld: React.FC = () => {
         delta
       );
       bountyScrollGroupRef.current.scale.setScalar(nextScale);
-      // Give the scroll obvious movement while active so the event feels alive.
-      bountyScrollGroupRef.current.rotation.y = active ? Math.sin(tNow * 1.8) * 0.05 : 0;
-      bountyScrollGroupRef.current.rotation.z = active ? Math.sin(tNow * 2.4) * 0.02 : 0;
-      bountyScrollGroupRef.current.position.x = active ? Math.sin(tNow * 2.0) * 0.05 : 0;
+      // Orbiting hologram motion for command orb card.
+      bountyScrollGroupRef.current.rotation.y = active ? Math.sin(tNow * 1.3) * 0.12 : 0;
+      bountyScrollGroupRef.current.rotation.z = active ? Math.sin(tNow * 2.1) * 0.025 : 0;
+      bountyScrollGroupRef.current.position.x = 0;
       bountyScrollGroupRef.current.visible = active || bountyScrollGroupRef.current.position.y > 0.28;
       // Chest bob and slight yaw wobble.
       bountyChestGroupRef.current.position.y = (FLOOR_Y + 0.02) + (active ? Math.sin(tNow * 2.2) * 0.04 : 0);
       bountyChestGroupRef.current.rotation.y = active ? Math.sin(tNow * 1.7) * 0.05 : 0;
       if (bountyChestGlowRef.current) {
         bountyChestGlowRef.current.intensity = active ? 1.2 + Math.sin(tNow * 4.0) * 0.35 : 0.55;
+        bountyChestGlowRef.current.color.set(clawbGoldMode ? 0xffd05f : 0x7ce4ff);
+      }
+
+      if (active && bountyScrollRenderFnRef.current && Date.now() - bountyDisplayLastRenderAtRef.current > 280) {
+        bountyDisplayLastRenderAtRef.current = Date.now();
+        bountyScrollRenderFnRef.current();
       }
 
       const burstElapsed = Date.now() - bountyBurstStartedAtRef.current;
@@ -1273,6 +1295,45 @@ const ClawbWorld: React.FC = () => {
         } else {
           sparkleMat.opacity = 0;
           sparklePoints.visible = false;
+        }
+      }
+
+      const goldPoints = bountyGoldPointsRef.current;
+      const goldVel = bountyGoldVelRef.current;
+      const goldMat = bountyGoldMatRef.current;
+      if (goldPoints && goldVel && goldMat) {
+        if (active && clawbGoldMode) {
+          const pos = goldPoints.geometry.attributes.position.array as Float32Array;
+          if (!goldPoints.visible) {
+            for (let i = 0; i < pos.length; i += 3) {
+              const ang = Math.random() * Math.PI * 2;
+              const r = 0.08 + Math.random() * 0.45;
+              pos[i] = Math.cos(ang) * r;
+              pos[i + 1] = Math.random() * 0.2;
+              pos[i + 2] = Math.sin(ang) * r;
+              goldVel[i] = (Math.random() - 0.5) * 0.35;
+              goldVel[i + 1] = 0.9 + Math.random() * 1.1;
+              goldVel[i + 2] = (Math.random() - 0.5) * 0.35;
+            }
+            goldPoints.geometry.attributes.position.needsUpdate = true;
+          }
+          for (let i = 0; i < pos.length; i += 3) {
+            goldVel[i + 1] -= 1.8 * delta;
+            pos[i] += goldVel[i] * delta;
+            pos[i + 1] += goldVel[i + 1] * delta;
+            pos[i + 2] += goldVel[i + 2] * delta;
+            if (pos[i + 1] < -0.12) {
+              pos[i + 1] = 0.2 + Math.random() * 0.5;
+              goldVel[i + 1] = 0.9 + Math.random() * 1.0;
+            }
+          }
+          goldPoints.rotation.y += delta * 1.4;
+          goldPoints.geometry.attributes.position.needsUpdate = true;
+          goldMat.opacity = 0.9;
+          goldPoints.visible = true;
+        } else {
+          goldMat.opacity = 0;
+          goldPoints.visible = false;
         }
       }
     }
@@ -1669,100 +1730,34 @@ const ClawbWorld: React.FC = () => {
     lbBackWall.position.set(bbX, bbY, bbZ - 0.3);
     lbGroup.add(lbBackWall);
 
-    // Treasure chest bounty stage in an isolated corner (away from reef clutter).
-    const chestGroup = new THREE.Group();
-    chestGroup.position.copy(BOUNTY_SHOWCASE_ANCHOR);
-    scene.add(chestGroup);
-    bountyChestGroupRef.current = chestGroup;
+    // Seafloor bounty board for drone view: giant readable text made of ocean motifs.
+    const boardCanvas = document.createElement('canvas');
+    boardCanvas.width = 2200;
+    boardCanvas.height = 2200;
+    const boardTexture = new THREE.CanvasTexture(boardCanvas);
+    boardTexture.minFilter = THREE.LinearFilter;
+    boardTexture.magFilter = THREE.LinearFilter;
+    boardTexture.colorSpace = THREE.SRGBColorSpace;
+    const boardGroup = new THREE.Group();
+    boardGroup.position.copy(BOUNTY_SHOWCASE_ANCHOR);
+    boardGroup.visible = true;
+    scene.add(boardGroup);
+    bountyScrollGroupRef.current = boardGroup;
 
-    // Dedicated stage pedestal so chest/scroll are never occluded by floor props.
-    const stageBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.4, 2.8, 0.9, 18),
-      new THREE.MeshPhongMaterial({ color: 0x182636, emissive: 0x07101a, flatShading: true })
-    );
-    stageBase.position.set(0, -0.58, 0);
-    chestGroup.add(stageBase);
-    const stageRing = new THREE.Mesh(
-      new THREE.TorusGeometry(2.0, 0.1, 10, 24),
-      new THREE.MeshBasicMaterial({ color: 0x65d9ff, transparent: true, opacity: 0.5 })
-    );
-    stageRing.rotation.x = Math.PI / 2;
-    stageRing.position.set(0, -0.12, 0);
-    chestGroup.add(stageRing);
-
-    const woodMat = new THREE.MeshPhongMaterial({ color: 0x7a4a22, emissive: 0x1c1007, flatShading: true, shininess: 20 });
-    const trimMat = new THREE.MeshStandardMaterial({ color: 0xd8b35a, emissive: 0x2a1f08, roughness: 0.38, metalness: 0.55 });
-    const chestBase = new THREE.Mesh(
-      new THREE.BoxGeometry(1.7, 0.92, 1.05),
-      woodMat
-    );
-    chestBase.position.set(0, 0.46, 0);
-    chestGroup.add(chestBase);
-    const chestTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(1.78, 0.14, 1.14),
-      trimMat
-    );
-    chestTrim.position.set(0, 0.92, 0);
-    chestGroup.add(chestTrim);
-    // Metal bands + lock plate so the chest reads clearly on stream.
-    const bandL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.02, 1.12), trimMat);
-    bandL.position.set(-0.62, 0.51, 0);
-    chestGroup.add(bandL);
-    const bandR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.02, 1.12), trimMat);
-    bandR.position.set(0.62, 0.51, 0);
-    chestGroup.add(bandR);
-    const lockPlate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.38, 0.08), trimMat);
-    lockPlate.position.set(0, 0.57, 0.57);
-    chestGroup.add(lockPlate);
-
-    const chestLidPivot = new THREE.Group();
-    chestLidPivot.position.set(0, 0.92, -0.5);
-    chestGroup.add(chestLidPivot);
-    bountyChestLidRef.current = chestLidPivot;
-    const chestLid = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.52, 0.52, 1.74, 14, 1, false, 0, Math.PI),
-      woodMat
-    );
-    chestLid.rotation.z = Math.PI / 2;
-    chestLid.position.set(0, 0.22, 0.5);
-    chestLidPivot.add(chestLid);
-    const lidBand = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.54, 1.78, 14, 1, false, 0, Math.PI), trimMat);
-    lidBand.rotation.z = Math.PI / 2;
-    lidBand.position.set(0, 0.22, 0.5);
-    chestLidPivot.add(lidBand);
-
-    const chestGlow = new THREE.PointLight(0xffd37d, 0.7, 7.5);
-    chestGlow.position.set(0, 1.1, 0);
-    chestGroup.add(chestGlow);
-    bountyChestGlowRef.current = chestGlow;
-
-    const scrollCanvas = document.createElement('canvas');
-    scrollCanvas.width = 1200;
-    scrollCanvas.height = 1300;
-    const scrollTexture = new THREE.CanvasTexture(scrollCanvas);
-    scrollTexture.minFilter = THREE.LinearFilter;
-    scrollTexture.magFilter = THREE.LinearFilter;
-    scrollTexture.colorSpace = THREE.SRGBColorSpace;
-    const scrollPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.55, 4.25),
+    const boardPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(11.8, 11.8),
       new THREE.MeshBasicMaterial({
-        map: scrollTexture,
+        map: boardTexture,
         transparent: true,
-        alphaTest: 0.1,
+        alphaTest: 0.06,
         side: THREE.DoubleSide,
-        depthTest: false,
-        depthWrite: false,
       })
     );
-    scrollPlane.renderOrder = 40;
-    const scrollGroup = new THREE.Group();
-    scrollGroup.add(scrollPlane);
-    scrollGroup.position.set(0, 0.38, 0.46);
-    scrollGroup.visible = false;
-    chestGroup.add(scrollGroup);
-    bountyScrollGroupRef.current = scrollGroup;
+    boardPlane.rotation.x = -Math.PI / 2;
+    boardPlane.position.set(0, 0.02, 0);
+    boardGroup.add(boardPlane);
 
-    // One-shot chest VFX systems (triggered when showcase starts).
+    // One-shot board VFX systems (triggered when showcase starts).
     const bubbleCount = 44;
     const bubbleGeom = new THREE.BufferGeometry();
     const bubblePositions = new Float32Array(bubbleCount * 3);
@@ -1779,7 +1774,7 @@ const ClawbWorld: React.FC = () => {
     const bubblePoints = new THREE.Points(bubbleGeom, bubbleMat);
     bubblePoints.position.set(0, 0.94, 0.06);
     bubblePoints.visible = false;
-    chestGroup.add(bubblePoints);
+    boardGroup.add(bubblePoints);
     bountyBubblePointsRef.current = bubblePoints;
     bountyBubbleVelRef.current = bubbleVel;
     bountyBubbleMatRef.current = bubbleMat;
@@ -1800,70 +1795,162 @@ const ClawbWorld: React.FC = () => {
     const sparklePoints = new THREE.Points(sparkleGeom, sparkleMat);
     sparklePoints.position.set(0, 1.02, 0.06);
     sparklePoints.visible = false;
-    chestGroup.add(sparklePoints);
+    boardGroup.add(sparklePoints);
     bountySparklePointsRef.current = sparklePoints;
     bountySparkleVelRef.current = sparkleVel;
     bountySparkleMatRef.current = sparkleMat;
 
-    const renderBountyScroll = (bounties: LeaderboardBounty[]) => {
-      const ctx = scrollCanvas.getContext('2d');
+    const renderBountyDisplay = (bounties: LeaderboardBounty[]) => {
+      const ctx = boardCanvas.getContext('2d');
       if (!ctx) return;
-      const W = scrollCanvas.width;
-      const H = scrollCanvas.height;
+      const W = boardCanvas.width;
+      const H = boardCanvas.height;
       const now = Date.now();
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, '#efe2b7');
-      bg.addColorStop(1, '#d2bc82');
+      const bg = ctx.createRadialGradient(W / 2, H / 2, 240, W / 2, H / 2, W * 0.62);
+      bg.addColorStop(0, '#102f40');
+      bg.addColorStop(1, '#06131d');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = '#6e5328';
-      ctx.lineWidth = 18;
-      ctx.strokeRect(12, 12, W - 24, H - 24);
-      ctx.fillStyle = '#32210d';
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 78px monospace';
-      ctx.fillText('BOUNTY SCROLL', W / 2, 104);
-      ctx.font = 'bold 34px monospace';
-      ctx.fillText('!bounties in chat summons this chest', W / 2, 156);
-      const rowH = 138;
+      ctx.strokeStyle = '#65d9ff';
+      ctx.lineWidth = 20;
+      ctx.strokeRect(20, 20, W - 40, H - 40);
+
+      // Decorative motifs: kelp, starfish, shell arcs.
+      ctx.strokeStyle = '#4fd6a8';
+      ctx.lineWidth = 12;
+      for (let i = 0; i < 6; i++) {
+        const x = 170 + i * 340;
+        ctx.beginPath();
+        ctx.moveTo(x, H - 150);
+        ctx.bezierCurveTo(x - 22, H - 480, x + 18, H - 760, x - 10, H - 1080);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(114,237,255,0.95)';
+      for (let i = 0; i < 7; i++) {
+        const sx = 220 + i * 300;
+        const sy = 220 + (i % 2) * 80;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate((now / 2200) + i * 0.4);
+        for (let a = 0; a < 5; a++) {
+          ctx.rotate((Math.PI * 2) / 5);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, 48);
+          ctx.lineTo(16, 18);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      ctx.strokeStyle = '#e2c178';
+      ctx.lineWidth = 10;
+      for (let i = 0; i < 5; i++) {
+        const cx = 220 + i * 430;
+        ctx.beginPath();
+        ctx.arc(cx, H - 240, 120, Math.PI, Math.PI * 1.9);
+        ctx.stroke();
+      }
+
       const sorted = [...bounties].sort((a, b) => {
         const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
         return score(String(a.status || '')) - score(String(b.status || ''));
       });
-      if (sorted.length === 0) {
-        ctx.font = 'bold 54px monospace';
-        ctx.fillText('NO BOUNTIES YET', W / 2, H / 2);
+      const active = sorted.length ? sorted[Math.floor(now / 5000) % sorted.length] : null;
+
+      ctx.fillStyle = '#9be8ff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 146px monospace';
+      ctx.fillText('LAWB BOUNTIES', W / 2, 208);
+      ctx.fillStyle = '#d8c66b';
+      ctx.font = 'bold 54px monospace';
+      ctx.fillText('SEA SHELL // KELP // STARFISH BOARD', W / 2, 286);
+
+      if (!active) {
+        ctx.fillStyle = '#9be8ff';
+        ctx.font = 'bold 122px monospace';
+        ctx.fillText('NO ACTIVE BOUNTIES', W / 2, H / 2);
       } else {
-        const contentHeight = sorted.length * rowH;
-        const scroll = (now / 30) % contentHeight;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(52, 198, W - 104, H - 260);
-        ctx.clip();
-        sorted.forEach((b, i) => {
-          const y = 260 + i * rowH - scroll;
-          const yWrap = y < (198 - rowH) ? y + contentHeight : y;
-          if (yWrap < 198 - rowH || yWrap > H - 58) return;
-          const status = String(b.status || '').toUpperCase();
-          const color = status === 'ACTIVE' ? '#8d1f0d' : status === 'CLAIMED' ? '#1e4d5c' : '#5c2f4e';
-          ctx.fillStyle = color;
-          ctx.font = 'bold 48px monospace';
-          ctx.textAlign = 'left';
-          ctx.fillText(`[${status}] ${String(b.title || '').slice(0, 24)}`, 56, yWrap);
-          let prize = '';
-          if (b.prize?.amount && b.prize?.token) prize = `${Number(b.prize.amount).toLocaleString()} $${String(b.prize.token).toUpperCase()}`;
-          else if (b.prize?.token_id) prize = `NFT #${b.prize.token_id}`;
-          else if (b.prize?.collection) prize = String(b.prize.collection).toUpperCase();
-          ctx.fillStyle = '#2f2412';
-          ctx.font = 'bold 32px monospace';
-          ctx.fillText(`${String(b.description || '').slice(0, 45)}${prize ? ` -> ${prize}` : ''}`, 78, yWrap + 48);
-        });
-        ctx.restore();
+        const status = String(active.status || 'active').toUpperCase();
+        const isClawbToken = String(active.prize?.token || '').toUpperCase() === 'CLAWB';
+        const isNft = Boolean(active.prize?.token_id || active.prize?.collection);
+        let prizeText = '';
+        if (active.prize?.amount && active.prize?.token) {
+          prizeText = `${Number(active.prize.amount).toLocaleString()} $${String(active.prize.token).toUpperCase()}`;
+        } else if (active.prize?.token_id) {
+          prizeText = `${String(active.prize.collection || 'NFT')} #${active.prize.token_id}`;
+        } else if (active.prize?.collection) {
+          prizeText = String(active.prize.collection);
+        }
+
+        ctx.fillStyle = 'rgba(9,23,40,0.92)';
+        ctx.fillRect(72, 350, W - 144, H - 450);
+        ctx.strokeStyle = isClawbToken ? '#ffcf4a' : '#61d8ff';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(72, 350, W - 144, H - 450);
+        ctx.fillStyle = isClawbToken ? '#ffdf70' : '#9be8ff';
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 72px monospace';
+        ctx.fillText(`[${status}]`, 116, 470);
+        ctx.font = 'bold 96px monospace';
+        ctx.fillText(String(active.title || '').slice(0, 28), 116, 600);
+        ctx.fillStyle = '#d9ecff';
+        ctx.font = 'bold 82px monospace';
+        ctx.fillText(prizeText || 'reward pending', 116, 730);
+        ctx.fillStyle = '#a9c7e6';
+        ctx.font = '52px monospace';
+        ctx.fillText(String(active.description || '').slice(0, 56), 116, 828);
+
+        if (isNft) {
+          ctx.fillStyle = '#7cf4ff';
+          ctx.font = 'bold 56px monospace';
+          ctx.fillText(`NFT: ${String(active.prize?.collection || 'collection').toUpperCase()}`, 116, 940);
+          ctx.fillText(`TOKEN ID: ${String(active.prize?.token_id || '?')}`, 116, 1018);
+          if (active.prize?.contract) {
+            const c = String(active.prize.contract);
+            ctx.fillStyle = '#9bb5d4';
+            ctx.font = '42px monospace';
+            ctx.fillText(`CONTRACT: ${c.slice(0, 12)}...${c.slice(-8)}`, 116, 1090);
+          }
+          if (active.prize?.chain) {
+            ctx.fillStyle = '#9bb5d4';
+            ctx.font = '42px monospace';
+            ctx.fillText(`CHAIN: ${String(active.prize.chain).toUpperCase()}`, 116, 1152);
+          }
+        }
+
+        if (isClawbToken) {
+          ctx.fillStyle = '#ffd34f';
+          ctx.font = 'bold 60px monospace';
+          ctx.fillText('GOLD TREASURE MODE', 116, H - 122);
+        }
       }
-      scrollTexture.needsUpdate = true;
+      boardTexture.needsUpdate = true;
     };
-    bountyScrollRenderFnRef.current = () => renderBountyScroll(leaderboardBountiesRef.current);
-    renderBountyScroll([]);
+    bountyScrollRenderFnRef.current = () => renderBountyDisplay(leaderboardBountiesRef.current);
+    renderBountyDisplay([]);
+
+    // Gold coin-like particle shower for $CLAWB bounties.
+    const goldCount = 64;
+    const goldGeom = new THREE.BufferGeometry();
+    const goldPos = new Float32Array(goldCount * 3);
+    const goldVel = new Float32Array(goldCount * 3);
+    goldGeom.setAttribute('position', new THREE.BufferAttribute(goldPos, 3));
+    const goldMat = new THREE.PointsMaterial({
+      color: 0xffcf4a,
+      size: 0.09,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const goldPoints = new THREE.Points(goldGeom, goldMat);
+    goldPoints.position.set(0, 0.5, 0);
+    goldPoints.visible = false;
+    boardGroup.add(goldPoints);
+    bountyGoldPointsRef.current = goldPoints;
+    bountyGoldVelRef.current = goldVel;
+    bountyGoldMatRef.current = goldMat;
 
     // Render leaderboard data onto the canvas
     const renderLeaderboardCanvas = (

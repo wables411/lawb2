@@ -1,5 +1,5 @@
 import { database } from './firebaseApp';
-import { ref, set, get, update } from 'firebase/database';
+import { ref, set, get, update, remove } from 'firebase/database';
 import type { NFTInventory } from './utils/nftInventory';
 import { setHoldingsPoints } from './firebaseLeaderboard';
 
@@ -44,6 +44,12 @@ export interface ClaimableBalance {
   updated_at?: number;
 }
 
+export interface LinkedWallet {
+  address: string;
+  chain: 'evm' | 'solana';
+  linked_at: number;
+}
+
 export interface PlayerProfile {
   wallet_address: string;
   username?: string;
@@ -51,6 +57,7 @@ export interface PlayerProfile {
   nft_inventory: NFTInventory;
   game_stats: GameStats;
   claimable?: ClaimableBalance;
+  linked_wallets?: LinkedWallet[];
   created_at: string;
   updated_at: string;
 }
@@ -392,6 +399,127 @@ export const firebaseProfiles = {
       console.error('[FIREBASE] Error getting profile by username:', error);
       return null;
     }
-  }
+  },
+
+  async getPrimaryWallet(address: string): Promise<string> {
+    try {
+      const db = getDatabaseOrThrow();
+      const normalized = normalizeWalletAddress(address);
+      const linkRef = ref(db, `wallet_links/${encodeWalletKey(normalized)}`);
+      const snap = await get(linkRef);
+      if (snap.exists()) {
+        const data = snap.val();
+        if (data?.primary_wallet) return data.primary_wallet;
+      }
+      return normalized;
+    } catch (error) {
+      console.error('[FIREBASE] Error resolving primary wallet:', error);
+      return normalizeWalletAddress(address);
+    }
+  },
+
+  async getLinkedWallets(primaryWallet: string): Promise<LinkedWallet[]> {
+    try {
+      const db = getDatabaseOrThrow();
+      const normalized = normalizeWalletAddress(primaryWallet);
+      const lwRef = ref(db, `profiles/${normalized}/linked_wallets`);
+      const snap = await get(lwRef);
+      if (!snap.exists()) return [];
+      const val = snap.val();
+      if (Array.isArray(val)) return val.filter(Boolean);
+      return Object.values(val).filter(Boolean) as LinkedWallet[];
+    } catch (error) {
+      console.error('[FIREBASE] Error getting linked wallets:', error);
+      return [];
+    }
+  },
+
+  async linkWallet(
+    primaryWallet: string,
+    secondaryAddress: string,
+    chain: 'evm' | 'solana',
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const db = getDatabaseOrThrow();
+      const normalizedPrimary = normalizeWalletAddress(primaryWallet);
+      const normalizedSecondary = normalizeWalletAddress(secondaryAddress);
+
+      if (normalizedPrimary === normalizedSecondary) {
+        return { success: false, error: 'Cannot link a wallet to itself' };
+      }
+
+      const existingPrimary = await this.getPrimaryWallet(normalizedSecondary);
+      if (existingPrimary !== normalizedSecondary) {
+        return { success: false, error: 'Wallet is already linked to another profile' };
+      }
+
+      const existing = await this.getLinkedWallets(normalizedPrimary);
+      if (existing.some((w) => normalizeWalletAddress(w.address) === normalizedSecondary)) {
+        return { success: true };
+      }
+
+      const entry: LinkedWallet = {
+        address: normalizedSecondary,
+        chain,
+        linked_at: Date.now(),
+      };
+      const updated = [...existing, entry];
+
+      const profileRef = ref(db, `profiles/${normalizedPrimary}`);
+      const profileSnap = await get(profileRef);
+      if (!profileSnap.exists()) {
+        await this.upsertProfile(normalizedPrimary, {});
+      }
+
+      await update(profileRef, {
+        linked_wallets: updated,
+        updated_at: new Date().toISOString(),
+      });
+
+      const linkRef = ref(db, `wallet_links/${encodeWalletKey(normalizedSecondary)}`);
+      await set(linkRef, { primary_wallet: normalizedPrimary });
+
+      console.log('[FIREBASE] Wallet linked:', normalizedSecondary, '->', normalizedPrimary);
+      return { success: true };
+    } catch (error) {
+      console.error('[FIREBASE] Error linking wallet:', error);
+      return { success: false, error: 'Failed to link wallet' };
+    }
+  },
+
+  async unlinkWallet(
+    primaryWallet: string,
+    secondaryAddress: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const db = getDatabaseOrThrow();
+      const normalizedPrimary = normalizeWalletAddress(primaryWallet);
+      const normalizedSecondary = normalizeWalletAddress(secondaryAddress);
+
+      const existing = await this.getLinkedWallets(normalizedPrimary);
+      const filtered = existing.filter(
+        (w) => normalizeWalletAddress(w.address) !== normalizedSecondary,
+      );
+
+      const profileRef = ref(db, `profiles/${normalizedPrimary}`);
+      await update(profileRef, {
+        linked_wallets: filtered.length > 0 ? filtered : null,
+        updated_at: new Date().toISOString(),
+      });
+
+      const linkRef = ref(db, `wallet_links/${encodeWalletKey(normalizedSecondary)}`);
+      await remove(linkRef);
+
+      console.log('[FIREBASE] Wallet unlinked:', normalizedSecondary, 'from', normalizedPrimary);
+      return { success: true };
+    } catch (error) {
+      console.error('[FIREBASE] Error unlinking wallet:', error);
+      return { success: false, error: 'Failed to unlink wallet' };
+    }
+  },
 };
+
+function encodeWalletKey(address: string): string {
+  return address.replace(/\./g, '_');
+}
 

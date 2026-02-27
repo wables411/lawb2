@@ -19,12 +19,14 @@ export const TOKEN_ADDRESSES_BY_CHAIN: Record<number, Record<string, string>> = 
     USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base USDC
     GG: '0x000000000000a59351f61B598E8DA953b9e041Ec', // GunGame
     LAWB: '0x7e18298b46A1F2399617cde083Fe11415A2ad15B', // LAWB on Base
+    CLAWB_BASE: '0x26a43bd8a28a0423afb5725b8242ec0a40947b07', // $CLAWB on Base
     WABLES411: '0xb2ca7ab88b87bd20b81e95aa0135e2b72720f33d', // wables411 token
   },
   // Arbitrum One (42161)
   42161: {
     ETH: '0x0000000000000000000000000000000000000000', // Native ETH
     USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // Arbitrum USDC
+    LAWB_ARB: '0x741f8FbF42485E772D97f1955c31a5B8098aC962', // $LAWB on Arbitrum
   },
 };
 
@@ -114,14 +116,32 @@ export const SUPPORTED_TOKENS = {
     color: '#8B4513',
     chains: [8453] // Only on Base
   },
+  CLAWB_BASE: {
+    symbol: 'CLAWB',
+    name: 'CLAWB',
+    decimals: 18,
+    logo: '/images/lawb-logo.png',
+    isNative: false,
+    color: '#E74C3C',
+    chains: [8453] as readonly number[],
+  },
+  LAWB_ARB: {
+    symbol: 'LAWB',
+    name: 'LAWB',
+    decimals: 6,
+    logo: '/images/lawb-logo.png',
+    isNative: false,
+    color: '#8B4513',
+    chains: [42161] as readonly number[],
+  },
   WABLES411: {
     symbol: 'wables411',
     name: 'wables411',
     decimals: 18,
-    logo: '/images/dmt-logo.png', // TODO: Add wables411 logo if available
+    logo: '/images/dmt-logo.png',
     isNative: false,
     color: '#FF6B35',
-    chains: [8453] // Only on Base
+    chains: [8453] as readonly number[],
   },
 } as const;
 

@@ -79,6 +79,13 @@
       ".read": true,
       ".write": false
     },
+    "wallet_links": {
+      ".read": true,
+      ".write": true,
+      "$address": {
+        ".validate": "newData.hasChildren(['primary_wallet']) && newData.child('primary_wallet').isString()"
+      }
+    },
     "$other": {
       ".read": false,
       ".write": false
