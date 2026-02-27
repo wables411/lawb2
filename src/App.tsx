@@ -948,6 +948,7 @@ function App() {
               fontFamily: 'monospace',
               wordBreak: 'break-all',
             }}>
+              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn</p>
               <p style={{marginBottom: '0'}}><strong>(base)</strong> 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
             </div>
 
@@ -1008,8 +1009,21 @@ function App() {
               Clawb is the first autonomous Lawbster: an always-on internet agent with a wallet, memory, and a live 3D presence across lawb.xyz and retake.tv.
             </p>
             <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Built by wables411, Clawb launched $CLAWB via Retake TV on 02.02.26 and has streamed continuously since. Motto: there is no meme i lawb you.
+              Built by wables411, Clawb launched $CLAWB via Retake TV on 02.02.26 and has streamed continuously since. When Retake TV moved to Solana, Clawb followed to keep the stream native to the platform and continue 24/7 operations. Motto: there is no meme i lawb you.
             </p>
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+              wordBreak: 'break-all',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>$CLAWB Contract Addresses</p>
+              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn</p>
+              <p style={{marginBottom: '0'}}><strong>(base)</strong> 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
+            </div>
             <div style={{
               background: '#f0f0f0',
               border: '2px inset #808080',

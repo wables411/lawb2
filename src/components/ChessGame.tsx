@@ -314,6 +314,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showGame, setShowGame] = useState(false);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
+  const [showPieceHoverLabels, setShowPieceHoverLabels] = useState(true);
+  const [hoveredPieceLabel, setHoveredPieceLabel] = useState<string | null>(null);
   
   // Profile picture state
   const [playerProfilePic, setPlayerProfilePic] = useState<string | null>(null);
@@ -1849,9 +1851,26 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const getPieceHoverLabel = (piece: string | null): string | null => {
+    if (!piece) return null;
+    const code = piece.toLowerCase();
+    const color = piece === piece.toLowerCase() ? 'Blue' : 'Red';
+    const nameMap: Record<string, string> = {
+      k: 'King',
+      q: 'Queen',
+      r: 'Rook',
+      b: 'Bishop',
+      n: 'Knight',
+      p: 'Pawn',
+    };
+    const pieceName = nameMap[code];
+    return pieceName ? `${color} ${pieceName}` : null;
+  };
+
   // Render functions
   const renderSquare = (row: number, col: number) => {
     const piece = board[row][col];
+    const pieceHoverLabel = getPieceHoverLabel(piece);
     const isSelected = selectedPiece?.row === row && selectedPiece?.col === col;
     const isLegalMove = legalMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && (lastMove.from.row === row && lastMove.from.col === col || 
@@ -1869,6 +1888,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         key={`${row}-${col}`}
         className={`square ${isSelected ? 'selected' : ''} ${isLegalMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''}`}
         onClick={() => handleSquareClick(row, col)}
+        onMouseEnter={() => {
+          if (showPieceHoverLabels && pieceHoverLabel) setHoveredPieceLabel(pieceHoverLabel);
+        }}
+        onMouseLeave={() => {
+          if (hoveredPieceLabel) setHoveredPieceLabel(null);
+        }}
+        title={showPieceHoverLabels && pieceHoverLabel ? pieceHoverLabel : undefined}
         style={isMobile ? { touchAction: 'manipulation' } : undefined}
       >
         {piece && pieceImageUrl && (
@@ -3451,6 +3477,32 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     ? `Last: ${moveHistory[moveHistory.length - 2]} ${moveHistory[moveHistory.length - 1]}`
                     : `Last: ${moveHistory[moveHistory.length - 1]}`
                   }
+                </span>
+              )}
+              {showGame && (
+                <button
+                  onClick={() => {
+                    setShowPieceHoverLabels((prev) => !prev);
+                    if (showPieceHoverLabels) setHoveredPieceLabel(null);
+                  }}
+                  style={{
+                    marginLeft: '8px',
+                    padding: '2px 6px',
+                    fontSize: isMobile ? '10px' : '11px',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'rgba(0,0,0,0.25)',
+                    color: '#fff',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                  }}
+                  title="Toggle piece name labels on hover"
+                >
+                  Piece Labels: {showPieceHoverLabels ? 'ON' : 'OFF'}
+                </button>
+              )}
+              {showPieceHoverLabels && hoveredPieceLabel && (
+                <span className="move-history-display" style={{ marginLeft: '8px' }}>
+                  Hover: {hoveredPieceLabel}
                 </span>
               )}
               {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (

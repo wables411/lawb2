@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { firebaseChess } from '../firebaseChess';
-import { database } from '../firebaseApp';
-import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
 import { getPieceSetById } from '../config/chessPieceSets';
 import './ChessGame.css';
 import './ChessGameModern.css';
 import './ChessSpectator.css';
 
-const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 const POLL_INTERVAL_MS = 10_000;
 const GAME_OVER_LINGER_MS = 15_000;
 const PARTICLE_COUNT = 60;
@@ -19,14 +16,6 @@ const CHESSBOARDS = [
   '/images/chessboard3.png',
   '/images/chessboard4.png',
 ];
-
-interface ChatMessage {
-  id: string;
-  text: string;
-  sender: string;
-  timestamp: number;
-  isClawb?: boolean;
-}
 
 interface Particle {
   x: number;
@@ -67,6 +56,16 @@ function reconstructBoard(boardData: any): (string | null)[][] {
 function shortenAddress(addr: string): string {
   if (!addr || addr.length < 10) return addr || 'Unknown';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+function squareToAlgebraic(row: number, col: number): string {
+  const file = String.fromCharCode(97 + col);
+  const rank = String(8 - row);
+  return `${file}${rank}`;
+}
+
+function withCaptureTag(move: string): string {
+  return /x/i.test(move) ? `${move} *capture*` : move;
 }
 
 function initParticles(): Particle[] {
@@ -142,21 +141,18 @@ export const ChessSpectator: React.FC = () => {
   const [bluePlayer, setBluePlayer] = useState<string>('');
   const [winner, setWinner] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [chessboard] = useState(() => CHESSBOARDS[Math.floor(Math.random() * CHESSBOARDS.length)]);
   const [captureSquare, setCaptureSquare] = useState<string | null>(null);
   const [moveCount, setMoveCount] = useState(0);
 
   const prevBoardRef = useRef<(string | null)[][]>(Array.from({ length: 8 }, () => Array(8).fill(null)));
   const gameUnsubRef = useRef<(() => void) | null>(null);
-  const chatUnsubRef = useRef<(() => void) | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const cleanup = useCallback(() => {
     if (gameUnsubRef.current) { gameUnsubRef.current(); gameUnsubRef.current = null; }
-    if (chatUnsubRef.current) { chatUnsubRef.current(); chatUnsubRef.current = null; }
   }, []);
 
   const detectCapture = useCallback((oldBoard: (string | null)[][], newBoard: (string | null)[][]) => {
@@ -173,30 +169,10 @@ export const ChessSpectator: React.FC = () => {
     }
   }, []);
 
-  const subscribeToChat = useCallback((code: string) => {
-    if (chatUnsubRef.current) { chatUnsubRef.current(); chatUnsubRef.current = null; }
-    try {
-      const messagesRef = ref(database, `chess_chat/private/${code}/messages`);
-      const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(50));
-      chatUnsubRef.current = onValue(messagesQuery, (snapshot) => {
-        const msgs: ChatMessage[] = [];
-        if (snapshot.exists()) {
-          snapshot.forEach((child) => {
-            msgs.push({ id: child.key!, ...child.val() } as ChatMessage);
-          });
-        }
-        msgs.sort((a, b) => a.timestamp - b.timestamp);
-        setChatMessages(msgs);
-      });
-    } catch (err) {
-      console.error('[SPECTATOR] Chat subscribe error:', err);
-    }
-  }, []);
-
   const subscribeToGame = useCallback((code: string) => {
     cleanup();
     setInviteCode(code);
-    setChatMessages([]);
+    setMoveHistory([]);
     setMoveCount(0);
 
     gameUnsubRef.current = firebaseChess.subscribeToGame(code, (gameData: any) => {
@@ -220,6 +196,20 @@ export const ChessSpectator: React.FC = () => {
         setLastMove(gameData.last_move);
         setMoveCount(prev => prev + 1);
       }
+      if (Array.isArray(gameData.move_history)) {
+        const readableMoves = gameData.move_history
+          .map((m: unknown) => String(m || '').trim())
+          .filter((m: string) => m.length > 0);
+        setMoveHistory(readableMoves);
+      } else if (gameData.last_move?.from && gameData.last_move?.to) {
+        const from = gameData.last_move.from;
+        const to = gameData.last_move.to;
+        const fallbackMove = `${squareToAlgebraic(from.row, from.col)} -> ${squareToAlgebraic(to.row, to.col)}`;
+        setMoveHistory((prev) => {
+          if (prev[prev.length - 1] === fallbackMove) return prev;
+          return [...prev, fallbackMove];
+        });
+      }
       setBluePlayer(gameData.blue_player || '');
 
       if (gameData.game_state === 'finished') {
@@ -230,9 +220,7 @@ export const ChessSpectator: React.FC = () => {
         setWinner(null);
       }
     });
-
-    subscribeToChat(code);
-  }, [cleanup, subscribeToChat, setCurrentPieceSet, detectCapture]);
+  }, [cleanup, setCurrentPieceSet, detectCapture]);
 
   const findAndSubscribe = useCallback(async () => {
     const game = await firebaseChess.getActiveClawbGame();
@@ -262,7 +250,7 @@ export const ChessSpectator: React.FC = () => {
         setInviteCode(null);
         setBoard(Array.from({ length: 8 }, () => Array(8).fill(null)));
         prevBoardRef.current = Array.from({ length: 8 }, () => Array(8).fill(null));
-        setChatMessages([]);
+        setMoveHistory([]);
         setLastMove(null);
         setWinner(null);
         setBluePlayer('');
@@ -276,9 +264,17 @@ export const ChessSpectator: React.FC = () => {
 
   useEffect(() => cleanup, [cleanup]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+  const moveRows = useMemo(() => {
+    const rows: Array<{ turn: number; blue: string; red: string }> = [];
+    for (let i = 0; i < moveHistory.length; i += 2) {
+      rows.push({
+        turn: Math.floor(i / 2) + 1,
+        blue: withCaptureTag(moveHistory[i] || ''),
+        red: withCaptureTag(moveHistory[i + 1] || ''),
+      });
+    }
+    return rows;
+  }, [moveHistory]);
 
   const renderSquare = (row: number, col: number) => {
     const piece = board[row]?.[col];
@@ -384,26 +380,19 @@ export const ChessSpectator: React.FC = () => {
         </div>
 
         <div className="spectator-chat-col">
-          <div className="spectator-chat-header">Game Chat</div>
+          <div className="spectator-chat-header">Move History</div>
           <div className="spectator-chat-messages">
-            {chatMessages.length === 0 && (
-              <div className="spectator-chat-empty">No messages yet</div>
+            {moveRows.length === 0 && (
+              <div className="spectator-chat-empty">No moves yet</div>
             )}
-            {chatMessages.map((msg) => {
-              const isClawb =
-                msg.isClawb ||
-                (msg.sender || '').toLowerCase() === CLAWB_WALLET.toLowerCase() ||
-                (msg.sender || '').toLowerCase().includes('clawb');
-              return (
-                <div key={msg.id} className={`spectator-chat-msg ${isClawb ? 'clawb' : 'player'}`}>
-                  <span className="spectator-chat-sender">
-                    {isClawb ? 'Clawb' : shortenAddress(msg.sender)}:
-                  </span>{' '}
-                  <span className="spectator-chat-text">{msg.text}</span>
-                </div>
-              );
-            })}
-            <div ref={chatEndRef} />
+            {moveRows.slice(-18).map((row) => (
+              <div key={row.turn} className="spectator-chat-msg player">
+                <span className="spectator-chat-sender">{row.turn}.</span>{' '}
+                <span className="spectator-chat-text">
+                  Blue: {row.blue || '-'} | Red: {row.red || '-'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -665,6 +665,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [selectedSquare, setSelectedSquare] = useState<{ row: number; col: number } | null>(null);
   const [validMoves, setValidMoves] = useState<{ row: number; col: number }[]>([]);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
+  const [showPieceHoverLabels, setShowPieceHoverLabels] = useState(true);
+  const [hoveredPieceLabel, setHoveredPieceLabel] = useState<string | null>(null);
   const [gameStatus, setGameStatus] = useState<string>('Waiting for opponent...');
   const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.LOBBY);
   const [isLocalMoveInProgress, setIsLocalMoveInProgress] = useState(false);
@@ -6133,6 +6135,22 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
     
     const piece = board[row][col];
+    const getPieceHoverLabel = (pieceCode: string | null): string | null => {
+      if (!pieceCode) return null;
+      const code = pieceCode.toLowerCase();
+      const color = pieceCode === pieceCode.toLowerCase() ? 'Blue' : 'Red';
+      const nameMap: Record<string, string> = {
+        k: 'King',
+        q: 'Queen',
+        r: 'Rook',
+        b: 'Bishop',
+        n: 'Knight',
+        p: 'Pawn',
+      };
+      const pieceName = nameMap[code];
+      return pieceName ? `${color} ${pieceName}` : null;
+    };
+    const pieceHoverLabel = getPieceHoverLabel(piece);
     const isSelected = selectedSquare?.row === row && selectedSquare?.col === col;
     const isValidMove = validMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && ((lastMove.from.row === row && lastMove.from.col === col) || (lastMove.to.row === row && lastMove.to.col === col));
@@ -6151,6 +6169,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         key={`${row}-${col}`}
         className={`square ${isSelected ? 'selected' : ''} ${isValidMove ? 'legal-move' : ''} ${isLastMove ? 'last-move' : ''} ${isWinningMoveSquare ? 'winning-move' : ''} ${isInCheck ? 'square-in-check' : ''}`}
         onClick={() => handleSquareClick(row, col)}
+        onMouseEnter={() => {
+          if (showPieceHoverLabels && pieceHoverLabel) setHoveredPieceLabel(pieceHoverLabel);
+        }}
+        onMouseLeave={() => {
+          if (hoveredPieceLabel) setHoveredPieceLabel(null);
+        }}
+        title={showPieceHoverLabels && pieceHoverLabel ? pieceHoverLabel : undefined}
         onTouchStart={(e) => handleTouchStart(row, col, e)}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -7412,6 +7437,30 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
                   {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
                 </span>
+                <button
+                  onClick={() => {
+                    setShowPieceHoverLabels((prev) => !prev);
+                    if (showPieceHoverLabels) setHoveredPieceLabel(null);
+                  }}
+                  style={{
+                    marginLeft: '8px',
+                    padding: '2px 6px',
+                    fontSize: isMobile ? '10px' : '11px',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'rgba(0,0,0,0.25)',
+                    color: '#fff',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                  }}
+                  title="Toggle piece name labels on hover"
+                >
+                  Piece Labels: {showPieceHoverLabels ? 'ON' : 'OFF'}
+                </button>
+                {showPieceHoverLabels && hoveredPieceLabel && (
+                  <span className="move-history-display" style={{ marginLeft: '8px' }}>
+                    Hover: {hoveredPieceLabel}
+                  </span>
+                )}
                 {gameMode === GameMode.ACTIVE && timeoutCountdown > 0 && (
                   <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
                     {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
