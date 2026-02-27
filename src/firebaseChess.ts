@@ -1,5 +1,6 @@
 import { database } from './firebaseApp';
 import { ref, set, get, onValue, off, remove, update } from 'firebase/database';
+const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();
 
 // Board positions keys historically existed in two formats:
 // - legacy: "row,col" (comma)
@@ -325,6 +326,35 @@ export const firebaseChess = {
       return vsClawb[0] || null;
     } catch (error) {
       console.error('[FIREBASE] Error getting active vs_clawb game:', error);
+      return null;
+    }
+  },
+
+  // Prefer any active game where Clawb is a player (vs_clawb or PVP/public).
+  // Fallback behavior can still use getActiveVsClawbGame where explicitly needed.
+  async getActiveClawbGame() {
+    try {
+      const db = getDatabaseOrThrow();
+      const gamesRef = ref(db, 'chess_games');
+      const snapshot = await get(gamesRef);
+      if (!snapshot.exists()) return null;
+      const games = snapshot.val();
+      const clawbGames = Object.entries(games)
+        .filter(([, g]: [string, any]) => {
+          if (g?.game_state !== 'active') return false;
+          const blue = String(g?.blue_player || '').toLowerCase();
+          const red = String(g?.red_player || '').toLowerCase();
+          return blue === CLAWB_WALLET || red === CLAWB_WALLET;
+        })
+        .map(([key, g]: [string, any]) => ({ ...normalizeGameData(g), invite_code: key }));
+
+      clawbGames.sort((a: any, b: any) =>
+        new Date(b.updated_at || b.created_at || 0).getTime() -
+        new Date(a.updated_at || a.created_at || 0).getTime()
+      );
+      return clawbGames[0] || null;
+    } catch (error) {
+      console.error('[FIREBASE] Error getting active Clawb game:', error);
       return null;
     }
   },

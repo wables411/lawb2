@@ -235,9 +235,9 @@ export const ChessSpectator: React.FC = () => {
   }, [cleanup, subscribeToChat, setCurrentPieceSet, detectCapture]);
 
   const findAndSubscribe = useCallback(async () => {
-    const game = await firebaseChess.getActiveVsClawbGame();
+    const game = await firebaseChess.getActiveClawbGame();
     if (game && game.invite_code) {
-      console.log('[SPECTATOR] Found active vs_clawb game:', game.invite_code);
+      console.log('[SPECTATOR] Found active Clawb game:', game.invite_code, 'type:', game.game_type || 'unknown');
       subscribeToGame(game.invite_code);
     }
   }, [subscribeToGame]);
