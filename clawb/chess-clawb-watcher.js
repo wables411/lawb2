@@ -14,6 +14,7 @@ import {
   postGameChatMessage,
   updateClawbActivity,
 } from './lawb-firebase.js';
+import { enqueueVsClawbFirstWinBounty } from './lawb-points.js';
 
 // --- Config ---
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -92,6 +93,19 @@ async function handleGameUpdate(game) {
     if (comment) {
       await postGameChatMessage(id, comment);
       console.log(`[Chess] ${id} (end): "${comment}"`);
+    }
+
+    // First-win bounty queue: player beat Clawb in a vs_clawb match.
+    if (winner === 'blue' && game.blue_player) {
+      const queued = await enqueueVsClawbFirstWinBounty(game.blue_player, {
+        game_id: id,
+        game_type,
+        winner,
+        end_reason: end_reason || 'checkmate',
+      });
+      if (queued.success) {
+        console.log(`[Chess] queued vs_clawb first-win bounty for ${game.blue_player}`);
+      }
     }
     return;
   }

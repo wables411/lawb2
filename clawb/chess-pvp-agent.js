@@ -20,6 +20,7 @@ import {
   updateClawbActivity,
   db,
 } from './lawb-firebase.js';
+import { enqueuePvpFirstWinBounty } from './lawb-points.js';
 
 // --- Config ---
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
@@ -144,6 +145,16 @@ function getWagerTokenAddress(game) {
   if (s === '0x0000000000000000000000000000000000000000') return ethers.ZeroAddress;
   if (/^0x[0-9a-fA-F]{40}$/.test(s)) return s;
   return null; // not a valid full address (truncated or symbol)
+}
+
+function resolveWinnerWallet(game) {
+  const winner = game?.winner;
+  if (!winner) return null;
+  const winnerText = String(winner);
+  if (/^0x[a-fA-F0-9]{40}$/.test(winnerText)) return winnerText.toLowerCase();
+  if (winnerText === 'blue') return game?.blue_player ? String(game.blue_player).toLowerCase() : null;
+  if (winnerText === 'red') return game?.red_player ? String(game.red_player).toLowerCase() : null;
+  return null;
 }
 
 // --- Evaluate whether to join a game ---
@@ -309,6 +320,31 @@ async function watchAndPlayGame(inviteCode) {
         if (comment) {
           await postGameChatMessage(inviteCode, comment);
           console.log(`[PVP] ${inviteCode} (end): "${comment}"`);
+        }
+
+        // First-win bounty queue: wagered Base PVP where Clawb loses.
+        const winnerWallet = resolveWinnerWallet(game);
+        const isBase = !game.chain || game.chain === 'base';
+        const wagerAmount = BigInt(game.bet_amount || 0);
+        const clawbInMatch =
+          String(game.red_player || '').toLowerCase() === CLAWB_WALLET.toLowerCase() ||
+          String(game.blue_player || '').toLowerCase() === CLAWB_WALLET.toLowerCase();
+        const clawbLost = winnerWallet && winnerWallet !== CLAWB_WALLET.toLowerCase();
+
+        if (isBase && wagerAmount > 0n && clawbInMatch && clawbLost) {
+          const queued = await enqueuePvpFirstWinBounty(winnerWallet, {
+            game_id: inviteCode,
+            game_type: game.game_type || 'pvp',
+            winner: winnerWallet,
+            end_reason: endReason,
+            bet_amount: String(game.bet_amount || '0'),
+            bet_token: game.bet_token || null,
+            bet_token_address: game.bet_token_address || null,
+            chain: game.chain || 'base',
+          });
+          if (queued.success) {
+            console.log(`[PVP] queued first-win Kemonokaki bounty for ${winnerWallet}`);
+          }
         }
       }
       gameRef.off('value', onGameValue);

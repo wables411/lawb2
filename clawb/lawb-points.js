@@ -48,14 +48,21 @@ export const REWARD_VALUES = {
 };
 
 const CLAWB_WALLET = '0x5bba58218914f2e9b6b5434e0306fa2c6ca0e429';
+const IS_EVM_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
+const IS_SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+export const FIRST_WIN_BOUNTY_IDS = {
+  VS_CLAWB_SOL_CLAWB_5M: 'first_vs_clawb_win_sol_clawb_5m',
+  PVP_WIN_KEMONOKAKI_9978: 'first_pvp_win_kemonokaki_9978',
+};
 
 // ---------------------------------------------------------------------------
 // Retake <-> Wallet Linking
 // ---------------------------------------------------------------------------
 
 export async function linkRetakeViewer(retakeUsername, walletAddress) {
-  const isEvm = /^0x[a-fA-F0-9]{40}$/.test(walletAddress);
-  const isSolana = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress);
+  const isEvm = IS_EVM_ADDRESS.test(walletAddress);
+  const isSolana = IS_SOLANA_ADDRESS.test(walletAddress);
   if (!isEvm && !isSolana) {
     return { success: false, error: 'invalid wallet address. use EVM (0x...) or Solana format.' };
   }
@@ -120,8 +127,8 @@ export async function addPoints(identifier, source, amount) {
   if (!identifier || amount <= 0) return false;
 
   let wallet = identifier;
-  const isEvm = /^0x[a-fA-F0-9]{40}$/.test(wallet);
-  const isSolana = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet);
+  const isEvm = IS_EVM_ADDRESS.test(wallet);
+  const isSolana = IS_SOLANA_ADDRESS.test(wallet);
 
   if (!isEvm && !isSolana) {
     const linked = await getLinkedWallet(identifier);
@@ -318,6 +325,80 @@ async function claimBounty(bountyId, wallet) {
   console.log(`[LawbPoints] *** BOUNTY CLAIMED *** ${bounty.title} → ${wallet}`);
 }
 
+function normalizeWallet(wallet) {
+  if (!wallet) return wallet;
+  return IS_EVM_ADDRESS.test(wallet) ? wallet.toLowerCase() : wallet;
+}
+
+async function claimBountyToQueue(bountyId, wallet, claimContext = {}) {
+  const normalizedWallet = normalizeWallet(wallet);
+  const bountyRef = db.ref(`bounties/${bountyId}`);
+  const nowIso = new Date().toISOString();
+
+  const txResult = await bountyRef.transaction((current) => {
+    if (!current || current.status !== 'active') return;
+    return {
+      ...current,
+      status: 'claimed',
+      claimed_by: normalizedWallet,
+      claimed_at: nowIso,
+    };
+  });
+
+  if (!txResult.committed || !txResult.snapshot?.exists()) {
+    return { success: false, reason: 'inactive_or_missing' };
+  }
+
+  const bounty = txResult.snapshot.val();
+  const prize = bounty.prize || {};
+  const requiresWalletType =
+    prize.chain === 'solana' ? 'solana' :
+    prize.chain === 'base' ? 'evm' :
+    'any';
+
+  let payoutWallet = normalizedWallet;
+  if (requiresWalletType === 'solana' && !IS_SOLANA_ADDRESS.test(String(normalizedWallet || ''))) {
+    payoutWallet = null;
+  }
+  if (requiresWalletType === 'evm' && !IS_EVM_ADDRESS.test(String(normalizedWallet || ''))) {
+    payoutWallet = null;
+  }
+
+  const claimRef = db.ref('bounty_claims').push();
+  await claimRef.set({
+    bounty_id: bountyId,
+    bounty_title: bounty.title,
+    wallet: normalizedWallet,
+    payout_wallet: payoutWallet,
+    requires_wallet_type: requiresWalletType,
+    prize,
+    context: claimContext,
+    status: 'pending_approval',
+    created_at: nowIso,
+    processed_at: null,
+    completed_at: null,
+    tx_hash: null,
+    error: null,
+  });
+
+  console.log(`[LawbPoints] queued bounty claim ${bountyId} for ${normalizedWallet} (${claimRef.key})`);
+  return { success: true, claim_id: claimRef.key };
+}
+
+export async function enqueueVsClawbFirstWinBounty(wallet, claimContext = {}) {
+  return claimBountyToQueue(FIRST_WIN_BOUNTY_IDS.VS_CLAWB_SOL_CLAWB_5M, wallet, {
+    source: 'vs_clawb',
+    ...claimContext,
+  });
+}
+
+export async function enqueuePvpFirstWinBounty(wallet, claimContext = {}) {
+  return claimBountyToQueue(FIRST_WIN_BOUNTY_IDS.PVP_WIN_KEMONOKAKI_9978, wallet, {
+    source: 'pvp',
+    ...claimContext,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Viewer Stats (for !points / !rank commands)
 // ---------------------------------------------------------------------------
@@ -367,12 +448,6 @@ export async function getLeaderboardRank(wallet) {
 // ---------------------------------------------------------------------------
 
 export async function seedDefaultBounties() {
-  const existing = await getActiveBounties();
-  if (existing.length > 0) {
-    console.log(`[LawbPoints] ${existing.length} active bounties exist, skipping seed`);
-    return;
-  }
-
   const defaults = [
     {
       id: 'first_100_pts',
@@ -399,19 +474,59 @@ export async function seedDefaultBounties() {
       prize: { token: 'clawb', amount: 100000, chain: 'base' },
     },
     {
-      id: 'beat_clawb_chess',
-      title: 'Lobster Slayer',
-      description: 'First player to defeat Clawb at chess',
-      type: 'chess_beat_clawb',
-      condition: {},
-      prize: { token: 'clawb', amount: 10000, chain: 'base' },
+      id: FIRST_WIN_BOUNTY_IDS.VS_CLAWB_SOL_CLAWB_5M,
+      title: 'First Blood: VS Clawb',
+      description: 'First player to defeat Clawb in a vs Clawb match wins 5,000,000 $CLAWB on Solana',
+      type: 'custom',
+      condition: { mode: 'vs_clawb', first_only: true },
+      prize: {
+        type: 'token',
+        token: 'clawb',
+        amount: 5_000_000,
+        chain: 'solana',
+        mint: process.env.SOL_CLAWB_MINT || null,
+        decimals: Number(process.env.SOL_CLAWB_DECIMALS || 6),
+      },
+    },
+    {
+      id: FIRST_WIN_BOUNTY_IDS.PVP_WIN_KEMONOKAKI_9978,
+      title: 'Clawb Hunter: Wager PVP',
+      description: 'First player to defeat Clawb in a wagered Base PVP match wins Kemonokaki #9978',
+      type: 'custom',
+      condition: { mode: 'pvp_wager_base', first_only: true },
+      prize: {
+        type: 'nft',
+        chain: 'base',
+        contract: process.env.BASE_KEMONOKAKI_CONTRACT || null,
+        token_id: Number(process.env.BASE_KEMONOKAKI_TOKEN_ID || 9978),
+        collection: 'kemonokaki',
+      },
     },
   ];
 
-  for (const b of defaults) {
-    await createBounty(b);
+  const legacyRef = db.ref('bounties/beat_clawb_chess');
+  const legacySnap = await legacyRef.once('value');
+  if (legacySnap.exists()) {
+    const legacy = legacySnap.val();
+    if (legacy?.status === 'active') {
+      await legacyRef.update({
+        status: 'expired',
+        expired_at: new Date().toISOString(),
+        expiry_reason: 'replaced_by_first_win_bounty_queue',
+      });
+      console.log('[LawbPoints] expired legacy beat_clawb_chess bounty');
+    }
   }
-  console.log(`[LawbPoints] seeded ${defaults.length} default bounties`);
+
+  let created = 0;
+  for (const b of defaults) {
+    const existingSnap = await db.ref(`bounties/${b.id}`).once('value');
+    if (!existingSnap.exists()) {
+      await createBounty(b);
+      created++;
+    }
+  }
+  console.log(`[LawbPoints] seeded ${created} missing default bounties`);
 }
 
 // ---------------------------------------------------------------------------
@@ -420,6 +535,12 @@ export async function seedDefaultBounties() {
 
 export async function startLawbPoints() {
   console.log('[LawbPoints] initializing...');
+  if (!process.env.SOL_CLAWB_MINT) {
+    console.warn('[LawbPoints] SOL_CLAWB_MINT missing — Solana first-win payout cannot execute until configured.');
+  }
+  if (!process.env.BASE_KEMONOKAKI_CONTRACT) {
+    console.warn('[LawbPoints] BASE_KEMONOKAKI_CONTRACT missing — Kemonokaki first-win payout cannot execute until configured.');
+  }
   await seedDefaultBounties();
   console.log('[LawbPoints] ready. the reef rewards those who participate.');
   return () => {};

@@ -20,6 +20,7 @@ import { startRetakeStreamer } from './retake-streamer.js';
 import { startWorldAutonomousRoutines } from './world-autonomous-routines.js';
 import { startLawbPoints } from './lawb-points.js';
 import { startWorldGallerySync } from './world-gallery-sync.js';
+import { startBountyPayoutProcessor } from './bounty-payout-processor.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
@@ -71,6 +72,10 @@ async function main() {
     // 5.7 Keep Clawb World NFT gallery synced (EVM + Solana)
     const stopGallerySync = await startWorldGallerySync();
     cleanups.push(stopGallerySync);
+
+    // 5.8 Process approved bounty payouts (safe queue mode)
+    const stopBountyPayouts = startBountyPayoutProcessor();
+    cleanups.push(stopBountyPayouts);
 
     // 6. Start Retake.TV streamer (unless disabled)
     if (!noStream && !chatOnly) {

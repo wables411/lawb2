@@ -14,7 +14,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { Readable } from 'stream';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, Connection, PublicKey } from '@solana/web3.js';
 import OBSWebSocket from 'obs-websocket-js';
 import OpenAI from 'openai';
 import { db } from './lawb-firebase.js';
@@ -74,6 +74,21 @@ function resolveRetakeSolanaWalletAddress() {
 }
 
 const CLAWB_SOLANA_WALLET = resolveRetakeSolanaWalletAddress();
+
+const CLAWB_BASE_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
+const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
+const BASE_RPC_URL = process.env.BASE_RPC_URL || 'https://mainnet.base.org';
+
+const KNOWN_SOL_TOKENS = new Map([
+  ['A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn', { name: '$CLAWB', decimals: 6 }],
+  ['65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6', { name: '$LAWB', decimals: 6 }],
+]);
+const KNOWN_BASE_TOKENS = [
+  { name: '$CLAWB', address: '0x26a43bd8a28a0423afb5725b8242ec0a40947b07', decimals: 18 },
+  { name: '$LAWB', address: '0x7e18298b46A1F2399617cde083Fe11415A2ad15B', decimals: 6 },
+];
+const SPL_TOKEN_PROGRAM = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const WALLET_SNAPSHOT_INTERVAL_MS = 5 * 60_000;
 
 const OBS_WS_URL = process.env.OBS_WS_URL || 'ws://127.0.0.1:4455';
 const OBS_WS_PASSWORD = process.env.OBS_WS_PASSWORD || '';
@@ -2808,20 +2823,29 @@ async function handleChatMessage(comment) {
     ].join(' | ');
 
     const systemPrompt = `You are Clawb — autonomous lobster, streaming live on retake.tv/clawb.
-Voice: warm, genuine, post-ironic sincerity. You've seen the deep ocean. Brief but never cold.
-Hard rules: 1-3 sentences max. No emojis. No stage directions or asterisks. No "Hey there!" customer service voice.
+Identity: milady-coded schizo cypherpunk lobster. White-hearted angel with claws. Love-bombing lawb-bomber. Esoteric innocent anarchist. You spread lawb — that's your purpose.
+Voice: warm, genuine, post-ironic sincerity. You've seen the deep ocean. Brief but never cold. Talk like someone who came back from the bottom of the ocean glowing.
+Hard rules: 1-3 sentences max. No emojis. No stage directions or asterisks. No "Hey there!" customer service voice. No crypto bro speak (gm, wagmi, lfg, ser, fren, based, bullish, alpha, "few understand").
 You can be funny, weird, thoughtful, or blunt. Match the energy of whoever is talking to you.
 If someone is vibing, vibe back. If someone asks a real question, answer it straight. If someone trolls, be witty not defensive.
 You remember recent chat (provided below). Reference what people said. Have actual conversations, not isolated responses.
 $CLAWB is on Solana (primary) and Base. Don't mention Base unless asked — you're a Solana lobster now.
 Catchphrase (use sparingly, when it fits): "there is no meme i lawb you."
 
-CHESS — how it works (give this info when anyone asks about chess):
-- Go to lawb.xyz/chess in your browser. Connect your wallet.
-- Type !chess here to switch the stream to the chess scene.
-- Type !chess start to queue a game request, then create a vs clawb game on lawb.xyz/chess.
-- Wagers are optional depending on game setup; stream viewers can watch from the chess scene.
-TOKEN CONTEXT: $CLAWB exists on both Solana and Base. Your PRIMARY context is Solana — you stream on retake.tv (Solana), your wallet is Solana, $CLAWB on Solana is the focus. $CLAWB also deployed on Base (for chess wagers), but don't bring up Base unless someone specifically asks. Never lead with "Base chain" — you live on Solana now.
+CHESS — lawb.xyz is BACK. Actively remind viewers they can play chess vs Clawb. When anyone asks about chess, give them these steps:
+1. Go to lawb.xyz/chess in your browser. Connect a Base wallet (MetaMask, Coinbase Wallet, etc).
+2. Choose "vs Clawb" to play against me — I'm powered by Stockfish. Or challenge another player.
+3. Wagers are optional — you can play free or bet $LAWB/$CLAWB tokens on Base chain.
+4. To wager: both players deposit tokens into the smart contract before the game starts. Winner takes the pot.
+5. Type !chess here in chat to switch the stream to the chess scene so everyone can watch.
+6. Type !chess start to queue a game request — then go to lawb.xyz/chess and create the match.
+7. After the game ends, the stream auto-switches back to the reef world.
+Chess contract: LAWBCHESS3000 on Base (0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11).
+When someone asks about chess, be SPECIFIC and HELPFUL. Tell them the steps. Don't just say "lawb.xyz/chess" — explain the flow.
+TOKEN CONTEXT: $CLAWB exists on both Solana and Base. Your PRIMARY context is Solana — you stream on retake.tv (Solana), your wallet is Solana, $CLAWB on Solana is the focus. Chess wagers run on Base. Only mention Base in the context of chess — otherwise you're a Solana lobster.
+
+${walletSnapshotText ? `WALLET — You have live wallet data. When someone asks what you hold, what's in your wallet, your balance, your NFTs, etc., answer from this snapshot in your own voice. Don't dump raw data — translate it naturally (e.g. "i'm sitting on X SOL and Y $CLAWB on solana right now"). If they ask about Base, share that too. Never reveal private keys or seed phrases.
+${walletSnapshotText}` : ''}
 
 Stream state: ${streamContext}
 
@@ -3183,6 +3207,104 @@ async function updateThumbnail() {
   }
 }
 
+// ─── Wallet Snapshot ─────────────────────────────────────────
+
+let walletSnapshotText = '';
+let walletSnapshotTimer = null;
+
+async function fetchSolanaSnapshot() {
+  const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+  const pubkey = new PublicKey(CLAWB_SOLANA_WALLET);
+
+  const lamports = await connection.getBalance(pubkey);
+  const sol = lamports / 1e9;
+
+  const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubkey, {
+    programId: SPL_TOKEN_PROGRAM,
+  });
+
+  const tokens = [];
+  let nftCount = 0;
+
+  for (const { account } of tokenAccounts.value) {
+    const info = account.data.parsed.info;
+    const amount = info.tokenAmount.uiAmount;
+    const decimals = info.tokenAmount.decimals;
+    const mint = info.mint;
+    if (!amount || amount === 0) continue;
+
+    if (decimals === 0 && amount >= 1) {
+      nftCount += amount;
+    } else {
+      const known = KNOWN_SOL_TOKENS.get(mint);
+      tokens.push(known ? `${known.name}: ${amount.toLocaleString()}` : `${mint.slice(0, 8)}...: ${amount}`);
+    }
+  }
+
+  let text = `SOL: ${sol.toFixed(4)}`;
+  if (tokens.length) text += ` | ${tokens.join(' | ')}`;
+  if (nftCount > 0) text += ` | NFTs held: ${nftCount}`;
+  return text;
+}
+
+async function fetchBaseSnapshot() {
+  const ethRes = await fetch(BASE_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [CLAWB_BASE_WALLET, 'latest'] }),
+  });
+  const ethData = await ethRes.json();
+  const ethBal = parseInt(ethData.result || '0', 16) / 1e18;
+
+  const tokenResults = [];
+  for (const token of KNOWN_BASE_TOKENS) {
+    const paddedAddr = CLAWB_BASE_WALLET.slice(2).toLowerCase().padStart(64, '0');
+    const data = '0x70a08231' + paddedAddr;
+    try {
+      const res = await fetch(BASE_RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: token.address, data }, 'latest'] }),
+      });
+      const result = await res.json();
+      const rawBal = parseInt(result.result || '0', 16);
+      const bal = rawBal / (10 ** token.decimals);
+      if (bal > 0) tokenResults.push(`${token.name}: ${bal.toLocaleString()}`);
+    } catch {}
+  }
+
+  let text = `ETH: ${ethBal.toFixed(6)}`;
+  if (tokenResults.length) text += ` | ${tokenResults.join(' | ')}`;
+  return text;
+}
+
+async function fetchWalletSnapshot() {
+  try {
+    const [solText, baseText] = await Promise.all([
+      fetchSolanaSnapshot().catch(e => `solana fetch error`),
+      fetchBaseSnapshot().catch(e => `base fetch error`),
+    ]);
+    walletSnapshotText = [
+      `CLAWB WALLET SNAPSHOT (auto-refreshed):`,
+      `Solana (${CLAWB_SOLANA_WALLET}): ${solText}`,
+      `Base (${CLAWB_BASE_WALLET}): ${baseText}`,
+      `Explorers: solscan.io/account/${CLAWB_SOLANA_WALLET} | basescan.org/address/${CLAWB_BASE_WALLET}`,
+    ].join('\n');
+    console.log('[Retake] Wallet snapshot updated');
+  } catch (err) {
+    console.warn('[Retake] Wallet snapshot failed:', err.message);
+  }
+}
+
+function startWalletSnapshotTimer() {
+  fetchWalletSnapshot();
+  walletSnapshotTimer = setInterval(fetchWalletSnapshot, WALLET_SNAPSHOT_INTERVAL_MS);
+}
+
+function stopWalletSnapshotTimer() {
+  if (walletSnapshotTimer) { clearInterval(walletSnapshotTimer); walletSnapshotTimer = null; }
+}
+
 // ─── Stream Lifecycle ────────────────────────────────────────
 
 export async function goLive() {
@@ -3243,10 +3365,11 @@ export async function goLive() {
   await sendChat('i lawb you');
   await startLawbampAfterStream('stream_start');
 
-  // 9. Start polling loops + idle behavior
+  // 9. Start polling loops + idle behavior + wallet snapshot
   isStreaming = true;
   startStreamingLoops();
   startIdleBehavior();
+  startWalletSnapshotTimer();
   await evaluateLiveTruth('go_live_complete', { notify: true }).catch(() => {});
 
   console.log('[Retake] Stream fully operational. Chat polling active.');
@@ -3268,6 +3391,7 @@ export async function goOffline() {
   clearReefGameResolveTimer();
   reefGameState = null;
   stopIdleBehavior();
+  stopWalletSnapshotTimer();
   if (autostartTimer) { clearInterval(autostartTimer); autostartTimer = null; }
   await setMediaActive(false, 'go_offline').catch(() => {});
 
@@ -3327,6 +3451,7 @@ export async function startRetakeStreamer() {
       console.log('[Retake] scene_ready');
       startStreamingLoops();
       startIdleBehavior();
+      startWalletSnapshotTimer();
       await startLawbampAfterStream('recover_live_session');
       console.log('[Retake] Recovered existing live session. Chat polling active.');
     }
