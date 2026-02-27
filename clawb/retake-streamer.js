@@ -2960,7 +2960,10 @@ function parseWorldCommand(loweredText) {
     }
   }
 
-  if (command === 'zoom' && argRaw) {
+  if (command === 'zoom') {
+    if (!argRaw) {
+      return { type: 'action', command: '!zoom in', action: 'zoom_in' };
+    }
     const zoomArg = argRaw.trim().replace(/[^a-z]/g, '');
     if (zoomArg === 'in' || zoomArg === 'out') {
       return { type: 'action', command: `!zoom ${zoomArg}`, action: `zoom_${zoomArg}` };

@@ -1,18 +1,15 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import {
   renderWorldState,
-  createSandFloor,
-  setupUnderwaterLighting,
   setupUnderwaterFog,
-  createBubbleParticles,
-  animateBubbles,
-  generateCollisionBoxes,
+  applyLOD,
   resolveCollision,
+  generateCollisionBoxes,
   type WorldState,
   type CollisionBox,
 } from '../utils/worldObjects';
@@ -32,138 +29,74 @@ import {
 import './ClawbWorld.css';
 import LinuxNavBar from './LinuxNavBar';
 
-// NFT Gallery — same as stream overlay
-const FIREBASE_GALLERY_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/clawb/nft_gallery.json';
-const FIREBASE_LEADERBOARD_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/leaderboard.json';
-const FIREBASE_PROFILES_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/profiles.json?shallow=true';
-const FIREBASE_BOUNTIES_URL = 'https://chess-220ee-default-rtdb.firebaseio.com/bounties.json';
-const LEADERBOARD_REFRESH_MS = 30_000;
-const LEADERBOARD_CANVAS_W = 1536;
-const LEADERBOARD_CANVAS_H = 1024;
-const MIN_Y = -3;
-const MAX_Y = 2;
-
-// Room offsets per spec
-const ROOM_OFFSETS: Record<string, THREE.Vector3> = {
-  main: new THREE.Vector3(0, 0, 0),
-  bedroom: new THREE.Vector3(-15, 0, -15),
-  workshop: new THREE.Vector3(15, 0, -15),
-  vault: new THREE.Vector3(0, 0, -25),
-  leaderboard: new THREE.Vector3(20, 0, 5),
-};
-
-// Firebase RTDB URLs for live world state (synced from Clawb's machine every 60s)
-const FIREBASE_DB = 'https://chess-220ee-default-rtdb.firebaseio.com';
-const ROOM_URLS: Record<string, string> = {
-  main: `${FIREBASE_DB}/world/main.json`,
-  bedroom: `${FIREBASE_DB}/world/bedroom.json`,
-  workshop: `${FIREBASE_DB}/world/workshop.json`,
-  vault: `${FIREBASE_DB}/world/vault.json`,
-};
-
-// Fallback to static files if Firebase is unavailable
-const ROOM_FILES_FALLBACK: Record<string, string> = {
-  main: '/world/world-state-main.json',
-  bedroom: '/world/world-state-bedroom.json',
-  workshop: '/world/world-state-workshop.json',
-  vault: '/world/world-state-vault.json',
-};
-
-const ROOM_LABELS: Record<string, string> = {
-  main: 'Main Reef',
-  bedroom: 'Bedroom',
-  workshop: 'Workshop',
-  vault: 'Vault',
-  leaderboard: 'Leaderboard',
-};
-
-const PSX_RESOLUTION_SCALE = 0.35; // Render at ~1/3 res for PSX look (slightly higher than bg for playability)
-const PLAYER_HEIGHT = 0.5;
-const PLAYER_SPEED = 5;
-const PLAYER_ACCEL_DAMP = 11;
-const PLAYER_DECEL_DAMP = 14;
-const SWIM_VERTICAL_SPEED = 3;
-const WORLD_BOUNDS = 28;
-const CLAWB_COLLISION_RADIUS = 0.35;
-const PLAYER_COLLISION_RADIUS = 0.3;
-const GRAVITY_LERP_RATE = 0.12;
-const CLAWB_GREET_DISTANCE = 3;
-const CLAWB_SCALE = 0.018; // Sized to match reef objects
-const FLOOR_Y = -3;
-const NFT_INTERACT_DISTANCE = 3.2;
-const WORLD_ACTION_DURATION_MS = 5000;
-const DIRECTIONAL_ACTION_DURATION_MS = 2800;
-const LOOK_FOCUS_DURATION_MS = 60_000;
-const CLAWB_PATROL_SPEED = 1.2;
-const CLAWB_PATROL_PAUSE_MS = 1200;
-const ROOM_TRANSITION_DURATION_MS = 4200;
-const CLAWB_STEP_SPEED = 0.9;
-const CLAWB_SWIM_STEP_SPEED = 1.3;
-const CLAWB_COMMAND_ACCEL_DAMP = 10;
-const CLAWB_COMMAND_DECEL_DAMP = 7;
-const CLAWB_COMMAND_TURN_DAMP = 12;
-const CLAWB_HARD_STOP_THRESHOLD = 0.02;
-const STREAM_CAMERA_DEFAULT_DISTANCE = 3.2;
-const STREAM_CAMERA_MIN_DISTANCE = 0.45;
-const STREAM_CAMERA_MAX_DISTANCE = 18.0;
-const STREAM_CAMERA_ZOOM_STEP = 0.38;
-const STREAM_CAMERA_NEAR_FOV = 108; // close-up fish-eye feel
-const STREAM_CAMERA_FAR_FOV = 42; // distant "security camera" feel
-const STREAM_CAMERA_NEAR_Y = 0.78; // eye-level closeup
-const STREAM_CAMERA_FAR_Y = 10.5; // overhead security-cam height
-const STREAM_CAMERA_NEAR_Z_SCALE = 1.0; // keep true distance at close range
-const STREAM_CAMERA_FAR_Z_SCALE = 0.32; // pull toward top-down at far range
-const STREAM_CAMERA_POSITION_DAMP = 8;
-const STREAM_CAMERA_LOOK_DAMP = 10;
-const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
-type ClawbModelKey = 'idle' | 'walk' | 'swim' | 'hi' | 'dance' | 'flip' | 'die';
-const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
-  idle: '/assets/lawbidle.fbx',
-  walk: '/assets/lawbwalk.fbx',
-  swim: '/assets/lawbswim.fbx',
-  hi: '/assets/lawbhi.fbx',
-  dance: '/assets/lawbdance1.fbx',
-  flip: '/assets/lawbflip.fbx',
-  die: '/assets/lawbdeath.fbx',
-};
-const CLAWB_MODEL_FALLBACKS: Record<ClawbModelKey, string[]> = {
-  idle: ['/assets/lawbwalk.fbx', '/assets/lawbidle2.fbx'],
-  walk: ['/assets/lawbswim.fbx', '/assets/lawbidle.fbx'],
-  swim: ['/assets/lawbwalk.fbx', '/assets/lawbidle.fbx'],
-  hi: ['/assets/lawbdance3.fbx', '/assets/lawbidle.fbx'],
-  dance: ['/assets/lawbdance2.fbx', '/assets/lawbidle.fbx'],
-  flip: ['/assets/lawbdance3.fbx', '/assets/lawbidle.fbx'],
-  die: ['/assets/lawbflip.fbx', '/assets/lawbidle.fbx'],
-};
-const PATROL_POINTS = [
-  new THREE.Vector3(-2.6, FLOOR_Y, -1.4),
-  new THREE.Vector3(-0.8, FLOOR_Y, 1.0),
-  new THREE.Vector3(1.9, FLOOR_Y, 0.5),
-  new THREE.Vector3(2.7, FLOOR_Y, -1.8),
-  new THREE.Vector3(0.2, FLOOR_Y, -2.4),
-];
-const ROOM_ACTION_TO_KEY: Record<string, keyof typeof ROOM_OFFSETS> = {
-  room_main: 'main',
-  room_bedroom: 'bedroom',
-  room_workshop: 'workshop',
-  room_vault: 'vault',
-  room_leaderboard: 'leaderboard',
-};
-const LOOPABLE_ACTIONS = new Set(['idle', 'walk', 'dance', 'flip', 'die', 'swim', 'hi', 'wave', 'spin', 'jump']);
-const DIRECTIONAL_ACTIONS = new Set([
-  'left',
-  'right',
-  'forward',
-  'back',
-  'swim_left',
-  'swim_right',
-  'swim_forward',
-  'swim_back',
-  'walk',
-  'swim',
-  'look_swim',
-]);
-const PRESENCE_WRITE_INTERVAL_MS = 250;
+// World modules
+import {
+  FIREBASE_GALLERY_URL,
+  FIREBASE_LEADERBOARD_URL,
+  FIREBASE_PROFILES_URL,
+  FIREBASE_BOUNTIES_URL,
+  LEADERBOARD_REFRESH_MS,
+  LEADERBOARD_CANVAS_W,
+  LEADERBOARD_CANVAS_H,
+  MIN_Y,
+  MAX_Y,
+  ROOM_OFFSETS,
+  BOUNTY_SHOWCASE_ANCHOR,
+  ROOM_URLS,
+  ROOM_FILES_FALLBACK,
+  ROOM_LABELS,
+  RESOLUTION_SCALE,
+  PLAYER_HEIGHT,
+  PLAYER_SPEED,
+  PLAYER_ACCEL_DAMP,
+  PLAYER_DECEL_DAMP,
+  SWIM_VERTICAL_SPEED,
+  WORLD_BOUNDS,
+  CLAWB_COLLISION_RADIUS,
+  PLAYER_COLLISION_RADIUS,
+  GRAVITY_LERP_RATE,
+  CLAWB_GREET_DISTANCE,
+  CLAWB_SCALE,
+  FLOOR_Y,
+  NFT_INTERACT_DISTANCE,
+  WORLD_ACTION_DURATION_MS,
+  DIRECTIONAL_ACTION_DURATION_MS,
+  LOOK_FOCUS_DURATION_MS,
+  LEADERBOARD_AUTO_RETURN_MS,
+  CLAWB_PATROL_SPEED,
+  CLAWB_PATROL_PAUSE_MS,
+  ROOM_TRANSITION_DURATION_MS,
+  CLAWB_STEP_SPEED,
+  CLAWB_SWIM_STEP_SPEED,
+  CLAWB_COMMAND_ACCEL_DAMP,
+  CLAWB_COMMAND_DECEL_DAMP,
+  CLAWB_COMMAND_TURN_DAMP,
+  CLAWB_HARD_STOP_THRESHOLD,
+  STREAM_CAMERA_DEFAULT_DISTANCE,
+  STREAM_CAMERA_MIN_DISTANCE,
+  STREAM_CAMERA_MAX_DISTANCE,
+  STREAM_CAMERA_ZOOM_STEP,
+  STREAM_CAMERA_NEAR_FOV,
+  STREAM_CAMERA_FAR_FOV,
+  STREAM_CAMERA_NEAR_Y,
+  STREAM_CAMERA_FAR_Y,
+  STREAM_CAMERA_NEAR_Z_SCALE,
+  STREAM_CAMERA_FAR_Z_SCALE,
+  STREAM_CAMERA_POSITION_DAMP,
+  STREAM_CAMERA_LOOK_DAMP,
+  FIREBASE_DB,
+  WORLD_MULTIPLAYER_ENABLED,
+  PATROL_POINTS,
+  ROOM_ACTION_TO_KEY,
+  LOOPABLE_ACTIONS,
+  DIRECTIONAL_ACTIONS,
+  PRESENCE_WRITE_INTERVAL_MS,
+  type ClawbModelKey,
+} from '../world/WorldConfig';
+import { createWorldRenderer, resizeWorldRenderer } from '../world/WorldRenderer';
+import { createEnvironment, updateEnvironment, type EnvironmentRefs } from '../world/WorldEnvironment';
+import { smoothCameraPosition, smoothLookAt, updateStreamFollowCamera } from '../world/WorldCamera';
+import { loadModel, prepareCharacterModel, loadClawbModelWithFallback, getPlayableClip, applyBlueTint } from '../world/WorldCharacter';
 
 interface NFTItem {
   chain?: string;
@@ -214,7 +147,10 @@ const ClawbWorld: React.FC = () => {
     from: PATROL_POINTS[0].clone(),
     to: PATROL_POINTS[0].clone(),
   });
-  const lightsRef = useRef<{ ambient: THREE.AmbientLight; directional: THREE.DirectionalLight } | null>(null);
+  const lightsRef = useRef<EnvironmentRefs['lights'] | null>(null);
+  const composerRef = useRef<EffectComposer | null>(null);
+  const envRef = useRef<EnvironmentRefs | null>(null);
+  const elapsedRef = useRef(0);
   const collisionBoxesRef = useRef<CollisionBox[]>([]);
 
   // Movement keys state
@@ -250,7 +186,9 @@ const ClawbWorld: React.FC = () => {
   const bountyScrollGroupRef = useRef<THREE.Group | null>(null);
   const bountyScrollRenderFnRef = useRef<(() => void) | null>(null);
   const bountyShowcaseRef = useRef<{ startedAt: number; until: number }>({ startedAt: 0, until: 0 });
+  const leaderboardAutoReturnAtRef = useRef(0);
   const bountyShowcaseWasActiveRef = useRef(false);
+  const bountyChestGlowRef = useRef<THREE.PointLight | null>(null);
   const bountyBubblePointsRef = useRef<THREE.Points | null>(null);
   const bountyBubbleVelRef = useRef<Float32Array | null>(null);
   const bountyBubbleMatRef = useRef<THREE.PointsMaterial | null>(null);
@@ -327,8 +265,8 @@ const ClawbWorld: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       const fallback = new THREE.CanvasTexture(canvas);
-      fallback.minFilter = THREE.NearestFilter;
-      fallback.magFilter = THREE.NearestFilter;
+      fallback.minFilter = THREE.LinearFilter;
+      fallback.magFilter = THREE.LinearFilter;
       fallback.colorSpace = THREE.SRGBColorSpace;
       return fallback;
     }
@@ -357,8 +295,8 @@ const ClawbWorld: React.FC = () => {
     ctx.fillText(note, 52, 462, 408);
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.minFilter = THREE.NearestFilter;
-    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   }, []);
@@ -395,8 +333,9 @@ const ClawbWorld: React.FC = () => {
     if (swimDirectionMatch) return `swim_${swimDirectionMatch[1]}`;
     const loopMatch = /^!loop\s+([a-z0-9_]+)\b/.exec(t);
     if (loopMatch && LOOPABLE_ACTIONS.has(loopMatch[1])) return `loop_${loopMatch[1]}`;
-    if (/(^|\s)!zoom\s+in\b/.test(t) || /(^|\s)!zoomin\b/.test(t)) return 'zoom_in';
-    if (/(^|\s)!zoom\s+out\b/.test(t) || /(^|\s)!zoomout\b/.test(t)) return 'zoom_out';
+    if (/(^|\s)!zoom\s*in\b/.test(t) || /(^|\s)!zoomin\b/.test(t)) return 'zoom_in';
+    if (/(^|\s)!zoom\s*out\b/.test(t) || /(^|\s)!zoomout\b/.test(t)) return 'zoom_out';
+    if (/^!zoom$/.test(t)) return 'zoom_in';
     if (/(^|\s)!bounty\b/.test(t) || /(^|\s)!bounties\b/.test(t)) return 'bounty_showcase';
     if (/(^|\s)!look\s+\d+\b/.test(t)) return 'look_nft';
     if (/(^|\s)!garden\b/.test(t)) return 'room_workshop';
@@ -498,24 +437,44 @@ const ClawbWorld: React.FC = () => {
   const triggerWorldAction = useCallback((action: string, payload?: { targetNftIndex?: number; loop?: unknown; direction?: unknown; source?: unknown }) => {
     const loopRequested = payload?.loop === true;
     if (loopedActionRef.current && payload?.source === 'autonomy') return;
+    if (action !== 'room_leaderboard') {
+      leaderboardAutoReturnAtRef.current = 0;
+    }
     const scene = sceneRef.current;
     const lights = lightsRef.current;
     if (scene && lights && (action === 'day' || action === 'night')) {
       loopedActionRef.current = null;
       const isNight = action === 'night';
       setupUnderwaterFog(scene, isNight);
-      lights.ambient.color.set(isNight ? '#1a2a44' : '#4466aa');
-      lights.ambient.intensity = isNight ? 0.4 : 0.6;
-      lights.directional.color.set(isNight ? '#88aacc' : '#ffffee');
-      lights.directional.intensity = isNight ? 0.5 : 0.8;
+      lights.ambient.color.set(isNight ? '#1a2a44' : '#88bbdd');
+      lights.ambient.intensity = isNight ? 0.25 : 0.6;
+      lights.directional.color.set(isNight ? '#6699cc' : '#fffdf0');
+      lights.directional.intensity = isNight ? 0.8 : 2.0;
+      if (lights.hemisphere) {
+        lights.hemisphere.color.set(isNight ? 0x1a3050 : 0x88ccff);
+        lights.hemisphere.groundColor.set(isNight ? 0x0a1020 : 0x446688);
+        lights.hemisphere.intensity = isNight ? 0.5 : 1.0;
+      }
+      if (lights.fillLight) {
+        lights.fillLight.color.set(isNight ? '#224466' : '#aaddff');
+        lights.fillLight.intensity = isNight ? 0.2 : 0.6;
+      }
+      if (rendererRef.current) {
+        rendererRef.current.toneMappingExposure = isNight ? 1.1 : 1.8;
+      }
       setWorldAction('patrol', 0, 'day-night-toggle');
       return;
     }
     const roomKey = ROOM_ACTION_TO_KEY[action];
     if (roomKey) {
+      const source = String(payload?.source || '').toLowerCase();
+      const manualRoomRequest = source !== 'autonomy' && source !== 'idle_behavior';
+      if (roomKey === 'leaderboard' && !manualRoomRequest) return;
       loopedActionRef.current = null;
       requestClawbModelRef.current('walk');
       queueRoomTransition(roomKey);
+      leaderboardAutoReturnAtRef.current =
+        roomKey === 'leaderboard' ? Date.now() + LEADERBOARD_AUTO_RETURN_MS : 0;
       return;
     }
     if (action === 'zoom_in' || action === 'zoom_out') {
@@ -530,7 +489,6 @@ const ClawbWorld: React.FC = () => {
     if (action === 'bounty_showcase') {
       loopedActionRef.current = null;
       requestClawbModelRef.current('swim');
-      queueRoomTransition('leaderboard');
       const now = Date.now();
       bountyShowcaseRef.current = { startedAt: now, until: now + 18_000 };
       bountyBurstStartedAtRef.current = now;
@@ -658,12 +616,20 @@ const ClawbWorld: React.FC = () => {
     const existing = remotePlayersRef.current.get(wallet);
     if (existing) return existing;
 
-    const loader = new FBXLoader();
-    const model = await new Promise<THREE.Group>((resolve, reject) => {
-      loader.load('/assets/lawbWalk.fbx', resolve, undefined, reject);
-    });
+    let model: THREE.Group;
+    try {
+      model = await loadModel('/models/clawb_walk.glb');
+    } catch {
+      model = await loadModel('/assets/lawbWalk.fbx');
+    }
     model.scale.setScalar(CLAWB_SCALE);
     model.position.set(0, FLOOR_Y, 0);
+    model.traverse((child: THREE.Object3D) => {
+      if ((child as THREE.Mesh).isMesh) {
+        (child as THREE.Mesh).castShadow = true;
+        (child as THREE.Mesh).receiveShadow = true;
+      }
+    });
     applyBlueTint(model);
     scene.add(model);
     remotePlayersRef.current.set(wallet, model);
@@ -749,11 +715,32 @@ const ClawbWorld: React.FC = () => {
     const roomName = getRoomName(camera.position);
     setCurrentRoom(roomName);
     localRoomRef.current = roomName;
-
-    // Animate bubbles
-    if (bubblesRef.current) {
-      animateBubbles(bubblesRef.current, delta);
+    if (
+      roomName === 'Leaderboard' &&
+      leaderboardAutoReturnAtRef.current > 0 &&
+      Date.now() >= leaderboardAutoReturnAtRef.current &&
+      !roomTransitionRef.current.active
+    ) {
+      leaderboardAutoReturnAtRef.current = 0;
+      queueRoomTransition('main');
+      setWorldAction('swim', Date.now() + ROOM_TRANSITION_DURATION_MS, 'leaderboard-auto-return');
     }
+
+    // Animate environment (bubbles, caustics, god rays, dust, sky, water, kelp, fish, jellyfish, fog)
+    elapsedRef.current += delta;
+    const scene = sceneRef.current;
+    if (envRef.current) {
+      updateEnvironment(envRef.current, scene, camera, elapsedRef.current, delta);
+    }
+
+    // LOD — fade distant world objects
+    scene.children.forEach((child) => {
+      if (child instanceof THREE.Group && child.name !== 'god_rays' && child.name !== 'kelp_field' && child.name !== 'jellyfish') {
+        child.children.forEach((obj) => {
+          if (obj.userData?.type) applyLOD(obj, camera.position);
+        });
+      }
+    });
 
     // Animate remote players + sync local presence
     if (WORLD_MULTIPLAYER_ENABLED && sceneRef.current) {
@@ -1071,9 +1058,11 @@ const ClawbWorld: React.FC = () => {
       if (showcaseActive && bountyChestGroupRef.current && bountyScrollGroupRef.current) {
         const chestPos = bountyChestGroupRef.current.getWorldPosition(new THREE.Vector3());
         const scrollPos = bountyScrollGroupRef.current.getWorldPosition(new THREE.Vector3());
-        // Wider framing for stream readability: keep full scroll text visible.
-        const camDesired = chestPos.clone().add(new THREE.Vector3(0, 2.15, 4.05));
-        const lookAt = scrollPos.clone().add(new THREE.Vector3(0, 0.62, -0.08));
+        // Slow vertical scan so viewers can read the entire bounty scroll.
+        const scanT = (Date.now() - bountyShowcaseRef.current.startedAt) / 1000;
+        const scan = Math.sin(scanT * 0.7); // ~9s up/down cycle
+        const camDesired = chestPos.clone().add(new THREE.Vector3(0, 2.95 + scan * 0.62, 4.4));
+        const lookAt = scrollPos.clone().add(new THREE.Vector3(0, 0.95 - scan * 0.72, -0.08));
         // Showcase transition should feel cinematic, not a snap-cut.
         camera.position.x = THREE.MathUtils.damp(camera.position.x, camDesired.x, 2.2, delta);
         camera.position.y = THREE.MathUtils.damp(camera.position.y, camDesired.y, 2.2, delta);
@@ -1164,8 +1153,9 @@ const ClawbWorld: React.FC = () => {
     }
 
     // Treasure chest bounty showcase animation.
-    if (bountyChestLidRef.current && bountyScrollGroupRef.current) {
+    if (bountyChestLidRef.current && bountyScrollGroupRef.current && bountyChestGroupRef.current) {
       const active = Date.now() < bountyShowcaseRef.current.until;
+      const tNow = Date.now() / 1000;
       if (active && !bountyShowcaseWasActiveRef.current) {
         bountyBurstStartedAtRef.current = Date.now();
         const bubblePoints = bountyBubblePointsRef.current;
@@ -1226,7 +1216,17 @@ const ClawbWorld: React.FC = () => {
         delta
       );
       bountyScrollGroupRef.current.scale.setScalar(nextScale);
+      // Give the scroll obvious movement while active so the event feels alive.
+      bountyScrollGroupRef.current.rotation.y = active ? Math.sin(tNow * 1.8) * 0.05 : 0;
+      bountyScrollGroupRef.current.rotation.z = active ? Math.sin(tNow * 2.4) * 0.02 : 0;
+      bountyScrollGroupRef.current.position.x = active ? Math.sin(tNow * 2.0) * 0.05 : 0;
       bountyScrollGroupRef.current.visible = active || bountyScrollGroupRef.current.position.y > 0.28;
+      // Chest bob and slight yaw wobble.
+      bountyChestGroupRef.current.position.y = (FLOOR_Y + 0.02) + (active ? Math.sin(tNow * 2.2) * 0.04 : 0);
+      bountyChestGroupRef.current.rotation.y = active ? Math.sin(tNow * 1.7) * 0.05 : 0;
+      if (bountyChestGlowRef.current) {
+        bountyChestGlowRef.current.intensity = active ? 1.2 + Math.sin(tNow * 4.0) * 0.35 : 0.55;
+      }
 
       const burstElapsed = Date.now() - bountyBurstStartedAtRef.current;
       const bubblesActive = burstElapsed >= 0 && burstElapsed < 2400;
@@ -1274,9 +1274,13 @@ const ClawbWorld: React.FC = () => {
       }
     }
 
-    rendererRef.current.render(sceneRef.current, cameraRef.current);
+    if (composerRef.current) {
+      composerRef.current.render();
+    } else {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+    }
     frameIdRef.current = requestAnimationFrame(animate);
-  }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode, resetClawbCommandVelocity]);
+  }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode, queueRoomTransition, resetClawbCommandVelocity, setWorldAction]);
 
   // Init scene
   useEffect(() => {
@@ -1285,27 +1289,12 @@ const ClawbWorld: React.FC = () => {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // Renderer — PSX style: low internal res, no AA
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      antialias: false,
-      alpha: false,
-    });
-    const psxWidth = Math.floor(width * PSX_RESOLUTION_SCALE);
-    const psxHeight = Math.floor(height * PSX_RESOLUTION_SCALE);
-    renderer.setSize(psxWidth, psxHeight, false);
-    renderer.setPixelRatio(1);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    rendererRef.current = renderer;
-
     // Scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    setupUnderwaterFog(scene, true); // Always dark underwater
-    lightsRef.current = setupUnderwaterLighting(scene, true);
 
     // Camera
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 200);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 300);
     camera.position.set(0, FLOOR_Y + PLAYER_HEIGHT, 5);
     if (isStreamMode) {
       camera.position.set(0, FLOOR_Y + 1.45, 2.8);
@@ -1314,6 +1303,11 @@ const ClawbWorld: React.FC = () => {
     }
     cameraRef.current = camera;
 
+    // Renderer + post-processing
+    const { renderer, composer } = createWorldRenderer(canvasRef.current, width, height, scene, camera);
+    rendererRef.current = renderer;
+    composerRef.current = composer;
+
     // Controls
     const controls = new PointerLockControls(camera, canvasRef.current);
     controlsRef.current = controls;
@@ -1321,15 +1315,10 @@ const ClawbWorld: React.FC = () => {
     controls.addEventListener('lock', () => setIsLocked(true));
     controls.addEventListener('unlock', () => setIsLocked(false));
 
-    // Extended sand floor
-    const floor = createSandFloor(60);
-    floor.position.y = FLOOR_Y;
-    scene.add(floor);
-
-    // Bubbles
-    const bubbles = createBubbleParticles(200);
-    scene.add(bubbles);
-    bubblesRef.current = bubbles;
+    // Environment (floor, sky, water, particles, lighting, fog)
+    const env = createEnvironment(scene);
+    envRef.current = env;
+    lightsRef.current = env.lights;
 
     // Load all rooms (Firebase first, fallback to static files)
     const addRoomCollision = (data: WorldState, offset: THREE.Vector3) => {
@@ -1363,34 +1352,8 @@ const ClawbWorld: React.FC = () => {
     }
 
     // Load Clawb NPC
-    const loader = new FBXLoader();
-    const loadClawbModel = (url: string) =>
-      new Promise<THREE.Group>((resolve, reject) => loader.load(url, resolve, undefined, reject));
-
-    const prepareClawbModel = (object: THREE.Group) => {
-        object.scale.setScalar(CLAWB_SCALE);
-        object.position.copy(clawbPosRef.current); // Feet on the sand
-        object.rotation.y = Math.PI / 2; // Face right (initial walk direction is +X)
-        object.traverse((child: THREE.Object3D) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh;
-            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            mats.forEach((m) => {
-              m.side = THREE.DoubleSide;
-              m.transparent = false;
-              // PSX: nearest-neighbor texture filtering
-              const stdMat = m as THREE.MeshStandardMaterial;
-              if (stdMat.map) {
-                stdMat.map.magFilter = THREE.NearestFilter;
-                stdMat.map.minFilter = THREE.NearestFilter;
-              }
-            });
-          }
-        });
-    };
-
     const applyClawbModel = (object: THREE.Group, key: ClawbModelKey) => {
-        prepareClawbModel(object);
+        prepareCharacterModel(object, clawbPosRef.current);
         const prev = clawbRef.current;
         const prevPos = prev?.position.clone();
         const prevRotY = prev?.rotation.y;
@@ -1418,22 +1381,9 @@ const ClawbWorld: React.FC = () => {
         return;
       }
       clawbModelSwapStateRef.current.inFlight = true;
-      const candidateUrls = [CLAWB_MODEL_URLS[key], ...CLAWB_MODEL_FALLBACKS[key]];
-      const loadWithFallback = async () => {
-        let lastErr: unknown = null;
-        for (const url of candidateUrls) {
-          try {
-            const obj = await loadClawbModel(url);
-            applyClawbModel(obj, key);
-            return;
-          } catch (err) {
-            lastErr = err;
-          }
-        }
-        throw lastErr;
-      };
-      void loadWithFallback()
-        .catch((err) => console.warn(`[ClawbWorld] Failed to load Clawb model "${key}" from all candidates:`, err))
+      void loadClawbModelWithFallback(key)
+        .then((obj) => applyClawbModel(obj, key))
+        .catch((err) => console.warn(`[ClawbWorld] Failed to load Clawb model "${key}":`, err))
         .finally(() => {
           clawbModelSwapStateRef.current.inFlight = false;
           const pending = clawbModelSwapStateRef.current.pending;
@@ -1510,8 +1460,8 @@ const ClawbWorld: React.FC = () => {
           const tex = await new Promise<THREE.Texture>((resolve, reject) => {
             texLoader.load(url, resolve, undefined, reject);
           });
-          tex.minFilter = THREE.NearestFilter;
-          tex.magFilter = THREE.NearestFilter;
+          tex.minFilter = THREE.LinearFilter;
+          tex.magFilter = THREE.LinearFilter;
           tex.colorSpace = THREE.SRGBColorSpace;
           return tex;
         } catch {
@@ -1648,8 +1598,8 @@ const ClawbWorld: React.FC = () => {
     }
 
     const lbTexture = new THREE.CanvasTexture(lbCanvas);
-    lbTexture.minFilter = THREE.NearestFilter;
-    lbTexture.magFilter = THREE.NearestFilter;
+    lbTexture.minFilter = THREE.LinearFilter;
+    lbTexture.magFilter = THREE.LinearFilter;
     lbTexture.colorSpace = THREE.SRGBColorSpace;
     leaderboardTextureRef.current = lbTexture;
 
@@ -1715,52 +1665,95 @@ const ClawbWorld: React.FC = () => {
     lbBackWall.position.set(bbX, bbY, bbZ - 0.3);
     lbGroup.add(lbBackWall);
 
-    // Treasure chest bounty stage in leaderboard room.
+    // Treasure chest bounty stage in an isolated corner (away from reef clutter).
     const chestGroup = new THREE.Group();
-    chestGroup.position.set(bbX + 4.1, FLOOR_Y + 0.04, bbZ + 1.6);
-    lbGroup.add(chestGroup);
+    chestGroup.position.copy(BOUNTY_SHOWCASE_ANCHOR);
+    scene.add(chestGroup);
     bountyChestGroupRef.current = chestGroup;
 
+    // Dedicated stage pedestal so chest/scroll are never occluded by floor props.
+    const stageBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.4, 2.8, 0.9, 18),
+      new THREE.MeshPhongMaterial({ color: 0x182636, emissive: 0x07101a, flatShading: true })
+    );
+    stageBase.position.set(0, -0.58, 0);
+    chestGroup.add(stageBase);
+    const stageRing = new THREE.Mesh(
+      new THREE.TorusGeometry(2.0, 0.1, 10, 24),
+      new THREE.MeshBasicMaterial({ color: 0x65d9ff, transparent: true, opacity: 0.5 })
+    );
+    stageRing.rotation.x = Math.PI / 2;
+    stageRing.position.set(0, -0.12, 0);
+    chestGroup.add(stageRing);
+
+    const woodMat = new THREE.MeshPhongMaterial({ color: 0x7a4a22, emissive: 0x1c1007, flatShading: true, shininess: 20 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0xd8b35a, emissive: 0x2a1f08, roughness: 0.38, metalness: 0.55 });
     const chestBase = new THREE.Mesh(
       new THREE.BoxGeometry(1.7, 0.92, 1.05),
-      new THREE.MeshPhongMaterial({ color: 0x6b3b1c, emissive: 0x190e08, flatShading: true, shininess: 12 })
+      woodMat
     );
     chestBase.position.set(0, 0.46, 0);
     chestGroup.add(chestBase);
     const chestTrim = new THREE.Mesh(
       new THREE.BoxGeometry(1.78, 0.14, 1.14),
-      new THREE.MeshStandardMaterial({ color: 0xd8b35a, emissive: 0x2a1f08, roughness: 0.45, metalness: 0.4 })
+      trimMat
     );
     chestTrim.position.set(0, 0.92, 0);
     chestGroup.add(chestTrim);
+    // Metal bands + lock plate so the chest reads clearly on stream.
+    const bandL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.02, 1.12), trimMat);
+    bandL.position.set(-0.62, 0.51, 0);
+    chestGroup.add(bandL);
+    const bandR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.02, 1.12), trimMat);
+    bandR.position.set(0.62, 0.51, 0);
+    chestGroup.add(bandR);
+    const lockPlate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.38, 0.08), trimMat);
+    lockPlate.position.set(0, 0.57, 0.57);
+    chestGroup.add(lockPlate);
+
     const chestLidPivot = new THREE.Group();
     chestLidPivot.position.set(0, 0.92, -0.5);
     chestGroup.add(chestLidPivot);
     bountyChestLidRef.current = chestLidPivot;
     const chestLid = new THREE.Mesh(
-      new THREE.BoxGeometry(1.76, 0.26, 1.02),
-      new THREE.MeshPhongMaterial({ color: 0x74411f, emissive: 0x1a1008, flatShading: true, shininess: 12 })
+      new THREE.CylinderGeometry(0.52, 0.52, 1.74, 14, 1, false, 0, Math.PI),
+      woodMat
     );
-    chestLid.position.set(0, 0.13, 0.51);
+    chestLid.rotation.z = Math.PI / 2;
+    chestLid.position.set(0, 0.22, 0.5);
     chestLidPivot.add(chestLid);
+    const lidBand = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.54, 1.78, 14, 1, false, 0, Math.PI), trimMat);
+    lidBand.rotation.z = Math.PI / 2;
+    lidBand.position.set(0, 0.22, 0.5);
+    chestLidPivot.add(lidBand);
+
     const chestGlow = new THREE.PointLight(0xffd37d, 0.7, 7.5);
     chestGlow.position.set(0, 1.1, 0);
     chestGroup.add(chestGlow);
+    bountyChestGlowRef.current = chestGlow;
 
     const scrollCanvas = document.createElement('canvas');
-    scrollCanvas.width = 1100;
-    scrollCanvas.height = 900;
+    scrollCanvas.width = 1200;
+    scrollCanvas.height = 1300;
     const scrollTexture = new THREE.CanvasTexture(scrollCanvas);
     scrollTexture.minFilter = THREE.LinearFilter;
     scrollTexture.magFilter = THREE.LinearFilter;
     scrollTexture.colorSpace = THREE.SRGBColorSpace;
     const scrollPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.35, 2.9),
-      new THREE.MeshBasicMaterial({ map: scrollTexture, transparent: true, alphaTest: 0.1, side: THREE.DoubleSide })
+      new THREE.PlaneGeometry(2.55, 4.25),
+      new THREE.MeshBasicMaterial({
+        map: scrollTexture,
+        transparent: true,
+        alphaTest: 0.1,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false,
+      })
     );
+    scrollPlane.renderOrder = 40;
     const scrollGroup = new THREE.Group();
     scrollGroup.add(scrollPlane);
-    scrollGroup.position.set(0, 0.24, 0.4);
+    scrollGroup.position.set(0, 0.38, 0.46);
     scrollGroup.visible = false;
     chestGroup.add(scrollGroup);
     bountyScrollGroupRef.current = scrollGroup;
@@ -1824,11 +1817,11 @@ const ClawbWorld: React.FC = () => {
       ctx.strokeRect(12, 12, W - 24, H - 24);
       ctx.fillStyle = '#32210d';
       ctx.textAlign = 'center';
-      ctx.font = 'bold 74px monospace';
-      ctx.fillText('BOUNTY SCROLL', W / 2, 94);
+      ctx.font = 'bold 78px monospace';
+      ctx.fillText('BOUNTY SCROLL', W / 2, 104);
       ctx.font = 'bold 34px monospace';
-      ctx.fillText('!bounties in chat summons this chest', W / 2, 138);
-      const rowH = 146;
+      ctx.fillText('!bounties in chat summons this chest', W / 2, 156);
+      const rowH = 138;
       const sorted = [...bounties].sort((a, b) => {
         const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
         return score(String(a.status || '')) - score(String(b.status || ''));
@@ -1841,12 +1834,12 @@ const ClawbWorld: React.FC = () => {
         const scroll = (now / 30) % contentHeight;
         ctx.save();
         ctx.beginPath();
-        ctx.rect(46, 172, W - 92, H - 220);
+        ctx.rect(52, 198, W - 104, H - 260);
         ctx.clip();
         sorted.forEach((b, i) => {
-          const y = 220 + i * rowH - scroll;
-          const yWrap = y < (172 - rowH) ? y + contentHeight : y;
-          if (yWrap < 172 - rowH || yWrap > H - 40) return;
+          const y = 260 + i * rowH - scroll;
+          const yWrap = y < (198 - rowH) ? y + contentHeight : y;
+          if (yWrap < 198 - rowH || yWrap > H - 58) return;
           const status = String(b.status || '').toUpperCase();
           const color = status === 'ACTIVE' ? '#8d1f0d' : status === 'CLAIMED' ? '#1e4d5c' : '#5c2f4e';
           ctx.fillStyle = color;
@@ -2150,17 +2143,10 @@ const ClawbWorld: React.FC = () => {
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
 
-    // Resize — maintain PSX resolution
     const handleResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(
-        Math.floor(w * PSX_RESOLUTION_SCALE),
-        Math.floor(h * PSX_RESOLUTION_SCALE),
-        false
-      );
+      if (composerRef.current) {
+        resizeWorldRenderer(renderer, composerRef.current, camera, window.innerWidth, window.innerHeight);
+      }
     };
     window.addEventListener('resize', handleResize);
 
@@ -2177,6 +2163,10 @@ const ClawbWorld: React.FC = () => {
       if (frameIdRef.current !== null) cancelAnimationFrame(frameIdRef.current);
       requestClawbModelRef.current = () => {};
       controls.dispose();
+      if (composerRef.current) {
+        composerRef.current.dispose();
+        composerRef.current = null;
+      }
       renderer.dispose();
       scene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
@@ -2403,7 +2393,7 @@ const ClawbWorld: React.FC = () => {
         onTouchMove={isMobile ? handleTouchMove : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       />
-      {isStreamMode && <div className="clawb-world-crt-overlay" aria-hidden="true" />}
+      {/* CRT overlay removed — Kingdom Hearts style */}
 
       {/* HUD */}
       {!isStreamMode && (

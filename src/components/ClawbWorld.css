@@ -14,33 +14,6 @@
   width: 100%;
   height: 100%;
   display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-.clawb-world-crt-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  opacity: 0.32;
-  mix-blend-mode: screen;
-  background:
-    linear-gradient(rgba(10, 18, 34, 0.06), rgba(0, 0, 0, 0.24)),
-    repeating-linear-gradient(
-      to bottom,
-      rgba(190, 255, 255, 0.07) 0px,
-      rgba(190, 255, 255, 0.07) 1px,
-      rgba(0, 0, 0, 0.18) 2px,
-      rgba(0, 0, 0, 0.18) 4px
-    );
-  animation: clawb-crt-flicker 2.4s steps(3, end) infinite;
-}
-
-@keyframes clawb-crt-flicker {
-  0%, 100% { opacity: 0.28; }
-  35% { opacity: 0.34; }
-  70% { opacity: 0.3; }
 }
 
 /* HUD */
