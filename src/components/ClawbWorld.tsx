@@ -175,6 +175,13 @@ interface NFTItem {
   description?: string;
 }
 
+type LeaderboardBounty = {
+  title: string;
+  description: string;
+  status: string;
+  prize?: { amount?: number; token?: string; token_id?: string | number; collection?: string };
+};
+
 const ClawbWorld: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -237,6 +244,20 @@ const ClawbWorld: React.FC = () => {
   const leaderboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const leaderboardLastRefreshRef = useRef<number>(0);
   const leaderboardRenderFnRef = useRef<(() => void) | null>(null);
+  const leaderboardBountiesRef = useRef<LeaderboardBounty[]>([]);
+  const bountyChestGroupRef = useRef<THREE.Group | null>(null);
+  const bountyChestLidRef = useRef<THREE.Group | null>(null);
+  const bountyScrollGroupRef = useRef<THREE.Group | null>(null);
+  const bountyScrollRenderFnRef = useRef<(() => void) | null>(null);
+  const bountyShowcaseRef = useRef<{ startedAt: number; until: number }>({ startedAt: 0, until: 0 });
+  const bountyShowcaseWasActiveRef = useRef(false);
+  const bountyBubblePointsRef = useRef<THREE.Points | null>(null);
+  const bountyBubbleVelRef = useRef<Float32Array | null>(null);
+  const bountyBubbleMatRef = useRef<THREE.PointsMaterial | null>(null);
+  const bountySparklePointsRef = useRef<THREE.Points | null>(null);
+  const bountySparkleVelRef = useRef<Float32Array | null>(null);
+  const bountySparkleMatRef = useRef<THREE.PointsMaterial | null>(null);
+  const bountyBurstStartedAtRef = useRef(0);
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
   const processedActionIdsRef = useRef<Set<string>>(new Set());
@@ -376,6 +397,7 @@ const ClawbWorld: React.FC = () => {
     if (loopMatch && LOOPABLE_ACTIONS.has(loopMatch[1])) return `loop_${loopMatch[1]}`;
     if (/(^|\s)!zoom\s+in\b/.test(t) || /(^|\s)!zoomin\b/.test(t)) return 'zoom_in';
     if (/(^|\s)!zoom\s+out\b/.test(t) || /(^|\s)!zoomout\b/.test(t)) return 'zoom_out';
+    if (/(^|\s)!bounty\b/.test(t) || /(^|\s)!bounties\b/.test(t)) return 'bounty_showcase';
     if (/(^|\s)!look\s+\d+\b/.test(t)) return 'look_nft';
     if (/(^|\s)!garden\b/.test(t)) return 'room_workshop';
     if (/(^|\s)!gallery\b/.test(t)) return 'room_bedroom';
@@ -503,6 +525,16 @@ const ClawbWorld: React.FC = () => {
         STREAM_CAMERA_MIN_DISTANCE,
         Math.min(STREAM_CAMERA_MAX_DISTANCE, next)
       );
+      return;
+    }
+    if (action === 'bounty_showcase') {
+      loopedActionRef.current = null;
+      requestClawbModelRef.current('swim');
+      queueRoomTransition('leaderboard');
+      const now = Date.now();
+      bountyShowcaseRef.current = { startedAt: now, until: now + 18_000 };
+      bountyBurstStartedAtRef.current = now;
+      setWorldAction('bounty_showcase', now + 18_000, 'bounty-showcase');
       return;
     }
     if (action === 'idle') {
@@ -1033,8 +1065,22 @@ const ClawbWorld: React.FC = () => {
         );
         camera.lookAt(streamCameraLookRef.current.x, streamCameraLookRef.current.y, streamCameraLookRef.current.z);
       };
+      const now = Date.now();
+      const showcaseActive = now < bountyShowcaseRef.current.until;
       const lookTarget = lookTargetRef.current;
-      if (lookTarget && Date.now() < lookTarget.until) {
+      if (showcaseActive && bountyChestGroupRef.current && bountyScrollGroupRef.current) {
+        const chestPos = bountyChestGroupRef.current.getWorldPosition(new THREE.Vector3());
+        const scrollPos = bountyScrollGroupRef.current.getWorldPosition(new THREE.Vector3());
+        const camDesired = chestPos.clone().add(new THREE.Vector3(0, 1.7, 2.25));
+        const lookAt = scrollPos.clone().add(new THREE.Vector3(0, 0.45, 0));
+        smoothCameraPosition(camDesired);
+        smoothLookAt(lookAt);
+        const fov = THREE.MathUtils.lerp(camera.fov, 27, 0.12);
+        if (Math.abs(fov - camera.fov) > 0.01) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
+      } else if (lookTarget && now < lookTarget.until) {
         smoothCameraPosition(lookTarget.camera);
         smoothLookAt(lookTarget.focus);
         const fov = THREE.MathUtils.lerp(camera.fov, 58, 0.12);
@@ -1106,6 +1152,117 @@ const ClawbWorld: React.FC = () => {
           if (leaderboardRenderFnRef.current) leaderboardRenderFnRef.current();
           if (leaderboardTextureRef.current) leaderboardTextureRef.current.needsUpdate = true;
           leaderboardLastRefreshRef.current = Date.now();
+        }
+      }
+    }
+
+    // Treasure chest bounty showcase animation.
+    if (bountyChestLidRef.current && bountyScrollGroupRef.current) {
+      const active = Date.now() < bountyShowcaseRef.current.until;
+      if (active && !bountyShowcaseWasActiveRef.current) {
+        bountyBurstStartedAtRef.current = Date.now();
+        const bubblePoints = bountyBubblePointsRef.current;
+        const bubbleVel = bountyBubbleVelRef.current;
+        const sparklePoints = bountySparklePointsRef.current;
+        const sparkleVel = bountySparkleVelRef.current;
+        if (bubblePoints && bubbleVel) {
+          const pos = bubblePoints.geometry.attributes.position.array as Float32Array;
+          for (let i = 0; i < pos.length; i += 3) {
+            const ang = Math.random() * Math.PI * 2;
+            const radius = 0.06 + Math.random() * 0.16;
+            pos[i] = Math.cos(ang) * radius;
+            pos[i + 1] = (Math.random() - 0.5) * 0.08;
+            pos[i + 2] = Math.sin(ang) * radius * 0.7;
+            bubbleVel[i] = (Math.random() - 0.5) * 0.35;
+            bubbleVel[i + 1] = 0.38 + Math.random() * 0.58;
+            bubbleVel[i + 2] = (Math.random() - 0.5) * 0.32;
+          }
+          bubblePoints.geometry.attributes.position.needsUpdate = true;
+          bubblePoints.visible = true;
+        }
+        if (sparklePoints && sparkleVel) {
+          const pos = sparklePoints.geometry.attributes.position.array as Float32Array;
+          for (let i = 0; i < pos.length; i += 3) {
+            const ang = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 0.08;
+            pos[i] = Math.cos(ang) * radius;
+            pos[i + 1] = (Math.random() - 0.5) * 0.06;
+            pos[i + 2] = Math.sin(ang) * radius;
+            sparkleVel[i] = (Math.random() - 0.5) * 1.1;
+            sparkleVel[i + 1] = 0.6 + Math.random() * 1.0;
+            sparkleVel[i + 2] = (Math.random() - 0.5) * 1.1;
+          }
+          sparklePoints.geometry.attributes.position.needsUpdate = true;
+          sparklePoints.visible = true;
+        }
+      }
+      bountyShowcaseWasActiveRef.current = active;
+      const lidTarget = active ? -1.12 : 0;
+      bountyChestLidRef.current.rotation.x = THREE.MathUtils.damp(
+        bountyChestLidRef.current.rotation.x,
+        lidTarget,
+        7.5,
+        delta
+      );
+      const liftTarget = active ? 1.06 : 0.24;
+      bountyScrollGroupRef.current.position.y = THREE.MathUtils.damp(
+        bountyScrollGroupRef.current.position.y,
+        liftTarget,
+        active ? 6.2 : 8.5,
+        delta
+      );
+      const scaleTarget = active ? 1 : 0.8;
+      const nextScale = THREE.MathUtils.damp(
+        bountyScrollGroupRef.current.scale.x,
+        scaleTarget,
+        active ? 6.2 : 8.5,
+        delta
+      );
+      bountyScrollGroupRef.current.scale.setScalar(nextScale);
+      bountyScrollGroupRef.current.visible = active || bountyScrollGroupRef.current.position.y > 0.28;
+
+      const burstElapsed = Date.now() - bountyBurstStartedAtRef.current;
+      const bubblesActive = burstElapsed >= 0 && burstElapsed < 2400;
+      const sparklesActive = burstElapsed >= 0 && burstElapsed < 1200;
+      const bubblePoints = bountyBubblePointsRef.current;
+      const bubbleVel = bountyBubbleVelRef.current;
+      const bubbleMat = bountyBubbleMatRef.current;
+      if (bubblePoints && bubbleVel && bubbleMat) {
+        if (bubblesActive) {
+          const pos = bubblePoints.geometry.attributes.position.array as Float32Array;
+          for (let i = 0; i < pos.length; i += 3) {
+            bubbleVel[i + 1] += 0.18 * delta;
+            pos[i] += bubbleVel[i] * delta;
+            pos[i + 1] += bubbleVel[i + 1] * delta;
+            pos[i + 2] += bubbleVel[i + 2] * delta;
+          }
+          bubblePoints.geometry.attributes.position.needsUpdate = true;
+          bubbleMat.opacity = Math.max(0, 0.9 * (1 - burstElapsed / 2400));
+          bubblePoints.visible = true;
+        } else {
+          bubbleMat.opacity = 0;
+          bubblePoints.visible = false;
+        }
+      }
+      const sparklePoints = bountySparklePointsRef.current;
+      const sparkleVel = bountySparkleVelRef.current;
+      const sparkleMat = bountySparkleMatRef.current;
+      if (sparklePoints && sparkleVel && sparkleMat) {
+        if (sparklesActive) {
+          const pos = sparklePoints.geometry.attributes.position.array as Float32Array;
+          for (let i = 0; i < pos.length; i += 3) {
+            sparkleVel[i + 1] -= 0.75 * delta;
+            pos[i] += sparkleVel[i] * delta;
+            pos[i + 1] += sparkleVel[i + 1] * delta;
+            pos[i + 2] += sparkleVel[i + 2] * delta;
+          }
+          sparklePoints.rotation.y += delta * 1.8;
+          sparklePoints.geometry.attributes.position.needsUpdate = true;
+          sparkleMat.opacity = Math.max(0, 1.0 * (1 - burstElapsed / 1200));
+          sparklePoints.visible = true;
+        } else {
+          sparkleMat.opacity = 0;
+          sparklePoints.visible = false;
         }
       }
     }
@@ -1551,11 +1708,164 @@ const ClawbWorld: React.FC = () => {
     lbBackWall.position.set(bbX, bbY, bbZ - 0.3);
     lbGroup.add(lbBackWall);
 
+    // Treasure chest bounty stage in leaderboard room.
+    const chestGroup = new THREE.Group();
+    chestGroup.position.set(bbX + 4.1, FLOOR_Y + 0.04, bbZ + 1.6);
+    lbGroup.add(chestGroup);
+    bountyChestGroupRef.current = chestGroup;
+
+    const chestBase = new THREE.Mesh(
+      new THREE.BoxGeometry(1.7, 0.92, 1.05),
+      new THREE.MeshPhongMaterial({ color: 0x6b3b1c, emissive: 0x190e08, flatShading: true, shininess: 12 })
+    );
+    chestBase.position.set(0, 0.46, 0);
+    chestGroup.add(chestBase);
+    const chestTrim = new THREE.Mesh(
+      new THREE.BoxGeometry(1.78, 0.14, 1.14),
+      new THREE.MeshStandardMaterial({ color: 0xd8b35a, emissive: 0x2a1f08, roughness: 0.45, metalness: 0.4 })
+    );
+    chestTrim.position.set(0, 0.92, 0);
+    chestGroup.add(chestTrim);
+    const chestLidPivot = new THREE.Group();
+    chestLidPivot.position.set(0, 0.92, -0.5);
+    chestGroup.add(chestLidPivot);
+    bountyChestLidRef.current = chestLidPivot;
+    const chestLid = new THREE.Mesh(
+      new THREE.BoxGeometry(1.76, 0.26, 1.02),
+      new THREE.MeshPhongMaterial({ color: 0x74411f, emissive: 0x1a1008, flatShading: true, shininess: 12 })
+    );
+    chestLid.position.set(0, 0.13, 0.51);
+    chestLidPivot.add(chestLid);
+    const chestGlow = new THREE.PointLight(0xffd37d, 0.7, 7.5);
+    chestGlow.position.set(0, 1.1, 0);
+    chestGroup.add(chestGlow);
+
+    const scrollCanvas = document.createElement('canvas');
+    scrollCanvas.width = 1100;
+    scrollCanvas.height = 900;
+    const scrollTexture = new THREE.CanvasTexture(scrollCanvas);
+    scrollTexture.minFilter = THREE.LinearFilter;
+    scrollTexture.magFilter = THREE.LinearFilter;
+    scrollTexture.colorSpace = THREE.SRGBColorSpace;
+    const scrollPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.35, 2.9),
+      new THREE.MeshBasicMaterial({ map: scrollTexture, transparent: true, alphaTest: 0.1, side: THREE.DoubleSide })
+    );
+    const scrollGroup = new THREE.Group();
+    scrollGroup.add(scrollPlane);
+    scrollGroup.position.set(0, 0.24, 0.4);
+    scrollGroup.visible = false;
+    chestGroup.add(scrollGroup);
+    bountyScrollGroupRef.current = scrollGroup;
+
+    // One-shot chest VFX systems (triggered when showcase starts).
+    const bubbleCount = 44;
+    const bubbleGeom = new THREE.BufferGeometry();
+    const bubblePositions = new Float32Array(bubbleCount * 3);
+    const bubbleVel = new Float32Array(bubbleCount * 3);
+    bubbleGeom.setAttribute('position', new THREE.BufferAttribute(bubblePositions, 3));
+    const bubbleMat = new THREE.PointsMaterial({
+      color: 0x9fe8ff,
+      size: 0.085,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const bubblePoints = new THREE.Points(bubbleGeom, bubbleMat);
+    bubblePoints.position.set(0, 0.94, 0.06);
+    bubblePoints.visible = false;
+    chestGroup.add(bubblePoints);
+    bountyBubblePointsRef.current = bubblePoints;
+    bountyBubbleVelRef.current = bubbleVel;
+    bountyBubbleMatRef.current = bubbleMat;
+
+    const sparkleCount = 36;
+    const sparkleGeom = new THREE.BufferGeometry();
+    const sparklePositions = new Float32Array(sparkleCount * 3);
+    const sparkleVel = new Float32Array(sparkleCount * 3);
+    sparkleGeom.setAttribute('position', new THREE.BufferAttribute(sparklePositions, 3));
+    const sparkleMat = new THREE.PointsMaterial({
+      color: 0xffe18a,
+      size: 0.11,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const sparklePoints = new THREE.Points(sparkleGeom, sparkleMat);
+    sparklePoints.position.set(0, 1.02, 0.06);
+    sparklePoints.visible = false;
+    chestGroup.add(sparklePoints);
+    bountySparklePointsRef.current = sparklePoints;
+    bountySparkleVelRef.current = sparkleVel;
+    bountySparkleMatRef.current = sparkleMat;
+
+    const renderBountyScroll = (bounties: LeaderboardBounty[]) => {
+      const ctx = scrollCanvas.getContext('2d');
+      if (!ctx) return;
+      const W = scrollCanvas.width;
+      const H = scrollCanvas.height;
+      const now = Date.now();
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, '#efe2b7');
+      bg.addColorStop(1, '#d2bc82');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#6e5328';
+      ctx.lineWidth = 18;
+      ctx.strokeRect(12, 12, W - 24, H - 24);
+      ctx.fillStyle = '#32210d';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 74px monospace';
+      ctx.fillText('BOUNTY SCROLL', W / 2, 94);
+      ctx.font = 'bold 34px monospace';
+      ctx.fillText('!bounties in chat summons this chest', W / 2, 138);
+      const rowH = 146;
+      const sorted = [...bounties].sort((a, b) => {
+        const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
+        return score(String(a.status || '')) - score(String(b.status || ''));
+      });
+      if (sorted.length === 0) {
+        ctx.font = 'bold 54px monospace';
+        ctx.fillText('NO BOUNTIES YET', W / 2, H / 2);
+      } else {
+        const contentHeight = sorted.length * rowH;
+        const scroll = (now / 30) % contentHeight;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(46, 172, W - 92, H - 220);
+        ctx.clip();
+        sorted.forEach((b, i) => {
+          const y = 220 + i * rowH - scroll;
+          const yWrap = y < (172 - rowH) ? y + contentHeight : y;
+          if (yWrap < 172 - rowH || yWrap > H - 40) return;
+          const status = String(b.status || '').toUpperCase();
+          const color = status === 'ACTIVE' ? '#8d1f0d' : status === 'CLAIMED' ? '#1e4d5c' : '#5c2f4e';
+          ctx.fillStyle = color;
+          ctx.font = 'bold 48px monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(`[${status}] ${String(b.title || '').slice(0, 24)}`, 56, yWrap);
+          let prize = '';
+          if (b.prize?.amount && b.prize?.token) prize = `${Number(b.prize.amount).toLocaleString()} $${String(b.prize.token).toUpperCase()}`;
+          else if (b.prize?.token_id) prize = `NFT #${b.prize.token_id}`;
+          else if (b.prize?.collection) prize = String(b.prize.collection).toUpperCase();
+          ctx.fillStyle = '#2f2412';
+          ctx.font = 'bold 32px monospace';
+          ctx.fillText(`${String(b.description || '').slice(0, 45)}${prize ? ` -> ${prize}` : ''}`, 78, yWrap + 48);
+        });
+        ctx.restore();
+      }
+      scrollTexture.needsUpdate = true;
+    };
+    bountyScrollRenderFnRef.current = () => renderBountyScroll(leaderboardBountiesRef.current);
+    renderBountyScroll([]);
+
     // Render leaderboard data onto the canvas
     const renderLeaderboardCanvas = (
       entries: Array<{ username: string; points: number; wins: number; points_breakdown?: Record<string, number> }>,
       displayNames: Record<string, string>,
-      bounties: Array<{ title: string; description: string; status: string; prize?: { amount?: number; token?: string } }>,
+      bounties: LeaderboardBounty[],
     ) => {
       const ctx = lbCanvas.getContext('2d');
       if (!ctx) return;
@@ -1563,16 +1873,17 @@ const ClawbWorld: React.FC = () => {
       const H = LEADERBOARD_CANVAS_H;
       const now = Date.now();
 
-      // Background — deep ocean gradient
+      // Background — neon ocean gradient (Dreamcast/PS2 + Vegas billboard)
       const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, '#0a0e1a');
-      bg.addColorStop(0.28, '#131f36');
-      bg.addColorStop(1, '#060a12');
+      bg.addColorStop(0, '#080b18');
+      bg.addColorStop(0.24, '#162451');
+      bg.addColorStop(0.55, '#29124a');
+      bg.addColorStop(1, '#060913');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Retro starfield + scanline overlay for 90s arcade/PSX feel
-      ctx.fillStyle = 'rgba(132, 188, 255, 0.55)';
+      // Retro starfield + scanline overlay
+      ctx.fillStyle = 'rgba(132, 188, 255, 0.5)';
       for (let i = 0; i < 70; i++) {
         const sx = ((i * 179) + Math.floor(now / 35)) % W;
         const sy = ((i * 263) + Math.floor(now / 60)) % Math.floor(H * 0.58);
@@ -1582,6 +1893,26 @@ const ClawbWorld: React.FC = () => {
       for (let y = 0; y < H; y += 4) {
         ctx.fillRect(0, y, W, 2);
       }
+
+      // Diagonal neon streaks for a street-race billboard feel.
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      for (let i = -4; i < 16; i++) {
+        const x = (i * 180) + ((now / 14) % 180);
+        const grad = ctx.createLinearGradient(x, 0, x + 90, H);
+        grad.addColorStop(0, '#00c7ff');
+        grad.addColorStop(0.5, '#ff2b9a');
+        grad.addColorStop(1, '#ffd447');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 70, 0);
+        ctx.lineTo(x + 290, H);
+        ctx.lineTo(x + 220, H);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
 
       // Faux horizon grid
       const horizonY = Math.floor(H * 0.64);
@@ -1604,37 +1935,37 @@ const ClawbWorld: React.FC = () => {
 
       // Animated neon border pulse
       const pulse = 0.5 + 0.5 * Math.sin(now / 400);
-      const borderAlpha = 0.4 + 0.6 * pulse;
-      ctx.strokeStyle = `rgba(255,34,102,${borderAlpha.toFixed(2)})`;
+      const borderAlpha = 0.45 + 0.55 * pulse;
+      ctx.strokeStyle = `rgba(255,43,154,${borderAlpha.toFixed(2)})`;
       ctx.lineWidth = 6;
       ctx.strokeRect(8, 8, W - 16, H - 16);
-      ctx.strokeStyle = `rgba(34,102,255,${(0.3 + 0.3 * pulse).toFixed(2)})`;
+      ctx.strokeStyle = `rgba(0,199,255,${(0.3 + 0.35 * pulse).toFixed(2)})`;
       ctx.lineWidth = 2;
       ctx.strokeRect(14, 14, W - 28, H - 28);
 
-      // Title + arcade tape
-      ctx.fillStyle = 'rgba(16,26,44,0.9)';
+      // Title tape
+      ctx.fillStyle = 'rgba(14,20,38,0.9)';
       ctx.fillRect(26, 20, W - 52, 96);
-      ctx.fillStyle = '#ff2266';
+      ctx.fillStyle = '#ff2b9a';
       ctx.font = 'bold 52px monospace';
       ctx.textAlign = 'center';
       ctx.fillText('LAWB LEADERBOARD', W / 2, 72);
 
       // Subtitle with glow
-      ctx.fillStyle = `rgba(255,170,0,${(0.6 + 0.4 * pulse).toFixed(2)})`;
+      ctx.fillStyle = `rgba(0,231,255,${(0.62 + 0.38 * pulse).toFixed(2)})`;
       ctx.font = '22px monospace';
-      ctx.fillText('90s arcade standings // insert coin // reef mode', W / 2, 104);
+      ctx.fillText('LIVE STANDINGS // BOUNTIES // POINTS', W / 2, 104);
 
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#73ffbf';
+      ctx.fillStyle = '#ffe66d';
       ctx.font = 'bold 18px monospace';
-      ctx.fillText('P1 READY', 40, 46);
+      ctx.fillText('LIVE BOARD', 40, 46);
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#ff73e4';
-      ctx.fillText('HI-SCORE', W - 40, 46);
+      ctx.fillStyle = '#7de7ff';
+      ctx.fillText('TOP SCORE', W - 40, 46);
 
       // Divider
-      ctx.strokeStyle = '#ff226644';
+      ctx.strokeStyle = '#ff2b9a55';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(40, 120);
@@ -1645,7 +1976,6 @@ const ClawbWorld: React.FC = () => {
       const rowHeight = 120;
       const startY = 250;
       const rowsPerPage = 5;
-      const activeBounties = bounties.filter((b) => b.status === 'active');
       const leaderboardPageCount = Math.max(1, Math.ceil(Math.max(1, entries.length) / rowsPerPage));
       const totalPages = leaderboardPageCount + 1; // final page is bounties
       const pageEveryMs = 9_000;
@@ -1654,7 +1984,7 @@ const ClawbWorld: React.FC = () => {
 
       // Column headers
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#89a7c5';
+      ctx.fillStyle = '#8fb6dd';
       ctx.font = 'bold 30px monospace';
       if (!showBounties) {
         ctx.fillText('#', 74, 182);
@@ -1663,13 +1993,13 @@ const ClawbWorld: React.FC = () => {
         ctx.fillText('PTS', W - 74, 182);
       } else {
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffaa00';
+        ctx.fillStyle = '#ffd447';
         ctx.font = 'bold 44px monospace';
         ctx.fillText('ACTIVE BOUNTIES', W / 2, 186);
       }
 
       // Divider under headers
-      ctx.strokeStyle = '#334466';
+      ctx.strokeStyle = '#2e4f7f';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(40, 198);
@@ -1684,26 +2014,26 @@ const ClawbWorld: React.FC = () => {
           const rank = startIndex + i + 1;
           const y = startY + i * rowHeight;
 
-          if (rank === 1) ctx.fillStyle = 'rgba(255,215,0,0.10)';
-          else if (rank === 2) ctx.fillStyle = 'rgba(192,192,192,0.08)';
-          else if (rank === 3) ctx.fillStyle = 'rgba(205,127,50,0.08)';
+          if (rank === 1) ctx.fillStyle = 'rgba(255,212,71,0.14)';
+          else if (rank === 2) ctx.fillStyle = 'rgba(125,231,255,0.11)';
+          else if (rank === 3) ctx.fillStyle = 'rgba(255,110,180,0.11)';
           else ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0)';
           ctx.fillRect(54, y - 72, W - 108, rowHeight - 14);
 
           ctx.textAlign = 'left';
-          const rankColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
+          const rankColors = ['#ffd447', '#7de7ff', '#ff6eb4'];
           ctx.fillStyle = rank <= 3 ? rankColors[rank - 1] : '#9cb2c8';
           ctx.font = rank <= 3 ? 'bold 50px monospace' : 'bold 40px monospace';
           ctx.fillText(`${rank}`, 76, y);
 
           const wallet = e.username || '';
           const name = displayNames[wallet.toLowerCase()] || (wallet.length > 16 ? `${wallet.slice(0, 6)}..${wallet.slice(-4)}` : wallet);
-          ctx.fillStyle = '#e8f0ff';
+          ctx.fillStyle = '#f2f6ff';
           ctx.font = 'bold 42px monospace';
           ctx.fillText(name.slice(0, 20), 190, y);
 
           ctx.textAlign = 'right';
-          ctx.fillStyle = rank <= 3 ? '#ff5a98' : '#f5a4c4';
+          ctx.fillStyle = rank <= 3 ? '#ff3aa8' : '#f5a4c4';
           ctx.font = rank <= 3 ? 'bold 52px monospace' : 'bold 44px monospace';
           ctx.fillText(`${e.points || 0}`, W - 76, y);
         }
@@ -1717,27 +2047,70 @@ const ClawbWorld: React.FC = () => {
           ctx.fillText('play chess or join retake.tv/clawb', W / 2, startY + 96);
         }
       } else {
-        const bountyStartY = 290;
-        if (activeBounties.length > 0) {
-          activeBounties.slice(0, 3).forEach((b, i) => {
-            const by = bountyStartY + i * 220;
-            const bPulse = 0.5 + 0.5 * Math.sin((now + i * 500) / 600);
-            ctx.fillStyle = `rgba(255,${Math.floor(120 + 80 * bPulse)},0,0.95)`;
-            ctx.font = 'bold 44px monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText(`• ${String(b.title || '').slice(0, 30)}`, 64, by);
+        const bountyTop = 248;
+        const bountyBottom = H - 118;
+        const bountyHeight = Math.max(120, bountyBottom - bountyTop);
+        const rowHeight = 132;
+        const allBounties = [...bounties].sort((a, b) => {
+          const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
+          return score(String(a.status || '')) - score(String(b.status || ''));
+        });
 
-            const prize = b.prize?.amount ? `${b.prize.amount.toLocaleString()} $${(b.prize.token || 'CLAWB').toUpperCase()}` : '';
-            const sub = `${String(b.description || '').slice(0, 70)}${prize ? `  → ${prize}` : ''}`;
-            ctx.fillStyle = '#a8bed2';
-            ctx.font = '32px monospace';
-            ctx.fillText(sub, 104, by + 62);
-          });
+        // Frame for readability.
+        ctx.fillStyle = 'rgba(8,14,26,0.65)';
+        ctx.fillRect(42, bountyTop, W - 84, bountyHeight);
+        ctx.strokeStyle = 'rgba(125,231,255,0.45)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(42, bountyTop, W - 84, bountyHeight);
+
+        if (allBounties.length > 0) {
+          const itemCount = allBounties.length;
+          const contentHeight = itemCount * rowHeight;
+          const scroll = (now / 28) % contentHeight;
+
+          // Clip so scrolling text stays inside panel.
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(46, bountyTop + 4, W - 92, bountyHeight - 8);
+          ctx.clip();
+
+          for (let i = 0; i < itemCount; i++) {
+            const b = allBounties[i];
+            const y = bountyTop + 44 + i * rowHeight - scroll;
+            const yWrapped = y < (bountyTop - rowHeight) ? y + contentHeight : y;
+            if (yWrapped < bountyTop - rowHeight || yWrapped > bountyBottom + rowHeight) continue;
+
+            const status = String(b.status || '').toUpperCase();
+            const statusColor =
+              status === 'ACTIVE' ? '#ffd447'
+              : status === 'CLAIMED' ? '#7de7ff'
+              : '#f5a4c4';
+
+            let prizeText = '';
+            if (b.prize?.amount && b.prize?.token) {
+              prizeText = `${Number(b.prize.amount).toLocaleString()} $${String(b.prize.token).toUpperCase()}`;
+            } else if (b.prize?.token_id) {
+              prizeText = `NFT #${b.prize.token_id}`;
+            } else if (b.prize?.collection) {
+              prizeText = String(b.prize.collection).toUpperCase();
+            }
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = statusColor;
+            ctx.font = 'bold 42px monospace';
+            ctx.fillText(`[${status}] ${String(b.title || '').slice(0, 26)}`, 62, yWrapped);
+
+            ctx.fillStyle = '#d4e6f8';
+            ctx.font = 'bold 28px monospace';
+            const line2 = `${String(b.description || '').slice(0, 52)}${prizeText ? `  -> ${prizeText}` : ''}`;
+            ctx.fillText(line2, 82, yWrapped + 46);
+          }
+          ctx.restore();
         } else {
           ctx.textAlign = 'center';
           ctx.fillStyle = '#6f8497';
           ctx.font = 'bold 46px monospace';
-          ctx.fillText('NO ACTIVE BOUNTIES', W / 2, bountyStartY + 40);
+          ctx.fillText('NO BOUNTIES FOUND', W / 2, bountyTop + 82);
         }
       }
 
@@ -1780,13 +2153,15 @@ const ClawbWorld: React.FC = () => {
         .then((r) => r.json())
         .then((data) => {
           if (!data) return [];
-          return Object.values(data) as Array<{ title: string; description: string; status: string; prize?: { amount?: number; token?: string } }>;
+          return Object.values(data) as LeaderboardBounty[];
         })
-        .catch(() => [] as Array<{ title: string; description: string; status: string }>);
+        .catch(() => [] as LeaderboardBounty[]);
 
       Promise.all([fetchLeaderboard, fetchNames, fetchBounties]).then(([entries, names, bounties]) => {
         entries.sort((a, b) => (b.points || 0) - (a.points || 0));
+        leaderboardBountiesRef.current = bounties;
         renderLeaderboardCanvas(entries, names, bounties);
+        if (bountyScrollRenderFnRef.current) bountyScrollRenderFnRef.current();
         leaderboardRenderFnRef.current = () => renderLeaderboardCanvas(entries, names, bounties);
       });
     };

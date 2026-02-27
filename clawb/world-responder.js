@@ -38,6 +38,7 @@ const ACTION_ALIASES = {
   jump: 'jump',
   zoom_in: 'zoom_in',
   zoom_out: 'zoom_out',
+  bounty_showcase: 'bounty_showcase',
 };
 
 const DEDUPE_WINDOW_MS = Number(process.env.CLAWB_WORLD_DEDUPE_MS || 1200);

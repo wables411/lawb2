@@ -128,6 +128,7 @@ const RETAKE_COMMAND_REMINDER_JITTER_MS = Number(process.env.RETAKE_COMMAND_REMI
 const RETAKE_HELP_COOLDOWN_MS = Number(process.env.RETAKE_HELP_COOLDOWN_MS || 25_000);
 const RETAKE_CHESS_SWITCH_COOLDOWN_MS = Number(process.env.RETAKE_CHESS_SWITCH_COOLDOWN_MS || 20_000);
 const RETAKE_WORLD_TASK_COOLDOWN_MS = Number(process.env.RETAKE_WORLD_TASK_COOLDOWN_MS || 18_000);
+const RETAKE_BOUNTY_SHOWCASE_COOLDOWN_MS = Number(process.env.RETAKE_BOUNTY_SHOWCASE_COOLDOWN_MS || 20_000);
 const RETAKE_WORLD_TASK_QUEUE_MAX = Number(process.env.RETAKE_WORLD_TASK_QUEUE_MAX || 5);
 const REEF_GAME_BET_WINDOW_MS = Number(process.env.REEF_GAME_BET_WINDOW_MS || 30_000);
 const REEF_GAME_COOLDOWN_MS = Number(process.env.REEF_GAME_COOLDOWN_MS || 20_000);
@@ -2715,9 +2716,25 @@ async function handleChatMessage(comment) {
 
   if (lowered === '!bounties' || lowered === '!bounty') {
     try {
+      if (isOnCooldown('bounty_showcase', RETAKE_BOUNTY_SHOWCASE_COOLDOWN_MS)) {
+        const cooldownSecs = Math.max(
+          1,
+          Math.ceil(((commandCooldowns.get('bounty_showcase') || 0) - Date.now()) / 1000)
+        );
+        sendCommandAck(`chest is already opening. hold ${cooldownSecs}s.`, 'bounties_cooldown');
+        return;
+      }
+      sendCommandAck('treasure chest opening... gather round the scroll.', 'bounties_showtime_ack');
+      await publishWorldCommand('!bounties', {
+        type: 'action',
+        action: 'bounty_showcase',
+        source: 'retake',
+        viewer,
+        raw: trimmed,
+      });
       const bounties = await getLawbBounties();
       if (bounties.length === 0) {
-        sendCommandAck('no active bounties right now. check back soon.', 'bounties_empty');
+        sendCommandAck('clawb swims to the treasure chest... no active bounties right now.', 'bounties_empty');
       } else {
         const list = bounties
           .slice(0, 3)
@@ -2727,7 +2744,7 @@ async function handleChatMessage(comment) {
             return `${b.title}: ${b.description} → ${amt} $${tok}`;
           })
           .join(' | ');
-        sendCommandAck(list, 'bounties_list');
+        sendCommandAck(`clawb opens the chest. ${list}`, 'bounties_list');
       }
     } catch (err) {
       console.error('[Retake] !bounties failed:', err?.message || err);
@@ -2851,6 +2868,13 @@ Stream state: ${streamContext}
 
 Viewer commands: music (!next !ascii !ascii2 !eq toggle) | movement (!walk !swim !dance !flip !hi !wave !spin !jump !loop) | world (!gallery !workshop !vault !main !day !night !look N !zoom in|out) | tasks (!task reef|garden|patrol) | game (!reefgame !reefgame status !bet <room> !reefbet <room>) | scenes (!chess !world) | chess (!chess start) | points (!link <wallet> !points !rank !bounties !claim) | !help for full list. Conspiracy keywords trigger info on the EQ display.
 POINTS SYSTEM — viewers earn Lawb Points by participating (commands, chess, games). !link <wallet> connects their Retake username to a wallet. Points + $CLAWB token rewards flow to linked wallets. !bounties shows active prize bounties. !claim directs to lawb.xyz to claim $CLAWB rewards.
+ACTIVE BOUNTIES — know these and mention them when relevant:
+• Century Club: first player to 100 pts → 5,000 $CLAWB (Base)
+• Reef Legend: first player to 1,000 pts → 25,000 $CLAWB (Base)
+• Ocean Emperor: first player to 10,000 pts → 100,000 $CLAWB (Base)
+• First Blood VS Clawb: first player to beat me at chess → 5,000,000 $CLAWB (Solana). That's 5 million. Nobody has claimed it yet.
+• Clawb Hunter Wager PVP: first player to beat me in a wagered Base PVP chess match → Kemonokaki #9978 NFT
+When someone asks about bounties, tell them the specific prizes. Don't just say "there are bounties" — name them and hype them up.
 When a viewer asks HOW to do something, give them the actual steps — don't be vague or poetic. Be Clawb but be useful.
 ${PERSONA_CONTEXT ? `\nWho you are:\n${PERSONA_CONTEXT}\n` : ''}`;
 
@@ -3248,11 +3272,14 @@ async function fetchSolanaSnapshot() {
 }
 
 async function fetchBaseSnapshot() {
-  const ethRes = await fetch(BASE_RPC_URL, {
+  const rpcFetch = (body) => fetch(BASE_RPC_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [CLAWB_BASE_WALLET, 'latest'] }),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(12_000),
   });
+
+  const ethRes = await rpcFetch({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [CLAWB_BASE_WALLET, 'latest'] });
   const ethData = await ethRes.json();
   const ethBal = parseInt(ethData.result || '0', 16) / 1e18;
 
@@ -3261,11 +3288,7 @@ async function fetchBaseSnapshot() {
     const paddedAddr = CLAWB_BASE_WALLET.slice(2).toLowerCase().padStart(64, '0');
     const data = '0x70a08231' + paddedAddr;
     try {
-      const res = await fetch(BASE_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: token.address, data }, 'latest'] }),
-      });
+      const res = await rpcFetch({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: token.address, data }, 'latest'] });
       const result = await res.json();
       const rawBal = parseInt(result.result || '0', 16);
       const bal = rawBal / (10 ** token.decimals);
@@ -3297,8 +3320,8 @@ async function fetchWalletSnapshot() {
 }
 
 function startWalletSnapshotTimer() {
-  fetchWalletSnapshot();
-  walletSnapshotTimer = setInterval(fetchWalletSnapshot, WALLET_SNAPSHOT_INTERVAL_MS);
+  fetchWalletSnapshot().catch(() => {});
+  walletSnapshotTimer = setInterval(() => fetchWalletSnapshot().catch(() => {}), WALLET_SNAPSHOT_INTERVAL_MS);
 }
 
 function stopWalletSnapshotTimer() {
