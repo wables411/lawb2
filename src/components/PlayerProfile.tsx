@@ -7,6 +7,7 @@ import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { getUserLeaderboardEntry, getUserRank } from '../firebaseLeaderboard';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
+import { useAppKit } from '@reown/appkit/react';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -25,6 +26,12 @@ function shortenAddr(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function detectWalletChain(address: string): 'evm' | 'solana' | null {
+  if (/^0x[a-fA-F0-9]{40}$/.test(address)) return 'evm';
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) return 'solana';
+  return null;
+}
+
 const WalletLinkingSection: React.FC<{
   isOwnProfile: boolean;
   isMobile: boolean;
@@ -33,6 +40,7 @@ const WalletLinkingSection: React.FC<{
   connectedEvmAddress?: string;
   connectedSolanaAddress?: string;
   linkingWallet: boolean;
+  onOpenConnect: () => void;
   onLink: (address: string, chain: 'evm' | 'solana') => void;
   onUnlink: (address: string) => void;
 }> = ({
@@ -43,26 +51,26 @@ const WalletLinkingSection: React.FC<{
   connectedEvmAddress,
   connectedSolanaAddress,
   linkingWallet,
+  onOpenConnect,
   onLink,
   onUnlink,
 }) => {
+  const [manualWalletInput, setManualWalletInput] = useState('');
+  const [manualWalletError, setManualWalletError] = useState<string | null>(null);
   if (!primaryWallet) return null;
 
-  const primaryChain = primaryWallet.startsWith('0x') ? 'evm' : 'solana';
   const linkedAddrs = new Set(linkedWallets.map((w) => w.address.toLowerCase()));
   linkedAddrs.add(primaryWallet.toLowerCase());
 
   const canLinkEvm =
     isOwnProfile &&
     connectedEvmAddress &&
-    !linkedAddrs.has(connectedEvmAddress.toLowerCase()) &&
-    primaryChain !== 'evm';
+    !linkedAddrs.has(connectedEvmAddress.toLowerCase());
 
   const canLinkSolana =
     isOwnProfile &&
     connectedSolanaAddress &&
-    !linkedAddrs.has(connectedSolanaAddress.toLowerCase()) &&
-    primaryChain !== 'solana';
+    !linkedAddrs.has(connectedSolanaAddress.toLowerCase());
 
   const hasAnythingToShow = linkedWallets.length > 0 || canLinkEvm || canLinkSolana;
   if (!hasAnythingToShow && !isOwnProfile) return null;
@@ -84,12 +92,12 @@ const WalletLinkingSection: React.FC<{
           display: 'inline-block',
           padding: '2px 6px',
           borderRadius: '3px',
-          background: primaryChain === 'evm' ? '#627EEA' : '#9945FF',
+          background: primaryWallet.startsWith('0x') ? '#627EEA' : '#9945FF',
           color: '#fff',
           fontSize: isMobile ? '9px' : '10px',
           marginRight: '6px',
         }}>
-          {primaryChain === 'evm' ? 'EVM' : 'SOL'}
+          {primaryWallet.startsWith('0x') ? 'EVM' : 'SOL'}
         </span>
         {shortenAddr(primaryWallet)} <span style={{ color: '#888' }}>(primary)</span>
       </div>
@@ -174,9 +182,85 @@ const WalletLinkingSection: React.FC<{
           {linkingWallet ? 'Linking...' : `Link Solana Wallet (${shortenAddr(connectedSolanaAddress)})`}
         </button>
       )}
+      {isOwnProfile && (
+        <div style={{ marginTop: '10px' }}>
+          <button
+            onClick={onOpenConnect}
+            disabled={linkingWallet}
+            style={{
+              marginBottom: '8px',
+              padding: '6px 12px',
+              background: '#000080',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '3px',
+              cursor: linkingWallet ? 'default' : 'pointer',
+              fontSize: isMobile ? '11px' : '12px',
+              opacity: linkingWallet ? 0.5 : 1,
+            }}
+          >
+            Connect Wallet
+          </button>
+          <div style={{ fontSize: isMobile ? '10px' : '11px', marginBottom: '4px', color: '#444' }}>
+            Link another wallet address
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <input
+              value={manualWalletInput}
+              onChange={(e) => {
+                setManualWalletInput(e.target.value);
+                setManualWalletError(null);
+              }}
+              placeholder="0x... or Solana address"
+              style={{
+                flex: 1,
+                minWidth: isMobile ? '100%' : '260px',
+                padding: '6px',
+                border: manualWalletError ? '2px solid #c0392b' : '1px solid #bbb',
+                borderRadius: '3px',
+                fontSize: isMobile ? '11px' : '12px',
+              }}
+            />
+            <button
+              disabled={linkingWallet || !manualWalletInput.trim()}
+              onClick={() => {
+                const candidate = manualWalletInput.trim();
+                const chain = detectWalletChain(candidate);
+                if (!chain) {
+                  setManualWalletError('Enter a valid EVM (0x...) or Solana address.');
+                  return;
+                }
+                if (linkedAddrs.has(candidate.toLowerCase())) {
+                  setManualWalletError('That wallet is already linked.');
+                  return;
+                }
+                void onLink(candidate, chain);
+                setManualWalletInput('');
+              }}
+              style={{
+                padding: '6px 10px',
+                background: '#1f6f3f',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: linkingWallet ? 'default' : 'pointer',
+                fontSize: isMobile ? '11px' : '12px',
+                opacity: linkingWallet || !manualWalletInput.trim() ? 0.5 : 1,
+              }}
+            >
+              {linkingWallet ? 'Linking...' : 'Link Address'}
+            </button>
+          </div>
+          {manualWalletError && (
+            <div style={{ marginTop: '4px', color: '#c0392b', fontSize: isMobile ? '10px' : '11px' }}>
+              {manualWalletError}
+            </div>
+          )}
+        </div>
+      )}
       {!canLinkEvm && !canLinkSolana && linkedWallets.length === 0 && isOwnProfile && (
         <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#888', fontStyle: 'italic', marginTop: '4px' }}>
-          Connect a second wallet type (EVM or Solana) to link it here.
+          Connect wallets in AppKit or paste an address to link it.
         </div>
       )}
     </div>
@@ -298,6 +382,7 @@ const TokenBalancesSection: React.FC<{
 
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
   const connectionDisplay = useConnectionDisplay();
+  const { open } = useAppKit();
   const connectedAddress = connectionDisplay.address;
   const address = viewAddress || connectedAddress; // Use provided address or fallback to connected wallet
   const normalizeAddress = (value?: string) => {
@@ -1091,9 +1176,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 isMobile={isMobile}
                 primaryWallet={primaryWallet}
                 linkedWallets={linkedWallets}
-                connectedEvmAddress={connectionDisplay.evmConnected ? connectionDisplay.address : undefined}
-                connectedSolanaAddress={connectionDisplay.solanaConnected ? connectionDisplay.address : undefined}
+                connectedEvmAddress={connectionDisplay.evmConnected ? connectionDisplay.evmAddress : undefined}
+                connectedSolanaAddress={connectionDisplay.solanaConnected ? connectionDisplay.solanaAddress : undefined}
                 linkingWallet={linkingWallet}
+                onOpenConnect={() => {
+                  void open({ view: 'Connect' });
+                }}
                 onLink={async (secondaryAddress, chain) => {
                   if (!primaryWallet) return;
                   setLinkingWallet(true);

@@ -314,7 +314,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showGame, setShowGame] = useState(false);
   const [showPromotion, setShowPromotion] = useState(false);
   const [promotionMove, setPromotionMove] = useState<{ from: { row: number; col: number }; to: { row: number; col: number } } | null>(null);
-  const [showPieceHoverLabels, setShowPieceHoverLabels] = useState(true);
+  const [showPieceHoverLabels, setShowPieceHoverLabels] = useState(false);
   const [hoveredPieceLabel, setHoveredPieceLabel] = useState<string | null>(null);
   
   // Profile picture state
@@ -3485,6 +3485,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     setShowPieceHoverLabels((prev) => !prev);
                     if (showPieceHoverLabels) setHoveredPieceLabel(null);
                   }}
+                  type="button"
+                  aria-pressed={showPieceHoverLabels}
+                  aria-label={`Piece name labels ${showPieceHoverLabels ? 'enabled' : 'disabled'}. Toggle piece name labels on hover.`}
                   style={{
                     marginLeft: '8px',
                     padding: '2px 6px',

@@ -9,6 +9,8 @@ import { useAppKitAccount } from '@reown/appkit/react';
 export interface ConnectionDisplay {
   connected: boolean;
   address?: string;
+  evmAddress?: string;
+  solanaAddress?: string;
   ens?: string;
   namespace?: 'eip155' | 'solana';
   evmConnected: boolean;
@@ -37,6 +39,8 @@ export function useConnectionDisplay(ensOverride?: string): ConnectionDisplay {
   return {
     connected: displayConnected,
     address,
+    evmAddress: evmAddress ?? undefined,
+    solanaAddress: solanaAccount.address ?? undefined,
     namespace,
     evmConnected,
     solanaConnected,
