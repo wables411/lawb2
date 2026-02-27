@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
+import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { 
   updateLeaderboardEntry, 
   getTopLeaderboardEntries,
@@ -261,6 +262,8 @@ const useLichessAPI = () => {
 
 export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false, onMenuToggle }) => {
   const { address: walletAddress, isConnected } = useAccount();
+  const connectionDisplay = useConnectionDisplay();
+  const leaderboardWalletAddress = connectionDisplay.address;
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { open } = useAppKit();
@@ -458,17 +461,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setCurrentPieceSet(selectedPieceSet);
   }, [selectedPieceSet, setCurrentPieceSet]);
 
-  // Check wallet connection - any EVM chain is fine for single-player.
-  // Do not auto-open AppKit here; only open it from explicit user actions.
+  // Wallet is optional for AI play, but required if user wants leaderboard/profile tracking.
   useEffect(() => {
-    if (!isConnected || !walletAddress) {
-      setStatus('Connect wallet to play');
+    if (!leaderboardWalletAddress) {
+      setStatus('Select chess mode (connect wallet to save leaderboard/profile)');
       setShowGame(false);
       setShowDifficulty(false);
     } else {
       setStatus('Select chess mode');
     }
-  }, [isConnected, walletAddress]);
+  }, [leaderboardWalletAddress]);
 
   // Chain switching is no longer required for single-player mode
   // It's only needed when joining multiplayer games on different chains (handled in ChessMultiplayer)
@@ -627,19 +629,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Update score using Firebase
   const updateScore = async (gameResult: 'win' | 'loss' | 'draw') => {
     console.log('[DEBUG] updateScore called with:', gameResult);
-    if (!walletAddress) {
+    if (!leaderboardWalletAddress) {
       console.log('[DEBUG] No wallet address, returning');
       return;
     }
 
     try {
-      console.log('[DEBUG] Updating score for address:', formatLeaderboardAddress(walletAddress));
+      console.log('[DEBUG] Updating score for address:', formatLeaderboardAddress(leaderboardWalletAddress));
       
       // Update leaderboard entry using Firebase
-      const success = await updateLeaderboardEntry(walletAddress, gameResult);
+      const success = await updateLeaderboardEntry(leaderboardWalletAddress, gameResult);
       
       if (success) {
-        console.log('[DEBUG] Successfully updated score for:', formatLeaderboardAddress(walletAddress));
+        console.log('[DEBUG] Successfully updated score for:', formatLeaderboardAddress(leaderboardWalletAddress));
         // Reload leaderboard after score update
         await loadLeaderboard();
       } else {
@@ -1693,8 +1695,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Fetch player profile picture when game starts in AI mode
   useEffect(() => {
-    if (walletAddress && gameMode === GameMode.AI && showGame && gameState === 'active') {
-      firebaseProfiles.getProfile(walletAddress).then(profile => {
+    if (leaderboardWalletAddress && gameMode === GameMode.AI && showGame && gameState === 'active') {
+      firebaseProfiles.getProfile(leaderboardWalletAddress).then(profile => {
         if (profile?.profile_picture?.image_url) {
           setPlayerProfilePic(profile.profile_picture.image_url);
           console.log('[PROFILE] Loaded player profile picture:', profile.profile_picture.image_url);
@@ -1708,7 +1710,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     } else {
       setPlayerProfilePic(null);
     }
-  }, [walletAddress, gameMode, showGame, gameState]);
+  }, [leaderboardWalletAddress, gameMode, showGame, gameState]);
 
   // Fetch random AI NFT when game starts in AI mode
   useEffect(() => {
@@ -1721,13 +1723,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     playStartSound();
     console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
 
-    if (!isConnected || !walletAddress) {
-      setStatus('Connect wallet to start match');
-      void open({ view: 'Connect' });
-      return;
-    }
-    
     if (gameMode === 'online') {
+      // Wallet connection is only required for online/PvP flows.
+      if (!isConnected || !walletAddress) {
+        setStatus('Connect wallet to play PvP');
+        void open({ view: 'Connect' });
+        return;
+      }
       // For multiplayer, we'll show the multiplayer component instead
       setShowGame(false);
       setShowDifficulty(false);
@@ -1753,7 +1755,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     console.log('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
     
     // Create Firebase game for "vs Clawb" mode so Clawb is tracked as a player
-    if (difficulty === 'hard' && walletAddress) {
+    if (difficulty === 'hard' && leaderboardWalletAddress) {
       const inviteCode = generateVsClawbInviteCode();
       setVsClawbInviteCode(inviteCode);
       console.log('[VS-CLAWB] Creating Firebase game:', inviteCode);
@@ -1762,7 +1764,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         game_title: `vs Clawb — ${inviteCode.slice(-6)}`,
         game_type: 'vs_clawb',
         game_state: 'active',
-        blue_player: walletAddress,
+        blue_player: leaderboardWalletAddress,
         red_player: CLAWB_WALLET,
         red_is_agent: true,
         board: {
@@ -2376,7 +2378,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const durationText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     
     // Get player names
-    const playerName = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Player';
+    const playerName = leaderboardWalletAddress ? `${leaderboardWalletAddress.slice(0, 6)}...${leaderboardWalletAddress.slice(-4)}` : 'Player';
     const opponentName = gameMode === GameMode.AI 
       ? (difficulty === 'easy' ? 'Easy Mode' : 'Clawb')
       : 'Opponent';
