@@ -1071,11 +1071,18 @@ const ClawbWorld: React.FC = () => {
       if (showcaseActive && bountyChestGroupRef.current && bountyScrollGroupRef.current) {
         const chestPos = bountyChestGroupRef.current.getWorldPosition(new THREE.Vector3());
         const scrollPos = bountyScrollGroupRef.current.getWorldPosition(new THREE.Vector3());
-        const camDesired = chestPos.clone().add(new THREE.Vector3(0, 1.7, 2.25));
-        const lookAt = scrollPos.clone().add(new THREE.Vector3(0, 0.45, 0));
-        smoothCameraPosition(camDesired);
-        smoothLookAt(lookAt);
-        const fov = THREE.MathUtils.lerp(camera.fov, 27, 0.12);
+        // Wider framing for stream readability: keep full scroll text visible.
+        const camDesired = chestPos.clone().add(new THREE.Vector3(0, 2.15, 4.05));
+        const lookAt = scrollPos.clone().add(new THREE.Vector3(0, 0.62, -0.08));
+        // Showcase transition should feel cinematic, not a snap-cut.
+        camera.position.x = THREE.MathUtils.damp(camera.position.x, camDesired.x, 2.2, delta);
+        camera.position.y = THREE.MathUtils.damp(camera.position.y, camDesired.y, 2.2, delta);
+        camera.position.z = THREE.MathUtils.damp(camera.position.z, camDesired.z, 2.2, delta);
+        streamCameraLookRef.current.x = THREE.MathUtils.damp(streamCameraLookRef.current.x, lookAt.x, 2.6, delta);
+        streamCameraLookRef.current.y = THREE.MathUtils.damp(streamCameraLookRef.current.y, lookAt.y, 2.6, delta);
+        streamCameraLookRef.current.z = THREE.MathUtils.damp(streamCameraLookRef.current.z, lookAt.z, 2.6, delta);
+        camera.lookAt(streamCameraLookRef.current.x, streamCameraLookRef.current.y, streamCameraLookRef.current.z);
+        const fov = THREE.MathUtils.lerp(camera.fov, 40, 0.12);
         if (Math.abs(fov - camera.fov) > 0.01) {
           camera.fov = fov;
           camera.updateProjectionMatrix();
@@ -1865,7 +1872,7 @@ const ClawbWorld: React.FC = () => {
     const renderLeaderboardCanvas = (
       entries: Array<{ username: string; points: number; wins: number; points_breakdown?: Record<string, number> }>,
       displayNames: Record<string, string>,
-      bounties: LeaderboardBounty[],
+      _bounties: LeaderboardBounty[],
     ) => {
       const ctx = lbCanvas.getContext('2d');
       if (!ctx) return;
@@ -1954,7 +1961,7 @@ const ClawbWorld: React.FC = () => {
       // Subtitle with glow
       ctx.fillStyle = `rgba(0,231,255,${(0.62 + 0.38 * pulse).toFixed(2)})`;
       ctx.font = '22px monospace';
-      ctx.fillText('LIVE STANDINGS // BOUNTIES // POINTS', W / 2, 104);
+      ctx.fillText('LIVE STANDINGS // POINTS', W / 2, 104);
 
       ctx.textAlign = 'left';
       ctx.fillStyle = '#ffe66d';
@@ -1977,26 +1984,18 @@ const ClawbWorld: React.FC = () => {
       const startY = 250;
       const rowsPerPage = 5;
       const leaderboardPageCount = Math.max(1, Math.ceil(Math.max(1, entries.length) / rowsPerPage));
-      const totalPages = leaderboardPageCount + 1; // final page is bounties
+      const totalPages = leaderboardPageCount;
       const pageEveryMs = 9_000;
       const page = Math.floor(now / pageEveryMs) % totalPages;
-      const showBounties = page === totalPages - 1;
 
       // Column headers
       ctx.textAlign = 'left';
       ctx.fillStyle = '#8fb6dd';
       ctx.font = 'bold 30px monospace';
-      if (!showBounties) {
-        ctx.fillText('#', 74, 182);
-        ctx.fillText('PLAYER', 186, 182);
-        ctx.textAlign = 'right';
-        ctx.fillText('PTS', W - 74, 182);
-      } else {
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffd447';
-        ctx.font = 'bold 44px monospace';
-        ctx.fillText('ACTIVE BOUNTIES', W / 2, 186);
-      }
+      ctx.fillText('#', 74, 182);
+      ctx.fillText('PLAYER', 186, 182);
+      ctx.textAlign = 'right';
+      ctx.fillText('PTS', W - 74, 182);
 
       // Divider under headers
       ctx.strokeStyle = '#2e4f7f';
@@ -2006,112 +2005,44 @@ const ClawbWorld: React.FC = () => {
       ctx.lineTo(W - 40, 198);
       ctx.stroke();
 
-      if (!showBounties) {
-        const startIndex = page * rowsPerPage;
-        const pageEntries = entries.slice(startIndex, startIndex + rowsPerPage);
-        for (let i = 0; i < pageEntries.length; i++) {
-          const e = pageEntries[i];
-          const rank = startIndex + i + 1;
-          const y = startY + i * rowHeight;
+      const startIndex = page * rowsPerPage;
+      const pageEntries = entries.slice(startIndex, startIndex + rowsPerPage);
+      for (let i = 0; i < pageEntries.length; i++) {
+        const e = pageEntries[i];
+        const rank = startIndex + i + 1;
+        const y = startY + i * rowHeight;
 
-          if (rank === 1) ctx.fillStyle = 'rgba(255,212,71,0.14)';
-          else if (rank === 2) ctx.fillStyle = 'rgba(125,231,255,0.11)';
-          else if (rank === 3) ctx.fillStyle = 'rgba(255,110,180,0.11)';
-          else ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0)';
-          ctx.fillRect(54, y - 72, W - 108, rowHeight - 14);
+        if (rank === 1) ctx.fillStyle = 'rgba(255,212,71,0.14)';
+        else if (rank === 2) ctx.fillStyle = 'rgba(125,231,255,0.11)';
+        else if (rank === 3) ctx.fillStyle = 'rgba(255,110,180,0.11)';
+        else ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0)';
+        ctx.fillRect(54, y - 72, W - 108, rowHeight - 14);
 
-          ctx.textAlign = 'left';
-          const rankColors = ['#ffd447', '#7de7ff', '#ff6eb4'];
-          ctx.fillStyle = rank <= 3 ? rankColors[rank - 1] : '#9cb2c8';
-          ctx.font = rank <= 3 ? 'bold 50px monospace' : 'bold 40px monospace';
-          ctx.fillText(`${rank}`, 76, y);
+        ctx.textAlign = 'left';
+        const rankColors = ['#ffd447', '#7de7ff', '#ff6eb4'];
+        ctx.fillStyle = rank <= 3 ? rankColors[rank - 1] : '#9cb2c8';
+        ctx.font = rank <= 3 ? 'bold 50px monospace' : 'bold 40px monospace';
+        ctx.fillText(`${rank}`, 76, y);
 
-          const wallet = e.username || '';
-          const name = displayNames[wallet.toLowerCase()] || (wallet.length > 16 ? `${wallet.slice(0, 6)}..${wallet.slice(-4)}` : wallet);
-          ctx.fillStyle = '#f2f6ff';
-          ctx.font = 'bold 42px monospace';
-          ctx.fillText(name.slice(0, 20), 190, y);
+        const wallet = e.username || '';
+        const name = displayNames[wallet.toLowerCase()] || (wallet.length > 16 ? `${wallet.slice(0, 6)}..${wallet.slice(-4)}` : wallet);
+        ctx.fillStyle = '#f2f6ff';
+        ctx.font = 'bold 42px monospace';
+        ctx.fillText(name.slice(0, 20), 190, y);
 
-          ctx.textAlign = 'right';
-          ctx.fillStyle = rank <= 3 ? '#ff3aa8' : '#f5a4c4';
-          ctx.font = rank <= 3 ? 'bold 52px monospace' : 'bold 44px monospace';
-          ctx.fillText(`${e.points || 0}`, W - 76, y);
-        }
+        ctx.textAlign = 'right';
+        ctx.fillStyle = rank <= 3 ? '#ff3aa8' : '#f5a4c4';
+        ctx.font = rank <= 3 ? 'bold 52px monospace' : 'bold 44px monospace';
+        ctx.fillText(`${e.points || 0}`, W - 76, y);
+      }
 
-        if (entries.length === 0) {
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#8ca5bf';
-          ctx.font = 'bold 40px monospace';
-          ctx.fillText('NO PLAYERS YET', W / 2, startY + 40);
-          ctx.font = '30px monospace';
-          ctx.fillText('play chess or join retake.tv/clawb', W / 2, startY + 96);
-        }
-      } else {
-        const bountyTop = 248;
-        const bountyBottom = H - 118;
-        const bountyHeight = Math.max(120, bountyBottom - bountyTop);
-        const rowHeight = 132;
-        const allBounties = [...bounties].sort((a, b) => {
-          const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
-          return score(String(a.status || '')) - score(String(b.status || ''));
-        });
-
-        // Frame for readability.
-        ctx.fillStyle = 'rgba(8,14,26,0.65)';
-        ctx.fillRect(42, bountyTop, W - 84, bountyHeight);
-        ctx.strokeStyle = 'rgba(125,231,255,0.45)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(42, bountyTop, W - 84, bountyHeight);
-
-        if (allBounties.length > 0) {
-          const itemCount = allBounties.length;
-          const contentHeight = itemCount * rowHeight;
-          const scroll = (now / 28) % contentHeight;
-
-          // Clip so scrolling text stays inside panel.
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(46, bountyTop + 4, W - 92, bountyHeight - 8);
-          ctx.clip();
-
-          for (let i = 0; i < itemCount; i++) {
-            const b = allBounties[i];
-            const y = bountyTop + 44 + i * rowHeight - scroll;
-            const yWrapped = y < (bountyTop - rowHeight) ? y + contentHeight : y;
-            if (yWrapped < bountyTop - rowHeight || yWrapped > bountyBottom + rowHeight) continue;
-
-            const status = String(b.status || '').toUpperCase();
-            const statusColor =
-              status === 'ACTIVE' ? '#ffd447'
-              : status === 'CLAIMED' ? '#7de7ff'
-              : '#f5a4c4';
-
-            let prizeText = '';
-            if (b.prize?.amount && b.prize?.token) {
-              prizeText = `${Number(b.prize.amount).toLocaleString()} $${String(b.prize.token).toUpperCase()}`;
-            } else if (b.prize?.token_id) {
-              prizeText = `NFT #${b.prize.token_id}`;
-            } else if (b.prize?.collection) {
-              prizeText = String(b.prize.collection).toUpperCase();
-            }
-
-            ctx.textAlign = 'left';
-            ctx.fillStyle = statusColor;
-            ctx.font = 'bold 42px monospace';
-            ctx.fillText(`[${status}] ${String(b.title || '').slice(0, 26)}`, 62, yWrapped);
-
-            ctx.fillStyle = '#d4e6f8';
-            ctx.font = 'bold 28px monospace';
-            const line2 = `${String(b.description || '').slice(0, 52)}${prizeText ? `  -> ${prizeText}` : ''}`;
-            ctx.fillText(line2, 82, yWrapped + 46);
-          }
-          ctx.restore();
-        } else {
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#6f8497';
-          ctx.font = 'bold 46px monospace';
-          ctx.fillText('NO BOUNTIES FOUND', W / 2, bountyTop + 82);
-        }
+      if (entries.length === 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#8ca5bf';
+        ctx.font = 'bold 40px monospace';
+        ctx.fillText('NO PLAYERS YET', W / 2, startY + 40);
+        ctx.font = '30px monospace';
+        ctx.fillText('play chess or join retake.tv/clawb', W / 2, startY + 96);
       }
 
       // Footer + page indicator
