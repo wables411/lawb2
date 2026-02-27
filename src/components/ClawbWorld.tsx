@@ -1856,7 +1856,6 @@ const ClawbWorld: React.FC = () => {
         const score = (status: string) => (status === 'active' ? 0 : status === 'claimed' ? 1 : 2);
         return score(String(a.status || '')) - score(String(b.status || ''));
       });
-      const active = sorted.length ? sorted[Math.floor(now / 5000) % sorted.length] : null;
 
       ctx.fillStyle = '#9be8ff';
       ctx.textAlign = 'center';
@@ -1864,66 +1863,60 @@ const ClawbWorld: React.FC = () => {
       ctx.fillText('LAWB BOUNTIES', W / 2, 208);
       ctx.fillStyle = '#d8c66b';
       ctx.font = 'bold 54px monospace';
-      ctx.fillText('SEA SHELL // KELP // STARFISH BOARD', W / 2, 286);
+      ctx.fillText('ALL ACTIVE BOUNTIES', W / 2, 286);
 
-      if (!active) {
+      if (!sorted.length) {
         ctx.fillStyle = '#9be8ff';
         ctx.font = 'bold 122px monospace';
         ctx.fillText('NO ACTIVE BOUNTIES', W / 2, H / 2);
       } else {
-        const status = String(active.status || 'active').toUpperCase();
-        const isClawbToken = String(active.prize?.token || '').toUpperCase() === 'CLAWB';
-        const isNft = Boolean(active.prize?.token_id || active.prize?.collection);
-        let prizeText = '';
-        if (active.prize?.amount && active.prize?.token) {
-          prizeText = `${Number(active.prize.amount).toLocaleString()} $${String(active.prize.token).toUpperCase()}`;
-        } else if (active.prize?.token_id) {
-          prizeText = `${String(active.prize.collection || 'NFT')} #${active.prize.token_id}`;
-        } else if (active.prize?.collection) {
-          prizeText = String(active.prize.collection);
-        }
-
+        const panelX = 72;
+        const panelY = 350;
+        const panelW = W - 144;
+        const panelH = H - 430;
         ctx.fillStyle = 'rgba(9,23,40,0.92)';
-        ctx.fillRect(72, 350, W - 144, H - 450);
-        ctx.strokeStyle = isClawbToken ? '#ffcf4a' : '#61d8ff';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = '#61d8ff';
         ctx.lineWidth = 8;
-        ctx.strokeRect(72, 350, W - 144, H - 450);
-        ctx.fillStyle = isClawbToken ? '#ffdf70' : '#9be8ff';
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+        const rowH = Math.max(138, Math.floor((panelH - 40) / Math.max(sorted.length, 1)));
+        const maxRows = Math.floor((panelH - 40) / rowH);
+        const visible = sorted.slice(0, maxRows);
         ctx.textAlign = 'left';
-        ctx.font = 'bold 72px monospace';
-        ctx.fillText(`[${status}]`, 116, 470);
-        ctx.font = 'bold 96px monospace';
-        ctx.fillText(String(active.title || '').slice(0, 28), 116, 600);
-        ctx.fillStyle = '#d9ecff';
-        ctx.font = 'bold 82px monospace';
-        ctx.fillText(prizeText || 'reward pending', 116, 730);
-        ctx.fillStyle = '#a9c7e6';
-        ctx.font = '52px monospace';
-        ctx.fillText(String(active.description || '').slice(0, 56), 116, 828);
 
-        if (isNft) {
-          ctx.fillStyle = '#7cf4ff';
-          ctx.font = 'bold 56px monospace';
-          ctx.fillText(`NFT: ${String(active.prize?.collection || 'collection').toUpperCase()}`, 116, 940);
-          ctx.fillText(`TOKEN ID: ${String(active.prize?.token_id || '?')}`, 116, 1018);
-          if (active.prize?.contract) {
-            const c = String(active.prize.contract);
-            ctx.fillStyle = '#9bb5d4';
-            ctx.font = '42px monospace';
-            ctx.fillText(`CONTRACT: ${c.slice(0, 12)}...${c.slice(-8)}`, 116, 1090);
+        visible.forEach((bounty, index) => {
+          const status = String(bounty.status || 'active').toUpperCase();
+          const isClawbToken = String(bounty.prize?.token || '').toUpperCase() === 'CLAWB';
+          const isNft = Boolean(bounty.prize?.token_id || bounty.prize?.collection);
+          let prizeText = 'REWARD PENDING';
+          if (bounty.prize?.amount && bounty.prize?.token) {
+            prizeText = `${Number(bounty.prize.amount).toLocaleString()} $${String(bounty.prize.token).toUpperCase()}`;
+          } else if (bounty.prize?.token_id) {
+            prizeText = `${String(bounty.prize.collection || 'NFT')} #${bounty.prize.token_id}`;
+          } else if (bounty.prize?.collection) {
+            prizeText = String(bounty.prize.collection);
           }
-          if (active.prize?.chain) {
-            ctx.fillStyle = '#9bb5d4';
-            ctx.font = '42px monospace';
-            ctx.fillText(`CHAIN: ${String(active.prize.chain).toUpperCase()}`, 116, 1152);
+          const y = panelY + 38 + index * rowH;
+          const statusColor = status === 'ACTIVE' ? '#7cf4ff' : status === 'CLAIMED' ? '#ffcf4a' : '#9bb5d4';
+          ctx.fillStyle = statusColor;
+          ctx.font = 'bold 42px monospace';
+          ctx.fillText(`[${status}]`, panelX + 34, y + 44);
+          ctx.fillStyle = '#d9ecff';
+          ctx.font = 'bold 54px monospace';
+          ctx.fillText(String(bounty.title || '').slice(0, 38), panelX + 310, y + 44);
+          ctx.fillStyle = isClawbToken ? '#ffdf70' : isNft ? '#7cf4ff' : '#cfe3ff';
+          ctx.font = 'bold 44px monospace';
+          ctx.fillText(prizeText.slice(0, 56), panelX + 310, y + 98);
+          if (index < visible.length - 1) {
+            ctx.strokeStyle = 'rgba(121,177,220,0.5)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(panelX + 28, y + rowH - 8);
+            ctx.lineTo(panelX + panelW - 28, y + rowH - 8);
+            ctx.stroke();
           }
-        }
-
-        if (isClawbToken) {
-          ctx.fillStyle = '#ffd34f';
-          ctx.font = 'bold 60px monospace';
-          ctx.fillText('GOLD TREASURE MODE', 116, H - 122);
-        }
+        });
       }
       boardTexture.needsUpdate = true;
     };
