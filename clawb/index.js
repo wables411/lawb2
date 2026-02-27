@@ -19,6 +19,7 @@ import { startWorldResponder } from './world-responder.js';
 import { startRetakeStreamer } from './retake-streamer.js';
 import { startWorldAutonomousRoutines } from './world-autonomous-routines.js';
 import { startLawbPoints } from './lawb-points.js';
+import { startWorldGallerySync } from './world-gallery-sync.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
@@ -66,6 +67,10 @@ async function main() {
     // 5.6 Start Lawb Points engine (seeds bounties on first boot)
     const stopPoints = await startLawbPoints();
     cleanups.push(stopPoints);
+
+    // 5.7 Keep Clawb World NFT gallery synced (EVM + Solana)
+    const stopGallerySync = await startWorldGallerySync();
+    cleanups.push(stopGallerySync);
 
     // 6. Start Retake.TV streamer (unless disabled)
     if (!noStream && !chatOnly) {

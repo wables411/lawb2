@@ -458,19 +458,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setCurrentPieceSet(selectedPieceSet);
   }, [selectedPieceSet, setCurrentPieceSet]);
 
-  // Check wallet connection - any EVM chain is fine for single-player
-  // Chain switching is only required when joining multiplayer games on different chains
+  // Check wallet connection - any EVM chain is fine for single-player.
+  // Do not auto-open AppKit here; only open it from explicit user actions.
   useEffect(() => {
     if (!isConnected || !walletAddress) {
       setStatus('Connect wallet to play');
       setShowGame(false);
       setShowDifficulty(false);
-      // Trigger Reown appkit popup for wallet connection
-      void open();
     } else {
       setStatus('Select chess mode');
     }
-  }, [isConnected, walletAddress, open]);
+  }, [isConnected, walletAddress]);
 
   // Chain switching is no longer required for single-player mode
   // It's only needed when joining multiplayer games on different chains (handled in ChessMultiplayer)
@@ -1722,6 +1720,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const startGame = () => {
     playStartSound();
     console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
+
+    if (!isConnected || !walletAddress) {
+      setStatus('Connect wallet to start match');
+      void open({ view: 'Connect' });
+      return;
+    }
     
     if (gameMode === 'online') {
       // For multiplayer, we'll show the multiplayer component instead

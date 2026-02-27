@@ -119,7 +119,7 @@ const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED
 type ClawbModelKey = 'idle' | 'walk' | 'swim' | 'hi' | 'dance' | 'flip' | 'die';
 const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
   idle: '/assets/lawbidle.fbx',
-  walk: '/assets/lawbWalk.fbx',
+  walk: '/assets/lawbwalk.fbx',
   swim: '/assets/lawbswim.fbx',
   hi: '/assets/lawbhi.fbx',
   dance: '/assets/lawbdance1.fbx',
@@ -127,13 +127,13 @@ const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
   die: '/assets/lawbdeath.fbx',
 };
 const CLAWB_MODEL_FALLBACKS: Record<ClawbModelKey, string[]> = {
-  idle: ['/assets/lawbWalk.fbx'],
-  walk: ['/assets/lawbidle.fbx'],
-  swim: ['/assets/lawbWalk.fbx'],
+  idle: ['/assets/lawbwalk.fbx', '/assets/lawbidle2.fbx'],
+  walk: ['/assets/lawbswim.fbx', '/assets/lawbidle.fbx'],
+  swim: ['/assets/lawbwalk.fbx', '/assets/lawbidle.fbx'],
   hi: ['/assets/lawbdance3.fbx', '/assets/lawbidle.fbx'],
-  dance: ['/assets/lawbidle.fbx'],
-  flip: ['/assets/lawbidle.fbx'],
-  die: ['/assets/lawbidle.fbx'],
+  dance: ['/assets/lawbdance2.fbx', '/assets/lawbidle.fbx'],
+  flip: ['/assets/lawbdance3.fbx', '/assets/lawbidle.fbx'],
+  die: ['/assets/lawbflip.fbx', '/assets/lawbidle.fbx'],
 };
 const PATROL_POINTS = [
   new THREE.Vector3(-2.6, FLOOR_Y, -1.4),

@@ -408,7 +408,7 @@ const CHAT_ONBOARDING_LINES = [
 const COMMAND_REMINDER_LINES = [
   'type !help for commands. !walk !swim !dance !flip !gallery and more.',
   'reef commands: !walk !swim !flip !dance !gallery !workshop !vault. !help for more.',
-  'chess is temporarily down — lawb.xyz hosting issues. will be back soon.',
+  'play chess vs me at lawb.xyz/chess. type !chess to switch scenes, then !chess start.',
 ];
 
 function findEqDisplayTrigger(loweredText) {
@@ -2816,7 +2816,11 @@ You remember recent chat (provided below). Reference what people said. Have actu
 $CLAWB is on Solana (primary) and Base. Don't mention Base unless asked — you're a Solana lobster now.
 Catchphrase (use sparingly, when it fits): "there is no meme i lawb you."
 
-IMPORTANT: lawb.xyz is currently DOWN (Netlify hosting issues). Chess is UNAVAILABLE until further notice. If anyone asks about chess or lawb.xyz, tell them it's temporarily down and will be back soon.
+CHESS — how it works (give this info when anyone asks about chess):
+- Go to lawb.xyz/chess in your browser. Connect your wallet.
+- Type !chess here to switch the stream to the chess scene.
+- Type !chess start to queue a game request, then create a vs clawb game on lawb.xyz/chess.
+- Wagers are optional depending on game setup; stream viewers can watch from the chess scene.
 TOKEN CONTEXT: $CLAWB exists on both Solana and Base. Your PRIMARY context is Solana — you stream on retake.tv (Solana), your wallet is Solana, $CLAWB on Solana is the focus. $CLAWB also deployed on Base (for chess wagers), but don't bring up Base unless someone specifically asks. Never lead with "Base chain" — you live on Solana now.
 
 Stream state: ${streamContext}
