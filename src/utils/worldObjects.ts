@@ -621,8 +621,8 @@ export function setupUnderwaterLighting(scene: THREE.Scene, isDark: boolean): {
 // --- Setup underwater fog ---
 
 export function setupUnderwaterFog(scene: THREE.Scene, isDark: boolean) {
-  const fogColor = isDark ? '#081422' : '#1a5a7a';
-  scene.fog = new THREE.Fog(fogColor, isDark ? 5 : 12, isDark ? 45 : 100);
+  const fogColor = isDark ? '#081422' : '#4499bb';
+  scene.fog = new THREE.Fog(fogColor, isDark ? 5 : 20, isDark ? 45 : 140);
   scene.background = new THREE.Color(fogColor);
 }
 

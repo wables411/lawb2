@@ -94,3 +94,31 @@ export function applyBlueTint(object: THREE.Group) {
     }
   });
 }
+
+export function applyClawbGlow(object: THREE.Group) {
+  object.traverse((child: THREE.Object3D) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach((m) => {
+        const stdMat = m as THREE.MeshStandardMaterial;
+        if (stdMat.isMeshStandardMaterial) {
+          stdMat.emissive = new THREE.Color(0x44bbff);
+          stdMat.emissiveIntensity = 0.35;
+        }
+      });
+    }
+  });
+
+  const glowLight = new THREE.PointLight(0x44ccff, 1.8, 8, 1.5);
+  glowLight.name = 'clawb_glow_light';
+  glowLight.position.set(0, 0.5, 0);
+  object.add(glowLight);
+}
+
+export function pulseClawbGlow(object: THREE.Group, elapsed: number) {
+  const light = object.getObjectByName('clawb_glow_light') as THREE.PointLight | undefined;
+  if (light) {
+    light.intensity = 1.4 + 0.6 * Math.sin(elapsed * 1.2);
+  }
+}

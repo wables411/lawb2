@@ -96,7 +96,7 @@ import {
 import { createWorldRenderer, resizeWorldRenderer } from '../world/WorldRenderer';
 import { createEnvironment, updateEnvironment, type EnvironmentRefs } from '../world/WorldEnvironment';
 import { smoothCameraPosition, smoothLookAt, updateStreamFollowCamera } from '../world/WorldCamera';
-import { loadModel, prepareCharacterModel, loadClawbModelWithFallback, getPlayableClip, applyBlueTint } from '../world/WorldCharacter';
+import { loadModel, prepareCharacterModel, loadClawbModelWithFallback, getPlayableClip, applyBlueTint, applyClawbGlow, pulseClawbGlow } from '../world/WorldCharacter';
 
 interface NFTItem {
   chain?: string;
@@ -446,21 +446,21 @@ const ClawbWorld: React.FC = () => {
       loopedActionRef.current = null;
       const isNight = action === 'night';
       setupUnderwaterFog(scene, isNight);
-      lights.ambient.color.set(isNight ? '#1a2a44' : '#88bbdd');
-      lights.ambient.intensity = isNight ? 0.25 : 0.6;
-      lights.directional.color.set(isNight ? '#6699cc' : '#fffdf0');
-      lights.directional.intensity = isNight ? 0.8 : 2.0;
+      lights.ambient.color.set(isNight ? '#1a2a44' : '#cceeff');
+      lights.ambient.intensity = isNight ? 0.25 : 1.2;
+      lights.directional.color.set(isNight ? '#6699cc' : '#fffff0');
+      lights.directional.intensity = isNight ? 0.8 : 3.5;
       if (lights.hemisphere) {
-        lights.hemisphere.color.set(isNight ? 0x1a3050 : 0x88ccff);
-        lights.hemisphere.groundColor.set(isNight ? 0x0a1020 : 0x446688);
-        lights.hemisphere.intensity = isNight ? 0.5 : 1.0;
+        lights.hemisphere.color.set(isNight ? 0x1a3050 : 0xaaddff);
+        lights.hemisphere.groundColor.set(isNight ? 0x0a1020 : 0x88bbcc);
+        lights.hemisphere.intensity = isNight ? 0.5 : 1.5;
       }
       if (lights.fillLight) {
-        lights.fillLight.color.set(isNight ? '#224466' : '#aaddff');
-        lights.fillLight.intensity = isNight ? 0.2 : 0.6;
+        lights.fillLight.color.set(isNight ? '#224466' : '#ddeeff');
+        lights.fillLight.intensity = isNight ? 0.2 : 1.2;
       }
       if (rendererRef.current) {
-        rendererRef.current.toneMappingExposure = isNight ? 1.1 : 1.8;
+        rendererRef.current.toneMappingExposure = isNight ? 1.1 : 2.2;
       }
       setWorldAction('patrol', 0, 'day-night-toggle');
       return;
@@ -731,6 +731,9 @@ const ClawbWorld: React.FC = () => {
     const scene = sceneRef.current;
     if (envRef.current) {
       updateEnvironment(envRef.current, scene, camera, elapsedRef.current, delta);
+    }
+    if (clawbRef.current) {
+      pulseClawbGlow(clawbRef.current, elapsedRef.current);
     }
 
     // LOD — fade distant world objects
@@ -1354,6 +1357,7 @@ const ClawbWorld: React.FC = () => {
     // Load Clawb NPC
     const applyClawbModel = (object: THREE.Group, key: ClawbModelKey) => {
         prepareCharacterModel(object, clawbPosRef.current);
+        applyClawbGlow(object);
         const prev = clawbRef.current;
         const prevPos = prev?.position.clone();
         const prevRotY = prev?.rotation.y;
