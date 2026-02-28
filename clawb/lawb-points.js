@@ -334,11 +334,16 @@ async function claimBountyToQueue(bountyId, wallet, claimContext = {}) {
   const normalizedWallet = normalizeWallet(wallet);
   const bountyRef = db.ref(`bounties/${bountyId}`);
   const nowIso = new Date().toISOString();
+  // Prime server value before transaction. RTDB transactions can invoke callback
+  // with null on first run; use the fetched snapshot as fallback.
+  const seededSnap = await bountyRef.once('value');
+  const seeded = seededSnap.exists() ? seededSnap.val() : null;
 
   const txResult = await bountyRef.transaction((current) => {
-    if (!current || current.status !== 'active') return;
+    const base = current || seeded;
+    if (!base || base.status !== 'active') return;
     return {
-      ...current,
+      ...base,
       status: 'claimed',
       claimed_by: normalizedWallet,
       claimed_at: nowIso,

@@ -380,6 +380,130 @@ const TokenBalancesSection: React.FC<{
   );
 };
 
+const CLAWB_SOLANA_WALLET = 'FveSNArbJsdx5JTmGE8cti9pBt5gH8NVTrUvcp1C2Mbp';
+const METEORA_POSITION = '13N61SZdGVFgM24t6mtYbAhV7T2nD67QmzEqsaT1DEeg';
+const METEORA_PAIR = 'AVoLSxAV41A2estUDUkV4yCM9GJ7dM7V2A57jNtoaoWD';
+const METEORA_API = 'https://dlmm-api.meteora.ag';
+
+interface LpPositionData {
+  pairName: string;
+  currentPrice: number;
+  feesClaimedUsd: number;
+  feeApy24h: number;
+  volume24h: number;
+  fees24h: number;
+  poolApr: number;
+  reserveX: number;
+  reserveY: number;
+}
+
+function useMeteorLpPosition() {
+  const [data, setData] = useState<LpPositionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [pos, pair] = await Promise.all([
+          fetch(`${METEORA_API}/position/${METEORA_POSITION}`, { signal: AbortSignal.timeout(12000) }).then(r => r.json()),
+          fetch(`${METEORA_API}/pair/${METEORA_PAIR}`, { signal: AbortSignal.timeout(12000) }).then(r => r.json()),
+        ]);
+        if (cancelled) return;
+        setData({
+          pairName: pair.name || 'CLAWB-LAWB',
+          currentPrice: pair.current_price ?? 0,
+          feesClaimedUsd: pos.total_fee_usd_claimed ?? 0,
+          feeApy24h: pos.fee_apy_24h ?? 0,
+          volume24h: pair.trade_volume_24h ?? 0,
+          fees24h: pair.fees_24h ?? 0,
+          poolApr: pair.apr ?? 0,
+          reserveX: pair.reserve_x_amount ?? 0,
+          reserveY: pair.reserve_y_amount ?? 0,
+        });
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || 'Failed to load LP data');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { data, loading, error };
+}
+
+const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
+  const { data, loading, error } = useMeteorLpPosition();
+
+  const fmtNum = (v: number, dec = 2): string => {
+    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(dec)}M`;
+    if (v >= 1_000) return `${(v / 1_000).toFixed(dec)}K`;
+    return v.toFixed(dec);
+  };
+
+  return (
+    <div style={{
+      marginBottom: '20px',
+      width: '100%',
+      maxWidth: '600px',
+      padding: '12px',
+      background: 'linear-gradient(135deg, #0a0a2e 0%, #1a0a3e 100%)',
+      borderRadius: '6px',
+      border: '1px solid #9945FF44',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px', color: '#fff' }}>
+          Clawb LP Position
+          {loading && <span style={{ fontWeight: 400, fontSize: '11px', color: '#888', marginLeft: '6px' }}>(loading...)</span>}
+        </h4>
+        <a
+          href={`https://www.meteora.ag/dlmm/${METEORA_PAIR}?referrer=portfolio&position=${METEORA_POSITION}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: isMobile ? '9px' : '10px', color: '#9945FF', textDecoration: 'none' }}
+        >
+          Meteora ↗
+        </a>
+      </div>
+
+      {error && <div style={{ fontSize: '11px', color: '#c0392b' }}>{error}</div>}
+
+      {data && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+          {[
+            { label: 'Pool', value: data.pairName, sub: 'Meteora DLMM' },
+            { label: 'Price', value: `${data.currentPrice.toFixed(4)}`, sub: 'CLAWB/LAWB' },
+            { label: 'Pool APR', value: `${data.poolApr.toFixed(1)}%`, sub: '24h' },
+            { label: '24h Volume', value: `$${fmtNum(data.volume24h)}`, sub: '' },
+            { label: '24h Fees', value: `$${fmtNum(data.fees24h)}`, sub: '' },
+            { label: 'Fees Claimed', value: `$${fmtNum(data.feesClaimedUsd)}`, sub: 'total' },
+          ].map((cell) => (
+            <div key={cell.label} style={{
+              padding: '8px',
+              background: '#ffffff08',
+              borderRadius: '4px',
+              border: '1px solid #ffffff12',
+            }}>
+              <div style={{ fontSize: isMobile ? '9px' : '10px', color: '#9945FF', fontWeight: 600, marginBottom: '2px' }}>
+                {cell.label}
+              </div>
+              <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#fff' }}>
+                {cell.value}
+              </div>
+              {cell.sub && (
+                <div style={{ fontSize: isMobile ? '8px' : '9px', color: '#888' }}>{cell.sub}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
   const connectionDisplay = useConnectionDisplay();
   const { open } = useAppKit();
@@ -1217,6 +1341,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 primaryWallet={primaryWallet}
                 linkedWallets={linkedWallets}
               />
+
+              <ClawbLpSection isMobile={isMobile} />
 
               <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>

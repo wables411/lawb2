@@ -201,11 +201,13 @@ async function processPendingAutoApprovals() {
 
     const check = await validateClaimForAutoApproval(claim);
     const claimRef = db.ref(`bounty_claims/${claimId}`);
+    const seededClaim = claim;
     if (check.ok) {
       const tx = await claimRef.transaction((current) => {
-        if (!current || current.status !== 'pending_approval') return;
+        const base = current || seededClaim;
+        if (!base || base.status !== 'pending_approval') return;
         return {
-          ...current,
+          ...base,
           status: 'approved',
           approved_at: nowIso(),
           approved_by: 'clawb_auto_approver',
@@ -218,9 +220,10 @@ async function processPendingAutoApprovals() {
       }
     } else {
       const tx = await claimRef.transaction((current) => {
-        if (!current || current.status !== 'pending_approval') return;
+        const base = current || seededClaim;
+        if (!base || base.status !== 'pending_approval') return;
         return {
-          ...current,
+          ...base,
           status: 'rejected',
           processed_at: nowIso(),
           error: `auto_approval_failed:${check.reason}`,
@@ -288,10 +291,12 @@ async function payoutBaseNft(claim, claimId, cfg) {
 
 async function executeApprovedClaim(claimId, claim, cfg) {
   const claimRef = db.ref(`bounty_claims/${claimId}`);
+  const seededClaim = claim;
   const lock = await claimRef.transaction((current) => {
-    if (!current || current.status !== 'approved') return;
+    const base = current || seededClaim;
+    if (!base || base.status !== 'approved') return;
     return {
-      ...current,
+      ...base,
       status: 'processing',
       processing_started_at: nowIso(),
       error: null,

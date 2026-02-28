@@ -6241,6 +6241,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
     
     const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
+    const pieceLabelByType: Record<string, string> = {
+      q: 'Queen',
+      r: 'Rook',
+      b: 'Bishop',
+      n: 'Knight',
+    };
     
     return (
       <div className={`promotion-dialog ${isMobile ? 'mobile-promotion' : ''}`} style={{
@@ -6297,9 +6303,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   minWidth: isMobile ? '60px' : 'auto',
                   minHeight: isMobile ? '60px' : 'auto',
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  gap: isMobile ? '4px' : '6px',
                 }}
+                aria-label={`Promote pawn to ${pieceLabelByType[piece.toLowerCase()] || piece}`}
               >
                 <img 
                   src={pieceImages[piece]} 
@@ -6310,6 +6319,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     pointerEvents: 'none'
                   }} 
                 />
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: isMobile ? '10px' : '11px',
+                    fontWeight: 700,
+                    lineHeight: 1.1,
+                    textAlign: 'center',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                  }}
+                >
+                  {pieceLabelByType[piece.toLowerCase()] || piece.toUpperCase()}
+                </span>
               </div>
             ))}
           </div>

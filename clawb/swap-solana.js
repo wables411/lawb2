@@ -158,3 +158,10 @@ if (confirm.value.err) {
 }
 
 console.log(`Confirmed. Swapped ${amountStr} ${inputRaw} → ~${outHuman} ${outputRaw}`);
+
+if (!process.env.SWAP_SILENT) {
+  import('./announce-swap.js').then(({ announceSwap }) => {
+    const msg = `swapped ${amountStr} ${inputRaw} for ${outHuman} $${outputRaw}`;
+    announceSwap(msg).catch(() => {});
+  }).catch(() => {});
+}

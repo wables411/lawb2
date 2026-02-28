@@ -17,6 +17,7 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { announceSwap } from './announce-swap.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +64,7 @@ async function executeSwap(inputToken, outputToken, amount, slippageBps = 100) {
   const { stdout, stderr } = await execFileAsync('node', args, {
     cwd: __dirname,
     timeout: 60000,
+    env: { ...process.env, SWAP_SILENT: '1' },
   });
   const output = stdout + '\n' + stderr;
 
@@ -178,7 +180,9 @@ if (command === 'start') {
       currentState.history.push({ ...currentJob });
       currentState.active = null;
       saveState(currentState);
-      console.log(`\nDCA COMPLETE: acquired ${currentJob.totalAcquired} ${currentJob.outputToken} over ${currentJob.completedSwaps} swaps. Spent ${currentJob.totalSpent.toFixed(6)} SOL.`);
+      const completeMsg = `DCA complete: acquired ${currentJob.totalAcquired} $${currentJob.outputToken} over ${currentJob.completedSwaps} swaps. spent ${currentJob.totalSpent.toFixed(6)} SOL.`;
+      console.log(`\n${completeMsg}`);
+      await announceSwap(completeMsg).catch(() => {});
       process.exit(0);
     }
 
@@ -187,7 +191,9 @@ if (command === 'start') {
       currentJob.status = 'paused';
       currentJob.pauseReason = `insufficient SOL (${bal.toFixed(4)} remaining)`;
       saveState(currentState);
-      console.error(`\nDCA PAUSED: ${currentJob.pauseReason}. ${currentJob.completedSwaps}/${currentJob.splits} complete.`);
+      const pauseMsg = `DCA paused: ${currentJob.pauseReason}. ${currentJob.completedSwaps}/${currentJob.splits} swaps done.`;
+      console.error(`\n${pauseMsg}`);
+      await announceSwap(pauseMsg, { eq: true, chat: false }).catch(() => {});
       process.exit(1);
     }
 
@@ -207,8 +213,11 @@ if (command === 'start') {
           );
         }
         currentJob.nextSwapAt = new Date(Date.now() + currentJob.intervalMs).toISOString();
+        currentJob.failedSwaps = 0;
         saveState(currentState);
-        console.log(`DCA ${swapNum}/${currentJob.splits}: bought ${result.outputAmount || '?'} ${currentJob.outputToken} for ${currentJob.perSwapAmount} SOL (total: ${currentJob.totalAcquired} acquired) tx: ${result.txid || 'unknown'}`);
+        const swapMsg = `DCA ${swapNum}/${currentJob.splits}: bought ${result.outputAmount || '?'} $${currentJob.outputToken} for ${currentJob.perSwapAmount} SOL (total: ${currentJob.totalAcquired} $${currentJob.outputToken})`;
+        console.log(swapMsg);
+        await announceSwap(swapMsg, { eq: true, chat: false }).catch(() => {});
       } else {
         currentJob.failedSwaps++;
         if (currentJob.failedSwaps >= 3) {
@@ -280,8 +289,18 @@ if (command === 'start') {
     console.log('No DCA to resume.');
     process.exit(0);
   }
-  if (state.active.status !== 'paused') {
-    console.log(`DCA is ${state.active.status}, not paused.`);
+  if (state.active.status !== 'paused' && state.active.status !== 'running') {
+    console.log(`DCA is ${state.active.status} — nothing to resume.`);
+    process.exit(0);
+  }
+  if (state.active.completedSwaps >= state.active.splits) {
+    state.active.status = 'completed';
+    state.history.push({ ...state.active });
+    const msg = `DCA already complete: acquired ${state.active.totalAcquired} $${state.active.outputToken} over ${state.active.completedSwaps} swaps.`;
+    state.active = null;
+    saveState(state);
+    console.log(msg);
+    await announceSwap(msg).catch(() => {});
     process.exit(0);
   }
   state.active.status = 'running';
@@ -289,8 +308,92 @@ if (command === 'start') {
   state.active.pauseReason = null;
   state.active.nextSwapAt = new Date().toISOString();
   saveState(state);
-  console.log(`Resumed DCA: ${state.active.id}. ${state.active.splits - state.active.completedSwaps} swaps remaining.`);
-  console.log('Run `node dca-manager.js start` again with the same params to continue executing, or the job will resume on next Clawb restart.');
+
+  const remaining = state.active.splits - state.active.completedSwaps;
+  console.log(`Resuming DCA: ${state.active.id}. ${remaining} swaps remaining (${state.active.completedSwaps} already done, ${state.active.totalAcquired} ${state.active.outputToken} acquired).`);
+  console.log(`Running next swap now...`);
+
+  async function runResumeSwap() {
+    const currentState = loadState();
+    const currentJob = currentState.active;
+    if (!currentJob || currentJob.status !== 'running') return;
+    if (currentJob.completedSwaps >= currentJob.splits) {
+      currentJob.status = 'completed';
+      currentState.history.push({ ...currentJob });
+      currentState.active = null;
+      saveState(currentState);
+      const completeMsg = `DCA complete: acquired ${currentJob.totalAcquired} $${currentJob.outputToken} over ${currentJob.completedSwaps} swaps. spent ${currentJob.totalSpent.toFixed(6)} SOL.`;
+      console.log(`\n${completeMsg}`);
+      await announceSwap(completeMsg).catch(() => {});
+      process.exit(0);
+    }
+
+    const bal = await checkSolBalance();
+    if (bal !== null && bal < currentJob.perSwapAmount + 0.005) {
+      currentJob.status = 'paused';
+      currentJob.pauseReason = `insufficient SOL (${bal.toFixed(4)} remaining)`;
+      saveState(currentState);
+      const pauseMsg = `DCA paused: ${currentJob.pauseReason}. ${currentJob.completedSwaps}/${currentJob.splits} swaps done.`;
+      console.error(`\n${pauseMsg}`);
+      await announceSwap(pauseMsg, { eq: true, chat: false }).catch(() => {});
+      process.exit(1);
+    }
+
+    const swapNum = currentJob.completedSwaps + 1;
+    console.log(`\nSwap ${swapNum}/${currentJob.splits} — ${currentJob.perSwapAmount} SOL → ${currentJob.outputToken}...`);
+
+    try {
+      const result = await executeSwap(currentJob.inputToken, currentJob.outputToken, currentJob.perSwapAmount);
+      if (result.success) {
+        currentJob.completedSwaps++;
+        currentJob.totalSpent += currentJob.perSwapAmount;
+        if (result.txid) currentJob.txHistory.push(result.txid);
+        if (result.outputAmount) {
+          currentJob.totalAcquired = String(
+            parseFloat(currentJob.totalAcquired) + parseFloat(result.outputAmount)
+          );
+        }
+        currentJob.nextSwapAt = new Date(Date.now() + currentJob.intervalMs).toISOString();
+        currentJob.failedSwaps = 0;
+        saveState(currentState);
+        const swapMsg = `DCA ${swapNum}/${currentJob.splits}: bought ${result.outputAmount || '?'} $${currentJob.outputToken} for ${currentJob.perSwapAmount} SOL (total: ${currentJob.totalAcquired} $${currentJob.outputToken})`;
+        console.log(swapMsg);
+        await announceSwap(swapMsg, { eq: true, chat: false }).catch(() => {});
+      } else {
+        currentJob.failedSwaps++;
+        if (currentJob.failedSwaps >= 3) {
+          currentJob.status = 'paused';
+          currentJob.pauseReason = `3 consecutive failures`;
+          saveState(currentState);
+          console.error(`DCA PAUSED after 3 failures. Last output:\n${result.raw}`);
+          process.exit(1);
+        }
+        saveState(currentState);
+        console.error(`DCA swap ${swapNum} failed (attempt ${currentJob.failedSwaps}/3). Will retry next interval.`);
+      }
+    } catch (err) {
+      currentJob.failedSwaps++;
+      saveState(currentState);
+      console.error(`DCA swap error: ${err.message}`);
+    }
+  }
+
+  await runResumeSwap();
+
+  const resumeTimer = setInterval(async () => {
+    const s = loadState();
+    if (!s.active || s.active.status !== 'running') {
+      clearInterval(resumeTimer);
+      return;
+    }
+    await runResumeSwap();
+    const s2 = loadState();
+    if (!s2.active || s2.active.status !== 'running') {
+      clearInterval(resumeTimer);
+      if (s2.active?.status === 'completed' || !s2.active) process.exit(0);
+      else process.exit(1);
+    }
+  }, state.active.intervalMs);
 
 } else {
   console.log('Usage:');

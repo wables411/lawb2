@@ -423,9 +423,9 @@ async function watchAndPlayGame(inviteCode) {
       if (!fen) return;
 
       console.log(`[PVP] ${inviteCode}: Clawb's turn. FEN: ${fen}`);
-      const moveUCI = await getStockfishMove(fen);
+      const moveUCI = await getStockfishMoveWithRetry(fen, 5000, 3);
       if (!moveUCI) {
-        console.error(`[PVP] ${inviteCode}: No move from Stockfish`);
+        console.error(`[PVP] ${inviteCode}: No usable Stockfish move after retries`);
         return;
       }
 
@@ -492,6 +492,8 @@ async function watchAndPlayGame(inviteCode) {
           board: { positions: newPositions, rows: 8, cols: 8 },
           last_move: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
           last_move_timestamp: Date.now(),
+          last_move_engine_source: 'stockfish',
+          last_move_engine_uci: `${validated.from}${validated.to}`,
           game_state: 'finished',
           winner: gameWinner,
           end_reason: gameEndReason,
@@ -520,6 +522,8 @@ async function watchAndPlayGame(inviteCode) {
           current_player: opponentColor,
           last_move: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
           last_move_timestamp: Date.now(),
+          last_move_engine_source: 'stockfish',
+          last_move_engine_uci: `${validated.from}${validated.to}`,
         });
       }
 
@@ -531,7 +535,7 @@ async function watchAndPlayGame(inviteCode) {
   gameRef.on('value', onGameValue);
 }
 
-// --- Move validation (chess.js): returns valid { from, to } or null; fallback to first legal move ---
+// --- Move validation (chess.js): returns valid { from, to } or null ---
 function validateMove(fen, moveUCI) {
   if (!fen || !moveUCI || typeof moveUCI !== 'string') return null;
   const uci = moveUCI.trim().toLowerCase();
@@ -543,13 +547,7 @@ function validateMove(fen, moveUCI) {
     const promotion = 'qnrb'.includes(uci[4]) ? uci[4] : undefined;
     const move = chess.move({ from, to, promotion });
     if (move) return { from: move.from, to: move.to };
-    // Illegal: try first legal move as fallback
-    const moves = chess.moves({ verbose: true });
-    if (moves.length > 0) {
-      const first = moves[0];
-      console.warn(`[PVP] Stockfish move ${uci} illegal for FEN; using fallback ${first.from}${first.to}`);
-      return { from: first.from, to: first.to };
-    }
+    console.warn(`[PVP] Stockfish move ${uci} is illegal for FEN; rejecting move`);
   } catch (err) {
     console.error('[PVP] validateMove error:', err.message);
   }
@@ -570,6 +568,16 @@ async function getStockfishMove(fen, movetime = 5000) {
     console.error('[PVP] Stockfish API error:', err.message);
     return null;
   }
+}
+
+async function getStockfishMoveWithRetry(fen, movetime = 5000, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const move = await getStockfishMove(fen, movetime);
+    if (move && move.length >= 4) return move;
+    console.warn(`[PVP] Stockfish empty/invalid move attempt ${attempt}/${maxAttempts}`);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  }
+  return null;
 }
 
 // Position key: frontend uses "row_col" (e.g. "0_0")

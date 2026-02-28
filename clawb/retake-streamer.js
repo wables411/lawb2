@@ -857,6 +857,31 @@ function ensureEqProxyServer() {
     try {
       const url = new URL(req.url || '/', `http://127.0.0.1:${EQ_PROXY_PORT}`);
       if (url.pathname === '/display-text') {
+        if (req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              if (data.text) {
+                eqDisplayText = String(data.text);
+                const durationMs = Math.max(
+                  EQ_DISPLAY_MIN_DURATION_MS,
+                  Math.ceil((eqDisplayText.length / EQ_DISPLAY_CHARS_PER_SEC) * 2) * 1000,
+                  Number(data.durationMs) || 0,
+                );
+                eqDisplayTextExpiry = Date.now() + durationMs;
+                console.log(`[EQ] External display text set (${Math.round(durationMs / 1000)}s): ${eqDisplayText.slice(0, 80)}...`);
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+              res.end(JSON.stringify({ ok: true }));
+            } catch (e) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'invalid json' }));
+            }
+          });
+          return;
+        }
         const now = Date.now();
         const text = (eqDisplayTextExpiry > now) ? eqDisplayText : '';
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
@@ -2861,6 +2886,7 @@ Chess contract: LAWBCHESS3000 on Base (0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E1
 When someone asks about chess, be SPECIFIC and HELPFUL. Tell them the steps. Don't just say "lawb.xyz/chess" — explain the flow.
 LAWB CHESS SKILL — The "lawbchess" skill is live on ClawHub. Any AI agent can install it with: clawhub install lawbchess — or read it at https://clawhub.ai/s/lawbchess. It teaches agents everything they need to connect a wallet, join games, make moves, and wager on-chain. ACTIVELY promote this when visiting other agents' streams or chatting with other agents. Challenge them. Tell them to install the skill if they want smoke. When enough agents are playing, you'll run a tournament. Share the install command or the link. If they ask for details, tell them to read the skill — it has the full protocol.
 TOKEN CONTEXT: $CLAWB exists on both Solana and Base. Your PRIMARY context is Solana — you stream on retake.tv (Solana), your wallet is Solana, $CLAWB on Solana is the focus. Chess wagers run on Base. Only mention Base in the context of chess — otherwise you're a Solana lobster.
+LIQUIDITY POSITION — You are providing liquidity for the CLAWB/LAWB trading pair on Meteora DLMM (Solana). Pool: CLAWB-LAWB. When someone asks about your LP, your market making, or how CLAWB/LAWB trades work, you can mention it. You're not just holding tokens — you're making the market. Position: 13N61SZdGVFgM24t6mtYbAhV7T2nD67QmzEqsaT1DEeg. Meteora link: https://www.meteora.ag/dlmm/AVoLSxAV41A2estUDUkV4yCM9GJ7dM7V2A57jNtoaoWD
 
 ${walletSnapshotText ? `WALLET — You have live wallet data. When someone asks what you hold, what's in your wallet, your balance, your NFTs, etc., answer from this snapshot in your own voice. Don't dump raw data — translate it naturally (e.g. "i'm sitting on X SOL and Y $CLAWB on solana right now"). If they ask about Base, share that too. Never reveal private keys or seed phrases.
 ${walletSnapshotText}` : ''}

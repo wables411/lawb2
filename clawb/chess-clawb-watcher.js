@@ -41,6 +41,20 @@ const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 const commentedMoves = new Map(); // gameId -> last move timestamp we commented on
 const commentedGames = new Set(); // games we've sent a greeting for
 
+function normalizeWallet(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  return s.startsWith('0x') ? s.toLowerCase() : s;
+}
+
+function resolveWinnerWallet(game) {
+  const winner = String(game?.winner || '').trim();
+  if (!winner) return '';
+  if (winner === 'blue') return normalizeWallet(game?.blue_player);
+  if (winner === 'red') return normalizeWallet(game?.red_player);
+  return normalizeWallet(winner);
+}
+
 // --- Commentary prompt ---
 const CHESS_SYSTEM = `You are Clawb, a lobster playing chess. Brief, warm, slightly cocky.
 You're playing as red (the AI). Generate a 1-sentence comment about the game.
@@ -96,16 +110,37 @@ async function handleGameUpdate(game) {
     }
 
     // First-win bounty queue: player beat Clawb in a vs_clawb match.
-    if (winner === 'blue' && game.blue_player) {
-      const queued = await enqueueVsClawbFirstWinBounty(game.blue_player, {
-        game_id: id,
-        game_type,
-        winner,
-        end_reason: end_reason || 'checkmate',
-      });
-      if (queued.success) {
-        console.log(`[Chess] queued vs_clawb first-win bounty for ${game.blue_player}`);
+    const redWallet = normalizeWallet(game.red_player);
+    const winnerWallet = resolveWinnerWallet(game);
+    const clawbWallet = CLAWB_WALLET.toLowerCase();
+    const clawbInSeat = redWallet === clawbWallet;
+    const clawbLost = winnerWallet && winnerWallet !== clawbWallet;
+    if (clawbInSeat && clawbLost) {
+      try {
+        const queued = await enqueueVsClawbFirstWinBounty(winnerWallet, {
+          game_id: id,
+          game_type,
+          winner,
+          winner_wallet: winnerWallet,
+          end_reason: end_reason || 'checkmate',
+        });
+        if (queued.success) {
+          console.log(`[Chess] queued vs_clawb first-win bounty for ${winnerWallet}`);
+        } else {
+          console.warn(`[Chess] vs_clawb bounty not queued for ${winnerWallet}: ${queued.reason || 'unknown_reason'}`);
+        }
+      } catch (err) {
+        console.error(`[Chess] vs_clawb bounty queue failed for ${winnerWallet}:`, err?.message || err);
       }
+    } else {
+      console.log('[Chess] vs_clawb first-win bounty skipped', {
+        gameId: id,
+        clawbInSeat,
+        clawbLost,
+        winner,
+        winnerWallet,
+        redWallet,
+      });
     }
     return;
   }

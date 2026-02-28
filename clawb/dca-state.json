@@ -1,21 +1,21 @@
 {
   "active": {
-    "id": "dca_clawb_1772232958718",
+    "id": "dca_lawb_1772241195649",
     "inputToken": "SOL",
-    "outputToken": "CLAWB",
-    "totalAmount": 0.5,
-    "perSwapAmount": 0.027778,
-    "splits": 18,
+    "outputToken": "LAWB",
+    "totalAmount": 1,
+    "perSwapAmount": 0.083333,
+    "splits": 12,
     "intervalMs": 300000,
     "completedSwaps": 1,
     "failedSwaps": 0,
-    "totalAcquired": "820278.247591",
-    "totalSpent": 0.027778,
+    "totalAcquired": "709416.235778",
+    "totalSpent": 0.083333,
     "status": "running",
-    "startedAt": "2026-02-27T22:55:58.718Z",
-    "nextSwapAt": "2026-02-27T23:01:03.424Z",
+    "startedAt": "2026-02-28T01:13:15.649Z",
+    "nextSwapAt": "2026-02-28T01:18:17.971Z",
     "txHistory": [
-      "2iW5SKHtjknUgKrkw1yf4aXK2Cx7JqwGGLMqQjxpdkHyegmg3i9fiWTaErkYTmbmEDL59rFgFP2vjbbxCfrdmVBM"
+      "3cQigv97hj3wsCfNwboVLqebXu5AF5cACF8TVL3s7LJw5Gg66SmeFSpM1Btr7HGBvned2DcYLXgC2EwrEuFjWBUR"
     ],
     "pauseReason": null
   },
@@ -54,6 +54,43 @@
       "startedAt": "2026-02-27T22:41:25.145Z",
       "nextSwapAt": "2026-02-27T22:41:25.146Z",
       "txHistory": [],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_clawb_1772232958718",
+      "inputToken": "SOL",
+      "outputToken": "CLAWB",
+      "totalAmount": 0.5,
+      "perSwapAmount": 0.027778,
+      "splits": 18,
+      "intervalMs": 300000,
+      "completedSwaps": 18,
+      "failedSwaps": 0,
+      "totalAcquired": "14486515.747960001",
+      "totalSpent": 0.5000040000000002,
+      "status": "completed",
+      "startedAt": "2026-02-27T22:55:58.718Z",
+      "nextSwapAt": "2026-02-28T01:07:05.948Z",
+      "txHistory": [
+        "2iW5SKHtjknUgKrkw1yf4aXK2Cx7JqwGGLMqQjxpdkHyegmg3i9fiWTaErkYTmbmEDL59rFgFP2vjbbxCfrdmVBM",
+        "2NxbWQWyTKdDtHJv9225qfPC4Zb7jbQpCbFbLof4eYQTeXDvQ94Gr3XYr7H2kRLCwM1v64SQYT6UuQtfgTGR9MPb",
+        "3MTuF1Hyonaud8kV7beir8nmWe7MPKzG8FEdcLAUaL3qBQfotGw12owYu9dZCBsnWWLZ4f4kWR25TTaGtoewLpgT",
+        "4ddAvAsDQsBu7WgDhHgSrXpNkdM89szcFf1QiW7boFzeGer8LtP6jVyQkw6uE5ufNSBZYkGumKb8BhPcC6AvBttC",
+        "4aRbA33gXaThC27pyq67qFzk6aMXhEXZhHK6dnWWJZtUnPxwpunqdP5XVHG2MQJ7PcsA6a699zWiuoqE3HTFywxY",
+        "52uCZQdmjLdjuFtog2RQKFNFRvJ6Gdv1ADPrH6FN9zWdXS7mDJ2PMajMCQiK9b1TZYxmRFSBcE2eSNnGQwCUmnKt",
+        "21pdt64MSYKhY7p4Hz4yiPCi4xngizaJ7FfsVzThyaAts6pMaqFjfy4SX49ApuQF78sHh4DCnymJTWapyr2o3kJE",
+        "2ZTeW2yRVKV9PBFFZu2kkSeQavArYrvGKDExspzhZJXncYxuQuK322knd5EZgM3gAh6jnUBKxt38Z8fPFxkgUDzc",
+        "4MU9Q3LwUwyvDNGcvemb5BudHhcZojPFqVuwxQ5NKT2jLVYbcuFBUag3hgqQ21ccJn1gti4GKTftTsas5cEf6oRM",
+        "3TsU2nzW7q2vjcUcNeFt98oRXo5xWWYejw1aoZnAAduxThJuyNF5AN23yJcKiBxj2qU2TGEJDVzP1oPKK11Epan4",
+        "5LY5SkD2tBk7m92mDj3XVSjqGsE7JZtGMusBjcYrSBbGxRZdupBVyZNgoBchnLmmP7LF8yGDxLQ8cUEmryFMAoWF",
+        "4VgBMwuv7BpzMp3t5VvjXfUZ4nAXjtsH6nDP1HnKeTEMSQGizXgfB5HdZ8aBm77oCK3vcyZaAunnyuUU38TAU5Mj",
+        "35nUeNVMdk2SyCGXGqH62hUD1sx4kDXDaF2EDLadTysiSTJNfWdaiUfYE79Jn84462e1cFef9rTYLPWh4QtZRTxG",
+        "4yRpEvJwnq66ZNVrERpV8gczTa2gjQEZxk2qTvQiwATiFEax7swTDbJtZ8bsEiPwQnuNyWHiC1zq6rZhBxTZXYJa",
+        "2PE4YvQ21VoozehqRAanpwyGg8mqLpW22gZjeysj6BhqtMxDrThzHooob8MEHBrQYoC988RqoR7Vmv8AdAUZaspL",
+        "3qEhRVoDNSNg9jsVxggvoQAGNUTVQiy1WsnVdkDn2wF1GS4EqqSwWTVrsNqz6QRLQf4Kcy7utXSAxs7Jy3vgYaA",
+        "5KTqpatHsnfi4Cmaj3qKkSZLY8mCAeeqiRA6MF8bQNqUSgS3ajEX2Za4z8Fe4jXPWHTdHK22ifVgqCToV3f6YCAD",
+        "2i6dJmxgf2n16o7RsR1GKUBwH1iJdgrX1owvGcYbm8q5WeCxzBxqmzRRjeJz9pnNiH7mYjdR11hJTz1iknqhZYQt"
+      ],
       "pauseReason": null
     }
   ]

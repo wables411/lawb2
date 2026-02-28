@@ -346,6 +346,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const lastAIMoveRef = useRef(false);
   const apiCallInProgressRef = useRef(false);
   const playerMoveInProgressRef = useRef(false);
+  const hardAICooldownUntilRef = useRef(0);
 
   // Add showDifficulty state
   const [showDifficulty, setShowDifficulty] = useState(false);
@@ -1318,99 +1319,81 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           }
         }, 600);
       } else {
-        // Hard: Use Stockfish API directly (chess.lawb.xyz) for strong play
-        // Using API avoids COEP/SharedArrayBuffer issues with wallet connections
-        setStatus('AI is thinking...');
+        const now = Date.now();
+        if (now < hardAICooldownUntilRef.current) {
+          isAIMovingRef.current = false;
+          return;
+        }
+
+        // Hard mode must remain Stockfish-only. No random fallback.
+        setStatus('Clawb engine thinking...');
         const fen = boardToFEN(boardRef.current, currentPlayer);
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
-        
-        // Use the Stockfish API directly for hard mode (stronger and more reliable)
-        getCloudflareStockfishMove(fen, 5000).then(move => {
-          if (move && move.length === 4) {
-            const fromCol = move.charCodeAt(0) - 97;
-            const fromRowStockfish = parseInt(move[1]);
-            const toCol = move.charCodeAt(2) - 97;
-            const toRowStockfish = parseInt(move[3]);
-            const fromRow = 8 - fromRowStockfish;
-            const toRow = 8 - toRowStockfish;
-            console.log('[STOCKFISH] API move:', { fromCol, fromRowStockfish, toCol, toRowStockfish, fromRow, toRow });
-            if (fromCol >= 0 && fromCol < 8 && fromRow >= 0 && fromRow < 8 && toCol >= 0 && toCol < 8 && toRow >= 0 && toRow < 8) {
-              const moveObj = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
-              const piece = boardRef.current[fromRow][fromCol];
-              console.log('[DEBUG] Move validation:', { piece, moveObj, isValid: piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current) });
-              if (piece && getPieceColor(piece) === 'red' && canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) {
-                console.log('[STOCKFISH] Executing API move:', moveObj);
-                const stockfishMoveData = {moveObj,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
-                console.log('[DEBUG] AI making valid Stockfish move', stockfishMoveData);
-                // #region agent log
-                debugIngest({location:'ChessGame.tsx:1210',message:'AI making valid Stockfish move',data:stockfishMoveData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
-                // #endregion
-                makeMove(moveObj.from, moveObj.to, true);
-              } else {
-                console.warn('[DEBUG] Invalid Stockfish move, falling back to random');
-                const fallbackData = {isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
-                console.log('[DEBUG] AI invalid move fallback', fallbackData);
-                // #region agent log
-                debugIngest({location:'ChessGame.tsx:1212',message:'AI invalid move fallback',data:fallbackData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
-                // #endregion
-                const fallbackMove = getRandomAIMove(boardRef.current);
-                if (fallbackMove) {
-                  makeMove(fallbackMove.from, fallbackMove.to, true);
-                }
-                isAIMovingRef.current = false;
-                apiCallInProgressRef.current = false;
+
+        const parseMoveObj = (move: string) => {
+          if (!move || move.length < 4) return null;
+          const fromCol = move.charCodeAt(0) - 97;
+          const fromRowStockfish = parseInt(move[1]);
+          const toCol = move.charCodeAt(2) - 97;
+          const toRowStockfish = parseInt(move[3]);
+          const fromRow = 8 - fromRowStockfish;
+          const toRow = 8 - toRowStockfish;
+          if (
+            fromCol < 0 || fromCol > 7 || fromRow < 0 || fromRow > 7 ||
+            toCol < 0 || toCol > 7 || toRow < 0 || toRow > 7
+          ) {
+            return null;
+          }
+          const piece = boardRef.current[fromRow][fromCol];
+          if (!piece || getPieceColor(piece) !== 'red') return null;
+          if (!canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) return null;
+          return { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+        };
+
+        (async () => {
+          try {
+            let moveObj: { from: { row: number; col: number }; to: { row: number; col: number } } | null = null;
+            let lastRawMove: string | null = null;
+            let lastErr: unknown = null;
+            const MAX_ATTEMPTS = 3;
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+              try {
+                const rawMove = await getCloudflareStockfishMove(fen, 5000);
+                lastRawMove = rawMove;
+                moveObj = rawMove ? parseMoveObj(rawMove) : null;
+                if (moveObj) break;
+                console.warn('[STOCKFISH] Rejected move from engine', { attempt, rawMove, fen });
+              } catch (err) {
+                lastErr = err;
+                console.warn('[STOCKFISH] Engine request failed', { attempt, err });
               }
-            } else {
-              console.warn('[DEBUG] Invalid move coordinates, falling back to random');
-              const fallbackMove = getRandomAIMove(boardRef.current);
-              if (fallbackMove) {
-                makeMove(fallbackMove.from, fallbackMove.to, true);
-              }
+              await new Promise((resolve) => setTimeout(resolve, 350));
+            }
+
+            if (!moveObj) {
+              hardAICooldownUntilRef.current = Date.now() + 3500;
+              setStatus('Clawb engine unavailable. Retrying... (no fallback moves)');
+              console.error('[STOCKFISH] Hard mode move failed after retries', {
+                lastRawMove,
+                lastError: (lastErr as any)?.message || lastErr || null,
+              });
               isAIMovingRef.current = false;
               apiCallInProgressRef.current = false;
+              return;
             }
-          } else {
-            console.warn('[DEBUG] Invalid move format from Stockfish, falling back to random');
-            const fallbackMove = getRandomAIMove(boardRef.current);
-            if (fallbackMove) {
-              makeMove(fallbackMove.from, fallbackMove.to, true);
-            }
+
+            hardAICooldownUntilRef.current = 0;
+            makeMove(moveObj.from, moveObj.to, true);
+          } catch (error) {
+            hardAICooldownUntilRef.current = Date.now() + 3500;
+            setStatus('Clawb engine unavailable. Retrying... (no fallback moves)');
+            addMobileDebug(`ERR: Stockfish strict ${(error as Error)?.message?.slice(0, 30) || 'unknown'}`);
+            console.error('[STOCKFISH] strict hard mode error:', error);
             isAIMovingRef.current = false;
             apiCallInProgressRef.current = false;
           }
-        }).catch(async (error) => {
-          addMobileDebug(`ERR: Stockfish API ${(error as Error)?.message?.slice(0, 30) || 'unknown'}`);
-          console.error('[STOCKFISH] API error:', error);
-          const errorData = {error:error?.message,isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
-          console.log('[DEBUG] AI Stockfish API error', errorData);
-          // #region agent log
-          debugIngest({location:'ChessGame.tsx:1238',message:'AI Stockfish API error',data:errorData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
-          // #endregion
-          // Check if it's a DNS/network error
-          const isNetworkError = error?.message?.includes('Failed to fetch') || 
-                                 error?.message?.includes('ERR_NAME_NOT_RESOLVED') ||
-                                 error?.name === 'TypeError';
-          
-          if (isNetworkError) {
-            setStatus('Stockfish API unavailable (DNS/network error). Check chess.lawb.xyz configuration. Using fallback.');
-          } else {
-            setStatus('Stockfish unavailable. Using fallback.');
-          }
-          
-          // Last resort: random move
-          const fallbackMove = getRandomAIMove(boardRef.current);
-          if (fallbackMove) {
-            makeMove(fallbackMove.from, fallbackMove.to, true);
-          }
-          isAIMovingRef.current = false;
-          apiCallInProgressRef.current = false;
-          const errorResetData = {isAIMovingRef:isAIMovingRef.current,apiCallInProgress:apiCallInProgressRef.current};
-          console.log('[DEBUG] AI error fallback flags reset', errorResetData);
-          // #region agent log
-          debugIngest({location:'ChessGame.tsx:1257',message:'AI error fallback flags reset',data:errorResetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
-          // #endregion
-        });
+        })();
       }
     }
   }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady, getStockfishMove, getCloudflareStockfishMove, addMobileDebug]);
@@ -1928,6 +1911,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (!showPromotion || !promotionMove) return null;
     
     const pieces = currentPlayer === 'blue' ? ['q', 'r', 'b', 'n'] : ['Q', 'R', 'B', 'N'];
+    const pieceLabelByType: Record<string, string> = {
+      q: 'Queen',
+      r: 'Rook',
+      b: 'Bishop',
+      n: 'Knight',
+    };
     
     return (
       <div className="promotion-dialog">
@@ -1954,9 +1943,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   minWidth: isMobile ? '60px' : 'auto',
                   minHeight: isMobile ? '60px' : 'auto',
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  gap: isMobile ? '4px' : '6px',
                 }}
+                aria-label={`Promote pawn to ${pieceLabelByType[piece.toLowerCase()] || piece}`}
               >
                 <img 
                   src={pieceImages[piece]} 
@@ -1971,6 +1963,18 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     e.currentTarget.style.display = 'none';
                   }}
                 />
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: isMobile ? '10px' : '11px',
+                    fontWeight: 700,
+                    lineHeight: 1.1,
+                    textAlign: 'center',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                  }}
+                >
+                  {pieceLabelByType[piece.toLowerCase()] || piece.toUpperCase()}
+                </span>
               </div>
             ))}
         </div>
