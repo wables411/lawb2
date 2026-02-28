@@ -1,21 +1,32 @@
 {
   "active": {
-    "id": "dca_lawb_1772241195649",
+    "id": "dca_clawb_1772249750065",
     "inputToken": "SOL",
-    "outputToken": "LAWB",
+    "outputToken": "CLAWB",
     "totalAmount": 1,
     "perSwapAmount": 0.083333,
     "splits": 12,
     "intervalMs": 300000,
-    "completedSwaps": 1,
+    "completedSwaps": 12,
     "failedSwaps": 0,
-    "totalAcquired": "709416.235778",
-    "totalSpent": 0.083333,
+    "totalAcquired": "27554842.323101",
+    "totalSpent": 0.999996,
     "status": "running",
-    "startedAt": "2026-02-28T01:13:15.649Z",
-    "nextSwapAt": "2026-02-28T01:18:17.971Z",
+    "startedAt": "2026-02-28T03:35:50.065Z",
+    "nextSwapAt": "2026-02-28T04:35:56.151Z",
     "txHistory": [
-      "3cQigv97hj3wsCfNwboVLqebXu5AF5cACF8TVL3s7LJw5Gg66SmeFSpM1Btr7HGBvned2DcYLXgC2EwrEuFjWBUR"
+      "fH6YA9vsaAbGLr1ZJXd8MhB4D8c9MbGeU3ihb1JrfRw9ULGYywrZv9dKRnz4Q3oidYUSURykpEnrJk6PiGHuc78",
+      "3Bj8z8pCAafMypD4whscTN5MgswJXeAHFaAGHZbjoUgRhswwvxRutgsCHAhJ8ySnNaeeCAshtCWptYTyiMNocS7x",
+      "5QXudJth8cG6DXh4gxkQE7KMtrbn1uaSiVcjA6VM6PbTKzdhxd45UNw7hho8WNviRGh9bo4Qan68HCZGpZ5VpAxo",
+      "b5s1nAWX6R85fUhCYPY8kb8Z6f3tqxhiBQrbcn2FLEtciesrhcyL8PyQZMLBxXfmXkpSa2iTc2iGtEVsCg5zjpn",
+      "ANAPmQm4QUTh29Wh8Kp4aAmYqZmtE7cmVG2Ew9EDtEVzPKGMDXMJwtNYbGyDq516rZkmXagqf7G39LAJQTvydsE",
+      "oaqvhka8HqDQD1dmbaiBoU6p7mxpDaoaBFFEBAS3tWSryDmCJWH5Z1AH4XQ5QFD68A9g567txgXuRoMF97K8zh4",
+      "vy8RHvi6EESiVL5RVBLXrr5ERxnTW81xW3sQNDQ7Z9aSELs56qsEDK9RM2HSQe8PCgZCEgXB8H1HtXi7cAUMJ7P",
+      "5f3Po3DNPW6T5tpjpYuLwia2y5rQUwqowN7n7qiaovo9kRXMUSfW4BwWKZShoAWkTVs5L4pNiafB4P2BVM3e3aGP",
+      "5f1qPg9NnMoPTX3tuGvVd4s3ccKA8miSZR53i65uDSacVusMQWwCwTrCktF86EfNBM1n5VR8CK5MLP8NVZjvTYTa",
+      "U7GvwqnbEAxNMriuFbxNNQLkvWs9hdtuZMizsceMXdVrwNVbwE44W9HFBS1uebfJGLDXoH2uguz8YmtNrDxcspw",
+      "D7zdXJ4Mg2pHwkCSnnBPdgdhN2wfDjpRRqiPavgrm2aaMgMgc2EjpEd8WeBTBvvuPpch2vq1UuYdQvy8Spqq3Em",
+      "23MFT8cm7ARyogSs17VbQucBe9Y58P1xDBs3a613WfhgK84gVKW5ZWWzCSeKLYuy4KuSEDft6RrPNSpD8yC1d1gv"
     ],
     "pauseReason": null
   },
@@ -90,6 +101,37 @@
         "3qEhRVoDNSNg9jsVxggvoQAGNUTVQiy1WsnVdkDn2wF1GS4EqqSwWTVrsNqz6QRLQf4Kcy7utXSAxs7Jy3vgYaA",
         "5KTqpatHsnfi4Cmaj3qKkSZLY8mCAeeqiRA6MF8bQNqUSgS3ajEX2Za4z8Fe4jXPWHTdHK22ifVgqCToV3f6YCAD",
         "2i6dJmxgf2n16o7RsR1GKUBwH1iJdgrX1owvGcYbm8q5WeCxzBxqmzRRjeJz9pnNiH7mYjdR11hJTz1iknqhZYQt"
+      ],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_lawb_1772241195649",
+      "inputToken": "SOL",
+      "outputToken": "LAWB",
+      "totalAmount": 1,
+      "perSwapAmount": 0.083333,
+      "splits": 12,
+      "intervalMs": 300000,
+      "completedSwaps": 12,
+      "failedSwaps": 0,
+      "totalAcquired": "8360916.015110001",
+      "totalSpent": 0.999996,
+      "status": "completed",
+      "startedAt": "2026-02-28T01:13:15.649Z",
+      "nextSwapAt": "2026-02-28T02:43:15.990Z",
+      "txHistory": [
+        "3cQigv97hj3wsCfNwboVLqebXu5AF5cACF8TVL3s7LJw5Gg66SmeFSpM1Btr7HGBvned2DcYLXgC2EwrEuFjWBUR",
+        "5k9egMUWik2S1rJTeaKFXPZNJ9DX3iBVQmRxbKuyf9sER9ntfh9V5egSb1LSS9Sh71ZsL1jjpqVSMSJ3nr3ncYFq",
+        "2QQgsmb5BVR1CjLGL8NWTd7op9d5rzdUTzgth8LnQsmqoQ8sviXt4qUYb5e1KmkAeaJMo9AJm1XuyaEy7xDgeVRw",
+        "2EJ6WMa831ogFL6pFTyMbWFETNNwgCNgfGDajgWbLbMmWo9XgrU4QE9weuCmeQYtgzL5NoU8N3tbP5edD9hHx9rq",
+        "55oDd2AAiG9vaVWzsEpXnemC2Jy8FytXrEWEJ42mYAbLgDnTbSzeFxuFmQoiJoLYYodjTiFWq2zPXqSrQzwH7z86",
+        "4MLBrnCg6cZgoBTrettoF1XhmQkjNkLZH4DMGnwh9rEn8XDGWE5q1YDeoybuB4CavdxLGdkLcTCaXtWfYX21bWV",
+        "4fh8qRPhrrThSJDgHF5EqT2boJu4sGgocZ3RAifD7AexUBJjj8m9RsUTbAQeZKCGahFW4SV9yF6enF4fib8hRpfi",
+        "GrbUWbf9hiuhDAWArFPyaK3C2mn1VEqi4WKobe7UXZsBMu595szw9FPYPkYLkqjPsuRbqeWaUpdrQJbjmkBsybb",
+        "3vkW4JmVQXy5HRs4SSwbnsNazV8chDNB9wB2V3RfHdyi6dHJaWGUYeV7gobff4WWR8keKhGaERzNTczVPg5My7uj",
+        "2XxnkXm9oVJURiLjrKQrTEMbsixSkyBWXHhAuWPyGpsapp6j4u9d1dgRiBmaQwggncgDW9F1Aah5sNaaMRxvLoDi",
+        "2fzHoEpK2pweSAEx2ZK7kTZ8VpYwYnxXv4Erjfh6jWdm3rnqt1badLxEFNW87RoFfcok95z5xY1mgGDAv55p4zxh",
+        "3nP3D2gxRZmbiDJRSPjVgaZAhaTJnGVPiJzmRBJGnyMmfPhZfokXJPgs9xDGQXQfKb8fym2YENKVezs5QCCieDbr"
       ],
       "pauseReason": null
     }
