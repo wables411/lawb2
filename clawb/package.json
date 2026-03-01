@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "boot": "node boot-clawb.js",
+    "doctor": "node clawb-doctor.js",
+    "doctor:restart": "node clawb-doctor.js --restart",
     "wake": "node wake-clawb.js",
     "spread": "node spread-lawb.js",
     "chat": "node lawb-chat-responder.js",

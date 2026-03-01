@@ -65,6 +65,7 @@ async function executeSwap(inputToken, outputToken, amount, slippageBps = 100) {
     success: !!output.includes('Confirmed.'),
     txid: output.match(/Tx sent: (\S+)/)?.[1] || null,
     outputAmount: output.match(/→ ([\d.]+) /)?.[1] || null,
+    missingJupKey: output.includes('Missing JUPITER_API_KEY'),
     raw: output,
   };
 }
@@ -158,6 +159,16 @@ async function tick() {
       await announceSwap(msg, { eq: true, chat: false }).catch(() => {});
     } else {
       j.failedSwaps++;
+      if (result.missingJupKey) {
+        j.status = 'paused';
+        j.pauseReason = 'missing JUPITER_API_KEY';
+        saveState(s);
+        const msg = `DCA paused: missing JUPITER_API_KEY in env. ${j.completedSwaps}/${j.splits} swaps done.`;
+        console.error(`[DCA Runner] ${msg}`);
+        await announceSwap(msg, { eq: true, chat: true }).catch(() => {});
+        clearInterval(timer);
+        process.exit(1);
+      }
       if (j.failedSwaps >= 3) {
         j.status = 'paused';
         j.pauseReason = '3 consecutive failures';
@@ -173,8 +184,18 @@ async function tick() {
     }
   } catch (err) {
     j.failedSwaps++;
+    if (j.failedSwaps >= 3) {
+      j.status = 'paused';
+      j.pauseReason = '3 consecutive errors';
+      saveState(s);
+      const msg = `DCA paused after 3 swap errors. ${j.completedSwaps}/${j.splits} swaps done.`;
+      console.error(`[DCA Runner] ${msg}\nLast error: ${err.message}`);
+      await announceSwap(msg, { eq: true, chat: true }).catch(() => {});
+      clearInterval(timer);
+      process.exit(1);
+    }
     saveState(s);
-    console.error(`[DCA Runner] Swap error: ${err.message}`);
+    console.error(`[DCA Runner] Swap error (${j.failedSwaps}/3): ${err.message}`);
   }
 }
 

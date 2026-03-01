@@ -21,6 +21,7 @@ import { startWorldAutonomousRoutines } from './world-autonomous-routines.js';
 import { startLawbPoints } from './lawb-points.js';
 import { startWorldGallerySync } from './world-gallery-sync.js';
 import { startBountyPayoutProcessor } from './bounty-payout-processor.js';
+import { runPreflight } from './preflight-env.js';
 
 const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
@@ -36,6 +37,11 @@ async function main() {
   const cleanups = [];
 
   try {
+    const preflight = runPreflight({ strict: true });
+    if (preflight.warnings.length) {
+      preflight.warnings.forEach((w) => console.warn(`[Main] Preflight warning: ${w}`));
+    }
+
     // 1. Go online
     await setClawbOnline('idle');
     console.log('[Main] Clawb is online.');

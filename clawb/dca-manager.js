@@ -63,7 +63,7 @@ async function pm2Run(args) {
 async function launchRunner() {
   try {
     await pm2Run('delete dca-runner').catch(() => {});
-    await pm2Run(`start "${RUNNER_SCRIPT}" --name dca-runner --no-autorestart`);
+    await pm2Run(`start "${RUNNER_SCRIPT}" --name dca-runner --no-autorestart --node-args "--env-file=.env"`);
     console.log('DCA runner launched as pm2 process (independent of Clawb session).');
     return true;
   } catch (err) {
