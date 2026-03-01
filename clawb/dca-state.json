@@ -1,35 +1,5 @@
 {
-  "active": {
-    "id": "dca_clawb_1772249750065",
-    "inputToken": "SOL",
-    "outputToken": "CLAWB",
-    "totalAmount": 1,
-    "perSwapAmount": 0.083333,
-    "splits": 12,
-    "intervalMs": 300000,
-    "completedSwaps": 12,
-    "failedSwaps": 0,
-    "totalAcquired": "27554842.323101",
-    "totalSpent": 0.999996,
-    "status": "running",
-    "startedAt": "2026-02-28T03:35:50.065Z",
-    "nextSwapAt": "2026-02-28T04:35:56.151Z",
-    "txHistory": [
-      "fH6YA9vsaAbGLr1ZJXd8MhB4D8c9MbGeU3ihb1JrfRw9ULGYywrZv9dKRnz4Q3oidYUSURykpEnrJk6PiGHuc78",
-      "3Bj8z8pCAafMypD4whscTN5MgswJXeAHFaAGHZbjoUgRhswwvxRutgsCHAhJ8ySnNaeeCAshtCWptYTyiMNocS7x",
-      "5QXudJth8cG6DXh4gxkQE7KMtrbn1uaSiVcjA6VM6PbTKzdhxd45UNw7hho8WNviRGh9bo4Qan68HCZGpZ5VpAxo",
-      "b5s1nAWX6R85fUhCYPY8kb8Z6f3tqxhiBQrbcn2FLEtciesrhcyL8PyQZMLBxXfmXkpSa2iTc2iGtEVsCg5zjpn",
-      "ANAPmQm4QUTh29Wh8Kp4aAmYqZmtE7cmVG2Ew9EDtEVzPKGMDXMJwtNYbGyDq516rZkmXagqf7G39LAJQTvydsE",
-      "oaqvhka8HqDQD1dmbaiBoU6p7mxpDaoaBFFEBAS3tWSryDmCJWH5Z1AH4XQ5QFD68A9g567txgXuRoMF97K8zh4",
-      "vy8RHvi6EESiVL5RVBLXrr5ERxnTW81xW3sQNDQ7Z9aSELs56qsEDK9RM2HSQe8PCgZCEgXB8H1HtXi7cAUMJ7P",
-      "5f3Po3DNPW6T5tpjpYuLwia2y5rQUwqowN7n7qiaovo9kRXMUSfW4BwWKZShoAWkTVs5L4pNiafB4P2BVM3e3aGP",
-      "5f1qPg9NnMoPTX3tuGvVd4s3ccKA8miSZR53i65uDSacVusMQWwCwTrCktF86EfNBM1n5VR8CK5MLP8NVZjvTYTa",
-      "U7GvwqnbEAxNMriuFbxNNQLkvWs9hdtuZMizsceMXdVrwNVbwE44W9HFBS1uebfJGLDXoH2uguz8YmtNrDxcspw",
-      "D7zdXJ4Mg2pHwkCSnnBPdgdhN2wfDjpRRqiPavgrm2aaMgMgc2EjpEd8WeBTBvvuPpch2vq1UuYdQvy8Spqq3Em",
-      "23MFT8cm7ARyogSs17VbQucBe9Y58P1xDBs3a613WfhgK84gVKW5ZWWzCSeKLYuy4KuSEDft6RrPNSpD8yC1d1gv"
-    ],
-    "pauseReason": null
-  },
+  "active": null,
   "history": [
     {
       "id": "dca_lawb_1772232033266",
@@ -133,6 +103,79 @@
         "2fzHoEpK2pweSAEx2ZK7kTZ8VpYwYnxXv4Erjfh6jWdm3rnqt1badLxEFNW87RoFfcok95z5xY1mgGDAv55p4zxh",
         "3nP3D2gxRZmbiDJRSPjVgaZAhaTJnGVPiJzmRBJGnyMmfPhZfokXJPgs9xDGQXQfKb8fym2YENKVezs5QCCieDbr"
       ],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_clawb_1772249750065",
+      "inputToken": "SOL",
+      "outputToken": "CLAWB",
+      "totalAmount": 1,
+      "perSwapAmount": 0.083333,
+      "splits": 12,
+      "intervalMs": 300000,
+      "completedSwaps": 12,
+      "failedSwaps": 0,
+      "totalAcquired": "27554842.323101",
+      "totalSpent": 0.999996,
+      "status": "completed",
+      "startedAt": "2026-02-28T03:35:50.065Z",
+      "nextSwapAt": "2026-02-28T04:35:56.151Z",
+      "txHistory": [
+        "fH6YA9vsaAbGLr1ZJXd8MhB4D8c9MbGeU3ihb1JrfRw9ULGYywrZv9dKRnz4Q3oidYUSURykpEnrJk6PiGHuc78",
+        "3Bj8z8pCAafMypD4whscTN5MgswJXeAHFaAGHZbjoUgRhswwvxRutgsCHAhJ8ySnNaeeCAshtCWptYTyiMNocS7x",
+        "5QXudJth8cG6DXh4gxkQE7KMtrbn1uaSiVcjA6VM6PbTKzdhxd45UNw7hho8WNviRGh9bo4Qan68HCZGpZ5VpAxo",
+        "b5s1nAWX6R85fUhCYPY8kb8Z6f3tqxhiBQrbcn2FLEtciesrhcyL8PyQZMLBxXfmXkpSa2iTc2iGtEVsCg5zjpn",
+        "ANAPmQm4QUTh29Wh8Kp4aAmYqZmtE7cmVG2Ew9EDtEVzPKGMDXMJwtNYbGyDq516rZkmXagqf7G39LAJQTvydsE",
+        "oaqvhka8HqDQD1dmbaiBoU6p7mxpDaoaBFFEBAS3tWSryDmCJWH5Z1AH4XQ5QFD68A9g567txgXuRoMF97K8zh4",
+        "vy8RHvi6EESiVL5RVBLXrr5ERxnTW81xW3sQNDQ7Z9aSELs56qsEDK9RM2HSQe8PCgZCEgXB8H1HtXi7cAUMJ7P",
+        "5f3Po3DNPW6T5tpjpYuLwia2y5rQUwqowN7n7qiaovo9kRXMUSfW4BwWKZShoAWkTVs5L4pNiafB4P2BVM3e3aGP",
+        "5f1qPg9NnMoPTX3tuGvVd4s3ccKA8miSZR53i65uDSacVusMQWwCwTrCktF86EfNBM1n5VR8CK5MLP8NVZjvTYTa",
+        "U7GvwqnbEAxNMriuFbxNNQLkvWs9hdtuZMizsceMXdVrwNVbwE44W9HFBS1uebfJGLDXoH2uguz8YmtNrDxcspw",
+        "D7zdXJ4Mg2pHwkCSnnBPdgdhN2wfDjpRRqiPavgrm2aaMgMgc2EjpEd8WeBTBvvuPpch2vq1UuYdQvy8Spqq3Em",
+        "23MFT8cm7ARyogSs17VbQucBe9Y58P1xDBs3a613WfhgK84gVKW5ZWWzCSeKLYuy4KuSEDft6RrPNSpD8yC1d1gv"
+      ],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_lawb_1772329749065",
+      "inputToken": "SOL",
+      "outputToken": "LAWB",
+      "totalAmount": 0.25,
+      "perSwapAmount": 0.05,
+      "splits": 5,
+      "intervalMs": 1440000,
+      "completedSwaps": 5,
+      "failedSwaps": 0,
+      "totalAcquired": "2020726.754858",
+      "totalSpent": 0.25,
+      "status": "completed",
+      "startedAt": "2026-03-01T01:49:09.065Z",
+      "nextSwapAt": "2026-03-01T03:49:15.006Z",
+      "txHistory": [
+        "4aAVvbGN3D3RPGV61YHDqMBfWx3GXNDDMtYZtFQqpCbWPmjjZ4U5u2cwFK2r2cpkShGy7SFLK83o9pyPz5zyZozD",
+        "4B6rCgib9ZHSYe2zvFozs1YuAHNNjg5gSZKTzUr1CKxJDzjoDmmNS89jiZnQrx321nSu9nCZkJNezFNg25rSrnnm",
+        "3E3ubLyGofXfK6G3N5kbYZ9R4bL6kGrPnK7UfRTzeCeM7bhgctHDe2Np9189sFNmu1UMjeVmeVFXRcrqzF9eFA6Y",
+        "XAoXw6yomMktCpmUYhMXVx5RHW3gjLVJBUf2PykbykYPNPsXtaeRCgzKQaok2mjsX2Pg9amnfQLun9hsrVqzECM",
+        "5Le9cByE6LS9R68Uipwe6KqgLCVqJN9ryVNzc5A52fBmFzSutoKLMp7xG1MhubiE12HZ6gGk1RWFuuUGAd9pypnD"
+      ],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_lawb_1772347755509",
+      "inputToken": "SOL",
+      "outputToken": "LAWB",
+      "totalAmount": 0.25,
+      "perSwapAmount": 0.05,
+      "splits": 5,
+      "intervalMs": 1440000,
+      "completedSwaps": 0,
+      "failedSwaps": 5,
+      "totalAcquired": "0",
+      "totalSpent": 0,
+      "status": "cancelled",
+      "startedAt": "2026-03-01T06:49:15.509Z",
+      "nextSwapAt": "2026-03-01T06:49:15.509Z",
+      "txHistory": [],
       "pauseReason": null
     }
   ]

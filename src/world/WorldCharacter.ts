@@ -72,6 +72,40 @@ export async function loadClawbModelWithFallback(
   throw lastErr;
 }
 
+export function createEmergencyClawbProxy(position: THREE.Vector3): THREE.Group {
+  const root = new THREE.Group();
+  root.name = 'clawb_emergency_proxy';
+
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 20, 14),
+    new THREE.MeshStandardMaterial({
+      color: '#ff4fd8',
+      emissive: '#b9008c',
+      emissiveIntensity: 0.9,
+      roughness: 0.25,
+      metalness: 0.15,
+    }),
+  );
+  body.castShadow = true;
+  body.receiveShadow = true;
+  root.add(body);
+
+  const marker = new THREE.Mesh(
+    new THREE.ConeGeometry(0.08, 0.25, 10),
+    new THREE.MeshBasicMaterial({ color: '#ffff66', depthTest: false }),
+  );
+  marker.position.set(0, 0.32, 0);
+  root.add(marker);
+
+  const glow = new THREE.PointLight(0xff66dd, 2.4, 14, 1.4);
+  glow.name = 'clawb_glow_light';
+  glow.position.set(0, 0.35, 0);
+  root.add(glow);
+
+  root.position.copy(position);
+  return root;
+}
+
 export function getPlayableClip(
   clip: THREE.AnimationClip,
 ): THREE.AnimationClip {

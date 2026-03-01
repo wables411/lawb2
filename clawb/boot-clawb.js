@@ -19,8 +19,10 @@ function pm2Delete(name) {
   catch { return false; }
 }
 
-function pm2Start(script, name, cwd) {
-  execFileSync('pm2', ['start', `"${script}"`, '--name', name, '--cwd', `"${cwd}"`], SHELL);
+function pm2Start(script, name, cwd, nodeArgs) {
+  const args = ['start', `"${script}"`, '--name', name, '--cwd', `"${cwd}"`];
+  if (nodeArgs) args.push('--node-args', `"${nodeArgs}"`);
+  execFileSync('pm2', args, SHELL);
 }
 
 function clearSessions() {
@@ -121,7 +123,7 @@ async function main() {
   }
 
   log('starting clawb...');
-  pm2Start(join(CLAWB_DIR, 'index.js'), 'clawb', CLAWB_DIR);
+  pm2Start(join(CLAWB_DIR, 'index.js'), 'clawb', CLAWB_DIR, '--env-file=.env');
 
   log('starting session-guard...');
   try {

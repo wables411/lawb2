@@ -17,20 +17,25 @@ import {
 import { enqueueVsClawbFirstWinBounty } from './lawb-points.js';
 
 // --- Config ---
+const LLM_BASE_URL = process.env.CLAWB_LLM_BASE_URL;
+const isLocal = !!LLM_BASE_URL;
+
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-if (!OPENROUTER_API_KEY) {
-  console.error('[Chess] OPENROUTER_API_KEY not set. Add it to .env');
+if (!isLocal && !OPENROUTER_API_KEY) {
+  console.error('[Chess] OPENROUTER_API_KEY not set and no local LLM configured. Add OPENROUTER_API_KEY or CLAWB_LLM_BASE_URL to .env');
   process.exit(1);
 }
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: OPENROUTER_API_KEY,
-  defaultHeaders: {
+const llm = new OpenAI({
+  baseURL: LLM_BASE_URL || 'https://openrouter.ai/api/v1',
+  apiKey: process.env.CLAWB_LLM_API_KEY || OPENROUTER_API_KEY,
+  defaultHeaders: isLocal ? {} : {
     'HTTP-Referer': 'https://lawb.xyz',
     'X-Title': 'Clawb Agent',
   },
 });
+
+if (isLocal) console.log(`[Chess] Using local LLM at ${LLM_BASE_URL}`);
 
 // Model for chess commentary (fast + cheap)
 const CHESS_MODEL = process.env.CLAWB_CHESS_MODEL || 'anthropic/claude-3.5-haiku';
@@ -183,7 +188,7 @@ async function handleGameUpdate(game) {
 
 async function generateComment(situationPrompt) {
   try {
-    const response = await openrouter.chat.completions.create({
+    const response = await llm.chat.completions.create({
       model: CHESS_MODEL,
       max_tokens: 100,
       messages: [

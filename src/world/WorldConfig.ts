@@ -64,6 +64,7 @@ export const NFT_INTERACT_DISTANCE = 3.2;
 export const CLAWB_COLLISION_RADIUS = 0.35;
 export const CLAWB_GREET_DISTANCE = 3;
 export const CLAWB_SCALE = 0.018;
+export const CLAWB_Y_OFFSET = 0.32;
 export const CLAWB_PATROL_SPEED = 1.2;
 export const CLAWB_PATROL_PAUSE_MS = 1200;
 export const CLAWB_STEP_SPEED = 0.9;
@@ -111,13 +112,14 @@ export const PATROL_POINTS = [
 export type ClawbModelKey = 'idle' | 'walk' | 'swim' | 'hi' | 'dance' | 'flip' | 'die';
 
 export const CLAWB_MODEL_URLS: Record<ClawbModelKey, string> = {
-  idle: '/models/clawb_idle.glb',
-  walk: '/models/clawb_walk.glb',
-  swim: '/models/clawb_swim.glb',
-  hi: '/models/clawb_hi.glb',
-  dance: '/models/clawb_dance.glb',
-  flip: '/models/clawb_flip.glb',
-  die: '/models/clawb_death.glb',
+  // Prefer known-present FBX assets to avoid missing-model stalls.
+  idle: '/assets/lawbidle.fbx',
+  walk: '/assets/lawbwalk.fbx',
+  swim: '/assets/lawbswim.fbx',
+  hi: '/assets/lawbhi.fbx',
+  dance: '/assets/lawbdance1.fbx',
+  flip: '/assets/lawbflip.fbx',
+  die: '/assets/lawbdeath.fbx',
 };
 
 export const CLAWB_MODEL_FALLBACKS: Record<ClawbModelKey, string[]> = {

@@ -60,17 +60,21 @@ function inviteCodeToBytes6(inviteCode) {
 }
 
 // --- Commentary (optional: same voice as vs_clawb watcher) ---
+const LLM_BASE_URL = process.env.CLAWB_LLM_BASE_URL;
+const isLocal = !!LLM_BASE_URL;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-let openrouter = null;
-if (OPENROUTER_API_KEY) {
-  openrouter = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: OPENROUTER_API_KEY,
-    defaultHeaders: {
+
+let llm = null;
+if (isLocal || OPENROUTER_API_KEY) {
+  llm = new OpenAI({
+    baseURL: LLM_BASE_URL || 'https://openrouter.ai/api/v1',
+    apiKey: process.env.CLAWB_LLM_API_KEY || OPENROUTER_API_KEY,
+    defaultHeaders: isLocal ? {} : {
       'HTTP-Referer': 'https://lawb.xyz',
       'X-Title': 'Clawb Agent',
     },
   });
+  if (isLocal) console.log(`[PVP] Using local LLM at ${LLM_BASE_URL}`);
 }
 const CHESS_COMMENTARY_MODEL = process.env.CLAWB_CHESS_MODEL || 'anthropic/claude-3.5-haiku';
 
@@ -92,9 +96,9 @@ const pvpCommentCount = new Map();       // inviteCode -> number of mid-game com
 const PVP_COMMENT_EVERY_N_MOVES = 3;     // comment roughly every 3rd opponent move
 
 async function generatePvpComment(situationPrompt) {
-  if (!openrouter) return null;
+  if (!llm) return null;
   try {
-    const response = await openrouter.chat.completions.create({
+    const response = await llm.chat.completions.create({
       model: CHESS_COMMENTARY_MODEL,
       max_tokens: 100,
       messages: [
@@ -383,7 +387,7 @@ async function watchAndPlayGame(inviteCode) {
 
     // Clawb's turn — optionally comment on opponent's last move (throttled)
     const lastTs = game.last_move_timestamp;
-    if (lastTs && openrouter) {
+    if (lastTs && llm) {
       const alreadyCommented = pvpLastCommentedMove.get(inviteCode) === lastTs;
       if (!alreadyCommented) {
         pvpLastCommentedMove.set(inviteCode, lastTs);
@@ -681,10 +685,10 @@ export async function startPvpAgent() {
   console.log('[PVP] Starting Clawb PVP agent...');
   console.log(`[PVP] Max wager: 50% of balance per token`);
   console.log(`[PVP] Max concurrent games: ${MAX_CONCURRENT_GAMES}`);
-  if (openrouter) {
+  if (llm) {
     console.log('[PVP] Commentary enabled (mid-game + end-game in chat).');
   } else {
-    console.log('[PVP] Commentary disabled (set OPENROUTER_API_KEY in .env to enable).');
+    console.log('[PVP] Commentary disabled (set OPENROUTER_API_KEY or CLAWB_LLM_BASE_URL in .env to enable).');
   }
 
   const balance = await provider.getBalance(wallet.address);

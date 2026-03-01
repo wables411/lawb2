@@ -18,6 +18,8 @@ const ROOM_TO_ACTION = {
 const ACTION_ALIASES = {
   day: 'day',
   night: 'night',
+  storm: 'storm',
+  abyss: 'abyss',
   idle: 'idle',
   walk: 'walk',
   hi: 'hi',
@@ -39,6 +41,13 @@ const ACTION_ALIASES = {
   zoom_in: 'zoom_in',
   zoom_out: 'zoom_out',
   bounty_showcase: 'bounty_showcase',
+  sunburst: 'sunburst',
+  bait: 'bait',
+  pulse: 'pulse',
+  focus_bounties: 'focus_bounties',
+  focus_leaderboard: 'focus_leaderboard',
+  focus_nfts: 'focus_nfts',
+  focus_rooms: 'focus_rooms',
 };
 
 const DEDUPE_WINDOW_MS = Number(process.env.CLAWB_WORLD_DEDUPE_MS || 1200);

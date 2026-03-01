@@ -53,6 +53,152 @@ export function getDefaultColor(type: string): string {
   return DEFAULT_COLORS[type] || '#aaaaaa';
 }
 
+type MaterialTextureSet = {
+  color?: string;
+  normal?: string;
+  roughness?: string;
+  bump?: string;
+  repeat?: number;
+  normalScale?: number;
+  bumpScale?: number;
+  roughnessValue?: number;
+  metalnessValue?: number;
+};
+
+const fileTextureLoader = new THREE.TextureLoader();
+const fileTextureCache = new Map<string, THREE.Texture | null>();
+
+const EXTERNAL_MATERIAL_TEXTURES: Record<'sand' | 'rock' | 'coral' | 'kelp', MaterialTextureSet> = {
+  sand: {
+    color: '/world-assets/materials/Ground103/Ground103_2K-PNG_Color.png',
+    normal: '/world-assets/materials/Ground103/Ground103_2K-PNG_NormalGL.png',
+    roughness: '/world-assets/materials/Ground103/Ground103_2K-PNG_Roughness.png',
+    bump: '/world-assets/materials/Ground103/Ground103_2K-PNG_Displacement.png',
+    repeat: 10,
+    normalScale: 1.8,
+    bumpScale: 0.18,
+    roughnessValue: 0.92,
+    metalnessValue: 0.01,
+  },
+  rock: {
+    color: '/world-assets/materials/Rock063/Rock063_2K-PNG_Color.png',
+    normal: '/world-assets/materials/Rock063/Rock063_2K-PNG_NormalGL.png',
+    roughness: '/world-assets/materials/Rock063/Rock063_2K-PNG_Roughness.png',
+    bump: '/world-assets/materials/Rock063/Rock063_2K-PNG_Displacement.png',
+    repeat: 3,
+    normalScale: 1.5,
+    bumpScale: 0.08,
+    roughnessValue: 0.72,
+    metalnessValue: 0.08,
+  },
+  coral: {
+    color: '/world-assets/polyhaven/rocks_ground_04_diff_2k.png',
+    normal: '/world-assets/polyhaven/rocks_ground_04_nor_gl_2k.png',
+    roughness: '/world-assets/polyhaven/rocks_ground_04_rough_2k.png',
+    bump: '/world-assets/polyhaven/rocks_ground_04_ao_2k.png',
+    repeat: 3,
+    normalScale: 1.4,
+    bumpScale: 0.07,
+    roughnessValue: 0.58,
+    metalnessValue: 0.06,
+  },
+  kelp: {
+    color: '/world-assets/materials/Grass005/Grass005_2K-PNG_Color.png',
+    normal: '/world-assets/materials/Grass005/Grass005_2K-PNG_NormalGL.png',
+    roughness: '/world-assets/materials/Grass005/Grass005_2K-PNG_Roughness.png',
+    bump: '/world-assets/materials/Grass005/Grass005_2K-PNG_Displacement.png',
+    repeat: 2,
+    normalScale: 0.85,
+    bumpScale: 0.03,
+    roughnessValue: 0.78,
+    metalnessValue: 0.02,
+  },
+};
+
+function getMaterialCategory(type: string): 'sand' | 'rock' | 'coral' | 'kelp' | null {
+  if (type === 'sand_floor') return 'sand';
+  if (type.startsWith('rock_') || type === 'cave_crack') return 'rock';
+  if (type.startsWith('coral_') || type === 'anemone') return 'coral';
+  if (type === 'seagrass') return 'kelp';
+  return null;
+}
+
+function loadExternalTexture(path?: string): THREE.Texture | undefined {
+  if (!path) return undefined;
+  if (fileTextureCache.has(path)) {
+    const cached = fileTextureCache.get(path);
+    return cached || undefined;
+  }
+  try {
+    const tex = fileTextureLoader.load(path);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.anisotropy = 8;
+    fileTextureCache.set(path, tex);
+    return tex;
+  } catch {
+    fileTextureCache.set(path, null);
+    return undefined;
+  }
+}
+
+function applyExternalMaterialMaps(material: THREE.Material, type: string): void {
+  if (!(material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshPhysicalMaterial)) return;
+  const category = getMaterialCategory(type);
+  if (!category) return;
+  const config = EXTERNAL_MATERIAL_TEXTURES[category];
+  const std = material as THREE.MeshStandardMaterial;
+  const repeat = config.repeat || 3;
+  const map = loadExternalTexture(config.color);
+  const normal = loadExternalTexture(config.normal);
+  const roughness = loadExternalTexture(config.roughness);
+  const bump = loadExternalTexture(config.bump);
+  if (map) {
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.repeat.set(repeat, repeat);
+    std.map = map;
+  }
+  if (config.roughnessValue !== undefined) std.roughness = config.roughnessValue;
+  if (config.metalnessValue !== undefined) std.metalness = config.metalnessValue;
+  if (normal) {
+    normal.repeat.set(repeat, repeat);
+    std.normalMap = normal;
+    std.normalScale = new THREE.Vector2(config.normalScale ?? 1, config.normalScale ?? 1);
+  }
+  if (roughness) {
+    roughness.repeat.set(repeat, repeat);
+    std.roughnessMap = roughness;
+  }
+  if (bump) {
+    bump.repeat.set(repeat, repeat);
+    std.bumpMap = bump;
+    std.bumpScale = config.bumpScale ?? (type === 'sand_floor' ? 0.1 : 0.05);
+  }
+  std.needsUpdate = true;
+}
+
+function toTexturedStandardMaterial(material: THREE.Material, type: string): THREE.Material {
+  const category = getMaterialCategory(type);
+  if (!category) return material;
+  const srcColor =
+    material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshPhysicalMaterial
+      ? material.color
+      : new THREE.Color('#ffffff');
+  const replacement = new THREE.MeshStandardMaterial({
+    color: srcColor.clone(),
+    roughness: 0.58,
+    metalness: 0.08,
+    side: THREE.DoubleSide,
+    transparent: (material as THREE.Material).transparent,
+    opacity: (material as THREE.Material).opacity,
+    alphaTest: (material as THREE.Material).alphaTest,
+  });
+  applyExternalMaterialMaps(replacement, type);
+  return replacement;
+}
+
 // --- GLTF Model Loading Pipeline ---
 
 const gltfLoader = new GLTFLoader();
@@ -99,6 +245,11 @@ export function loadWorldModel(type: string): Promise<THREE.Group | null> {
           const mesh = child as THREE.Mesh;
           mesh.castShadow = true;
           mesh.receiveShadow = true;
+          if (Array.isArray(mesh.material)) {
+            mesh.material = mesh.material.map((m) => toTexturedStandardMaterial(m as THREE.Material, type));
+          } else {
+            mesh.material = toTexturedStandardMaterial(mesh.material as THREE.Material, type);
+          }
         }
       });
       modelCache.set(type, scene);
@@ -509,6 +660,7 @@ function createFallbackMesh(obj: WorldObject): THREE.Mesh {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  applyExternalMaterialMaps(material, obj.type);
   return mesh;
 }
 
@@ -575,7 +727,76 @@ export function createSandFloor(size: number = 50): THREE.Mesh {
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   floor.name = 'sand_floor';
+  applyExternalMaterialMaps(material, 'sand_floor');
   return floor;
+}
+
+// --- Seafloor clutter + room landmarks ---
+
+export function createSeafloorDetailField(count: number = 500, spread: number = 70, floorY: number = -3): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'seafloor_detail_field';
+
+  const geo = new THREE.IcosahedronGeometry(0.06, 1);
+  const mat = new THREE.MeshStandardMaterial({
+    color: '#7c7465',
+    roughness: 0.92,
+    metalness: 0.03,
+  });
+  const pebbles = new THREE.InstancedMesh(geo, mat, count);
+  pebbles.castShadow = true;
+  pebbles.receiveShadow = true;
+
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const s = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  const c = new THREE.Color();
+
+  for (let i = 0; i < count; i++) {
+    p.set((Math.random() - 0.5) * spread, floorY + 0.02 + Math.random() * 0.05, (Math.random() - 0.5) * spread);
+    q.setFromEuler(new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI));
+    const sz = 0.45 + Math.random() * 1.0;
+    s.set(sz, sz * (0.7 + Math.random() * 0.5), sz);
+    m.compose(p, q, s);
+    pebbles.setMatrixAt(i, m);
+    c.set('#847a68').offsetHSL((Math.random() - 0.5) * 0.03, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.06);
+    pebbles.setColorAt(i, c);
+  }
+  pebbles.instanceMatrix.needsUpdate = true;
+  if (pebbles.instanceColor) pebbles.instanceColor.needsUpdate = true;
+
+  group.add(pebbles);
+  return group;
+}
+
+export function createRoomLandmarks(offsets: Record<string, THREE.Vector3>, floorY: number = -3): THREE.Group {
+  const root = new THREE.Group();
+  root.name = 'room_landmarks';
+
+  const makeRing = (center: THREE.Vector3, color: string, dx: number, dz: number) => {
+    const mesh = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.12, 10, 18),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.12 }),
+    );
+    mesh.position.set(center.x + dx, floorY + 1.25, center.z + dz);
+    mesh.rotation.x = Math.PI / 2;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
+
+  const main = offsets.main || new THREE.Vector3();
+  const bedroom = offsets.bedroom || new THREE.Vector3(-35, 0, -30);
+  const workshop = offsets.workshop || new THREE.Vector3(35, 0, -30);
+  const vault = offsets.vault || new THREE.Vector3(0, 0, -55);
+
+  root.add(makeRing(main, '#6f7f96', 8, -2));
+  root.add(makeRing(bedroom, '#8aa6d0', -4, 2));
+  root.add(makeRing(workshop, '#92704f', 4, 2));
+  root.add(makeRing(vault, '#53627f', 0, 4));
+
+  return root;
 }
 
 // --- Setup underwater lighting ---

@@ -225,6 +225,10 @@ const ClawbWorld: React.FC = () => {
   const lookTargetRef = useRef<{ until: number; focus: THREE.Vector3; camera: THREE.Vector3; clawbTarget: THREE.Vector3 } | null>(null);
   const streamCameraLookRef = useRef(new THREE.Vector3(0, FLOOR_Y + 0.75, 0));
   const streamCameraDistanceRef = useRef(STREAM_CAMERA_DEFAULT_DISTANCE);
+  const biomeModeRef = useRef<'day' | 'night' | 'storm' | 'abyss'>('day');
+  const sunburstUntilRef = useRef(0);
+  const baitUntilRef = useRef(0);
+  const pulseUntilRef = useRef(0);
   const clawbActionTRef = useRef(0);
   const remotePlayersRef = useRef<Map<string, THREE.Group>>(new Map());
   const remoteTargetsRef = useRef<Map<string, WorldPlayerPresence>>(new Map());
@@ -234,6 +238,8 @@ const ClawbWorld: React.FC = () => {
     inFlight: false,
     pending: null,
   });
+  const lastModelRequestAtRef = useRef(0);
+  const locomotionStateRef = useRef<'idle' | 'walk' | 'swim'>('idle');
   const requestClawbModelRef = useRef<(key: ClawbModelKey) => void>(() => {});
   const presenceLastWriteAtRef = useRef(0);
   const localRoomRef = useRef('Main Reef');
@@ -358,6 +364,15 @@ const ClawbWorld: React.FC = () => {
     if (/(^|\s)!main\b/.test(t)) return 'room_main';
     if (/(^|\s)!day\b/.test(t)) return 'day';
     if (/(^|\s)!night\b/.test(t)) return 'night';
+    if (/(^|\s)!storm\b/.test(t)) return 'storm';
+    if (/(^|\s)!abyss\b/.test(t)) return 'abyss';
+    if (/(^|\s)!sunburst\b/.test(t)) return 'sunburst';
+    if (/(^|\s)!bait\b/.test(t)) return 'bait';
+    if (/(^|\s)!pulse\b/.test(t)) return 'pulse';
+    if (/(^|\s)!focus\s+bounties\b/.test(t)) return 'focus_bounties';
+    if (/(^|\s)!focus\s+leaderboard\b/.test(t)) return 'focus_leaderboard';
+    if (/(^|\s)!focus\s+nfts\b/.test(t)) return 'focus_nfts';
+    if (/(^|\s)!focus\s+rooms\b/.test(t)) return 'focus_rooms';
     if (/(^|\s)!left\b/.test(t)) return 'left';
     if (/(^|\s)!right\b/.test(t)) return 'right';
     if (/(^|\s)!forward\b/.test(t)) return 'forward';
@@ -425,6 +440,73 @@ const ClawbWorld: React.FC = () => {
     worldActionRef.current = { type: nextType, until };
   }, [resetClawbCommandVelocity]);
 
+  const applyBiomePreset = useCallback((mode: 'day' | 'night' | 'storm' | 'abyss') => {
+    const scene = sceneRef.current;
+    const lights = lightsRef.current;
+    if (!scene || !lights) return;
+    biomeModeRef.current = mode;
+
+    if (mode === 'day') {
+      setupUnderwaterFog(scene, false);
+      lights.ambient.color.set('#cceeff');
+      lights.ambient.intensity = 1.2;
+      lights.directional.color.set('#fffff0');
+      lights.directional.intensity = 3.5;
+      lights.hemisphere?.color.set(0xaaddff);
+      lights.hemisphere?.groundColor.set(0x88bbcc);
+      if (lights.hemisphere) lights.hemisphere.intensity = 1.5;
+      lights.fillLight?.color.set('#ddeeff');
+      if (lights.fillLight) lights.fillLight.intensity = 1.2;
+      if (rendererRef.current) rendererRef.current.toneMappingExposure = 2.2;
+      return;
+    }
+
+    if (mode === 'night') {
+      setupUnderwaterFog(scene, true);
+      lights.ambient.color.set('#1a2a44');
+      lights.ambient.intensity = 0.25;
+      lights.directional.color.set('#6699cc');
+      lights.directional.intensity = 0.8;
+      lights.hemisphere?.color.set(0x1a3050);
+      lights.hemisphere?.groundColor.set(0x0a1020);
+      if (lights.hemisphere) lights.hemisphere.intensity = 0.5;
+      lights.fillLight?.color.set('#224466');
+      if (lights.fillLight) lights.fillLight.intensity = 0.2;
+      if (rendererRef.current) rendererRef.current.toneMappingExposure = 1.1;
+      return;
+    }
+
+    if (mode === 'storm') {
+      scene.fog = new THREE.Fog('#0b1b2e', 3, 30);
+      scene.background = new THREE.Color('#0b1b2e');
+      lights.ambient.color.set('#20314f');
+      lights.ambient.intensity = 0.32;
+      lights.directional.color.set('#9bc8ff');
+      lights.directional.intensity = 1.7;
+      lights.hemisphere?.color.set(0x2a4262);
+      lights.hemisphere?.groundColor.set(0x081021);
+      if (lights.hemisphere) lights.hemisphere.intensity = 0.6;
+      lights.fillLight?.color.set('#3d6e9f');
+      if (lights.fillLight) lights.fillLight.intensity = 0.45;
+      if (rendererRef.current) rendererRef.current.toneMappingExposure = 1.45;
+      return;
+    }
+
+    // abyss
+    scene.fog = new THREE.Fog('#030712', 2, 20);
+    scene.background = new THREE.Color('#030712');
+    lights.ambient.color.set('#0e1732');
+    lights.ambient.intensity = 0.18;
+    lights.directional.color.set('#335088');
+    lights.directional.intensity = 0.48;
+    lights.hemisphere?.color.set(0x11264a);
+    lights.hemisphere?.groundColor.set(0x02060f);
+    if (lights.hemisphere) lights.hemisphere.intensity = 0.35;
+    lights.fillLight?.color.set('#122a55');
+    if (lights.fillLight) lights.fillLight.intensity = 0.12;
+    if (rendererRef.current) rendererRef.current.toneMappingExposure = 0.95;
+  }, []);
+
   const tryInspectNftInFront = useCallback((): boolean => {
     const camera = cameraRef.current;
     const gallery = galleryGroupRef.current;
@@ -453,27 +535,22 @@ const ClawbWorld: React.FC = () => {
     }
     const scene = sceneRef.current;
     const lights = lightsRef.current;
-    if (scene && lights && (action === 'day' || action === 'night')) {
+    if (scene && lights && (action === 'day' || action === 'night' || action === 'storm' || action === 'abyss')) {
       loopedActionRef.current = null;
-      const isNight = action === 'night';
-      setupUnderwaterFog(scene, isNight);
-      lights.ambient.color.set(isNight ? '#1a2a44' : '#cceeff');
-      lights.ambient.intensity = isNight ? 0.25 : 1.2;
-      lights.directional.color.set(isNight ? '#6699cc' : '#fffff0');
-      lights.directional.intensity = isNight ? 0.8 : 3.5;
-      if (lights.hemisphere) {
-        lights.hemisphere.color.set(isNight ? 0x1a3050 : 0xaaddff);
-        lights.hemisphere.groundColor.set(isNight ? 0x0a1020 : 0x88bbcc);
-        lights.hemisphere.intensity = isNight ? 0.5 : 1.5;
-      }
-      if (lights.fillLight) {
-        lights.fillLight.color.set(isNight ? '#224466' : '#ddeeff');
-        lights.fillLight.intensity = isNight ? 0.2 : 1.2;
-      }
-      if (rendererRef.current) {
-        rendererRef.current.toneMappingExposure = isNight ? 1.1 : 2.2;
-      }
+      applyBiomePreset(action as 'day' | 'night' | 'storm' | 'abyss');
       setWorldAction('patrol', 0, 'day-night-toggle');
+      return;
+    }
+    if (action === 'sunburst') {
+      sunburstUntilRef.current = Date.now() + 9000;
+      return;
+    }
+    if (action === 'bait') {
+      baitUntilRef.current = Date.now() + 9000;
+      return;
+    }
+    if (action === 'pulse') {
+      pulseUntilRef.current = Date.now() + 9000;
       return;
     }
     const roomKey = ROOM_ACTION_TO_KEY[action];
@@ -595,7 +672,7 @@ const ClawbWorld: React.FC = () => {
       );
     }
     clawbActionTRef.current = 0;
-  }, [queueRoomTransition, setWorldAction]);
+  }, [applyBiomePreset, queueRoomTransition, setWorldAction]);
 
   const applyBlueTint = useCallback((object: THREE.Group) => {
     object.traverse((child: THREE.Object3D) => {
@@ -743,6 +820,44 @@ const ClawbWorld: React.FC = () => {
     if (envRef.current) {
       updateEnvironment(envRef.current, scene, camera, elapsedRef.current, delta);
     }
+    // Keep selected biome visual mode persistent; environment update blends fog by camera.
+    applyBiomePreset(biomeModeRef.current);
+
+    const nowFx = Date.now();
+    const sunburstActive = nowFx < sunburstUntilRef.current;
+    const baitActive = nowFx < baitUntilRef.current;
+    const pulseActive = nowFx < pulseUntilRef.current;
+
+    if (envRef.current?.godRays) {
+      const raysScale = sunburstActive
+        ? 1 + 0.12 * Math.sin(elapsedRef.current * 8)
+        : 1;
+      envRef.current.godRays.scale.set(raysScale, raysScale, raysScale);
+    }
+
+    if (clawbRef.current) {
+      if (pulseActive) {
+        const pulse = 1 + 0.05 * Math.sin(elapsedRef.current * 12);
+        clawbRef.current.scale.setScalar(CLAWB_SCALE * pulse);
+      } else {
+        clawbRef.current.scale.setScalar(CLAWB_SCALE);
+      }
+    }
+
+    if (baitActive && envRef.current?.fishSchools?.length && clawbRef.current) {
+      const targetCenter = clawbRef.current.position;
+      envRef.current.fishSchools.forEach((school, idx) => {
+        const a = elapsedRef.current * 0.9 + idx * 1.6;
+        const ring = 1.8 + idx * 0.35;
+        const target = new THREE.Vector3(
+          targetCenter.x + Math.cos(a) * ring,
+          FLOOR_Y + 0.8 + (idx % 3) * 0.3,
+          targetCenter.z + Math.sin(a) * ring,
+        );
+        school.position.lerp(target, Math.min(1, delta * 2.4));
+      });
+    }
+
     if (clawbRef.current) {
       pulseClawbGlow(clawbRef.current, elapsedRef.current);
     }
@@ -790,6 +905,8 @@ const ClawbWorld: React.FC = () => {
 
     // Animate Clawb NPC (patrol + synchronized world actions)
     if (clawbRef.current && clawbMixerRef.current) {
+      const prevX = clawbRef.current.position.x;
+      const prevZ = clawbRef.current.position.z;
       const now = Date.now();
       const explicitActive = now < worldActionRef.current.until && worldActionRef.current.type !== 'patrol';
       const loopActive = Boolean(loopedActionRef.current);
@@ -831,17 +948,6 @@ const ClawbWorld: React.FC = () => {
           CLAWB_COMMAND_DECEL_DAMP,
           delta
         );
-        requestClawbModelRef.current(isStreamMode ? 'idle' : 'walk');
-        if (isStreamMode) {
-          clawbRef.current.position.x = clawbPosRef.current.x;
-          clawbRef.current.position.z = clawbPosRef.current.z;
-          clawbRef.current.position.y = FLOOR_Y;
-          // In stream mode, keep current location so movement commands persist.
-          const dx = camera.position.x - clawbRef.current.position.x;
-          clawbRef.current.rotation.y = Math.atan2(dx, 1);
-          clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.2);
-          clawbRef.current.rotation.z = THREE.MathUtils.lerp(clawbRef.current.rotation.z, 0, 0.2);
-        } else {
         if (now >= clawbPatrolPauseUntilRef.current) {
           const target = getPatrolTarget(clawbPatrolPointIdxRef.current);
           const toTarget = new THREE.Vector3().subVectors(target, clawbPosRef.current);
@@ -872,7 +978,6 @@ const ClawbWorld: React.FC = () => {
             : FLOOR_Y;
         clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.14);
         clawbRef.current.rotation.z = THREE.MathUtils.lerp(clawbRef.current.rotation.z, 0, 0.14);
-        }
       } else {
         if (roomTransitionRef.current.active) {
           const elapsed = Date.now() - roomTransitionRef.current.startedAt;
@@ -894,7 +999,6 @@ const ClawbWorld: React.FC = () => {
         let forceSwimVisual = roomTransitionRef.current.active;
         const commandVelocity = clawbCommandVelocityRef.current;
         if (activeAction === 'look_swim') {
-          requestClawbModelRef.current('swim');
           forceSwimVisual = true;
           const lookTarget = lookTargetRef.current;
           if (lookTarget) {
@@ -960,10 +1064,7 @@ const ClawbWorld: React.FC = () => {
         if (fastTraveling) {
           forceSwimVisual = true;
         }
-        if (swimMode || forceSwimVisual) {
-          requestClawbModelRef.current('swim');
-          swimMode = true;
-        }
+        if (swimMode || forceSwimVisual) swimMode = true;
 
         if (
           movementSource === 'patrol' &&
@@ -1013,6 +1114,36 @@ const ClawbWorld: React.FC = () => {
       }
 
       const isSwimAction = typeof activeAction === 'string' && activeAction.startsWith('swim');
+      const frameSpeed = delta > 0
+        ? Math.hypot(clawbRef.current.position.x - prevX, clawbRef.current.position.z - prevZ) / delta
+        : 0;
+      const emoteModelByAction: Partial<Record<string, ClawbModelKey>> = {
+        die: 'die',
+        dance: 'dance',
+        flip: 'flip',
+        hi: 'hi',
+        wave: 'hi',
+        jump: 'hi',
+        spin: 'dance',
+      };
+      const emoteModel = emoteModelByAction[activeAction];
+      if (emoteModel) {
+        requestClawbModelRef.current(emoteModel);
+      } else {
+        const enterWalk = 0.14;
+        const enterSwim = CLAWB_SWIM_STEP_SPEED * 0.82;
+        const exitSwim = CLAWB_SWIM_STEP_SPEED * 0.62;
+        const exitWalk = 0.08;
+        const cur = locomotionStateRef.current;
+        let next = cur;
+        if (isSwimAction || frameSpeed >= enterSwim) next = 'swim';
+        else if (cur === 'swim' && frameSpeed > exitSwim) next = 'swim';
+        else if (frameSpeed >= enterWalk) next = 'walk';
+        else if (cur === 'walk' && frameSpeed > exitWalk) next = 'walk';
+        else next = 'idle';
+        locomotionStateRef.current = next;
+        requestClawbModelRef.current(next);
+      }
       if (isStreamMode && activeAction !== 'die' && !isSwimAction && !roomTransitionRef.current.active) {
         clawbRef.current.position.y = FLOOR_Y;
       }
@@ -1041,13 +1172,20 @@ const ClawbWorld: React.FC = () => {
       const dist = camera.position.distanceTo(clawbRef.current.position);
       if (dist < CLAWB_GREET_DISTANCE) {
         setClawbGreeting(getGreeting());
-        // Face player
-        if (activeAction === 'patrol') {
-          const dx = camera.position.x - clawbRef.current.position.x;
-          clawbRef.current.rotation.y = Math.atan2(dx, 1);
-        }
       } else {
         setClawbGreeting(null);
+      }
+
+      // Face camera behavior:
+      // - Stream mode: keep Clawb oriented toward camera when not in directional/swim/death/transition states.
+      // - Non-stream mode: only face player while mostly stationary in patrol.
+      const shouldFaceCamera = isStreamMode
+        ? activeAction !== 'die' && !isSwimAction && !DIRECTIONAL_ACTIONS.has(activeAction) && !roomTransitionRef.current.active
+        : activeAction === 'patrol' && frameSpeed < 0.05;
+      if (shouldFaceCamera) {
+        const dx = camera.position.x - clawbRef.current.position.x;
+        const targetYaw = Math.atan2(dx, 1);
+        clawbRef.current.rotation.y = THREE.MathUtils.damp(clawbRef.current.rotation.y, targetYaw, 6, delta);
       }
     }
 
@@ -1393,7 +1531,7 @@ const ClawbWorld: React.FC = () => {
     controls.addEventListener('unlock', () => setIsLocked(false));
 
     // Environment (floor, sky, water, particles, lighting, fog)
-    const env = createEnvironment(scene);
+    const env = createEnvironment(scene, isStreamMode);
     envRef.current = env;
     lightsRef.current = env.lights;
 
@@ -1402,14 +1540,48 @@ const ClawbWorld: React.FC = () => {
       const boxes = generateCollisionBoxes(data, offset.x, offset.z);
       collisionBoxesRef.current = [...collisionBoxesRef.current, ...boxes];
     };
+    const getStreamPrunedRoomData = (roomName: string, data: WorldState): WorldState => {
+      if (!isStreamMode || roomName !== 'main') return data;
+      const clearTypes = new Set([
+        'coral_branch',
+        'coral_brain',
+        'coral_fan',
+        'coral_tube',
+        'coral_bulb',
+        'rock_boulder',
+        'rock_slab',
+        'rock_cluster',
+        'rock_arch',
+        'seagrass',
+        'anemone',
+        'shell',
+        'starfish',
+        'bubbler',
+      ]);
+      const filtered = data.objects.filter((obj) => {
+        if (!clearTypes.has(obj.type)) return true;
+        const x = obj.position[0];
+        const z = obj.position[2];
+        const inCenterRadius = x * x + z * z < 12 * 12;
+        const inForwardLane = Math.abs(x) < 8 && z > -22 && z < 12;
+        return !(inCenterRadius || inForwardLane);
+      });
+      if (filtered.length === data.objects.length) return data;
+      return {
+        ...data,
+        objectCount: filtered.length,
+        objects: filtered,
+      };
+    };
     for (const [roomName, firebaseUrl] of Object.entries(ROOM_URLS)) {
       const offset = ROOM_OFFSETS[roomName];
       fetch(firebaseUrl)
         .then((res) => res.json())
         .then((data: WorldState) => {
           if (data && data.objects) {
-            renderWorldState(scene, data, offset);
-            addRoomCollision(data, offset);
+            const roomData = getStreamPrunedRoomData(roomName, data);
+            renderWorldState(scene, roomData, offset);
+            addRoomCollision(roomData, offset);
           } else {
             throw new Error('Invalid Firebase response');
           }
@@ -1420,8 +1592,9 @@ const ClawbWorld: React.FC = () => {
             fetch(fallback)
               .then((res) => res.json())
               .then((data: WorldState) => {
-                renderWorldState(scene, data, offset);
-                addRoomCollision(data, offset);
+                const roomData = getStreamPrunedRoomData(roomName, data);
+                renderWorldState(scene, roomData, offset);
+                addRoomCollision(roomData, offset);
               })
               .catch((err) => console.warn(`[ClawbWorld] Failed to load ${roomName}:`, err));
           }
@@ -1454,10 +1627,16 @@ const ClawbWorld: React.FC = () => {
     const requestClawbModel = (key: ClawbModelKey) => {
       if (!sceneRef.current) return;
       if (clawbModelKeyRef.current === key && clawbRef.current) return;
+      const now = performance.now();
+      if (now - lastModelRequestAtRef.current < 120) {
+        clawbModelSwapStateRef.current.pending = key;
+        return;
+      }
       if (clawbModelSwapStateRef.current.inFlight) {
         clawbModelSwapStateRef.current.pending = key;
         return;
       }
+      lastModelRequestAtRef.current = now;
       clawbModelSwapStateRef.current.inFlight = true;
       void loadClawbModelWithFallback(key)
         .then((obj) => applyClawbModel(obj, key))

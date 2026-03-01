@@ -32,7 +32,7 @@ export function createWorldRenderer(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.28;
 
   const composer = new EffectComposer(renderer);
   composer.setSize(renderWidth, renderHeight);
@@ -54,18 +54,25 @@ export function createWorldRenderer(
   const colorGradeShader = {
     uniforms: {
       tDiffuse: { value: null },
-      uTint: { value: new THREE.Vector3(0.85, 0.95, 1.1) },
-      uVignetteIntensity: { value: 0.3 },
+      uTint: { value: new THREE.Vector3(0.98, 1.0, 1.02) },
+      uVignetteIntensity: { value: 0.12 },
+      uContrast: { value: 1.12 },
+      uSaturation: { value: 1.08 },
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
       uniform sampler2D tDiffuse;
       uniform vec3 uTint;
       uniform float uVignetteIntensity;
+      uniform float uContrast;
+      uniform float uSaturation;
       varying vec2 vUv;
       void main() {
         vec4 color = texture2D(tDiffuse, vUv);
         color.rgb *= uTint;
+        float luma = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+        color.rgb = mix(vec3(luma), color.rgb, uSaturation);
+        color.rgb = (color.rgb - 0.5) * uContrast + 0.5;
         float dist = distance(vUv, vec2(0.5));
         color.rgb *= 1.0 - dist * uVignetteIntensity;
         gl_FragColor = color;
