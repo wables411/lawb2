@@ -109,6 +109,8 @@ const SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS = Number(process.env.SOUNDCLOUD_CIRCUIT
 const SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS = Number(process.env.SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS || 15 * 60_000);
 const SOUNDCLOUD_PROFILE_URL = process.env.SOUNDCLOUD_PROFILE_URL || 'https://soundcloud.com/companioncube143';
 const SOUNDCLOUD_API_BASE = process.env.SOUNDCLOUD_API_BASE || 'https://lawb.xyz';
+const EQ_DJ_INPUT_NAME = process.env.EQ_DJ_INPUT_NAME || 'DJSET';
+const EQ_DJ_STREAM_URL = process.env.EQ_DJ_STREAM_URL || '';
 const CLAWB_WORLD_STREAM_URL =
   process.env.CLAWB_WORLD_STREAM_URL || 'https://lawb.xyz/world?stream=1&cam=clawb';
 const CLAWB_CHESS_STREAM_URL =
@@ -279,6 +281,7 @@ let scOrderPos = -1;
 let currentScTrack = null;
 let currentScStreamUrl = '';
 let currentAsciiTheme = 'ascii';
+let currentEqSource = 'lawbamp';
 let directAudioAdvanceInFlight = false;
 let directAudioLastCursor = null;
 let directAudioLastCursorAt = 0;
@@ -321,6 +324,9 @@ let eqDisplayTextExpiry = 0;
 const EQ_DISPLAY_MIN_DURATION_MS = 60_000;
 const EQ_DISPLAY_CHARS_PER_SEC = 4;
 let eqOverlayRefreshCooldownUntil = 0;
+const eqInputMeterState = new Map();
+let eqMeterLastEventAt = 0;
+let obsMeterListenerAttached = false;
 
 let lastViewerInteractionAt = Date.now();
 let idleBehaviorTimer = null;
@@ -439,7 +445,7 @@ const ASCII_EQ_POSITION = {
   cropBottom: 0,
 };
 const CHAT_HELP_TEXT =
-  'music: !next !ascii !ascii2 !eq toggle | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | fx: !sunburst !bait !pulse !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
+  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | fx: !sunburst !bait !pulse !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
 const CHAT_ONBOARDING_LINES = [
   'type !help for all commands. lawb.xyz/chess for wagers, lawb.xyz/world for the reef.',
   'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
@@ -474,12 +480,9 @@ function applyEqDisplayTrigger(loweredText, viewer, source = 'chat') {
 
   // Some OBS browser-source sessions can get stale and stop polling /display-text.
   // A lightweight source refresh here keeps conspiracy text reliable without operator intervention.
-  if (isStreaming && mediaActive && currentScStreamUrl && Date.now() >= eqOverlayRefreshCooldownUntil) {
+  if (isStreaming && mediaActive && Date.now() >= eqOverlayRefreshCooldownUntil) {
     eqOverlayRefreshCooldownUntil = Date.now() + 12_000;
-    void updateAsciiEqOverlayFromStream(
-      currentScStreamUrl,
-      currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
-    ).catch((err) => {
+    void refreshAsciiEqOverlay('display_trigger').catch((err) => {
       console.warn(`[Retake] EQ overlay refresh after trigger failed: ${err.message}`);
     });
   }
@@ -506,6 +509,75 @@ function clearEqPreflightRetryTimer() {
     clearTimeout(eqPreflightRetryTimer);
     eqPreflightRetryTimer = null;
   }
+}
+
+function getCurrentLawbampTrackTitle() {
+  return currentScTrack
+    ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}`
+    : '';
+}
+
+function normalizeEqSourceMode(rawMode) {
+  const mode = String(rawMode || '').toLowerCase().trim();
+  if (mode === 'lawbamp' || mode === 'lawb') return 'lawbamp';
+  if (mode === 'djset' || mode === 'dj') return 'djset';
+  if (mode === 'status') return 'status';
+  return '';
+}
+
+function getEqSourceStatusLabel() {
+  return currentEqSource === 'djset' ? `djset (${EQ_DJ_INPUT_NAME})` : 'lawbamp';
+}
+
+function extractStreamUrlFromObsInputSettings(inputSettings = {}) {
+  const candidates = [
+    inputSettings.input,
+    inputSettings.url,
+    inputSettings.playlist?.[0]?.value,
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && /^https?:\/\//i.test(value.trim())) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+async function resolveDjEqStreamUrl() {
+  if (EQ_DJ_STREAM_URL && /^https?:\/\//i.test(EQ_DJ_STREAM_URL)) {
+    return EQ_DJ_STREAM_URL;
+  }
+  if (!obs) return '';
+  try {
+    const data = await obs.call('GetInputSettings', { inputName: EQ_DJ_INPUT_NAME });
+    return extractStreamUrlFromObsInputSettings(data?.inputSettings || {});
+  } catch {
+    return '';
+  }
+}
+
+async function getCurrentEqOverlayContext() {
+  if (currentEqSource === 'djset') {
+    const streamUrl = await resolveDjEqStreamUrl();
+    if (streamUrl) {
+      return { streamUrl, title: `${EQ_DJ_INPUT_NAME} live` };
+    }
+    return { streamUrl: '', title: `${EQ_DJ_INPUT_NAME} unavailable` };
+  }
+  return {
+    streamUrl: currentScStreamUrl,
+    title: getCurrentLawbampTrackTitle(),
+  };
+}
+
+async function refreshAsciiEqOverlay(reason = 'manual') {
+  const { streamUrl, title } = await getCurrentEqOverlayContext();
+  if (!streamUrl) {
+    console.warn(`[Retake] EQ refresh skipped (${reason}) — no stream url for source=${currentEqSource}`);
+    return false;
+  }
+  await updateAsciiEqOverlayFromStream(streamUrl, title);
+  return true;
 }
 
 function clearCommandReminderTimer() {
@@ -1736,7 +1808,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
 }
 
 async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
-  if (!obs || !mediaActive) return;
+  if (!obs || (!mediaActive && currentEqSource !== 'djset')) return;
   const eqInput = 'Lawbamp ASCII EQ';
   const eqUrl = buildAsciiEqDataUrl({
     streamUrl: getEqVisualizerStreamUrl(streamUrl),
@@ -1935,7 +2007,7 @@ async function applyDirectAudioStream(streamUrl, trackLabel, reason = 'unknown')
     monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT',
   }).catch(() => {});
 
-  await updateAsciiEqOverlayFromStream(streamUrl, trackLabel || 'Lawbamp fallback');
+  await refreshAsciiEqOverlay('direct_audio_applied');
   console.log(`[Retake] Direct audio source applied (${reason}): ${trackLabel || 'fallback'}`);
 }
 
@@ -2672,10 +2744,7 @@ async function handleChatMessage(comment) {
   }
   if (lowered === '!ascii' || lowered === '!ascii2') {
     currentAsciiTheme = lowered === '!ascii2' ? 'ascii2' : 'ascii';
-    await updateAsciiEqOverlayFromStream(
-      currentScStreamUrl,
-      currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
-    );
+    await refreshAsciiEqOverlay('chat_ascii');
     await sendChat(
       currentAsciiTheme === 'ascii2'
         ? 'ascii2 engaged. deep reef mode online.'
@@ -2684,15 +2753,39 @@ async function handleChatMessage(comment) {
     return;
   }
 
+  if (lowered.startsWith('!eqsource')) {
+    const mode = normalizeEqSourceMode(lowered.split(/\s+/)[1]);
+    if (!mode) {
+      await sendChat(`usage: !eqsource lawbamp | !eqsource djset | !eqsource status. current: ${getEqSourceStatusLabel()}`);
+      return;
+    }
+    if (mode === 'status') {
+      await sendChat(`eq source: ${getEqSourceStatusLabel()}.`);
+      return;
+    }
+    currentEqSource = mode;
+    if (currentEqSource === 'djset') {
+      await setMediaActive(false, 'eqsource_djset');
+    } else {
+      await setMediaActive(true, 'eqsource_lawbamp');
+    }
+    const ok = await refreshAsciiEqOverlay('chat_eqsource_switch');
+    if (ok) {
+      await sendChat(`eq source set to ${getEqSourceStatusLabel()}.`);
+    } else if (currentEqSource === 'djset') {
+      await sendChat(`eq source set to djset, but no HTTP stream URL found on ${EQ_DJ_INPUT_NAME}. set EQ_DJ_STREAM_URL in .env if needed.`);
+    } else {
+      await sendChat('eq source set to lawbamp. waiting for active lawbamp stream.');
+    }
+    return;
+  }
+
   if (lowered.startsWith('!eq')) {
     const mode = lowered.split(/\s+/)[1];
     if (mode === 'ascii' || mode === 'ascii2' || mode === 'bars' || mode === 'toggle') {
       if (mode === 'ascii' || mode === 'ascii2') {
         currentAsciiTheme = mode;
-        await updateAsciiEqOverlayFromStream(
-          currentScStreamUrl,
-          currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
-        );
+        await refreshAsciiEqOverlay('chat_eq_theme');
       }
       await publishLawbampCommand('eq', { mode, source: 'retake', viewer });
       await sendChat(`eq mode: ${mode}.`);
@@ -3464,24 +3557,34 @@ function startChessGameWatcher() {
   const gamesRef = db.ref('chess_games');
   const handler = gamesRef.orderByChild('game_type').equalTo('vs_clawb').on('child_changed', async (snapshot) => {
     const game = snapshot.val();
-    if (!game || game.game_state !== 'finished') return;
+    if (!game) return;
     try {
-      const scene = await getCurrentSceneName();
-      if (scene !== 'Clawb Chess') return;
-      console.log(`[Retake] vs_clawb game finished (${snapshot.key}), switching to world in ${CHESS_AUTO_SWITCH_DELAY_MS / 1000}s`);
-      setTimeout(async () => {
-        const current = await getCurrentSceneName();
-        if (current !== 'Clawb Chess') return;
-        await switchScene('Clawb World');
-        sendCommandAck('chess match over. back to the reef.', 'chess_auto_return');
-      }, CHESS_AUTO_SWITCH_DELAY_MS);
+      if (game.game_state === 'active') {
+        const scene = await getCurrentSceneName();
+        if (scene === 'Clawb Chess') return;
+        console.log(`[Retake] vs_clawb game active (${snapshot.key}), switching to chess scene`);
+        await switchScene('Clawb Chess');
+        sendCommandAck('chess match started. switching scenes.', 'chess_auto_start');
+        return;
+      }
+      if (game.game_state === 'finished') {
+        const scene = await getCurrentSceneName();
+        if (scene !== 'Clawb Chess') return;
+        console.log(`[Retake] vs_clawb game finished (${snapshot.key}), switching to world in ${CHESS_AUTO_SWITCH_DELAY_MS / 1000}s`);
+        setTimeout(async () => {
+          const current = await getCurrentSceneName();
+          if (current !== 'Clawb Chess') return;
+          await switchScene('Clawb World');
+          sendCommandAck('chess match over. back to the reef.', 'chess_auto_return');
+        }, CHESS_AUTO_SWITCH_DELAY_MS);
+      }
     } catch (err) {
       console.error('[Retake] Chess auto-switch error:', err.message);
     }
   });
 
   chessGameWatcherUnsub = () => gamesRef.off('child_changed', handler);
-  console.log('[Retake] Chess game watcher active — will auto-switch to world after matches.');
+  console.log('[Retake] Chess game watcher active — will auto-switch to chess on start, world after matches.');
 }
 
 export async function chatInStream(streamerName, message) {

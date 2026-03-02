@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 
 // Cross-platform replacement for: cp _headers dist/
 const root = process.cwd();
@@ -18,4 +18,11 @@ if (!existsSync(distDir)) {
 
 copyFileSync(src, dest);
 console.log(`[postbuild] Copied _headers -> dist/_headers`);
+
+// Prevent accidental high-bandwidth uploads of source asset archives.
+const distZipAssets = path.join(distDir, 'world-assets', 'zips');
+if (existsSync(distZipAssets)) {
+  rmSync(distZipAssets, { recursive: true, force: true });
+  console.log('[postbuild] Pruned dist/world-assets/zips (local source archives)');
+}
 

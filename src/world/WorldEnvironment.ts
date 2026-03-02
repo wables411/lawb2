@@ -56,14 +56,14 @@ export function createEnvironment(scene: THREE.Scene, isStreamMode: boolean = fa
   floor.position.y = FLOOR_Y;
   scene.add(floor);
 
-  const bubbles = createBubbleParticles(250);
+  const bubbles = createBubbleParticles(420);
   scene.add(bubbles);
 
   const caustic = createCausticPlane();
   caustic.position.y = FLOOR_Y + 0.02;
   scene.add(caustic);
 
-  const godRays = createGodRays(14);
+  const godRays = createGodRays(20);
   scene.add(godRays);
 
   const dustMotes = createDustMotes(300);
@@ -87,11 +87,11 @@ export function createEnvironment(scene: THREE.Scene, isStreamMode: boolean = fa
   };
   // Room density profile: in stream mode, keep center lane visually clear.
   if (isStreamMode) {
-    absorbKelpField(4, 10, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-20, 0, -14)));
-    absorbKelpField(4, 10, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(20, 0, -14)));
-    absorbKelpField(4, 10, ROOM_OFFSETS.bedroom);
-    absorbKelpField(5, 10, ROOM_OFFSETS.workshop);
-    absorbKelpField(2, 7, ROOM_OFFSETS.vault);
+    absorbKelpField(10, 12, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-20, 0, -14)));
+    absorbKelpField(10, 12, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(20, 0, -14)));
+    absorbKelpField(10, 14, ROOM_OFFSETS.bedroom);
+    absorbKelpField(12, 14, ROOM_OFFSETS.workshop);
+    absorbKelpField(5, 9, ROOM_OFFSETS.vault);
   } else {
     absorbKelpField(22, 22, ROOM_OFFSETS.main);
     absorbKelpField(8, 12, ROOM_OFFSETS.bedroom);
@@ -112,10 +112,11 @@ export function createEnvironment(scene: THREE.Scene, isStreamMode: boolean = fa
     fishSchools.push(school);
   };
   if (isStreamMode) {
-    spawnFishSchool(9, 10, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(18, 0, -12)));
-    spawnFishSchool(8, 9, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-18, 0, -12)));
-    spawnFishSchool(8, 10, ROOM_OFFSETS.workshop);
-    spawnFishSchool(6, 8, ROOM_OFFSETS.bedroom);
+    spawnFishSchool(18, 14, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(18, 0, -12)));
+    spawnFishSchool(16, 14, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-18, 0, -12)));
+    spawnFishSchool(14, 12, ROOM_OFFSETS.workshop);
+    spawnFishSchool(10, 10, ROOM_OFFSETS.bedroom);
+    spawnFishSchool(8, 9, ROOM_OFFSETS.vault);
   } else {
     spawnFishSchool(20, 20, ROOM_OFFSETS.main);
     spawnFishSchool(16, 16, ROOM_OFFSETS.main);
@@ -134,9 +135,10 @@ export function createEnvironment(scene: THREE.Scene, isStreamMode: boolean = fa
     });
   };
   if (isStreamMode) {
-    absorbJellyfishField(1, 8, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-20, 0, -12)));
-    absorbJellyfishField(1, 10, ROOM_OFFSETS.workshop);
-    absorbJellyfishField(1, 8, ROOM_OFFSETS.bedroom);
+    absorbJellyfishField(4, 18, ROOM_OFFSETS.main);
+    absorbJellyfishField(2, 12, ROOM_OFFSETS.bedroom);
+    absorbJellyfishField(2, 14, ROOM_OFFSETS.workshop);
+    absorbJellyfishField(1, 8, ROOM_OFFSETS.vault);
   } else {
     absorbJellyfishField(4, 18, ROOM_OFFSETS.main);
     absorbJellyfishField(2, 12, ROOM_OFFSETS.bedroom);
@@ -153,11 +155,11 @@ export function createEnvironment(scene: THREE.Scene, isStreamMode: boolean = fa
     seafloorDetails.add(details);
   };
   if (isStreamMode) {
-    addSeafloorDetails(70, 11, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-22, 0, -14)));
-    addSeafloorDetails(70, 11, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(22, 0, -14)));
-    addSeafloorDetails(90, 16, ROOM_OFFSETS.bedroom);
-    addSeafloorDetails(100, 16, ROOM_OFFSETS.workshop);
-    addSeafloorDetails(50, 12, ROOM_OFFSETS.vault);
+    addSeafloorDetails(160, 14, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(-22, 0, -14)));
+    addSeafloorDetails(160, 14, ROOM_OFFSETS.main.clone().add(new THREE.Vector3(22, 0, -14)));
+    addSeafloorDetails(140, 18, ROOM_OFFSETS.bedroom);
+    addSeafloorDetails(150, 18, ROOM_OFFSETS.workshop);
+    addSeafloorDetails(80, 12, ROOM_OFFSETS.vault);
   } else {
     addSeafloorDetails(520, 44, ROOM_OFFSETS.main);
     addSeafloorDetails(210, 22, ROOM_OFFSETS.bedroom);

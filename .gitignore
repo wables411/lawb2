@@ -68,3 +68,8 @@ Desktop.ini
 # Test files with sensitive data (should not be committed)
 *-test.html
 test-*.html
+
+# Local-only world assets (keep heavy files off git/netlify)
+public/local-world-assets/*
+!public/local-world-assets/README.md
+!public/local-world-assets/manifest.example.json

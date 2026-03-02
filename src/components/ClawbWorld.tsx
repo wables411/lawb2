@@ -97,6 +97,12 @@ import { createWorldRenderer, resizeWorldRenderer } from '../world/WorldRenderer
 import { createEnvironment, updateEnvironment, type EnvironmentRefs } from '../world/WorldEnvironment';
 import { smoothCameraPosition, smoothLookAt, updateStreamFollowCamera } from '../world/WorldCamera';
 import { loadModel, prepareCharacterModel, loadClawbModelWithFallback, getPlayableClip, applyBlueTint, applyClawbGlow, pulseClawbGlow } from '../world/WorldCharacter';
+import {
+  loadLocalWorldFauna,
+  updateLocalWorldFauna,
+  disposeLocalWorldFauna,
+  type LocalWorldFaunaRefs,
+} from '../world/LocalWorldFauna';
 
 interface NFTItem {
   chain?: string;
@@ -157,6 +163,7 @@ const ClawbWorld: React.FC = () => {
   const lightsRef = useRef<EnvironmentRefs['lights'] | null>(null);
   const composerRef = useRef<EffectComposer | null>(null);
   const envRef = useRef<EnvironmentRefs | null>(null);
+  const localFaunaRef = useRef<LocalWorldFaunaRefs | null>(null);
   const elapsedRef = useRef(0);
   const collisionBoxesRef = useRef<CollisionBox[]>([]);
 
@@ -820,6 +827,7 @@ const ClawbWorld: React.FC = () => {
     if (envRef.current) {
       updateEnvironment(envRef.current, scene, camera, elapsedRef.current, delta);
     }
+    updateLocalWorldFauna(localFaunaRef.current, elapsedRef.current, delta, camera.position);
     // Keep selected biome visual mode persistent; environment update blends fog by camera.
     applyBiomePreset(biomeModeRef.current);
 
@@ -1534,6 +1542,9 @@ const ClawbWorld: React.FC = () => {
     const env = createEnvironment(scene, isStreamMode);
     envRef.current = env;
     lightsRef.current = env.lights;
+    void loadLocalWorldFauna(scene).then((refs) => {
+      localFaunaRef.current = refs;
+    });
 
     // Load all rooms (Firebase first, fallback to static files)
     const addRoomCollision = (data: WorldState, offset: THREE.Vector3) => {
@@ -2443,6 +2454,8 @@ const ClawbWorld: React.FC = () => {
         composerRef.current.dispose();
         composerRef.current = null;
       }
+      disposeLocalWorldFauna(scene, localFaunaRef.current);
+      localFaunaRef.current = null;
       renderer.dispose();
       scene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {

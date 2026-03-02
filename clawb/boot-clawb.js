@@ -25,6 +25,17 @@ function pm2Start(script, name, cwd, nodeArgs) {
   execFileSync('pm2', args, SHELL);
 }
 
+function shouldUseLocalWorldPreview() {
+  const worldUrl = process.env.CLAWB_WORLD_STREAM_URL || '';
+  if (!worldUrl) return false;
+  try {
+    const u = new URL(worldUrl);
+    return u.hostname === '127.0.0.1' || u.hostname === 'localhost';
+  } catch {
+    return false;
+  }
+}
+
 function clearSessions() {
   if (!existsSync(SESSIONS_PATH)) return;
   try {
@@ -99,6 +110,8 @@ async function main() {
   pm2Delete('session-guard');
   pm2Delete('clawb');
   pm2Delete('openclaw-gateway');
+  pm2Delete('lawb2-world-preview');
+  pm2Delete('dj-audio-stream');
   await new Promise(r => setTimeout(r, 2000));
 
   log('killing stale node processes...');
@@ -120,6 +133,22 @@ async function main() {
     log('gateway online');
   } else {
     log('WARNING: gateway slow to respond, continuing...');
+  }
+
+  if (shouldUseLocalWorldPreview()) {
+    log('starting local world preview (127.0.0.1:4173)...');
+    try {
+      pm2Start(join(CLAWB_DIR, 'start-world-preview.cjs'), 'lawb2-world-preview', LAWB2_DIR);
+    } catch (e) {
+      log(`WARNING: local world preview start failed: ${e.message}`);
+    }
+  }
+
+  log('starting dj audio stream (127.0.0.1:18182)...');
+  try {
+    pm2Start(join(CLAWB_DIR, 'dj-audio-stream.cjs'), 'dj-audio-stream', CLAWB_DIR);
+  } catch (e) {
+    log(`WARNING: dj audio stream start failed (non-fatal): ${e.message}`);
   }
 
   log('starting clawb...');

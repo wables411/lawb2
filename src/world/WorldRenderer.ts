@@ -54,10 +54,10 @@ export function createWorldRenderer(
   const colorGradeShader = {
     uniforms: {
       tDiffuse: { value: null },
-      uTint: { value: new THREE.Vector3(0.98, 1.0, 1.02) },
-      uVignetteIntensity: { value: 0.12 },
-      uContrast: { value: 1.12 },
-      uSaturation: { value: 1.08 },
+      uTint: { value: new THREE.Vector3(0.82, 0.95, 1.18) },
+      uVignetteIntensity: { value: 0.14 },
+      uContrast: { value: 1.1 },
+      uSaturation: { value: 1.38 },
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `

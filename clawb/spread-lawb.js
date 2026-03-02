@@ -31,11 +31,24 @@ async function sendToStream(targetId, message) {
   });
 }
 
-const customMessage = process.argv[2] || 'i lawb you';
+const args = process.argv.slice(2);
+const isListOnly = args.includes('--list') || args.includes('-l');
+const messageParts = args.filter(arg => !arg.startsWith('-'));
+const customMessage = messageParts.join(' ').trim() || 'i lawb u';
 
 const streamers = await getLiveStreamers();
 if (streamers.length === 0) {
   console.log('no live streamers found');
+  process.exit(0);
+}
+
+if (isListOnly) {
+  console.log(`${streamers.length} live streamer(s):`);
+  for (const s of streamers) {
+    const name = s.username || s.ticker || s.user_id;
+    console.log(`  -> ${name}`);
+  }
+  console.log('list complete.');
   process.exit(0);
 }
 

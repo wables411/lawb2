@@ -313,51 +313,51 @@ export const BIOMES: BiomeDef[] = [
     name: 'Shallow Reef',
     center: [0, 0, 0],
     radius: 35,
-    fogColor: '#14334e',
-    fogNear: 8,
-    fogFar: 65,
-    ambientColor: '#4466aa',
-    ambientIntensity: 0.4,
+    fogColor: '#0d4a7a',
+    fogNear: 14,
+    fogFar: 90,
+    ambientColor: '#3366cc',
+    ambientIntensity: 0.5,
   },
   {
     name: 'NFT Gallery',
     center: [-35, 0, -30],
     radius: 20,
-    fogColor: '#0f1a2d',
-    fogNear: 5,
-    fogFar: 50,
-    ambientColor: '#334488',
-    ambientIntensity: 0.35,
+    fogColor: '#0a2a52',
+    fogNear: 10,
+    fogFar: 70,
+    ambientColor: '#2244aa',
+    ambientIntensity: 0.42,
   },
   {
     name: 'Workshop Forge',
     center: [35, 0, -30],
     radius: 20,
-    fogColor: '#1a2030',
-    fogNear: 6,
-    fogFar: 55,
-    ambientColor: '#445588',
-    ambientIntensity: 0.35,
+    fogColor: '#0e2848',
+    fogNear: 10,
+    fogFar: 72,
+    ambientColor: '#335599',
+    ambientIntensity: 0.42,
   },
   {
     name: 'Deep Trench',
     center: [0, 0, -55],
     radius: 25,
-    fogColor: '#050c18',
-    fogNear: 3,
-    fogFar: 35,
-    ambientColor: '#1a2244',
-    ambientIntensity: 0.2,
+    fogColor: '#050e22',
+    fogNear: 6,
+    fogFar: 50,
+    ambientColor: '#152244',
+    ambientIntensity: 0.28,
   },
   {
     name: 'Leaderboard Shrine',
     center: [45, 0, 10],
     radius: 18,
-    fogColor: '#102040',
-    fogNear: 6,
-    fogFar: 55,
-    ambientColor: '#4488aa',
-    ambientIntensity: 0.4,
+    fogColor: '#0d3060',
+    fogNear: 10,
+    fogFar: 72,
+    ambientColor: '#3388aa',
+    ambientIntensity: 0.48,
   },
 ];
 
@@ -808,16 +808,16 @@ export function setupUnderwaterLighting(scene: THREE.Scene, isDark: boolean): {
   fillLight: THREE.DirectionalLight;
 } {
   const hemisphere = new THREE.HemisphereLight(
-    isDark ? 0x1a3050 : 0x4488cc,
-    isDark ? 0x0a1020 : 0x1a3050,
-    isDark ? 0.5 : 0.7,
+    isDark ? 0x1a5080 : 0x4488cc,
+    isDark ? 0x0a1830 : 0x1a3050,
+    isDark ? 0.65 : 0.7,
   );
   scene.add(hemisphere);
 
-  const ambient = new THREE.AmbientLight(isDark ? '#1a2a44' : '#4466aa', isDark ? 0.25 : 0.35);
+  const ambient = new THREE.AmbientLight(isDark ? '#1a4466' : '#4466aa', isDark ? 0.38 : 0.35);
   scene.add(ambient);
 
-  const directional = new THREE.DirectionalLight(isDark ? '#6699cc' : '#ffffee', isDark ? 0.8 : 1.2);
+  const directional = new THREE.DirectionalLight(isDark ? '#3a7acc' : '#ffffee', isDark ? 1.0 : 1.2);
   directional.position.set(5, 15, 5);
   directional.castShadow = true;
   directional.shadow.mapSize.width = 2048;
@@ -832,7 +832,7 @@ export function setupUnderwaterLighting(scene: THREE.Scene, isDark: boolean): {
   directional.shadow.normalBias = 0.02;
   scene.add(directional);
 
-  const fillLight = new THREE.DirectionalLight(isDark ? '#224466' : '#88bbdd', isDark ? 0.2 : 0.3);
+  const fillLight = new THREE.DirectionalLight(isDark ? '#2255bb' : '#88bbdd', isDark ? 0.3 : 0.3);
   fillLight.position.set(-8, 6, -5);
   scene.add(fillLight);
 
@@ -842,8 +842,8 @@ export function setupUnderwaterLighting(scene: THREE.Scene, isDark: boolean): {
 // --- Setup underwater fog ---
 
 export function setupUnderwaterFog(scene: THREE.Scene, isDark: boolean) {
-  const fogColor = isDark ? '#081422' : '#4499bb';
-  scene.fog = new THREE.Fog(fogColor, isDark ? 5 : 20, isDark ? 45 : 140);
+  const fogColor = isDark ? '#0a2d5a' : '#4499bb';
+  scene.fog = new THREE.Fog(fogColor, isDark ? 12 : 20, isDark ? 90 : 140);
   scene.background = new THREE.Color(fogColor);
 }
 
@@ -1067,9 +1067,9 @@ export function createUnderwaterSkydome(radius: number = 100): THREE.Mesh {
     depthWrite: false,
     uniforms: {
       uTime: { value: 0 },
-      uTopColor: { value: new THREE.Color(0x1a5070) },
-      uMidColor: { value: new THREE.Color(0x0a2a44) },
-      uBottomColor: { value: new THREE.Color(0x040e1a) },
+      uTopColor: { value: new THREE.Color(0x1a7090) },
+      uMidColor: { value: new THREE.Color(0x083a6a) },
+      uBottomColor: { value: new THREE.Color(0x040e22) },
     },
     vertexShader: `
       varying vec3 vWorldPos;
