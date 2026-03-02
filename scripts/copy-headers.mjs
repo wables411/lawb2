@@ -26,3 +26,21 @@ if (existsSync(distZipAssets)) {
   console.log('[postbuild] Pruned dist/world-assets/zips (local source archives)');
 }
 
+// When VITE_EXCLUDE_WORLD (Netlify): remove world-only assets to save deploy size & credits.
+// WorldBackground (desktop) keeps world-assets, models, world-state-main.json.
+const excludeWorld = process.env.VITE_EXCLUDE_WORLD === 'true' || process.env.VITE_EXCLUDE_WORLD === '1';
+if (excludeWorld) {
+  const toRemove = [
+    path.join(distDir, 'local-world-assets'),
+    path.join(distDir, 'world', 'world-state-bedroom.json'),
+    path.join(distDir, 'world', 'world-state-workshop.json'),
+    path.join(distDir, 'world', 'world-state-vault.json'),
+  ];
+  for (const p of toRemove) {
+    if (existsSync(p)) {
+      rmSync(p, { recursive: true, force: true });
+      console.log(`[postbuild] Pruned ${path.relative(distDir, p)} (world-only, excluded from Netlify)`);
+    }
+  }
+}
+
