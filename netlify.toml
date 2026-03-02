@@ -68,6 +68,102 @@
   force = true
 
 [[redirects]]
+  from = "/*.php"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/wp-json/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/wordpress/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/cgi-bin/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/.git/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/.svn/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/.hg/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/vendor/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/boaform/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/HNAP1"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/autodiscover/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/.env.*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/server-status"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/actuator/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/_profiler/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/_ignition/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
