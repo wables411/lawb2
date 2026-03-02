@@ -1,0 +1,19 @@
+# Reduce bot traffic to prevent Netlify credit exhaustion
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /.netlify/
+
+# AI crawlers - block from API paths (they often hammer endpoints)
+User-agent: GPTBot
+Disallow: /api/
+Disallow: /.netlify/
+User-agent: ChatGPT-User
+Disallow: /api/
+Disallow: /.netlify/
+User-agent: CCBot
+Disallow: /api/
+Disallow: /.netlify/
+User-agent: anthropic-ai
+Disallow: /api/
+Disallow: /.netlify/
