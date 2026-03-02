@@ -27,18 +27,6 @@
   to = "/.netlify/functions/game-monitor-simple"
   status = 200
 
-# Block removed SoundCloud functions — stop stray requests (cached OBS, old clients)
-[[redirects]]
-  from = "/.netlify/functions/soundcloud-likes"
-  to = "/404.html"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/.netlify/functions/soundcloud-stream"
-  to = "/404.html"
-  status = 404
-  force = true
-
 [[redirects]]
   from = "/.env"
   to = "/404.html"
