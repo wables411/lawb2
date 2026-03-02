@@ -1,17 +1,20 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { SoundCloudTrack } from '../utils/soundcloud';
-import {
-  fetchSoundCloudLikedTracks,
-  getSoundCloudProfileUrl,
-  resolveSoundCloudProgressiveStreamUrl,
-} from '../utils/soundcloud';
+
+/** Minimal track type for Lawbamp / future playlist support. */
+export type LawbTrack = {
+  id: string | number;
+  title: string;
+  permalink_url?: string;
+  artwork_url?: string | null;
+  user?: { username?: string };
+};
 
 type LawbAudioState = {
   isReady: boolean;
   isLoading: boolean;
   isPlaying: boolean;
   error: string | null;
-  currentTrack: SoundCloudTrack | null;
+  currentTrack: LawbTrack | null;
   currentTimeSec: number;
   durationSec: number;
   volume: number; // 0..1
@@ -31,6 +34,7 @@ type LawbAudioActions = {
   toggleShuffle: () => void;
   toggleMiniPlayer: () => void;
   ensureQueueLoaded: () => Promise<void>;
+  setEmbedPlaying?: (v: boolean) => void;
 };
 
 type LawbAudioContextValue = {
@@ -110,15 +114,15 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const eqRafRef = useRef<number | null>(null);
 
-  const [queue, setQueue] = useState<SoundCloudTrack[]>([]);
-  const [order, setOrder] = useState<number[]>([]); // indices into queue
+  const [queue, setQueue] = useState<LawbTrack[]>([]);
+  const [order, setOrder] = useState<number[]>([]);
   const [orderPos, setOrderPos] = useState<number>(0);
 
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const loadedTrackIdRef = useRef<number | null>(null);
+  const loadedTrackIdRef = useRef<string | number | null>(null);
   const playInProgressRef = useRef(false);
 
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -164,8 +168,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     a.addEventListener('ended', onEnded);
     a.addEventListener('error', onError);
 
-    setIsReady(true);
-
     return () => {
       a.pause();
       a.src = '';
@@ -184,7 +186,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       analyserRef.current = null;
       sourceRef.current = null;
       if (audioCtxRef.current) {
-        // Best-effort cleanup (close can throw if already closed).
         try { void audioCtxRef.current.close(); } catch {}
         audioCtxRef.current = null;
       }
@@ -206,7 +207,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const ctx = audioCtxRef.current;
     if (!ctx) return;
 
-    // iOS/Safari often starts suspended until a user gesture.
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch {}
     }
@@ -219,20 +219,18 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     if (!sourceRef.current) {
-      // MediaElementAudioSourceNode can only be created once per <audio>.
       try {
         const src = ctx.createMediaElementSource(a);
         sourceRef.current = src;
         src.connect(analyserRef.current);
         analyserRef.current.connect(ctx.destination);
       } catch {
-        // If this fails (CORS or node already created), we just won't have a real analyser.
         sourceRef.current = null;
       }
     }
   }, []);
 
-  // Visualizer loop (best-effort: may be all zeros if CORS blocks analyser).
+  // Visualizer loop
   useEffect(() => {
     if (!isPlaying) {
       setEqBands((prev) => (prev.some((v) => v !== 0) ? prev.map(() => 0) : prev));
@@ -246,7 +244,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const tick = (t: number) => {
       eqRafRef.current = requestAnimationFrame(tick);
-      // Throttle updates to reduce render churn.
       if (t - last < 50) return;
       last = t;
       try {
@@ -278,7 +275,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, [isPlaying]);
 
-  // Persist prefs.
   useEffect(() => {
     try { localStorage.setItem(LS_KEYS.shuffle, String(shuffleEnabled)); } catch {}
   }, [shuffleEnabled]);
@@ -287,7 +283,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [showMiniPlayer]);
 
   useEffect(() => {
-    // Clawb World stream source must stay world-only (no Lawbamp popup UI).
     if (isWorldStreamSession() && showMiniPlayer) {
       setShowMiniPlayer(false);
     }
@@ -300,11 +295,10 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try { localStorage.setItem(LS_KEYS.lastTrackId, String(currentTrack.id)); } catch {}
   }, [currentTrack?.id]);
 
-  const rebuildOrder = useCallback((nextQueue: SoundCloudTrack[], keepTrackId?: number | null) => {
+  const rebuildOrder = useCallback((nextQueue: LawbTrack[], keepTrackId?: string | number | null) => {
     const base = nextQueue.map((_, idx) => idx);
     const ordered = shuffleEnabled ? shuffleArray(base) : base;
 
-    // If we can, keep current track at the same logical position (pos 0).
     if (keepTrackId != null) {
       const keepIdx = nextQueue.findIndex((t) => t.id === keepTrackId);
       if (keepIdx >= 0) {
@@ -321,43 +315,18 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [shuffleEnabled]);
 
   const ensureQueueLoaded = useCallback(async () => {
+    // No external queue; Lawb Playlist uses its own media elements.
     if (queue.length) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const profileUrl = getSoundCloudProfileUrl();
-      const res = await fetchSoundCloudLikedTracks(profileUrl);
-      const tracks = (res.tracks || []).filter(
-        (t) => !!t?.permalink_url && !!t?.progressive_transcoding_url
-      );
-      setQueue(tracks);
+  }, [queue.length]);
 
-      // Prefer last track if it exists (nice continuity).
-      let lastId: number | null = null;
-      try {
-        const raw = localStorage.getItem(LS_KEYS.lastTrackId);
-        if (raw) lastId = Number(raw);
-        if (!Number.isFinite(lastId)) lastId = null;
-      } catch {}
-
-      rebuildOrder(tracks, lastId);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load SoundCloud likes');
-      throw e;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [queue.length, rebuildOrder]);
-
-  const playTrack = useCallback(async (track: SoundCloudTrack) => {
+  const playTrack = useCallback(async (track: LawbTrack & { streamUrl?: string }) => {
     const a = audioRef.current;
     if (!a) return;
+    const streamUrl = (track as any).streamUrl;
+    if (!streamUrl) return;
     setError(null);
     setIsLoading(true);
     try {
-      const profileUrl = getSoundCloudProfileUrl();
-      if (!track.progressive_transcoding_url) throw new Error('Track has no progressive stream');
-      const streamUrl = await resolveSoundCloudProgressiveStreamUrl(track.progressive_transcoding_url, profileUrl);
       a.src = streamUrl;
       a.autoplay = true;
       a.volume = volume;
@@ -372,41 +341,24 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const play = useCallback(async () => {
     const a = audioRef.current;
     if (!a) return;
-    if (playInProgressRef.current) return; // Prevent duplicate play() storms (e.g. stream autoplay + Firebase commands).
+    if (playInProgressRef.current) return;
     playInProgressRef.current = true;
     setError(null);
     try {
-      // If we already loaded a track in this session, just resume.
       if (loadedTrackIdRef.current != null) {
         await ensureAnalyser();
         await safeAutoplay(a);
         return;
       }
-
-      await ensureQueueLoaded();
-      let track = currentTrack;
-
-      // First autoplay in stream mode can race React state updates after queue load.
-      // Fallback to a direct fetch so OBS always gets a track on first command.
-      if (!track) {
-        const profileUrl = getSoundCloudProfileUrl();
-        const res = await fetchSoundCloudLikedTracks(profileUrl);
-        const tracks = (res.tracks || []).filter(
-          (t) => !!t?.permalink_url && !!t?.progressive_transcoding_url
-        );
-        if (!tracks.length) throw new Error('No SoundCloud likes available to play');
-        track = tracks[0] || null;
-        setQueue((prev) => (prev.length ? prev : tracks));
-        setOrder((prev) => (prev.length ? prev : tracks.map((_, idx) => idx)));
-        setOrderPos((prev) => (Number.isFinite(prev) ? prev : 0));
-      }
-
-      if (!track) throw new Error('No tracks available to play');
-      await playTrack(track);
+      // No queue; play/next/prev are no-ops for stream commands until Lawb Playlist is wired
+      if (!queue.length) return;
+      const track = currentTrack;
+      if (!track || !(track as any).streamUrl) return;
+      await playTrack(track as LawbTrack & { streamUrl: string });
     } finally {
       playInProgressRef.current = false;
     }
-  }, [ensureQueueLoaded, currentTrack, playTrack, ensureAnalyser]);
+  }, [queue.length, currentTrack, playTrack, ensureAnalyser]);
 
   const pause = useCallback(() => {
     const a = audioRef.current;
@@ -423,21 +375,19 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [play, isPlaying, pause]);
 
   const next = useCallback(async () => {
-    if (!queue.length) {
-      await ensureQueueLoaded();
-    }
+    if (!queue.length) return;
     if (!order.length) return;
     const nextPos = (orderPos + 1) % order.length;
     setOrderPos(nextPos);
     const nextTrack = queue[order[nextPos]];
-    if (nextTrack) {
+    if (nextTrack && (nextTrack as any).streamUrl) {
       try {
-        await playTrack(nextTrack);
+        await playTrack(nextTrack as LawbTrack & { streamUrl: string });
       } catch (e: any) {
         setError(e?.message || 'Failed to play next track');
       }
     }
-  }, [queue, order, orderPos, ensureQueueLoaded, playTrack]);
+  }, [queue, order, orderPos, playTrack]);
 
   const prev = useCallback(async () => {
     const a = audioRef.current;
@@ -445,21 +395,19 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       a.currentTime = 0;
       return;
     }
-    if (!queue.length) {
-      await ensureQueueLoaded();
-    }
+    if (!queue.length) return;
     if (!order.length) return;
     const prevPos = (orderPos - 1 + order.length) % order.length;
     setOrderPos(prevPos);
     const prevTrack = queue[order[prevPos]];
-    if (prevTrack) {
+    if (prevTrack && (prevTrack as any).streamUrl) {
       try {
-        await playTrack(prevTrack);
+        await playTrack(prevTrack as LawbTrack & { streamUrl: string });
       } catch (e: any) {
         setError(e?.message || 'Failed to play previous track');
       }
     }
-  }, [queue, order, orderPos, ensureQueueLoaded, playTrack, currentTimeSec]);
+  }, [queue, order, orderPos, playTrack, currentTimeSec]);
 
   const setVolume = useCallback((v: number) => {
     const vv = clamp01(v);
@@ -470,7 +418,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const toggleShuffle = useCallback(() => {
     setShuffleEnabled((prev) => !prev);
-    // Rebuild order while keeping current track, so toggling feels stable.
     setOrder((prevOrder) => {
       const keep = currentTrack?.id ?? null;
       const next = shuffleEnabled ? queue.map((_, idx) => idx) : shuffleArray(queue.map((_, idx) => idx));
@@ -491,6 +438,8 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const toggleMiniPlayer = useCallback(() => {
     setShowMiniPlayer((prev) => !prev);
   }, []);
+
+  const setEmbedPlaying = useCallback((v: boolean) => setIsPlaying(v), []);
 
   const value = useMemo<LawbAudioContextValue>(() => ({
     state: {
@@ -517,6 +466,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       toggleShuffle,
       toggleMiniPlayer,
       ensureQueueLoaded,
+      setEmbedPlaying,
     },
   }), [
     isReady,
@@ -540,6 +490,7 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     toggleShuffle,
     toggleMiniPlayer,
     ensureQueueLoaded,
+    setEmbedPlaying,
   ]);
 
   return (
@@ -552,7 +503,6 @@ export const LawbAudioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 export const useLawbAudio = (): LawbAudioContextValue => {
   const ctx = useContext(LawbAudioContext);
   if (!ctx) {
-    // Fail soft so we don't crash old pages if provider isn't mounted.
     return {
       state: {
         isReady: false,
@@ -578,9 +528,9 @@ export const useLawbAudio = (): LawbAudioContextValue => {
         toggleShuffle: () => {},
         toggleMiniPlayer: () => {},
         ensureQueueLoaded: async () => {},
+        setEmbedPlaying: undefined,
       },
     };
   }
   return ctx;
 };
-

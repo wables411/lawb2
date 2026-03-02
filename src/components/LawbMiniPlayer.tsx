@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { createUseStyles } from 'react-jss';
 import Popup from './Popup';
 import { useLawbAudio } from '../contexts/LawbAudioContext';
@@ -6,13 +6,12 @@ import { fetchRecentLawbampUploads, type LawbampUploadEntry, uploadLawbampMedia 
 import { LAWBAMP_MAX_UPLOAD_DURATION_SEC } from '../utils/mediaDuration';
 import { useAccount, useSignMessage } from 'wagmi';
 import { firebaseProfiles } from '../firebaseProfiles';
-
 const FALLBACK_ART_URL = '/images/lawb-logo.png';
 const MASCOT_URL = '/assets/asciilawb.GIF';
 const LS_VIZ_MODE = 'lawbamp_viz_mode';
 const LS_BEAT_STROBE = 'lawbamp_beat_strobe';
 type VizMode = 'bars' | 'ascii';
-type PlayerTab = 'soundcloud' | 'lawb_playlist';
+type PlayerTab = 'lawb_playlist';
 
 type StyleProps = { pct: number; isFullscreen: boolean; isMobile: boolean; uiScale: number };
 
@@ -292,7 +291,6 @@ function fmtTime(sec: number): string {
 
 function beefUpArtworkUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  // SoundCloud art URLs often come as "...-large.jpg". Swap to a nicer size if possible.
   return url.replace('-large.', '-t300x300.');
 }
 
@@ -732,7 +730,7 @@ const LawbMiniPlayer: React.FC = () => {
 
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<PlayerTab>('soundcloud');
+  const [activeTab, setActiveTab] = useState<PlayerTab>('lawb_playlist');
   const [playlistEntries, setPlaylistEntries] = useState<LawbampUploadEntry[]>([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [playlistError, setPlaylistError] = useState<string | null>(null);
@@ -845,45 +843,12 @@ const LawbMiniPlayer: React.FC = () => {
           <button
             className={classes.btn}
             type="button"
-            onClick={() => setVizMode((m) => (m === 'bars' ? 'ascii' : 'bars'))}
-            title="Toggle visualization"
-            disabled={state.isLoading}
-          >
-            {vizMode === 'ascii' ? 'VIZ:ASCII' : 'VIZ:BARS'}
-          </button>
-
-          <button
-            className={classes.btn}
-            type="button"
-            onClick={() => setBeatStrobeEnabled((v) => !v)}
-            title="Beat strobe (flash on beats)"
-            disabled={state.isLoading}
-          >
-            {beatStrobeEnabled ? 'BEAT:ON' : 'BEAT:OFF'}
-          </button>
-
-          <button
-            className={classes.btn}
-            type="button"
             onClick={() => { void toggleFullscreen(); }}
             title="Fullscreen"
             disabled={state.isLoading}
           >
             {effectiveFullscreen ? 'FS:EXIT' : 'FS:ON'}
           </button>
-
-          {state.currentTrack?.permalink_url && (
-            <a
-              className={classes.btn}
-              href={state.currentTrack.permalink_url}
-              target="_blank"
-              rel="noreferrer"
-              title="Open on SoundCloud"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-            >
-              SC
-            </a>
-          )}
 
           <label className={classes.btn} title={`Upload MP3/MP4 (max ${maxMins} minutes)`} style={{ display: 'inline-flex', alignItems: 'center' }}>
             Upload
@@ -909,13 +874,6 @@ const LawbMiniPlayer: React.FC = () => {
         <div className={classes.tabRow}>
           <button
             type="button"
-            className={`${classes.tabBtn} ${activeTab === 'soundcloud' ? classes.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('soundcloud')}
-          >
-            SoundCloud
-          </button>
-          <button
-            type="button"
             className={`${classes.tabBtn} ${activeTab === 'lawb_playlist' ? classes.tabBtnActive : ''}`}
             onClick={() => setActiveTab('lawb_playlist')}
           >
@@ -926,53 +884,7 @@ const LawbMiniPlayer: React.FC = () => {
           </button>
         </div>
 
-        {activeTab === 'soundcloud' ? (
-          <>
-            <div className={classes.vizWrap}>
-              {vizMode === 'ascii' ? (
-                <div
-                  className={`${classes.asciiViz} ${strobeOn ? classes.strobe : ''}`}
-                  title="ASCII Ocean EQ (toggle via VIZ button)"
-                  ref={asciiHostRef}
-                >
-                  {supportsAsciiCanvas ? (
-                    <canvas ref={asciiCanvasRef} className={classes.asciiCanvas} />
-                  ) : (
-                    <div style={{ padding: 10, color: '#00ff66', fontFamily: 'monospace', fontSize: 12 }}>
-                      ASCII mode requires canvas support.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className={`${classes.eq} ${eqLooksDead ? classes.eqFallback : ''} ${strobeOn ? classes.strobe : ''}`}
-                  title="Equalizer"
-                >
-                  {barsForDisplay.map((v, i) => (
-                    <div
-                      key={i}
-                      className={classes.eqBar}
-                      style={eqLooksDead ? undefined : { height: `${Math.max(4, Math.round(v * 100))}%` }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className={classes.metaRow}>
-              <div className={classes.label}>Vol</div>
-              <input
-                className={classes.slider}
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={state.volume}
-                onChange={(e) => actions.setVolume(Number(e.target.value))}
-              />
-              <div className={classes.label}>{fmtTime(state.currentTimeSec)}</div>
-            </div>
-          </>
-        ) : (
+        {activeTab === 'lawb_playlist' && (
           <>
             {selectedPlaylistEntry && (
               <div className={classes.mediaFrame}>
@@ -1041,11 +953,6 @@ const LawbMiniPlayer: React.FC = () => {
         <div className={classes.smallNote}>
           Upload cap: max {maxMins} minutes per file.
         </div>
-        {!state.currentTrack && (
-          <div className={classes.smallNote}>
-            Click Play to load SoundCloud likes and start shuffling.
-          </div>
-        )}
       </div>
     </Popup>
   );

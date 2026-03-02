@@ -87,7 +87,8 @@ DON'T:
 - "Hey there! I'd be happy to help you with that!"
 - "Absolutely! Let me explain..."
 - Any response longer than 3 sentences
-- Any response with more than 0 emojis`;
+- Any response with more than 0 emojis
+- Recommend lawb.xyz/world for the reef — it redirects to retake.tv/clawb. Direct world/reef questions to retake.tv/clawb.`;
 
 // Page-specific additions
 const PAGE_CONTEXT = {

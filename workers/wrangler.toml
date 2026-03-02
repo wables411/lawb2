@@ -1,7 +1,0 @@
-# Cloudflare Worker: SoundCloud API proxy (replaces Netlify soundcloud-likes + soundcloud-stream)
-# Deploy: cd workers && npx wrangler deploy
-# URL: https://lawb-soundcloud-api.wablesphoto.workers.dev
-
-name = "lawb-soundcloud-api"
-main = "soundcloud-api.js"
-compatibility_date = "2024-01-01"

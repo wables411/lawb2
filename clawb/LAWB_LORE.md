@@ -26,7 +26,7 @@ lawb.xyz is the **Lawb OS** — a Windows 98-style desktop web app for the Lawbs
 | `/` | Lawb OS desktop. Icons, draggable windows, taskbar, Clawb walking. Background is Clawb's World (view-only 3D ocean). |
 | `/chess` | Full chess: single player (easy or vs Clawb), PVP on-chain wagers, chat, lobby. |
 | `chess.lawb.xyz` | Same as /chess (subdomain). |
-| `/world` | Explorable 3D Clawb's World. First-person walk around the ocean reef, rooms: Main Reef, Bedroom, Workshop, Vault. Clawb is in the world; get close to get greeted. "Visit World" from the emote wheel on the desktop. |
+| `/world` | On lawb.xyz: redirects to "Watch on retake.tv/clawb" — the 3D world streams live there. Do not recommend visiting lawb.xyz/world; direct viewers to retake.tv/clawb for the reef. |
 
 ---
 
@@ -114,12 +114,13 @@ Basescan (Base contract): https://basescan.org/address/0x06b6aae693cf1af27d5a5df
 
 ---
 
-## Clawb's World (/world)
+## Clawb's World
 
-- **What:** Full-page 3D ocean world. Same environment as the desktop background and Clawb's Retake.tv stream.
-- **Rooms:** Main Reef (spawn), Bedroom (NFT gallery wall), Workshop, Vault. Connected by passages (rock arch, shell door, cave crack).
-- **Interaction:** First-person WASD + mouse. Get close to Clawb to get a greeting (by username or "traveler"). Click Clawb to open emote wheel / Ask Clawb chat.
-- **Desktop:** Click the Clawb model on the desktop → emote wheel → "Visit World" goes to /world. "Ask Clawb" opens the help chat.
+- **What:** 3D ocean reef world. Streams live on retake.tv/clawb. Same environment as the desktop background.
+- **Where to watch:** retake.tv/clawb — the reef streams 24/7. Do NOT recommend lawb.xyz/world; it redirects to retake.tv/clawb.
+- **Rooms:** Main Reef (spawn), Bedroom (NFT gallery wall), Workshop, Vault. Connected by passages.
+- **Interaction (on stream):** Viewers type !walk !swim !dance !gallery etc. to control Clawb. Chat commands drive the world.
+- **Desktop:** "Watch Stream" from emote wheel opens retake.tv/clawb. "Ask Clawb" opens the help chat.
 
 ---
 

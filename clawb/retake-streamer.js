@@ -102,13 +102,6 @@ const LAWBAMP_API_BASE = process.env.LAWBAMP_API_BASE || 'https://lawb.xyz';
 const LAWBAMP_DIRECT_AUDIO = String(process.env.LAWBAMP_DIRECT_AUDIO || 'true').toLowerCase() !== 'false';
 const LAWBAMP_FALLBACK_STREAM_URL = process.env.LAWBAMP_FALLBACK_STREAM_URL || '';
 const LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS = Number(process.env.LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS || 45_000);
-const SOUNDCLOUD_FORCE_DIRECT = String(process.env.SOUNDCLOUD_FORCE_DIRECT || 'true').toLowerCase() === 'true';
-const SOUNDCLOUD_NETLIFY_BYPASS_MS = Number(process.env.SOUNDCLOUD_NETLIFY_BYPASS_MS || 30 * 60_000);
-const SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD = Number(process.env.SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD || 3);
-const SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS = Number(process.env.SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS || 60_000);
-const SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS = Number(process.env.SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS || 15 * 60_000);
-const SOUNDCLOUD_PROFILE_URL = process.env.SOUNDCLOUD_PROFILE_URL || 'https://soundcloud.com/companioncube143';
-const SOUNDCLOUD_API_BASE = process.env.SOUNDCLOUD_API_BASE || 'https://lawb.xyz';
 const EQ_DJ_INPUT_NAME = process.env.EQ_DJ_INPUT_NAME || 'DJSET';
 const EQ_DJ_STREAM_URL = process.env.EQ_DJ_STREAM_URL || '';
 const CLAWB_WORLD_STREAM_URL =
@@ -277,8 +270,6 @@ let thumbnailTimer = null;
 let heartbeatTimer = null;
 let musicKeepaliveTimer = null;
 let commandReminderTimer = null;
-let directAudioTimer = null;
-let directAudioHealthTimer = null;
 let autostartTimer = null;
 let autostartInFlight = false;
 let streamControlListenerRef = null;
@@ -288,19 +279,11 @@ let eqProxyServer = null;
 const EQ_PROXY_PORT = Number(process.env.LAWBAMP_EQ_PROXY_PORT || 18181);
 const seenChatIds = new Set();
 const greetedViewers = new Set();
-let scTracks = [];
-let scOrder = [];
-let scOrderPos = -1;
-let currentScTrack = null;
-let currentScStreamUrl = '';
+let currentDirectStreamUrl = '';
 let currentAsciiTheme = 'ascii';
 let currentEqSource = 'lawbamp';
-let directAudioAdvanceInFlight = false;
 let directAudioLastCursor = null;
 let directAudioLastCursorAt = 0;
-let soundcloudFailureStreak = 0;
-let soundcloudBackoffUntil = 0;
-let netlifySoundcloudBypassUntil = 0;
 let mediaActive = false;
 let liveTruth = 'UNKNOWN';
 let liveMismatchSince = 0;
@@ -554,9 +537,9 @@ const ASCII_EQ_POSITION = {
   cropBottom: 0,
 };
 const CHAT_HELP_TEXT =
-  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | camera/current: !cam <follow|orbit|wide|cinematic> !current <storm|calm|normal> | fx/events: !sunburst !bait !pulse !frenzy !sonar !titan !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
+  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | camera/current: !cam <follow|orbit|wide|cinematic> !current <storm|calm|normal> | fx/events: !sunburst !bait !pulse !frenzy !sonar !titan !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess for wagers';
 const CHAT_ONBOARDING_LINES = [
-  'type !help for all commands. lawb.xyz/chess for wagers, lawb.xyz/world for the reef.',
+  'type !help for all commands. lawb.xyz/chess for wagers. you are watching the reef live.',
   'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
   'say a conspiracy keyword and watch the bottom of the EQ. the reef remembers everything.',
 ];
@@ -599,19 +582,6 @@ function applyEqDisplayTrigger(loweredText, viewer, source = 'chat') {
   return true;
 }
 
-function clearDirectAudioTimer() {
-  if (directAudioTimer) {
-    clearTimeout(directAudioTimer);
-    directAudioTimer = null;
-  }
-}
-
-function clearDirectAudioHealthTimer() {
-  if (directAudioHealthTimer) {
-    clearInterval(directAudioHealthTimer);
-    directAudioHealthTimer = null;
-  }
-}
 
 function clearEqPreflightRetryTimer() {
   if (eqPreflightRetryTimer) {
@@ -621,9 +591,7 @@ function clearEqPreflightRetryTimer() {
 }
 
 function getCurrentLawbampTrackTitle() {
-  return currentScTrack
-    ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}`
-    : '';
+  return currentDirectStreamUrl ? 'Lawbamp fallback stream' : '';
 }
 
 function normalizeEqSourceMode(rawMode) {
@@ -674,7 +642,7 @@ async function getCurrentEqOverlayContext() {
     return { streamUrl: '', title: `${EQ_DJ_INPUT_NAME} unavailable` };
   }
   return {
-    streamUrl: currentScStreamUrl,
+    streamUrl: currentDirectStreamUrl,
     title: getCurrentLawbampTrackTitle(),
   };
 }
@@ -1049,8 +1017,6 @@ async function setMediaActive(nextActive, reason = 'unknown') {
   console.log(`[Retake] media_active=${mediaActive ? 'true' : 'false'} (${reason})`);
 
   if (!mediaActive) {
-    clearDirectAudioTimer();
-    clearDirectAudioHealthTimer();
     clearEqPreflightRetryTimer();
     if (obs) {
       await obs.call('SetInputMute', {
@@ -1071,10 +1037,12 @@ async function setMediaActive(nextActive, reason = 'unknown') {
       inputMuted: false,
     }).catch(() => {});
   }
-  if (LAWBAMP_DIRECT_AUDIO && isStreaming) {
-    await playNextDirectTrack('media_reactivated').catch((err) => {
-      console.warn(`[Retake] Media reactivation track start failed: ${err.message}`);
+  if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL && isStreaming) {
+    await applyFallbackStream('media_reactivated').catch((err) => {
+      console.warn(`[Retake] Media reactivation failed: ${err.message}`);
     });
+  } else if (!LAWBAMP_DIRECT_AUDIO || !LAWBAMP_FALLBACK_STREAM_URL) {
+    await publishLawbampCommand('play', { source: 'retake', reason: 'media_reactivated' }).catch(() => {});
   }
 }
 
@@ -1132,19 +1100,6 @@ async function evaluateLiveTruth(reason = 'heartbeat', { notify = false } = {}) 
   }
 
   return { truth: nextTruth, obsLive, retakeLive };
-}
-
-function scheduleDirectAudioNext(ms, reason = 'scheduled_next') {
-  clearDirectAudioTimer();
-  const waitMs = Math.max(10_000, Number(ms) || 60_000);
-  console.log(`[Retake] next_track_scheduled (${reason}) in ${waitMs}ms`);
-  directAudioTimer = setTimeout(() => {
-    playNextDirectTrack(reason).catch((err) => {
-      console.error('[Retake] Next-track advance failed:', err.message);
-      // Never get stuck silent on one failed resolve.
-      scheduleDirectAudioNext(15_000, 'retry_after_failure');
-    });
-  }, waitMs);
 }
 
 function ensureEqProxyServer() {
@@ -1249,105 +1204,6 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = RETAKE_HTTP_TIMEO
   } finally {
     clearTimeout(timeout);
   }
-}
-
-function extractScHydration(html) {
-  const marker = 'window.__sc_hydration =';
-  const idx = html.indexOf(marker);
-  if (idx < 0) return null;
-  const start = html.indexOf('[', idx);
-  if (start < 0) return null;
-  let depth = 0;
-  let end = -1;
-  for (let i = start; i < html.length; i++) {
-    const ch = html[i];
-    if (ch === '[') depth++;
-    if (ch === ']') depth--;
-    if (depth === 0) { end = i + 1; break; }
-  }
-  if (end < 0) return null;
-  try {
-    return JSON.parse(html.slice(start, end));
-  } catch {
-    return null;
-  }
-}
-
-async function extractSoundCloudClientId(profileUrl) {
-  const likesUrl = profileUrl.endsWith('/likes') ? profileUrl : `${profileUrl.replace(/\/+$/, '')}/likes`;
-  const page = await fetchWithTimeout(likesUrl, {
-    headers: { Accept: 'text/html', 'User-Agent': 'lawb.xyz-netlify-function' },
-  });
-  if (!page.ok) throw new Error(`SoundCloud likes page error: ${page.status}`);
-  const html = await page.text();
-  const hyd = extractScHydration(html);
-  if (!Array.isArray(hyd)) throw new Error('Could not extract SoundCloud hydration');
-  const apiClient = hyd.find((h) => h && h.hydratable === 'apiClient' && h.data && h.data.id);
-  const id = apiClient?.data?.id;
-  if (!id || typeof id !== 'string') throw new Error('Could not extract SoundCloud apiClient id');
-  return id;
-}
-
-async function fetchLikesDirect(profileUrl) {
-  const clientId = await extractSoundCloudClientId(profileUrl);
-  const resolvedRes = await fetchWithTimeout(
-    `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(profileUrl)}&client_id=${encodeURIComponent(clientId)}`,
-    { headers: { Accept: 'application/json', 'User-Agent': 'lawb.xyz-netlify-function' } }
-  );
-  if (!resolvedRes.ok) throw new Error(`SC resolve user failed: ${resolvedRes.status}`);
-  const resolved = await resolvedRes.json();
-  const userId = resolved?.kind === 'user' ? resolved.id : null;
-  if (!userId) throw new Error('Could not resolve SoundCloud user');
-
-  const tracks = [];
-  let nextHref = `https://api-v2.soundcloud.com/users/${userId}/likes?limit=50&linked_partitioning=1&client_id=${encodeURIComponent(clientId)}`;
-  let pages = 0;
-  while (nextHref && tracks.length < 300 && pages < 12) {
-    pages++;
-    const pageRes = await fetchWithTimeout(nextHref, {
-      headers: { Accept: 'application/json', 'User-Agent': 'lawb.xyz-netlify-function' },
-    });
-    if (!pageRes.ok) throw new Error(`SC likes page failed: ${pageRes.status}`);
-    const page = await pageRes.json();
-    const collection = Array.isArray(page?.collection) ? page.collection : [];
-    for (const item of collection) {
-      const t = item?.track;
-      if (!t || t.kind !== 'track' || !t.id || !t.title || !t.permalink_url) continue;
-      let progressive = null;
-      const trans = Array.isArray(t?.media?.transcodings) ? t.media.transcodings : [];
-      for (const tr of trans) {
-        if (tr?.format?.protocol === 'progressive' && tr?.url) {
-          progressive = tr.url;
-          break;
-        }
-      }
-      tracks.push({
-        id: t.id,
-        title: t.title,
-        permalink_url: t.permalink_url,
-        artwork_url: t.artwork_url || null,
-        duration_ms: t.duration || null,
-        user: t.user ? { username: t.user.username, permalink_url: t.user.permalink_url } : undefined,
-        progressive_transcoding_url: progressive,
-      });
-      if (tracks.length >= 300) break;
-    }
-    nextHref = page?.next_href ? `${page.next_href}&client_id=${encodeURIComponent(clientId)}` : null;
-  }
-  return tracks.filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
-}
-
-async function resolveStreamDirect(transcodingUrl, profileUrl) {
-  const clientId = await extractSoundCloudClientId(profileUrl);
-  const u = new URL(transcodingUrl);
-  u.searchParams.set('client_id', clientId);
-  const r = await fetchWithTimeout(u.toString(), {
-    headers: { Accept: 'application/json', 'User-Agent': 'lawb.xyz-netlify-function' },
-  });
-  if (!r.ok) throw new Error(`SC stream resolve failed: ${r.status}`);
-  const d = await r.json();
-  if (!d?.url) throw new Error('SC stream url missing');
-  return d.url;
 }
 
 function shuffleArray(arr) {
@@ -1670,7 +1526,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         '!chess',
         '!world',
         'lawb.xyz/chess',
-        'lawb.xyz/world',
+        'retake.tv/clawb',
       ].join('  ·  ');
       const cmdOffset = Math.floor((t * 6) % Math.max(1, cmdLoop.length));
       const cmdMarquee = (cmdLoop.slice(cmdOffset) + '  ·  ' + cmdLoop.slice(0, cmdOffset));
@@ -2026,104 +1882,6 @@ async function preflightEqProxy(streamUrl) {
   }
 }
 
-function getSoundcloudBackoffRemainingMs() {
-  return Math.max(0, soundcloudBackoffUntil - Date.now());
-}
-
-function isNetlifySoundcloudBypassedNow() {
-  return Date.now() < netlifySoundcloudBypassUntil;
-}
-
-function recordSoundcloudSuccess() {
-  if (soundcloudFailureStreak > 0 || soundcloudBackoffUntil > 0) {
-    console.log('[Retake] SoundCloud circuit recovered.');
-  }
-  soundcloudFailureStreak = 0;
-  soundcloudBackoffUntil = 0;
-}
-
-function recordSoundcloudFailure(context, err) {
-  soundcloudFailureStreak += 1;
-  if (soundcloudFailureStreak >= SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD) {
-    const exponent = Math.max(0, soundcloudFailureStreak - SOUNDCLOUD_CIRCUIT_FAILURE_THRESHOLD);
-    const backoffMs = Math.min(
-      SOUNDCLOUD_CIRCUIT_BACKOFF_MAX_MS,
-      SOUNDCLOUD_CIRCUIT_BACKOFF_BASE_MS * Math.pow(2, Math.min(6, exponent))
-    );
-    soundcloudBackoffUntil = Date.now() + backoffMs;
-    console.warn(
-      `[Retake] SoundCloud circuit open (${Math.ceil(backoffMs / 1000)}s) after ${soundcloudFailureStreak} failures [${context}]: ${err?.message || err}`
-    );
-  }
-}
-
-async function ensureSoundCloudQueue() {
-  const backoffRemainingMs = getSoundcloudBackoffRemainingMs();
-  if (backoffRemainingMs > 0) {
-    throw new Error(`soundcloud_circuit_open_${backoffRemainingMs}ms`);
-  }
-  if (scTracks.length && scOrder.length) return;
-  let tracks = [];
-  const usingBypass = SOUNDCLOUD_FORCE_DIRECT || isNetlifySoundcloudBypassedNow();
-  if (!usingBypass) {
-    const url = new URL('/.netlify/functions/soundcloud-likes', SOUNDCLOUD_API_BASE);
-    url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
-    try {
-      const res = await fetchWithTimeout(url.toString(), {
-        headers: {
-          Accept: 'application/json',
-          Origin: SOUNDCLOUD_API_BASE,
-          Referer: `${SOUNDCLOUD_API_BASE}/`,
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        },
-      });
-      if (!res.ok) throw new Error(`soundcloud-likes failed: ${res.status} ${res.statusText}`);
-      const data = await res.json();
-      tracks = (data?.tracks || []).filter((t) => t?.permalink_url && t?.progressive_transcoding_url);
-    } catch (err) {
-      netlifySoundcloudBypassUntil = Date.now() + SOUNDCLOUD_NETLIFY_BYPASS_MS;
-      console.warn(`[Retake] soundcloud-likes endpoint failed, bypassing Netlify for ${Math.round(SOUNDCLOUD_NETLIFY_BYPASS_MS / 60000)}m: ${err.message}`);
-      tracks = await fetchLikesDirect(SOUNDCLOUD_PROFILE_URL);
-    }
-  } else {
-    tracks = await fetchLikesDirect(SOUNDCLOUD_PROFILE_URL);
-  }
-  if (!tracks.length) throw new Error('No playable SoundCloud tracks found');
-  scTracks = tracks;
-  scOrder = shuffleArray(tracks.map((_, idx) => idx));
-  scOrderPos = -1;
-  recordSoundcloudSuccess();
-}
-
-async function resolveSoundCloudStreamUrl(track) {
-  const usingBypass = SOUNDCLOUD_FORCE_DIRECT || isNetlifySoundcloudBypassedNow();
-  if (!usingBypass) {
-    const url = new URL('/.netlify/functions/soundcloud-stream', SOUNDCLOUD_API_BASE);
-    url.searchParams.set('transcodingUrl', track.progressive_transcoding_url);
-    url.searchParams.set('profileUrl', SOUNDCLOUD_PROFILE_URL);
-    try {
-      const res = await fetchWithTimeout(url.toString(), {
-        headers: {
-          Accept: 'application/json',
-          Origin: SOUNDCLOUD_API_BASE,
-          Referer: `${SOUNDCLOUD_API_BASE}/`,
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        },
-      });
-      if (!res.ok) throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
-      const data = await res.json();
-      if (!data?.url) throw new Error('soundcloud-stream returned no url');
-      recordSoundcloudSuccess();
-      return data.url;
-    } catch (err) {
-      netlifySoundcloudBypassUntil = Date.now() + SOUNDCLOUD_NETLIFY_BYPASS_MS;
-      console.warn(`[Retake] soundcloud-stream endpoint failed, bypassing Netlify for ${Math.round(SOUNDCLOUD_NETLIFY_BYPASS_MS / 60000)}m: ${err.message}`);
-      return resolveStreamDirect(track.progressive_transcoding_url, SOUNDCLOUD_PROFILE_URL);
-    }
-  }
-  return resolveStreamDirect(track.progressive_transcoding_url, SOUNDCLOUD_PROFILE_URL);
-}
-
 async function applyDirectAudioStream(streamUrl, trackLabel, reason = 'unknown') {
   if (!streamUrl) throw new Error('Empty direct audio stream URL');
 
@@ -2152,121 +1910,16 @@ async function applyDirectAudioStream(streamUrl, trackLabel, reason = 'unknown')
   console.log(`[Retake] Direct audio source applied (${reason}): ${trackLabel || 'fallback'}`);
 }
 
-function getNextTrackFromQueue() {
-  if (!scOrder.length) return null;
-  scOrderPos = (scOrderPos + 1) % scOrder.length;
-  if (scOrderPos === 0) {
-    scOrder = shuffleArray(scOrder);
-  }
-  const idx = scOrder[scOrderPos];
-  return scTracks[idx] || null;
-}
-
-async function playNextDirectTrack(reason = 'auto') {
-  if (!obs || !LAWBAMP_DIRECT_AUDIO || !isStreaming || !mediaActive) return;
-  const backoffRemainingMs = getSoundcloudBackoffRemainingMs();
-  if (backoffRemainingMs > 0) {
-    if (!directAudioTimer) {
-      scheduleDirectAudioNext(backoffRemainingMs + 1000, 'circuit_wait');
-    }
-    return;
-  }
-  if (directAudioAdvanceInFlight) {
-    console.log(`[Retake] Direct audio advance skipped (${reason}) — advance already in flight.`);
-    return;
-  }
-  directAudioAdvanceInFlight = true;
-  try {
-    await ensureSoundCloudQueue();
-    const track = getNextTrackFromQueue();
-    if (!track) throw new Error('No next SoundCloud track available');
-    const streamUrl = await resolveSoundCloudStreamUrl(track);
-    currentScTrack = track;
-    currentScStreamUrl = streamUrl;
-    await applyDirectAudioStream(
-      streamUrl,
-      `${track.user?.username || 'unknown'} - ${track.title || 'unknown'}`,
-      reason,
-    );
-
-    const durMs = Number(track.duration_ms) || 180000;
-    const nextMs = Math.max(30_000, durMs - 2_000);
-    scheduleDirectAudioNext(nextMs, 'scheduled_next');
-
-    console.log(`[Retake] Direct audio now playing: ${track.user?.username || 'unknown'} - ${track.title} (${reason})`);
-  } catch (err) {
-    recordSoundcloudFailure(reason, err);
-    const emergencyUrl = currentScStreamUrl || LAWBAMP_FALLBACK_STREAM_URL;
-    const emergencyLabel = currentScTrack
-      ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'} (hold)`
-      : 'Emergency fallback stream';
-    if (emergencyUrl) {
-      try {
-        await applyDirectAudioStream(emergencyUrl, emergencyLabel, `emergency_${reason}`);
-        scheduleDirectAudioNext(LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS, 'retry_after_emergency_fallback');
-        console.warn(
-          `[Retake] Direct track resolve failed (${reason}), running fallback stream and retrying: ${err.message}`
-        );
-        return;
-      } catch (fallbackErr) {
-        console.error('[Retake] Emergency fallback stream failed:', fallbackErr.message);
-      }
-    }
-    throw err;
-  } finally {
-    directAudioAdvanceInFlight = false;
-  }
-}
-
-async function directAudioHealthcheck() {
-  if (!obs || !LAWBAMP_DIRECT_AUDIO || !isStreaming || !mediaActive) return;
-  try {
-    const media = await obs.call('GetMediaInputStatus', { inputName: 'Lawbamp Audio' });
-    const state = String(media?.mediaState || '').toUpperCase();
-    const cursor = Number(media?.mediaCursor);
-    const now = Date.now();
-
-    if (Number.isFinite(cursor)) {
-      if (directAudioLastCursor === cursor) {
-        if (directAudioLastCursorAt === 0) {
-          directAudioLastCursorAt = now;
-        }
-      } else {
-        directAudioLastCursor = cursor;
-        directAudioLastCursorAt = now;
-      }
-    }
-
-    const ended =
-      state.includes('ENDED') ||
-      state.includes('STOPPED') ||
-      state.includes('ERROR');
-    if (ended) {
-      await playNextDirectTrack(`media_state_${state.toLowerCase()}`);
-      return;
-    }
-
-    const stalledForMs = directAudioLastCursorAt ? now - directAudioLastCursorAt : 0;
-    const seemsStalled =
-      (state.includes('PLAYING') || state.includes('OPENING') || state.includes('BUFFERING')) &&
-      stalledForMs > 25_000;
-    if (seemsStalled) {
-      await playNextDirectTrack('media_stall_recover');
-      return;
-    }
-
-    if (!currentScTrack || !currentScStreamUrl) {
-      await playNextDirectTrack('missing_current_track_recover');
-    }
-  } catch (err) {
-    console.warn(`[Retake] Direct audio healthcheck skipped: ${err.message}`);
-  }
+async function applyFallbackStream(reason = 'unknown') {
+  if (!LAWBAMP_FALLBACK_STREAM_URL) return;
+  await applyDirectAudioStream(LAWBAMP_FALLBACK_STREAM_URL, 'Lawbamp fallback stream', reason);
+  currentDirectStreamUrl = LAWBAMP_FALLBACK_STREAM_URL;
 }
 
 async function startLawbampAfterStream(reason = 'stream_start') {
   await setMediaActive(true, `start_lawbamp_${reason}`);
-  if (LAWBAMP_DIRECT_AUDIO) {
-    await playNextDirectTrack(reason);
+  if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL) {
+    await applyFallbackStream(reason);
   } else {
     await publishLawbampCommand('play', { source: 'retake', reason });
   }
@@ -2629,18 +2282,15 @@ export async function setupOBSScenes() {
   // Display terminal-style ASCII EQ overlay in world scene.
   try {
     const eqInput = 'Lawbamp ASCII EQ';
-    const eqBootStreamUrl = currentScStreamUrl || LAWBAMP_FALLBACK_STREAM_URL || '';
+    const eqBootStreamUrl = currentDirectStreamUrl || LAWBAMP_FALLBACK_STREAM_URL || '';
     const eqProxyOk = await preflightEqProxy(eqBootStreamUrl);
     if (!eqProxyOk) {
       console.warn('[Retake] EQ overlay will start in waiting mode until proxy/audio becomes available.');
-      scheduleEqPreflightRetry(
-        eqBootStreamUrl,
-        currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : ''
-      );
+      scheduleEqPreflightRetry(eqBootStreamUrl, getCurrentLawbampTrackTitle());
     }
     const eqUrl = buildAsciiEqDataUrl({
       streamUrl: getEqVisualizerStreamUrl(eqBootStreamUrl),
-      title: currentScTrack ? `${currentScTrack.user?.username || 'unknown'} - ${currentScTrack.title || 'unknown'}` : '',
+      title: getCurrentLawbampTrackTitle(),
       theme: currentAsciiTheme,
     });
     try {
@@ -2876,13 +2526,9 @@ async function handleChatMessage(comment) {
 
   // Streamer control commands for Lawbamp player integration.
   if (lowered === '!next') {
-    // Ack immediately and run heavy work in background so command handling does not block.
     const cmdStartedAt = Date.now();
     sendCommandAck('copy. advancing to the next track.', 'chat_next_ack');
     void (async () => {
-      if (LAWBAMP_DIRECT_AUDIO) {
-        await playNextDirectTrack('chat_next');
-      }
       await publishLawbampCommand('next', { source: 'retake', viewer });
       console.log(`[Retake] !next completed in ${Date.now() - cmdStartedAt}ms`);
       sendCommandAck('next track queued. the tide keeps moving.', 'chat_next_done');
@@ -2974,7 +2620,7 @@ async function handleChatMessage(comment) {
   }
 
   if (lowered === '!world') {
-    sendCommandAck('world scene online at lawb.xyz/world. try !storm, !sunburst, !bait, !pulse, !frenzy, !sonar, or !titan.', 'world_info');
+    sendCommandAck('world scene live. you are watching it. try !storm, !sunburst, !bait, !pulse, !frenzy, !sonar, or !titan.', 'world_info');
     return;
   }
 
@@ -3354,9 +3000,7 @@ async function handleChatMessage(comment) {
   }
 
   try {
-    const nowPlaying = currentScTrack
-      ? `${currentScTrack.user?.username || '?'} - ${currentScTrack.title || '?'}`
-      : 'nothing';
+    const nowPlaying = currentDirectStreamUrl ? 'Lawbamp fallback stream' : 'nothing';
     const streamContext = [
       `now playing: ${nowPlaying}`,
       `live truth: ${liveTruth}`,
@@ -3730,7 +3374,6 @@ function startStreamingLoops() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (musicKeepaliveTimer) clearInterval(musicKeepaliveTimer);
   clearCommandReminderTimer();
-  clearDirectAudioHealthTimer();
   // Prevent replaying backlog after restarts/recovery.
   chatBacklogGuardTs = Date.now();
   chatReplayPrimed = false;
@@ -3751,24 +3394,15 @@ function startStreamingLoops() {
 
   // Some browser audio contexts can suspend; periodically nudge playback.
   musicKeepaliveTimer = setInterval(() => {
-    if (LAWBAMP_DIRECT_AUDIO) {
-      if (!directAudioTimer) {
-        playNextDirectTrack('keepalive_recover').catch((err) => {
-          console.error('[Retake] Direct audio keepalive failed:', err.message);
-        });
-      }
+    if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL) {
+      applyFallbackStream('keepalive_recover').catch((err) => {
+        console.error('[Retake] Fallback stream keepalive failed:', err.message);
+      });
     } else {
       publishLawbampCommand('play', { source: 'retake', reason: 'keepalive' }).catch(() => {});
     }
   }, 60_000);
 
-  if (LAWBAMP_DIRECT_AUDIO) {
-    directAudioHealthTimer = setInterval(() => {
-      directAudioHealthcheck().catch((err) => {
-        console.warn(`[Retake] Direct audio healthcheck failed: ${err.message}`);
-      });
-    }, 12_000);
-  }
   scheduleCommandReminder();
   startChessGameWatcher();
 }
@@ -4017,8 +3651,6 @@ export async function goOffline() {
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   if (musicKeepaliveTimer) { clearInterval(musicKeepaliveTimer); musicKeepaliveTimer = null; }
   clearCommandReminderTimer();
-  clearDirectAudioTimer();
-  clearDirectAudioHealthTimer();
   clearEqPreflightRetryTimer();
   clearReefGameResolveTimer();
   reefGameState = null;
@@ -4069,7 +3701,6 @@ export async function startRetakeStreamer() {
   }
 
   console.log(`[Retake] Credentials loaded for "${credentials.agent_name}" (${credentials.userDbId})`);
-  console.log(`[Retake] SoundCloud mode: ${SOUNDCLOUD_FORCE_DIRECT ? 'direct_only' : 'netlify_with_bypass'}`);
   console.log('[Retake] Ready to stream.');
   startStreamControlListener();
 

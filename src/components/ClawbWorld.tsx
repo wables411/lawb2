@@ -2057,15 +2057,16 @@ const ClawbWorld: React.FC = () => {
     galleryGroupRef.current = galleryGroup;
 
     const NFT_FALLBACK: NFTItem[] = [
-      { chain: 'ethereum', contract: '0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42', tokenId: '158', name: 'Lawbster #158', collection: 'lawbsters' },
-      { chain: 'ethereum', contract: '0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42', tokenId: '177', name: 'Lawbster #177', collection: 'lawbsters' },
-      { chain: 'ethereum', contract: '0x2d278e95b2fC67D4b27a276807e24E479D9707F6', tokenId: '34', name: 'Pixelawbster #34', collection: 'Pixelawbsters' },
-      { chain: 'ethereum', contract: '0xd7922cD333da5ab3758C95f774B092A7B13a5449', tokenId: '269', name: 'LAWBSTARZ #269', collection: 'LAWBSTARZ' },
-      { chain: 'ethereum', contract: '0xd7922cD333da5ab3758C95f774B092A7B13a5449', tokenId: '584', name: 'LAWBSTARZ #584', collection: 'LAWBSTARZ' },
-      { chain: 'base', contract: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2', tokenId: '45', name: 'Lawbster #45', collection: 'ascii Lawbsters' },
+      { chain: 'ethereum', contract: '0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42', tokenId: '158', name: 'Lawbster #158', collection: 'lawbsters', image_url: 'https://nft-cdn.alchemy.com/eth-mainnet/8232eea91264b8dc42579c195d115ced' },
+      { chain: 'ethereum', contract: '0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42', tokenId: '177', name: 'Lawbster #177', collection: 'lawbsters', image_url: 'https://nft-cdn.alchemy.com/eth-mainnet/81c0b08343ea49978e1f0ce6f14716a1' },
+      { chain: 'ethereum', contract: '0x2d278e95b2fC67D4b27a276807e24E479D9707F6', tokenId: '34', name: 'Pixelawbster #34', collection: 'Pixelawbsters', image_url: 'https://nft-cdn.alchemy.com/eth-mainnet/e70c864ca87991d2fb111d51bfea14a5' },
+      { chain: 'ethereum', contract: '0xd7922cD333da5ab3758C95f774B092A7B13a5449', tokenId: '269', name: 'LAWBSTARZ #269', collection: 'LAWBSTARZ', image_url: 'https://nft-cdn.alchemy.com/eth-mainnet/8626a53fdce3a6768484a71e83382d34' },
+      { chain: 'ethereum', contract: '0xd7922cD333da5ab3758C95f774B092A7B13a5449', tokenId: '584', name: 'LAWBSTARZ #584', collection: 'LAWBSTARZ', image_url: 'https://nft-cdn.alchemy.com/eth-mainnet/a30f949561b9c961e97bb1010070c184' },
+      { chain: 'base', contract: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2', tokenId: '45', name: 'Lawbster #45', collection: 'ascii Lawbsters', image_url: 'https://cloudflare-ipfs.com/ipfs/bafybeihxfyltqaawyqfdh442hzh6cdwms7nbodtk7qkfilgkftmd52xz3e/45.png' },
     ];
 
     const texLoader = new THREE.TextureLoader();
+    const texLoaderNoCors = new THREE.TextureLoader(); // Some NFT CDNs block CORS; try without first
     texLoader.setCrossOrigin('anonymous');
     const frameMat = new THREE.MeshPhongMaterial({ color: 0xccaa33, shininess: 20, side: THREE.DoubleSide });
     const bgMat = new THREE.MeshBasicMaterial({ color: 0x1a2a3a, side: THREE.DoubleSide });
@@ -2073,17 +2074,20 @@ const ClawbWorld: React.FC = () => {
 
     const loadTextureWithFallback = async (nft: NFTItem): Promise<THREE.Texture> => {
       const urls = normalizeIpfsUrl(nft.image_url || '');
+      if (!urls.length) return createNftPlaceholderTexture(nft, 'no image url');
       for (const url of urls) {
-        try {
-          const tex = await new Promise<THREE.Texture>((resolve, reject) => {
-            texLoader.load(url, resolve, undefined, reject);
-          });
-          tex.minFilter = THREE.LinearFilter;
-          tex.magFilter = THREE.LinearFilter;
-          tex.colorSpace = THREE.SRGBColorSpace;
-          return tex;
-        } catch {
-          // try next gateway
+        for (const loader of [texLoaderNoCors, texLoader]) {
+          try {
+            const tex = await new Promise<THREE.Texture>((resolve, reject) => {
+              loader.load(url, resolve, undefined, reject);
+            });
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            return tex;
+          } catch {
+            // try next loader or gateway
+          }
         }
       }
       return createNftPlaceholderTexture(nft, 'image unavailable');
@@ -2189,10 +2193,28 @@ const ClawbWorld: React.FC = () => {
       }
     };
 
-    // Gallery: local-only uses /local-world-assets/gallery.json; production uses Firebase
-    const galleryUrl = isLocalWorldOnly()
-      ? '/local-world-assets/gallery.json'
-      : FIREBASE_GALLERY_URL;
+    // Gallery: Firebase is source of truth (Clawb syncs there). Local file only as fallback when Firebase fails.
+    const fetchGalleryNfts = async (): Promise<NFTItem[]> => {
+      try {
+        const firebaseRes = await fetch(FIREBASE_GALLERY_URL);
+        if (firebaseRes.ok) {
+          const data = await firebaseRes.json();
+          if (data?.nfts?.length) return data.nfts;
+        }
+        // Firebase failed or empty — try local file when on localhost (offline/air-gapped)
+        if (isLocalWorldOnly()) {
+          const localRes = await fetch('/local-world-assets/gallery.json');
+          if (localRes.ok) {
+            const localData = await localRes.json();
+            if (localData?.nfts?.length) return localData.nfts;
+          }
+        }
+        return NFT_FALLBACK;
+      } catch (err) {
+        console.warn('[ClawbWorld] Gallery fetch error:', err);
+        return NFT_FALLBACK;
+      }
+    };
 
     const addGalleryCollisionBoxes = () => {
       const bx = BEDROOM_OFFSET.x;
@@ -2210,9 +2232,7 @@ const ClawbWorld: React.FC = () => {
         if (galleryBuiltRef.current.built) return;
         galleryBuiltRef.current.built = true;
         try {
-          const res = await fetch(galleryUrl);
-          const data = res.ok ? await res.json() : null;
-          const nfts = data?.nfts?.length ? data.nfts : NFT_FALLBACK;
+          const nfts = await fetchGalleryNfts();
           await buildGallery(nfts);
         } catch {
           console.warn('[ClawbWorld] Gallery fetch failed, using fallback');
@@ -2223,16 +2243,9 @@ const ClawbWorld: React.FC = () => {
         if (pending != null) triggerWorldAction('look_nft', { targetNftIndex: pending });
       };
     } else {
-      fetch(galleryUrl)
-        .then((res) => {
-          if (!res.ok) throw new Error('Gallery fetch failed');
-          return res.json();
-        })
-        .then(async (data: { nfts?: NFTItem[] }) => {
-          const nfts = data?.nfts?.length ? data.nfts : NFT_FALLBACK;
-          await buildGallery(nfts);
-          addGalleryCollisionBoxes();
-        })
+      fetchGalleryNfts()
+        .then((nfts) => buildGallery(nfts))
+        .then(() => addGalleryCollisionBoxes())
         .catch(async () => {
           console.warn('[ClawbWorld] Gallery fetch failed, using fallback');
           await buildGallery(NFT_FALLBACK);
@@ -2827,6 +2840,11 @@ const ClawbWorld: React.FC = () => {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       keysRef.current[k] = true;
+      // G: debug — go to gallery when stream mode + localhost (for testing !gallery without Retake)
+      if (k === 'g' && isStreamMode && isLocalWorldOnly()) {
+        goToRoom('bedroom');
+        return;
+      }
       // E: inspect NFT in front first, otherwise talk to Clawb when near
       if (k === 'e') {
         if (tryInspectNftInFront()) {
@@ -2891,7 +2909,7 @@ const ClawbWorld: React.FC = () => {
         });
       }
     };
-  }, [address, createNftPlaceholderTexture, getGreeting, normalizeIpfsUrl, tryInspectNftInFront, animate, ensureRemotePlayer, isStreamMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [address, createNftPlaceholderTexture, getGreeting, goToRoom, normalizeIpfsUrl, tryInspectNftInFront, animate, ensureRemotePlayer, isStreamMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ensure stale sessions are removed if tab/browser disconnects.
   useEffect(() => {

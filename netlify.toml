@@ -4,8 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  # SoundCloud API via Cloudflare Worker — zero Netlify credits for soundcloud-*
-  VITE_SOUNDCLOUD_API_BASE = "https://lawb-soundcloud-api.wablesphoto.workers.dev"
   # Exclude ClawbWorld from Netlify: no world bundle, no world-only assets — saves build credits
   VITE_EXCLUDE_WORLD = "true"
 
@@ -28,18 +26,6 @@
   from = "/api/game-monitor-simple"
   to = "/.netlify/functions/game-monitor-simple"
   status = 200
-
-# SoundCloud removed — use Cloudflare Worker. Block any stray requests.
-[[redirects]]
-  from = "/.netlify/functions/soundcloud-likes"
-  to = "/404.html"
-  status = 404
-  force = true
-[[redirects]]
-  from = "/.netlify/functions/soundcloud-stream"
-  to = "/404.html"
-  status = 404
-  force = true
 
 [[redirects]]
   from = "/.env"
