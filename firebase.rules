@@ -1,9 +1,9 @@
 {
   "rules": {
     "chess_games": {
+      ".indexOn": ["game_state", "game_type"],
       ".read": true,
       ".write": true,
-      ".indexOn": ["game_state"],
       "$inviteCode": {
         ".validate": "newData.hasChildren(['invite_code', 'game_state']) && newData.child('invite_code').isString() && newData.child('game_state').isString() && (newData.child('game_state').val() === 'waiting' || newData.child('game_state').val() === 'waiting_for_join' || newData.child('game_state').val() === 'active' || newData.child('game_state').val() === 'finished') && (!newData.hasChild('chain') || (newData.child('chain').isString() && (newData.child('chain').val() === 'sanko' || newData.child('chain').val() === 'base' || newData.child('chain').val() === 'arbitrum')))"
       }
@@ -20,15 +20,16 @@
         ".read": true,
         ".write": true,
         "messages": {
+          ".indexOn": ["timestamp"],
           "$messageId": {
             ".validate": "newData.hasChildren(['userId', 'walletAddress', 'displayName', 'message', 'timestamp', 'room']) && newData.child('userId').isString() && newData.child('walletAddress').isString() && newData.child('displayName').isString() && newData.child('message').isString() && newData.child('timestamp').isNumber() && newData.child('room').val() === 'public' && newData.child('message').val().length > 0 && newData.child('message').val().length <= 500"
           }
         }
       },
       "private": {
+        ".read": true,
+        ".write": true,
         "$inviteCode": {
-          ".read": "auth != null && (data.child('participants').child(auth.uid).exists() || root.child('chess_games').child($inviteCode).child('blue_player').val() === auth.uid || root.child('chess_games').child($inviteCode).child('red_player').val() === auth.uid)",
-          ".write": "auth != null && (data.child('participants').child(auth.uid).exists() || root.child('chess_games').child($inviteCode).child('blue_player').val() === auth.uid || root.child('chess_games').child($inviteCode).child('red_player').val() === auth.uid)",
           "messages": {
             "$messageId": {
               ".validate": "newData.hasChildren(['userId', 'walletAddress', 'displayName', 'message', 'timestamp', 'room', 'inviteCode']) && newData.child('userId').isString() && newData.child('walletAddress').isString() && newData.child('displayName').isString() && newData.child('message').isString() && newData.child('timestamp').isNumber() && newData.child('room').val() === 'private' && newData.child('inviteCode').val() === $inviteCode && newData.child('message').val().length > 0 && newData.child('message').val().length <= 500"
@@ -67,23 +68,54 @@
     },
     "clawb": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "chat": {
+        "visitor_messages": {
+          ".indexOn": ["timestamp"]
+        }
+      },
+      "world": {
+        "actions": {
+          ".indexOn": ["timestamp"]
+        }
+      }
+    },
+    "lawbamp_uploads": {
+      ".read": true,
+      ".write": false,
+      "$entryId": {
+        ".validate": "newData.hasChildren(['uploader','title','filename','mime','bytes','duration_sec','created_at','storage_url']) && newData.child('uploader').isString() && newData.child('uploader').val().matches(/^0x[0-9a-fA-F]{40}$/) && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('filename').isString() && newData.child('filename').val().length > 0 && newData.child('filename').val().length <= 120 && newData.child('mime').isString() && (newData.child('mime').val().matches(/^audio\\//) || newData.child('mime').val().matches(/^video\\//)) && newData.child('bytes').isNumber() && newData.child('bytes').val() > 0 && newData.child('duration_sec').isNumber() && newData.child('duration_sec').val() > 0 && newData.child('duration_sec').val() <= 1800 && newData.child('created_at').isNumber() && newData.child('created_at').val() > 0 && newData.child('storage_url').isString() && newData.child('storage_url').val().matches(/^https:\\/\\/.+/)"
+      }
+    },
+    "lawbamp_uploads_by_user": {
+      ".read": true,
+      ".write": false,
+      "$walletAddress": {
+        "$entryId": {
+          ".validate": "newData.isBoolean() && newData.val() === true && $walletAddress.matches(/^0x[0-9a-fA-F]{40}$/)"
+        }
+      }
     },
     "bounties": {
       ".read": true,
       ".write": true,
       ".indexOn": ["status"]
     },
-    "lawbamp_uploads": {
-      ".read": true,
-      ".write": false,
-      "$entryId": {
-        ".validate": "newData.hasChildren(['uploader','title','filename','mime','bytes','duration_sec','created_at','storage_url']) && newData.child('uploader').isString() && newData.child('uploader').val().matches(/^0x[0-9a-fA-F]{40}$/) && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('filename').isString() && newData.child('filename').val().length > 0 && newData.child('filename').val().length <= 120 && newData.child('mime').isString() && (newData.child('mime').val().matches(/^audio\\//) || newData.child('mime').val().matches(/^video\\//)) && newData.child('bytes').isNumber() && newData.child('bytes').val() > 0 && newData.child('duration_sec').isNumber() && newData.child('duration_sec').val() > 0 && newData.child('duration_sec').val() <= 5400 && newData.child('created_at').isNumber() && newData.child('created_at').val() > 0 && newData.child('storage_url').isString() && newData.child('storage_url').val().matches(/^https:\\/\\/.+/)"
-      }
+    "bounty_claims": {
+      ".read": false,
+      ".write": true
     },
-    "lawbamp_uploads_by_user": {
-      ".read": true,
-      ".write": false
+    "retake_links": {
+      ".read": false,
+      ".write": true
+    },
+    "retake_points": {
+      ".read": false,
+      ".write": true
+    },
+    "claims": {
+      ".read": false,
+      ".write": true
     },
     "wallet_links": {
       ".read": true,

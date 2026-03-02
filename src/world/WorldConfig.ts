@@ -1,5 +1,12 @@
 import * as THREE from 'three';
 
+/** True when world is served from localhost (OBS stream). No Firebase room/leaderboard/gallery/bounties — local files only. */
+export function isLocalWorldOnly(): boolean {
+  if (typeof window === 'undefined') return false;
+  const h = (window.location?.hostname || '').toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1';
+}
+
 // Firebase URLs
 export const FIREBASE_DB = 'https://chess-220ee-default-rtdb.firebaseio.com';
 export const FIREBASE_GALLERY_URL = `${FIREBASE_DB}/clawb/nft_gallery.json`;
@@ -66,7 +73,8 @@ export const CLAWB_GREET_DISTANCE = 3;
 export const CLAWB_SCALE = 0.018;
 export const CLAWB_Y_OFFSET = 0.32;
 export const CLAWB_PATROL_SPEED = 1.2;
-export const CLAWB_PATROL_PAUSE_MS = 1200;
+export const CLAWB_PATROL_PAUSE_MIN_MS = 400;
+export const CLAWB_PATROL_PAUSE_MAX_MS = 800;
 export const CLAWB_STEP_SPEED = 0.9;
 export const CLAWB_SWIM_STEP_SPEED = 1.3;
 export const CLAWB_COMMAND_ACCEL_DAMP = 10;
@@ -95,17 +103,28 @@ export const STREAM_CAMERA_FAR_Z_SCALE = 0.35;
 export const STREAM_CAMERA_POSITION_DAMP = 6;
 export const STREAM_CAMERA_LOOK_DAMP = 8;
 
+// Lobby + per-room loading (Clawb stays in minimal lobby until room is fully loaded)
+// Default true on localhost so OBS/Retake always gets minimal lobby regardless of .env
+export const LAZY_ROOM_LOADING =
+  import.meta.env.VITE_LAZY_ROOM_LOADING === 'true' ||
+  import.meta.env.VITE_LAZY_ROOM_LOADING === '1' ||
+  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+
+/** Lobby position: minimal shell, Clawb waits here until a room is requested and loaded. */
+export const LOBBY_OFFSET = new THREE.Vector3(0, 0, 0);
+
 // Multiplayer
 export const WORLD_MULTIPLAYER_ENABLED = import.meta.env.VITE_WORLD_MULTIPLAYER_ENABLED === 'true';
 export const PRESENCE_WRITE_INTERVAL_MS = 250;
 
-// Patrol path
+// Patrol path — wider loop so Clawb swims 3–5 sec per leg instead of ~1 sec
 export const PATROL_POINTS = [
-  new THREE.Vector3(-2.6, FLOOR_Y, -1.4),
-  new THREE.Vector3(-0.8, FLOOR_Y, 1.0),
-  new THREE.Vector3(1.9, FLOOR_Y, 0.5),
-  new THREE.Vector3(2.7, FLOOR_Y, -1.8),
-  new THREE.Vector3(0.2, FLOOR_Y, -2.4),
+  new THREE.Vector3(-4.2, FLOOR_Y, -2.2),
+  new THREE.Vector3(-1.2, FLOOR_Y, 2.8),
+  new THREE.Vector3(3.2, FLOOR_Y, 1.2),
+  new THREE.Vector3(4.0, FLOOR_Y, -3.0),
+  new THREE.Vector3(0.4, FLOOR_Y, -4.2),
+  new THREE.Vector3(-2.8, FLOOR_Y, -3.4),
 ];
 
 // Character models

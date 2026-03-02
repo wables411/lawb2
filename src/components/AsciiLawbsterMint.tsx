@@ -7,6 +7,7 @@ import { createMintCalls } from '../utils/asciiLawbsterCalls';
 import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import { ASCII_LAWBSTER_CONTRACT_ADDRESS, ASCII_LAWBSTER_CONTRACT_ABI } from '../utils/asciiLawbsterContract';
 import { getAlchemyNFTsForCollection, type NFT } from '../mint';
+import { clearFetchCache } from '../utils/fetchCache';
 
 const useStyles = createUseStyles({
   container: {
@@ -462,6 +463,8 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
   }
 
   function handleTransactionSuccess() {
+    // Clear NFT cache so fresh data is fetched after mint
+    clearFetchCache();
     // Reload claim condition and recently minted after successful mint
     if (address) {
       void loadClaimCondition();

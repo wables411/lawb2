@@ -44,6 +44,16 @@ const ACTION_ALIASES = {
   sunburst: 'sunburst',
   bait: 'bait',
   pulse: 'pulse',
+  predator_frenzy: 'predator_frenzy',
+  sonar_ping: 'sonar_ping',
+  titan_ping: 'titan_ping',
+  cam_follow: 'cam_follow',
+  cam_orbit: 'cam_orbit',
+  cam_wide: 'cam_wide',
+  cam_cinematic: 'cam_cinematic',
+  current_storm: 'current_storm',
+  current_calm: 'current_calm',
+  current_normal: 'current_normal',
   focus_bounties: 'focus_bounties',
   focus_leaderboard: 'focus_leaderboard',
   focus_nfts: 'focus_nfts',
@@ -54,13 +64,22 @@ const DEDUPE_WINDOW_MS = Number(process.env.CLAWB_WORLD_DEDUPE_MS || 1200);
 const MANUAL_OVERRIDE_MS = Number(process.env.CLAWB_WORLD_MANUAL_OVERRIDE_MS || 12_000);
 const LOOP_OVERRIDE_MS = Number(process.env.CLAWB_WORLD_LOOP_OVERRIDE_MS || 20 * 60_000);
 const ACTION_EXPIRES_MS = Number(process.env.CLAWB_WORLD_ACTION_EXPIRES_MS || 30_000);
+const CLAWB_WORLD_RET_KEYFRAME_MOVE_GAP_MS = Number(process.env.CLAWB_WORLD_RET_KEYFRAME_MOVE_GAP_MS || 1400);
+const CLAWB_WORLD_RET_KEYFRAME_ROOM_GAP_MS = Number(process.env.CLAWB_WORLD_RET_KEYFRAME_ROOM_GAP_MS || 4000);
+const CLAWB_WORLD_RET_KEYFRAME_LOOK_GAP_MS = Number(process.env.CLAWB_WORLD_RET_KEYFRAME_LOOK_GAP_MS || 2600);
 
 const recentCommandKeys = new Map();
+const lastAcceptedByBucket = {
+  move: 0,
+  room: 0,
+  look: 0,
+};
 const arbiterState = {
   manualOverrideUntil: 0,
   loopOverrideUntil: 0,
   diagnostics: {
     duplicateDropped: 0,
+    cadenceDropped: 0,
     autonomySuppressed: 0,
     malformedDropped: 0,
   },
@@ -122,6 +141,56 @@ function shouldSuppressAutonomy(canonical) {
   if (canonical.source !== 'autonomy') return false;
   const now = nowMs();
   return now < Math.max(arbiterState.manualOverrideUntil, arbiterState.loopOverrideUntil);
+}
+
+function getCanonicalBucket(canonical) {
+  const action = String(canonical?.action || '');
+  if (action === 'look_nft') return 'look';
+  if (action.startsWith('room_')) return 'room';
+  if (
+    action === 'walk' ||
+    action === 'swim' ||
+    action.startsWith('swim_') ||
+    action === 'left' ||
+    action === 'right' ||
+    action === 'forward' ||
+    action === 'back' ||
+    action === 'wave' ||
+    action === 'spin' ||
+    action === 'jump' ||
+    action === 'flip' ||
+    action === 'hi' ||
+    action === 'idle' ||
+    action === 'dance' ||
+    action === 'die'
+  ) {
+    return 'move';
+  }
+  return null;
+}
+
+function getCanonicalBucketGapMs(bucket) {
+  if (bucket === 'move') return CLAWB_WORLD_RET_KEYFRAME_MOVE_GAP_MS;
+  if (bucket === 'room') return CLAWB_WORLD_RET_KEYFRAME_ROOM_GAP_MS;
+  if (bucket === 'look') return CLAWB_WORLD_RET_KEYFRAME_LOOK_GAP_MS;
+  return 0;
+}
+
+function shouldDropByCadence(canonical) {
+  if (!isManualSource(canonical.source)) return false;
+  if (canonical.loop === true) return false;
+  const bucket = getCanonicalBucket(canonical);
+  if (!bucket) return false;
+  const gapMs = getCanonicalBucketGapMs(bucket);
+  if (gapMs <= 0) return false;
+  const now = nowMs();
+  const last = Number(lastAcceptedByBucket[bucket] || 0);
+  if (now - last < gapMs) {
+    arbiterState.diagnostics.cadenceDropped += 1;
+    return true;
+  }
+  lastAcceptedByBucket[bucket] = now;
+  return false;
 }
 
 function touchArbiterWindows(canonical) {
@@ -204,9 +273,12 @@ async function publishWorldAction(payload) {
 
 export async function startWorldResponder() {
   console.log('[World] Starting world responder...');
+  const startupCutoffTs = nowMs() - 15_000;
+  console.log(`[World] command listener cutoff armed at ${startupCutoffTs}`);
 
   db.ref('clawb/world/commands')
     .orderByChild('timestamp')
+    .startAt(startupCutoffTs)
     .on('child_added', async (snapshot) => {
       const command = { id: snapshot.key, ...snapshot.val() };
       try {
@@ -223,6 +295,10 @@ export async function startWorldResponder() {
         if (shouldSuppressAutonomy(canonical)) {
           arbiterState.diagnostics.autonomySuppressed += 1;
           console.log(`[World] autonomy suppressed: ${canonical.action}`);
+          return;
+        }
+        if (shouldDropByCadence(canonical)) {
+          console.log(`[World] cadence dropped: ${canonical.action} (${canonical.source})`);
           return;
         }
 

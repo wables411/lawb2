@@ -1,4 +1,5 @@
 import { ipfsToHttp } from './utils/ipfs';
+import { cachedFetch } from './utils/fetchCache';
 
 interface MintNFTResponse {
   success: boolean;
@@ -292,7 +293,7 @@ export async function getAlchemyNFTsForCollection(contractAddress: string, pageS
     
     // Use Netlify function proxy to keep API key server-side (no owner parameter = getNFTsForContract)
     const proxyUrl = `/.netlify/functions/alchemy-nft?contractAddress=${encodeURIComponent(contractAddress)}&chain=${chain}&pageSize=${pageSize}`;
-    const response = await fetch(proxyUrl);
+    const response = await cachedFetch(proxyUrl);
     
     if (!response.ok) {
       throw new Error(`Alchemy API error: ${response.status}`);
@@ -397,7 +398,7 @@ export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddre
     
     // Use Netlify function proxy to keep API key server-side
     const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(ownerAddress)}&contractAddress=${encodeURIComponent(contractAddress)}&chain=${chain}`;
-    const response = await fetch(proxyUrl);
+    const response = await cachedFetch(proxyUrl);
     
     if (!response.ok) {
       throw new Error(`Alchemy API error: ${response.status}`);
@@ -571,7 +572,7 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
       `&collectionSlug=${encodeURIComponent(collectionSlug)}` +
       `&offset=0` +
       `&limit=${Math.max(1, Math.min(100, pageSize))}`;
-    const response = await fetch(proxyUrl);
+    const response = await cachedFetch(proxyUrl);
 
     if (!response.ok) {
       console.log('Magic Eden API response status:', response.status);
@@ -641,7 +642,7 @@ export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize
       `&owner=${encodeURIComponent(ownerAddress)}` +
       `&offset=0` +
       `&limit=${Math.max(1, Math.min(100, pageSize))}`;
-    const response = await fetch(proxyUrl);
+    const response = await cachedFetch(proxyUrl);
 
     if (!response.ok) {
       console.log('Magic Eden API response status:', response.status);

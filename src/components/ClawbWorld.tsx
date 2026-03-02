@@ -31,6 +31,9 @@ import LinuxNavBar from './LinuxNavBar';
 
 // World modules
 import {
+  isLocalWorldOnly,
+  LAZY_ROOM_LOADING,
+  LOBBY_OFFSET,
   FIREBASE_GALLERY_URL,
   FIREBASE_LEADERBOARD_URL,
   FIREBASE_PROFILES_URL,
@@ -64,7 +67,8 @@ import {
   LOOK_FOCUS_DURATION_MS,
   LEADERBOARD_AUTO_RETURN_MS,
   CLAWB_PATROL_SPEED,
-  CLAWB_PATROL_PAUSE_MS,
+  CLAWB_PATROL_PAUSE_MIN_MS,
+  CLAWB_PATROL_PAUSE_MAX_MS,
   ROOM_TRANSITION_DURATION_MS,
   CLAWB_STEP_SPEED,
   CLAWB_SWIM_STEP_SPEED,
@@ -93,6 +97,7 @@ import {
   PRESENCE_WRITE_INTERVAL_MS,
   type ClawbModelKey,
 } from '../world/WorldConfig';
+import { createRoomContent, disposeRoomContent, type RoomContentRefs } from '../world/WorldRoomContent';
 import { createWorldRenderer, resizeWorldRenderer } from '../world/WorldRenderer';
 import { createEnvironment, updateEnvironment, type EnvironmentRefs } from '../world/WorldEnvironment';
 import { smoothCameraPosition, smoothLookAt, updateStreamFollowCamera } from '../world/WorldCamera';
@@ -143,8 +148,8 @@ const ClawbWorld: React.FC = () => {
   const bubblesRef = useRef<THREE.Points | null>(null);
   const clawbRef = useRef<THREE.Group | null>(null);
   const clawbMixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const clawbPosRef = useRef(PATROL_POINTS[0].clone());
-  const patrolAnchorRef = useRef(ROOM_OFFSETS.main.clone());
+  const clawbPosRef = useRef(PATROL_POINTS[0].clone().add(LAZY_ROOM_LOADING ? LOBBY_OFFSET : ROOM_OFFSETS.main));
+  const patrolAnchorRef = useRef((LAZY_ROOM_LOADING ? LOBBY_OFFSET : ROOM_OFFSETS.main).clone());
   const clawbPatrolPointIdxRef = useRef(1);
   const clawbPatrolPauseUntilRef = useRef(0);
   const roomTransitionRef = useRef<{
@@ -174,7 +179,7 @@ const ClawbWorld: React.FC = () => {
 
   // UI state
   const [isLocked, setIsLocked] = useState(false);
-  const [currentRoom, setCurrentRoom] = useState('Main Reef');
+  const [currentRoom, setCurrentRoom] = useState(LAZY_ROOM_LOADING ? 'Lobby' : 'Main Reef');
   const [clawbGreeting, setClawbGreeting] = useState<string | null>(null);
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [chatMessages, setChatMessages] = useState<ClawbChatMessage[]>([]);
@@ -232,14 +237,29 @@ const ClawbWorld: React.FC = () => {
   const lookTargetRef = useRef<{ until: number; focus: THREE.Vector3; camera: THREE.Vector3; clawbTarget: THREE.Vector3 } | null>(null);
   const streamCameraLookRef = useRef(new THREE.Vector3(0, FLOOR_Y + 0.75, 0));
   const streamCameraDistanceRef = useRef(STREAM_CAMERA_DEFAULT_DISTANCE);
+  const streamCameraModeRef = useRef<'follow' | 'orbit' | 'wide' | 'cinematic'>('follow');
   const biomeModeRef = useRef<'day' | 'night' | 'storm' | 'abyss'>('day');
   const sunburstUntilRef = useRef(0);
   const baitUntilRef = useRef(0);
   const pulseUntilRef = useRef(0);
+  const predatorFrenzyUntilRef = useRef(0);
+  const sonarPulseUntilRef = useRef(0);
+  const currentModeRef = useRef<'normal' | 'storm' | 'calm'>('normal');
   const clawbActionTRef = useRef(0);
   const remotePlayersRef = useRef<Map<string, THREE.Group>>(new Map());
   const remoteTargetsRef = useRef<Map<string, WorldPlayerPresence>>(new Map());
   const remoteMixersRef = useRef<Map<string, THREE.AnimationMixer>>(new Map());
+  const lazyLoadedRoomRef = useRef<string | null>(null);
+  const lazyRoomContentRef = useRef<RoomContentRefs | null>(null);
+  const lazyRoomObjectsRef = useRef<THREE.Group | null>(null);
+  const lazyLoadIdRef = useRef(0);
+  const lazyRoomCollisionRef = useRef<CollisionBox[]>([]);
+  const requestRoomWithLazyLoadRef = useRef<((roomKey: keyof typeof ROOM_OFFSETS) => void) | null>(null);
+  const ensureGalleryBuiltRef = useRef<() => Promise<void>>(null);
+  const ensureLeaderboardBuiltRef = useRef<() => void>(null);
+  const galleryBuiltRef = useRef<{ built: boolean }>({ built: false });
+  const leaderboardBuiltRef = useRef<{ built: boolean }>({ built: false });
+  const lbRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clawbModelKeyRef = useRef<ClawbModelKey>('idle');
   const clawbModelSwapStateRef = useRef<{ inFlight: boolean; pending: ClawbModelKey | null }>({
     inFlight: false,
@@ -360,6 +380,10 @@ const ClawbWorld: React.FC = () => {
     if (/(^|\s)!zoom\s*in\b/.test(t) || /(^|\s)!zoomin\b/.test(t)) return 'zoom_in';
     if (/(^|\s)!zoom\s*out\b/.test(t) || /(^|\s)!zoomout\b/.test(t)) return 'zoom_out';
     if (/^!zoom$/.test(t)) return 'zoom_in';
+    if (/(^|\s)!cam(era)?\s+follow\b/.test(t)) return 'cam_follow';
+    if (/(^|\s)!cam(era)?\s+orbit\b/.test(t)) return 'cam_orbit';
+    if (/(^|\s)!cam(era)?\s+wide\b/.test(t)) return 'cam_wide';
+    if (/(^|\s)!cam(era)?\s+cinematic\b/.test(t) || /(^|\s)!cinema\b/.test(t)) return 'cam_cinematic';
     if (/(^|\s)!bounty\b/.test(t) || /(^|\s)!bounties\b/.test(t)) return 'bounty_showcase';
     if (/(^|\s)!look\s+\d+\b/.test(t)) return 'look_nft';
     if (/(^|\s)!garden\b/.test(t)) return 'room_workshop';
@@ -373,9 +397,15 @@ const ClawbWorld: React.FC = () => {
     if (/(^|\s)!night\b/.test(t)) return 'night';
     if (/(^|\s)!storm\b/.test(t)) return 'storm';
     if (/(^|\s)!abyss\b/.test(t)) return 'abyss';
+    if (/(^|\s)!current\s+storm\b/.test(t) || /(^|\s)!stormcurrent\b/.test(t)) return 'current_storm';
+    if (/(^|\s)!current\s+calm\b/.test(t) || /(^|\s)!current\s+smooth\b/.test(t) || /(^|\s)!calmcurrent\b/.test(t)) return 'current_calm';
+    if (/(^|\s)!current\s+normal\b/.test(t) || /(^|\s)!current\s+reset\b/.test(t)) return 'current_normal';
     if (/(^|\s)!sunburst\b/.test(t)) return 'sunburst';
     if (/(^|\s)!bait\b/.test(t)) return 'bait';
     if (/(^|\s)!pulse\b/.test(t)) return 'pulse';
+    if (/(^|\s)!frenzy\b/.test(t) || /(^|\s)!predator(s)?\b/.test(t)) return 'predator_frenzy';
+    if (/(^|\s)!sonar\b/.test(t)) return 'sonar_ping';
+    if (/(^|\s)!titan\b/.test(t) || /(^|\s)!sub(mersible)?\b/.test(t)) return 'titan_ping';
     if (/(^|\s)!focus\s+bounties\b/.test(t)) return 'focus_bounties';
     if (/(^|\s)!focus\s+leaderboard\b/.test(t)) return 'focus_leaderboard';
     if (/(^|\s)!focus\s+nfts\b/.test(t)) return 'focus_nfts';
@@ -419,6 +449,14 @@ const ClawbWorld: React.FC = () => {
     worldActionRef.current = { type: 'swim', until: now + ROOM_TRANSITION_DURATION_MS };
     clawbActionTRef.current = 0;
   }, []);
+
+  const goToRoom = useCallback((roomKey: keyof typeof ROOM_OFFSETS) => {
+    if (LAZY_ROOM_LOADING && requestRoomWithLazyLoadRef.current) {
+      requestRoomWithLazyLoadRef.current(roomKey);
+    } else {
+      queueRoomTransition(roomKey);
+    }
+  }, [queueRoomTransition]);
 
   const resetClawbCommandVelocity = useCallback((reason: string) => {
     const v = clawbCommandVelocityRef.current;
@@ -465,6 +503,8 @@ const ClawbWorld: React.FC = () => {
       lights.fillLight?.color.set('#ddeeff');
       if (lights.fillLight) lights.fillLight.intensity = 1.2;
       if (rendererRef.current) rendererRef.current.toneMappingExposure = 2.2;
+      if (envRef.current && currentModeRef.current === 'normal') envRef.current.currentBoost = 1.0;
+      if (envRef.current) envRef.current.bioluminescenceBoost = 0.45;
       return;
     }
 
@@ -480,6 +520,8 @@ const ClawbWorld: React.FC = () => {
       lights.fillLight?.color.set('#224466');
       if (lights.fillLight) lights.fillLight.intensity = 0.2;
       if (rendererRef.current) rendererRef.current.toneMappingExposure = 1.1;
+      if (envRef.current && currentModeRef.current === 'normal') envRef.current.currentBoost = 0.85;
+      if (envRef.current) envRef.current.bioluminescenceBoost = 1.4;
       return;
     }
 
@@ -496,6 +538,8 @@ const ClawbWorld: React.FC = () => {
       lights.fillLight?.color.set('#3d6e9f');
       if (lights.fillLight) lights.fillLight.intensity = 0.45;
       if (rendererRef.current) rendererRef.current.toneMappingExposure = 1.45;
+      if (envRef.current && currentModeRef.current === 'normal') envRef.current.currentBoost = 1.9;
+      if (envRef.current) envRef.current.bioluminescenceBoost = 1.15;
       return;
     }
 
@@ -512,6 +556,8 @@ const ClawbWorld: React.FC = () => {
     lights.fillLight?.color.set('#122a55');
     if (lights.fillLight) lights.fillLight.intensity = 0.12;
     if (rendererRef.current) rendererRef.current.toneMappingExposure = 0.95;
+    if (envRef.current && currentModeRef.current === 'normal') envRef.current.currentBoost = 1.35;
+    if (envRef.current) envRef.current.bioluminescenceBoost = 1.9;
   }, []);
 
   const tryInspectNftInFront = useCallback((): boolean => {
@@ -537,6 +583,23 @@ const ClawbWorld: React.FC = () => {
   const triggerWorldAction = useCallback((action: string, payload?: { targetNftIndex?: number; loop?: unknown; direction?: unknown; source?: unknown }) => {
     const loopRequested = payload?.loop === true;
     if (loopedActionRef.current && payload?.source === 'autonomy') return;
+    const source = String(payload?.source || '').toLowerCase();
+    const moveActions = new Set([
+      'walk', 'swim', 'left', 'right', 'forward', 'back',
+      'swim_left', 'swim_right', 'swim_forward', 'swim_back',
+      'jump', 'flip', 'spin', 'dance', 'wave', 'hi', 'idle',
+    ]);
+    const activeType = worldActionRef.current.type;
+    const activeUntil = worldActionRef.current.until;
+    const protectedActive =
+      activeType !== 'patrol' &&
+      activeType !== 'look_swim' &&
+      Number.isFinite(activeUntil) &&
+      Date.now() < activeUntil;
+    // Prevent rapid remote move-command overrides that make Clawb jitter.
+    if (source === 'retake' && !loopRequested && moveActions.has(action) && protectedActive) {
+      return;
+    }
     if (action !== 'room_leaderboard') {
       leaderboardAutoReturnAtRef.current = 0;
     }
@@ -546,6 +609,25 @@ const ClawbWorld: React.FC = () => {
       loopedActionRef.current = null;
       applyBiomePreset(action as 'day' | 'night' | 'storm' | 'abyss');
       setWorldAction('patrol', 0, 'day-night-toggle');
+      return;
+    }
+    if (action === 'current_storm') {
+      currentModeRef.current = 'storm';
+      if (envRef.current) envRef.current.currentBoost = 2.4;
+      return;
+    }
+    if (action === 'current_calm') {
+      currentModeRef.current = 'calm';
+      if (envRef.current) envRef.current.currentBoost = 0.55;
+      return;
+    }
+    if (action === 'current_normal') {
+      currentModeRef.current = 'normal';
+      if (envRef.current) {
+        const biome = biomeModeRef.current;
+        envRef.current.currentBoost =
+          biome === 'day' ? 1.0 : biome === 'night' ? 0.85 : biome === 'storm' ? 1.9 : 1.35;
+      }
       return;
     }
     if (action === 'sunburst') {
@@ -560,14 +642,43 @@ const ClawbWorld: React.FC = () => {
       pulseUntilRef.current = Date.now() + 9000;
       return;
     }
+    if (action === 'predator_frenzy') {
+      predatorFrenzyUntilRef.current = Date.now() + 12000;
+      if (envRef.current) {
+        envRef.current.predatorFrenzyBoost = Math.max(envRef.current.predatorFrenzyBoost, 1.7);
+      }
+      return;
+    }
+    if (action === 'sonar_ping') {
+      sonarPulseUntilRef.current = Date.now() + 14000;
+      if (envRef.current) {
+        envRef.current.sonarPulseBoost = Math.max(envRef.current.sonarPulseBoost, 2.2);
+        envRef.current.predatorFrenzyBoost = Math.max(envRef.current.predatorFrenzyBoost, 0.45);
+      }
+      return;
+    }
+    if (action === 'titan_ping') {
+      sonarPulseUntilRef.current = Date.now() + 12000;
+      if (envRef.current) {
+        envRef.current.sonarPulseBoost = Math.max(envRef.current.sonarPulseBoost, 1.8);
+        envRef.current.predatorFrenzyBoost = Math.max(envRef.current.predatorFrenzyBoost, 0.6);
+        if (envRef.current.titanSubmersible) {
+          envRef.current.titanSubmersible.userData.commandPulseUntil = Date.now() + 14000;
+        }
+      }
+      return;
+    }
     const roomKey = ROOM_ACTION_TO_KEY[action];
     if (roomKey) {
-      const source = String(payload?.source || '').toLowerCase();
       const manualRoomRequest = source !== 'autonomy' && source !== 'idle_behavior';
       if (roomKey === 'leaderboard' && !manualRoomRequest) return;
       loopedActionRef.current = null;
       requestClawbModelRef.current('walk');
-      queueRoomTransition(roomKey);
+      if (LAZY_ROOM_LOADING && requestRoomWithLazyLoadRef.current) {
+        requestRoomWithLazyLoadRef.current(roomKey);
+      } else {
+        queueRoomTransition(roomKey);
+      }
       leaderboardAutoReturnAtRef.current =
         roomKey === 'leaderboard' ? Date.now() + LEADERBOARD_AUTO_RETURN_MS : 0;
       return;
@@ -581,6 +692,18 @@ const ClawbWorld: React.FC = () => {
       );
       return;
     }
+    if (action === 'cam_follow' || action === 'cam_orbit' || action === 'cam_wide' || action === 'cam_cinematic') {
+      const nextMode =
+        action === 'cam_follow'
+          ? 'follow'
+          : action === 'cam_orbit'
+            ? 'orbit'
+            : action === 'cam_wide'
+              ? 'wide'
+              : 'cinematic';
+      streamCameraModeRef.current = nextMode;
+      return;
+    }
     if (action === 'bounty_showcase') {
       loopedActionRef.current = null;
       requestClawbModelRef.current('swim');
@@ -588,6 +711,51 @@ const ClawbWorld: React.FC = () => {
       bountyShowcaseRef.current = { startedAt: now, until: now + 18_000 };
       bountyBurstStartedAtRef.current = now;
       setWorldAction('bounty_showcase', now + 18_000, 'bounty-showcase');
+      return;
+    }
+    if (action === 'focus_bounties') {
+      const now = Date.now();
+      loopedActionRef.current = null;
+      requestClawbModelRef.current('swim');
+      bountyShowcaseRef.current = { startedAt: now, until: now + 18_000 };
+      bountyBurstStartedAtRef.current = now;
+      setWorldAction('bounty_showcase', now + 18_000, 'focus-bounties');
+      return;
+    }
+    if (action === 'focus_leaderboard') {
+      loopedActionRef.current = null;
+      requestClawbModelRef.current('walk');
+      queueRoomTransition('leaderboard');
+      leaderboardAutoReturnAtRef.current = Date.now() + LEADERBOARD_AUTO_RETURN_MS;
+      return;
+    }
+    if (action === 'focus_nfts') {
+      loopedActionRef.current = null;
+      requestClawbModelRef.current('walk');
+      const targets = [...galleryNftTargetsRef.current].sort((a, b) => a.index - b.index);
+      if (targets.length) {
+        const target = targets[0];
+        queueRoomTransition('bedroom');
+        setSelectedNft(target.nft);
+        const now = Date.now();
+        const clawbTarget = target.focus.clone().add(new THREE.Vector3(0, -0.2, 1.0));
+        lookTargetRef.current = {
+          until: now + LOOK_FOCUS_DURATION_MS,
+          focus: target.focus.clone(),
+          camera: target.camera.clone(),
+          clawbTarget,
+        };
+        setWorldAction('look_swim', now + LOOK_FOCUS_DURATION_MS, 'focus-nfts');
+      } else {
+        queueRoomTransition('bedroom');
+      }
+      return;
+    }
+    if (action === 'focus_rooms') {
+      loopedActionRef.current = null;
+      requestClawbModelRef.current('walk');
+      queueRoomTransition('main');
+      setWorldAction('swim', Date.now() + ROOM_TRANSITION_DURATION_MS, 'focus-rooms');
       return;
     }
     if (action === 'idle') {
@@ -807,7 +975,10 @@ const ClawbWorld: React.FC = () => {
     }
 
     // Update room name (every frame)
-    const roomName = getRoomName(camera.position);
+    const roomName =
+      LAZY_ROOM_LOADING && !lazyLoadedRoomRef.current && !roomTransitionRef.current.active
+        ? 'Lobby'
+        : getRoomName(camera.position);
     setCurrentRoom(roomName);
     localRoomRef.current = roomName;
     if (
@@ -817,7 +988,7 @@ const ClawbWorld: React.FC = () => {
       !roomTransitionRef.current.active
     ) {
       leaderboardAutoReturnAtRef.current = 0;
-      queueRoomTransition('main');
+      goToRoom('main');
       setWorldAction('swim', Date.now() + ROOM_TRANSITION_DURATION_MS, 'leaderboard-auto-return');
     }
 
@@ -827,7 +998,14 @@ const ClawbWorld: React.FC = () => {
     if (envRef.current) {
       updateEnvironment(envRef.current, scene, camera, elapsedRef.current, delta);
     }
-    updateLocalWorldFauna(localFaunaRef.current, elapsedRef.current, delta, camera.position);
+    updateLocalWorldFauna(
+      localFaunaRef.current,
+      elapsedRef.current,
+      delta,
+      camera.position,
+      envRef.current?.currentVector,
+      envRef.current?.currentStrength ?? 0,
+    );
     // Keep selected biome visual mode persistent; environment update blends fog by camera.
     applyBiomePreset(biomeModeRef.current);
 
@@ -835,6 +1013,15 @@ const ClawbWorld: React.FC = () => {
     const sunburstActive = nowFx < sunburstUntilRef.current;
     const baitActive = nowFx < baitUntilRef.current;
     const pulseActive = nowFx < pulseUntilRef.current;
+    const frenzyActive = nowFx < predatorFrenzyUntilRef.current;
+    const sonarActive = nowFx < sonarPulseUntilRef.current;
+
+    if (frenzyActive && envRef.current) {
+      envRef.current.predatorFrenzyBoost = Math.max(envRef.current.predatorFrenzyBoost, 1.65);
+    }
+    if (sonarActive && envRef.current) {
+      envRef.current.sonarPulseBoost = Math.max(envRef.current.sonarPulseBoost, 1.25);
+    }
 
     if (envRef.current?.godRays) {
       const raysScale = sunburstActive
@@ -854,7 +1041,8 @@ const ClawbWorld: React.FC = () => {
 
     if (baitActive && envRef.current?.fishSchools?.length && clawbRef.current) {
       const targetCenter = clawbRef.current.position;
-      envRef.current.fishSchools.forEach((school, idx) => {
+      const schools = envRef.current.fishSchools;
+      schools.forEach((school, idx) => {
         const a = elapsedRef.current * 0.9 + idx * 1.6;
         const ring = 1.8 + idx * 0.35;
         const target = new THREE.Vector3(
@@ -862,7 +1050,34 @@ const ClawbWorld: React.FC = () => {
           FLOOR_Y + 0.8 + (idx % 3) * 0.3,
           targetCenter.z + Math.sin(a) * ring,
         );
-        school.position.lerp(target, Math.min(1, delta * 2.4));
+        const species = String(school.userData?.species || '');
+          const lerpRate = species === 'predator' ? (frenzyActive ? 2.1 : 1.15) : (frenzyActive ? 3.2 : 2.4);
+        school.position.lerp(target, Math.min(1, delta * lerpRate));
+      });
+
+      // Predator schools occasionally break formation and chase nearest prey school.
+      const predators = schools.filter((s) => String(s.userData?.species || '') === 'predator');
+      const prey = schools.filter((s) => String(s.userData?.species || '') !== 'predator');
+      predators.forEach((pred) => {
+        let nearest: THREE.Group | null = null;
+        let best = Number.POSITIVE_INFINITY;
+        prey.forEach((candidate) => {
+          const d = pred.position.distanceToSquared(candidate.position);
+          if (d < best) {
+            best = d;
+            nearest = candidate;
+          }
+        });
+        if (nearest) {
+          const chaseTarget = (nearest as THREE.Group).position.clone().add(new THREE.Vector3(0, 0.2, 0));
+          pred.position.lerp(chaseTarget, Math.min(1, delta * 0.9));
+          // Prey recoils to create visible hunt/survival moments.
+          const away = (nearest as THREE.Group).position.clone().sub(pred.position);
+          if (away.lengthSq() > 0.0001) {
+            const flee = away.normalize().multiplyScalar(delta * 1.8);
+            (nearest as THREE.Group).position.add(flee);
+          }
+        }
       });
     }
 
@@ -896,6 +1111,7 @@ const ClawbWorld: React.FC = () => {
 
     if (
       WORLD_MULTIPLAYER_ENABLED &&
+      !isLocalWorldOnly() &&
       address &&
       Date.now() - presenceLastWriteAtRef.current > PRESENCE_WRITE_INTERVAL_MS
     ) {
@@ -962,7 +1178,10 @@ const ClawbWorld: React.FC = () => {
           const dist = toTarget.length();
           if (dist < 0.18) {
             clawbPatrolPointIdxRef.current = (clawbPatrolPointIdxRef.current + 1) % PATROL_POINTS.length;
-            clawbPatrolPauseUntilRef.current = now + CLAWB_PATROL_PAUSE_MS;
+            const pauseMs =
+              CLAWB_PATROL_PAUSE_MIN_MS +
+              Math.random() * (CLAWB_PATROL_PAUSE_MAX_MS - CLAWB_PATROL_PAUSE_MIN_MS);
+            clawbPatrolPauseUntilRef.current = now + pauseMs;
           } else {
             toTarget.normalize();
             clawbPosRef.current.x += toTarget.x * CLAWB_PATROL_SPEED * delta;
@@ -980,10 +1199,23 @@ const ClawbWorld: React.FC = () => {
         }
         clawbRef.current.position.x = clawbPosRef.current.x;
         clawbRef.current.position.z = clawbPosRef.current.z;
-        clawbRef.current.position.y =
-          Date.now() < clawbPatrolPauseUntilRef.current
-            ? FLOOR_Y + Math.abs(Math.sin(t * 3.2)) * 0.08
-            : FLOOR_Y;
+        const isPaused = Date.now() < clawbPatrolPauseUntilRef.current;
+        clawbRef.current.position.y = isPaused
+          ? FLOOR_Y + Math.abs(Math.sin(t * 3.2)) * 0.08
+          : FLOOR_Y;
+        if (isPaused) {
+          const nextTarget = getPatrolTarget(clawbPatrolPointIdxRef.current);
+          const toNext = new THREE.Vector3().subVectors(nextTarget, clawbPosRef.current);
+          if (toNext.length() > 0.01) {
+            const targetYaw = Math.atan2(toNext.x, toNext.z);
+            clawbRef.current.rotation.y = THREE.MathUtils.damp(
+              clawbRef.current.rotation.y,
+              targetYaw,
+              4,
+              delta
+            );
+          }
+        }
         clawbRef.current.rotation.x = THREE.MathUtils.lerp(clawbRef.current.rotation.x, 0, 0.14);
         clawbRef.current.rotation.z = THREE.MathUtils.lerp(clawbRef.current.rotation.z, 0, 0.14);
       } else {
@@ -1185,10 +1417,15 @@ const ClawbWorld: React.FC = () => {
       }
 
       // Face camera behavior:
-      // - Stream mode: keep Clawb oriented toward camera when not in directional/swim/death/transition states.
+      // - Stream mode: face camera when idle (from command) or doing non-swim actions, but NOT during patrol
+      //   (patrol pause was causing a rigid swim→stare→swim loop that looked bad).
       // - Non-stream mode: only face player while mostly stationary in patrol.
       const shouldFaceCamera = isStreamMode
-        ? activeAction !== 'die' && !isSwimAction && !DIRECTIONAL_ACTIONS.has(activeAction) && !roomTransitionRef.current.active
+        ? activeAction !== 'die' &&
+          activeAction !== 'patrol' &&
+          !isSwimAction &&
+          !DIRECTIONAL_ACTIONS.has(activeAction) &&
+          !roomTransitionRef.current.active
         : activeAction === 'patrol' && frameSpeed < 0.05;
       if (shouldFaceCamera) {
         const dx = camera.position.x - clawbRef.current.position.x;
@@ -1275,19 +1512,42 @@ const ClawbWorld: React.FC = () => {
         }
         lookTargetRef.current = null;
         const focus = clawbRef.current.position.clone();
+        const camMode = streamCameraModeRef.current;
         const zoomT = THREE.MathUtils.clamp(
           (streamCameraDistanceRef.current - STREAM_CAMERA_MIN_DISTANCE) /
             Math.max(0.001, STREAM_CAMERA_MAX_DISTANCE - STREAM_CAMERA_MIN_DISTANCE),
           0,
           1
         );
+        let desired: THREE.Vector3;
+        let lookFocus = focus.clone().add(new THREE.Vector3(0, 0.72, 0));
+        let targetFov = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_FOV, STREAM_CAMERA_FAR_FOV, zoomT);
         const yOffset = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_Y, STREAM_CAMERA_FAR_Y, zoomT);
         const zScale = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_Z_SCALE, STREAM_CAMERA_FAR_Z_SCALE, zoomT);
         const zOffset = streamCameraDistanceRef.current * zScale;
-        const desired = focus.clone().add(new THREE.Vector3(0, yOffset, zOffset));
+
+        if (camMode === 'orbit') {
+          const a = elapsedRef.current * 0.22;
+          const r = streamCameraDistanceRef.current * 0.95;
+          desired = focus.clone().add(new THREE.Vector3(Math.cos(a) * r * 0.55, yOffset + 0.45, Math.sin(a) * r * 0.55));
+          lookFocus = focus.clone().add(new THREE.Vector3(0, 0.9, 0));
+          targetFov = THREE.MathUtils.lerp(52, 64, zoomT);
+        } else if (camMode === 'wide') {
+          desired = focus.clone().add(new THREE.Vector3(0, yOffset + 1.2, zOffset + 2.8));
+          lookFocus = focus.clone().add(new THREE.Vector3(0, 0.65, 0));
+          targetFov = THREE.MathUtils.lerp(62, 72, zoomT);
+        } else if (camMode === 'cinematic') {
+          const sway = Math.sin(elapsedRef.current * 0.6) * 1.45;
+          const dolly = Math.cos(elapsedRef.current * 0.33) * 1.2;
+          desired = focus.clone().add(new THREE.Vector3(sway, yOffset + 0.35, zOffset + dolly));
+          lookFocus = focus.clone().add(new THREE.Vector3(Math.sin(elapsedRef.current * 0.4) * 0.45, 0.78, 0));
+          targetFov = THREE.MathUtils.lerp(50, 60, zoomT);
+        } else {
+          desired = focus.clone().add(new THREE.Vector3(0, yOffset, zOffset));
+        }
+
         smoothCameraPosition(desired);
-        smoothLookAt(focus.clone().add(new THREE.Vector3(0, 0.72, 0)));
-        const targetFov = THREE.MathUtils.lerp(STREAM_CAMERA_NEAR_FOV, STREAM_CAMERA_FAR_FOV, zoomT);
+        smoothLookAt(lookFocus);
         const fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.12);
         if (Math.abs(fov - camera.fov) > 0.01) {
           camera.fov = fov;
@@ -1503,7 +1763,7 @@ const ClawbWorld: React.FC = () => {
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     }
     frameIdRef.current = requestAnimationFrame(animate);
-  }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode, queueRoomTransition, resetClawbCommandVelocity, setWorldAction]);
+  }, [getPatrolTarget, getRoomName, getGreeting, isMobile, isStreamMode, goToRoom, queueRoomTransition, resetClawbCommandVelocity, setWorldAction]);
 
   // Init scene
   useEffect(() => {
@@ -1520,6 +1780,11 @@ const ClawbWorld: React.FC = () => {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 300);
     camera.position.set(0, FLOOR_Y + PLAYER_HEIGHT, 5);
     if (isStreamMode) {
+      const camParam = new URLSearchParams(window.location.search).get('cam')?.toLowerCase();
+      if (camParam === 'orbit') streamCameraModeRef.current = 'orbit';
+      else if (camParam === 'wide') streamCameraModeRef.current = 'wide';
+      else if (camParam === 'cinematic') streamCameraModeRef.current = 'cinematic';
+      else streamCameraModeRef.current = 'follow';
       camera.position.set(0, FLOOR_Y + 1.45, 2.8);
       camera.lookAt(0, FLOOR_Y + 0.75, 0);
       streamCameraLookRef.current.set(0, FLOOR_Y + 0.75, 0);
@@ -1542,9 +1807,11 @@ const ClawbWorld: React.FC = () => {
     const env = createEnvironment(scene, isStreamMode);
     envRef.current = env;
     lightsRef.current = env.lights;
-    void loadLocalWorldFauna(scene).then((refs) => {
-      localFaunaRef.current = refs;
-    });
+    if (isLocalWorldOnly() && !LAZY_ROOM_LOADING) {
+      void loadLocalWorldFauna(scene).then((refs) => {
+        localFaunaRef.current = refs;
+      });
+    }
 
     // Load all rooms (Firebase first, fallback to static files)
     const addRoomCollision = (data: WorldState, offset: THREE.Vector3) => {
@@ -1552,7 +1819,16 @@ const ClawbWorld: React.FC = () => {
       collisionBoxesRef.current = [...collisionBoxesRef.current, ...boxes];
     };
     const getStreamPrunedRoomData = (roomName: string, data: WorldState): WorldState => {
-      if (!isStreamMode || roomName !== 'main') return data;
+      // Bedroom (gallery): always remove anemone and bubbler — they render as pink bubble-like shapes.
+      if (roomName === 'bedroom') {
+        const excludeTypes = new Set(['anemone', 'bubbler']);
+        const filtered = data.objects.filter((obj) => !excludeTypes.has(String(obj.type || '').toLowerCase()));
+        if (filtered.length === data.objects.length) return data;
+        return { ...data, objectCount: filtered.length, objects: filtered };
+      }
+      if (!isStreamMode) return data;
+      // Main: clear procedural corals/rocks from center lane (same as before).
+      if (roomName !== 'main') return data;
       const clearTypes = new Set([
         'coral_branch',
         'coral_brain',
@@ -1584,32 +1860,106 @@ const ClawbWorld: React.FC = () => {
         objects: filtered,
       };
     };
-    for (const [roomName, firebaseUrl] of Object.entries(ROOM_URLS)) {
-      const offset = ROOM_OFFSETS[roomName];
-      fetch(firebaseUrl)
-        .then((res) => res.json())
-        .then((data: WorldState) => {
-          if (data && data.objects) {
-            const roomData = getStreamPrunedRoomData(roomName, data);
-            renderWorldState(scene, roomData, offset);
-            addRoomCollision(roomData, offset);
-          } else {
-            throw new Error('Invalid Firebase response');
+    const useLocalOnly = isLocalWorldOnly();
+    if (!LAZY_ROOM_LOADING) {
+      for (const roomName of Object.keys(ROOM_URLS)) {
+        const offset = ROOM_OFFSETS[roomName];
+        const url = useLocalOnly ? ROOM_FILES_FALLBACK[roomName] : ROOM_URLS[roomName];
+        if (!url) continue;
+        fetch(url)
+          .then((res) => res.json())
+          .then((data: WorldState) => {
+            if (data && data.objects) {
+              const roomData = getStreamPrunedRoomData(roomName, data);
+              renderWorldState(scene, roomData, offset);
+              addRoomCollision(roomData, offset);
+            } else {
+              throw new Error('Invalid room data');
+            }
+          })
+          .catch((err) => console.warn(`[ClawbWorld] Failed to load ${roomName}:`, err));
+      }
+    }
+
+    if (LAZY_ROOM_LOADING) {
+      requestRoomWithLazyLoadRef.current = (roomKey: keyof typeof ROOM_OFFSETS) => {
+        if (roomKey === 'leaderboard') {
+          ensureLeaderboardBuiltRef.current?.();
+          queueRoomTransition('leaderboard');
+          return;
+        }
+        if (!ROOM_URLS[roomKey] && !ROOM_FILES_FALLBACK[roomKey]) return;
+
+        lazyLoadIdRef.current += 1;
+        const myLoadId = lazyLoadIdRef.current;
+
+        const unloadCurrent = () => {
+          const prevObj = lazyRoomObjectsRef.current;
+          if (prevObj && prevObj.parent) {
+            prevObj.parent.remove(prevObj);
+            prevObj.traverse((c) => {
+              if ((c as THREE.Mesh).isMesh) {
+                const m = c as THREE.Mesh;
+                m.geometry?.dispose();
+                const mat = m.material;
+                if (mat) {
+                  if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+                  else mat.dispose();
+                }
+              }
+            });
+            lazyRoomObjectsRef.current = null;
           }
-        })
-        .catch(() => {
-          const fallback = ROOM_FILES_FALLBACK[roomName];
-          if (fallback) {
-            fetch(fallback)
-              .then((res) => res.json())
-              .then((data: WorldState) => {
-                const roomData = getStreamPrunedRoomData(roomName, data);
-                renderWorldState(scene, roomData, offset);
-                addRoomCollision(roomData, offset);
-              })
-              .catch((err) => console.warn(`[ClawbWorld] Failed to load ${roomName}:`, err));
+          const prev = lazyRoomContentRef.current;
+          if (prev) {
+            disposeRoomContent(prev);
+            lazyRoomContentRef.current = null;
           }
-        });
+          collisionBoxesRef.current = collisionBoxesRef.current.filter((b) => !lazyRoomCollisionRef.current.includes(b));
+          lazyRoomCollisionRef.current = [];
+          if (envRef.current) envRef.current.roomContentRefs = null;
+          lazyLoadedRoomRef.current = null;
+        };
+
+        patrolAnchorRef.current = LOBBY_OFFSET.clone();
+        clawbPosRef.current = PATROL_POINTS[0].clone().add(LOBBY_OFFSET);
+        setCurrentRoom('Lobby');
+        unloadCurrent();
+
+        const url = isLocalWorldOnly() ? ROOM_FILES_FALLBACK[roomKey] : ROOM_URLS[roomKey];
+        if (!url) return;
+
+        fetch(url)
+          .then((res) => res.json())
+          .then((data: WorldState) => {
+            if (myLoadId !== lazyLoadIdRef.current) return;
+            if (!data?.objects) throw new Error('Invalid room data');
+            const roomData = getStreamPrunedRoomData(roomKey, data);
+            const roomObjGroup = renderWorldState(scene, roomData, ROOM_OFFSETS[roomKey]);
+            lazyRoomObjectsRef.current = roomObjGroup;
+            const boxes = generateCollisionBoxes(roomData, ROOM_OFFSETS[roomKey].x, ROOM_OFFSETS[roomKey].z);
+            if (myLoadId !== lazyLoadIdRef.current) return;
+            collisionBoxesRef.current = [...collisionBoxesRef.current, ...boxes];
+            lazyRoomCollisionRef.current = boxes;
+            const roomContent = createRoomContent(scene, roomKey, isStreamMode);
+            if (myLoadId !== lazyLoadIdRef.current) {
+              disposeRoomContent(roomContent);
+              return;
+            }
+            lazyRoomContentRef.current = roomContent;
+            lazyLoadedRoomRef.current = roomKey;
+            if (envRef.current) envRef.current.roomContentRefs = roomContent;
+            setCurrentRoom(ROOM_LABELS[roomKey] ?? roomKey);
+            if (roomKey === 'bedroom') {
+              ensureGalleryBuiltRef.current?.().then(() => queueRoomTransition(roomKey));
+            } else {
+              queueRoomTransition(roomKey);
+            }
+          })
+          .catch((err) => {
+            if (myLoadId === lazyLoadIdRef.current) console.warn(`[ClawbWorld] Failed to load ${roomKey}:`, err);
+          });
+      };
     }
 
     // Load Clawb NPC
@@ -1664,8 +2014,8 @@ const ClawbWorld: React.FC = () => {
     requestClawbModelRef.current = requestClawbModel;
     requestClawbModel('idle');
 
-    // Listen to other players in world
-    const unsubPlayers = WORLD_MULTIPLAYER_ENABLED
+    // Listen to other players in world (skip when local-only OBS — no multiplayer)
+    const unsubPlayers = WORLD_MULTIPLAYER_ENABLED && !isLocalWorldOnly()
       ? listenToWorldPlayers((players) => {
           const mine = (address || '').toLowerCase();
           const now = Date.now();
@@ -1741,13 +2091,31 @@ const ClawbWorld: React.FC = () => {
 
     const addGalleryWalls = (gallery: THREE.Group, rows: number) => {
       const wallHeight = Math.max(4, rows * 1.1 + 2);
-      const wallMat = new THREE.MeshPhongMaterial({
-        color: 0x4a6a8a,
-        emissive: 0x0c1824,
-        flatShading: true,
-        side: THREE.DoubleSide,
-        shininess: 5,
+      const wallColor = texLoader.load('/world-assets/polyhaven/rocks_ground_04_diff_2k.png');
+      const wallNormal = texLoader.load('/world-assets/polyhaven/rocks_ground_04_nor_gl_2k.png');
+      const wallRough = texLoader.load('/world-assets/polyhaven/rocks_ground_04_rough_2k.png');
+      [wallColor, wallNormal, wallRough].forEach((tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(3, Math.max(2, wallHeight / 2.2));
       });
+      wallColor.colorSpace = THREE.SRGBColorSpace;
+
+      const wallMat = new THREE.MeshStandardMaterial({
+        color: 0x5d7f95,
+        emissive: 0x0f1e2b,
+        emissiveIntensity: 0.2,
+        map: wallColor,
+        normalMap: wallNormal,
+        roughnessMap: wallRough,
+        normalScale: new THREE.Vector2(0.8, 0.8),
+        roughness: 0.82,
+        metalness: 0.06,
+        side: THREE.DoubleSide,
+      });
+
+      // No coral clumps on walls — they were rendering as flat pink bubble shapes.
+
       const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, wallHeight), wallMat);
       backWall.position.set(0, -1.0 + (wallHeight - 4) / 2, -3.5);
       gallery.add(backWall);
@@ -1821,16 +2189,56 @@ const ClawbWorld: React.FC = () => {
       }
     };
 
-    fetch(FIREBASE_GALLERY_URL)
-      .then((res) => res.json())
-      .then((data: { nfts?: NFTItem[] }) => {
-        const nfts = data?.nfts?.length ? data.nfts : NFT_FALLBACK;
-        buildGallery(nfts);
-      })
-      .catch(() => {
-        console.warn('[ClawbWorld] NFT gallery fetch failed, using fallback');
-        buildGallery(NFT_FALLBACK);
-      });
+    // Gallery: local-only uses /local-world-assets/gallery.json; production uses Firebase
+    const galleryUrl = isLocalWorldOnly()
+      ? '/local-world-assets/gallery.json'
+      : FIREBASE_GALLERY_URL;
+
+    const addGalleryCollisionBoxes = () => {
+      const bx = BEDROOM_OFFSET.x;
+      const bz = BEDROOM_OFFSET.z;
+      collisionBoxesRef.current = [
+        ...collisionBoxesRef.current,
+        { minX: bx - 4, maxX: bx + 4, minZ: bz - 3.7, maxZ: bz - 3.3 },   // back wall
+        { minX: bx - 4.2, maxX: bx - 3.8, minZ: bz - 3.5, maxZ: bz + 2.5 }, // left wall
+        { minX: bx + 3.8, maxX: bx + 4.2, minZ: bz - 3.5, maxZ: bz + 2.5 }, // right wall
+      ];
+    };
+
+    if (LAZY_ROOM_LOADING) {
+      (ensureGalleryBuiltRef as React.MutableRefObject<(() => Promise<void>) | null>).current = async () => {
+        if (galleryBuiltRef.current.built) return;
+        galleryBuiltRef.current.built = true;
+        try {
+          const res = await fetch(galleryUrl);
+          const data = res.ok ? await res.json() : null;
+          const nfts = data?.nfts?.length ? data.nfts : NFT_FALLBACK;
+          await buildGallery(nfts);
+        } catch {
+          console.warn('[ClawbWorld] Gallery fetch failed, using fallback');
+          await buildGallery(NFT_FALLBACK);
+        }
+        addGalleryCollisionBoxes();
+        const pending = pendingLookNftIndexRef.current;
+        if (pending != null) triggerWorldAction('look_nft', { targetNftIndex: pending });
+      };
+    } else {
+      fetch(galleryUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error('Gallery fetch failed');
+          return res.json();
+        })
+        .then(async (data: { nfts?: NFTItem[] }) => {
+          const nfts = data?.nfts?.length ? data.nfts : NFT_FALLBACK;
+          await buildGallery(nfts);
+          addGalleryCollisionBoxes();
+        })
+        .catch(async () => {
+          console.warn('[ClawbWorld] Gallery fetch failed, using fallback');
+          await buildGallery(NFT_FALLBACK);
+          addGalleryCollisionBoxes();
+        });
+    }
 
     // ---------------------------------------------------------------
     // 3D Leaderboard Billboard — Vegas-style scoreboard
@@ -1841,6 +2249,10 @@ const ClawbWorld: React.FC = () => {
     lbGroup.visible = false;
     scene.add(lbGroup);
     leaderboardGroupRef.current = lbGroup;
+
+    const buildLeaderboardAndBounty = () => {
+      if (leaderboardBuiltRef.current.built) return;
+      leaderboardBuiltRef.current.built = true;
 
     // Billboard canvas for dynamic text rendering
     const lbCanvas = document.createElement('canvas');
@@ -2338,8 +2750,13 @@ const ClawbWorld: React.FC = () => {
       lbTexture.needsUpdate = true;
     };
 
-    // Fetch and render leaderboard data
+    // Fetch and render leaderboard data (skip Firebase when local-only OBS)
     const refreshLeaderboard = () => {
+      if (isLocalWorldOnly()) {
+        renderLeaderboardCanvas([], {}, []);
+        leaderboardRenderFnRef.current = () => renderLeaderboardCanvas([], {}, []);
+        return;
+      }
       const fetchLeaderboard = fetch(FIREBASE_LEADERBOARD_URL)
         .then((r) => r.json())
         .then((data) => {
@@ -2378,7 +2795,14 @@ const ClawbWorld: React.FC = () => {
     };
 
     refreshLeaderboard();
-    const lbRefreshInterval = setInterval(refreshLeaderboard, LEADERBOARD_REFRESH_MS);
+    lbRefreshIntervalRef.current = setInterval(refreshLeaderboard, LEADERBOARD_REFRESH_MS);
+    };
+
+    if (!LAZY_ROOM_LOADING) {
+      buildLeaderboardAndBounty();
+    } else {
+      (ensureLeaderboardBuiltRef as React.MutableRefObject<(() => void) | null>).current = buildLeaderboardAndBounty;
+    }
 
     // Invisible boundary walls
     const wallMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -2397,15 +2821,7 @@ const ClawbWorld: React.FC = () => {
     wallB.position.set(0, 0, -WORLD_BOUNDS - 10);
     scene.add(wallB);
 
-    // Gallery wall collision boxes (bedroom, relative to BEDROOM_OFFSET)
-    const bx = BEDROOM_OFFSET.x;
-    const bz = BEDROOM_OFFSET.z;
-    collisionBoxesRef.current = [
-      ...collisionBoxesRef.current,
-      { minX: bx - 4, maxX: bx + 4, minZ: bz - 3.7, maxZ: bz - 3.3 },   // back wall
-      { minX: bx - 4.2, maxX: bx - 3.8, minZ: bz - 3.5, maxZ: bz + 2.5 }, // left wall
-      { minX: bx + 3.8, maxX: bx + 4.2, minZ: bz - 3.5, maxZ: bz + 2.5 }, // right wall
-    ];
+    // Gallery wall collision boxes added in buildGallery path (or ensureGalleryBuilt when lazy)
 
     // Keyboard input
     const onKeyDown = (e: KeyboardEvent) => {
@@ -2442,7 +2858,10 @@ const ClawbWorld: React.FC = () => {
     frameIdRef.current = requestAnimationFrame(animate);
 
     return () => {
-      clearInterval(lbRefreshInterval);
+      if (lbRefreshIntervalRef.current) {
+        clearInterval(lbRefreshIntervalRef.current);
+        lbRefreshIntervalRef.current = null;
+      }
       unsubPlayers();
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
@@ -2466,7 +2885,7 @@ const ClawbWorld: React.FC = () => {
         }
       });
 
-      if (WORLD_MULTIPLAYER_ENABLED && address) {
+      if (WORLD_MULTIPLAYER_ENABLED && !isLocalWorldOnly() && address) {
         removeWorldPresence(address).catch(() => {
           // non-blocking
         });
@@ -2476,7 +2895,7 @@ const ClawbWorld: React.FC = () => {
 
   // Ensure stale sessions are removed if tab/browser disconnects.
   useEffect(() => {
-    if (!WORLD_MULTIPLAYER_ENABLED || !address) return;
+    if (!WORLD_MULTIPLAYER_ENABLED || isLocalWorldOnly() || !address) return;
     registerWorldPresenceDisconnectCleanup(address).catch(() => {
       // non-blocking
     });
@@ -2552,11 +2971,11 @@ const ClawbWorld: React.FC = () => {
     lastTouchRef.current = null;
   }, []);
 
-  // Chat: listen to messages when panel is open (merge visitor + clawb, sort by timestamp)
+  // Chat: listen to messages when panel is open (skip when local-only OBS — no Firebase chat)
   const visitorMsgsRef = useRef<ClawbChatMessage[]>([]);
   const clawbMsgsRef = useRef<ClawbChatMessage[]>([]);
   useEffect(() => {
-    if (!showChatPanel) return;
+    if (!showChatPanel || isLocalWorldOnly()) return;
     const flush = () => {
       const merged = [...visitorMsgsRef.current, ...clawbMsgsRef.current];
       merged.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -2580,8 +2999,9 @@ const ClawbWorld: React.FC = () => {
 
   useEffect(() => {
     let initialSnapshotHandled = false;
+    const listenerStartedAt = Date.now();
     const ACTION_FRESHNESS_MS = 8_000;
-    const ACTION_MAX_AGE_MS = 10 * 60_000;
+    const ACTION_MAX_AGE_MS = 45_000;
     const unsub = listenToWorldActions((actions) => {
       if (!actions.length) return;
       const now = Date.now();
@@ -2593,6 +3013,10 @@ const ClawbWorld: React.FC = () => {
         }
         if (typeof a.timestamp !== 'number' || !Number.isFinite(a.timestamp)) {
           movementDiagnosticsRef.current.malformedActionsDropped += 1;
+          continue;
+        }
+        if (a.timestamp < listenerStartedAt - 1_000) {
+          movementDiagnosticsRef.current.staleActionsDropped += 1;
           continue;
         }
         if (typeof (a as any).expires_at === 'number' && Number.isFinite((a as any).expires_at)) {
@@ -2625,6 +3049,7 @@ const ClawbWorld: React.FC = () => {
     const msg = chatInput.trim();
     if (!msg) return;
     setChatInput('');
+    if (isLocalWorldOnly()) return; // No Firebase chat when local OBS
     try {
       await sendClawbMessage(msg, address || 'anonymous', 'world');
       const parsedAction = parseWorldActionFromText(msg);
@@ -2759,7 +3184,7 @@ const ClawbWorld: React.FC = () => {
             <input
               type="text"
               className="clawb-world-chat-input"
-              placeholder="Try !day, !night, !scene bedroom, !build coral..."
+              placeholder="Try !titan, !frenzy, !sonar, !day, !night, !current storm..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               maxLength={300}

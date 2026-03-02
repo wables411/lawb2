@@ -74,9 +74,9 @@ const EXTERNAL_MATERIAL_TEXTURES: Record<'sand' | 'rock' | 'coral' | 'kelp', Mat
     normal: '/world-assets/materials/Ground103/Ground103_2K-PNG_NormalGL.png',
     roughness: '/world-assets/materials/Ground103/Ground103_2K-PNG_Roughness.png',
     bump: '/world-assets/materials/Ground103/Ground103_2K-PNG_Displacement.png',
-    repeat: 10,
-    normalScale: 1.8,
-    bumpScale: 0.18,
+    repeat: 18,
+    normalScale: 1.35,
+    bumpScale: 0.11,
     roughnessValue: 0.92,
     metalnessValue: 0.01,
   },
@@ -117,9 +117,10 @@ const EXTERNAL_MATERIAL_TEXTURES: Record<'sand' | 'rock' | 'coral' | 'kelp', Mat
 
 function getMaterialCategory(type: string): 'sand' | 'rock' | 'coral' | 'kelp' | null {
   if (type === 'sand_floor') return 'sand';
-  if (type.startsWith('rock_') || type === 'cave_crack') return 'rock';
-  if (type.startsWith('coral_') || type === 'anemone') return 'coral';
+  if (type.startsWith('rock_') || type === 'cave_crack' || type === 'bubbler') return 'rock';
+  if (type.startsWith('coral_') || type === 'anemone' || type === 'shell' || type === 'starfish' || type === 'shell_door') return 'coral';
   if (type === 'seagrass') return 'kelp';
+  if (type === 'treasure_chest') return 'sand';
   return null;
 }
 
@@ -179,6 +180,83 @@ function applyExternalMaterialMaps(material: THREE.Material, type: string): void
   std.needsUpdate = true;
 }
 
+const proceduralDetailCache = new Map<string, THREE.CanvasTexture>();
+
+function createProceduralDetailTexture(kind: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    const fallback = new THREE.CanvasTexture(canvas);
+    fallback.wrapS = THREE.RepeatWrapping;
+    fallback.wrapT = THREE.RepeatWrapping;
+    return fallback;
+  }
+
+  const base = kind === 'shell' ? '#f0dfcc' : kind === 'starfish' ? '#d17c5d' : kind === 'treasure' ? '#9a7a3b' : '#7b7b72';
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < 420; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const r = 0.4 + Math.random() * 1.8;
+    const a = 0.04 + Math.random() * 0.12;
+    ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let i = 0; i < 80; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const len = 4 + Math.random() * 12;
+    const ang = Math.random() * Math.PI * 2;
+    const a = 0.03 + Math.random() * 0.08;
+    ctx.strokeStyle = `rgba(0,0,0,${a.toFixed(3)})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = 4;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function getProceduralDetailTexture(kind: string): THREE.CanvasTexture {
+  const cached = proceduralDetailCache.get(kind);
+  if (cached) return cached;
+  const tex = createProceduralDetailTexture(kind);
+  proceduralDetailCache.set(kind, tex);
+  return tex;
+}
+
+function applyFallbackDetailTexture(material: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial, type: string) {
+  if (material.map) return;
+  const kind =
+    type === 'shell' || type === 'shell_door'
+      ? 'shell'
+      : type === 'starfish'
+        ? 'starfish'
+        : type === 'treasure_chest'
+          ? 'treasure'
+          : 'rock';
+  const detail = getProceduralDetailTexture(kind);
+  const repeat = type === 'treasure_chest' ? 2 : 3;
+  detail.repeat.set(repeat, repeat);
+  material.map = detail;
+  material.roughnessMap = detail;
+  material.needsUpdate = true;
+}
+
 function toTexturedStandardMaterial(material: THREE.Material, type: string): THREE.Material {
   const category = getMaterialCategory(type);
   if (!category) return material;
@@ -206,22 +284,24 @@ const modelCache = new Map<string, THREE.Group>();
 const modelLoadPromises = new Map<string, Promise<THREE.Group | null>>();
 
 const MODEL_PATHS: Record<string, string> = {
-  coral_branch: '/models/coral_branch.glb',
-  coral_brain: '/models/coral_brain.glb',
-  coral_fan: '/models/coral_fan.glb',
-  coral_tube: '/models/coral_tube.glb',
-  coral_bulb: '/models/coral_bulb.glb',
-  rock_boulder: '/models/rock_boulder.glb',
-  rock_slab: '/models/rock_slab.glb',
-  rock_cluster: '/models/rock_cluster.glb',
-  rock_arch: '/models/rock_arch.glb',
-  seagrass: '/models/seagrass.glb',
-  anemone: '/models/anemone.glb',
-  shell: '/models/shell.glb',
-  starfish: '/models/starfish.glb',
-  treasure_chest: '/models/treasure_chest.glb',
-  shell_door: '/models/shell_door.glb',
-  cave_crack: '/models/cave_crack.glb',
+  // Use known-present textured assets first; fallback geometry handles the rest.
+  coral_branch: '/local-world-assets/models/coralreef1.glb',
+  coral_brain: '/local-world-assets/models/coralreef1.glb',
+  coral_fan: '/local-world-assets/models/coralreef1.glb',
+  coral_tube: '/local-world-assets/models/coralreef1.glb',
+  coral_bulb: '/local-world-assets/models/coralreef1.glb',
+  rock_boulder: '/models/polyhaven/coast_rocks_01/coast_rocks_01_1k.gltf',
+  rock_slab: '/models/polyhaven/coast_rocks_02/coast_rocks_02_1k.gltf',
+  rock_cluster: '/models/polyhaven/rock_moss_set_01/rock_moss_set_01_1k.gltf',
+  rock_arch: '/models/polyhaven/coast_rocks_02/coast_rocks_02_1k.gltf',
+  seagrass: '/models/polyhaven/dead_quiver_branch_01/dead_quiver_branch_01_1k.gltf',
+  anemone: '/local-world-assets/models/coralreef1.glb',
+  bubbler: '/local-world-assets/models/coralreef1.glb',
+  shell: '/models/polyhaven/lambis_shell/lambis_shell_1k.gltf',
+  starfish: '/local-world-assets/models/coralreef1.glb',
+  treasure_chest: '/local-world-assets/models/terrain1.glb',
+  shell_door: '/local-world-assets/models/coralreef1.glb',
+  cave_crack: '/local-world-assets/models/terrain1.glb',
 };
 
 export function loadWorldModel(type: string): Promise<THREE.Group | null> {
@@ -239,8 +319,8 @@ export function loadWorldModel(type: string): Promise<THREE.Group | null> {
   const promise = gltfLoader
     .loadAsync(path)
     .then((gltf) => {
-      const scene = gltf.scene;
-      scene.traverse((child) => {
+      const source = gltf.scene;
+      source.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
           mesh.castShadow = true;
@@ -252,8 +332,23 @@ export function loadWorldModel(type: string): Promise<THREE.Group | null> {
           }
         }
       });
-      modelCache.set(type, scene);
-      return scene.clone();
+      // Normalize imported models to a predictable unit envelope so they can
+      // replace procedural meshes without exploding scale/pivot mismatch.
+      const box = new THREE.Box3().setFromObject(source);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      const maxDim = Math.max(0.0001, size.x, size.y, size.z);
+      const fitScale = 1 / maxDim;
+      source.position.sub(center);
+      source.position.y += size.y * 0.5;
+      source.scale.multiplyScalar(fitScale);
+
+      const normalized = new THREE.Group();
+      normalized.add(source);
+      modelCache.set(type, normalized);
+      return normalized.clone();
     })
     .catch(() => null);
 
@@ -647,20 +742,33 @@ function createFallbackMesh(obj: WorldObject): THREE.Mesh {
   const geometry = createObjectGeometry(obj.type);
   const color = obj.color || getDefaultColor(obj.type);
   const isBio = BIOLUMINESCENT.has(obj.type);
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    roughness: isBio ? 0.5 : 0.7,
-    metalness: isBio ? 0.15 : 0.1,
-    emissive: isBio ? color : '#000000',
-    emissiveIntensity: isBio ? 0.15 : 0,
-    flatShading: false,
-    side: THREE.DoubleSide,
-  });
+  const material =
+    obj.type === 'shell' || obj.type === 'shell_door'
+      ? new THREE.MeshPhysicalMaterial({
+          color,
+          roughness: 0.38,
+          metalness: 0.12,
+          clearcoat: 0.45,
+          clearcoatRoughness: 0.26,
+          emissive: isBio ? color : '#000000',
+          emissiveIntensity: isBio ? 0.08 : 0,
+          side: THREE.DoubleSide,
+        })
+      : new THREE.MeshStandardMaterial({
+          color,
+          roughness: obj.type === 'treasure_chest' ? 0.48 : (isBio ? 0.5 : 0.7),
+          metalness: obj.type === 'treasure_chest' ? 0.35 : (isBio ? 0.15 : 0.1),
+          emissive: isBio ? color : '#000000',
+          emissiveIntensity: isBio ? 0.15 : 0,
+          flatShading: false,
+          side: THREE.DoubleSide,
+        });
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   applyExternalMaterialMaps(material, obj.type);
+  applyFallbackDetailTexture(material, obj.type);
   return mesh;
 }
 
@@ -673,24 +781,16 @@ export function renderWorldState(
   group.position.copy(offset);
 
   for (const obj of worldData.objects) {
-    const placeholder = createFallbackMesh(obj);
-    placeholder.position.set(obj.position[0], obj.position[1], obj.position[2]);
-    placeholder.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
-    placeholder.scale.setScalar(obj.scale);
-    placeholder.name = obj.id;
-    placeholder.userData = { type: obj.type };
-    group.add(placeholder);
+    const path = MODEL_PATHS[obj.type];
+    if (!path || !path.trim()) continue;
 
     loadWorldModel(obj.type).then((gltfGroup) => {
       if (!gltfGroup) return;
-      gltfGroup.position.copy(placeholder.position);
-      gltfGroup.rotation.copy(placeholder.rotation);
+      gltfGroup.position.set(obj.position[0], obj.position[1], obj.position[2]);
+      gltfGroup.rotation.set(obj.rotation[0], obj.rotation[1], obj.rotation[2]);
       gltfGroup.scale.setScalar(obj.scale);
       gltfGroup.name = obj.id;
       gltfGroup.userData = { type: obj.type };
-      group.remove(placeholder);
-      placeholder.geometry?.dispose();
-      (placeholder.material as THREE.Material)?.dispose();
       group.add(gltfGroup);
     });
   }
@@ -708,18 +808,18 @@ export function createSandFloor(size: number = 50): THREE.Mesh {
     const x = pos.getX(i);
     const z = pos.getZ(i);
     const noise =
-      Math.sin(x * 1.2) * Math.cos(z * 0.9) * 0.15 +
-      Math.sin(x * 2.8 + z * 1.3) * 0.06 +
-      Math.sin(x * 5 + z * 3) * 0.03;
+      Math.sin(x * 0.85) * Math.cos(z * 0.95) * 0.08 +
+      Math.sin(x * 2.2 + z * 1.15) * 0.032 +
+      Math.sin(x * 4.2 + z * 2.8) * 0.014;
     pos.setZ(i, pos.getZ(i) + noise);
   }
   pos.needsUpdate = true;
   geo.computeVertexNormals();
 
   const material = new THREE.MeshStandardMaterial({
-    color: '#c2a570',
-    roughness: 0.85,
-    metalness: 0.02,
+    color: '#d6bc89',
+    roughness: 0.92,
+    metalness: 0.01,
     flatShading: false,
   });
 
@@ -1221,32 +1321,97 @@ export function animateKelp(group: THREE.Group, elapsed: number) {
     const speed = mesh.userData.kelpSpeed || 0.5;
     const pos = mesh.geometry.getAttribute('position');
     const height = (mesh.geometry as any).parameters?.height || 3;
+    if (!mesh.userData.kelpBaseX || mesh.userData.kelpBaseX.length !== pos.count) {
+      const base = new Float32Array(pos.count);
+      for (let i = 0; i < pos.count; i++) {
+        base[i] = pos.getX(i);
+      }
+      mesh.userData.kelpBaseX = base;
+    }
+    const baseX = mesh.userData.kelpBaseX as Float32Array;
     for (let v = 0; v < pos.count; v++) {
       const t = (pos.getY(v) + height / 2) / height;
       const sway = Math.sin(elapsed * speed + phase + t * 2) * t * 0.15;
-      pos.setX(v, pos.getX(v) * 0.98 + sway * 0.02);
+      pos.setX(v, baseX[v] + sway);
     }
     pos.needsUpdate = true;
   });
 }
 
-// --- Schools of small fish (instanced) ---
+export function animateKelpCurrent(
+  group: THREE.Group,
+  elapsed: number,
+  current: THREE.Vector3,
+  currentStrength: number,
+) {
+  group.children.forEach((child) => {
+    const mesh = child as THREE.Mesh;
+    const phase = mesh.userData.kelpPhase || 0;
+    const speed = mesh.userData.kelpSpeed || 0.5;
+    const pos = mesh.geometry.getAttribute('position');
+    const height = (mesh.geometry as any).parameters?.height || 3;
+    if (!mesh.userData.kelpBaseX || mesh.userData.kelpBaseX.length !== pos.count) {
+      const base = new Float32Array(pos.count);
+      for (let i = 0; i < pos.count; i++) {
+        base[i] = pos.getX(i);
+      }
+      mesh.userData.kelpBaseX = base;
+    }
+    const baseX = mesh.userData.kelpBaseX as Float32Array;
+    for (let v = 0; v < pos.count; v++) {
+      const t = (pos.getY(v) + height / 2) / height;
+      const wave = Math.sin(elapsed * speed + phase + t * 2.4) * t * 0.11;
+      const flow = current.x * currentStrength * t * 0.22;
+      pos.setX(v, baseX[v] + wave + flow);
+    }
+    pos.needsUpdate = true;
+  });
+}
 
-export function createFishSchool(count: number = 30): THREE.Group {
+// --- Schools of fish (species + behavior) ---
+
+export type FishSpecies = 'reef' | 'dart' | 'predator' | 'bottom';
+export type FishSchoolBehavior = 'orbit' | 'patrol' | 'scatter';
+
+type FishSchoolOptions = {
+  species?: FishSpecies;
+  behavior?: FishSchoolBehavior;
+};
+
+export function createFishSchool(count: number = 30, options?: FishSchoolOptions): THREE.Group {
   const group = new THREE.Group();
   group.name = 'fish_school';
+  const species: FishSpecies = options?.species || 'reef';
+  const behavior: FishSchoolBehavior = options?.behavior || 'orbit';
+  group.userData.species = species;
+  group.userData.behavior = behavior;
+  group.userData.home = new THREE.Vector3();
 
-  const fishGeo = new THREE.ConeGeometry(0.02, 0.08, 4);
+  const fishGeo =
+    species === 'predator'
+      ? new THREE.ConeGeometry(0.034, 0.14, 5)
+      : species === 'bottom'
+        ? new THREE.ConeGeometry(0.025, 0.095, 4)
+        : new THREE.ConeGeometry(0.02, 0.08, 4);
   fishGeo.rotateZ(-Math.PI / 2);
 
   for (let i = 0; i < count; i++) {
-    const hue = 0.55 + Math.random() * 0.15;
+    const hue =
+      species === 'predator'
+        ? 0.02 + Math.random() * 0.05
+        : species === 'dart'
+          ? 0.5 + Math.random() * 0.08
+          : species === 'bottom'
+            ? 0.08 + Math.random() * 0.06
+            : 0.55 + Math.random() * 0.15;
+    const sat = species === 'bottom' ? 0.35 : 0.7;
+    const lit = species === 'predator' ? 0.42 + Math.random() * 0.1 : 0.5 + Math.random() * 0.2;
     const mat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color().setHSL(hue, 0.7, 0.5 + Math.random() * 0.2),
-      emissive: new THREE.Color().setHSL(hue, 0.5, 0.15),
-      emissiveIntensity: 0.3,
-      roughness: 0.4,
-      metalness: 0.3,
+      color: new THREE.Color().setHSL(hue, sat, lit),
+      emissive: new THREE.Color().setHSL(hue, sat * 0.6, species === 'predator' ? 0.08 : 0.15),
+      emissiveIntensity: species === 'predator' ? 0.12 : 0.3,
+      roughness: species === 'predator' ? 0.3 : 0.4,
+      metalness: species === 'predator' ? 0.4 : 0.3,
     });
     const fish = new THREE.Mesh(fishGeo, mat);
     fish.position.set(
@@ -1255,8 +1420,19 @@ export function createFishSchool(count: number = 30): THREE.Group {
       (Math.random() - 0.5) * 3,
     );
     fish.userData.fishOffset = Math.random() * Math.PI * 2;
-    fish.userData.fishSpeed = 0.8 + Math.random() * 0.6;
-    fish.userData.fishRadius = 1.5 + Math.random() * 2;
+    fish.userData.fishSpeed =
+      species === 'dart'
+        ? 1.3 + Math.random() * 0.9
+        : species === 'predator'
+          ? 0.95 + Math.random() * 0.55
+          : 0.8 + Math.random() * 0.6;
+    fish.userData.fishRadius =
+      species === 'predator'
+        ? 2.4 + Math.random() * 2.2
+        : species === 'bottom'
+          ? 1.2 + Math.random() * 1.2
+          : 1.5 + Math.random() * 2;
+    fish.userData.fishBaseY = fish.position.y;
     group.add(fish);
   }
 
@@ -1265,33 +1441,77 @@ export function createFishSchool(count: number = 30): THREE.Group {
     -1 + Math.random() * 2,
     (Math.random() - 0.5) * 20,
   );
+  (group.userData.home as THREE.Vector3).copy(group.position);
 
   return group;
 }
 
-export function animateFishSchool(group: THREE.Group, elapsed: number) {
+export function animateFishSchool(
+  group: THREE.Group,
+  elapsed: number,
+  current?: THREE.Vector3,
+  currentStrength: number = 0,
+  avoidPoint?: THREE.Vector3,
+  frenzyBoost: number = 0,
+) {
+  const behavior = (group.userData.behavior as FishSchoolBehavior | undefined) || 'orbit';
+  const species = (group.userData.species as FishSpecies | undefined) || 'reef';
+  const home = (group.userData.home as THREE.Vector3 | undefined) || group.position.clone();
   const center = group.position;
-  const schoolAngle = elapsed * 0.15;
-  center.x += Math.sin(schoolAngle) * 0.003;
-  center.z += Math.cos(schoolAngle * 0.7) * 0.003;
+  const schoolAngle = elapsed * (behavior === 'patrol' ? 0.1 : 0.15);
+  const driftScale = behavior === 'patrol' ? 0.006 : 0.003;
+  if (behavior === 'patrol') {
+    const patrolX = home.x + Math.sin(schoolAngle) * 4.5;
+    const patrolZ = home.z + Math.cos(schoolAngle * 0.8) * 3.2;
+    center.x += (patrolX - center.x) * 0.02;
+    center.z += (patrolZ - center.z) * 0.02;
+  } else {
+    center.x += Math.sin(schoolAngle) * driftScale + (current?.x ?? 0) * currentStrength * 0.005;
+    center.z += Math.cos(schoolAngle * 0.7) * driftScale + (current?.z ?? 0) * currentStrength * 0.005;
+  }
+
+  if (avoidPoint) {
+    const toAvoid = center.clone().sub(avoidPoint);
+    const dist = toAvoid.length();
+    const avoidRadius = behavior === 'scatter' || species === 'dart' ? 6.5 : 4.2;
+    if (dist > 0.001 && dist < avoidRadius) {
+      const repel = (1 - dist / avoidRadius) * (species === 'predator' ? 0.02 : 0.055);
+      center.add(toAvoid.normalize().multiplyScalar(repel));
+    }
+  }
 
   group.children.forEach((child) => {
     const fish = child as THREE.Mesh;
     const offset = fish.userData.fishOffset || 0;
-    const speed = fish.userData.fishSpeed || 1;
+    const baseSpeed = fish.userData.fishSpeed || 1;
+    const speedMultiplier =
+      1 +
+      frenzyBoost *
+        (species === 'predator'
+          ? 0.95
+          : species === 'dart'
+            ? 0.5
+            : 0.32);
+    const speed = baseSpeed * speedMultiplier;
     const radius = fish.userData.fishRadius || 2;
     const t = elapsed * speed + offset;
     const localX = Math.sin(t) * radius;
-    const localZ = Math.cos(t) * radius;
-    const localY = fish.position.y + Math.sin(t * 2) * 0.002;
+    const localZ = Math.cos(t * (behavior === 'patrol' ? 0.8 : 1.0)) * radius;
+    const baseY = Number.isFinite(fish.userData.fishBaseY) ? Number(fish.userData.fishBaseY) : fish.position.y;
+    const targetY =
+      baseY +
+      Math.sin(t * (species === 'dart' ? 3.0 : 2.0)) * (species === 'bottom' ? 0.05 : 0.14) +
+      (species === 'bottom' ? -0.65 : 0.0);
 
     const dx = localX - fish.position.x;
     const dz = localZ - fish.position.z;
     fish.rotation.y = Math.atan2(dx, dz);
 
-    fish.position.x += (localX - fish.position.x) * 0.05;
-    fish.position.z += (localZ - fish.position.z) * 0.05;
-    fish.position.y = localY;
+    const lerpBase = species === 'dart' ? 0.1 : 0.05;
+    const lerp = lerpBase + frenzyBoost * (species === 'predator' ? 0.07 : 0.03);
+    fish.position.x += (localX - fish.position.x) * lerp;
+    fish.position.z += (localZ - fish.position.z) * lerp;
+    fish.position.y += (targetY - fish.position.y) * 0.08;
   });
 }
 
@@ -1346,7 +1566,12 @@ export function createJellyfish(count: number = 8, spread: number = 30): THREE.G
   return group;
 }
 
-export function animateJellyfish(group: THREE.Group, elapsed: number) {
+export function animateJellyfish(
+  group: THREE.Group,
+  elapsed: number,
+  current?: THREE.Vector3,
+  currentStrength: number = 0,
+) {
   group.children.forEach((jelly) => {
     const phase = jelly.userData.jellyPhase || 0;
     const speed = jelly.userData.jellySpeed || 0.4;
@@ -1354,7 +1579,190 @@ export function animateJellyfish(group: THREE.Group, elapsed: number) {
     const body = jelly.children[0] as THREE.Mesh;
     body.scale.set(1 + pulse * 0.1, 1 - pulse * 0.05, 1 + pulse * 0.1);
     jelly.position.y += Math.sin(elapsed * speed + phase) * 0.002;
-    jelly.position.x += Math.sin(elapsed * speed * 0.3 + phase) * 0.001;
+    jelly.position.x += Math.sin(elapsed * speed * 0.3 + phase) * 0.001 + (current?.x ?? 0) * currentStrength * 0.0016;
+    jelly.position.z += Math.cos(elapsed * speed * 0.27 + phase) * 0.0007 + (current?.z ?? 0) * currentStrength * 0.0013;
+  });
+}
+
+type FloraSwayPreset = {
+  amplitude: number;
+  speed: number;
+  phase: number;
+  baseX: number;
+  baseY: number;
+  baseZ: number;
+};
+
+function getFloraSwayProfile(type?: string): { amplitude: number; speed: number } | null {
+  if (!type) return null;
+  if (type === 'seagrass') return { amplitude: 0.22, speed: 1.1 };
+  if (type === 'anemone') return { amplitude: 0.1, speed: 0.9 };
+  if (type === 'coral_fan') return { amplitude: 0.07, speed: 0.6 };
+  if (type === 'coral_tube') return { amplitude: 0.045, speed: 0.5 };
+  return null;
+}
+
+function ensureFloraSwayPreset(obj: THREE.Object3D): FloraSwayPreset | null {
+  const existing = obj.userData.floraSway as FloraSwayPreset | undefined;
+  if (existing) return existing;
+  const type = obj.userData?.type as string | undefined;
+  const profile = getFloraSwayProfile(type);
+  if (!profile) return null;
+  const preset: FloraSwayPreset = {
+    amplitude: profile.amplitude,
+    speed: profile.speed,
+    phase: Math.random() * Math.PI * 2,
+    baseX: obj.rotation.x,
+    baseY: obj.rotation.y,
+    baseZ: obj.rotation.z,
+  };
+  obj.userData.floraSway = preset;
+  return preset;
+}
+
+export function animatePlantCurrentSway(
+  scene: THREE.Scene,
+  elapsed: number,
+  current: THREE.Vector3,
+  currentStrength: number,
+) {
+  scene.traverse((obj) => {
+    const preset = ensureFloraSwayPreset(obj);
+    if (!preset) return;
+    const t = elapsed * preset.speed + preset.phase;
+    const flowX = current.x * currentStrength * preset.amplitude;
+    const flowZ = current.z * currentStrength * preset.amplitude * 0.7;
+    obj.rotation.z = preset.baseZ + Math.sin(t) * preset.amplitude + flowX;
+    obj.rotation.x = preset.baseX + Math.cos(t * 0.8) * preset.amplitude * 0.35 - flowZ;
+  });
+}
+
+// --- Bioluminescent plankton zones ---
+
+export function createBioluminescentPlanktonCloud(
+  count: number = 220,
+  radius: number = 6,
+  center: THREE.Vector3 = new THREE.Vector3(0, -1, -10),
+): THREE.Points {
+  const positions = new Float32Array(count * 3);
+  const spread = radius;
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * spread;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.6;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * spread;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0x66d9ff,
+    size: 0.05,
+    transparent: true,
+    opacity: 0.24,
+    sizeAttenuation: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.position.copy(center);
+  points.userData.planktonBaseOpacity = mat.opacity;
+  points.userData.planktonPulsePhase = Math.random() * Math.PI * 2;
+  points.name = 'bioluminescent_plankton';
+  return points;
+}
+
+export function animateBioluminescentPlanktonCloud(
+  cloud: THREE.Points,
+  elapsed: number,
+  delta: number,
+  intensity: number = 1,
+) {
+  const mat = cloud.material as THREE.PointsMaterial;
+  const baseOpacity = Number.isFinite(cloud.userData.planktonBaseOpacity) ? Number(cloud.userData.planktonBaseOpacity) : 0.24;
+  const phase = Number.isFinite(cloud.userData.planktonPulsePhase) ? Number(cloud.userData.planktonPulsePhase) : 0;
+  const pulse = 0.65 + 0.35 * Math.sin(elapsed * 1.4 + phase);
+  mat.opacity = baseOpacity * pulse * THREE.MathUtils.clamp(intensity, 0.2, 2.2);
+
+  const pos = cloud.geometry.getAttribute('position');
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + Math.sin(elapsed * 0.8 + i * 0.21) * delta * 0.05;
+    let y = pos.getY(i) + Math.cos(elapsed * 0.7 + i * 0.13) * delta * 0.035;
+    const z = pos.getZ(i) + Math.sin(elapsed * 0.6 + i * 0.17) * delta * 0.04;
+    if (y > 3.2) y = -3.2;
+    if (y < -3.2) y = 3.2;
+    pos.setXYZ(i, x, y, z);
+  }
+  pos.needsUpdate = true;
+}
+
+// --- Shipwreck ambience nodes (flicker + rust dust) ---
+
+export function createShipwreckAmbienceNodes(anchors: THREE.Vector3[]): THREE.Group {
+  const root = new THREE.Group();
+  root.name = 'shipwreck_ambience_nodes';
+  anchors.forEach((anchor, idx) => {
+    const node = new THREE.Group();
+    node.position.copy(anchor);
+
+    const light = new THREE.PointLight(0x7bd3ff, 0.6, 11, 2);
+    light.position.set(0, 0.8, 0);
+    light.userData.baseIntensity = 0.6 + Math.random() * 0.45;
+    light.userData.phase = Math.random() * Math.PI * 2;
+    node.add(light);
+
+    const moteCount = 110;
+    const positions = new Float32Array(moteCount * 3);
+    for (let i = 0; i < moteCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 3.2;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 1.8;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 3.2;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color: idx % 2 === 0 ? 0x86d7ff : 0xb9925c,
+      size: 0.028,
+      transparent: true,
+      opacity: 0.2,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const dust = new THREE.Points(geo, mat);
+    dust.userData.baseOpacity = mat.opacity;
+    dust.userData.phase = Math.random() * Math.PI * 2;
+    node.add(dust);
+
+    root.add(node);
+  });
+  return root;
+}
+
+export function animateShipwreckAmbienceNodes(group: THREE.Group, elapsed: number, intensity: number = 1) {
+  group.children.forEach((node) => {
+    const light = node.children.find((c) => c instanceof THREE.PointLight) as THREE.PointLight | undefined;
+    const dust = node.children.find((c) => c instanceof THREE.Points) as THREE.Points | undefined;
+
+    if (light) {
+      const base = Number.isFinite(light.userData.baseIntensity) ? Number(light.userData.baseIntensity) : 0.7;
+      const phase = Number.isFinite(light.userData.phase) ? Number(light.userData.phase) : 0;
+      const flicker = 0.72 + 0.28 * Math.sin(elapsed * 2.1 + phase) + 0.08 * Math.sin(elapsed * 5.4 + phase * 0.5);
+      light.intensity = base * flicker * THREE.MathUtils.clamp(intensity, 0.25, 2.4);
+    }
+
+    if (dust) {
+      const mat = dust.material as THREE.PointsMaterial;
+      const baseOpacity = Number.isFinite(dust.userData.baseOpacity) ? Number(dust.userData.baseOpacity) : 0.2;
+      const phase = Number.isFinite(dust.userData.phase) ? Number(dust.userData.phase) : 0;
+      mat.opacity = baseOpacity * (0.65 + 0.35 * Math.sin(elapsed * 1.1 + phase)) * THREE.MathUtils.clamp(intensity, 0.3, 2.0);
+      const pos = dust.geometry.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        let y = pos.getY(i) + 0.003 + Math.sin(elapsed * 0.7 + i * 0.1) * 0.0012;
+        if (y > 1.2) y = -1.2;
+        const x = pos.getX(i) + Math.sin(elapsed * 0.5 + i * 0.2) * 0.0008;
+        const z = pos.getZ(i) + Math.cos(elapsed * 0.6 + i * 0.16) * 0.0008;
+        pos.setXYZ(i, x, y, z);
+      }
+      pos.needsUpdate = true;
+    }
   });
 }
 

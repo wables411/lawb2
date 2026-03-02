@@ -1,0 +1,20 @@
+{
+  "nfts": [
+    {
+      "chain": "ethereum",
+      "contract": "0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42",
+      "tokenId": "158",
+      "name": "Lawbster #158",
+      "collection": "lawbsters",
+      "image_url": "https://ipfs.io/ipfs/YOUR_IPFS_HASH"
+    },
+    {
+      "chain": "ethereum",
+      "contract": "0x0ef7bA09C38624b8E9cc4985790a2f5dBFc1dC42",
+      "tokenId": "177",
+      "name": "Lawbster #177",
+      "collection": "lawbsters",
+      "image_url": "https://ipfs.io/ipfs/YOUR_IPFS_HASH"
+    }
+  ]
+}

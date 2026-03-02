@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Draggable from 'react-draggable';
 import { getEligibleInviteLists, mintNFT, getCollectionStats, getCollectionData, getRecentlyMintedNFTsGlobal, type NFT, type CollectionData } from '../mint';
+import { clearFetchCache } from '../utils/fetchCache';
 import { createUseStyles } from 'react-jss';
 import { useChainId, useSwitchChain, useWalletClient, useReadContract, usePublicClient } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
@@ -498,7 +499,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           if (publicClient) {
             publicClient.waitForTransactionReceipt({ hash }).then(async (receipt) => {
               console.log('Transaction confirmed:', receipt);
-              
+              clearFetchCache(); // So polling fetches fresh NFT data
               // Check for Transfer events (ERC-721 mint)
               const COLLECTION_ADDRESS = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
               const transferEvents = (receipt.logs || []).filter(log => {
@@ -1215,7 +1216,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
                 // Show reveal overlay for ASCII Lawbsters
                 setShowVideo(true);
                 setRevealedNFT({} as NFT); // Placeholder
-                
+                clearFetchCache(); // So polling fetches fresh NFT data
                 // Poll for newly minted NFTs
                 if (publicClient) {
                   publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` }).then(async (receipt) => {

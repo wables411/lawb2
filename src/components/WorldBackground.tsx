@@ -171,17 +171,12 @@ const WorldBackground: React.FC = () => {
     scene.add(bubbles);
     bubblesRef.current = bubbles;
 
-    // Load world state (Firebase first, fallback to static)
-    fetch('https://chess-220ee-default-rtdb.firebaseio.com/world/main.json')
-      .then((res) => res.json())
+    // Load world state from static file — avoids Firebase read on every main-page visit
+    fetch('/world/world-state-main.json')
+      .then((r) => r.json())
       .then((data: WorldState) => {
-        if (data && data.objects) {
-          renderWorldState(scene, data);
-        } else {
-          throw new Error('Invalid Firebase response');
-        }
+        if (data?.objects) renderWorldState(scene, data);
       })
-      .catch(() => fetch('/world/world-state-main.json').then((r) => r.json()).then((data: WorldState) => renderWorldState(scene, data)))
       .catch((err) => {
         console.warn('[WorldBackground] Failed to load world state:', err);
       });

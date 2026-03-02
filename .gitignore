@@ -73,3 +73,4 @@ test-*.html
 public/local-world-assets/*
 !public/local-world-assets/README.md
 !public/local-world-assets/manifest.example.json
+!public/local-world-assets/gallery.example.json

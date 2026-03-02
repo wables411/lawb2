@@ -45,7 +45,9 @@ export const getSoundCloudProfileUrl = (): string => {
 };
 
 export async function fetchSoundCloudLikedTracks(profileUrl: string = getSoundCloudProfileUrl()): Promise<SoundCloudLikesResponse> {
-  const url = new URL('/.netlify/functions/soundcloud-likes', getSoundCloudApiBase());
+  const base = getSoundCloudApiBase();
+  const path = base.includes('workers.dev') ? '/soundcloud-likes' : '/.netlify/functions/soundcloud-likes';
+  const url = new URL(path, base);
   url.searchParams.set('profileUrl', profileUrl);
 
   const res = await fetch(url.toString(), {
@@ -62,20 +64,49 @@ export async function fetchSoundCloudLikedTracks(profileUrl: string = getSoundCl
   return data;
 }
 
-export async function resolveSoundCloudProgressiveStreamUrl(transcodingUrl: string, profileUrl: string = getSoundCloudProfileUrl()): Promise<string> {
-  const url = new URL('/.netlify/functions/soundcloud-stream', getSoundCloudApiBase());
-  url.searchParams.set('transcodingUrl', transcodingUrl);
-  url.searchParams.set('profileUrl', profileUrl);
+// Cache resolved stream URLs + dedupe in-flight requests to avoid Netlify function storms.
+const streamUrlCache = new Map<string, { url: string; ts: number }>();
+const inFlight = new Map<string, Promise<string>>();
+const STREAM_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: { 'Accept': 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+export async function resolveSoundCloudProgressiveStreamUrl(transcodingUrl: string, profileUrl: string = getSoundCloudProfileUrl()): Promise<string> {
+  const cacheKey = `${transcodingUrl}|${profileUrl}`;
+
+  // Return cached result if still valid
+  const cached = streamUrlCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < STREAM_CACHE_TTL_MS) {
+    return cached.url;
   }
-  const data = (await res.json()) as { url?: string };
-  if (!data?.url) throw new Error('soundcloud-stream returned no url');
-  return data.url;
+
+  // Dedupe: if same request already in flight, wait for it instead of firing another
+  const existing = inFlight.get(cacheKey);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      const base = getSoundCloudApiBase();
+      const path = base.includes('workers.dev') ? '/soundcloud-stream' : '/.netlify/functions/soundcloud-stream';
+      const url = new URL(path, base);
+      url.searchParams.set('transcodingUrl', transcodingUrl);
+      url.searchParams.set('profileUrl', profileUrl);
+
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) {
+        throw new Error(`soundcloud-stream failed: ${res.status} ${res.statusText}`);
+      }
+      const data = (await res.json()) as { url?: string };
+      if (!data?.url) throw new Error('soundcloud-stream returned no url');
+      streamUrlCache.set(cacheKey, { url: data.url, ts: Date.now() });
+      return data.url;
+    } finally {
+      inFlight.delete(cacheKey);
+    }
+  })();
+
+  inFlight.set(cacheKey, promise);
+  return promise;
 }
 

@@ -1,5 +1,5 @@
 import { database } from './firebaseApp';
-import { ref, set, get, onValue, off, remove, update } from 'firebase/database';
+import { ref, set, get, onValue, off, remove, update, query, orderByChild, equalTo } from 'firebase/database';
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();
 
 // Board positions keys historically existed in two formats:
@@ -183,59 +183,46 @@ export const firebaseChess = {
     }
   },
 
-  // Get all active games
+  // Get all active games (query by state — avoids full chess_games download)
   async getActiveGames() {
     try {
       const db = getDatabaseOrThrow();
-      const gamesRef = ref(db, 'chess_games');
-      const snapshot = await get(gamesRef);
-      if (!snapshot.exists()) return [];
-      const games = snapshot.val();
-      return Object.values(games).filter((game: any) => 
-        game.game_state === 'waiting_for_join' || game.game_state === 'waiting' || game.game_state === 'active'
-      );
+      const states = ['waiting_for_join', 'waiting', 'active'] as const;
+      const all: Array<{ key: string; game: any }> = [];
+      for (const s of states) {
+        const q = query(ref(db, 'chess_games'), orderByChild('game_state'), equalTo(s));
+        const snap = await get(q);
+        if (snap.exists()) snap.forEach((child) => { all.push({ key: child.key!, game: child.val() }); });
+      }
+      return all.map(({ key, game }) => ({ ...normalizeGameData(game), invite_code: key }));
     } catch (error) {
       console.error('[FIREBASE] Error getting active games:', error);
       return [];
     }
   },
 
-  // Get open games (waiting for players to join)
-  // Optionally filter by chain
+  // Get open games (waiting for players to join) — query by state, not full tree
   async getOpenGames(filterChain?: 'sanko' | 'base' | 'arbitrum') {
     try {
       const db = getDatabaseOrThrow();
-      const gamesRef = ref(db, 'chess_games');
-      const snapshot = await get(gamesRef);
-      
-      if (!snapshot.exists()) {
-        return [];
+      const all: Array<{ key: string; game: any }> = [];
+      for (const s of ['waiting_for_join', 'waiting'] as const) {
+        const q = query(ref(db, 'chess_games'), orderByChild('game_state'), equalTo(s));
+        const snap = await get(q);
+        if (snap.exists()) snap.forEach((child) => { all.push({ key: child.key!, game: child.val() }); });
       }
-      
-      const games = snapshot.val();
-      const totalGames = Object.keys(games || {}).length;
-      
-      const openGames = Object.values(games).filter((game: any) => {
-        // Only show games that are waiting for join (not active yet)
-        const isWaitingForJoin = game.game_state === 'waiting_for_join' || game.game_state === 'waiting';
-        const isPublic = game.is_public !== false; // Default to true if not set
-        const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
-        
-        // Additional check: if game_state is undefined, treat as waiting_for_join
-        const hasValidState = game.game_state === 'waiting_for_join' || game.game_state === 'waiting' || game.game_state === undefined;
-        
-        // Chain filter (if specified)
-        const matchesChain = !filterChain || !game.chain || game.chain === filterChain;
-        
-        return hasValidState && isPublic && noRedPlayer && matchesChain;
-      });
-      
-      // Sort by creation date (newest first)
-      openGames.sort((a: any, b: any) => 
+      const openGames = all
+        .map(({ key, game }) => ({ ...normalizeGameData(game), invite_code: key }))
+        .filter((game: any) => {
+          const isPublic = game.is_public !== false;
+          const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
+          const matchesChain = !filterChain || !game.chain || game.chain === filterChain;
+          return isPublic && noRedPlayer && matchesChain;
+        });
+      openGames.sort((a: any, b: any) =>
         new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
       );
-      
-      console.log('[FIREBASE] Found', openGames.length, 'open games out of', totalGames, 'total games', filterChain ? `(filtered by ${filterChain})` : '');
+      console.log('[FIREBASE] Found', openGames.length, 'open games (queried by state)', filterChain ? `(filtered by ${filterChain})` : '');
       return openGames;
     } catch (error) {
       console.error('[FIREBASE] Error getting open games:', error);
@@ -310,20 +297,19 @@ export const firebaseChess = {
   async getActiveVsClawbGame() {
     try {
       const db = getDatabaseOrThrow();
-      const gamesRef = ref(db, 'chess_games');
-      const snapshot = await get(gamesRef);
-      if (!snapshot.exists()) return null;
-      const games = snapshot.val();
-      const vsClawb = Object.entries(games)
-        .filter(([, g]: [string, any]) =>
-          g.game_type === 'vs_clawb' && g.game_state === 'active'
-        )
-        .map(([key, g]: [string, any]) => ({ ...normalizeGameData(g), invite_code: key }));
-      vsClawb.sort((a: any, b: any) =>
+      const q = query(ref(db, 'chess_games'), orderByChild('game_type'), equalTo('vs_clawb'));
+      const snap = await get(q);
+      if (!snap.exists()) return null;
+      const vsClawb: Array<{ key: string; game: any }> = [];
+      snap.forEach((child) => { vsClawb.push({ key: child.key!, game: child.val() }); });
+      const active = vsClawb
+        .filter(({ game }) => game?.game_state === 'active')
+        .map(({ key, game }) => ({ ...normalizeGameData(game), invite_code: key }));
+      active.sort((a: any, b: any) =>
         new Date(b.updated_at || b.created_at || 0).getTime() -
         new Date(a.updated_at || a.created_at || 0).getTime()
       );
-      return vsClawb[0] || null;
+      return active[0] || null;
     } catch (error) {
       console.error('[FIREBASE] Error getting active vs_clawb game:', error);
       return null;
@@ -331,28 +317,26 @@ export const firebaseChess = {
   },
 
   // Prefer any active game where Clawb is a player (vs_clawb or PVP/public).
-  // Fallback behavior can still use getActiveVsClawbGame where explicitly needed.
   async getActiveClawbGame() {
     try {
-      const db = getDatabaseOrThrow();
-      const gamesRef = ref(db, 'chess_games');
-      const snapshot = await get(gamesRef);
-      if (!snapshot.exists()) return null;
-      const games = snapshot.val();
-      const clawbGames = Object.entries(games)
-        .filter(([, g]: [string, any]) => {
-          if (g?.game_state !== 'active') return false;
-          const blue = String(g?.blue_player || '').toLowerCase();
-          const red = String(g?.red_player || '').toLowerCase();
+      const q = query(ref(getDatabaseOrThrow(), 'chess_games'), orderByChild('game_state'), equalTo('active'));
+      const snap = await get(q);
+      if (!snap.exists()) return null;
+      const clawbGames: Array<{ key: string; game: any }> = [];
+      snap.forEach((child) => { clawbGames.push({ key: child.key!, game: child.val() }); });
+      const filtered = clawbGames
+        .filter(({ game }) => {
+          const blue = String(game?.blue_player || '').toLowerCase();
+          const red = String(game?.red_player || '').toLowerCase();
           return blue === CLAWB_WALLET || red === CLAWB_WALLET;
         })
-        .map(([key, g]: [string, any]) => ({ ...normalizeGameData(g), invite_code: key }));
+        .map(({ key, game }) => ({ ...normalizeGameData(game), invite_code: key }));
 
-      clawbGames.sort((a: any, b: any) =>
+      filtered.sort((a: any, b: any) =>
         new Date(b.updated_at || b.created_at || 0).getTime() -
         new Date(a.updated_at || a.created_at || 0).getTime()
       );
-      return clawbGames[0] || null;
+      return filtered[0] || null;
     } catch (error) {
       console.error('[FIREBASE] Error getting active Clawb game:', error);
       return null;
@@ -374,25 +358,16 @@ export const firebaseChess = {
   }
 };
 
-// Utility to find a game by player address using contract mapping
-// (This should be called from the frontend using ethers/web3 to get inviteCode, then use getGame)
+// Utility to find a game by player address — reuses getActiveGames (query-based, not full tree)
 export const findGameByPlayer = async (playerAddress: string) => {
   try {
-    const db = getDatabaseOrThrow();
-    const gamesRef = ref(db, 'chess_games');
-    const snapshot = await get(gamesRef);
-    if (!snapshot.exists()) return null;
-    const games = snapshot.val();
+    const games = await firebaseChess.getActiveGames();
     const needle = (playerAddress || '').toLowerCase();
-    // Find the first game where a player is involved
-    for (const key in games) {
-      const red = (games[key]?.red_player || '').toLowerCase();
-      const blue = (games[key]?.blue_player || '').toLowerCase();
-      if (red === needle || blue === needle) {
-        return { ...normalizeGameData(games[key]), invite_code: key };
-      }
-    }
-    return null;
+    const match = games.find(
+      (g: any) =>
+        (g.red_player || '').toLowerCase() === needle || (g.blue_player || '').toLowerCase() === needle
+    );
+    return match || null;
   } catch (error) {
     console.error('[FIREBASE] Error finding game by player:', error);
     return null;

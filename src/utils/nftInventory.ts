@@ -1,6 +1,7 @@
 import { JsonRpcProvider, Contract } from 'ethers';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { getCollectionNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
+import { cachedFetch } from './fetchCache';
 
 const ERC721_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
@@ -507,7 +508,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     // Use Netlify function proxy to keep API key server-side
     // Try direct function path first, then fallback to /api route
     const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(lawbsters.address)}`;
-    const alchemyResponse = await fetch(proxyUrl);
+    const alchemyResponse = await cachedFetch(proxyUrl);
     
     if (alchemyResponse.ok) {
       const contentType = alchemyResponse.headers.get('content-type');
@@ -710,7 +711,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     
     // Use Netlify function proxy to keep API key server-side, specify Base chain
     const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(halloween.address)}&chain=base`;
-    const alchemyResponse = await fetch(proxyUrl);
+    const alchemyResponse = await cachedFetch(proxyUrl);
     
     if (alchemyResponse.ok) {
       const contentType = alchemyResponse.headers.get('content-type');
@@ -803,7 +804,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     
     // Use Netlify function proxy to keep API key server-side, specify Base chain
     const proxyUrl = `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}&contractAddress=${encodeURIComponent(asciilawbs.address)}&chain=base`;
-    const alchemyResponse = await fetch(proxyUrl);
+    const alchemyResponse = await cachedFetch(proxyUrl);
     
     if (alchemyResponse.ok) {
       const contentType = alchemyResponse.headers.get('content-type');

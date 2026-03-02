@@ -178,6 +178,17 @@ const ACTION_COMMAND_ALIASES = {
   sunburst: 'sunburst',
   bait: 'bait',
   pulse: 'pulse',
+  frenzy: 'predator_frenzy',
+  predator: 'predator_frenzy',
+  sonar: 'sonar_ping',
+  titan: 'titan_ping',
+  camfollow: 'cam_follow',
+  camorbit: 'cam_orbit',
+  camwide: 'cam_wide',
+  camcinematic: 'cam_cinematic',
+  currentstorm: 'current_storm',
+  currentcalm: 'current_calm',
+  currentnormal: 'current_normal',
   reefskin: 'reefskin',
 };
 
@@ -192,6 +203,8 @@ function buildClawbWorldUrl() {
   u.searchParams.delete('autoplay');
   u.searchParams.delete('apiBase');
   u.searchParams.delete('viz');
+  // Bust OBS browser-source cache. Bump CLAWB_WORLD_BUILD_TAG in .env after each frontend rebuild, then restart Clawb.
+  u.searchParams.set('build', process.env.CLAWB_WORLD_BUILD_TAG || String(Date.now()));
   return u.toString();
 }
 
@@ -294,6 +307,7 @@ let liveMismatchSince = 0;
 let lastSupervisorAlertAt = 0;
 let eqPreflightRetryTimer = null;
 let chatBacklogGuardTs = 0;
+let chatReplayPrimed = false;
 let pollChatInFlight = false;
 const commandCooldowns = new Map();
 const viewerOnboardingSent = new Set();
@@ -332,6 +346,15 @@ let lastViewerInteractionAt = Date.now();
 let idleBehaviorTimer = null;
 const IDLE_THRESHOLD_MS = 150_000;
 const IDLE_ACTION_INTERVAL_MS = 12_000;
+const RETAKE_IDLE_BEHAVIOR_ENABLED = String(process.env.RETAKE_IDLE_BEHAVIOR_ENABLED || '0').toLowerCase() === '1';
+const RETAKE_VIEWER_MOVE_THROTTLE_MS = Number(process.env.RETAKE_VIEWER_MOVE_THROTTLE_MS || 1800);
+const RETAKE_VIEWER_ROOM_THROTTLE_MS = Number(process.env.RETAKE_VIEWER_ROOM_THROTTLE_MS || 9000);
+const RETAKE_VIEWER_LOOK_THROTTLE_MS = Number(process.env.RETAKE_VIEWER_LOOK_THROTTLE_MS || 7000);
+const RETAKE_GLOBAL_MOVE_THROTTLE_MS = Number(process.env.RETAKE_GLOBAL_MOVE_THROTTLE_MS || 1100);
+const RETAKE_GLOBAL_ROOM_THROTTLE_MS = Number(process.env.RETAKE_GLOBAL_ROOM_THROTTLE_MS || 4500);
+const RETAKE_GLOBAL_LOOK_THROTTLE_MS = Number(process.env.RETAKE_GLOBAL_LOOK_THROTTLE_MS || 3500);
+const viewerWorldThrottleState = new Map();
+const globalWorldThrottleState = { move: 0, room: 0, look: 0 };
 const IDLE_ACTIONS = [
   { type: 'action', action: 'swim', command: '!swim' },
   { type: 'action', action: 'swim_forward', command: '!swim forward', direction: 'forward' },
@@ -352,6 +375,10 @@ const IDLE_ACTIONS = [
 
 function startIdleBehavior() {
   stopIdleBehavior();
+  if (!RETAKE_IDLE_BEHAVIOR_ENABLED) {
+    console.log('[Retake] idle behavior publisher disabled (RETAKE_IDLE_BEHAVIOR_ENABLED!=1)');
+    return;
+  }
   idleBehaviorTimer = setInterval(async () => {
     if (Date.now() - lastViewerInteractionAt < IDLE_THRESHOLD_MS) return;
     if (worldTaskInFlight) return;
@@ -376,6 +403,88 @@ function stopIdleBehavior() {
 
 function resetIdleTimer() {
   lastViewerInteractionAt = Date.now();
+}
+
+function getViewerThrottleKey(viewer) {
+  return String(viewer || 'anon').trim().toLowerCase() || 'anon';
+}
+
+function getWorldCommandBucket(worldCommand) {
+  if (!worldCommand) return 'other';
+  if (worldCommand.type === 'room') return 'room';
+  if (worldCommand.type === 'look') return 'look';
+  if (worldCommand.type === 'action') {
+    const action = String(worldCommand.action || '');
+    if (
+      action === 'walk' ||
+      action === 'swim' ||
+      action.startsWith('swim_') ||
+      action === 'left' ||
+      action === 'right' ||
+      action === 'forward' ||
+      action === 'back' ||
+      action === 'backward' ||
+      action === 'jump' ||
+      action === 'flip' ||
+      action === 'spin' ||
+      action === 'dance' ||
+      action === 'wave' ||
+      action === 'hi' ||
+      action === 'idle'
+    ) {
+      return 'move';
+    }
+  }
+  return 'other';
+}
+
+function getWorldBucketCooldownMs(bucket) {
+  if (bucket === 'move') return RETAKE_VIEWER_MOVE_THROTTLE_MS;
+  if (bucket === 'room') return RETAKE_VIEWER_ROOM_THROTTLE_MS;
+  if (bucket === 'look') return RETAKE_VIEWER_LOOK_THROTTLE_MS;
+  return 0;
+}
+
+function getWorldGlobalBucketCooldownMs(bucket) {
+  if (bucket === 'move') return RETAKE_GLOBAL_MOVE_THROTTLE_MS;
+  if (bucket === 'room') return RETAKE_GLOBAL_ROOM_THROTTLE_MS;
+  if (bucket === 'look') return RETAKE_GLOBAL_LOOK_THROTTLE_MS;
+  return 0;
+}
+
+function shouldThrottleViewerWorldCommand(viewer, worldCommand) {
+  const bucket = getWorldCommandBucket(worldCommand);
+  const cooldownMs = getWorldBucketCooldownMs(bucket);
+  if (cooldownMs <= 0) return { throttled: false, bucket, cooldownMs: 0 };
+  const key = getViewerThrottleKey(viewer);
+  const now = Date.now();
+  const state = viewerWorldThrottleState.get(key) || {};
+  const lastAt = Number(state[bucket] || 0);
+  if (now - lastAt < cooldownMs) {
+    const lastNoticeAt = Number(state.noticeAt || 0);
+    if (now - lastNoticeAt > 5000) {
+      state.noticeAt = now;
+      viewerWorldThrottleState.set(key, state);
+      return { throttled: true, bucket, cooldownMs, shouldNotify: true };
+    }
+    return { throttled: true, bucket, cooldownMs, shouldNotify: false };
+  }
+  state[bucket] = now;
+  viewerWorldThrottleState.set(key, state);
+  return { throttled: false, bucket, cooldownMs, shouldNotify: false };
+}
+
+function shouldThrottleGlobalWorldCommand(worldCommand) {
+  const bucket = getWorldCommandBucket(worldCommand);
+  const cooldownMs = getWorldGlobalBucketCooldownMs(bucket);
+  if (cooldownMs <= 0) return { throttled: false, bucket };
+  const now = Date.now();
+  const lastAt = Number(globalWorldThrottleState[bucket] || 0);
+  if (now - lastAt < cooldownMs) {
+    return { throttled: true, bucket };
+  }
+  globalWorldThrottleState[bucket] = now;
+  return { throttled: false, bucket };
 }
 
 const EQ_DISPLAY_TRIGGERS = new Map([
@@ -445,7 +554,7 @@ const ASCII_EQ_POSITION = {
   cropBottom: 0,
 };
 const CHAT_HELP_TEXT =
-  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | fx: !sunburst !bait !pulse !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
+  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | camera/current: !cam <follow|orbit|wide|cinematic> !current <storm|calm|normal> | fx/events: !sunburst !bait !pulse !frenzy !sonar !titan !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess lawb.xyz/world';
 const CHAT_ONBOARDING_LINES = [
   'type !help for all commands. lawb.xyz/chess for wagers, lawb.xyz/world for the reef.',
   'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
@@ -1505,31 +1614,63 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         '!ascii',
         '!ascii2',
         '!eq toggle',
+        '!eqsource djset',
         '!walk',
         '!swim',
         '!dance',
         '!flip',
+        '!hi',
         '!wave',
         '!spin',
         '!jump',
+        '!loop dance',
+        '!loop swim',
         '!gallery',
         '!workshop',
         '!vault',
         '!leaderboard',
         '!main',
+        '!day',
+        '!night',
+        '!storm',
+        '!abyss',
+        '!look N',
+        '!zoom in',
+        '!zoom out',
+        '!cam follow',
+        '!cam orbit',
+        '!cam wide',
+        '!cam cinematic',
+        '!current storm',
+        '!current calm',
+        '!current normal',
+        '!sunburst',
+        '!bait',
+        '!pulse',
+        '!frenzy',
+        '!sonar',
+        '!titan',
+        '!focus bounties',
+        '!focus leaderboard',
+        '!focus nfts',
+        '!focus rooms',
         '!task reef',
+        '!task garden',
+        '!task patrol',
         '!chess start',
         '!points',
         '!rank',
         '!bounties',
         '!link <wallet>',
         '!claim',
-        '!day',
-        '!night',
-        '!look N',
-        '!zoom in',
-        '!loop dance',
+        '!reefgame',
+        '!reefgame status',
+        '!bet <room>',
+        '!reefbet <room>',
+        '!chess',
+        '!world',
         'lawb.xyz/chess',
+        'lawb.xyz/world',
       ].join('  ·  ');
       const cmdOffset = Math.floor((t * 6) % Math.max(1, cmdLoop.length));
       const cmdMarquee = (cmdLoop.slice(cmdOffset) + '  ·  ' + cmdLoop.slice(0, cmdOffset));
@@ -2650,6 +2791,11 @@ async function pollChat() {
       const commentId = comment._id || comment.chat_event_id;
       if (!commentId || seenChatIds.has(commentId)) continue;
       seenChatIds.add(commentId);
+      // On startup/recovery, prime IDs first and skip one full poll cycle
+      // so old chat history cannot replay into new world commands.
+      if (!chatReplayPrimed && chatBacklogGuardTs > 0) {
+        continue;
+      }
       const commentTs = Number(comment.timestamp || 0);
       if (chatBacklogGuardTs > 0 && Number.isFinite(commentTs) && commentTs > 0 && commentTs <= chatBacklogGuardTs) {
         continue;
@@ -2687,6 +2833,10 @@ async function pollChat() {
 
     if (sorted.length > 0) {
       lastSeenChatId = sorted[sorted.length - 1]._id || sorted[sorted.length - 1].chat_event_id;
+    }
+    if (!chatReplayPrimed && chatBacklogGuardTs > 0) {
+      chatReplayPrimed = true;
+      console.log(`[Retake] Chat replay baseline primed from ${sorted.length} comments.`);
     }
   } catch (err) {
     if (!err.message.includes('409')) {
@@ -2824,7 +2974,7 @@ async function handleChatMessage(comment) {
   }
 
   if (lowered === '!world') {
-    sendCommandAck('world scene online at lawb.xyz/world. try !storm, !sunburst, !bait, !pulse, or !biome start.', 'world_info');
+    sendCommandAck('world scene online at lawb.xyz/world. try !storm, !sunburst, !bait, !pulse, !frenzy, !sonar, or !titan.', 'world_info');
     return;
   }
 
@@ -2895,6 +3045,54 @@ async function handleChatMessage(comment) {
     if (action === 'sunburst') sendCommandAck('sunburst fired. reef rays intensifying.', 'world_sunburst_ack');
     else if (action === 'bait') sendCommandAck('bait dropped. fish are rushing Clawb.', 'world_bait_ack');
     else sendCommandAck('pulse engaged. reef glow synced.', 'world_pulse_ack');
+    return;
+  }
+
+  if (lowered === '!titan' || lowered === '!sub' || lowered === '!submersible') {
+    if (isOnCooldown('spectacle_titan', RETAKE_SPECTACLE_COOLDOWN_MS)) {
+      sendCommandAck('titan cooling down.', 'world_spectacle_cooldown');
+      return;
+    }
+    await publishWorldCommand('!titan', {
+      type: 'action',
+      action: 'titan_ping',
+      source: 'retake',
+      viewer,
+      raw: trimmed,
+    });
+    sendCommandAck('Titan submersible activated. headlights flaring in the main reef.', 'world_titan_ack');
+    return;
+  }
+
+  if (lowered === '!sonar') {
+    if (isOnCooldown('spectacle_sonar', RETAKE_SPECTACLE_COOLDOWN_MS)) {
+      sendCommandAck('sonar cooling down.', 'world_spectacle_cooldown');
+      return;
+    }
+    await publishWorldCommand('!sonar', {
+      type: 'action',
+      action: 'sonar_ping',
+      source: 'retake',
+      viewer,
+      raw: trimmed,
+    });
+    sendCommandAck('sonar ping. reef glow syncing.', 'world_sonar_ack');
+    return;
+  }
+
+  if (lowered === '!frenzy' || lowered === '!predator' || lowered === '!predators') {
+    if (isOnCooldown('spectacle_frenzy', RETAKE_SPECTACLE_COOLDOWN_MS)) {
+      sendCommandAck('frenzy cooling down.', 'world_spectacle_cooldown');
+      return;
+    }
+    await publishWorldCommand('!frenzy', {
+      type: 'action',
+      action: 'predator_frenzy',
+      source: 'retake',
+      viewer,
+      raw: trimmed,
+    });
+    sendCommandAck('predator frenzy. fish scattering.', 'world_frenzy_ack');
     return;
   }
 
@@ -3112,6 +3310,17 @@ async function handleChatMessage(comment) {
 
   const worldCommand = parseWorldCommand(lowered);
   if (worldCommand) {
+    const throttle = shouldThrottleViewerWorldCommand(viewer, worldCommand);
+    if (throttle.throttled) {
+      if (throttle.shouldNotify) {
+        sendCommandAck('easy there. command throttle active for smoother movement.', 'world_throttle');
+      }
+      return;
+    }
+    const globalThrottle = shouldThrottleGlobalWorldCommand(worldCommand);
+    if (globalThrottle.throttled) {
+      return;
+    }
     await publishWorldCommand(worldCommand.command, {
       type: worldCommand.type,
       targetRoom: worldCommand.targetRoom,
@@ -3206,8 +3415,8 @@ ClawHub skill for AI agents: clawhub install lawbchess — https://clawhub.ai/s/
 Viewers can control you live. Working commands:
 Music: !next !ascii !ascii2 !eq toggle
 Movement: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action>
-World: !gallery !workshop !vault !main !leaderboard !day !night !storm !abyss !look N !zoom in|out
-Spectacle: !sunburst !bait !pulse !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> !biome start !vote <day|night|storm|abyss>
+World: !gallery !workshop !vault !main !leaderboard !day !night !storm !abyss !look N !zoom in|out !cam <follow|orbit|wide|cinematic> !current <storm|calm|normal>
+Spectacle: !sunburst !bait !pulse !frenzy !sonar !titan !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> !biome start !vote <day|night|storm|abyss>
 Tasks: !task reef|garden|patrol
 Games: !reefgame !reefgame status !bet <room> !reefbet <room>
 Scenes: !chess !world | !chess start (queue a match)
@@ -3339,6 +3548,20 @@ function parseWorldCommand(loweredText) {
     const zoomArg = argRaw.trim().replace(/[^a-z]/g, '');
     if (zoomArg === 'in' || zoomArg === 'out') {
       return { type: 'action', command: `!zoom ${zoomArg}`, action: `zoom_${zoomArg}` };
+    }
+  }
+
+  if (command === 'current' && argRaw) {
+    const mode = argRaw.trim().toLowerCase().replace(/[^a-z]/g, '');
+    if (mode === 'storm' || mode === 'calm' || mode === 'normal') {
+      return { type: 'action', command: `!current ${mode}`, action: `current_${mode}` };
+    }
+  }
+
+  if ((command === 'cam' || command === 'camera') && argRaw) {
+    const mode = argRaw.trim().toLowerCase().replace(/[^a-z]/g, '');
+    if (mode === 'follow' || mode === 'orbit' || mode === 'wide' || mode === 'cinematic') {
+      return { type: 'action', command: `!cam ${mode}`, action: `cam_${mode}` };
     }
   }
 
@@ -3510,6 +3733,7 @@ function startStreamingLoops() {
   clearDirectAudioHealthTimer();
   // Prevent replaying backlog after restarts/recovery.
   chatBacklogGuardTs = Date.now();
+  chatReplayPrimed = false;
   seenChatIds.clear();
   greetedViewers.clear();
   viewerOnboardingSent.clear();

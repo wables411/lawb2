@@ -17,7 +17,7 @@ const EMOTE_SEGMENTS: EmoteSegment[] = [
   { id: 'music', label: 'Music', icon: 'amp' },
   { id: 'player', label: 'Player', icon: 'ui' },
   { id: 'help', label: 'Ask Clawb', icon: '?' },
-  { id: 'world', label: 'Visit World', icon: '~o~' },
+  { id: 'world', label: 'Watch Stream', icon: '~o~' },
 ];
 
 const SEGMENT_COUNT = EMOTE_SEGMENTS.length;

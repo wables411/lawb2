@@ -73,13 +73,16 @@ function App() {
   const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
   const [emoteWheelOpen, setEmoteWheelOpen] = useState(false);
   const { state: audioState, actions: audioActions } = useLawbAudio();
+  const audioActionsRef = useRef(audioActions);
+  audioActionsRef.current = audioActions;
 
   const [showChessLoading, setShowChessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
   const clawbRef = useRef<ClawbHandle>(null);
 
-  // Stream mode automation for OBS browser sources.
+  // Stream mode automation for OBS browser sources. Run once on mount — do not re-run on audioActions change.
+  const streamAutoplayFiredRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -93,7 +96,7 @@ function App() {
     const wantsViz = params.get('viz');
 
     if (wantsMiniPlayer && !audioState.showMiniPlayer) {
-      audioActions.toggleMiniPlayer();
+      audioActionsRef.current.toggleMiniPlayer();
     }
 
     if (wantsViz === 'ascii' || wantsViz === 'bars') {
@@ -105,14 +108,14 @@ function App() {
       }
     }
 
-    if (wantsAutoplay) {
-      setTimeout(() => {
-        void audioActions.play().catch(() => {
-          // Browser autoplay restrictions are common; command bridge can retry.
-        });
+    if (wantsAutoplay && !streamAutoplayFiredRef.current) {
+      streamAutoplayFiredRef.current = true;
+      const t = setTimeout(() => {
+        void audioActionsRef.current.play().catch(() => {});
       }, 1000);
+      return () => clearTimeout(t);
     }
-  }, [audioActions, audioState.showMiniPlayer]);
+  }, [audioState.showMiniPlayer]); // Intentionally exclude audioActions — prevents effect loop and duplicate play() storms
 
   // Listen for Clawb stream music commands (from retake-streamer.js).
   useEffect(() => {
@@ -386,7 +389,11 @@ function App() {
         openClawbChat();
         break;
       case 'world':
-        navigate('/world');
+        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          navigate('/world');
+        } else {
+          window.open('https://retake.tv/clawb', '_blank');
+        }
         break;
       case 'music':
         void audioActions.togglePlay();

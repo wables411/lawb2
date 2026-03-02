@@ -177,6 +177,64 @@
       "nextSwapAt": "2026-03-01T06:49:15.509Z",
       "txHistory": [],
       "pauseReason": null
+    },
+    {
+      "id": "dca_lawb_1772426500169",
+      "inputToken": "SOL",
+      "outputToken": "LAWB",
+      "totalAmount": 0.1,
+      "perSwapAmount": 0.008333,
+      "splits": 12,
+      "intervalMs": 300000,
+      "completedSwaps": 8,
+      "failedSwaps": 0,
+      "totalAcquired": "565243.4226899999",
+      "totalSpent": 0.066664,
+      "status": "cancelled",
+      "startedAt": "2026-03-02T04:41:40.169Z",
+      "nextSwapAt": "2026-03-02T05:21:47.996Z",
+      "txHistory": [
+        "2usAiTqPuP8gHmATgCjfvd7dZ5svWuJUQau1ckmYCrxrMhB9rwPJyXDLEkU47nRQrp66hvi7fDSQKVzsKBbHK1VT",
+        "3iqAtKrgeEZkrQ23RBBVYnzw1AwzdY9XMKyMQszaZRQ339uVX3A2QDbQnRXpawnW1bo21dQvMAN32bog88mwoVbG",
+        "5CFUdMwYSeC8nTqSqpR3o5c8tvA7sbUvVyHLzmLuG7unTHisfg8os9LSW85e8tUTDew1g4HRn38ENqFzzkVUuMH4",
+        "18munqx6S3XL7JQjtaosEokpT4CikD6SxSKuCF4WWyGuhEXfXAwbfa2fy5xEoCQWEVzAVTwfAATTrhizFEFijHQ",
+        "5qHeLyE1TcfyFqKWZV9mfuSf6qmZSq3ExTSPLqqswCtsBEggoSHTBQQe4N8hZiVgs8inKrtuqC1BdCqcMujRYo59",
+        "4Rvr8AoEq1buusERssygDEBafkLTTP3xj4httFS1DV92BHg5R6yqDfDiTGJaQDgr9VTwyHcTT8jYAdWX3roWWjHm",
+        "2KGiM5aXLKsP9og2bHDuW5VbR2CxJRrBVtz143prG1pz6S6su9VjGUesnGWV2SCSsEQZ1EDpE7hzsCCtXTJ3jZfc",
+        "28fdUf9poihwAng2gEuzUrFb5mFoVyMRuLyyigT4vqGfinRxkXx8MzcW4VoWEjXZFkz5XnjzVsnfQ42ik1xPzcJQ"
+      ],
+      "pauseReason": null
+    },
+    {
+      "id": "dca_clawb_1772428768371",
+      "inputToken": "SOL",
+      "outputToken": "CLAWB",
+      "totalAmount": 0.1,
+      "perSwapAmount": 0.008333,
+      "splits": 12,
+      "intervalMs": 300000,
+      "completedSwaps": 12,
+      "failedSwaps": 0,
+      "totalAcquired": "3020312.120445",
+      "totalSpent": 0.09999600000000003,
+      "status": "completed",
+      "startedAt": "2026-03-02T05:19:28.371Z",
+      "nextSwapAt": "2026-03-02T06:19:35.072Z",
+      "txHistory": [
+        "4TWZyB9gAQXjjVBf5gNQ4DRRV8siZKkCfwTehuWKkFUUQ6ccQQyruB6mGkHmGnKqGQE3jjBD9XUy6QXQo9wjqCtB",
+        "4AHHqsYMaoQ6KdcibwtvQteBo3k831auWAaT9AKLgBMwvifefFRDhXDv4bCMyXbqGLUWrWbuM14G3L3PpfJz6iZH",
+        "3SBXYt17hbN9fNWKTnY41w1fh9iqy4e2okq4jXiCQikhRKMrS7wVpypJabxnqCXCBFcG623ZHqf58Xa3qtDs6fRK",
+        "jJwSgrgSyXbNv7EXBnpbRD7LvdmCPwiRVhkPoDprGgtPTq6qQVfiouAU73BMJe69iQiP6i9DGzGqHdWEP1nugRj",
+        "J8RUyKoYeeCo4htEAaEf3LBGrJ36Z7Ximn61amC14fCXqsKG4qjYRvJxJFzHSCpm4erommgxqVppT7uy8ss6FPd",
+        "5FoYAgUZh3XGNdvAm36MLsY2ecGWptRBWmc8Hi4nBDJtqCD8HNzyBG5oi5VtQCDkBfSeior1kSVmX3bQcsdar3aF",
+        "3PhgDsiPeujHREJRBDMyexiWCgXJt3jZD7A7Espa8ZsAawodofRVmULYnXi3cpydstGRSxM79XP1fna7pDASdFHd",
+        "5DzM2jvWCoFjvHxRgoKJ9AuGBTqvK32CuYTgn3uZmWUa7wBxhbwFbXxTKyqDHhDmCw3Hc1prsMuod2E4GLzqgJHB",
+        "Re7LuNnNcBLskrE8UqVmNjzwLsNsx9WaraiZi36cB6fPSHQ6zxRK1f7owj5LT6AzEK83hhwGows7D6jnm13QUzU",
+        "3FWSYdH6iRN8DKETKv9ZPtwqxVMht6EfK9MKMCqcUf5USmr7WJXJpmUQKSyH43kH7FjNxMd4tHZuH13F9QzbNbo8",
+        "5KRPLAKxPBPR1SihA5ZJKGuMDSo8fDqmqUiAMiYwjAbrryY1AcuW7FemH8n2Qoqpsjr1QW3pRNMDkD5VRBJ9UWva",
+        "3UcL5r9a5CL1RSaL7Qm99zfRK9jKSAUnAp8Cgr5qpz64JdJoDaMXczXKMh2B4F5PaQZYqnAGfw6vkgnidVZ8dXWi"
+      ],
+      "pauseReason": null
     }
   ]
 }
