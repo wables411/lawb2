@@ -105,12 +105,19 @@ async function hasUploadGate(address) {
   const key = process.env.ALCHEMY_API_KEY;
   if (!key) throw new Error('Missing ALCHEMY_API_KEY (required for NFT gate)');
   const base = `https://eth-mainnet.g.alchemy.com/nft/v3/${key}`;
-  const [r1, r2] = await Promise.all([
-    fetch(`${base}/getNFTsForOwner?owner=${encodeURIComponent(address)}&contractAddresses[]=${encodeURIComponent(LAWbsters_CONTRACT)}&withMetadata=false&pageSize=1`),
-    fetch(`${base}/getNFTsForOwner?owner=${encodeURIComponent(address)}&contractAddresses[]=${encodeURIComponent(LAWbstarz_CONTRACT)}&withMetadata=false&pageSize=1`),
+  const parseOk = async (r) => {
+    const text = await r.text();
+    if (!r.ok) throw new Error(`Alchemy API ${r.status}: ${text.slice(0, 100)}`);
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Alchemy returned non-JSON: ${text.slice(0, 80)}`);
+    }
+  };
+  const [d1, d2] = await Promise.all([
+    fetch(`${base}/getNFTsForOwner?owner=${encodeURIComponent(address)}&contractAddresses[]=${encodeURIComponent(LAWbsters_CONTRACT)}&withMetadata=false&pageSize=1`).then(parseOk),
+    fetch(`${base}/getNFTsForOwner?owner=${encodeURIComponent(address)}&contractAddresses[]=${encodeURIComponent(LAWbstarz_CONTRACT)}&withMetadata=false&pageSize=1`).then(parseOk),
   ]);
-  if (!r1.ok || !r2.ok) throw new Error(`Alchemy API error: ${r1.status || r2.status}`);
-  const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
   const hasLawbsters = Array.isArray(d1.ownedNfts) && d1.ownedNfts.length > 0;
   const hasLawbstarz = Array.isArray(d2.ownedNfts) && d2.ownedNfts.length > 0;
   return hasLawbsters || hasLawbstarz;
