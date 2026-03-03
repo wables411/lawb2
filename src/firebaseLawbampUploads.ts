@@ -58,10 +58,19 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const text = await res.text().catch(() => '');
   let data: any = null;
-  try { data = text ? JSON.parse(text) : null; } catch {}
+  try {
+    const trimmed = (text || '').trim();
+    data = (trimmed.startsWith('{') || trimmed.startsWith('[')) ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
   if (!res.ok) {
     const msg = (data && (data.message || data.error)) ? String(data.message || data.error) : `${res.status} ${res.statusText}`;
-    throw new Error(msg);
+    const hint = !data && text ? ` (body: ${text.slice(0, 80)}...)` : '';
+    throw new Error(msg + hint);
+  }
+  if (data == null) {
+    throw new Error(`Invalid response from ${url} (expected JSON)`);
   }
   return data as T;
 }
