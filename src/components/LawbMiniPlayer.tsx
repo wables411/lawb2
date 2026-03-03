@@ -2,16 +2,11 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { createUseStyles } from 'react-jss';
 import Popup from './Popup';
 import { useLawbAudio } from '../contexts/LawbAudioContext';
-import { fetchRecentLawbampUploads, type LawbampUploadEntry, uploadLawbampMedia } from '../firebaseLawbampUploads';
-import { LAWBAMP_MAX_UPLOAD_DURATION_SEC } from '../utils/mediaDuration';
-import { useAccount, useSignMessage } from 'wagmi';
-import { firebaseProfiles } from '../firebaseProfiles';
 const FALLBACK_ART_URL = '/images/lawb-logo.png';
 const MASCOT_URL = '/assets/asciilawb.GIF';
 const LS_VIZ_MODE = 'lawbamp_viz_mode';
 const LS_BEAT_STROBE = 'lawbamp_beat_strobe';
 type VizMode = 'bars' | 'ascii';
-type PlayerTab = 'lawb_playlist';
 
 type StyleProps = { pct: number; isFullscreen: boolean; isMobile: boolean; uiScale: number };
 
@@ -324,8 +319,6 @@ type Bubble = { x: number; y: number; vy: number; ch: string; life: number };
 
 const LawbMiniPlayer: React.FC = () => {
   const { state, actions } = useLawbAudio();
-  const { address } = useAccount();
-  const { signMessageAsync } = useSignMessage();
   const pct = useMemo(() => {
     if (!state.durationSec) return 0;
     return Math.max(0, Math.min(100, (state.currentTimeSec / state.durationSec) * 100));
@@ -728,74 +721,6 @@ const LawbMiniPlayer: React.FC = () => {
     }
   };
 
-  const [uploadPct, setUploadPct] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<PlayerTab>('lawb_playlist');
-  const [playlistEntries, setPlaylistEntries] = useState<LawbampUploadEntry[]>([]);
-  const [playlistLoading, setPlaylistLoading] = useState(false);
-  const [playlistError, setPlaylistError] = useState<string | null>(null);
-  const [selectedPlaylistEntry, setSelectedPlaylistEntry] = useState<LawbampUploadEntry | null>(null);
-  const [uploaderLabels, setUploaderLabels] = useState<Record<string, string>>({});
-  const maxMins = Math.floor(LAWBAMP_MAX_UPLOAD_DURATION_SEC / 60);
-
-  const loadLawbPlaylist = React.useCallback(async () => {
-    setPlaylistLoading(true);
-    setPlaylistError(null);
-    try {
-      const entries = await fetchRecentLawbampUploads(50);
-      setPlaylistEntries(entries);
-      setSelectedPlaylistEntry((prev) => {
-        if (!prev) return entries[0] || null;
-        return entries.find((e) => e.id === prev.id) || entries[0] || null;
-      });
-    } catch (e: any) {
-      setPlaylistError(e?.message || 'Failed to load Lawb Playlist');
-    } finally {
-      setPlaylistLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!state.showMiniPlayer) return;
-    void loadLawbPlaylist();
-  }, [state.showMiniPlayer, loadLawbPlaylist]);
-
-  useEffect(() => {
-    const uploaders = Array.from(new Set(playlistEntries.map((e) => (e.uploader || '').toLowerCase()).filter(Boolean)));
-    if (!uploaders.length) return;
-    void (async () => {
-      const pairs = await Promise.all(
-        uploaders.map(async (wallet) => {
-          const profile = await firebaseProfiles.getProfile(wallet);
-          const label = profile?.username ? `@${profile.username}` : `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-          return [wallet, label] as const;
-        })
-      );
-      setUploaderLabels((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
-    })();
-  }, [playlistEntries]);
-
-  const onUploadPick = async (file: File | null) => {
-    if (!file) return;
-    setUploadError(null);
-    setUploadPct(0);
-    try {
-      await uploadLawbampMedia({
-        uploaderAddress: address || '',
-        file,
-        signMessageAsync,
-        onProgress: (p) => setUploadPct(Math.round(p * 100)),
-      });
-      setUploadPct(null);
-      setUploadError(null);
-      setActiveTab('lawb_playlist');
-      await loadLawbPlaylist();
-    } catch (e: any) {
-      setUploadPct(null);
-      setUploadError(e?.message || 'Upload failed');
-    }
-  };
-
   return (
     <Popup
       id="lawb-mini-player"
@@ -849,110 +774,17 @@ const LawbMiniPlayer: React.FC = () => {
           >
             {effectiveFullscreen ? 'FS:EXIT' : 'FS:ON'}
           </button>
-
-          <label className={classes.btn} title={`Upload MP3/MP4 (max ${maxMins} minutes)`} style={{ display: 'inline-flex', alignItems: 'center' }}>
-            Upload
-            <input
-              type="file"
-              accept="audio/*,video/mp4,video/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0] || null;
-                // Reset so picking the same file twice still triggers change.
-                e.target.value = '';
-                void onUploadPick(f);
-              }}
-              disabled={state.isLoading}
-            />
-          </label>
         </div>
 
         <div className={classes.meter} title={`${fmtTime(state.currentTimeSec)} / ${fmtTime(state.durationSec)}`}>
           <div className={classes.meterFill} />
         </div>
 
-        <div className={classes.tabRow}>
-          <button
-            type="button"
-            className={`${classes.tabBtn} ${activeTab === 'lawb_playlist' ? classes.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('lawb_playlist')}
-          >
-            Lawb Playlist
-          </button>
-          <button type="button" className={classes.tabBtn} onClick={() => { void loadLawbPlaylist(); }}>
-            Refresh
-          </button>
-        </div>
-
-        {activeTab === 'lawb_playlist' && (
-          <>
-            {selectedPlaylistEntry && (
-              <div className={classes.mediaFrame}>
-                <div className={classes.mediaTitle}>
-                  Now selected: <strong>{selectedPlaylistEntry.title || selectedPlaylistEntry.filename}</strong>
-                </div>
-                {selectedPlaylistEntry.mime.startsWith('video/') ? (
-                  <video
-                    controls
-                    src={selectedPlaylistEntry.storage_url}
-                    style={{ width: '100%', maxHeight: effectiveFullscreen ? '58vh' : 180, background: '#000' }}
-                  />
-                ) : (
-                  <audio controls src={selectedPlaylistEntry.storage_url} style={{ width: '100%' }} />
-                )}
-              </div>
-            )}
-
-            <div className={classes.listWrap}>
-              {playlistLoading && <div className={classes.smallNote}>Loading Lawb Playlist...</div>}
-              {playlistError && <div className={classes.smallNote} style={{ color: '#a10000' }}>{playlistError}</div>}
-              {!playlistLoading && !playlistEntries.length && (
-                <div className={classes.smallNote}>No uploads yet. Holders can upload from the Upload button.</div>
-              )}
-              {playlistEntries.map((entry) => {
-                const uploader = (entry.uploader || '').toLowerCase();
-                const uploaderLabel = uploaderLabels[uploader] || `${uploader.slice(0, 6)}...${uploader.slice(-4)}`;
-                return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={classes.listItem}
-                    onClick={() => {
-                      setSelectedPlaylistEntry(entry);
-                      actions.pause();
-                    }}
-                    title={entry.storage_url}
-                  >
-                    {entry.title || entry.filename} {' '}
-                    <span style={{ color: '#444' }}>({Math.round((entry.duration_sec || 0) / 60)}m)</span>
-                    <div style={{ color: '#666', marginTop: 2 }}>
-                      by {uploaderLabel}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-
         {state.error && (
           <div className={classes.smallNote} style={{ color: '#a10000' }}>
             {state.error}
           </div>
         )}
-        {uploadPct != null && (
-          <div className={classes.smallNote}>
-            Uploading… {uploadPct}%
-          </div>
-        )}
-        {uploadError && (
-          <div className={classes.smallNote} style={{ color: '#a10000' }}>
-            {uploadError}
-          </div>
-        )}
-        <div className={classes.smallNote}>
-          Upload cap: max {maxMins} minutes per file.
-        </div>
       </div>
     </Popup>
   );

@@ -1,5 +1,3 @@
-export const LAWBAMP_MAX_UPLOAD_DURATION_SEC = 90 * 60;
-
 type MediaKind = 'audio' | 'video';
 
 function guessMediaKind(file: File): MediaKind {
@@ -50,16 +48,6 @@ export async function getMediaDurationSec(file: File): Promise<number> {
       (el as any).load?.();
     } catch {}
     URL.revokeObjectURL(url);
-  }
-}
-
-export function assertDurationWithinLawbampCap(durationSec: number): void {
-  if (!Number.isFinite(durationSec) || durationSec <= 0) {
-    throw new Error('Could not determine media duration');
-  }
-  if (durationSec > LAWBAMP_MAX_UPLOAD_DURATION_SEC) {
-    const maxM = Math.floor(LAWBAMP_MAX_UPLOAD_DURATION_SEC / 60);
-    throw new Error(`Upload too long. Max length is ${maxM} minutes.`);
   }
 }
 

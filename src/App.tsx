@@ -18,9 +18,8 @@ import { database } from './firebaseApp';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
-import type { ClawbHandle, EmoteAnimationId } from './components/Clawb2D';
+import type { ClawbHandle } from './components/Clawb2D';
 const Clawb = lazy(() => import('./components/Clawb2D'));
-const ClawbEmoteWheel = lazy(() => import('./components/ClawbEmoteWheel'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
@@ -71,7 +70,6 @@ function App() {
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
-  const [emoteWheelOpen, setEmoteWheelOpen] = useState(false);
   const { state: audioState, actions: audioActions } = useLawbAudio();
   const audioActionsRef = useRef(audioActions);
   audioActionsRef.current = audioActions;
@@ -368,53 +366,9 @@ function App() {
     setShowWalletMenu(false);
   }, []);
 
-  const openClawbChat = useCallback(() => {
-    setChatInitialTab('clawb');
-    setShowPublicChat(true);
-    setMinimizedPopups(prev => {
-      const newSet = new Set(prev);
-      newSet.delete('chat-popup');
-      return newSet;
-    });
-  }, []);
-
   const handleClawbClick = useCallback(() => {
-    setEmoteWheelOpen(prev => !prev);
+    clawbRef.current?.cycleAnimation();
   }, []);
-
-  const handleEmoteSelect = useCallback((segmentId: string) => {
-    setEmoteWheelOpen(false);
-    switch (segmentId) {
-      case 'help':
-        openClawbChat();
-        break;
-      case 'world':
-        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-          window.open('http://127.0.0.1:3001', '_blank');
-        } else {
-          window.open('https://retake.tv/clawb', '_blank');
-        }
-        break;
-      case 'music':
-        void audioActions.togglePlay();
-        break;
-      case 'player':
-        audioActions.toggleMiniPlayer();
-        break;
-      case 'idle':
-      case 'dance1':
-      case 'dance2':
-      case 'dance3':
-      case 'walk':
-      case 'death':
-        clawbRef.current?.playEmote(segmentId as EmoteAnimationId);
-        break;
-      default:
-        break;
-    }
-  }, [openClawbChat, audioActions]);
-
-
 
   const walletButton = (
     <div style={{ position: 'relative' }}>
@@ -597,18 +551,9 @@ function App() {
         onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
 
-      {/* Clawb - 2D helper in bottom-right; click for emote wheel */}
+      {/* Clawb - 2D helper in bottom-right; click cycles GIF */}
       <Suspense fallback={null}>
         <Clawb ref={clawbRef} onClawbClick={handleClawbClick} />
-      </Suspense>
-
-      {/* Clawb Emote Wheel — radial menu */}
-      <Suspense fallback={null}>
-        <ClawbEmoteWheel
-          isOpen={emoteWheelOpen}
-          onClose={() => setEmoteWheelOpen(false)}
-          onSelect={handleEmoteSelect}
-        />
       </Suspense>
 
       {/* Public Chat - Functional Firebase Chat Component */}
