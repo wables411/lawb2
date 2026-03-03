@@ -13,10 +13,7 @@ import { lazy, Suspense } from 'react';
 
 // Lazy load components
 const ChessPage = lazy(() => import('./components/ChessPage'));
-// When VITE_EXCLUDE_WORLD (Netlify): use stub that never imports ClawbWorld — saves bundle & deploy size
-const WorldRoute = import.meta.env.VITE_EXCLUDE_WORLD
-  ? lazy(() => import('./components/WorldRouteGuardNetlify'))
-  : lazy(() => import('./components/WorldRouteGuard'));
+// Clawb World moved to separate clawb-world repo — /world no longer in lawb2
 
 import { wagmiAdapter, initializeAppKit } from './appkit.ts';
 import { config as wagmiConfig } from './wagmi';
@@ -100,11 +97,6 @@ const AppWithWagmi = () => {
                   <Route path="/chess" element={
                     <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
                       <ChessPage />
-                    </Suspense>
-                  } />
-                  <Route path="/world" element={
-                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px', background: '#0a1628', color: '#e2e8f0' }}>Loading...</div>}>
-                      <WorldRoute />
                     </Suspense>
                   } />
                 </>

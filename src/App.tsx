@@ -18,15 +18,15 @@ import { database } from './firebaseApp';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
-import type { ClawbHandle, EmoteAnimationId } from './components/Clawb';
-const Clawb = lazy(() => import('./components/Clawb'));
+import type { ClawbHandle, EmoteAnimationId } from './components/Clawb2D';
+const Clawb = lazy(() => import('./components/Clawb2D'));
 const ClawbEmoteWheel = lazy(() => import('./components/ClawbEmoteWheel'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 const ChessChat = lazy(() => import('./components/ChessChat').then(m => ({ default: m.ChessChat })));
 const ChessPieceInfo = lazy(() => import('./components/ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
-const WorldBackground = lazy(() => import('./components/WorldBackground'));
+const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
 
 const useStyles = createUseStyles({
   body: {
@@ -390,7 +390,7 @@ function App() {
         break;
       case 'world':
         if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-          navigate('/world');
+          window.open('http://127.0.0.1:3001', '_blank');
         } else {
           window.open('https://retake.tv/clawb', '_blank');
         }
@@ -412,7 +412,7 @@ function App() {
       default:
         break;
     }
-  }, [openClawbChat, navigate, audioActions]);
+  }, [openClawbChat, audioActions]);
 
 
 
@@ -511,7 +511,7 @@ function App() {
   return (
     <ChessPieceSetProvider>
       <div className={classes.body}>
-      {/* Clawb's World — 3D underwater desktop background */}
+      {/* Desktop background (2D — no 3D models) */}
       <Suspense fallback={null}>
         <WorldBackground />
       </Suspense>
@@ -597,7 +597,7 @@ function App() {
         onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
 
-      {/* Clawb - 3D helper in bottom-right; click for emote wheel, nav button to cycle animation */}
+      {/* Clawb - 2D helper in bottom-right; click for emote wheel */}
       <Suspense fallback={null}>
         <Clawb ref={clawbRef} onClawbClick={handleClawbClick} />
       </Suspense>

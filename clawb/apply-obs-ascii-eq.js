@@ -64,7 +64,8 @@ async function main() {
 
   const sceneName = 'Clawb World';
   const audioSource = 'Lawbamp Audio';
-  const audioUrl = `https://lawb.xyz/?stream=1&autoplay=1&openPlayer=1&r=${Date.now()}`;
+  // No lawb.xyz — blank page to avoid SoundCloud/Netlify requests
+  const audioUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent('<!DOCTYPE html><html><body style="margin:0;background:#000"></body></html>');
   const eqSource = 'Lawbamp ASCII EQ';
   const eqUrl = buildAsciiEqDataUrl();
 

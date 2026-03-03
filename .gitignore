@@ -74,3 +74,9 @@ public/local-world-assets/*
 !public/local-world-assets/README.md
 !public/local-world-assets/manifest.example.json
 !public/local-world-assets/gallery.example.json
+
+# Clawb 3D world / Blender — local only, never push to git
+clawb/blender-scripts/
+clawb/world-asset-generator.js
+clawb/run-upgrade-ocean.js
+.cursor/skills/blender-world-assets/

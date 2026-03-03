@@ -113,8 +113,9 @@ async function hasUploadGate(address) {
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return json(200, {});
-  if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
+  const method = event.httpMethod || event.method || (event.request && event.request.method);
+  if (method === 'OPTIONS') return json(200, {});
+  if (method !== 'POST') return json(405, { error: 'Method not allowed' });
 
   const secret = process.env.LAWBAMP_UPLOAD_HMAC_SECRET;
   if (!secret) return json(500, { error: 'Missing LAWBAMP_UPLOAD_HMAC_SECRET' });

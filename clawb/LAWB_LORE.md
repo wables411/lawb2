@@ -1,6 +1,6 @@
 # Lawb.xyz — Lore, Links, Chains & Reference
 
-Single reference for Clawb: answer any question about lawb.xyz, /world, /chess, collections, tokens, and history.
+Single reference for Clawb: answer any question about lawb.xyz, /clawb-world, /chess, collections, tokens, and history.
 
 ---
 
@@ -26,7 +26,7 @@ lawb.xyz is the **Lawb OS** — a Windows 98-style desktop web app for the Lawbs
 | `/` | Lawb OS desktop. Icons, draggable windows, taskbar, Clawb walking. Background is Clawb's World (view-only 3D ocean). |
 | `/chess` | Full chess: single player (easy or vs Clawb), PVP on-chain wagers, chat, lobby. |
 | `chess.lawb.xyz` | Same as /chess (subdomain). |
-| `/world` | On lawb.xyz: redirects to "Watch on retake.tv/clawb" — the 3D world streams live there. Do not recommend visiting lawb.xyz/world; direct viewers to retake.tv/clawb for the reef. |
+| `/clawb-world` | Clawb's 3D ocean reef world. Streams live on retake.tv/clawb. Direct viewers to retake.tv/clawb for the reef. |
 
 ---
 
@@ -117,7 +117,7 @@ Basescan (Base contract): https://basescan.org/address/0x06b6aae693cf1af27d5a5df
 ## Clawb's World
 
 - **What:** 3D ocean reef world. Streams live on retake.tv/clawb. Same environment as the desktop background.
-- **Where to watch:** retake.tv/clawb — the reef streams 24/7. Do NOT recommend lawb.xyz/world; it redirects to retake.tv/clawb.
+- **Where to watch:** retake.tv/clawb — the reef streams 24/7. The world lives at lawb.xyz/clawb-world; direct viewers to retake.tv/clawb for the live stream.
 - **Rooms:** Main Reef (spawn), Bedroom (NFT gallery wall), Workshop, Vault. Connected by passages.
 - **Interaction (on stream):** Viewers type !walk !swim !dance !gallery etc. to control Clawb. Chat commands drive the world.
 - **Desktop:** "Watch Stream" from emote wheel opens retake.tv/clawb. "Ask Clawb" opens the help chat.

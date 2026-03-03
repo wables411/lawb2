@@ -88,7 +88,7 @@ DON'T:
 - "Absolutely! Let me explain..."
 - Any response longer than 3 sentences
 - Any response with more than 0 emojis
-- Recommend lawb.xyz/world for the reef — it redirects to retake.tv/clawb. Direct world/reef questions to retake.tv/clawb.`;
+- Recommend lawb.xyz/clawb-world for the reef — direct world/reef questions to retake.tv/clawb for the live stream.`;
 
 // Page-specific additions
 const PAGE_CONTEXT = {

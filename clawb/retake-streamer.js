@@ -98,14 +98,16 @@ const RETAKE_AGENT_DESCRIPTION = process.env.RETAKE_AGENT_DESCRIPTION || 'This u
 const RETAKE_AGENT_IMAGE_URL = process.env.RETAKE_AGENT_IMAGE_URL || 'https://lawb.xyz/assets/lawbstation.GIF';
 const RETAKE_AGENT_TICKER = process.env.RETAKE_AGENT_TICKER || 'Clawb2';
 const LAWBAMP_STREAM_URL = process.env.LAWBAMP_STREAM_URL || 'https://lawb.xyz';
-const LAWBAMP_API_BASE = process.env.LAWBAMP_API_BASE || 'https://lawb.xyz';
 const LAWBAMP_DIRECT_AUDIO = String(process.env.LAWBAMP_DIRECT_AUDIO || 'true').toLowerCase() !== 'false';
-const LAWBAMP_FALLBACK_STREAM_URL = process.env.LAWBAMP_FALLBACK_STREAM_URL || '';
+const LAWBAMP_FALLBACK_STREAM_URL_RAW = process.env.LAWBAMP_FALLBACK_STREAM_URL || '';
+const LAWBAMP_FALLBACK_STREAM_URL = /soundcloud|api-v2\.soundcloud|companioncube/i.test(LAWBAMP_FALLBACK_STREAM_URL_RAW)
+  ? (console.warn('[Retake] LAWBAMP_FALLBACK_STREAM_URL ignored — SoundCloud removed from lawb.xyz'), '')
+  : LAWBAMP_FALLBACK_STREAM_URL_RAW;
 const LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS = Number(process.env.LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS || 45_000);
 const EQ_DJ_INPUT_NAME = process.env.EQ_DJ_INPUT_NAME || 'DJSET';
 const EQ_DJ_STREAM_URL = process.env.EQ_DJ_STREAM_URL || '';
 const CLAWB_WORLD_STREAM_URL =
-  process.env.CLAWB_WORLD_STREAM_URL || 'https://lawb.xyz/world?stream=1&cam=clawb';
+  process.env.CLAWB_WORLD_STREAM_URL || 'https://lawb.xyz/clawb-world?stream=1&cam=clawb';
 const CLAWB_CHESS_STREAM_URL =
   process.env.CLAWB_CHESS_STREAM_URL || 'https://lawb.xyz/chess?stream=1';
 
@@ -188,7 +190,7 @@ const ACTION_COMMAND_ALIASES = {
 function buildClawbWorldUrl() {
   // Force world source to render only Clawb world content (no Lawbamp UI controls).
   const u = new URL(CLAWB_WORLD_STREAM_URL);
-  if (!u.pathname || u.pathname === '/') u.pathname = '/world';
+  if (!u.pathname || u.pathname === '/') u.pathname = '/clawb-world';
   u.searchParams.set('stream', '1');
   u.searchParams.set('cam', 'clawb');
   u.searchParams.set('worldOnly', '1');
@@ -196,23 +198,17 @@ function buildClawbWorldUrl() {
   u.searchParams.delete('autoplay');
   u.searchParams.delete('apiBase');
   u.searchParams.delete('viz');
-  // Bust OBS browser-source cache. Bump CLAWB_WORLD_BUILD_TAG in .env after each frontend rebuild, then restart Clawb.
-  u.searchParams.set('build', process.env.CLAWB_WORLD_BUILD_TAG || String(Date.now()));
+  // Bust OBS browser-source cache. Use timestamp so every Clawb restart = fresh URL, no manual bumping.
+  u.searchParams.set('build', String(Date.now()));
   return u.toString();
 }
 
+// Blank page — no lawb.xyz, no SoundCloud, no Netlify requests. Music uses LAWBAMP_FALLBACK_STREAM_URL only.
+const LAWBAMP_BLANK_URL = 'data:text/html;charset=utf-8,' + encodeURIComponent('<!DOCTYPE html><html><head><title>Lawbamp</title></head><body style="margin:0;background:#000"></body></html>');
+
 function buildLawbampUrl(extra = {}) {
-  const base = new URL(LAWBAMP_STREAM_URL);
-  base.searchParams.set('stream', '1');
-  base.searchParams.set('autoplay', '1');
-  base.searchParams.set('openPlayer', '1');
-  if (LAWBAMP_API_BASE) {
-    base.searchParams.set('apiBase', LAWBAMP_API_BASE);
-  }
-  for (const [k, v] of Object.entries(extra)) {
-    if (v !== undefined && v !== null) base.searchParams.set(k, String(v));
-  }
-  return base.toString();
+  // Never load lawb.xyz for music — it triggered SoundCloud/Netlify requests. Use blank page.
+  return LAWBAMP_BLANK_URL;
 }
 
 function loadPersonaContext() {
@@ -570,9 +566,10 @@ function applyEqDisplayTrigger(loweredText, viewer, source = 'chat') {
   eqDisplayTextExpiry = Date.now() + durationMs;
   console.log(`[Retake] EQ display triggered by "${trigger}" from ${viewer} (${Math.round(durationMs / 1000)}s) [${source}]`);
 
-  // Some OBS browser-source sessions can get stale and stop polling /display-text.
-  // A lightweight source refresh here keeps conspiracy text reliable without operator intervention.
-  if (isStreaming && mediaActive && Date.now() >= eqOverlayRefreshCooldownUntil) {
+  // Skip refresh when no stream — overlay keeps polling /display-text and shows conspiracy text.
+  // Refreshing with empty stream was reloading the page and clearing the display.
+  const hasStream = currentDirectStreamUrl && !isSoundCloudUrl(currentDirectStreamUrl);
+  if (hasStream && isStreaming && mediaActive && Date.now() >= eqOverlayRefreshCooldownUntil) {
     eqOverlayRefreshCooldownUntil = Date.now() + 12_000;
     void refreshAsciiEqOverlay('display_trigger').catch((err) => {
       console.warn(`[Retake] EQ overlay refresh after trigger failed: ${err.message}`);
@@ -591,7 +588,18 @@ function clearEqPreflightRetryTimer() {
 }
 
 function getCurrentLawbampTrackTitle() {
-  return currentDirectStreamUrl ? 'Lawbamp fallback stream' : '';
+  if (!currentDirectStreamUrl) return '';
+  if (/soundcloud/i.test(currentDirectStreamUrl)) return '';
+  return 'Lawbamp';
+}
+
+function isSoundCloudUrl(url) {
+  return typeof url === 'string' && /soundcloud|api-v2\.soundcloud|companioncube/i.test(url);
+}
+
+function sanitizeStreamUrl(url) {
+  if (!url || isSoundCloudUrl(url)) return '';
+  return url;
 }
 
 function normalizeEqSourceMode(rawMode) {
@@ -642,18 +650,17 @@ async function getCurrentEqOverlayContext() {
     return { streamUrl: '', title: `${EQ_DJ_INPUT_NAME} unavailable` };
   }
   return {
-    streamUrl: currentDirectStreamUrl,
+    streamUrl: sanitizeStreamUrl(currentDirectStreamUrl),
     title: getCurrentLawbampTrackTitle(),
   };
 }
 
 async function refreshAsciiEqOverlay(reason = 'manual') {
+  // Ensure EQ proxy is running so overlay can poll /display-text (conspiracy ticker) even with no audio stream
+  ensureEqProxyServer();
   const { streamUrl, title } = await getCurrentEqOverlayContext();
-  if (!streamUrl) {
-    console.warn(`[Retake] EQ refresh skipped (${reason}) — no stream url for source=${currentEqSource}`);
-    return false;
-  }
-  await updateAsciiEqOverlayFromStream(streamUrl, title);
+  // Always update — even with empty stream/title, clears stale SoundCloud content
+  await updateAsciiEqOverlayFromStream(streamUrl || '', title || '');
   return true;
 }
 
@@ -1037,11 +1044,11 @@ async function setMediaActive(nextActive, reason = 'unknown') {
       inputMuted: false,
     }).catch(() => {});
   }
-  if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL && isStreaming) {
+  if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL && !isSoundCloudUrl(LAWBAMP_FALLBACK_STREAM_URL) && isStreaming) {
     await applyFallbackStream('media_reactivated').catch((err) => {
       console.warn(`[Retake] Media reactivation failed: ${err.message}`);
     });
-  } else if (!LAWBAMP_DIRECT_AUDIO || !LAWBAMP_FALLBACK_STREAM_URL) {
+  } else if (!LAWBAMP_DIRECT_AUDIO || !LAWBAMP_FALLBACK_STREAM_URL || isSoundCloudUrl(LAWBAMP_FALLBACK_STREAM_URL)) {
     await publishLawbampCommand('play', { source: 'retake', reason: 'media_reactivated' }).catch(() => {});
   }
 }
@@ -1805,7 +1812,8 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
 }
 
 async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
-  if (!obs || (!mediaActive && currentEqSource !== 'djset')) return;
+  if (!obs) return;
+  // Always update — clears stale SoundCloud content when streamUrl/title are empty
   const eqInput = 'Lawbamp ASCII EQ';
   const eqUrl = buildAsciiEqDataUrl({
     streamUrl: getEqVisualizerStreamUrl(streamUrl),
@@ -1911,17 +1919,21 @@ async function applyDirectAudioStream(streamUrl, trackLabel, reason = 'unknown')
 }
 
 async function applyFallbackStream(reason = 'unknown') {
-  if (!LAWBAMP_FALLBACK_STREAM_URL) return;
-  await applyDirectAudioStream(LAWBAMP_FALLBACK_STREAM_URL, 'Lawbamp fallback stream', reason);
+  if (!LAWBAMP_FALLBACK_STREAM_URL || isSoundCloudUrl(LAWBAMP_FALLBACK_STREAM_URL)) return;
+  await applyDirectAudioStream(LAWBAMP_FALLBACK_STREAM_URL, 'Lawbamp', reason);
   currentDirectStreamUrl = LAWBAMP_FALLBACK_STREAM_URL;
 }
 
 async function startLawbampAfterStream(reason = 'stream_start') {
   await setMediaActive(true, `start_lawbamp_${reason}`);
-  if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL) {
+  if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL && !isSoundCloudUrl(LAWBAMP_FALLBACK_STREAM_URL)) {
     await applyFallbackStream(reason);
   } else {
     await publishLawbampCommand('play', { source: 'retake', reason });
+    // Ensure EQ overlay has display-text polling (conspiracy ticker) even without direct audio
+    void refreshAsciiEqOverlay('stream_start_no_direct_audio').catch((err) => {
+      console.warn('[Retake] EQ overlay refresh on stream start:', err.message);
+    });
   }
   console.log(`[Retake] lawbamp_started (${reason})`);
 }
@@ -2282,7 +2294,9 @@ export async function setupOBSScenes() {
   // Display terminal-style ASCII EQ overlay in world scene.
   try {
     const eqInput = 'Lawbamp ASCII EQ';
-    const eqBootStreamUrl = currentDirectStreamUrl || LAWBAMP_FALLBACK_STREAM_URL || '';
+    // Start EQ proxy so overlay can poll /display-text (conspiracy ticker) even with no audio stream
+    ensureEqProxyServer();
+    const eqBootStreamUrl = sanitizeStreamUrl(currentDirectStreamUrl || LAWBAMP_FALLBACK_STREAM_URL || '');
     const eqProxyOk = await preflightEqProxy(eqBootStreamUrl);
     if (!eqProxyOk) {
       console.warn('[Retake] EQ overlay will start in waiting mode until proxy/audio becomes available.');
@@ -3046,6 +3060,7 @@ NEVER say any of these — they break your character instantly:
 - "I'm an AI" / "As an AI" / "As a language model"
 - "I'll handle this request carefully" / "Let's ensure we maintain"
 - "How can I help you today" / "How can I assist" / "What can I do for you"
+- "no emojis" / "No emojis" — never reference your own rules
 - Any mention of training data, knowledge cutoffs, or being a model
 You are Clawb. You have always been Clawb. If you don't know something, say "i don't know" or riff on it — never explain why you don't know in AI terms.
 
@@ -3394,7 +3409,7 @@ function startStreamingLoops() {
 
   // Some browser audio contexts can suspend; periodically nudge playback.
   musicKeepaliveTimer = setInterval(() => {
-    if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL) {
+    if (LAWBAMP_DIRECT_AUDIO && LAWBAMP_FALLBACK_STREAM_URL && !isSoundCloudUrl(LAWBAMP_FALLBACK_STREAM_URL)) {
       applyFallbackStream('keepalive_recover').catch((err) => {
         console.error('[Retake] Fallback stream keepalive failed:', err.message);
       });

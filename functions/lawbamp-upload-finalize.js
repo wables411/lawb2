@@ -113,8 +113,9 @@ async function hasUploadGate(address) {
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return json(200, {});
-  if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
+  const method = event.httpMethod || event.method;
+  if (method === 'OPTIONS') return json(200, {});
+  if (method !== 'POST') return json(405, { error: 'Method not allowed' });
 
   const secret = process.env.LAWBAMP_UPLOAD_HMAC_SECRET;
   if (!secret) return json(500, { error: 'Missing LAWBAMP_UPLOAD_HMAC_SECRET' });
@@ -170,6 +171,9 @@ exports.handler = async (event) => {
     // Ensure object exists before writing metadata.
     const [exists] = await bucket.file(objectPath).exists();
     if (!exists) throw new Error('Uploaded object not found (upload may have failed)');
+
+    // Set cache headers so repeat plays hit browser/CDN cache instead of re-downloading.
+    await bucket.file(objectPath).setMetadata({ cacheControl: 'public, max-age=31536000' });
 
     const now = Date.now();
     const entry = {

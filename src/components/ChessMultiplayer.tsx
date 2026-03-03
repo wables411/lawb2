@@ -30,7 +30,7 @@ import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
-import ClawbDanceLoop from './ClawbDanceLoop';
+import ClawbDanceLoop from './ClawbDanceLoop2D';
 import { debugIngest } from '../utils/debugIngest';
 
 // Get contract address based on current network

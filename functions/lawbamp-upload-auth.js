@@ -37,8 +37,9 @@ function normAddress(raw) {
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return json(200, {});
-  if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
+  const method = event.httpMethod || event.method;
+  if (method === 'OPTIONS') return json(200, {});
+  if (method !== 'GET') return json(405, { error: 'Method not allowed' });
 
   const secret = process.env.LAWBAMP_UPLOAD_HMAC_SECRET;
   if (!secret) return json(500, { error: 'Missing LAWBAMP_UPLOAD_HMAC_SECRET' });
