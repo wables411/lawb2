@@ -1,0 +1,1 @@
+import{j as e}from"./wagmi-vendor-cal8GwT5.js";import"./react-vendor-BlDtUSDV.js";const a=()=>e.jsx("div",{style:{position:"fixed",inset:0,background:"linear-gradient(180deg, #0c1e36 0%, #1a4a6c 50%, #0a1628 100%)",zIndex:-1}});export{a as default};
