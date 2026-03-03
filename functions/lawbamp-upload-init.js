@@ -113,18 +113,24 @@ async function hasUploadGate(address) {
 }
 
 exports.handler = async (event) => {
+  // Support both Lambda event and Web API Request
   const method = event.httpMethod || event.method || (event.request && event.request.method);
   if (method === 'OPTIONS') return json(200, {});
-  if (method !== 'POST') return json(405, { error: 'Method not allowed' });
+  if (method !== 'POST') return json(405, { error: 'Method not allowed', debug: { receivedMethod: method } });
 
   const secret = process.env.LAWBAMP_UPLOAD_HMAC_SECRET;
   if (!secret) return json(500, { error: 'Missing LAWBAMP_UPLOAD_HMAC_SECRET' });
 
   let body;
   try {
-    body = JSON.parse(event.body || '{}');
-  } catch {
-    return json(400, { error: 'Invalid JSON body' });
+    if (typeof event.json === 'function') {
+      body = await event.json();
+    } else {
+      const raw = event.body || '{}';
+      body = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    }
+  } catch (e) {
+    return json(400, { error: 'Invalid JSON body', message: e && e.message ? e.message : String(e) });
   }
 
   const address = normAddress(body.address);
