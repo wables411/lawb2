@@ -15,8 +15,6 @@ const admin = require('firebase-admin');
 const LAWbsters_CONTRACT = '0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42';
 const LAWbstarz_CONTRACT = '0xd7922cd333da5ab3758c95f774b092a7b13a5449';
 
-const ERC721_ABI = ['function balanceOf(address owner) view returns (uint256)'];
-
 function json(statusCode, body) {
   return {
     statusCode,
@@ -104,16 +102,18 @@ function initAdmin() {
 }
 
 async function hasUploadGate(address) {
-  let rpcUrl = process.env.ETH_RPC_URL;
-  if (!rpcUrl && process.env.ALCHEMY_API_KEY) {
-    rpcUrl = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
-  }
-  if (!rpcUrl) rpcUrl = 'https://eth.llamarpc.com';
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
-  const c1 = new ethers.Contract(LAWbsters_CONTRACT, ERC721_ABI, provider);
-  const c2 = new ethers.Contract(LAWbstarz_CONTRACT, ERC721_ABI, provider);
-  const [b1, b2] = await Promise.all([c1.balanceOf(address), c2.balanceOf(address)]);
-  return (b1 && b1 > 0n) || (b2 && b2 > 0n);
+  const key = process.env.ALCHEMY_API_KEY;
+  if (!key) throw new Error('Missing ALCHEMY_API_KEY (required for NFT gate)');
+  const base = `https://eth-mainnet.g.alchemy.com/nft/v3/${key}`;
+  const [r1, r2] = await Promise.all([
+    fetch(`${base}/getNFTsForOwner?owner=${encodeURIComponent(address)}&contractAddresses[]=${encodeURIComponent(LAWbsters_CONTRACT)}&withMetadata=false&pageSize=1`),
+    fetch(`${base}/getNFTsForOwner?owner=${encodeURIComponent(address)}&contractAddresses[]=${encodeURIComponent(LAWbstarz_CONTRACT)}&withMetadata=false&pageSize=1`),
+  ]);
+  if (!r1.ok || !r2.ok) throw new Error(`Alchemy API error: ${r1.status || r2.status}`);
+  const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+  const hasLawbsters = Array.isArray(d1.ownedNfts) && d1.ownedNfts.length > 0;
+  const hasLawbstarz = Array.isArray(d2.ownedNfts) && d2.ownedNfts.length > 0;
+  return hasLawbsters || hasLawbstarz;
 }
 
 exports.handler = async (event) => {
@@ -166,16 +166,7 @@ exports.handler = async (event) => {
     const recovered = ethers.verifyMessage(msg, signature);
     if (normAddress(recovered) !== address) throw new Error('Bad signature');
 
-    let ok;
-    try {
-      ok = await hasUploadGate(address);
-    } catch (rpcErr) {
-      const msg = String(rpcErr && rpcErr.message ? rpcErr.message : rpcErr);
-      if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
-        return json(503, { error: 'RPC rate limited', message: 'Try again in a moment, or set ETH_RPC_URL in Netlify to a reliable RPC (Alchemy/Infura)' });
-      }
-      throw rpcErr;
-    }
+    const ok = await hasUploadGate(address);
     if (!ok) {
       return json(403, { error: 'Upload requires Lawbsters or Lawbstarz (Ethereum)' });
     }
