@@ -93,7 +93,16 @@ function initAdmin() {
   const bucket = process.env.FIREBASE_STORAGE_BUCKET;
   if (!dbUrl) throw new Error('Missing FIREBASE_DATABASE_URL');
   if (!bucket) throw new Error('Missing FIREBASE_STORAGE_BUCKET');
-  const sa = JSON.parse(saRaw);
+  let sa;
+  try {
+    sa = JSON.parse(saRaw);
+  } catch {
+    try {
+      sa = JSON.parse(Buffer.from(saRaw, 'base64').toString('utf8'));
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON must be valid JSON or base64-encoded JSON');
+    }
+  }
   admin.initializeApp({
     credential: admin.credential.cert(sa),
     databaseURL: dbUrl,

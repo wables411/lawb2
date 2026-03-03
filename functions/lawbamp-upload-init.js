@@ -87,13 +87,22 @@ function assertAllowedMime(mime) {
 
 function initAdmin() {
   if (admin.apps && admin.apps.length) return;
-  const saRaw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  let saRaw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!saRaw) throw new Error('Missing FIREBASE_SERVICE_ACCOUNT_JSON');
   const dbUrl = process.env.FIREBASE_DATABASE_URL;
   const bucket = process.env.FIREBASE_STORAGE_BUCKET;
   if (!dbUrl) throw new Error('Missing FIREBASE_DATABASE_URL');
   if (!bucket) throw new Error('Missing FIREBASE_STORAGE_BUCKET');
-  const sa = JSON.parse(saRaw);
+  let sa;
+  try {
+    sa = JSON.parse(saRaw);
+  } catch {
+    try {
+      sa = JSON.parse(Buffer.from(saRaw, 'base64').toString('utf8'));
+    } catch (e) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON must be valid JSON or base64-encoded JSON');
+    }
+  }
   admin.initializeApp({
     credential: admin.credential.cert(sa),
     databaseURL: dbUrl,
