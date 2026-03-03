@@ -104,7 +104,11 @@ function initAdmin() {
 }
 
 async function hasUploadGate(address) {
-  const rpcUrl = process.env.ETH_RPC_URL || 'https://eth.llamarpc.com';
+  let rpcUrl = process.env.ETH_RPC_URL;
+  if (!rpcUrl && process.env.ALCHEMY_API_KEY) {
+    rpcUrl = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
+  }
+  if (!rpcUrl) rpcUrl = 'https://eth.llamarpc.com';
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const c1 = new ethers.Contract(LAWbsters_CONTRACT, ERC721_ABI, provider);
   const c2 = new ethers.Contract(LAWbstarz_CONTRACT, ERC721_ABI, provider);
@@ -160,7 +164,16 @@ exports.handler = async (event) => {
     const recovered = ethers.verifyMessage(msg, signature);
     if (normAddress(recovered) !== address) throw new Error('Bad signature');
 
-    const ok = await hasUploadGate(address);
+    let ok;
+    try {
+      ok = await hasUploadGate(address);
+    } catch (rpcErr) {
+      const msg = String(rpcErr && rpcErr.message ? rpcErr.message : rpcErr);
+      if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
+        return json(503, { error: 'RPC rate limited', message: 'Try again in a moment, or set ETH_RPC_URL in Netlify' });
+      }
+      throw rpcErr;
+    }
     if (!ok) {
       return json(403, { error: 'Upload requires Lawbsters or Lawbstarz (Ethereum)' });
     }
