@@ -113,6 +113,8 @@ async function hasUploadGate(address) {
 }
 
 exports.handler = async (event) => {
+  try {
+  if (!event) return json(500, { error: 'No event received' });
   // Support both Lambda event and Web API Request
   const method = event.httpMethod || event.method || (event.request && event.request.method);
   if (method === 'OPTIONS') return json(200, {});
@@ -204,6 +206,10 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error('[lawbamp-upload-init] error:', err);
     return json(500, { error: 'Failed to init upload', message: err && err.message ? err.message : String(err) });
+  }
+  } catch (outerErr) {
+    console.error('[lawbamp-upload-init] outer error:', outerErr);
+    return json(500, { error: 'Handler error', message: outerErr && outerErr.message ? outerErr.message : String(outerErr) });
   }
 };
 
