@@ -8,12 +8,7 @@ import './index.css';
 import './walletModal.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
-
-// Lazy load components
-const ChessPage = lazy(() => import('./components/ChessPage'));
-// Clawb World moved to separate clawb-world repo — /world no longer in lawb2
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import { wagmiAdapter, initializeAppKit } from './appkit.ts';
 import { config as wagmiConfig } from './wagmi';
@@ -21,10 +16,13 @@ import { LawbAudioProvider } from './contexts/LawbAudioContext';
 import LawbMiniPlayer from './components/LawbMiniPlayer';
 const queryClient = new QueryClient();
 
-const isChessSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('chess.');
-
 const Root = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
+  // Redirect chess subdomain to main site
+  if (typeof window !== 'undefined' && window.location.hostname.startsWith('chess.')) {
+    window.location.replace(`https://lawb.xyz${window.location.pathname === '/' ? '' : window.location.pathname}`);
+    return null;
+  }
   return isMobile ? <Mobile /> : <App />;
 };
 
@@ -85,22 +83,8 @@ const AppWithWagmi = () => {
         <LawbAudioProvider>
           <BrowserRouter>
             <Routes>
-              {isChessSubdomain ? (
-                <Route path="/*" element={
-                  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                    <ChessPage />
-                  </Suspense>
-                } />
-              ) : (
-                <>
-                  <Route path="/" element={<Root />} />
-                  <Route path="/chess" element={
-                    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading Chess...</div>}>
-                      <ChessPage />
-                    </Suspense>
-                  } />
-                </>
-              )}
+              <Route path="/" element={<Root />} />
+              <Route path="/chess" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
           <LawbMiniPlayer />

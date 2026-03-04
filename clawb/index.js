@@ -11,11 +11,12 @@
  * Usage: node index.js [--no-pvp] [--chat-only] [--no-stream]
  */
 
-import { setClawbOnline, setClawbOffline, heartbeat } from './lawb-firebase.js';
+import { setClawbOnline, setClawbOffline, heartbeat, isFirebaseAvailable } from './lawb-firebase.js';
 import { startChatResponder } from './lawb-chat-responder.js';
 import { startChessWatcher } from './chess-clawb-watcher.js';
 import { startPvpAgent } from './chess-pvp-agent.js';
 import { startWorldResponder } from './world-responder.js';
+import { startWorldWsBridge } from './world-ws-bridge.js';
 import { startRetakeStreamer } from './retake-streamer.js';
 import { startWorldAutonomousRoutines } from './world-autonomous-routines.js';
 import { startLawbPoints } from './lawb-points.js';
@@ -27,6 +28,7 @@ const args = process.argv.slice(2);
 const noPvp = args.includes('--no-pvp');
 const chatOnly = args.includes('--chat-only');
 const noStream = args.includes('--no-stream');
+const localStream = args.includes('--local-stream') || String(process.env.CLAWB_LOCAL_STREAM || '0').toLowerCase() === '1';
 
 async function main() {
   console.log('');
@@ -42,46 +44,55 @@ async function main() {
       preflight.warnings.forEach((w) => console.warn(`[Main] Preflight warning: ${w}`));
     }
 
+    const hasFirebase = isFirebaseAvailable();
+    if (localStream) {
+      console.log('[Main] Local stream mode — world uses WebSocket.' + (hasFirebase ? ' Chess/PVP enabled.' : ' Chess/PVP disabled (Firebase unavailable).'));
+    }
+
     // 1. Go online
     await setClawbOnline('idle');
-    console.log('[Main] Clawb is online.');
+    if (hasFirebase) console.log('[Main] Clawb is online.');
 
-    // 2. Start chat responder (always)
-    const stopChat = await startChatResponder();
-    cleanups.push(stopChat);
+    // 2. Start chat responder (needs Firebase)
+    if (hasFirebase && !localStream) {
+      const stopChat = await startChatResponder();
+      cleanups.push(stopChat);
+    }
 
-    // 3. Start chess watcher (unless chat-only)
-    if (!chatOnly) {
+    // 3. Start chess watcher (needs Firebase)
+    if (!chatOnly && hasFirebase) {
       const stopChess = await startChessWatcher();
       cleanups.push(stopChess);
     }
 
-    // 4. Start PVP agent (unless disabled)
-    if (!noPvp && !chatOnly) {
+    // 4. Start PVP agent (needs Firebase)
+    if (!noPvp && !chatOnly && hasFirebase) {
       const stopPvp = await startPvpAgent();
       cleanups.push(stopPvp);
-    } else {
+    } else if (hasFirebase) {
       console.log('[Main] PVP agent disabled' + (noPvp ? ' (--no-pvp flag)' : ' (--chat-only flag)'));
     }
 
-    // 5. Start world responder (always)
+    // 4.5 Start world WebSocket bridge (local clients bypass Firebase)
+    const stopWorldWs = startWorldWsBridge();
+    cleanups.push(stopWorldWs);
+
+    // 5. Start world responder (always — uses local inject when local stream)
     await startWorldResponder();
 
     // 5.5 Start lightweight autonomous world routines
     const stopWorldAutonomy = startWorldAutonomousRoutines();
     cleanups.push(stopWorldAutonomy);
 
-    // 5.6 Start Lawb Points engine (seeds bounties on first boot)
-    const stopPoints = await startLawbPoints();
-    cleanups.push(stopPoints);
-
-    // 5.7 Keep Clawb World NFT gallery synced (EVM + Solana)
-    const stopGallerySync = await startWorldGallerySync();
-    cleanups.push(stopGallerySync);
-
-    // 5.8 Process approved bounty payouts (safe queue mode)
-    const stopBountyPayouts = startBountyPayoutProcessor();
-    cleanups.push(stopBountyPayouts);
+    // 5.6–5.8 Firebase-dependent services (start when Firebase available)
+    if (hasFirebase) {
+      const stopPoints = await startLawbPoints();
+      cleanups.push(stopPoints);
+      const stopGallerySync = await startWorldGallerySync();
+      cleanups.push(stopGallerySync);
+      const stopBountyPayouts = startBountyPayoutProcessor();
+      cleanups.push(stopBountyPayouts);
+    }
 
     // 6. Start Retake.TV streamer (unless disabled)
     if (!noStream && !chatOnly) {
@@ -91,7 +102,7 @@ async function main() {
       console.log('[Main] Retake streamer disabled (--no-stream flag)');
     }
 
-    // 7. Heartbeat every 30s
+    // 7. Heartbeat every 30s (no-op when local stream)
     const heartbeatInterval = setInterval(() => heartbeat(), 30_000);
     cleanups.push(() => clearInterval(heartbeatInterval));
 

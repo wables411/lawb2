@@ -4,7 +4,6 @@ import Popup from './Popup';
 import MintPopup from './MintPopup';
 import NFTGallery from './NFTGallery';
 import MemeGenerator from './MemeGenerator';
-import { ChessGame } from './ChessGame';
 import Taskbar from './Taskbar';
 import MediaGallery from './MediaGallery';
 import NFTDetailPopup from './NFTDetailPopup';
@@ -29,9 +28,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'mint', image: '/assets/mint.gif', label: 'Mint', action: 'mint', row: 0, col: 0 },
   { id: 'gallery', image: '/assets/lawbstarz.gif', label: 'LAWB Gallery', action: 'nft-gallery', row: 0, col: 2 },
   { id: 'meme-generator', image: '/assets/meme.gif', label: 'Meme Generator', action: 'meme-generator', row: 0, col: 4 },
-  { id: 'chess', image: '/assets/chessicon.png', label: 'Chess', action: 'chess', row: 0, col: 5 },
 
-  
   // Row 2
   { id: 'purity', image: '/assets/purityfinance.png', label: 'Purity', action: 'popup', popupId: 'purity-popup', row: 1, col: 0 },
   { id: 'lawbshop', image: '/assets/lawbshop.png', label: 'Lawb.Shop', action: 'url', url: 'https://store.fun/lawbshop', row: 1, col: 1 },

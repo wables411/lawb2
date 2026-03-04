@@ -3,7 +3,6 @@ import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedW
 import { fetchNFTInventory, fetchAggregatedNFTInventory, type WalletDescriptor } from '../utils/nftInventory';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
-import { getUserLeaderboardEntry, getUserRank } from '../firebaseLeaderboard';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
 import { useAppKit } from '@reown/appkit/react';
@@ -519,9 +518,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [usernameSuccess, setUsernameSuccess] = useState(false);
   const [refreshingInventory, setRefreshingInventory] = useState(false);
-  const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
   const [profileImageSize, setProfileImageSize] = useState<{ width: number; height: number } | null>(null);
-  const [statsVisible, setStatsVisible] = useState(true);
   const [solanaGalleryCards, setSolanaGalleryCards] = useState<SolanaGalleryCard[]>([]);
   const [solanaGalleryLoading, setSolanaGalleryLoading] = useState(false);
   const [linkedWallets, setLinkedWallets] = useState<LinkedWallet[]>([]);
@@ -554,22 +551,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         setLinkedWallets(linked);
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[PROFILE] Profile data from Firebase:', profileData);
-        }
-        
-        // Load game stats from leaderboard
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[PROFILE] Fetching leaderboard entry...');
-        }
-        const leaderboardEntry = await getUserLeaderboardEntry(address);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[PROFILE] Leaderboard entry:', leaderboardEntry);
-        }
-        
-        // Get leaderboard rank for border color
-        const rank = await getUserRank(address);
-        setLeaderboardRank(rank);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[PROFILE] Leaderboard rank:', rank);
         }
         
         const isOwnProfile = normalizeAddress(address) === normalizeAddress(connectedAddress);
@@ -635,43 +616,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               last_match_timestamp: null,
               last_match_invite_code: null
             };
-          }
-        }
-        
-        // Sync leaderboard stats to profile if leaderboard has data
-        if (leaderboardEntry && profileData) {
-          // Validate and convert leaderboard data to numbers
-          const totalGames = Number(leaderboardEntry.total_games) || 0;
-          const wins = Number(leaderboardEntry.wins) || 0;
-          const losses = Number(leaderboardEntry.losses) || 0;
-          const draws = Number(leaderboardEntry.draws) || 0;
-          const points = Number(leaderboardEntry.points) || 0;
-          
-          const leaderboardStats = {
-            total_games: totalGames,
-            wins: wins,
-            losses: losses,
-            draws: draws,
-            total_points: points,
-            win_rate: totalGames > 0 ? wins / totalGames : 0,
-            last_match_timestamp: leaderboardEntry.updated_at || null,
-            last_match_invite_code: null
-          };
-          
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] Syncing leaderboard stats:', leaderboardStats, 'from entry:', leaderboardEntry);
-          }
-          // Always use leaderboard data for display (it's the source of truth)
-          profileData.game_stats = leaderboardStats;
-          // Only sync to Firebase profile if it's the user's own profile
-          if (isOwnProfile) {
-            await firebaseProfiles.upsertProfile(address, { game_stats: leaderboardStats });
-            const updated = await firebaseProfiles.getProfile(address);
-            if (updated) profileData = updated;
-          }
-        } else {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] No leaderboard entry found. Leaderboard entry:', leaderboardEntry, 'Profile data:', profileData);
           }
         }
         
@@ -932,17 +876,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     ? profile.username 
     : `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-  const stats = profile?.game_stats || {
-    total_games: 0,
-    wins: 0,
-    losses: 0,
-    draws: 0,
-    total_points: 0,
-    win_rate: 0,
-    last_match_timestamp: null,
-    last_match_invite_code: null
-  };
-
   const inventory = {
     lawbsters: profile?.nft_inventory?.lawbsters || [],
     lawbstarz: profile?.nft_inventory?.lawbstarz || [],
@@ -973,14 +906,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     (inventory.asciilawbs?.length || 0) + (inventory.lawbstation?.length || 0) +
                     (inventory.lawbnexus?.length || 0);
 
-  // Determine border color based on leaderboard rank
-  const getBorderColor = () => {
-    if (!leaderboardRank) return '#ff0000'; // Default red
-    if (leaderboardRank === 1) return '#ffd700'; // Gold
-    if (leaderboardRank === 2) return '#c0c0c0'; // Silver
-    if (leaderboardRank >= 3 && leaderboardRank <= 10) return '#4169e1'; // Blue
-    return '#ff0000'; // Red for below 10th place
-  };
+  const getBorderColor = () => '#4169e1';
 
   // Get profile image URL or default
   const profileImageUrl = profile?.profile_picture?.image_url || '/images/sticker4.png';
@@ -1147,129 +1073,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           </>
         )}
       </div>
-
-              {/* Chess Stats Section - Above NFT Inventory */}
-              {statsVisible && (() => {
-                // Check if dark mode is active
-                const isDarkMode = typeof document !== 'undefined' && 
-                  (document.body.classList.contains('lawb-app-dark-mode') || 
-                   document.documentElement.classList.contains('lawb-app-dark-mode'));
-                
-                return (
-                  <div style={{ 
-                    marginBottom: '20px', 
-                    width: '100%', 
-                    maxWidth: '600px',
-                    padding: '12px',
-                    background: isDarkMode ? '#000000' : '#f0f0f0',
-                    border: isDarkMode ? '2px outset #00ff00' : '1px solid #ccc',
-                    borderRadius: '4px'
-                  }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
-                      marginBottom: '12px' 
-                    }}>
-                      <h4 style={{ 
-                        margin: 0, 
-                        fontSize: isMobile ? '13px' : '14px',
-                        color: isDarkMode ? '#00ff00' : '#000000'
-                      }}>
-                        Chess Stats
-                      </h4>
-                      {!isOwnProfile && (
-                        <button
-                          onClick={() => setStatsVisible(false)}
-                          style={{
-                            padding: '2px 6px',
-                            background: isDarkMode ? '#000000' : '#c0c0c0',
-                            border: isDarkMode ? '1px solid #00ff00' : '1px solid #999',
-                            color: isDarkMode ? '#00ff00' : '#000000',
-                            borderRadius: '2px',
-                            cursor: 'pointer',
-                            fontSize: isMobile ? '9px' : '10px'
-                          }}
-                        >
-                          Hide
-                        </button>
-                      )}
-                    </div>
-                    <div style={{ 
-                      fontSize: isMobile ? '12px' : '13px',
-                      fontWeight: 'bold',
-                      marginBottom: '8px',
-                      color: isDarkMode ? '#00ff00' : '#000000'
-                    }}>
-                      {displayName}
-                    </div>
-                    {profile?.username && (
-                      <div style={{ 
-                        fontSize: isMobile ? '10px' : '11px', 
-                        color: isDarkMode ? '#00ff00' : '#666',
-                        marginBottom: '12px'
-                      }}>
-                        @{profile.username}
-                      </div>
-                    )}
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: '1fr 1fr', 
-                      gap: '8px',
-                      fontSize: isMobile ? '11px' : '12px',
-                      color: isDarkMode ? '#00ff00' : '#000000'
-                    }}>
-                      <div>Games: <strong>{stats.total_games}</strong></div>
-                      <div>Wins: <strong>{stats.wins}</strong></div>
-                      <div>Losses: <strong>{stats.losses}</strong></div>
-                      <div>Draws: <strong>{stats.draws}</strong></div>
-                      <div>Win Rate: <strong>{(stats.win_rate * 100).toFixed(1)}%</strong></div>
-                      <div>Points: <strong>{stats.total_points}</strong></div>
-                    </div>
-                    {leaderboardRank && (
-                      <div style={{ 
-                        fontSize: isMobile ? '10px' : '11px', 
-                        color: isDarkMode ? '#00ff00' : '#666',
-                        marginTop: '8px',
-                        textAlign: 'center'
-                      }}>
-                        Rank: <strong>#{leaderboardRank}</strong>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-              
-              {!statsVisible && !isOwnProfile && (() => {
-                // Check if dark mode is active
-                const isDarkMode = typeof document !== 'undefined' && 
-                  (document.body.classList.contains('lawb-app-dark-mode') || 
-                   document.documentElement.classList.contains('lawb-app-dark-mode'));
-                
-                return (
-                  <div style={{ 
-                    marginBottom: '20px', 
-                    width: '100%', 
-                    maxWidth: '600px',
-                    textAlign: 'center'
-                  }}>
-                    <button
-                      onClick={() => setStatsVisible(true)}
-                      style={{
-                        padding: '8px 16px',
-                        background: isDarkMode ? '#000000' : '#c0c0c0',
-                        border: isDarkMode ? '2px outset #00ff00' : '2px outset #fff',
-                        color: isDarkMode ? '#00ff00' : '#000000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '11px' : '12px'
-                      }}
-                    >
-                      Show Chess Stats
-                    </button>
-                  </div>
-                );
-              })()}
 
               <WalletLinkingSection
                 isOwnProfile={isOwnProfile}

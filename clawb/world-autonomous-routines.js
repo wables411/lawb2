@@ -2,12 +2,15 @@
  * world-autonomous-routines.js
  *
  * Lightweight autonomous world behavior publisher.
- * Publishes commands into the existing Firebase world command path so
- * Clawb appears active even without direct viewer input.
+ * Publishes commands into the existing Firebase world command path (or local inject when CLAWB_LOCAL_STREAM).
  */
 
 import { db } from './lawb-firebase.js';
+import { injectWorldCommand } from './world-ws-bridge.js';
+import { isAutonomySuppressedForLocal } from './world-responder.js';
 
+const LOCAL_STREAM = String(process.env.CLAWB_LOCAL_STREAM || '0').toLowerCase() === '1' ||
+  process.argv.includes('--local-stream');
 const AUTONOMY_ENABLED = String(process.env.CLAWB_WORLD_AUTONOMY_ENABLED || 'true').toLowerCase() !== 'false';
 const BASE_INTERVAL_MS = Number(process.env.CLAWB_WORLD_AUTONOMY_INTERVAL_MS || 180_000);
 const JITTER_MS = Number(process.env.CLAWB_WORLD_AUTONOMY_JITTER_MS || 45_000);
@@ -29,18 +32,27 @@ function nextDelayMs() {
 }
 
 async function publishRoutineStep(step) {
-  const ref = db.ref('clawb/world/commands').push();
-  await ref.set({
+  const payload = {
     command: step.command,
     ...step.payload,
     source: 'autonomy',
     viewer: 'clawb',
     timestamp: Date.now(),
-  });
+  };
+  if (LOCAL_STREAM) {
+    injectWorldCommand(payload);
+    console.log(`[World Autonomy] injected ${step.command} (local)`);
+    return;
+  }
+  const ref = db.ref('clawb/world/commands').push();
+  await ref.set(payload);
   console.log(`[World Autonomy] published ${step.command}`);
 }
 
 async function isAutonomySuppressedNow() {
+  if (LOCAL_STREAM) {
+    return isAutonomySuppressedForLocal();
+  }
   try {
     const snapshot = await db.ref('clawb/world/control').once('value');
     const control = snapshot.val() || {};

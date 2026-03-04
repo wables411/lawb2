@@ -61,6 +61,7 @@ export const FIRST_WIN_BOUNTY_IDS = {
 // ---------------------------------------------------------------------------
 
 export async function linkRetakeViewer(retakeUsername, walletAddress) {
+  if (!db) return { success: false, error: 'Firebase unavailable (local stream mode)' };
   const isEvm = IS_EVM_ADDRESS.test(walletAddress);
   const isSolana = IS_SOLANA_ADDRESS.test(walletAddress);
   if (!isEvm && !isSolana) {
@@ -87,6 +88,7 @@ export async function linkRetakeViewer(retakeUsername, walletAddress) {
 }
 
 export async function getLinkedWallet(retakeUsername) {
+  if (!db) return null;
   const normalized = retakeUsername.toLowerCase().trim();
   const snap = await db.ref(`retake_links/${normalized}`).once('value');
   if (!snap.exists()) return null;
@@ -124,6 +126,7 @@ async function transferUnclaimedPoints(retakeUsername, wallet) {
  * @param {number} amount      Points to add (positive integer)
  */
 export async function addPoints(identifier, source, amount) {
+  if (!db) return false;
   if (!identifier || amount <= 0) return false;
 
   let wallet = identifier;
@@ -197,6 +200,7 @@ export async function addPoints(identifier, source, amount) {
 // ---------------------------------------------------------------------------
 
 export async function addClaimableReward(wallet, token, amount) {
+  if (!db) return;
   if (!wallet || amount <= 0) return;
   const key = wallet.toLowerCase();
   const ref = db.ref(`profiles/${key}/claimable`);
@@ -243,6 +247,7 @@ export async function createBounty(bountyData) {
 }
 
 export async function getActiveBounties() {
+  if (!db) return [];
   const snap = await db.ref('bounties').orderByChild('status').equalTo('active').once('value');
   if (!snap.exists()) return [];
   const bounties = [];
@@ -409,6 +414,7 @@ export async function enqueuePvpFirstWinBounty(wallet, claimContext = {}) {
 // ---------------------------------------------------------------------------
 
 export async function getViewerStats(retakeUsername) {
+  if (!db) return { linked: false, wallet: null, points: 0, breakdown: {} };
   const wallet = await getLinkedWallet(retakeUsername);
 
   if (wallet) {
@@ -435,6 +441,7 @@ export async function getViewerStats(retakeUsername) {
 }
 
 export async function getLeaderboardRank(wallet) {
+  if (!db) return { rank: null, total: 0 };
   const allSnap = await db.ref('leaderboard').once('value');
   if (!allSnap.exists()) return { rank: null, total: 0 };
 

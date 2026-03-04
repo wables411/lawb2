@@ -11,29 +11,36 @@ function missing(name) {
   return !value || !String(value).trim();
 }
 
+const LOCAL_STREAM = String(process.env.CLAWB_LOCAL_STREAM || '0').toLowerCase() === '1' ||
+  process.argv.includes('--local-stream');
+
 export function runPreflight({ strict = true } = {}) {
   loadDotEnv({ path: ENV_PATH });
 
   const errors = [];
   const warnings = [];
 
-  const requiredEnv = [
-    'FIREBASE_SERVICE_ACCOUNT_PATH',
-    'FIREBASE_DATABASE_URL',
-    'OPENROUTER_API_KEY',
-    'RETAKE_SOLANA_KEYPAIR_PATH',
-    'JUPITER_API_KEY',
-  ];
+  const requiredEnv = LOCAL_STREAM
+    ? [] // Local stream: minimal env; Retake may need SOLANA keypair, but has fallbacks
+    : [
+        'FIREBASE_SERVICE_ACCOUNT_PATH',
+        'FIREBASE_DATABASE_URL',
+        'OPENROUTER_API_KEY',
+        'RETAKE_SOLANA_KEYPAIR_PATH',
+        'JUPITER_API_KEY',
+      ];
 
   for (const key of requiredEnv) {
     if (missing(key)) errors.push(`Missing env var: ${key}`);
   }
 
-  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
-    ? resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
-    : null;
-  if (serviceAccountPath && !existsSync(serviceAccountPath)) {
-    errors.push(`Missing Firebase service account file: ${serviceAccountPath}`);
+  if (!LOCAL_STREAM) {
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
+      ? resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
+      : null;
+    if (serviceAccountPath && !existsSync(serviceAccountPath)) {
+      errors.push(`Missing Firebase service account file: ${serviceAccountPath}`);
+    }
   }
 
   const solKeypairPath = process.env.RETAKE_SOLANA_KEYPAIR_PATH
@@ -41,6 +48,9 @@ export function runPreflight({ strict = true } = {}) {
     : null;
   if (solKeypairPath && !existsSync(solKeypairPath)) {
     errors.push(`Missing Solana keypair file: ${solKeypairPath}`);
+  }
+  if (LOCAL_STREAM && missing('RETAKE_SOLANA_KEYPAIR_PATH')) {
+    warnings.push('RETAKE_SOLANA_KEYPAIR_PATH not set (Retake features may be limited).');
   }
 
   if (missing('OBS_WS_PASSWORD')) {

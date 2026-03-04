@@ -8,9 +8,9 @@
   VITE_EXCLUDE_WORLD = "true"
 
 [[redirects]]
-  from = "/api/stockfish"
-  to = "/.netlify/functions/stockfish"
-  status = 200
+  from = "/chess"
+  to = "/"
+  status = 301
 
 [[redirects]]
   from = "/api/game-monitor"

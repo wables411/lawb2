@@ -193,13 +193,10 @@ interface LinuxNavBarProps {
   };
   onOpenPublicChat?: () => void;
   onOpenProfile?: () => void;
-  onOpenChessPieceInfo?: () => void;
-  onChessClose?: () => void;
-  showChessMenu?: boolean;
   onClawbClick?: () => void;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus: connectionStatusProp, onOpenPublicChat, onOpenProfile, onOpenChessPieceInfo, onChessClose, showChessMenu, onClawbClick }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus: connectionStatusProp, onOpenPublicChat, onOpenProfile, onClawbClick }) => {
   // Single source of truth: useConnectionDisplay handles reconnecting state to avoid navbar/Reown modal mismatch
   const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
   const connectionStatus = connectionDisplay;
@@ -263,13 +260,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
           >
             Home
           </button>
-          <button
-            className={`${classes.navButton} ${isActive('/chess') ? 'active' : ''}`}
-            onClick={() => navigate('/chess')}
-            type="button"
-          >
-            Chess
-          </button>
           {onClawbClick && (
             <button
               className={classes.navButton}
@@ -314,13 +304,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             <span>🏠</span>
             <span>Home</span>
           </button>
-          <button
-            className={classes.menuItem}
-            onClick={() => handleMenuLinkClick('/chess')}
-          >
-            <span>♟️</span>
-            <span>Chess</span>
-          </button>
           {onClawbClick && (
             <button
               className={classes.menuItem}
@@ -349,16 +332,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
               <span>Profile</span>
             </button>
           )}
-          <button
-            className={classes.menuItem}
-            onClick={() => {
-              setIsMenuOpen(false);
-              onOpenChessPieceInfo?.();
-            }}
-          >
-            <span>♟️</span>
-            <span>Chess Piece Info</span>
-          </button>
           <a
             href="https://t.me/tickerlawb"
             target="_blank"
@@ -399,56 +372,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             <span><img src="/images/lawblore.gif" alt="Lawb Lore" style={{ width: '16px', height: '16px', objectFit: 'contain' }} /></span>
             <span>Lawb Lore</span>
           </a>
-          {showChessMenu && (
-            <>
-              <hr className={classes.menuSeparator} />
-              <button
-                className={classes.menuItem}
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  if ((window as any).__chessOpenLeaderboard) {
-                    (window as any).__chessOpenLeaderboard();
-                  }
-                }}
-              >
-                <span>🏆</span>
-                <span>Leaderboard</span>
-              </button>
-              <button
-                className={classes.menuItem}
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  if ((window as any).__chessOpenMoves) {
-                    (window as any).__chessOpenMoves();
-                  }
-                }}
-              >
-                <span>📜</span>
-                <span>Move History</span>
-              </button>
-              <button
-                className={classes.menuItem}
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  if ((window as any).__chessOpenHowTo) {
-                    (window as any).__chessOpenHowTo();
-                  }
-                }}
-              >
-                <span>❓</span>
-                <span>How To Play</span>
-              </button>
-            </>
-          )}
-          {onChessClose && (
-            <button
-              className={classes.menuItem}
-              onClick={() => handleMenuLinkClick(undefined, onChessClose)}
-            >
-              <span>×</span>
-              <span>Close Chess</span>
-            </button>
-          )}
           <hr className={classes.menuSeparator} />
           <div style={{ padding: '8px 14px' }}>
             <ThemeToggle />

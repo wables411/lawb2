@@ -12,8 +12,11 @@ const RetakeLiveBadge: React.FC = () => {
   }, []);
 
   return (
-    <div
-      title={isLive ? 'Clawb is live' : 'Streaming paused'}
+    <a
+      href="https://retake.tv/clawb"
+      target="_blank"
+      rel="noopener noreferrer"
+      title={isLive ? 'Clawb is live — watch stream' : 'Streaming paused — watch stream'}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -21,10 +24,11 @@ const RetakeLiveBadge: React.FC = () => {
         padding: '4px 8px',
         borderRadius: '4px',
         background: 'rgba(0, 0, 0, 0.2)',
-        cursor: 'default',
+        cursor: 'pointer',
+        textDecoration: 'none',
+        color: '#cbd5e0',
         fontSize: '11px',
         fontFamily: 'DejaVu Sans, Liberation Sans, Arial, sans-serif',
-        color: '#cbd5e0',
         whiteSpace: 'nowrap',
         userSelect: 'none',
       }}
@@ -47,7 +51,7 @@ const RetakeLiveBadge: React.FC = () => {
           50% { opacity: 0.7; box-shadow: 0 0 6px 2px rgba(245, 101, 101, 0.4); }
         }
       `}</style>
-    </div>
+    </a>
   );
 };
 

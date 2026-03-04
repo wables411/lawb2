@@ -3,9 +3,14 @@
  *
  * Converts inbound world commands into canonical world actions
  * so all world clients animate from the same event shape.
+ * In local-stream mode: commands come via WebSocket bridge, no Firebase.
  */
 
 import { db } from './lawb-firebase.js';
+import { broadcastWorldAction, onLocalCommand } from './world-ws-bridge.js';
+
+const LOCAL_STREAM = String(process.env.CLAWB_LOCAL_STREAM || '0').toLowerCase() === '1' ||
+  process.argv.includes('--local-stream');
 
 const ROOM_TO_ACTION = {
   main: 'room_main',
@@ -85,7 +90,7 @@ const arbiterState = {
   },
 };
 
-const worldControlRef = db.ref('clawb/world/control');
+const worldControlRef = db ? db.ref('clawb/world/control') : null;
 
 function nowMs() {
   return Date.now();
@@ -100,7 +105,15 @@ function commandPriority(source) {
   return source === 'autonomy' ? 1 : 2;
 }
 
+/** For autonomy routines in local mode: check if manual/loop control is active */
+export function isAutonomySuppressedForLocal() {
+  const now = nowMs();
+  const effectiveUntil = Math.max(arbiterState.manualOverrideUntil, arbiterState.loopOverrideUntil);
+  return now < effectiveUntil;
+}
+
 async function publishControlState(reason) {
+  if (!worldControlRef) return;
   await worldControlRef.set({
     manualOverrideUntil: arbiterState.manualOverrideUntil,
     loopOverrideUntil: arbiterState.loopOverrideUntil,
@@ -267,12 +280,71 @@ function normalizeCommand(command) {
 }
 
 async function publishWorldAction(payload) {
+  if (LOCAL_STREAM || !db) {
+    const id = `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    broadcastWorldAction({ id, ...payload });
+    return;
+  }
   const ref = db.ref('clawb/world/actions').push();
+  const id = ref.key;
   await ref.set(payload);
+  broadcastWorldAction({ id, ...payload });
+}
+
+async function processCommand(command) {
+  try {
+    const canonical = normalizeCommand(command);
+    if (!canonical) return;
+    if (!isCanonicalValid(canonical)) {
+      arbiterState.diagnostics.malformedDropped += 1;
+      return;
+    }
+    if (shouldDropAsDuplicate(canonical)) {
+      console.log(`[World] duplicate dropped: ${canonical.action} (${canonical.source})`);
+      return;
+    }
+    if (shouldSuppressAutonomy(canonical)) {
+      arbiterState.diagnostics.autonomySuppressed += 1;
+      console.log(`[World] autonomy suppressed: ${canonical.action}`);
+      return;
+    }
+    if (shouldDropByCadence(canonical)) {
+      console.log(`[World] cadence dropped: ${canonical.action} (${canonical.source})`);
+      return;
+    }
+
+    const stateChanged = touchArbiterWindows(canonical);
+    if (stateChanged && worldControlRef) {
+      await publishControlState(`manual:${canonical.action}`);
+    }
+
+    const ts = Number(canonical.timestamp) || nowMs();
+    const expiresAt = ts + ACTION_EXPIRES_MS;
+    await publishWorldAction({
+      ...canonical,
+      priority: commandPriority(canonical.source),
+      intent_id: command.id,
+      interrupt_policy: canonical.loop ? 'until_interrupted' : 'replace',
+      expires_at: expiresAt,
+    });
+    console.log(`[World] command ${canonical.command || canonical.action} -> ${canonical.action}`, {
+      source: canonical.source,
+      priority: commandPriority(canonical.source),
+    });
+  } catch (err) {
+    console.error('[World] Failed to process command:', err.message);
+  }
 }
 
 export async function startWorldResponder() {
   console.log('[World] Starting world responder...');
+
+  if (LOCAL_STREAM) {
+    const unsub = onLocalCommand((command) => processCommand(command));
+    console.log('[World] Listening for local commands (Firebase-free mode).');
+    return unsub;
+  }
+
   const startupCutoffTs = nowMs() - 15_000;
   console.log(`[World] command listener cutoff armed at ${startupCutoffTs}`);
 
@@ -281,48 +353,7 @@ export async function startWorldResponder() {
     .startAt(startupCutoffTs)
     .on('child_added', async (snapshot) => {
       const command = { id: snapshot.key, ...snapshot.val() };
-      try {
-        const canonical = normalizeCommand(command);
-        if (!canonical) return;
-        if (!isCanonicalValid(canonical)) {
-          arbiterState.diagnostics.malformedDropped += 1;
-          return;
-        }
-        if (shouldDropAsDuplicate(canonical)) {
-          console.log(`[World] duplicate dropped: ${canonical.action} (${canonical.source})`);
-          return;
-        }
-        if (shouldSuppressAutonomy(canonical)) {
-          arbiterState.diagnostics.autonomySuppressed += 1;
-          console.log(`[World] autonomy suppressed: ${canonical.action}`);
-          return;
-        }
-        if (shouldDropByCadence(canonical)) {
-          console.log(`[World] cadence dropped: ${canonical.action} (${canonical.source})`);
-          return;
-        }
-
-        const stateChanged = touchArbiterWindows(canonical);
-        if (stateChanged) {
-          await publishControlState(`manual:${canonical.action}`);
-        }
-
-        const ts = Number(canonical.timestamp) || nowMs();
-        const expiresAt = ts + ACTION_EXPIRES_MS;
-        await publishWorldAction({
-          ...canonical,
-          priority: commandPriority(canonical.source),
-          intent_id: command.id,
-          interrupt_policy: canonical.loop ? 'until_interrupted' : 'replace',
-          expires_at: expiresAt,
-        });
-        console.log(`[World] command ${canonical.command || canonical.action} -> ${canonical.action}`, {
-          source: canonical.source,
-          priority: commandPriority(canonical.source),
-        });
-      } catch (err) {
-        console.error('[World] Failed to process command:', err.message);
-      }
+      await processCommand(command);
     });
 
   console.log('[World] Listening for world commands.');

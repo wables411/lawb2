@@ -9,15 +9,20 @@
  * - Other-streamer interaction
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, createReadStream } from 'fs';
+import { dirname, join, resolve, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { execFileSync } from 'child_process';
 import { createServer } from 'http';
 import { Readable } from 'stream';
 import { Keypair, Connection, PublicKey } from '@solana/web3.js';
 import OBSWebSocket from 'obs-websocket-js';
 import OpenAI from 'openai';
 import { db } from './lawb-firebase.js';
+import { injectWorldCommand } from './world-ws-bridge.js';
+
+const LOCAL_STREAM = String(process.env.CLAWB_LOCAL_STREAM || '0').toLowerCase() === '1' ||
+  process.argv.includes('--local-stream');
 import {
   linkRetakeViewer,
   getViewerStats,
@@ -106,6 +111,8 @@ const LAWBAMP_FALLBACK_STREAM_URL = /soundcloud|api-v2\.soundcloud|companioncube
 const LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS = Number(process.env.LAWBAMP_DIRECT_AUDIO_RECOVER_RETRY_MS || 45_000);
 const EQ_DJ_INPUT_NAME = process.env.EQ_DJ_INPUT_NAME || 'DJSET';
 const EQ_DJ_STREAM_URL = process.env.EQ_DJ_STREAM_URL || '';
+const LOCAL_MUSIC_PATH = resolve(process.env.LOCAL_MUSIC_PATH || join(process.env.USERPROFILE || process.env.HOME || '', 'Music'));
+const LOCAL_MUSIC_EXTENSIONS = new Set(['.mp3', '.m4a', '.flac', '.ogg', '.wav']);
 const CLAWB_WORLD_STREAM_URL =
   process.env.CLAWB_WORLD_STREAM_URL || 'https://lawb.xyz/clawb-world?stream=1&cam=clawb';
 const CLAWB_CHESS_STREAM_URL =
@@ -323,9 +330,9 @@ let obsMeterListenerAttached = false;
 
 let lastViewerInteractionAt = Date.now();
 let idleBehaviorTimer = null;
-const IDLE_THRESHOLD_MS = 150_000;
-const IDLE_ACTION_INTERVAL_MS = 12_000;
-const RETAKE_IDLE_BEHAVIOR_ENABLED = String(process.env.RETAKE_IDLE_BEHAVIOR_ENABLED || '0').toLowerCase() === '1';
+const IDLE_THRESHOLD_MS = Number(process.env.RETAKE_IDLE_THRESHOLD_MS || 120_000); // 2 min no input before curious behavior
+const IDLE_ACTION_INTERVAL_MS = Number(process.env.RETAKE_IDLE_ACTION_INTERVAL_MS || 120_000); // every 2 min when idle
+const RETAKE_IDLE_BEHAVIOR_ENABLED = String(process.env.RETAKE_IDLE_BEHAVIOR_ENABLED || '1').toLowerCase() === '1';
 const RETAKE_VIEWER_MOVE_THROTTLE_MS = Number(process.env.RETAKE_VIEWER_MOVE_THROTTLE_MS || 1800);
 const RETAKE_VIEWER_ROOM_THROTTLE_MS = Number(process.env.RETAKE_VIEWER_ROOM_THROTTLE_MS || 9000);
 const RETAKE_VIEWER_LOOK_THROTTLE_MS = Number(process.env.RETAKE_VIEWER_LOOK_THROTTLE_MS || 7000);
@@ -334,6 +341,25 @@ const RETAKE_GLOBAL_ROOM_THROTTLE_MS = Number(process.env.RETAKE_GLOBAL_ROOM_THR
 const RETAKE_GLOBAL_LOOK_THROTTLE_MS = Number(process.env.RETAKE_GLOBAL_LOOK_THROTTLE_MS || 3500);
 const viewerWorldThrottleState = new Map();
 const globalWorldThrottleState = { move: 0, room: 0, look: 0 };
+const IDLE_LOOK_MAX_INDEX = Math.max(1, Number(process.env.RETAKE_IDLE_LOOK_MAX_INDEX || 24));
+let idleLookQueue = [];
+let idleLookQueuePos = 0;
+
+function shuffleIdleLookQueue() {
+  idleLookQueue = Array.from({ length: IDLE_LOOK_MAX_INDEX }, (_, i) => i + 1);
+  for (let i = idleLookQueue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idleLookQueue[i], idleLookQueue[j]] = [idleLookQueue[j], idleLookQueue[i]];
+  }
+  idleLookQueuePos = 0;
+}
+
+function getNextIdleLookAction() {
+  if (idleLookQueuePos >= idleLookQueue.length) shuffleIdleLookQueue();
+  const idx = idleLookQueue[idleLookQueuePos++];
+  return { type: 'look', targetNftIndex: idx, command: `!look ${idx}` };
+}
+
 const IDLE_ACTIONS = [
   { type: 'action', action: 'swim', command: '!swim' },
   { type: 'action', action: 'swim_forward', command: '!swim forward', direction: 'forward' },
@@ -350,19 +376,25 @@ const IDLE_ACTIONS = [
   { type: 'room', targetRoom: 'workshop', command: '!workshop' },
   { type: 'room', targetRoom: 'bedroom', command: '!gallery' },
   { type: 'room', targetRoom: 'vault', command: '!vault' },
+  { type: 'room', targetRoom: 'leaderboard', command: '!leaderboard' },
+  { type: 'look', command: '__queue__' }, // resolved by getNextIdleLookAction
 ];
 
 function startIdleBehavior() {
   stopIdleBehavior();
   if (!RETAKE_IDLE_BEHAVIOR_ENABLED) {
-    console.log('[Retake] idle behavior publisher disabled (RETAKE_IDLE_BEHAVIOR_ENABLED!=1)');
+    console.log('[Retake] Idle behavior disabled (RETAKE_IDLE_BEHAVIOR_ENABLED=0)');
     return;
   }
+  shuffleIdleLookQueue();
   idleBehaviorTimer = setInterval(async () => {
     if (Date.now() - lastViewerInteractionAt < IDLE_THRESHOLD_MS) return;
     if (worldTaskInFlight) return;
     if (!isStreaming) return;
-    const action = IDLE_ACTIONS[Math.floor(Math.random() * IDLE_ACTIONS.length)];
+    let action = IDLE_ACTIONS[Math.floor(Math.random() * IDLE_ACTIONS.length)];
+    if (action.type === 'look' && action.command === '__queue__') {
+      action = getNextIdleLookAction();
+    }
     try {
       await publishWorldCommand(action.command, {
         type: action.type,
@@ -372,8 +404,10 @@ function startIdleBehavior() {
         targetNftIndex: action.targetNftIndex,
         source: 'idle_behavior',
       });
+      console.log(`[Retake] idle_behavior: ${action.command} (curious, no input ${Math.round(IDLE_THRESHOLD_MS / 1000)}s)`);
     } catch {}
   }, IDLE_ACTION_INTERVAL_MS);
+  console.log(`[Retake] Idle behavior started: every ${IDLE_ACTION_INTERVAL_MS / 1000}s when no input for ${IDLE_THRESHOLD_MS / 1000}s`);
 }
 
 function stopIdleBehavior() {
@@ -533,7 +567,7 @@ const ASCII_EQ_POSITION = {
   cropBottom: 0,
 };
 const CHAT_HELP_TEXT =
-  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | camera/current: !cam <follow|orbit|wide|cinematic> !current <storm|calm|normal> | fx/events: !sunburst !bait !pulse !frenzy !sonar !titan !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess for wagers';
+  'music: !next !ascii !ascii2 !eq toggle !eqsource <lawbamp|djset|local|status> | move: !walk !swim !dance !flip !hi !wave !spin !jump !loop <action> | look: !day !night !storm !abyss !look N !zoom in|out | camera/current: !cam <follow|orbit|wide|cinematic> !current <storm|calm|normal> | fx/events: !sunburst !bait !pulse !frenzy !sonar !titan !reefskin [restore|corrupt|toggle] !focus <bounties|leaderboard|nfts|rooms> | biome vote: !biome start, !vote <day|night|storm|abyss>, !biome status | rooms: !gallery !workshop !vault !leaderboard !main | tasks: !task reef|garden|patrol | game: !reefgame !reefgame status !bet <room> !reefbet <room> | scenes: !chess !world | play me: !chess start | points: !link <wallet> !points !rank !bounties !claim | say milady / radbro / i lawb you | mention a conspiracy and the reef remembers | lawb.xyz/chess for wagers';
 const CHAT_ONBOARDING_LINES = [
   'type !help for all commands. lawb.xyz/chess for wagers. you are watching the reef live.',
   'you can control me live. !walk !swim !dance !flip !gallery — type !help for the full list.',
@@ -606,12 +640,45 @@ function normalizeEqSourceMode(rawMode) {
   const mode = String(rawMode || '').toLowerCase().trim();
   if (mode === 'lawbamp' || mode === 'lawb') return 'lawbamp';
   if (mode === 'djset' || mode === 'dj') return 'djset';
+  if (mode === 'local' || mode === 'music') return 'local';
   if (mode === 'status') return 'status';
   return '';
 }
 
 function getEqSourceStatusLabel() {
-  return currentEqSource === 'djset' ? `djset (${EQ_DJ_INPUT_NAME})` : 'lawbamp';
+  if (currentEqSource === 'local') return 'local';
+  if (currentEqSource === 'djset') return `djset (${EQ_DJ_INPUT_NAME})`;
+  return 'lawbamp';
+}
+
+function scanLocalPlaylist() {
+  const out = [];
+  if (!existsSync(LOCAL_MUSIC_PATH)) return out;
+  const base = resolve(LOCAL_MUSIC_PATH);
+  function walk(dir) {
+    try {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        let stat;
+        try {
+          stat = statSync(full);
+        } catch {
+          continue;
+        }
+        if (stat.isDirectory()) walk(full);
+        else if (stat.isFile()) {
+          const ext = name.slice(name.lastIndexOf('.')).toLowerCase();
+          if (LOCAL_MUSIC_EXTENSIONS.has(ext)) {
+            const rel = full.slice(base.length).replace(/\\/g, '/').replace(/^\//, '');
+            out.push({ path: rel, title: name.slice(0, -ext.length) });
+          }
+        }
+      }
+    } catch {}
+  }
+  walk(base);
+  out.sort((a, b) => a.path.localeCompare(b.path));
+  return out;
 }
 
 function extractStreamUrlFromObsInputSettings(inputSettings = {}) {
@@ -628,6 +695,26 @@ function extractStreamUrlFromObsInputSettings(inputSettings = {}) {
   return '';
 }
 
+/** Start dj-audio-stream (Line 2 → 18182) via PM2 when !eqsource djset is used. Returns { started, alreadyRunning, error }. */
+function ensureDjAudioStream() {
+  try {
+    const script = join(__dirname, 'dj-audio-stream.cjs');
+    if (!existsSync(script)) return { started: false, error: 'dj-audio-stream.cjs not found' };
+    const jlist = JSON.parse(execFileSync('pm2', ['jlist'], { encoding: 'utf-8' }));
+    const proc = Array.isArray(jlist) ? jlist.find((p) => p?.name === 'dj-audio-stream') : null;
+    if (proc) return { started: false, alreadyRunning: true };
+    execFileSync('pm2', ['start', script, '--name', 'dj-audio-stream', '--cwd', __dirname], {
+      stdio: 'pipe',
+      shell: true,
+    });
+    console.log('[Retake] Started dj-audio-stream (Line 2 → 18182).');
+    return { started: true };
+  } catch (e) {
+    console.warn('[Retake] dj-audio-stream ensure failed:', e.message);
+    return { started: false, error: e.message };
+  }
+}
+
 async function resolveDjEqStreamUrl() {
   if (EQ_DJ_STREAM_URL && /^https?:\/\//i.test(EQ_DJ_STREAM_URL)) {
     return EQ_DJ_STREAM_URL;
@@ -642,6 +729,9 @@ async function resolveDjEqStreamUrl() {
 }
 
 async function getCurrentEqOverlayContext() {
+  if (currentEqSource === 'local') {
+    return { streamUrl: '', title: 'local', isLocal: true };
+  }
   if (currentEqSource === 'djset') {
     const streamUrl = await resolveDjEqStreamUrl();
     if (streamUrl) {
@@ -656,11 +746,13 @@ async function getCurrentEqOverlayContext() {
 }
 
 async function refreshAsciiEqOverlay(reason = 'manual') {
-  // Ensure EQ proxy is running so overlay can poll /display-text (conspiracy ticker) even with no audio stream
   ensureEqProxyServer();
-  const { streamUrl, title } = await getCurrentEqOverlayContext();
-  // Always update — even with empty stream/title, clears stale SoundCloud content
-  await updateAsciiEqOverlayFromStream(streamUrl || '', title || '');
+  const ctx = await getCurrentEqOverlayContext();
+  if (ctx.isLocal) {
+    await updateAsciiEqOverlayForLocal();
+    return true;
+  }
+  await updateAsciiEqOverlayFromStream(ctx.streamUrl || '', ctx.title || '');
   return true;
 }
 
@@ -985,6 +1077,7 @@ function scheduleCommandReminder() {
 }
 
 async function publishSupervisorAlert(event, payload = {}) {
+  if (!db) return;
   try {
     const ref = db.ref('clawb/stream/supervisor_alerts').push();
     await ref.set({
@@ -1146,6 +1239,43 @@ function ensureEqProxyServer() {
         res.end(JSON.stringify({ text }));
         return;
       }
+      if (url.pathname.startsWith('/music/')) {
+        const relPath = decodeURIComponent(url.pathname.slice(7)).replace(/\.\./g, '');
+        const base = resolve(LOCAL_MUSIC_PATH);
+        const fullPath = resolve(base, relPath);
+        if (relative(base, fullPath).startsWith('..')) {
+          res.statusCode = 403;
+          res.end('forbidden');
+          return;
+        }
+        if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
+          res.statusCode = 404;
+          res.end('not found');
+          return;
+        }
+        const ext = fullPath.slice(fullPath.lastIndexOf('.')).toLowerCase();
+        const types = { '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.flac': 'audio/flac', '.ogg': 'audio/ogg', '.wav': 'audio/wav' };
+        res.setHeader('Content-Type', types[ext] || 'application/octet-stream');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'no-store');
+        res.statusCode = 200;
+        createReadStream(fullPath).pipe(res);
+        return;
+      }
+      if (url.pathname === '/local-eq') {
+        const playlist = scanLocalPlaylist();
+        const baseUrl = `http://127.0.0.1:${EQ_PROXY_PORT}`;
+        const items = playlist.map((p) => ({
+          url: `${baseUrl}/music/${encodeURIComponent(p.path)}`,
+          title: p.title,
+        }));
+        const html = buildLocalPlaylistEqHtml(items);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.statusCode = 200;
+        res.end(html);
+        return;
+      }
       if (url.pathname !== '/stream') {
         res.statusCode = 404;
         res.end('not found');
@@ -1224,6 +1354,292 @@ function shuffleArray(arr) {
 
 function normalizeAsciiTheme(theme) {
   return theme === 'ascii2' ? 'ascii2' : 'ascii';
+}
+
+function buildLocalPlaylistEqHtml(playlist) {
+  if (!playlist || playlist.length === 0) {
+    return `<!doctype html><html><head><meta charset="utf-8"/></head><body style="margin:0;background:#000;color:#66cc99;font-family:monospace;padding:20px;">
+      <p>No tracks in Music folder.</p>
+      <p>Add .mp3, .m4a, .flac, .ogg or .wav to ${LOCAL_MUSIC_PATH}</p>
+    </body></html>`;
+  }
+  const shuffled = shuffleArray([...playlist]);
+  const safeTheme = normalizeAsciiTheme(currentAsciiTheme);
+  const playlistJson = JSON.stringify(shuffled);
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+    #host { width:100%; height:100%; background:#000; }
+    #ascii { width:100%; height:100%; display:block; }
+  </style>
+</head>
+<body>
+  <div id="host"><canvas id="ascii"></canvas></div>
+  <script>
+    const PLAYLIST = ${playlistJson};
+    const THEME = ${JSON.stringify(safeTheme)};
+    const STRICT_REAL_EQ = true;
+    const DISPLAY_TEXT_URL = 'http://127.0.0.1:${EQ_PROXY_PORT}/display-text';
+    let playlistIndex = 0;
+    let currentTitle = PLAYLIST[0] ? PLAYLIST[0].title : '';
+    const host = document.getElementById('host');
+    const canvas = document.getElementById('ascii');
+    const ctx = canvas.getContext('2d');
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.src = PLAYLIST[0] ? PLAYLIST[0].url : '';
+    audio.muted = false;
+    audio.volume = 1;
+    audio.autoplay = true;
+    audio.preload = 'auto';
+    audio.playsInline = true;
+    audio.onended = function() {
+      if (PLAYLIST.length === 0) return;
+      playlistIndex = (playlistIndex + 1) % PLAYLIST.length;
+      audio.src = PLAYLIST[playlistIndex].url;
+      currentTitle = PLAYLIST[playlistIndex].title;
+      audio.play();
+    };
+
+    let analyser = null;
+    let data = null;
+    const asciiDims = { cols: 0, rows: 0, cellW: 14, cellH: 20, padX: 14, padY: 14, pxW: 0, pxH: 0 };
+    let grid = [];
+    let bubbles = [];
+    let smoothBars = Array.from({ length: 96 }, () => 0);
+    let eqBars = Array.from({ length: 16 }, () => 0);
+    let beat = false;
+    let playing = false;
+    let hasSignal = false;
+    let lastSignalMs = 0;
+    let displayText = '';
+
+    async function pollDisplayText() {
+      try {
+        var r = await fetch(DISPLAY_TEXT_URL);
+        var d = await r.json();
+        displayText = d.text || '';
+      } catch (e) {}
+      setTimeout(pollDisplayText, 2500);
+    }
+    pollDisplayText();
+
+    function renderBottomRow(nowMs) {
+      var c = asciiDims.cols, rw = asciiDims.rows;
+      if (!c || !rw || !grid[rw - 1]) return;
+      if (displayText) {
+        var speed = ${EQ_DISPLAY_CHARS_PER_SEC};
+        var padded = '     ' + displayText + '     ';
+        var off = Math.floor((nowMs / 1000) * speed) % padded.length;
+        var vis = (padded.slice(off) + padded).slice(0, c);
+        for (var x = 0; x < c; x++) grid[rw - 1][x] = vis[x] || ' ';
+      } else {
+        for (var x = 0; x < c; x++) grid[rw - 1][x] = x % 2 === 0 ? '_' : '-';
+      }
+    }
+    let audioCtx = null;
+    let silentGain = null;
+    let raf = null;
+    let lastFrameMs = 0;
+    let lastEnergy = 0;
+    let lastBeatMs = 0;
+
+    function clamp01(v) {
+      if (!Number.isFinite(v)) return 0;
+      return Math.max(0, Math.min(1, v));
+    }
+
+    function resampleBars(bars, targetCount) {
+      if (targetCount <= 0) return [];
+      if (!bars.length) return Array.from({ length: targetCount }, () => 0);
+      if (bars.length === targetCount) return bars.slice();
+      const out = [];
+      for (let i = 0; i < targetCount; i++) {
+        const t = (i / Math.max(1, targetCount - 1)) * (bars.length - 1);
+        const a = Math.floor(t);
+        const b = Math.min(bars.length - 1, a + 1);
+        const f = t - a;
+        const v = (bars[a] || 0) * (1 - f) + (bars[b] || 0) * f;
+        out.push(clamp01(v));
+      }
+      return out;
+    }
+
+    function recomputeDims() {
+      if (!ctx || !host) return;
+      const r = host.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const w = Math.max(1, Math.floor(r.width));
+      const h = Math.max(1, Math.floor(r.height));
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const fontPx = Math.max(18, Math.min(28, Math.floor(h / 42)));
+      ctx.font = 'bold ' + fontPx + 'px ui-monospace, Menlo, Monaco, Consolas, monospace';
+      ctx.textBaseline = 'top';
+      const m = ctx.measureText('M');
+      const cellW = Math.max(10, Math.floor(m.width * 1.02));
+      const cellH = Math.max(16, Math.floor(fontPx * 1.22));
+      const padX = 2, padY = 0;
+      const cols = Math.max(36, Math.floor((w - padX * 2) / cellW));
+      const rows = Math.max(14, Math.floor((h - padY * 2) / cellH));
+      asciiDims.cols = cols;
+      asciiDims.rows = rows;
+      asciiDims.cellW = cellW;
+      asciiDims.cellH = cellH;
+      asciiDims.padX = padX;
+      asciiDims.padY = padY;
+      asciiDims.pxW = w;
+      asciiDims.pxH = h;
+      grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
+    }
+
+    async function initAudio() {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        audioCtx = ctx;
+        try { await ctx.resume(); } catch {}
+        const src = ctx.createMediaElementSource(audio);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        silentGain = ctx.createGain();
+        silentGain.gain.value = 1;
+        src.connect(analyser);
+        analyser.connect(silentGain);
+        silentGain.connect(ctx.destination);
+        data = new Uint8Array(analyser.frequencyBinCount);
+        try { await audio.play(); } catch {}
+      } catch {}
+    }
+
+    function updateEq(nowMs) {
+      if (!analyser || !data) return;
+      try { analyser.getByteFrequencyData(data); } catch { return; }
+      const bands = 16, step = Math.max(1, Math.floor(data.length / bands));
+      const next = [];
+      for (let i = 0; i < bands; i++) {
+        let sum = 0;
+        const start = i * step, end = Math.min(data.length, start + step);
+        for (let j = start; j < end; j++) sum += data[j];
+        next.push(clamp01((sum / Math.max(1, end - start)) / 255));
+      }
+      eqBars = next;
+      const energy = next.reduce((a, b) => a + b, 0) / Math.max(1, next.length);
+      let peak = 0;
+      for (let i = 0; i < next.length; i++) if (next[i] > peak) peak = next[i];
+      const delta = energy - lastEnergy;
+      lastEnergy = energy;
+      if (energy > 0.002 || peak > 0.008) { hasSignal = true; lastSignalMs = nowMs; }
+      else if (!audio.paused && audio.currentTime > 0.5 && nowMs - lastSignalMs > 15000) hasSignal = false;
+      else if (nowMs - lastSignalMs > 20000) hasSignal = false;
+      playing = !audio.paused && audio.readyState >= 2;
+      if (energy > 0.22 && delta > 0.12 && (nowMs - lastBeatMs) > 180) {
+        lastBeatMs = nowMs;
+        beat = true;
+        setTimeout(() => { beat = false; }, 90);
+      }
+    }
+
+    function draw(nowMs) {
+      raf = requestAnimationFrame(draw);
+      if (!ctx) return;
+      if (nowMs - lastFrameMs < 33) return;
+      lastFrameMs = nowMs;
+      updateEq(nowMs);
+      const { cols, rows, cellH, padX, padY, pxW, pxH } = asciiDims;
+      if (!cols || !rows || grid.length !== rows) return;
+      const fontStack = 'ui-monospace, Menlo, Monaco, Consolas, monospace';
+      const baseFontPx = Math.max(16, Math.floor(cellH / 1.22));
+      const topFontPx = Math.max(baseFontPx + 5, Math.floor(baseFontPx * 1.28));
+      const tickerFontPx = Math.max(baseFontPx + 6, Math.floor(baseFontPx * 1.38));
+      for (let y = 0; y < rows; y++) grid[y].fill(' ');
+
+      const colBars = resampleBars(eqBars, cols);
+      if (smoothBars.length !== cols) smoothBars = Array.from({ length: cols }, () => 0);
+      for (let x = 0; x < cols; x++) {
+        const target = colBars[x] || 0, prev = smoothBars[x] || 0;
+        smoothBars[x] = prev * 0.82 + target * 0.18;
+      }
+      const energy = smoothBars.reduce((a, b) => a + b, 0) / Math.max(1, smoothBars.length);
+      const lvl = Math.round(energy * 99);
+      const t = nowMs / 1000;
+      const waterY = Math.max(2, Math.floor(rows * 0.22));
+      const floorY = rows - 2;
+
+      const header = 'LOCAL LVL:' + String(lvl).padStart(2, '0') + '  NO CCTV  //  ' + PLAYLIST.length + ' tracks';
+      for (let i = 0; i < Math.min(cols, header.length); i++) grid[0][i] = header[i];
+      if (currentTitle) {
+        const titleText = ('NOW: ' + currentTitle).slice(0, cols);
+        for (let i = 0; i < Math.min(cols, titleText.length); i++) grid[1][i] = titleText[i];
+      }
+      if (!hasSignal && audio.currentTime > 2) {
+        const noSig = 'NO AUDIO SIGNAL';
+        const noSigStart = Math.max(0, Math.floor((cols - noSig.length) / 2));
+        for (let i = 0; i < Math.min(cols - noSigStart, noSig.length); i++)
+          if (2 < rows - 1) grid[2][noSigStart + i] = noSig[i];
+      }
+      const footer = hasSignal ? ':: LOCAL FFT EQ ::' : ':: WAITING ::';
+      const footerStart = Math.max(0, Math.floor((cols - footer.length) / 2));
+      for (let i = 0; i < Math.min(cols - footerStart, footer.length); i++) grid[rows - 2][footerStart + i] = footer[i];
+
+      const barTop = 3, barBottom = rows - 3, barH = Math.max(1, barBottom - barTop + 1);
+      const barCount = Math.min(48, Math.max(12, Math.floor(cols / 2)));
+      const bars = resampleBars(eqBars, barCount);
+      for (let i = 0; i < barCount; i++) {
+        const v = clamp01(bars[i] || 0);
+        const h = Math.round(v * barH);
+        const x = Math.floor((i / Math.max(1, barCount - 1)) * (cols - 1));
+        for (let y = 0; y < h; y++) {
+          const gy = barBottom - y;
+          if (gy >= barTop && gy < rows) grid[gy][x] = '#';
+        }
+      }
+      renderBottomRow(nowMs);
+
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = beat ? 'rgba(0, 20, 10, 0.55)' : 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, pxW || 1, pxH || 1);
+      ctx.fillStyle = hasSignal ? '#00ff66' : '#66cc99';
+      ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
+      const topBandH = Math.ceil(topFontPx * 2.2);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, pxW || 1, topBandH);
+      ctx.fillStyle = hasSignal ? '#00ff66' : '#66cc99';
+      ctx.font = 'bold ' + topFontPx + 'px ' + fontStack;
+      if (rows > 0) ctx.fillText(grid[0].join(''), padX, padY);
+      if (rows > 1) ctx.fillText(grid[1].join(''), padX, padY + cellH);
+      ctx.font = 'bold ' + baseFontPx + 'px ' + fontStack;
+      for (let y = 2; y < rows - 1; y++) ctx.fillText(grid[y].join(''), padX, padY + y * cellH);
+      const tickerY = Math.max(0, padY + (rows - 1) * cellH - 2);
+      const tickerBandH = Math.ceil(tickerFontPx * 1.18);
+      ctx.fillStyle = 'rgba(0,0,0,0.58)';
+      ctx.fillRect(0, tickerY - 2, pxW || 1, tickerBandH + 4);
+      ctx.fillStyle = hasSignal ? '#ffe66d' : '#d4d4aa';
+      ctx.font = 'bold ' + tickerFontPx + 'px ' + fontStack;
+      ctx.fillText(grid[rows - 1].join(''), padX, tickerY);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      for (let y = 0; y < (pxH || 1); y += 4) ctx.fillRect(0, y, pxW || 1, 1);
+    }
+
+    recomputeDims();
+    const ro = new ResizeObserver(() => recomputeDims());
+    ro.observe(host);
+    window.addEventListener('beforeunload', () => { try { ro.disconnect(); } catch {} if (raf != null) cancelAnimationFrame(raf); });
+    initAudio();
+    setInterval(() => { try { if (audioCtx && audioCtx.state !== 'running') audioCtx.resume(); if (audio.paused) audio.play(); } catch {} }, 1500);
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>`;
+  return html;
 }
 
 function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
@@ -1478,6 +1894,7 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
         '!ascii2',
         '!eq toggle',
         '!eqsource djset',
+        '!eqsource local',
         '!walk',
         '!swim',
         '!dance',
@@ -1809,6 +2226,41 @@ function buildAsciiEqDataUrl({ streamUrl, title = '', theme = 'ascii' }) {
 </body>
 </html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+async function updateAsciiEqOverlayForLocal() {
+  if (!obs) return;
+  ensureEqProxyServer();
+  const eqInput = 'Lawbamp ASCII EQ';
+  const localEqUrl = `http://127.0.0.1:${EQ_PROXY_PORT}/local-eq?r=${Date.now()}`;
+  try {
+    console.log(`[Retake] EQ overlay update local playlist (${scanLocalPlaylist().length} tracks)`);
+    await obs.call('SetInputSettings', {
+      inputName: eqInput,
+      inputSettings: {
+        url: localEqUrl,
+        width: 1920,
+        height: 1080,
+        reroute_audio: true,
+        restart_when_active: true,
+        shutdown: false,
+      },
+      overlay: true,
+    });
+    try {
+      const { sceneItemId } = await obs.call('GetSceneItemId', {
+        sceneName: 'Clawb World',
+        sourceName: eqInput,
+      });
+      await obs.call('SetSceneItemTransform', {
+        sceneName: 'Clawb World',
+        sceneItemId,
+        sceneItemTransform: ASCII_EQ_POSITION,
+      });
+    } catch {}
+  } catch (err) {
+    console.error('[Retake] Failed to refresh ASCII EQ for local:', err.message);
+  }
 }
 
 async function updateAsciiEqOverlayFromStream(streamUrl, trackTitle = '') {
@@ -2566,7 +3018,7 @@ async function handleChatMessage(comment) {
   if (lowered.startsWith('!eqsource')) {
     const mode = normalizeEqSourceMode(lowered.split(/\s+/)[1]);
     if (!mode) {
-      await sendChat(`usage: !eqsource lawbamp | !eqsource djset | !eqsource status. current: ${getEqSourceStatusLabel()}`);
+      await sendChat(`usage: !eqsource lawbamp | !eqsource djset | !eqsource local | !eqsource status. current: ${getEqSourceStatusLabel()}`);
       return;
     }
     if (mode === 'status') {
@@ -2575,16 +3027,31 @@ async function handleChatMessage(comment) {
     }
     currentEqSource = mode;
     if (currentEqSource === 'djset') {
+      const djStatus = ensureDjAudioStream();
+      if (djStatus.error) {
+        await sendChat(`eq source djset: Line 2 stream failed to start. ${djStatus.error}`);
+      } else if (djStatus.started) {
+        await sendChat('Line 2 stream starting (18182)... give it a few seconds.');
+        await new Promise((r) => setTimeout(r, 2500)); // let ffmpeg init
+      }
       await setMediaActive(false, 'eqsource_djset');
+    } else if (currentEqSource === 'local') {
+      await setMediaActive(false, 'eqsource_local');
+      const count = scanLocalPlaylist().length;
+      if (count === 0) {
+        await sendChat(`eq source set to local, but no tracks in ${LOCAL_MUSIC_PATH}. add .mp3 or .m4a files.`);
+      } else {
+        await sendChat(`eq source set to local. ${count} tracks looping.`);
+      }
     } else {
       await setMediaActive(true, 'eqsource_lawbamp');
     }
     const ok = await refreshAsciiEqOverlay('chat_eqsource_switch');
-    if (ok) {
+    if (ok && currentEqSource !== 'local') {
       await sendChat(`eq source set to ${getEqSourceStatusLabel()}.`);
     } else if (currentEqSource === 'djset') {
       await sendChat(`eq source set to djset, but no HTTP stream URL found on ${EQ_DJ_INPUT_NAME}. set EQ_DJ_STREAM_URL in .env if needed.`);
-    } else {
+    } else if (currentEqSource !== 'local') {
       await sendChat('eq source set to lawbamp. waiting for active lawbamp stream.');
     }
     return;
@@ -2639,6 +3106,10 @@ async function handleChatMessage(comment) {
   }
 
   if (lowered === '!chess start') {
+    if (!db) {
+      sendCommandAck('chess start unavailable (local stream mode).', 'chess_start_local');
+      return;
+    }
     const requestRef = db.ref('clawb/chess/stream_requests').push();
     await requestRef.set({
       command: 'chess_start',
@@ -3239,6 +3710,7 @@ function parseWorldCommand(loweredText) {
 }
 
 async function publishLawbampCommand(command, payload = {}) {
+  if (!db) return; // local-stream mode: lawbamp uses Firebase
   try {
     const cmdRef = db.ref('clawb/stream/lawbamp_commands').push();
     await cmdRef.set({
@@ -3257,6 +3729,11 @@ async function publishWorldCommand(command, payload = {}) {
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([, value]) => value !== undefined)
     );
+    if (LOCAL_STREAM) {
+      injectWorldCommand({ command, ...cleanPayload, timestamp: Date.now() });
+      console.log(`[Retake] Injected world command (local): ${command}`);
+      return;
+    }
     const cmdRef = db.ref('clawb/world/commands').push();
     await cmdRef.set({
       command,
@@ -3320,6 +3797,7 @@ function sendCommandAck(message, context = 'command_ack') {
 
 function startStreamControlListener() {
   if (streamControlListenerRef || streamControlListenerHandler) return;
+  if (!db) return;
   streamControlListenerRef = db.ref('clawb/stream/control')
     .orderByChild('timestamp')
     .startAt(Date.now());
@@ -3426,6 +3904,7 @@ const CHESS_AUTO_SWITCH_DELAY_MS = 12_000;
 
 function startChessGameWatcher() {
   if (chessGameWatcherUnsub) { chessGameWatcherUnsub(); chessGameWatcherUnsub = null; }
+  if (!db) return;
 
   const gamesRef = db.ref('chess_games');
   const handler = gamesRef.orderByChild('game_type').equalTo('vs_clawb').on('child_changed', async (snapshot) => {

@@ -11,7 +11,6 @@ import { useAccount, useChainId, useDisconnect as useWagmiDisconnect, useConnect
 import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from './hooks/useMediaQuery';
-import { ChessPieceSetProvider } from './contexts/ChessPieceSetContext';
 import { useLawbAudio } from './contexts/LawbAudioContext';
 import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { database } from './firebaseApp';
@@ -24,7 +23,6 @@ const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 const ChessChat = lazy(() => import('./components/ChessChat').then(m => ({ default: m.ChessChat })));
-const ChessPieceInfo = lazy(() => import('./components/ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
 const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
 
 const useStyles = createUseStyles({
@@ -57,7 +55,6 @@ function App() {
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [lawbTab, setLawbTab] = useState<'tokens' | 'lore'>('tokens');
   const [showProfile, setShowProfile] = useState(false);
-  const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
 
   // Debug: log activePopup changes
   useEffect(() => {
@@ -74,8 +71,6 @@ function App() {
   const audioActionsRef = useRef(audioActions);
   audioActionsRef.current = audioActions;
 
-  const [showChessLoading, setShowChessLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
   const clawbRef = useRef<ClawbHandle>(null);
 
@@ -164,36 +159,6 @@ function App() {
 
     return () => unsubscribe();
   }, [audioActions]);
-
-  // Add timeout for chess loading
-  useEffect(() => {
-    if (showChessLoading) {
-      const timeout = setTimeout(() => {
-        console.log('[CHESS] Loading timeout reached, navigating directly');
-        setShowChessLoading(false);
-        navigate('/chess');
-      }, 5000); // Reduced to 5 seconds (video duration)
-
-      return () => clearTimeout(timeout);
-    }
-  }, [showChessLoading, navigate]);
-
-  // Animated loading text effect
-  useEffect(() => {
-    if (showChessLoading) {
-      const fullText = 'Lawb Chess Loading';
-      let dots = '';
-      
-      const textInterval = setInterval(() => {
-        dots = dots.length >= 4 ? '' : dots + '.';
-        setLoadingText(fullText + dots);
-      }, 500);
-
-      return () => clearInterval(textInterval);
-    } else {
-      setLoadingText('');
-    }
-  }, [showChessLoading]);
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -300,10 +265,6 @@ function App() {
       setShowNFTGallery(true);
     } else if (action === 'meme-generator') {
       setShowMemeGenerator(true);
-
-    } else if (action === 'chess') {
-      console.log('[CHESS] Chess icon clicked, isConnected:', isConnected);
-      setShowChessLoading(true);
     }
   };
 
@@ -463,76 +424,12 @@ function App() {
   );
 
   return (
-    <ChessPieceSetProvider>
-      <div className={classes.body}>
+    <div className={classes.body}>
       {/* Desktop background (2D — no 3D models) */}
       <Suspense fallback={null}>
         <WorldBackground />
       </Suspense>
 
-      {showChessLoading && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: '#000',
-          zIndex: 9999,
-          overflow: 'hidden',
-        }}>
-          {/* Single Video that fills entire screen */}
-          <video
-            src="/images/loadingchess.mp4"
-            style={{
-              width: '100vw',
-              height: '100vh',
-              objectFit: 'cover',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-            }}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onLoadStart={() => {
-              console.log('[CHESS] Video started loading');
-            }}
-            onCanPlay={() => {
-              console.log('[CHESS] Video can play');
-            }}
-            onPlay={() => {
-              console.log('[CHESS] Video started playing');
-            }}
-            onError={(e) => {
-              console.log('[CHESS] Video failed to load:', e);
-            }}
-          />
-
-          {/* Centered Loading Text */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10000,
-            textAlign: 'center',
-          }}>
-            <div style={{
-              color: '#ff0000',
-              fontSize: '32px',
-              fontFamily: 'monospace',
-              fontWeight: 'bold',
-              textShadow: '0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000',
-              letterSpacing: '2px',
-            }}>
-              {loadingText}
-            </div>
-          </div>
-        </div>
-      )}
       <Desktop onIconClick={handleIconClick} />
 
       <LinuxNavBar
@@ -544,10 +441,6 @@ function App() {
         }}
         onOpenPublicChat={openPublicChat}
         onOpenProfile={() => setShowProfile(true)}
-        onOpenChessPieceInfo={() => {
-          console.log('[APP] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
-          setShowChessPieceInfo(true);
-        }}
         onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
 
@@ -573,14 +466,6 @@ function App() {
         <Popup id="profile-popup" isOpen={true} onClose={() => setShowProfile(false)} onMinimize={() => setShowProfile(false)} zIndex={2000}>
           <Suspense fallback={<div>Loading...</div>}>
             <PlayerProfile isMobile={false} />
-          </Suspense>
-        </Popup>
-      )}
-
-      {showChessPieceInfo && (
-        <Popup id="chess-piece-info-popup" isOpen={true} onClose={() => setShowChessPieceInfo(false)} onMinimize={() => setShowChessPieceInfo(false)} title="Chess Piece Info" initialPosition={{ x: 100, y: 100 }} initialSize={{ width: 400, height: 500 }} zIndex={2000}>
-          <Suspense fallback={<div>Loading...</div>}>
-            <ChessPieceInfo isMobile={false} />
           </Suspense>
         </Popup>
       )}
@@ -986,10 +871,9 @@ function App() {
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
               <p style={{marginBottom: '4px'}}>1. Autonomous stream loop: live chat replies, memory, and world narration running continuously.</p>
-              <p style={{marginBottom: '4px'}}>2. Chess integration: plays vs Clawb mode, tracks game state, and auto-joins on-chain PVP wagers on Base.</p>
-              <p style={{marginBottom: '4px'}}>3. Multi-platform identity: active on lawb.xyz, Retake, Farcaster, Moltbook, Milaidy and 4claw.</p>
-              <p style={{marginBottom: '4px'}}>4. Dynamic NFT intelligence: live wallet gallery sync powers bedroom/world NFT displays and responses.</p>
-              <p style={{marginBottom: '0'}}>5. Multi-chain operational readiness: Base + Sanko contract connectivity verified, plus live Solana wallet tooling.</p>
+              <p style={{marginBottom: '4px'}}>2. Multi-platform identity: active on lawb.xyz, Retake, Farcaster, Moltbook, Milaidy and 4claw.</p>
+              <p style={{marginBottom: '4px'}}>3. Dynamic NFT intelligence: live wallet gallery sync powers bedroom/world NFT displays and responses.</p>
+              <p style={{marginBottom: '0'}}>4. Multi-chain operational readiness: Base + Sanko contract connectivity verified, plus live Solana wallet tooling.</p>
             </div>
             <div style={{
               background: '#f0f0f0',
@@ -1039,7 +923,6 @@ function App() {
       </Suspense>
 
       </div>
-    </ChessPieceSetProvider>
   );
 }
 

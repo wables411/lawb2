@@ -169,12 +169,6 @@ const ChessPageConnected: React.FC = () => {
             address: connectionDisplay.address,
             ens: connectionDisplay.ens
           }}
-          onChessClose={handleClose}
-          showChessMenu={true}
-          onOpenChessPieceInfo={() => {
-            console.log('[CHESSPAGE] onOpenChessPieceInfo called, setting showChessPieceInfo to true');
-            setShowChessPieceInfo(true);
-          }}
           onOpenPublicChat={() => {
             console.log('[CHESSPAGE] onOpenPublicChat called, setting showPublicChat to true');
             setShowPublicChat(true);
