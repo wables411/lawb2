@@ -9,11 +9,8 @@ import MobileMintPopup from './MobileMintPopup';
 import MobilePopup98 from './MobilePopup98';
 import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
-import { PlayerProfile } from '../components/PlayerProfile';
 import { playIconClickSound } from '../utils/sound';
 import LinuxNavBar from '../components/LinuxNavBar';
-
-const ChessChat = lazy(() => import('../components/ChessChat').then(m => ({ default: m.ChessChat })));
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -281,8 +278,6 @@ const Mobile = () => {
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
-  const [showPublicChat, setShowPublicChat] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   // Twitter widgets loading for both lawbsters and lawbstarz popups on mobile
@@ -324,14 +319,12 @@ const Mobile = () => {
   }, [showLawbsters, showLawbstarz]);
 
   const icons = [
-    { label: 'Chess', icon: '/assets/chessicon.png', action: () => window.location.href = '/chess' },
     { label: 'Mint', icon: '/assets/mint.gif', action: () => { setMintPopupType('selection'); setShowMintPopup(true); } },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
-    { label: 'Profile', icon: '/assets/wallet.png', action: () => setShowProfile(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
@@ -478,19 +471,6 @@ const Mobile = () => {
             <a href="https://t.me/lawblawblawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Telegram</a>
             <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
             <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
-            <button
-              type="button"
-              className={classes.menuLink}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                setShowPublicChat(true);
-              }}
-              style={{ border: 'none', cursor: 'pointer', width: '90%', margin: '4px auto 0', display: 'block' }}
-            >
-              Public Chat
-            </button>
           </div>
         </div>
       )}
@@ -725,23 +705,6 @@ const Mobile = () => {
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
       </MobilePopup98>
-      {/* Profile Popup */}
-      <MobilePopup98 isOpen={showProfile} onClose={() => setShowProfile(false)} title="Profile">
-        <div style={{ padding: '10px', maxHeight: '70vh', overflowY: 'auto' }}>
-          <PlayerProfile isMobile={true} />
-        </div>
-      </MobilePopup98>
-      {/* Public Chat - Functional Firebase Chat Component */}
-      <Suspense fallback={<div>Loading chat...</div>}>
-        <ChessChat
-          isOpen={showPublicChat}
-          onMinimize={() => setShowPublicChat(false)}
-          currentInviteCode={undefined}
-          isDraggable={false}
-          isResizable={false}
-          isMobile={true}
-        />
-      </Suspense>
       {/* Linux NavBar */}
       <LinuxNavBar
         walletButton={
@@ -773,8 +736,6 @@ const Mobile = () => {
           address: connectionDisplay.address,
           ens: connectionDisplay.ens
         }}
-        onOpenPublicChat={() => setShowPublicChat(true)}
-        onOpenProfile={() => setShowProfile(true)}
       />
     </div>
   );

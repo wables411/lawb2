@@ -11,8 +11,6 @@ import { debugIngest } from '../utils/debugIngest';
 import './ChessPageSimple.css';
 
 const ChessPieceInfo = lazy(() => import('./ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
-const ChessChat = lazy(() => import('./ChessChat').then(m => ({ default: m.ChessChat })));
-const PlayerProfile = lazy(() => import('./PlayerProfile').then(m => ({ default: m.PlayerProfile })));
 const ChessSpectator = lazy(() => import('./ChessSpectator').then(m => ({ default: m.ChessSpectator })));
 
 const isSpectatorMode = (() => {
@@ -24,8 +22,6 @@ const isSpectatorMode = (() => {
 /** Wallet-connected chess page — the normal player experience. */
 const ChessPageConnected: React.FC = () => {
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
-  const [showPublicChat, setShowPublicChat] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
 
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
@@ -169,14 +165,6 @@ const ChessPageConnected: React.FC = () => {
             address: connectionDisplay.address,
             ens: connectionDisplay.ens
           }}
-          onOpenPublicChat={() => {
-            console.log('[CHESSPAGE] onOpenPublicChat called, setting showPublicChat to true');
-            setShowPublicChat(true);
-          }}
-          onOpenProfile={() => {
-            console.log('[CHESSPAGE] onOpenProfile called, setting showProfile to true');
-            setShowProfile(true);
-          }}
         />
         <div className="chess-content-simple">
           <ChessGame 
@@ -204,63 +192,6 @@ const ChessPageConnected: React.FC = () => {
           >
             <Suspense fallback={<div>Loading...</div>}>
               <ChessPieceInfo isMobile={isMobile} />
-            </Suspense>
-          </Popup>
-        )}
-        
-        {showPublicChat && (
-          <Popup 
-            id="public-chat-popup" 
-            isOpen={true} 
-            onClose={() => {
-              console.log('[CHESSPAGE] Closing Public Chat popup');
-              setShowPublicChat(false);
-            }} 
-            onMinimize={() => {
-              console.log('[CHESSPAGE] Minimizing Public Chat popup');
-              setShowPublicChat(false);
-            }} 
-            title="Public Chat" 
-            initialPosition={isMobile ? { x: 16, y: 16 } : { x: 20, y: 120 }} 
-            initialSize={isMobile ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 100px)' } : { width: 400, height: 500 }} 
-            zIndex={999998}
-          >
-            <Suspense fallback={<div>Loading chat...</div>}>
-              <ChessChat
-                isOpen={true}
-                onMinimize={() => setShowPublicChat(false)}
-                currentInviteCode={undefined}
-                isDraggable={false}
-                isResizable={false}
-                isMobile={isMobile}
-              />
-            </Suspense>
-          </Popup>
-        )}
-        
-        {showProfile && (
-          <Popup 
-            id="profile-popup" 
-            isOpen={true} 
-            onClose={() => {
-              console.log('[CHESSPAGE] Closing Profile popup');
-              setShowProfile(false);
-            }} 
-            onMinimize={() => {
-              console.log('[CHESSPAGE] Minimizing Profile popup');
-              setShowProfile(false);
-            }} 
-            title="Profile" 
-            initialPosition={isMobile ? { x: 16, y: 16 } : { x: 20, y: 180 }} 
-            initialSize={isMobile ? { width: 'calc(100vw - 32px)', height: 'calc(100vh - 100px)' } : { width: 400, height: 500 }} 
-            zIndex={999998}
-          >
-            <Suspense fallback={<div>Loading...</div>}>
-              <div className="chess-chat-window desktop" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                  <PlayerProfile isMobile={isMobile} />
-                </div>
-              </div>
             </Suspense>
           </Popup>
         )}

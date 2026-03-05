@@ -1,14 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { listenToClawbStatus } from '../firebaseClawb';
+
+const RETAKE_LIVE_API = 'https://retake.tv/api/v1/users/live/';
+const CLAWB_USERNAME = 'clawb';
 
 const RetakeLiveBadge: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
-    const unsub = listenToClawbStatus((status) => {
-      setIsLive(status?.online ?? false);
-    });
-    return unsub;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(RETAKE_LIVE_API);
+        const json = await res.json();
+        if (cancelled) return;
+        const users = json?.data?.users ?? [];
+        const clawb = users.find((u: { username?: string }) => (u.username || '').toLowerCase() === CLAWB_USERNAME);
+        setIsLive(clawb?.is_live ?? false);
+      } catch {
+        if (!cancelled) setIsLive(false);
+      }
+    };
+    void poll();
+    const interval = setInterval(poll, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   return (

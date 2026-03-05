@@ -191,12 +191,10 @@ interface LinuxNavBarProps {
     address?: string;
     ens?: string;
   };
-  onOpenPublicChat?: () => void;
-  onOpenProfile?: () => void;
   onClawbClick?: () => void;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus: connectionStatusProp, onOpenPublicChat, onOpenProfile, onClawbClick }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus: connectionStatusProp, onClawbClick }) => {
   // Single source of truth: useConnectionDisplay handles reconnecting state to avoid navbar/Reown modal mismatch
   const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
   const connectionStatus = connectionDisplay;
@@ -314,24 +312,6 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             </button>
           )}
           <hr className={classes.menuSeparator} />
-          {onOpenPublicChat && (
-            <button
-              className={classes.menuItem}
-              onClick={() => handleMenuLinkClick(undefined, onOpenPublicChat)}
-            >
-              <span>💬</span>
-              <span>Public Chat</span>
-            </button>
-          )}
-          {onOpenProfile && (
-            <button
-              className={classes.menuItem}
-              onClick={() => handleMenuLinkClick(undefined, onOpenProfile)}
-            >
-              <span>👤</span>
-              <span>Profile</span>
-            </button>
-          )}
           <a
             href="https://t.me/tickerlawb"
             target="_blank"

@@ -12,8 +12,6 @@ import { mainnet } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useLawbAudio } from './contexts/LawbAudioContext';
-import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
-import { database } from './firebaseApp';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
@@ -21,8 +19,6 @@ import type { ClawbHandle } from './components/Clawb2D';
 const Clawb = lazy(() => import('./components/Clawb2D'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
-const PlayerProfile = lazy(() => import('./components/PlayerProfile').then(m => ({ default: m.PlayerProfile })));
-const ChessChat = lazy(() => import('./components/ChessChat').then(m => ({ default: m.ChessChat })));
 const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
 
 const useStyles = createUseStyles({
@@ -54,7 +50,6 @@ function App() {
   
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [lawbTab, setLawbTab] = useState<'tokens' | 'lore'>('tokens');
-  const [showProfile, setShowProfile] = useState(false);
 
   // Debug: log activePopup changes
   useEffect(() => {
@@ -65,8 +60,6 @@ function App() {
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
-  const [showPublicChat, setShowPublicChat] = useState(false);
-  const [chatInitialTab, setChatInitialTab] = useState<'public' | 'clawb'>('public');
   const { state: audioState, actions: audioActions } = useLawbAudio();
   const audioActionsRef = useRef(audioActions);
   audioActionsRef.current = audioActions;
@@ -109,56 +102,6 @@ function App() {
       return () => clearTimeout(t);
     }
   }, [audioState.showMiniPlayer]); // Intentionally exclude audioActions — prevents effect loop and duplicate play() storms
-
-  // Listen for Clawb stream music commands (from retake-streamer.js).
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const isStreamMode = params.get('stream') === '1';
-    if (!isStreamMode) return;
-    const isWorldOnly = params.get('worldOnly') === '1';
-    if (isWorldOnly) return;
-
-    const processed = new Set<string>();
-    const cmdsRef = query(ref(database, 'clawb/stream/lawbamp_commands'), orderByChild('timestamp'), limitToLast(30));
-
-    const unsubscribe = onValue(cmdsRef, (snapshot) => {
-      const commands: Array<{ id: string; command?: string; mode?: string; timestamp?: number }> = [];
-      snapshot.forEach((child) => {
-        const data = child.val();
-        commands.push({ id: child.key || '', ...data });
-      });
-      commands.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-      for (const cmd of commands) {
-        if (!cmd.id || processed.has(cmd.id)) continue;
-        processed.add(cmd.id);
-
-        if (cmd.command === 'play') {
-          void audioActions.play().catch(() => {});
-        } else if (cmd.command === 'next') {
-          void audioActions.next().catch(() => {});
-        } else if (cmd.command === 'eq') {
-          const mode = cmd.mode === 'ascii' || cmd.mode === 'bars' ? cmd.mode : cmd.mode === 'toggle' ? null : null;
-          try {
-            if (mode) {
-              localStorage.setItem(LS_VIZ_MODE, mode);
-              window.dispatchEvent(new CustomEvent('lawbamp-viz-mode', { detail: { mode } }));
-            } else if (cmd.mode === 'toggle') {
-              const current = localStorage.getItem(LS_VIZ_MODE) === 'ascii' ? 'ascii' : 'bars';
-              const next = current === 'ascii' ? 'bars' : 'ascii';
-              localStorage.setItem(LS_VIZ_MODE, next);
-              window.dispatchEvent(new CustomEvent('lawbamp-viz-mode', { detail: { mode: next } }));
-            }
-          } catch {
-            // non-blocking
-          }
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [audioActions]);
 
   // TikTok embed ref
   const tiktokRef = useRef<HTMLDivElement>(null);
@@ -218,16 +161,7 @@ function App() {
     if (action === 'url' && url) {
       window.open(url, '_blank');
     } else if (action === 'popup' && popupId) {
-      // Special handling for chat-popup - use showPublicChat instead of activePopup
-      if (popupId === 'chat-popup') {
-        console.log('[APP] Opening public chat');
-        setShowPublicChat(true);
-        setMinimizedPopups(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(popupId);
-          return newSet;
-        });
-      } else if (popupId === 'miladychan-popup') {
+      if (popupId === 'miladychan-popup') {
         // Miladychan window - open as a popup
         console.log('[APP] Opening Miladychan window');
         setActivePopup(popupId);
@@ -282,8 +216,6 @@ function App() {
       setShowNFTGallery(true);
     } else if (popupId === 'meme-generator-popup') {
       setShowMemeGenerator(true);
-    } else if (popupId === 'chat-popup') {
-      setShowPublicChat(true);
     } else {
       setActivePopup(popupId);
     }
@@ -315,17 +247,6 @@ function App() {
     setShowMemeGenerator(false);
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
   };
-
-  const minimizePublicChat = () => {
-    setShowPublicChat(false);
-    setMinimizedPopups(prev => new Set(prev).add('chat-popup'));
-  };
-
-  const openPublicChat = useCallback(() => {
-    setChatInitialTab('public');
-    setShowPublicChat(true);
-    setShowWalletMenu(false);
-  }, []);
 
   const handleClawbClick = useCallback(() => {
     clawbRef.current?.cycleAnimation();
@@ -377,25 +298,6 @@ function App() {
         }}>
           <button
             onClick={() => {
-              setShowProfile(true);
-              setShowWalletMenu(false);
-            }}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '4px 8px',
-              background: '#c0c0c0',
-              border: '2px outset #fff',
-              cursor: 'pointer',
-              fontSize: '12px',
-              textAlign: 'left',
-              marginBottom: '2px'
-            }}
-          >
-            Profile
-          </button>
-          <button
-            onClick={() => {
               if (connectionDisplay.namespace === 'solana') {
                 void disconnectAppKit({ namespace: 'solana' });
               } else if (connectionDisplay.namespace === 'eip155') {
@@ -439,8 +341,6 @@ function App() {
           address: connectionDisplay.address,
           ens: connectionDisplay.ens
         }}
-        onOpenPublicChat={openPublicChat}
-        onOpenProfile={() => setShowProfile(true)}
         onClawbClick={() => clawbRef.current?.cycleAnimation()}
       />
 
@@ -448,27 +348,6 @@ function App() {
       <Suspense fallback={null}>
         <Clawb ref={clawbRef} onClawbClick={handleClawbClick} />
       </Suspense>
-
-      {/* Public Chat - Functional Firebase Chat Component */}
-      <Suspense fallback={<div>Loading chat...</div>}>
-        <ChessChat
-          isOpen={showPublicChat}
-          onMinimize={minimizePublicChat}
-          currentInviteCode={undefined}
-          isDraggable={true}
-          isResizable={true}
-          isMobile={false}
-          initialTab={chatInitialTab}
-        />
-      </Suspense>
-
-      {showProfile && (
-        <Popup id="profile-popup" isOpen={true} onClose={() => setShowProfile(false)} onMinimize={() => setShowProfile(false)} zIndex={2000}>
-          <Suspense fallback={<div>Loading...</div>}>
-            <PlayerProfile isMobile={false} />
-          </Suspense>
-        </Popup>
-      )}
 
       <Popup id="miladychan-popup" isOpen={activePopup === 'miladychan-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
         <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '16px' : '14px', lineHeight: isMobile ? '1.6' : '1.4'}}>
