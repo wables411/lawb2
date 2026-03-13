@@ -474,7 +474,7 @@ function App() {
               </p>
               <p style={{marginBottom: '10px'}}>Chain: Ethereum</p>
               <p style={{marginBottom: '10px'}}>
-                Collect on <a href="https://magiceden.us/collections/ethereum/0x2d278e95b2fc67d4b27a276807e24e479d9707f6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
+                Collect on <a href="https://opensea.io/collection/pixelawbsters" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
               </p>
               <img src="/assets/mint.gif" alt="Mint" style={{ maxWidth: '100%' }} />
             </>

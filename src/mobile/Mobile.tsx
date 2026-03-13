@@ -454,7 +454,7 @@ const Mobile = () => {
             2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
           </p>
           <p style={{marginBottom: '10px'}}>
-            <a href="https://magiceden.us/collections/ethereum/0x2d278e95b2fc67d4b27a276807e24e479d9707f6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
+            <a href="https://opensea.io/collection/pixelawbsters" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
           </p>
         </MobilePopup98>
       )}
