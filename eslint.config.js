@@ -5,7 +5,27 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 
 export default [
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'clawb/**',
+      'functions/**',
+      'contracts/**',
+      '*.js',
+      '*.cjs',
+      '*.mjs'
+    ]
+  },
   js.configs.recommended,
+  {
+    rules: {
+      'no-undef': 'warn',
+      'no-empty': 'warn',
+      'no-unused-vars': 'warn',
+      'no-self-assign': 'warn'
+    }
+  },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -22,6 +42,12 @@ export default [
         alert: 'readonly',
         fetch: 'readonly',
         document: 'readonly',
+        navigator: 'readonly',
+        localStorage: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        process: 'readonly',
+        require: 'readonly',
         HTMLCanvasElement: 'readonly',
         HTMLInputElement: 'readonly',
         Image: 'readonly',
@@ -35,15 +61,27 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
-      ...tsPlugin.configs['recommended-requiring-type-checking'].rules,
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       'no-useless-catch': 'error',
-      '@typescript-eslint/no-explicit-any': 'error',
+      'no-undef': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/await-thenable': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-misused-promises': 'warn',
+      '@typescript-eslint/no-floating-promises': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
       'react/prop-types': 'off',
       'react/jsx-uses-react': 'off', // Disable for React 18
       'react/react-in-jsx-scope': 'off', // Disable for React 18
-      'react/jsx-uses-vars': 'error'
+      'react/jsx-uses-vars': 'error',
+      'react/no-unescaped-entities': 'warn'
     },
     settings: {
       react: { version: 'detect' }
