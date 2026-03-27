@@ -32,7 +32,6 @@ const ICONS: DesktopIcon[] = [
   // Row 2
   { id: 'purity', image: '/assets/purityfinance.png', label: 'Purity', action: 'popup', popupId: 'purity-popup', row: 1, col: 0 },
   { id: 'lawbshop', image: '/assets/lawbshop.png', label: 'Lawb.Shop', action: 'url', url: 'https://store.fun/lawbshop', row: 1, col: 1 },
-  { id: 'clawb-claim', image: '/assets/lawbticker.gif', label: 'Claim $CLAWB', action: 'popup', popupId: 'claim-popup', row: 1, col: 2 },
   // NFT icons for folders (not shown on desktop)
   { id: 'lawbstarz', image: '/assets/lawbstarz.gif', label: 'Lawbstarz', action: 'popup', popupId: 'lawbstarz-popup', row: -1, col: -1 },
   { id: 'lawbsters', image: '/assets/lawbsters.gif', label: 'Lawbsters', action: 'popup', popupId: 'lawbsters-popup', row: -1, col: -1 },

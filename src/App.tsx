@@ -253,6 +253,15 @@ function App() {
     clawbRef.current?.cycleAnimation();
   }, []);
 
+  const openClaimPopup = useCallback(() => {
+    setActivePopup('claim-popup');
+    setMinimizedPopups(prev => {
+      const next = new Set(prev);
+      next.delete('claim-popup');
+      return next;
+    });
+  }, []);
+
   const walletButton = (
     <div style={{ position: 'relative' }}>
       <div 
@@ -334,6 +343,55 @@ function App() {
       </Suspense>
 
       <Desktop onIconClick={handleIconClick} />
+
+      <button
+        onClick={openClaimPopup}
+        type="button"
+        title="Open Claim $CLAWB"
+        style={{
+          position: 'fixed',
+          top: isMobile ? '12px' : '18px',
+          right: isMobile ? '12px' : '18px',
+          width: isMobile ? '108px' : '230px',
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
+          margin: 0,
+          cursor: 'pointer',
+          zIndex: 4000,
+          transform: isMobile ? 'none' : 'rotate(7deg)',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        {!isMobile && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-10px',
+              left: '50%',
+              transform: 'translateX(-50%) rotate(-10deg)',
+              width: '74px',
+              height: '16px',
+              background: 'rgba(224, 218, 188, 0.92)',
+              border: '1px solid rgba(120, 110, 85, 0.6)',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.25)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        <img
+          src="/assets/restitution.png"
+          alt="Claim CLAWB restitution note"
+          style={{
+            width: '100%',
+            display: 'block',
+            filter: isMobile
+              ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25))'
+              : 'drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35))',
+          }}
+        />
+      </button>
 
       <LinuxNavBar
         walletButton={walletButton}

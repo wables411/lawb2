@@ -20,10 +20,40 @@ function json(statusCode, payload) {
   };
 }
 
-async function readClaims() {
-  const claimsPath = path.resolve(__dirname, '..', 'public', 'claims', 'clawb-base-claims.json');
-  const raw = await fs.readFile(claimsPath, 'utf8');
-  return JSON.parse(raw);
+function getClaimsUrl(event) {
+  const explicitUrl = process.env.CLAWB_CLAIMS_URL;
+  if (explicitUrl) return explicitUrl;
+  const host = event.headers?.host || event.headers?.Host;
+  const proto = event.headers?.['x-forwarded-proto'] || 'https';
+  if (host) return `${proto}://${host}/claims/clawb-base-claims.json`;
+  return null;
+}
+
+async function readClaims(event) {
+  const candidatePaths = [
+    path.resolve(process.cwd(), 'public', 'claims', 'clawb-base-claims.json'),
+    path.resolve(__dirname, '..', 'public', 'claims', 'clawb-base-claims.json'),
+    path.resolve('/var/task/public/claims/clawb-base-claims.json'),
+  ];
+
+  for (const claimsPath of candidatePaths) {
+    try {
+      const raw = await fs.readFile(claimsPath, 'utf8');
+      return JSON.parse(raw);
+    } catch {
+      // try next source
+    }
+  }
+
+  const url = getClaimsUrl(event);
+  if (!url) {
+    throw new Error('No local claims file found and no claims URL available');
+  }
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch claims JSON: ${res.status}`);
+  }
+  return res.json();
 }
 
 exports.handler = async (event) => {
@@ -40,7 +70,7 @@ exports.handler = async (event) => {
       return json(400, { error: 'Valid account query param required.' });
     }
 
-    const claims = await readClaims();
+    const claims = await readClaims(event);
     const claim = claims[accountRaw];
     if (!claim) {
       return json(200, { ok: true, eligible: false });
