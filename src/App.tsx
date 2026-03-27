@@ -15,8 +15,8 @@ import { useLawbAudio } from './contexts/LawbAudioContext';
 
 // Lazy load heavy components to reduce initial bundle size
 const MintPopup = lazy(() => import('./components/MintPopup'));
-import type { ClawbHandle } from './components/Clawb2D';
-const Clawb = lazy(() => import('./components/Clawb2D'));
+import type { ClawbStreamButtonHandle } from './components/ClawbStreamButton';
+const ClawbStreamButton = lazy(() => import('./components/ClawbStreamButton'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
@@ -69,7 +69,7 @@ function App() {
   audioActionsRef.current = audioActions;
 
   const navigate = useNavigate();
-  const clawbRef = useRef<ClawbHandle>(null);
+  const clawbRef = useRef<ClawbStreamButtonHandle>(null);
 
   // Stream mode automation for OBS browser sources. Run once on mount — do not re-run on audioActions change.
   const streamAutoplayFiredRef = useRef(false);
@@ -251,10 +251,6 @@ function App() {
     setShowMemeGenerator(false);
     setMinimizedPopups(prev => new Set(prev).add('meme-generator-popup'));
   };
-
-  const handleClawbClick = useCallback(() => {
-    clawbRef.current?.cycleAnimation();
-  }, []);
 
   const openClaimPopup = useCallback(() => {
     setActivePopup('claim-popup');
@@ -445,12 +441,12 @@ function App() {
           address: connectionDisplay.address,
           ens: connectionDisplay.ens
         }}
-        onClawbClick={() => clawbRef.current?.cycleAnimation()}
+        onClawbClick={() => clawbRef.current?.triggerDance()}
       />
 
-      {/* Clawb - 2D helper in bottom-right; click cycles GIF */}
+      {/* Clawb desktop CTA button in bottom-right */}
       <Suspense fallback={null}>
-        <Clawb ref={clawbRef} onClawbClick={handleClawbClick} />
+        <ClawbStreamButton ref={clawbRef} />
       </Suspense>
 
       <Popup id="miladychan-popup" isOpen={activePopup === 'miladychan-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
