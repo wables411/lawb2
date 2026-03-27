@@ -20,6 +20,7 @@ const Clawb = lazy(() => import('./components/Clawb2D'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
+const ClawbClaimPanel = lazy(() => import('./components/ClawbClaimPanel'));
 
 const useStyles = createUseStyles({
   body: {
@@ -574,6 +575,12 @@ function App() {
             </section>
           </blockquote>
         </div>
+      </Popup>
+
+      <Popup id="claim-popup" isOpen={activePopup === 'claim-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000} title="Claim $CLAWB">
+        <Suspense fallback={<div>Loading claim panel...</div>}>
+          <ClawbClaimPanel />
+        </Suspense>
       </Popup>
 
       <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>

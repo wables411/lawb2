@@ -9,7 +9,12 @@
     "postbuild": "node scripts/copy-headers.mjs",
     "lint": "eslint src",
     "lint:strict": "eslint . --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview --port 4173 --strictPort"
+    "preview": "vite preview --port 4173 --strictPort",
+    "claims:build": "node scripts/claims/build-clawb-merkle.mjs",
+    "claims:compile": "node scripts/claims/compile-distributor.mjs",
+    "claims:deploy": "node scripts/claims/deploy-clawb-distributor.mjs",
+    "claims:verify": "node scripts/claims/verify-clawb-distributor.mjs",
+    "claims:relayer": "node scripts/claims/generate-relayer-wallet.mjs"
   },
   "keywords": [],
   "author": "",
@@ -52,6 +57,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "solc": "^0.8.30",
     "terser": "^5.43.1"
   },
   "overrides": {
