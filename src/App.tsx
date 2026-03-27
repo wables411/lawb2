@@ -61,6 +61,9 @@ function App() {
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
   const [showNFTGallery, setShowNFTGallery] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [claimNoteHovered, setClaimNoteHovered] = useState(false);
+  const [claimNotePressed, setClaimNotePressed] = useState(false);
+  const [claimNoteBounce, setClaimNoteBounce] = useState(false);
   const { state: audioState, actions: audioActions } = useLawbAudio();
   const audioActionsRef = useRef(audioActions);
   audioActionsRef.current = audioActions;
@@ -262,6 +265,24 @@ function App() {
     });
   }, []);
 
+  const handleClaimNoteClick = useCallback(() => {
+    if (!isMobile) {
+      setClaimNoteBounce(true);
+      window.setTimeout(() => setClaimNoteBounce(false), 220);
+    }
+    openClaimPopup();
+  }, [isMobile, openClaimPopup]);
+
+  const claimNoteTransform = isMobile
+    ? 'none'
+    : claimNotePressed
+      ? 'rotate(5deg) translateY(3px) scale(0.99) skewY(1.2deg)'
+      : claimNoteBounce
+        ? 'rotate(8deg) translateY(-3px) scale(1.01) skewY(-0.9deg)'
+        : claimNoteHovered
+          ? 'rotate(7deg) translateY(-2px) scale(1.01)'
+          : 'rotate(7deg)';
+
   const walletButton = (
     <div style={{ position: 'relative' }}>
       <div 
@@ -345,7 +366,24 @@ function App() {
       <Desktop onIconClick={handleIconClick} />
 
       <button
-        onClick={openClaimPopup}
+        onClick={handleClaimNoteClick}
+        onMouseEnter={() => {
+          if (!isMobile) setClaimNoteHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (!isMobile) {
+            setClaimNoteHovered(false);
+            setClaimNotePressed(false);
+          }
+        }}
+        onMouseDown={() => {
+          if (!isMobile) setClaimNotePressed(true);
+        }}
+        onMouseUp={() => {
+          if (!isMobile) setClaimNotePressed(false);
+        }}
+        onTouchStart={() => setClaimNotePressed(true)}
+        onTouchEnd={() => setClaimNotePressed(false)}
         type="button"
         title="Open Claim $CLAWB"
         style={{
@@ -359,7 +397,8 @@ function App() {
           margin: 0,
           cursor: 'pointer',
           zIndex: 4000,
-          transform: isMobile ? 'none' : 'rotate(7deg)',
+          transform: claimNoteTransform,
+          transition: 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
         }}
@@ -370,13 +409,16 @@ function App() {
               position: 'absolute',
               top: '-10px',
               left: '50%',
-              transform: 'translateX(-50%) rotate(-10deg)',
+              transform: claimNotePressed
+                ? 'translateX(-50%) rotate(-7deg) translateY(2px)'
+                : 'translateX(-50%) rotate(-10deg)',
               width: '74px',
               height: '16px',
               background: 'rgba(224, 218, 188, 0.92)',
               border: '1px solid rgba(120, 110, 85, 0.6)',
               boxShadow: '0 1px 2px rgba(0, 0, 0, 0.25)',
               pointerEvents: 'none',
+              transition: 'transform 150ms ease',
             }}
           />
         )}
@@ -388,7 +430,10 @@ function App() {
             display: 'block',
             filter: isMobile
               ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25))'
-              : 'drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35))',
+              : claimNotePressed
+                ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.28))'
+                : 'drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35))',
+            transition: 'filter 140ms ease',
           }}
         />
       </button>
