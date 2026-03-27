@@ -4,8 +4,8 @@ export interface ClawbStreamButtonHandle {
   triggerDance: () => void;
 }
 
-const IDLE_GIF = '/assets/lawbidle_5s_fullbody_facing_transparent_loop.gif';
-const DANCE_GIF = '/assets/lawbdance2_5s_fullbody_facing_transparent_loop.gif';
+const IDLE_GIF = '/assets/lawbidle_5s_finalfix_transparent_loop.gif';
+const DANCE_GIF = '/assets/lawbdance2_5s_finalfix_transparent_loop.gif';
 const STREAM_URL = 'https://retake.tv/clawb';
 const CTA_MESSAGE = 'click here to visit clawbs live stream!';
 
@@ -44,7 +44,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
         position: 'fixed',
         right: 14,
         bottom: 48,
-        width: 128,
+        width: 148,
         zIndex: 9998,
         userSelect: 'none',
       }}
@@ -55,7 +55,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
           onClick={() => window.open(STREAM_URL, '_blank', 'noopener,noreferrer')}
           style={{
             position: 'absolute',
-            bottom: 120,
+            bottom: 148,
             right: 10,
             width: 220,
             minHeight: 62,

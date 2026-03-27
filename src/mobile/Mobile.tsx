@@ -443,7 +443,7 @@ const Mobile = () => {
         title="Open Claim $CLAWB"
         style={{
           position: 'fixed',
-          top: '10px',
+          bottom: '58px',
           right: '10px',
           width: '96px',
           border: 'none',
