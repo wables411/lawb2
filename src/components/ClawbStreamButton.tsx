@@ -60,7 +60,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
             width: 220,
             minHeight: 62,
             padding: '8px 10px',
-            border: '2px solid #000',
+            border: 'none',
             borderRadius: 10,
             background: '#fffff2',
             color: '#000',
@@ -82,19 +82,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
               height: 0,
               borderLeft: '10px solid transparent',
               borderRight: '10px solid transparent',
-              borderTop: '16px solid #000',
-            }}
-          />
-          <span
-            style={{
-              position: 'absolute',
-              right: 39,
-              bottom: -13,
-              width: 0,
-              height: 0,
-              borderLeft: '9px solid transparent',
-              borderRight: '9px solid transparent',
-              borderTop: '14px solid #fffff2',
+              borderTop: '16px solid #fffff2',
             }}
           />
         </button>
