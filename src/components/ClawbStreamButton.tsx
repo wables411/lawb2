@@ -44,7 +44,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
         position: 'fixed',
         right: 14,
         bottom: 48,
-        width: 148,
+        width: 182,
         zIndex: 9998,
         userSelect: 'none',
       }}
@@ -53,14 +53,16 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
         <button
           type="button"
           onClick={() => window.open(STREAM_URL, '_blank', 'noopener,noreferrer')}
+          onFocus={(event) => event.currentTarget.blur()}
           style={{
             position: 'absolute',
-            bottom: 148,
-            right: 10,
+            bottom: 'calc(100% + 24px)',
+            right: 0,
             width: 220,
             minHeight: 62,
             padding: '8px 10px',
             border: 'none',
+            outline: 'none',
             borderRadius: 10,
             background: '#fffff2',
             color: '#000',
@@ -70,6 +72,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
             textAlign: 'left',
             cursor: 'pointer',
             boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           {bubbleText}
@@ -91,14 +94,17 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
       <button
         type="button"
         onClick={() => setIsDanceMode(true)}
+        onFocus={(event) => event.currentTarget.blur()}
         title="Clawb"
         style={{
           border: 'none',
+          outline: 'none',
           background: 'transparent',
           padding: 0,
           margin: 0,
           cursor: 'pointer',
           width: '100%',
+          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <img
