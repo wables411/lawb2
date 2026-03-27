@@ -11,6 +11,7 @@ import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { playIconClickSound } from '../utils/sound';
 import LinuxNavBar from '../components/LinuxNavBar';
+const ClawbClaimPanel = lazy(() => import('../components/ClawbClaimPanel'));
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -278,6 +279,7 @@ const Mobile = () => {
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
+  const [showClaimPopup, setShowClaimPopup] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   // Twitter widgets loading for both lawbsters and lawbstarz popups on mobile
@@ -432,6 +434,37 @@ const Mobile = () => {
 
   return (
     <div className={classes.mobileContainer}>
+      <button
+        onClick={() => {
+          playIconClickSound();
+          setShowClaimPopup(true);
+        }}
+        type="button"
+        title="Open Claim $CLAWB"
+        style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          width: '96px',
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
+          margin: 0,
+          zIndex: 2200,
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <img
+          src="/assets/restitution.png"
+          alt="Claim CLAWB"
+          style={{
+            width: '100%',
+            display: 'block',
+            filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25))',
+          }}
+        />
+      </button>
       <header className={classes.header}>
         <h1 className={classes.title}>there is no meme we lawb you</h1>
       </header>
@@ -704,6 +737,12 @@ const Mobile = () => {
       {/* Meme Generator Popup */}
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
+      </MobilePopup98>
+      {/* Claim Popup */}
+      <MobilePopup98 isOpen={showClaimPopup} onClose={() => setShowClaimPopup(false)} title="Claim $CLAWB">
+        <Suspense fallback={<div>Loading claim panel...</div>}>
+          <ClawbClaimPanel />
+        </Suspense>
       </MobilePopup98>
       {/* Linux NavBar */}
       <LinuxNavBar
