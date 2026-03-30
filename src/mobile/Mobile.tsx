@@ -11,6 +11,7 @@ import MemeGenerator from '../components/MemeGenerator';
 import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { playIconClickSound } from '../utils/sound';
 import LinuxNavBar from '../components/LinuxNavBar';
+import PretextLabel from '../components/PretextLabel';
 const ClawbClaimPanel = lazy(() => import('../components/ClawbClaimPanel'));
 
 const useStyles = createUseStyles({
@@ -70,12 +71,9 @@ const useStyles = createUseStyles({
       height: '64px',
     },
     '& span': {
-      // Never split single-word collection names (Lawbsters, Lawbstarz, Halloween)
-      whiteSpace: 'nowrap',
-      wordBreak: 'keep-all',
-      overflowWrap: 'normal',
-      hyphens: 'none',
-    }
+      display: 'block',
+      width: '100%',
+    },
   },
   taskbar: {
     position: 'fixed',
@@ -380,7 +378,14 @@ const Mobile = () => {
           {nfts.map((nft: FolderNFT) => (
             <div key={nft.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8f8f8', borderRadius: 8, padding: 8, cursor: 'pointer', minWidth: 0, overflow: 'visible' }} onClick={() => handleIconClick(nft.id)}>
               <img src={nft.image} alt={nft.name} style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 8 }} />
-              <span style={{ fontWeight: 'bold', fontSize: 14, whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal', hyphens: 'none', textAlign: 'center', lineHeight: '1.2', overflow: 'visible', width: '100%', maxWidth: '100%' }}>{nft.name}</span>
+              <PretextLabel
+                text={nft.name}
+                font={'bold 14px "MS Sans Serif", Arial, sans-serif'}
+                maxWidth={140}
+                maxLines={2}
+                lineHeight={1.2}
+                style={{ fontWeight: 'bold', fontSize: 14, textAlign: 'center', overflow: 'visible', width: '100%', maxWidth: '100%' }}
+              />
               <span style={{ fontSize: 12, color: '#555', textAlign: 'center' }}>{nft.description}</span>
             </div>
           ))}
@@ -472,7 +477,14 @@ const Mobile = () => {
         {icons.map(icon => (
           <div key={icon.label} className={classes.icon} onClick={() => handleIconClick(icon)}>
             <img src={icon.icon} alt={icon.label} />
-            <span>{icon.label}</span>
+            <PretextLabel
+              text={icon.label}
+              font={'12px "MS Sans Serif", Arial, sans-serif'}
+              maxWidth={130}
+              maxLines={2}
+              lineHeight={1.2}
+              style={{ color: '#fff', textShadow: '1px 1px 0 #000' }}
+            />
           </div>
         ))}
       </div>

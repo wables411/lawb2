@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
 import { createUseStyles } from 'react-jss';
 import { playIconClickSound } from '../utils/sound';
+import PretextLabel from './PretextLabel';
 
 type StyleProps = { isBaseMiniApp: boolean; labelHasSpace: boolean };
 
@@ -39,14 +40,8 @@ const useStyles = createUseStyles({
     padding: ({ isBaseMiniApp }: StyleProps) => isBaseMiniApp ? '2px 2px' : '2px 4px',
     marginTop: '2px',
     border: '1px outset #fff',
-    // Multiple words (e.g. "Meme Generator") can wrap between words.
-    // Single words (e.g. "Lawbsters") should never split across lines.
-    whiteSpace: ({ labelHasSpace }: StyleProps) => (labelHasSpace ? 'normal' : 'nowrap'),
-    wordBreak: 'keep-all',
-    overflowWrap: 'normal',
-    hyphens: 'none',
     textAlign: 'center',
-    lineHeight: '1.2',
+    lineHeight: 1.2,
     maxWidth: ({ labelHasSpace }: StyleProps) => (labelHasSpace ? '96px' : 'none'),
   }
 });
@@ -140,7 +135,15 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
       }}
     >
       <img src={image} alt={label} className={classes.iconImage} />
-      <span className={classes.iconLabel}>{label}</span>
+      <span className={classes.iconLabel}>
+        <PretextLabel
+          text={label}
+          font={`${label.includes(' ') ? 12 : 12}px "MS Sans Serif", Arial, sans-serif`}
+          maxWidth={label.includes(' ') ? 96 : 180}
+          maxLines={label.includes(' ') ? 2 : 1}
+          lineHeight={1.2}
+        />
+      </span>
     </div>
   );
 

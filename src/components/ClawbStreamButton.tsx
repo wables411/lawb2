@@ -1,4 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import PretextLabel from './PretextLabel';
 
 export interface ClawbStreamButtonHandle {
   triggerDance: () => void;
@@ -75,7 +76,18 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          {bubbleText}
+          {typedText.length ? (
+            <PretextLabel
+              text={typedText}
+              font={'14px "MS Sans Serif", Arial, sans-serif'}
+              maxWidth={200}
+              maxLines={3}
+              lineHeight={1.2}
+              style={{ textAlign: 'left' }}
+            />
+          ) : (
+            bubbleText
+          )}
           <span
             style={{
               position: 'absolute',
