@@ -147,7 +147,11 @@ function getDb() {
 
 function getBucket() {
   const app = getFirebaseApp();
-  return app.storage().bucket();
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || app.options.storageBucket;
+  if (!bucketName) {
+    throw new Error('Upload storage is not configured. Set FIREBASE_STORAGE_BUCKET.');
+  }
+  return app.storage().bucket(bucketName);
 }
 
 async function getSession(sessionId) {
@@ -252,6 +256,13 @@ async function checkDuplicateTx(txHash, sessionId) {
   if (!snap.exists()) return false;
   const ownerSession = String(snap.val() || '');
   return ownerSession !== sessionId;
+}
+
+async function getTxOwnerSession(txHash) {
+  const ref = getDb().ref(`clawb/ads/tx_index/${txHash.toLowerCase()}`);
+  const snap = await ref.get();
+  if (!snap.exists()) return null;
+  return String(snap.val() || '');
 }
 
 async function reserveTxHash(txHash, sessionId) {
@@ -406,6 +417,7 @@ module.exports = {
   RESUMABLE_STATUSES,
   TIERS,
   checkDuplicateTx,
+  getTxOwnerSession,
   enqueueNotification,
   generateSessionId,
   getBucket,

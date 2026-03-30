@@ -100,6 +100,19 @@ const SponsorAdPanel: React.FC = () => {
     const verifyResponse = await fetchWithFallback('/.netlify/functions/sponsor-verify-tx', '/api/sponsor/verify', verifyInit);
     const verifyPayload = await verifyResponse.json();
     if (!verifyResponse.ok) {
+      if (verifyPayload?.existingSessionId) {
+        const existingId = String(verifyPayload.existingSessionId);
+        const statusRes = await fetchWithFallback(
+          `/.netlify/functions/sponsor-session-status?sessionId=${encodeURIComponent(existingId)}`,
+          `/api/sponsor/session-status?sessionId=${encodeURIComponent(existingId)}`,
+          { method: 'GET' },
+        );
+        if (statusRes.ok) {
+          const payload = await statusRes.json();
+          await hydrateFromSession(payload.session || {}, existingId);
+          setStatus(`Recovered existing sponsor session ${existingId}. You can continue upload if payment is already confirmed.`);
+        }
+      }
       throw new Error(verifyPayload.error || 'Transaction verification failed');
     }
     setTxHash(normalizedHash);

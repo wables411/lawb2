@@ -218,7 +218,10 @@ exports.handler = async (event) => {
       return json(413, { error: `File exceeds hard 99MB cap (${MAX_FILE_BYTES} bytes).`, code: 'TOO_LARGE' });
     }
     console.error('[sponsor-upload] error', error);
-    return json(500, { error: 'Failed to upload sponsor video.' });
+    return json(500, {
+      error: error?.message || 'Failed to upload sponsor video.',
+      code: 'UPLOAD_FAILED',
+    });
   }
 };
 

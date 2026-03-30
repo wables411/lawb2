@@ -1,8 +1,8 @@
 const {
   checkDuplicateTx,
   getClientIp,
+  getTxOwnerSession,
   getSession,
-  getTierConfig,
   isRateLimited,
   json,
   normalizeAddress,
@@ -13,6 +13,13 @@ const {
   saveSession,
   verifyBaseTransfer,
 } = require('./sponsor-shared');
+
+const RETRYABLE_SESSION_STATUSES = new Set([
+  'PENDING_PAYMENT',
+  'TX_INVALID',
+  'HASH_MISMATCH',
+  'DUPLICATE_TX',
+]);
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -39,14 +46,27 @@ exports.handler = async (event) => {
     if (!session) {
       return json(404, { error: 'Session not found.' });
     }
-    if (session.status !== 'PENDING_PAYMENT') {
+    if (session.status === 'PAID' && String(session.tx_hash || '').toLowerCase() === txHash) {
+      return json(200, {
+        ok: true,
+        status: 'PAID',
+        txHash,
+        uploadUnlocked: true,
+      });
+    }
+    if (!RETRYABLE_SESSION_STATUSES.has(String(session.status || ''))) {
       return json(400, { error: `Session is already ${session.status}.` });
     }
 
     const duplicate = await checkDuplicateTx(txHash, sessionId);
     if (duplicate) {
+      const ownerSessionId = await getTxOwnerSession(txHash);
       await saveSession(sessionId, { status: 'DUPLICATE_TX' });
-      return json(409, { error: 'Tx hash already used by another sponsor session.', code: 'DUPLICATE_TX' });
+      return json(409, {
+        error: 'Tx hash already used by another sponsor session.',
+        code: 'DUPLICATE_TX',
+        existingSessionId: ownerSessionId,
+      });
     }
 
     const verification = await verifyBaseTransfer({
