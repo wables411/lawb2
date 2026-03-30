@@ -28,6 +28,36 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sponsor/session"
+  to = "/.netlify/functions/sponsor-create-session"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/verify"
+  to = "/.netlify/functions/sponsor-verify-tx"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/upload"
+  to = "/.netlify/functions/sponsor-upload"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/notify"
+  to = "/.netlify/functions/sponsor-notify-clawb"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/finalize-auctions"
+  to = "/.netlify/functions/sponsor-finalize-auctions"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/session-status"
+  to = "/.netlify/functions/sponsor-session-status"
+  status = 200
+
+[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404

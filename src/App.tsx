@@ -21,6 +21,7 @@ const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
 const ClawbClaimPanel = lazy(() => import('./components/ClawbClaimPanel'));
+const SponsorAdPanel = lazy(() => import('./components/SponsorAdPanel'));
 
 const useStyles = createUseStyles({
   body: {
@@ -261,6 +262,15 @@ function App() {
     });
   }, []);
 
+  const openSponsorPopup = useCallback(() => {
+    setActivePopup('sponsor-popup');
+    setMinimizedPopups(prev => {
+      const next = new Set(prev);
+      next.delete('sponsor-popup');
+      return next;
+    });
+  }, []);
+
   const handleClaimNoteClick = useCallback(() => {
     if (!isMobile) {
       setClaimNoteBounce(true);
@@ -446,7 +456,7 @@ function App() {
 
       {/* Clawb desktop CTA button in bottom-right */}
       <Suspense fallback={null}>
-        <ClawbStreamButton ref={clawbRef} />
+        <ClawbStreamButton ref={clawbRef} onAdvertiseClick={openSponsorPopup} />
       </Suspense>
 
       <Popup id="miladychan-popup" isOpen={activePopup === 'miladychan-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
@@ -679,6 +689,12 @@ function App() {
       <Popup id="claim-popup" isOpen={activePopup === 'claim-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000} title="Claim $CLAWB">
         <Suspense fallback={<div>Loading claim panel...</div>}>
           <ClawbClaimPanel />
+        </Suspense>
+      </Popup>
+
+      <Popup id="sponsor-popup" isOpen={activePopup === 'sponsor-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2200} title="Advertise on Clawb TV">
+        <Suspense fallback={<div>Loading sponsor panel...</div>}>
+          <SponsorAdPanel />
         </Suspense>
       </Popup>
 

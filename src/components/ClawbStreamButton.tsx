@@ -8,9 +8,13 @@ export interface ClawbStreamButtonHandle {
 const IDLE_GIF = '/assets/lawbidle_5s_finalfix_transparent_loop.gif';
 const DANCE_GIF = '/assets/lawbdance2_5s_finalfix_transparent_loop.gif';
 const STREAM_URL = 'https://retake.tv/clawb';
-const CTA_MESSAGE = 'click here to visit clawbs live stream!';
+const CTA_MESSAGE = 'choose a clawb tv option';
 
-const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
+type ClawbStreamButtonProps = {
+  onAdvertiseClick?: () => void;
+};
+
+const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle, ClawbStreamButtonProps>(({ onAdvertiseClick }, ref) => {
   const [isDanceMode, setIsDanceMode] = useState(false);
   const [typedText, setTypedText] = useState('');
 
@@ -51,16 +55,13 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
       }}
     >
       {isDanceMode && (
-        <button
-          type="button"
-          onClick={() => window.open(STREAM_URL, '_blank', 'noopener,noreferrer')}
-          onFocus={(event) => event.currentTarget.blur()}
+        <div
           style={{
             position: 'absolute',
             bottom: 'calc(100% + 24px)',
             right: 0,
-            width: 220,
-            minHeight: 62,
+            width: 260,
+            minHeight: 100,
             padding: '8px 10px',
             border: 'none',
             outline: 'none',
@@ -76,18 +77,49 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          {typedText.length ? (
-            <PretextLabel
-              text={typedText}
-              font={'14px "MS Sans Serif", Arial, sans-serif'}
-              maxWidth={200}
-              maxLines={3}
-              lineHeight={1.2}
-              style={{ textAlign: 'left' }}
-            />
-          ) : (
-            bubbleText
-          )}
+          <div style={{ marginBottom: 8 }}>
+            {typedText.length ? (
+              <PretextLabel
+                text={typedText}
+                font={'14px "MS Sans Serif", Arial, sans-serif'}
+                maxWidth={240}
+                maxLines={3}
+                lineHeight={1.2}
+                style={{ textAlign: 'left' }}
+              />
+            ) : (
+              bubbleText
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onAdvertiseClick}
+            style={{
+              width: '100%',
+              marginBottom: 6,
+              border: '2px outset #fff',
+              background: '#c0c0c0',
+              padding: '6px 8px',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            Advertise on Clawb TV
+          </button>
+          <button
+            type="button"
+            onClick={() => window.open(STREAM_URL, '_blank', 'noopener,noreferrer')}
+            style={{
+              width: '100%',
+              border: '2px outset #fff',
+              background: '#c0c0c0',
+              padding: '6px 8px',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            Tune in to Clawbs livestream on Retake.TV
+          </button>
           <span
             style={{
               position: 'absolute',
@@ -100,7 +132,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_, ref) => {
               borderTop: '16px solid #fffff2',
             }}
           />
-        </button>
+        </div>
       )}
 
       <button

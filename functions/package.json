@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Netlify functions for chess game payout processing",
   "dependencies": {
-    "ethers": "^6.15.0"
+    "busboy": "^1.6.0",
+    "ethers": "^6.15.0",
+    "firebase-admin": "^13.6.1"
   }
 }

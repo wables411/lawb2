@@ -1,0 +1,286 @@
+import React, { useMemo, useState } from 'react';
+import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from 'wagmi';
+import { base } from 'wagmi/chains';
+import { parseEther } from 'viem';
+
+type Tier = 'one_time' | 'rotation';
+
+const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
+const HARD_MAX_BYTES = 103809024;
+
+const tierLabels: Record<Tier, string> = {
+  one_time: 'One-time play',
+  rotation: 'Rotation auction (24h)',
+};
+
+const SponsorAdPanel: React.FC = () => {
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const publicClient = usePublicClient();
+  const { switchChainAsync } = useSwitchChain();
+  const { sendTransactionAsync } = useSendTransaction();
+
+  const [tier, setTier] = useState<Tier>('one_time');
+  const [rotationBidEth, setRotationBidEth] = useState('0.02');
+  const [sponsorName, setSponsorName] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [sessionId, setSessionId] = useState('');
+  const [sessionStatus, setSessionStatus] = useState('PENDING_PAYMENT');
+  const [minEth, setMinEth] = useState('0.01');
+  const [minWei, setMinWei] = useState('');
+  const [txHash, setTxHash] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
+
+  const canCreateSession = isConnected && Boolean(address) && !busy;
+  const uploadEnabled = sessionStatus === 'PAID' && Boolean(sessionId) && !busy;
+
+  const tierPriceText = useMemo(() => {
+    if (tier === 'one_time') return '0.01 ETH fixed';
+    return 'Reserve 0.02 ETH, highest bid at 24h close wins rotation';
+  }, [tier]);
+
+  async function ensureBase() {
+    if (chainId === base.id) return;
+    await switchChainAsync({ chainId: base.id });
+  }
+
+  async function createSession() {
+    if (!address) return;
+    const trimmedSponsorName = sponsorName.trim();
+    if (!trimmedSponsorName) {
+      setError('Sponsor name is required.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setStatus('Creating sponsor session...');
+    try {
+      const response = await fetch('/api/sponsor/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet: address,
+          tier,
+          bidEth: tier === 'rotation' ? rotationBidEth : undefined,
+          sponsorName: trimmedSponsorName,
+          websiteUrl,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || 'Could not create session');
+      }
+      setSessionId(payload.sessionId);
+      setSessionStatus(payload.status);
+      setMinEth(payload.payment.minEth);
+      setMinWei(payload.payment.minWei);
+      setStatus(`Session created. Send at least ${payload.payment.minEth} ETH to Clawb wallet.`);
+    } catch (err) {
+      setError((err as Error).message);
+      setStatus('');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function payAndVerify() {
+    if (!sessionId || !minEth) return;
+    setBusy(true);
+    setError('');
+    try {
+      await ensureBase();
+      setStatus(`Sending payment (${minEth} ETH) on Base...`);
+      const hash = await sendTransactionAsync({
+        to: CLAWB_WALLET as `0x${string}`,
+        value: parseEther(minEth),
+      });
+      setTxHash(hash);
+      setStatus('Payment sent. Waiting for confirmations...');
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash, confirmations: 2 });
+      }
+      setStatus('Verifying transaction...');
+      const verifyResponse = await fetch('/api/sponsor/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, txHash: hash }),
+      });
+      const verifyPayload = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        throw new Error(verifyPayload.error || 'Transaction verification failed');
+      }
+      setSessionStatus(verifyPayload.status || 'PAID');
+      setStatus('Payment confirmed. Upload is unlocked.');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadVideo() {
+    if (!selectedFile || !sessionId) return;
+    const trimmedSponsorName = sponsorName.trim();
+    if (!trimmedSponsorName) {
+      setError('Sponsor name is required.');
+      return;
+    }
+    if (selectedFile.size > HARD_MAX_BYTES) {
+      setError(`File exceeds 99MB hard cap (${HARD_MAX_BYTES} bytes).`);
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setStatus('Uploading commercial...');
+    try {
+      const form = new FormData();
+      form.set('sessionId', sessionId);
+      form.set('sponsorName', trimmedSponsorName);
+      form.set('websiteUrl', websiteUrl.trim());
+      form.set('file', selectedFile);
+      const response = await fetch('/api/sponsor/upload', {
+        method: 'POST',
+        body: form,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || 'Upload failed');
+      }
+      setSessionStatus(payload.status || 'VERIFIED');
+      setUploaded(true);
+      if (payload.status === 'QUEUED') {
+        setStatus('Upload approved and queued for Clawb TV. Newest ad will run first at next break.');
+      } else {
+        setStatus('Upload approved. Rotation entry is waiting for auction close.');
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <h3 style={{ margin: 0 }}>Advertise on Clawb TV</h3>
+      <p style={{ margin: 0 }}>
+        Permissionless sponsor intake for Clawb TV commercials. No policy gating. Technical checks only.
+      </p>
+      <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Products</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>1) One-time play: fixed 0.01 ETH on Base.</p>
+        <p style={{ margin: 0 }}>2) Rotation auction: 24h auction, reserve 0.02 ETH, winner enters rotation pool.</p>
+      </div>
+      <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Formats</strong>: mp4, webm, mov</p>
+        <p style={{ margin: 0 }}><strong>Hard cap</strong>: 99MB (103,809,024 bytes). Over cap is rejected.</p>
+      </div>
+
+      {!isConnected && (
+        <p style={{ margin: 0, color: '#b00020' }}>Connect wallet first, then create a sponsor session.</p>
+      )}
+
+      <div style={{ border: '2px inset #808080', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label htmlFor="sponsor-name">
+          Sponsor Name (required)
+          <input
+            id="sponsor-name"
+            type="text"
+            value={sponsorName}
+            onChange={(event) => setSponsorName(event.target.value)}
+            placeholder="Sponsor Name"
+            style={{ marginLeft: 8, width: 260 }}
+            disabled={busy}
+          />
+        </label>
+        <label htmlFor="website-url">
+          Website Link (optional)
+          <input
+            id="website-url"
+            type="text"
+            value={websiteUrl}
+            onChange={(event) => setWebsiteUrl(event.target.value)}
+            placeholder="example.com"
+            style={{ marginLeft: 8, width: 260 }}
+            disabled={busy}
+          />
+        </label>
+        <label htmlFor="sponsor-tier">Select product</label>
+        <select
+          id="sponsor-tier"
+          value={tier}
+          onChange={(e) => setTier(e.target.value as Tier)}
+          style={{ maxWidth: 280 }}
+          disabled={busy}
+        >
+          <option value="one_time">One-time play (0.01 ETH)</option>
+          <option value="rotation">Rotation auction (reserve 0.02 ETH)</option>
+        </select>
+        {tier === 'rotation' && (
+          <label htmlFor="rotation-bid">
+            Bid amount (ETH)
+            <input
+              id="rotation-bid"
+              type="number"
+              min="0.02"
+              step="0.001"
+              value={rotationBidEth}
+              onChange={(e) => setRotationBidEth(e.target.value)}
+              style={{ marginLeft: 8, width: 120 }}
+              disabled={busy}
+            />
+          </label>
+        )}
+        <p style={{ margin: 0, fontSize: 12 }}>{tierLabels[tier]} - {tierPriceText}</p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => void createSession()} disabled={!canCreateSession || !sponsorName.trim()}>
+          Create sponsor session
+        </button>
+        <button type="button" onClick={() => void payAndVerify()} disabled={!sessionId || busy}>
+          Pay and verify onchain
+        </button>
+      </div>
+
+      {sessionId && (
+        <div style={{ border: '2px inset #808080', padding: 8, background: '#f3f3f3' }}>
+          <p style={{ margin: '0 0 4px 0' }}><strong>Session:</strong> {sessionId}</p>
+          <p style={{ margin: '0 0 4px 0' }}><strong>Status:</strong> {sessionStatus}</p>
+          <p style={{ margin: '0 0 4px 0' }}><strong>Recipient:</strong> {CLAWB_WALLET}</p>
+          <p style={{ margin: '0 0 4px 0' }}><strong>Min payment:</strong> {minEth} ETH ({minWei} wei)</p>
+          {txHash && (
+            <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noreferrer">
+              View tx on BaseScan
+            </a>
+          )}
+        </div>
+      )}
+
+      <div style={{ border: '2px inset #808080', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label htmlFor="sponsor-file">Upload commercial (enabled after PAID)</label>
+        <input
+          id="sponsor-file"
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+          disabled={!uploadEnabled}
+        />
+        <button type="button" onClick={() => void uploadVideo()} disabled={!uploadEnabled || !selectedFile}>
+          Upload commercial
+        </button>
+      </div>
+
+      {status && <p style={{ margin: 0 }}>{status}</p>}
+      {error && <p style={{ margin: 0, color: '#b00020' }}>{error}</p>}
+      {uploaded && <p style={{ margin: 0 }}>Thank you for sponsoring Clawb TV.</p>}
+    </div>
+  );
+};
+
+export default SponsorAdPanel;
