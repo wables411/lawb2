@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
+import { layoutWithLines, prepareWithSegments } from '@chenglou/pretext';
 import { getCollectionNFTs, getOpenSeaNFTs, getOpenSeaSolanaNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
 import type { NFT } from '../mint';
 import { v4 as uuidv4 } from 'uuid';
@@ -257,6 +258,59 @@ const STOCK_STICKERS = [
 // Canvas size will be dynamic based on container
 const DEFAULT_CANVAS_SIZE = 400;
 
+const fallbackWrapWords = (text: string, maxWidth: number, ctx: CanvasRenderingContext2D): string[] => {
+  const words = text.trim().split(/\s+/);
+  if (!words.length || !words[0]) return [];
+
+  const lines: string[] = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const testLine = `${currentLine} ${word}`;
+    const width = ctx.measureText(testLine).width;
+    if (width < maxWidth) {
+      currentLine = testLine;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+
+  if (currentLine) lines.push(currentLine);
+  return lines;
+};
+
+const wrapTextWithPretext = (
+  text: string,
+  font: string,
+  maxWidth: number,
+  fallbackCtx?: CanvasRenderingContext2D
+): string[] => {
+  const normalized = text.trim();
+  if (!normalized) return [];
+
+  try {
+    const prepared = prepareWithSegments(normalized, font);
+    const { lines } = layoutWithLines(prepared, maxWidth, 1);
+    const wrapped = lines
+      .map((line) => line.text.trim())
+      .filter((line) => line.length > 0);
+
+    if (wrapped.length > 0) {
+      return wrapped;
+    }
+  } catch {
+    // Fall through to existing word-wrap logic on any layout issue.
+  }
+
+  if (fallbackCtx) {
+    return fallbackWrapWords(normalized, maxWidth, fallbackCtx);
+  }
+
+  return [normalized];
+};
+
 function resolveNftImageUrl(nft: Partial<NFT> & Record<string, any>): string | null {
   const direct = nft.image || nft.image_url || nft.image_url_shrunk || nft.old_image_url;
   if (typeof direct === 'string' && direct.trim()) return ipfsToHttp(direct.trim());
@@ -376,22 +430,7 @@ function MemeGenerator() {
       ctx.font = `${fontSize}px Impact`;
 
       const maxWidth = canvas.width - 40;
-      const words = message.split(' ');
-      const lines: string[] = [];
-      let currentLine = words[0] || '';
-
-      for (let i = 1; i < words.length; i++) {
-        const word = words[i];
-        const testLine = `${currentLine} ${word}`;
-        const width = ctx.measureText(testLine).width;
-        if (width < maxWidth) {
-          currentLine = testLine;
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
+      const lines = wrapTextWithPretext(message, `${fontSize}px Impact`, maxWidth, ctx);
 
       const totalHeight = lines.length * fontSize * 1.2;
       const startY = (canvas.height - totalHeight) / 2 + fontSize;
@@ -412,26 +451,6 @@ function MemeGenerator() {
       ctx.lineWidth = 3;
       ctx.fillStyle = 'white'; // Add white fill color
       
-      const wrapText = (text: string, maxWidth: number) => {
-        const words = text.toUpperCase().split(' '); // Convert to uppercase
-        const lines: string[] = [];
-        let currentLine = words[0] || '';
-        
-        for (let i = 1; i < words.length; i++) {
-          const word = words[i];
-          const testLine = `${currentLine} ${word}`.trim();
-          const width = ctx.measureText(testLine).width;
-          if (width < maxWidth) {
-            currentLine = testLine;
-          } else {
-            if (currentLine) lines.push(currentLine);
-            currentLine = word;
-          }
-        }
-        if (currentLine) lines.push(currentLine);
-        return lines;
-      };
-      
       // Top text - constrained to image (canvas)
       if (topText) {
         // Calculate font size based on BASE canvas size (display canvas), then scale for target canvas
@@ -439,7 +458,7 @@ function MemeGenerator() {
         const scaledFontSize = baseScaledFontSize * scaleFactor;
         ctx.font = `${scaledFontSize}px Impact`;
         const maxWidth = canvas.width - (20 * scaleFactor); // Padding from edges, scaled
-        const lines = wrapText(topText, maxWidth);
+        const lines = wrapTextWithPretext(topText.toUpperCase(), `${scaledFontSize}px Impact`, maxWidth, ctx);
         lines.forEach((line, index) => {
           const y = (scaledFontSize + (index * scaledFontSize * 1.2));
           // Ensure text stays within canvas bounds
@@ -457,7 +476,7 @@ function MemeGenerator() {
         const scaledFontSize = baseScaledFontSize * scaleFactor;
         ctx.font = `${scaledFontSize}px Impact`;
         const maxWidth = canvas.width - (20 * scaleFactor); // Padding from edges, scaled
-        const lines = wrapText(bottomText, maxWidth);
+        const lines = wrapTextWithPretext(bottomText.toUpperCase(), `${scaledFontSize}px Impact`, maxWidth, ctx);
         lines.forEach((line, index) => {
           const y = canvas.height - (lines.length - index) * scaledFontSize * 1.2 + scaledFontSize; // Position from bottom edge
           // Ensure text stays within canvas bounds
