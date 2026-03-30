@@ -60,7 +60,7 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle, ClawbStreamButtonP
             position: 'absolute',
             bottom: 'calc(100% + 24px)',
             right: 0,
-            width: 260,
+            width: 'min(260px, calc(100vw - 28px))',
             minHeight: 100,
             padding: '8px 10px',
             border: 'none',
@@ -99,7 +99,8 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle, ClawbStreamButtonP
               marginBottom: 6,
               border: '2px outset #fff',
               background: '#c0c0c0',
-              padding: '6px 8px',
+              padding: '8px 8px',
+              minHeight: 40,
               textAlign: 'left',
               cursor: 'pointer',
             }}
@@ -113,7 +114,8 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle, ClawbStreamButtonP
               width: '100%',
               border: '2px outset #fff',
               background: '#c0c0c0',
-              padding: '6px 8px',
+              padding: '8px 8px',
+              minHeight: 40,
               textAlign: 'left',
               cursor: 'pointer',
             }}

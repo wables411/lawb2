@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { parseEther } from 'viem';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 type Tier = 'one_time' | 'rotation';
 
@@ -14,6 +15,7 @@ const tierLabels: Record<Tier, string> = {
 };
 
 const SponsorAdPanel: React.FC = () => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
@@ -194,7 +196,7 @@ const SponsorAdPanel: React.FC = () => {
             value={sponsorName}
             onChange={(event) => setSponsorName(event.target.value)}
             placeholder="Sponsor Name"
-            style={{ marginLeft: 8, width: 260 }}
+            style={{ marginTop: 4, width: '100%', maxWidth: isMobile ? '100%' : 360, minHeight: isMobile ? 40 : 30, boxSizing: 'border-box' }}
             disabled={busy}
           />
         </label>
@@ -206,7 +208,7 @@ const SponsorAdPanel: React.FC = () => {
             value={websiteUrl}
             onChange={(event) => setWebsiteUrl(event.target.value)}
             placeholder="example.com"
-            style={{ marginLeft: 8, width: 260 }}
+            style={{ marginTop: 4, width: '100%', maxWidth: isMobile ? '100%' : 360, minHeight: isMobile ? 40 : 30, boxSizing: 'border-box' }}
             disabled={busy}
           />
         </label>
@@ -215,7 +217,7 @@ const SponsorAdPanel: React.FC = () => {
           id="sponsor-tier"
           value={tier}
           onChange={(e) => setTier(e.target.value as Tier)}
-          style={{ maxWidth: 280 }}
+          style={{ width: '100%', maxWidth: isMobile ? '100%' : 280, minHeight: isMobile ? 40 : 30 }}
           disabled={busy}
         >
           <option value="one_time">One-time play (0.01 ETH)</option>
@@ -231,7 +233,7 @@ const SponsorAdPanel: React.FC = () => {
               step="0.001"
               value={rotationBidEth}
               onChange={(e) => setRotationBidEth(e.target.value)}
-              style={{ marginLeft: 8, width: 120 }}
+              style={{ marginLeft: 8, width: isMobile ? 140 : 120, minHeight: isMobile ? 36 : 28 }}
               disabled={busy}
             />
           </label>
@@ -240,10 +242,10 @@ const SponsorAdPanel: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => void createSession()} disabled={!canCreateSession || !sponsorName.trim()}>
+        <button type="button" onClick={() => void createSession()} disabled={!canCreateSession || !sponsorName.trim()} style={{ minHeight: isMobile ? 44 : undefined }}>
           Create sponsor session
         </button>
-        <button type="button" onClick={() => void payAndVerify()} disabled={!sessionId || busy}>
+        <button type="button" onClick={() => void payAndVerify()} disabled={!sessionId || busy} style={{ minHeight: isMobile ? 44 : undefined }}>
           Pay and verify onchain
         </button>
       </div>
@@ -270,8 +272,9 @@ const SponsorAdPanel: React.FC = () => {
           accept="video/mp4,video/webm,video/quicktime"
           onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
           disabled={!uploadEnabled}
+          style={{ width: '100%' }}
         />
-        <button type="button" onClick={() => void uploadVideo()} disabled={!uploadEnabled || !selectedFile}>
+        <button type="button" onClick={() => void uploadVideo()} disabled={!uploadEnabled || !selectedFile} style={{ minHeight: isMobile ? 44 : undefined }}>
           Upload commercial
         </button>
       </div>

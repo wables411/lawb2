@@ -13,6 +13,7 @@ import { playIconClickSound } from '../utils/sound';
 import LinuxNavBar from '../components/LinuxNavBar';
 import PretextLabel from '../components/PretextLabel';
 const ClawbClaimPanel = lazy(() => import('../components/ClawbClaimPanel'));
+const SponsorAdPanel = lazy(() => import('../components/SponsorAdPanel'));
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -278,6 +279,7 @@ const Mobile = () => {
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showClaimPopup, setShowClaimPopup] = useState(false);
+  const [showSponsorPopup, setShowSponsorPopup] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   // Twitter widgets loading for both lawbsters and lawbstarz popups on mobile
@@ -323,6 +325,7 @@ const Mobile = () => {
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
+    { label: 'Advertise on Clawb TV', icon: '/assets/lawbidle_5s_finalfix_transparent_loop.gif', action: () => setShowSponsorPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
   ];
@@ -754,6 +757,12 @@ const Mobile = () => {
       <MobilePopup98 isOpen={showClaimPopup} onClose={() => setShowClaimPopup(false)} title="Claim $CLAWB">
         <Suspense fallback={<div>Loading claim panel...</div>}>
           <ClawbClaimPanel />
+        </Suspense>
+      </MobilePopup98>
+      {/* Sponsor Popup */}
+      <MobilePopup98 isOpen={showSponsorPopup} onClose={() => setShowSponsorPopup(false)} title="Advertise on Clawb TV">
+        <Suspense fallback={<div>Loading sponsor panel...</div>}>
+          <SponsorAdPanel />
         </Suspense>
       </MobilePopup98>
       {/* Linux NavBar */}
