@@ -78,7 +78,7 @@ const SponsorAdPanel: React.FC = () => {
           websiteUrl,
         }),
       };
-      const finalResponse = await fetchWithFallback('/api/sponsor/session', '/.netlify/functions/sponsor-create-session', requestInit);
+      const finalResponse = await fetchWithFallback('/.netlify/functions/sponsor-create-session', '/api/sponsor/session', requestInit);
       const payload = await finalResponse.json();
       if (!finalResponse.ok) {
         throw new Error(payload.error || 'Could not create session');
@@ -118,7 +118,7 @@ const SponsorAdPanel: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, txHash: hash }),
       };
-      const verifyResponse = await fetchWithFallback('/api/sponsor/verify', '/.netlify/functions/sponsor-verify-tx', verifyInit);
+      const verifyResponse = await fetchWithFallback('/.netlify/functions/sponsor-verify-tx', '/api/sponsor/verify', verifyInit);
       const verifyPayload = await verifyResponse.json();
       if (!verifyResponse.ok) {
         throw new Error(verifyPayload.error || 'Transaction verification failed');
@@ -153,7 +153,7 @@ const SponsorAdPanel: React.FC = () => {
       form.set('sponsorName', trimmedSponsorName);
       form.set('websiteUrl', websiteUrl.trim());
       form.set('file', selectedFile);
-      const response = await fetchWithFallback('/api/sponsor/upload', '/.netlify/functions/sponsor-upload', {
+      const response = await fetchWithFallback('/.netlify/functions/sponsor-upload', '/api/sponsor/upload', {
         method: 'POST',
         body: form,
       });
