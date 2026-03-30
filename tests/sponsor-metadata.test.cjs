@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   buildPlaybackAdRecord,
   normalizeSponsorName,
+  pickLatestResumableSession,
   normalizeWebsiteUrl,
 } = require('../functions/sponsor-shared');
 
@@ -46,4 +47,24 @@ test('acceptance metadata example for Test Sponsor', () => {
     sponsor_name: 'Test Sponsor',
     website_url: 'https://example.com',
   });
+});
+
+test('picks latest resumable session by updated_at', () => {
+  const picked = pickLatestResumableSession({
+    sps_old: {
+      status: 'PENDING_PAYMENT',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    },
+    sps_latest: {
+      status: 'PAID',
+      updated_at: '2026-01-02T00:00:00.000Z',
+    },
+    sps_terminal: {
+      status: 'PLAYED_ONCE',
+      updated_at: '2026-01-03T00:00:00.000Z',
+    },
+  });
+
+  assert.equal(picked.sessionId, 'sps_latest');
+  assert.equal(picked.session.status, 'PAID');
 });

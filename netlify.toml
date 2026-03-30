@@ -58,6 +58,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sponsor/resume-session"
+  to = "/.netlify/functions/sponsor-resume-session"
+  status = 200
+
+[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404

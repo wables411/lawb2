@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { parseEther } from 'viem';
+import { formatEther, parseEther } from 'viem';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
 type Tier = 'one_time' | 'rotation';
@@ -13,6 +13,8 @@ const tierLabels: Record<Tier, string> = {
   one_time: 'One-time play',
   rotation: 'Rotation auction (24h)',
 };
+const SESSION_STORAGE_KEY = 'clawb_sponsor_session';
+const TX_STORAGE_KEY = 'clawb_sponsor_tx_hash';
 
 async function fetchWithFallback(primaryUrl: string, fallbackUrl: string, init: RequestInit): Promise<Response> {
   const primary = await fetch(primaryUrl, init);
@@ -37,6 +39,7 @@ const SponsorAdPanel: React.FC = () => {
   const [minEth, setMinEth] = useState('0.01');
   const [minWei, setMinWei] = useState('');
   const [txHash, setTxHash] = useState('');
+  const [txHashInput, setTxHashInput] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -55,6 +58,98 @@ const SponsorAdPanel: React.FC = () => {
     if (chainId === base.id) return;
     await switchChainAsync({ chainId: base.id });
   }
+
+  function persistSession(id: string) {
+    if (!address) return;
+    localStorage.setItem(`${SESSION_STORAGE_KEY}_${address.toLowerCase()}`, id);
+  }
+
+  function persistTx(hash: string) {
+    if (!address) return;
+    localStorage.setItem(`${TX_STORAGE_KEY}_${address.toLowerCase()}`, hash);
+  }
+
+  async function hydrateFromSession(sessionPayload: any, id: string) {
+    setSessionId(id);
+    setSessionStatus(String(sessionPayload.status || 'PENDING_PAYMENT'));
+    setSponsorName(String(sessionPayload.sponsor_name || ''));
+    setWebsiteUrl(String(sessionPayload.website_url || ''));
+    if (sessionPayload.required_wei) {
+      setMinWei(String(sessionPayload.required_wei));
+      setMinEth(formatEther(BigInt(String(sessionPayload.required_wei))));
+    }
+    if (sessionPayload.tx_hash) {
+      setTxHash(String(sessionPayload.tx_hash));
+      setTxHashInput(String(sessionPayload.tx_hash));
+      persistTx(String(sessionPayload.tx_hash));
+    }
+    persistSession(id);
+  }
+
+  async function verifyTransactionHash(hashToVerify: string) {
+    const normalizedHash = String(hashToVerify || '').trim();
+    if (!sessionId || !normalizedHash) {
+      setError('Session and tx hash are required to verify.');
+      return;
+    }
+    const verifyInit: RequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, txHash: normalizedHash }),
+    };
+    const verifyResponse = await fetchWithFallback('/.netlify/functions/sponsor-verify-tx', '/api/sponsor/verify', verifyInit);
+    const verifyPayload = await verifyResponse.json();
+    if (!verifyResponse.ok) {
+      throw new Error(verifyPayload.error || 'Transaction verification failed');
+    }
+    setTxHash(normalizedHash);
+    setTxHashInput(normalizedHash);
+    persistTx(normalizedHash);
+    setSessionStatus(verifyPayload.status || 'PAID');
+    setStatus('Payment confirmed. Upload is unlocked.');
+  }
+
+  useEffect(() => {
+    if (!address) return;
+    const walletKey = address.toLowerCase();
+    const savedSessionId = localStorage.getItem(`${SESSION_STORAGE_KEY}_${walletKey}`) || '';
+    const savedTxHash = localStorage.getItem(`${TX_STORAGE_KEY}_${walletKey}`) || '';
+    if (savedTxHash) {
+      setTxHash(savedTxHash);
+      setTxHashInput(savedTxHash);
+    }
+
+    async function recover() {
+      try {
+        if (savedSessionId) {
+          const statusRes = await fetchWithFallback(
+            `/.netlify/functions/sponsor-session-status?sessionId=${encodeURIComponent(savedSessionId)}`,
+            `/api/sponsor/session-status?sessionId=${encodeURIComponent(savedSessionId)}`,
+            { method: 'GET' },
+          );
+          if (statusRes.ok) {
+            const payload = await statusRes.json();
+            await hydrateFromSession(payload.session || {}, savedSessionId);
+            return;
+          }
+        }
+
+        const resumeRes = await fetchWithFallback(
+          `/.netlify/functions/sponsor-resume-session?wallet=${encodeURIComponent(walletKey)}`,
+          `/api/sponsor/resume-session?wallet=${encodeURIComponent(walletKey)}`,
+          { method: 'GET' },
+        );
+        if (!resumeRes.ok) return;
+        const resumePayload = await resumeRes.json();
+        if (resumePayload.found && resumePayload.sessionId) {
+          await hydrateFromSession(resumePayload.session || {}, String(resumePayload.sessionId));
+        }
+      } catch {
+        // non-blocking session recovery
+      }
+    }
+    void recover();
+  }, [address]);
 
   async function createSession() {
     if (!address) return;
@@ -87,6 +182,9 @@ const SponsorAdPanel: React.FC = () => {
       setSessionStatus(payload.status);
       setMinEth(payload.payment.minEth);
       setMinWei(payload.payment.minWei);
+      setTxHash('');
+      setTxHashInput('');
+      persistSession(payload.sessionId);
       setStatus(`Session created. Send at least ${payload.payment.minEth} ETH to Clawb wallet.`);
     } catch (err) {
       setError((err as Error).message);
@@ -108,23 +206,14 @@ const SponsorAdPanel: React.FC = () => {
         value: parseEther(minEth),
       });
       setTxHash(hash);
+      setTxHashInput(hash);
+      persistTx(hash);
       setStatus('Payment sent. Waiting for confirmations...');
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash, confirmations: 2 });
       }
       setStatus('Verifying transaction...');
-      const verifyInit: RequestInit = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, txHash: hash }),
-      };
-      const verifyResponse = await fetchWithFallback('/.netlify/functions/sponsor-verify-tx', '/api/sponsor/verify', verifyInit);
-      const verifyPayload = await verifyResponse.json();
-      if (!verifyResponse.ok) {
-        throw new Error(verifyPayload.error || 'Transaction verification failed');
-      }
-      setSessionStatus(verifyPayload.status || 'PAID');
-      setStatus('Payment confirmed. Upload is unlocked.');
+      await verifyTransactionHash(hash);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -255,6 +344,40 @@ const SponsorAdPanel: React.FC = () => {
         </button>
         <button type="button" onClick={() => void payAndVerify()} disabled={!sessionId || busy} style={{ minHeight: isMobile ? 44 : undefined }}>
           Pay and verify onchain
+        </button>
+      </div>
+
+      <div style={{ border: '2px inset #808080', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label htmlFor="sponsor-tx-hash">
+          Already paid? Verify existing tx hash
+          <input
+            id="sponsor-tx-hash"
+            type="text"
+            value={txHashInput}
+            onChange={(event) => setTxHashInput(event.target.value)}
+            placeholder="0x..."
+            style={{ marginTop: 4, width: '100%', boxSizing: 'border-box', minHeight: isMobile ? 40 : 30 }}
+            disabled={!sessionId || busy}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!sessionId || !txHashInput.trim() || busy}
+          onClick={() => void (async () => {
+            setBusy(true);
+            setError('');
+            setStatus('Verifying existing transaction...');
+            try {
+              await verifyTransactionHash(txHashInput);
+            } catch (err) {
+              setError((err as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          })()}
+          style={{ minHeight: isMobile ? 44 : undefined }}
+        >
+          Verify existing tx hash
         </button>
       </div>
 

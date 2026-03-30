@@ -29,6 +29,13 @@ const ALLOWED_VIDEO_MIME = new Set([
   'video/webm',
   'video/quicktime',
 ]);
+const RESUMABLE_STATUSES = new Set([
+  'PENDING_PAYMENT',
+  'PAID',
+  'UPLOADED',
+  'VERIFIED',
+  'QUEUED',
+]);
 
 let firebaseApp = null;
 const ipHits = new Map();
@@ -146,6 +153,21 @@ function getBucket() {
 async function getSession(sessionId) {
   const snap = await getDb().ref(`clawb/ads/sessions/${sessionId}`).get();
   return snap.exists() ? snap.val() : null;
+}
+
+function pickLatestResumableSession(sessionsById) {
+  const entries = Object.entries(sessionsById || {}).filter(([, value]) => {
+    const status = String(value?.status || '');
+    return RESUMABLE_STATUSES.has(status);
+  });
+  if (!entries.length) return null;
+  entries.sort((a, b) => {
+    const aTs = Date.parse(a[1]?.updated_at || a[1]?.created_at || 0);
+    const bTs = Date.parse(b[1]?.updated_at || b[1]?.created_at || 0);
+    return bTs - aTs;
+  });
+  const [sessionId, session] = entries[0];
+  return { sessionId, session };
 }
 
 async function saveSession(sessionId, patch) {
@@ -381,6 +403,7 @@ module.exports = {
   CLAWB_WALLET,
   MAX_FILE_BYTES,
   REQUIRED_CONFIRMATIONS,
+  RESUMABLE_STATUSES,
   TIERS,
   checkDuplicateTx,
   enqueueNotification,
@@ -399,6 +422,7 @@ module.exports = {
   normalizeSponsorName,
   normalizeWebsiteUrl,
   parseBody,
+  pickLatestResumableSession,
   pushStatusTransition,
   queueApprovedAd,
   buildPlaybackAdRecord,
