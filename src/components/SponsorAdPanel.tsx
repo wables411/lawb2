@@ -14,6 +14,12 @@ const tierLabels: Record<Tier, string> = {
   rotation: 'Rotation auction (24h)',
 };
 
+async function fetchWithFallback(primaryUrl: string, fallbackUrl: string, init: RequestInit): Promise<Response> {
+  const primary = await fetch(primaryUrl, init);
+  if (primary.status !== 404) return primary;
+  return fetch(fallbackUrl, init);
+}
+
 const SponsorAdPanel: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { address, isConnected } = useAccount();
@@ -61,7 +67,7 @@ const SponsorAdPanel: React.FC = () => {
     setError('');
     setStatus('Creating sponsor session...');
     try {
-      const response = await fetch('/api/sponsor/session', {
+      const requestInit: RequestInit = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -71,9 +77,10 @@ const SponsorAdPanel: React.FC = () => {
           sponsorName: trimmedSponsorName,
           websiteUrl,
         }),
-      });
-      const payload = await response.json();
-      if (!response.ok) {
+      };
+      const finalResponse = await fetchWithFallback('/api/sponsor/session', '/.netlify/functions/sponsor-create-session', requestInit);
+      const payload = await finalResponse.json();
+      if (!finalResponse.ok) {
         throw new Error(payload.error || 'Could not create session');
       }
       setSessionId(payload.sessionId);
@@ -106,11 +113,12 @@ const SponsorAdPanel: React.FC = () => {
         await publicClient.waitForTransactionReceipt({ hash, confirmations: 2 });
       }
       setStatus('Verifying transaction...');
-      const verifyResponse = await fetch('/api/sponsor/verify', {
+      const verifyInit: RequestInit = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, txHash: hash }),
-      });
+      };
+      const verifyResponse = await fetchWithFallback('/api/sponsor/verify', '/.netlify/functions/sponsor-verify-tx', verifyInit);
       const verifyPayload = await verifyResponse.json();
       if (!verifyResponse.ok) {
         throw new Error(verifyPayload.error || 'Transaction verification failed');
@@ -145,7 +153,7 @@ const SponsorAdPanel: React.FC = () => {
       form.set('sponsorName', trimmedSponsorName);
       form.set('websiteUrl', websiteUrl.trim());
       form.set('file', selectedFile);
-      const response = await fetch('/api/sponsor/upload', {
+      const response = await fetchWithFallback('/api/sponsor/upload', '/.netlify/functions/sponsor-upload', {
         method: 'POST',
         body: form,
       });
