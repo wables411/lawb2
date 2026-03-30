@@ -63,6 +63,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sponsor/upload-url"
+  to = "/.netlify/functions/sponsor-upload-url"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/upload-complete"
+  to = "/.netlify/functions/sponsor-upload-complete"
+  status = 200
+
+[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404

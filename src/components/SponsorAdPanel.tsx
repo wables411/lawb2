@@ -22,6 +22,16 @@ async function fetchWithFallback(primaryUrl: string, fallbackUrl: string, init: 
   return fetch(fallbackUrl, init);
 }
 
+async function readApiResponse(response: Response): Promise<{ ok: boolean; payload: any }> {
+  const raw = await response.text();
+  if (!raw) return { ok: response.ok, payload: {} };
+  try {
+    return { ok: response.ok, payload: JSON.parse(raw) };
+  } catch {
+    return { ok: response.ok, payload: { error: raw } };
+  }
+}
+
 const SponsorAdPanel: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { address, isConnected } = useAccount();
@@ -98,7 +108,7 @@ const SponsorAdPanel: React.FC = () => {
       body: JSON.stringify({ sessionId, txHash: normalizedHash }),
     };
     const verifyResponse = await fetchWithFallback('/.netlify/functions/sponsor-verify-tx', '/api/sponsor/verify', verifyInit);
-    const verifyPayload = await verifyResponse.json();
+    const { payload: verifyPayload } = await readApiResponse(verifyResponse);
     if (!verifyResponse.ok) {
       if (verifyPayload?.existingSessionId) {
         const existingId = String(verifyPayload.existingSessionId);
@@ -108,7 +118,7 @@ const SponsorAdPanel: React.FC = () => {
           { method: 'GET' },
         );
         if (statusRes.ok) {
-          const payload = await statusRes.json();
+          const { payload } = await readApiResponse(statusRes);
           await hydrateFromSession(payload.session || {}, existingId);
           setStatus(`Recovered existing sponsor session ${existingId}. You can continue upload if payment is already confirmed.`);
         }
@@ -141,7 +151,7 @@ const SponsorAdPanel: React.FC = () => {
             { method: 'GET' },
           );
           if (statusRes.ok) {
-            const payload = await statusRes.json();
+            const { payload } = await readApiResponse(statusRes);
             await hydrateFromSession(payload.session || {}, savedSessionId);
             return;
           }
@@ -153,7 +163,7 @@ const SponsorAdPanel: React.FC = () => {
           { method: 'GET' },
         );
         if (!resumeRes.ok) return;
-        const resumePayload = await resumeRes.json();
+        const { payload: resumePayload } = await readApiResponse(resumeRes);
         if (resumePayload.found && resumePayload.sessionId) {
           await hydrateFromSession(resumePayload.session || {}, String(resumePayload.sessionId));
         }
@@ -187,7 +197,7 @@ const SponsorAdPanel: React.FC = () => {
         }),
       };
       const finalResponse = await fetchWithFallback('/.netlify/functions/sponsor-create-session', '/api/sponsor/session', requestInit);
-      const payload = await finalResponse.json();
+      const { payload } = await readApiResponse(finalResponse);
       if (!finalResponse.ok) {
         throw new Error(payload.error || 'Could not create session');
       }
@@ -248,20 +258,55 @@ const SponsorAdPanel: React.FC = () => {
 
     setBusy(true);
     setError('');
-    setStatus('Uploading commercial...');
+    setStatus('Preparing upload...');
     try {
-      const form = new FormData();
-      form.set('sessionId', sessionId);
-      form.set('sponsorName', trimmedSponsorName);
-      form.set('websiteUrl', websiteUrl.trim());
-      form.set('file', selectedFile);
-      const response = await fetchWithFallback('/.netlify/functions/sponsor-upload', '/api/sponsor/upload', {
+      const uploadInitResponse = await fetchWithFallback('/.netlify/functions/sponsor-upload-url', '/api/sponsor/upload-url', {
         method: 'POST',
-        body: form,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          sponsorName: trimmedSponsorName,
+          websiteUrl: websiteUrl.trim(),
+          filename: selectedFile.name,
+          mime: selectedFile.type || 'video/mp4',
+          bytes: selectedFile.size,
+        }),
       });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || 'Upload failed');
+      const { payload: uploadInitPayload } = await readApiResponse(uploadInitResponse);
+      if (!uploadInitResponse.ok) {
+        throw new Error(uploadInitPayload.error || 'Upload initialization failed');
+      }
+
+      setStatus('Uploading commercial bytes...');
+      const uploadPutResponse = await fetch(String(uploadInitPayload.uploadUrl || ''), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': String(selectedFile.type || 'video/mp4'),
+        },
+        body: selectedFile,
+      });
+      if (!uploadPutResponse.ok) {
+        const putText = await uploadPutResponse.text();
+        throw new Error(putText || `Storage upload failed with status ${uploadPutResponse.status}`);
+      }
+
+      setStatus('Finalizing upload...');
+      const completeResponse = await fetchWithFallback('/.netlify/functions/sponsor-upload-complete', '/api/sponsor/upload-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          sponsorName: trimmedSponsorName,
+          websiteUrl: websiteUrl.trim(),
+          filename: selectedFile.name,
+          mime: selectedFile.type || 'video/mp4',
+          bytes: selectedFile.size,
+          storagePath: uploadInitPayload.storagePath,
+        }),
+      });
+      const { payload } = await readApiResponse(completeResponse);
+      if (!completeResponse.ok) {
+        throw new Error(payload.error || 'Upload finalization failed');
       }
       setSessionStatus(payload.status || 'VERIFIED');
       setUploaded(true);
