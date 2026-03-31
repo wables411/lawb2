@@ -93,7 +93,7 @@ async function markBreakPlayed(sessionId) {
   const next = await markPlayed(ad, { deleteFile: true });
   await adRef.update(next);
   await db.ref(`clawb/ads/sessions/${sessionId}`).update({
-    status: 'PLAYED_ONCE',
+    status: next.consumed ? 'PLAYED_ONCE' : 'QUEUED',
     updated_at: new Date().toISOString(),
   });
   return { ok: true, ad: next };

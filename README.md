@@ -81,7 +81,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 
 - Chain: Base (`8453`)
 - Recipient wallet: `0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429`
-- One-time play: fixed `0.01 ETH`
+- One-time play: fixed `0.01 ETH` for `2` total airings across separate breaks
 - Rotation auction: `24h` auction, reserve `0.02 ETH`, highest bid wins rotation entry
 - Hard technical upload cap: `99MB` (`103,809,024` bytes)
 - Permissionless intake, no content moderation gate in this flow
@@ -127,10 +127,15 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 
 ### Deterministic playback behavior
 
-- Next break chooses the newest `first_play_pending` approved ad first.
-- After first play:
-  - `one_time` ads are marked consumed and local file is deleted safely.
-  - `rotation` ads remain queued for future random shuffle.
+- Every commercial break contains exactly `3` videos.
+- Break fill priority:
+  - newest paid ads with `first_play_pending`
+  - paid ads still in rotation/replay eligibility
+  - Lawb Inc fallback ads for any remaining slots
+- No duplicate video can appear twice within one break.
+- The exact same 3-video set is avoided on consecutive breaks unless all 3 selected videos are paid ads.
+- `one_time` ads require `2` successful airings across separate breaks before consume/delete.
+- `rotation` ads remain queued for future random shuffle.
 - Restart-safe: all sponsor/queue/playback state is persisted in Firebase.
 
 ### Environment variables
@@ -158,5 +163,7 @@ Required for Netlify functions and Clawb worker:
 - Try underpaid tx and confirm rejection as `TX_INVALID`.
 - Reuse same tx hash in a second session and confirm `DUPLICATE_TX`.
 - Upload `103,809,025` bytes and confirm hard reject as `TOO_LARGE`.
-- Queue two ads and confirm newest approved ad is selected first for next break.
-- Play one-time ad and confirm local file deletion + `PLAYED_ONCE`.
+- Queue paid ads and confirm newest approved `first_play_pending` ad is selected first in the next eligible break.
+- Confirm each break resolves to exactly `3` total videos and never repeats the same video within one break.
+- Confirm fallback ads fill open slots when paid queue has fewer than 3 items (or all 3 when paid queue is empty).
+- Play a one-time ad in one break, then confirm second airing happens on a later break before consume/delete.

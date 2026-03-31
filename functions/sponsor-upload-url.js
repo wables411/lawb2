@@ -14,6 +14,32 @@ const {
   upsertPlaybackAdMetadata,
 } = require('./sponsor-shared');
 
+let corsConfigured = false;
+
+async function ensureBucketCors(bucket) {
+  if (corsConfigured) return;
+  const origin = process.env.SPONSOR_UPLOAD_ORIGIN || 'https://lawb.xyz';
+  const maxAgeSeconds = Number(process.env.SPONSOR_UPLOAD_CORS_MAX_AGE || 3600);
+  const corsEntry = {
+    origin: [origin],
+    method: ['GET', 'HEAD', 'PUT', 'POST', 'OPTIONS'],
+    responseHeader: ['Content-Type', 'x-goog-resumable'],
+    maxAgeSeconds,
+  };
+
+  try {
+    const [metadata] = await bucket.getMetadata();
+    const existing = Array.isArray(metadata.cors) ? metadata.cors : [];
+    const hasMatch = existing.some((entry) => Array.isArray(entry.origin) && entry.origin.includes(origin));
+    if (!hasMatch) {
+      await bucket.setMetadata({ cors: [...existing, corsEntry] });
+    }
+    corsConfigured = true;
+  } catch (error) {
+    console.warn('[sponsor-upload-url] failed to ensure bucket CORS', error);
+  }
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return json(200, { ok: true });
@@ -49,7 +75,9 @@ exports.handler = async (event) => {
     if (bytes > MAX_FILE_BYTES) return json(413, { error: `File exceeds hard 99MB cap (${MAX_FILE_BYTES} bytes).`, code: 'TOO_LARGE' });
 
     const storagePath = `sponsor-ads/${sessionId}/${Date.now()}-${filename}`;
-    const file = getBucket().file(storagePath);
+    const bucket = getBucket();
+    await ensureBucketCors(bucket);
+    const file = bucket.file(storagePath);
     const [uploadUrl] = await file.getSignedUrl({
       version: 'v4',
       action: 'write',

@@ -372,6 +372,8 @@ function buildPlaybackAdRecord(session, uploadInfo, approvedAt, isOneTime) {
     storage_path: uploadInfo.storagePath,
     download_url: uploadInfo.downloadUrl,
     play_once: isOneTime,
+    required_total_plays: isOneTime ? 2 : null,
+    plays_completed: 0,
     consumed: false,
     local_path: null,
     created_at: nowIso(),

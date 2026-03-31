@@ -302,7 +302,7 @@ const SponsorAdPanel: React.FC = () => {
       setSessionStatus(payload.status || 'VERIFIED');
       setUploaded(true);
       if (payload.status === 'QUEUED') {
-        setStatus('Upload approved and queued for Clawb TV. Newest ad will run first at next break.');
+        setStatus('Upload approved and queued for Clawb TV. Paid ads are prioritized in next eligible 3-video breaks.');
       } else {
         setStatus('Upload approved. Rotation entry is waiting for auction close.');
       }
@@ -328,9 +328,9 @@ const SponsorAdPanel: React.FC = () => {
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>Products</strong></p>
         <p style={{ margin: '0 0 4px 0' }}><strong>One-Time Play - 0.01 ETH (Base)</strong></p>
-        <p style={{ margin: '0 0 6px 0' }}>Your ad is queued for the next eligible break and plays once.</p>
+        <p style={{ margin: '0 0 6px 0' }}>Your ad is prioritized for next eligible breaks and airs 2 total times across separate breaks.</p>
         <p style={{ margin: '0 0 4px 0' }}><strong>Rotation Auction - 24h (reserve 0.02 ETH)</strong></p>
-        <p style={{ margin: 0 }}>Top bid at auction close gets added to recurring rotation.</p>
+        <p style={{ margin: 0 }}>Top bid at auction close gets added to recurring rotation and prioritized in upcoming breaks.</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>Flow</strong></p>
@@ -338,6 +338,13 @@ const SponsorAdPanel: React.FC = () => {
         <p style={{ margin: '0 0 4px 0' }}>Pay and verify onchain (Base)</p>
         <p style={{ margin: '0 0 4px 0' }}>Upload commercial (unlocks after PAID)</p>
         <p style={{ margin: 0 }}>Clawb ingests and schedules playback automatically</p>
+      </div>
+      <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Break logic (live)</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>Each commercial break is always 3 videos total.</p>
+        <p style={{ margin: '0 0 4px 0' }}>Priority: first-play pending paid ads -&gt; paid rotation/replay ads -&gt; Lawb Inc fallback videos.</p>
+        <p style={{ margin: '0 0 4px 0' }}>No duplicate video is played within the same break.</p>
+        <p style={{ margin: 0 }}>If paid queue is empty, all 3 slots are Lawb Inc fallback videos.</p>
       </div>
 
       {!isConnected && (
@@ -378,7 +385,7 @@ const SponsorAdPanel: React.FC = () => {
         <label htmlFor="sponsor-tier">
           Select Product
           <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
-            Choose one-time play or rotation auction.
+            Choose one-time (2 total airings across breaks) or rotation auction.
           </p>
         </label>
         <select
@@ -388,7 +395,7 @@ const SponsorAdPanel: React.FC = () => {
           style={{ width: '100%', maxWidth: isMobile ? '100%' : 280, minHeight: isMobile ? 40 : 30 }}
           disabled={busy}
         >
-          <option value="one_time">One-time play (0.01 ETH)</option>
+          <option value="one_time">One-time: 2 airings across breaks (0.01 ETH)</option>
           <option value="rotation">Rotation auction (reserve 0.02 ETH)</option>
         </select>
         {tier === 'rotation' && (
