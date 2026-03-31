@@ -413,18 +413,47 @@ function App() {
           <div
             style={{
               position: 'absolute',
-              top: '-10px',
+              top: '10px',
               left: '50%',
               transform: claimNotePressed
-                ? 'translateX(-50%) rotate(-7deg) translateY(2px)'
-                : 'translateX(-50%) rotate(-10deg)',
-              width: '74px',
-              height: '16px',
-              background: 'rgba(224, 218, 188, 0.92)',
-              border: '1px solid rgba(120, 110, 85, 0.6)',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.25)',
+                ? 'translateX(-50%) rotate(-9deg) translateY(2px)'
+                : 'translateX(-50%) rotate(-11deg)',
+              width: '92px',
+              height: '20px',
+              background:
+                'linear-gradient(180deg, rgba(246, 236, 196, 0.66) 0%, rgba(230, 216, 173, 0.58) 100%), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0px, rgba(255, 255, 255, 0.12) 1px, rgba(0, 0, 0, 0.02) 1px, rgba(0, 0, 0, 0.02) 4px)',
+              border: '1px solid rgba(140, 124, 89, 0.58)',
+              borderRadius: '2px',
+              opacity: 0.96,
+              mixBlendMode: 'multiply',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.26)',
               pointerEvents: 'none',
               transition: 'transform 150ms ease',
+              zIndex: 2,
+            }}
+          />
+        )}
+        {!isMobile && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '20px',
+              left: '50%',
+              transform: claimNotePressed
+                ? 'translateX(-50%) rotate(6deg) translateY(2px)'
+                : 'translateX(-50%) rotate(4deg)',
+              width: '58px',
+              height: '14px',
+              background:
+                'linear-gradient(180deg, rgba(244, 232, 188, 0.54) 0%, rgba(226, 208, 164, 0.48) 100%)',
+              border: '1px solid rgba(136, 120, 86, 0.45)',
+              borderRadius: '2px',
+              opacity: 0.9,
+              mixBlendMode: 'multiply',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+              pointerEvents: 'none',
+              transition: 'transform 150ms ease',
+              zIndex: 2,
             }}
           />
         )}
@@ -793,16 +822,19 @@ function App() {
             <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
 
             <div style={{ width: '100%', height: isMobile ? '300px' : '400px', marginTop: isMobile ? '8px' : '6px' }}>
-              <iframe
-                height="100%"
-                width="100%"
-                id="geckoterminal-embed"
-                title="GeckoTerminal Embed"
-                src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m"
-                frameBorder="0"
-                allow="clipboard-write"
-                allowFullScreen
-              />
+              {activePopup === 'lawb-popup' ? (
+                <iframe
+                  height="100%"
+                  width="100%"
+                  id="geckoterminal-embed"
+                  title="GeckoTerminal Embed"
+                  src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m"
+                  frameBorder="0"
+                  allow="clipboard-write"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              ) : null}
             </div>
           </>
         )}

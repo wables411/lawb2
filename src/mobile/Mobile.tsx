@@ -463,6 +463,43 @@ const Mobile = () => {
           WebkitTapHighlightColor: 'transparent',
         }}
       >
+        <div
+          style={{
+            position: 'absolute',
+            top: '6px',
+            left: '50%',
+            transform: 'translateX(-50%) rotate(-10deg)',
+            width: '54px',
+            height: '14px',
+            background:
+              'linear-gradient(180deg, rgba(246, 236, 196, 0.66) 0%, rgba(230, 216, 173, 0.58) 100%), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0px, rgba(255, 255, 255, 0.12) 1px, rgba(0, 0, 0, 0.02) 1px, rgba(0, 0, 0, 0.02) 4px)',
+            border: '1px solid rgba(140, 124, 89, 0.58)',
+            borderRadius: '2px',
+            opacity: 0.95,
+            mixBlendMode: 'multiply',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.24)',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '14px',
+            left: '50%',
+            transform: 'translateX(-50%) rotate(6deg)',
+            width: '36px',
+            height: '10px',
+            background: 'linear-gradient(180deg, rgba(244, 232, 188, 0.54) 0%, rgba(226, 208, 164, 0.48) 100%)',
+            border: '1px solid rgba(136, 120, 86, 0.45)',
+            borderRadius: '2px',
+            opacity: 0.88,
+            mixBlendMode: 'multiply',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        />
         <img
           src="/assets/restitution.png"
           alt="Claim CLAWB"
