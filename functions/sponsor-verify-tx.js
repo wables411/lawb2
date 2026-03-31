@@ -74,7 +74,25 @@ exports.handler = async (event) => {
       tier: String(session.tier || ''),
       submissionIdHash: session.submission_id_hash || '',
     });
-    if (!verification.ok) {
+    let resolvedVerification = verification;
+    let inferredTier = null;
+    if (!verification.ok && verification.reason === 'HASH_MISMATCH') {
+      const currentTier = String(session.tier || '');
+      const alternateTier = currentTier === 'one_time' ? 'rotation' : currentTier === 'rotation' ? 'one_time' : null;
+      if (alternateTier) {
+        const alternateCheck = await verifyAdSpacePayment({
+          txHash,
+          expectedFrom: normalizeAddress(session.wallet),
+          tier: alternateTier,
+          submissionIdHash: session.submission_id_hash || '',
+        });
+        if (alternateCheck.ok) {
+          resolvedVerification = alternateCheck;
+          inferredTier = alternateTier;
+        }
+      }
+    }
+    if (!resolvedVerification.ok) {
       await saveSession(sessionId, { status: verification.reason });
       return json(400, {
         error: verification.detail || 'Transaction failed verification.',
@@ -86,14 +104,18 @@ exports.handler = async (event) => {
     await reserveTxHash(txHash, sessionId);
     await pushStatusTransition(sessionId, 'PAID', {
       tx_hash: txHash,
-      confirmations: verification.confirmations,
+      confirmations: resolvedVerification.confirmations,
     });
 
     const patch = {
       tx_hash: txHash,
       tx_confirmed_at: new Date().toISOString(),
-      paid_wei: verification.valueWei,
+      paid_wei: resolvedVerification.valueWei,
     };
+    if (inferredTier) {
+      patch.tier = inferredTier;
+      patch.required_wei = String(resolvedVerification.valueWei);
+    }
 
     await saveSession(sessionId, patch);
     return json(200, {

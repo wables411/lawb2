@@ -141,6 +141,7 @@ const SponsorAdPanel: React.FC = () => {
   const { sendTransactionAsync } = useSendTransaction();
 
   const [tier, setTier] = useState<Tier>('one_time');
+  const [sessionTier, setSessionTier] = useState<Tier | null>(null);
   const [rotationBidEth, setRotationBidEth] = useState('0.02');
   const [sponsorName, setSponsorName] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -160,15 +161,16 @@ const SponsorAdPanel: React.FC = () => {
   const [auctionNowMs, setAuctionNowMs] = useState(Date.now());
   const [bidError, setBidError] = useState('');
   const [claimingRefund, setClaimingRefund] = useState(false);
+  const activeTier: Tier = sessionTier || tier;
 
   const auctionMsRemaining = Math.max(0, Number(auction.ends_at_ms || 0) - auctionNowMs);
   const nextValidBidWei = toWeiFromRaw(String(auction.next_valid_bid_wei || defaultAuctionSnapshot.next_valid_bid_wei));
   const nextValidBidEth = auction.next_valid_bid_eth || formatEthFromWei(nextValidBidWei.toString());
   const rotationBidWei = toWei(rotationBidEth);
-  const rotationBidTooLow = tier === 'rotation' && rotationBidWei < nextValidBidWei;
+  const rotationBidTooLow = activeTier === 'rotation' && rotationBidWei < nextValidBidWei;
   const canBidAuction = auction.lifecycle === 'active';
 
-  const canCreateSession = isConnected && Boolean(address) && !busy && !(tier === 'rotation' && (rotationBidTooLow || !canBidAuction));
+  const canCreateSession = isConnected && Boolean(address) && !busy && !sessionId && !(tier === 'rotation' && (rotationBidTooLow || !canBidAuction));
   const uploadEnabled = sessionStatus === 'PAID' && Boolean(sessionId) && !busy;
 
   async function loadAuctionStatus() {
@@ -250,6 +252,9 @@ const SponsorAdPanel: React.FC = () => {
 
   async function hydrateFromSession(sessionPayload: any, id: string) {
     setSessionId(id);
+    const restoredTier = String(sessionPayload.tier || 'one_time') as Tier;
+    setSessionTier(restoredTier);
+    setTier(restoredTier);
     setSubmissionIdHash(String(sessionPayload.submission_id_hash || buildSubmissionHash(id)));
     setSessionStatus(String(sessionPayload.status || 'PENDING_PAYMENT'));
     setSponsorName(String(sessionPayload.sponsor_name || ''));
@@ -411,6 +416,9 @@ const SponsorAdPanel: React.FC = () => {
         throw new Error(payload.error || 'Could not create session');
       }
       setSessionId(payload.sessionId);
+      const createdTier = String(payload.tier || tier) as Tier;
+      setSessionTier(createdTier);
+      setTier(createdTier);
       setSubmissionIdHash(String(payload.submissionIdHash || buildSubmissionHash(String(payload.sessionId || ''))));
       setSessionStatus(payload.status);
       setMinEth(payload.payment.minEth);
@@ -439,7 +447,7 @@ const SponsorAdPanel: React.FC = () => {
     setError('');
     try {
       await ensureBase();
-      if (tier === 'rotation') {
+      if (activeTier === 'rotation') {
         if (auction.lifecycle !== 'active') {
           throw new Error('Auction is not live. Wait for the next round.');
         }
@@ -450,8 +458,8 @@ const SponsorAdPanel: React.FC = () => {
 
       const submissionHash = (submissionIdHash || buildSubmissionHash(sessionId)) as `0x${string}`;
       const mediaRef = `session:${sessionId}`;
-      const functionName = tier === 'one_time' ? 'buyOneTimeAd' : 'placeBid';
-      const valueEth = tier === 'one_time' ? ONE_TIME_EXACT_ETH : rotationBidEth;
+      const functionName = activeTier === 'one_time' ? 'buyOneTimeAd' : 'placeBid';
+      const valueEth = activeTier === 'one_time' ? ONE_TIME_EXACT_ETH : rotationBidEth;
       const calldata = encodeFunctionData({
         abi: CLAWB_ADSPACE_ABI,
         functionName,
@@ -459,7 +467,7 @@ const SponsorAdPanel: React.FC = () => {
       });
 
       setStatus(
-        tier === 'one_time'
+        activeTier === 'one_time'
           ? `Sending exact ${ONE_TIME_EXACT_ETH} ETH onchain payment...`
           : `Sending ${valueEth} ETH onchain bid...`,
       );
@@ -730,12 +738,12 @@ const SponsorAdPanel: React.FC = () => {
           value={tier}
           onChange={(e) => setTier(e.target.value as Tier)}
           style={{ width: '100%', maxWidth: isMobile ? '100%' : 280, minHeight: isMobile ? 40 : 30 }}
-          disabled={busy}
+          disabled={busy || Boolean(sessionId)}
         >
           <option value="one_time">One-time: exact 0.01 ETH, airs twice across breaks</option>
           <option value="rotation">Rotation auction: 24h, reserve 0.02 ETH</option>
         </select>
-        {tier === 'rotation' && (
+        {activeTier === 'rotation' && (
           <label htmlFor="rotation-bid">
             Bid Amount (ETH)
             <input
@@ -762,6 +770,25 @@ const SponsorAdPanel: React.FC = () => {
         </button>
         <button type="button" onClick={() => void payAndVerify()} disabled={!sessionId || busy} style={{ minHeight: isMobile ? 44 : undefined }}>
           Pay & Verify Onchain
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSessionId('');
+            setSessionTier(null);
+            setSessionStatus('PENDING_PAYMENT');
+            setTxHash('');
+            setTxHashInput('');
+            setMinEth(ONE_TIME_EXACT_ETH);
+            setMinWei('');
+            setSelectedFile(null);
+            setStatus('Session cleared. Create a new session for a different product.');
+            setError('');
+          }}
+          disabled={busy || !sessionId}
+          style={{ minHeight: isMobile ? 44 : undefined }}
+        >
+          Start New Session
         </button>
       </div>
 

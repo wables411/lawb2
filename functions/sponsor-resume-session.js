@@ -22,12 +22,26 @@ exports.handler = async (event) => {
       return json(400, { error: 'wallet is required.' });
     }
 
-    const snap = await getDb().ref(adsPath('sessions')).orderByChild('wallet').equalTo(wallet).get();
-    if (!snap.exists()) {
+    let sessionsById = null;
+    try {
+      const indexedSnap = await getDb().ref(adsPath('sessions')).orderByChild('wallet').equalTo(wallet).get();
+      sessionsById = indexedSnap.exists() ? indexedSnap.val() : null;
+    } catch (queryError) {
+      // Fallback scan avoids hard failure when query/index state is inconsistent.
+      const allSnap = await getDb().ref(adsPath('sessions')).get();
+      if (allSnap.exists()) {
+        const allSessions = allSnap.val() || {};
+        sessionsById = Object.fromEntries(
+          Object.entries(allSessions).filter(([, value]) => String(value?.wallet || '').toLowerCase() === wallet),
+        );
+      }
+    }
+
+    if (!sessionsById || !Object.keys(sessionsById).length) {
       return json(200, { ok: true, found: false });
     }
 
-    const picked = pickLatestResumableSession(snap.val());
+    const picked = pickLatestResumableSession(sessionsById);
     if (!picked) {
       return json(200, { ok: true, found: false });
     }
