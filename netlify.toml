@@ -73,6 +73,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sponsor/auction-status"
+  to = "/.netlify/functions/sponsor-auction-status"
+  status = 200
+
+[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404

@@ -4,6 +4,7 @@ const {
   generateSessionId,
   getClientIp,
   getTierConfig,
+  getRotationAuctionSnapshot,
   isRateLimited,
   isWallet,
   json,
@@ -48,13 +49,15 @@ exports.handler = async (event) => {
     }
 
     let requiredWei = '0';
+    let rotationAuction = null;
     if (tier === 'one_time') {
       requiredWei = TIERS.one_time.fixedWei;
     } else {
+      rotationAuction = await getRotationAuctionSnapshot({ ensureActive: true });
+      const floorWei = BigInt(String(rotationAuction.next_valid_bid_wei || TIERS.rotation.reserveWei));
       const bidEthRaw = body.bidEth;
       const parsedBid = bidEthRaw ? ethers.parseEther(String(bidEthRaw)) : BigInt(0);
-      const reserve = BigInt(TIERS.rotation.reserveWei);
-      requiredWei = (parsedBid > reserve ? parsedBid : reserve).toString();
+      requiredWei = (parsedBid > floorWei ? parsedBid : floorWei).toString();
     }
 
     const now = new Date().toISOString();
@@ -70,7 +73,7 @@ exports.handler = async (event) => {
       tx_hash: null,
       tx_confirmed_at: null,
       upload: null,
-      auction_id: null,
+      auction_id: tier === 'rotation' ? String(rotationAuction?.auctionId || '') || null : null,
       created_at: now,
       updated_at: now,
     };
@@ -93,6 +96,7 @@ exports.handler = async (event) => {
         minWei: requiredWei,
         minEth: ethers.formatEther(requiredWei),
       },
+      auction: rotationAuction || undefined,
     });
   } catch (error) {
     console.error('[sponsor-create-session] error', error);

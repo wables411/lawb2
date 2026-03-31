@@ -23,6 +23,7 @@ const TIERS = {
     playOnce: false,
   },
 };
+const ROTATION_MIN_INCREMENT_WEI = ethers.parseEther('0.001').toString();
 
 const ALLOWED_VIDEO_MIME = new Set([
   'video/mp4',
@@ -307,33 +308,181 @@ async function getOrCreateRotationAuction() {
   return { auctionId, auction };
 }
 
-async function recordRotationBid({ sessionId, wallet, paidWei }) {
+function normalizeWei(weiValue) {
+  try {
+    return BigInt(String(weiValue || '0'));
+  } catch {
+    return BigInt(0);
+  }
+}
+
+function computeRotationBidFloorWei(auction) {
+  const reserveWei = normalizeWei(auction?.reserve_wei || TIERS.rotation.reserveWei);
+  const highestBidWei = normalizeWei(auction?.highest_bid_wei || '0');
+  const base = highestBidWei > reserveWei ? highestBidWei : reserveWei;
+  return (base + normalizeWei(ROTATION_MIN_INCREMENT_WEI)).toString();
+}
+
+function getAuctionLifecycleStatus(auction, nowMs = Date.now()) {
+  if (!auction) return 'upcoming';
+  const startsAt = Number(auction.starts_at_ms || 0);
+  const endsAt = Number(auction.ends_at_ms || 0);
+  const declaredStatus = String(auction.status || '').toLowerCase();
+  if (declaredStatus === 'closed' || declaredStatus === 'closed_no_winner') return 'ended';
+  if (endsAt > 0 && nowMs >= endsAt) return 'ended';
+  if (startsAt > nowMs) return 'upcoming';
+  return 'active';
+}
+
+async function readLatestRotationAuction() {
   const db = getDb();
-  const { auctionId, auction } = await getOrCreateRotationAuction();
-  const currentHighest = BigInt(auction.highest_bid_wei || '0');
-  const nextHighest = BigInt(paidWei) > currentHighest ? String(paidWei) : String(currentHighest);
-  const isHighest = BigInt(paidWei) > currentHighest;
-
-  await db.ref(`clawb/ads/rotation_auctions/${auctionId}/bids/${sessionId}`).set({
-    session_id: sessionId,
-    wallet,
-    bid_wei: String(paidWei),
-    created_at: nowIso(),
-  });
-
-  if (isHighest) {
-    await db.ref(`clawb/ads/rotation_auctions/${auctionId}`).update({
-      highest_bid_wei: String(nextHighest),
-      highest_session_id: sessionId,
-      updated_at: nowIso(),
-    });
+  const activeIdSnap = await db.ref('clawb/ads/rotation_auctions_meta/active_auction_id').get();
+  if (activeIdSnap.exists()) {
+    const activeId = String(activeIdSnap.val() || '');
+    if (activeId) {
+      const auctionSnap = await db.ref(`clawb/ads/rotation_auctions/${activeId}`).get();
+      if (auctionSnap.exists()) {
+        return { auctionId: activeId, auction: auctionSnap.val() };
+      }
+    }
   }
 
+  const latestSnap = await db.ref('clawb/ads/rotation_auctions').orderByChild('ends_at_ms').limitToLast(1).get();
+  if (!latestSnap.exists()) return { auctionId: null, auction: null };
+  const value = latestSnap.val() || {};
+  const entries = Object.entries(value);
+  if (!entries.length) return { auctionId: null, auction: null };
+  const [auctionId, auction] = entries[0];
+  return { auctionId: String(auctionId), auction };
+}
+
+async function getRotationAuctionSnapshot({ ensureActive = false } = {}) {
+  let { auctionId, auction } = await readLatestRotationAuction();
+  const nowMs = Date.now();
+  const lifecycle = getAuctionLifecycleStatus(auction, nowMs);
+
+  if (ensureActive && (!auction || lifecycle === 'ended')) {
+    const created = await getOrCreateRotationAuction();
+    auctionId = created.auctionId;
+    auction = created.auction;
+  }
+
+  if (!auction || !auctionId) {
+    return {
+      found: false,
+      auctionId: null,
+      lifecycle: 'upcoming',
+      starts_at_ms: null,
+      ends_at_ms: null,
+      reserve_wei: TIERS.rotation.reserveWei,
+      highest_bid_wei: '0',
+      next_valid_bid_wei: computeRotationBidFloorWei({ reserve_wei: TIERS.rotation.reserveWei, highest_bid_wei: '0' }),
+      highest_session_id: null,
+      highest_wallet: null,
+      winner_session_id: null,
+      winner_wallet: null,
+      ms_remaining: null,
+    };
+  }
+
+  const bids = auction.bids || {};
+  const highestSessionId = String(auction.highest_session_id || '');
+  const winnerSessionId = String(auction.winner_session_id || '');
+  const highestWallet = highestSessionId && bids[highestSessionId] ? String(bids[highestSessionId].wallet || '') : null;
+  const winnerWallet = winnerSessionId && bids[winnerSessionId] ? String(bids[winnerSessionId].wallet || '') : null;
+  const auctionLifecycle = getAuctionLifecycleStatus(auction, nowMs);
+
   return {
+    found: true,
     auctionId,
+    lifecycle: auctionLifecycle,
+    status: auction.status || 'active',
+    starts_at_ms: Number(auction.starts_at_ms || 0),
+    ends_at_ms: Number(auction.ends_at_ms || 0),
+    reserve_wei: String(auction.reserve_wei || TIERS.rotation.reserveWei),
+    highest_bid_wei: String(auction.highest_bid_wei || '0'),
+    next_valid_bid_wei: computeRotationBidFloorWei(auction),
+    highest_session_id: highestSessionId || null,
+    highest_wallet: highestWallet,
+    winner_session_id: winnerSessionId || null,
+    winner_wallet: winnerWallet,
+    ms_remaining: Math.max(0, Number(auction.ends_at_ms || 0) - nowMs),
+  };
+}
+
+async function recordRotationBid({ sessionId, wallet, paidWei, auctionId }) {
+  const db = getDb();
+  let targetAuctionId = String(auctionId || '');
+  if (!targetAuctionId) {
+    const created = await getOrCreateRotationAuction();
+    targetAuctionId = created.auctionId;
+  }
+
+  const auctionRef = db.ref(`clawb/ads/rotation_auctions/${targetAuctionId}`);
+  let rejection = null;
+  let computedFloorWei = null;
+  const bidWei = normalizeWei(paidWei);
+  const txTime = nowIso();
+  const nowMs = Date.now();
+
+  const txResult = await auctionRef.transaction((auction) => {
+    if (!auction) {
+      rejection = { code: 'AUCTION_NOT_FOUND', error: 'Active rotation auction not found.' };
+      return;
+    }
+    const lifecycle = getAuctionLifecycleStatus(auction, nowMs);
+    if (lifecycle !== 'active') {
+      rejection = { code: 'AUCTION_ENDED', error: 'Auction has ended. New bids are closed.' };
+      return;
+    }
+
+    computedFloorWei = computeRotationBidFloorWei(auction);
+    const floor = normalizeWei(computedFloorWei);
+    if (bidWei < floor) {
+      rejection = {
+        code: 'BID_TOO_LOW',
+        error: `Bid too low. Next valid bid is at least ${ethers.formatEther(floor)} ETH.`,
+        floorWei: floor.toString(),
+      };
+      return;
+    }
+
+    const currentHighest = normalizeWei(auction.highest_bid_wei || '0');
+    if (!auction.bids || typeof auction.bids !== 'object') {
+      auction.bids = {};
+    }
+    auction.bids[sessionId] = {
+      session_id: sessionId,
+      wallet,
+      bid_wei: bidWei.toString(),
+      created_at: txTime,
+    };
+
+    if (bidWei > currentHighest) {
+      auction.highest_bid_wei = bidWei.toString();
+      auction.highest_session_id = sessionId;
+    }
+    auction.updated_at = txTime;
+    return auction;
+  });
+
+  if (!txResult.committed || !txResult.snapshot.exists()) {
+    const err = new Error(rejection?.error || 'Could not record rotation bid.');
+    err.code = rejection?.code || 'BID_REJECTED';
+    err.floorWei = rejection?.floorWei || computedFloorWei || null;
+    throw err;
+  }
+
+  const auction = txResult.snapshot.val();
+  const highestSessionId = String(auction.highest_session_id || '');
+  const isHighest = highestSessionId === sessionId;
+
+  return {
+    auctionId: targetAuctionId,
     endsAtMs: Number(auction.ends_at_ms),
-    highestBidWei: isHighest ? String(paidWei) : String(auction.highest_bid_wei || '0'),
-    highestSessionId: isHighest ? sessionId : auction.highest_session_id || null,
+    highestBidWei: String(auction.highest_bid_wei || '0'),
+    highestSessionId: highestSessionId || null,
+    nextValidBidWei: computeRotationBidFloorWei(auction),
     isHighest,
   };
 }
@@ -441,6 +590,10 @@ module.exports = {
   queueApprovedAd,
   buildPlaybackAdRecord,
   recordRotationBid,
+  getRotationAuctionSnapshot,
+  computeRotationBidFloorWei,
+  getAuctionLifecycleStatus,
+  ROTATION_MIN_INCREMENT_WEI,
   reserveTxHash,
   sanitizeFilename,
   saveSession,

@@ -83,6 +83,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - Recipient wallet: `0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429`
 - One-time play: fixed `0.01 ETH` for `2` total airings across separate breaks
 - Rotation auction: `24h` auction, reserve `0.02 ETH`, highest bid wins rotation entry
+- Rotation increment: minimum `+0.001 ETH` over `max(highest_bid_wei, reserve_wei)`
 - Hard technical upload cap: `99MB` (`103,809,024` bytes)
 - Permissionless intake, no content moderation gate in this flow
 
@@ -105,6 +106,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - `POST /api/sponsor/upload` -> file safety checks + store upload + queue ad
 - `POST /api/sponsor/notify` -> retry-safe notify/thank-you trigger
 - `POST /api/sponsor/finalize-auctions` -> closes 24h rotation auction and queues winner
+- `GET /api/sponsor/auction-status` -> active/latest auction state for UI cards and countdowns
 - `GET /api/sponsor/session-status?sessionId=...` -> inspect session state
 
 ### State machine
@@ -123,6 +125,8 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - `clawb/ads/tx_index/{txHashLower}` -> single-use tx idempotency map
 - `clawb/ads/playback_ads/{sessionId}` -> queue + playback metadata
 - `clawb/ads/rotation_auctions/*` -> active 24h auction and bids
+  - stable fields: `status`, `starts_at_ms`, `ends_at_ms`, `reserve_wei`, `highest_bid_wei`
+- `clawb/ads/refund_queue/{auctionId}_{sessionId}` -> pending loser refunds for OpenClaw payout worker
 - `clawb/ads/intake_notifications/{sessionId}` -> Clawb ingest queue
 
 ### Deterministic playback behavior
@@ -136,6 +140,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - The exact same 3-video set is avoided on consecutive breaks unless all 3 selected videos are paid ads.
 - `one_time` ads require `2` successful airings across separate breaks before consume/delete.
 - `rotation` ads remain queued for future random shuffle.
+- Rotation auction close has exactly one winner (`winner_session_id`); losing bids are enqueued to `refund_queue` for automatic refund execution by OpenClaw.
 - Restart-safe: all sponsor/queue/playback state is persisted in Firebase.
 
 ### Environment variables

@@ -2,9 +2,37 @@ const {
   getDb,
   getSession,
   json,
+  nowIso,
   pushStatusTransition,
   queueApprovedAd,
 } = require('./sponsor-shared');
+
+function buildLosingRefundEntries(auctionId, auction, winnerSessionId) {
+  const bids = auction?.bids && typeof auction.bids === 'object' ? auction.bids : {};
+  const entries = [];
+  for (const [sessionId, bid] of Object.entries(bids)) {
+    if (!sessionId || sessionId === winnerSessionId) continue;
+    const wallet = String(bid?.wallet || '');
+    const bidWei = String(bid?.bid_wei || '0');
+    if (!wallet || bidWei === '0') continue;
+    const refundId = `${auctionId}_${sessionId}`;
+    entries.push({
+      refundId,
+      payload: {
+        refund_id: refundId,
+        auction_id: auctionId,
+        session_id: sessionId,
+        wallet,
+        amount_wei: bidWei,
+        reason: 'rotation_auction_lost',
+        status: 'pending',
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      },
+    });
+  }
+  return entries;
+}
 
 async function finalizeActiveAuction() {
   const db = getDb();
@@ -22,9 +50,26 @@ async function finalizeActiveAuction() {
 
   const winnerSessionId = String(auction.highest_session_id || '');
   if (!winnerSessionId) {
-    await auctionRef.update({ status: 'closed_no_winner', updated_at: new Date().toISOString() });
+    await auctionRef.update({
+      status: 'closed_no_winner',
+      finalized_at: nowIso(),
+      updated_at: nowIso(),
+    });
     await activeRef.remove();
     return { finalized: true, reason: 'closed_no_winner', auctionId };
+  }
+
+  // Losing bids are queued for on-chain refunds by OpenClaw runtime.
+  const refundEntries = buildLosingRefundEntries(auctionId, auction, winnerSessionId);
+  const refundUpdates = {};
+  for (const entry of refundEntries) {
+    refundUpdates[`clawb/ads/refund_queue/${entry.refundId}`] = entry.payload;
+    refundUpdates[`clawb/ads/sessions/${entry.payload.session_id}/refund_status`] = 'pending';
+    refundUpdates[`clawb/ads/sessions/${entry.payload.session_id}/refund_amount_wei`] = entry.payload.amount_wei;
+    refundUpdates[`clawb/ads/sessions/${entry.payload.session_id}/updated_at`] = nowIso();
+  }
+  if (Object.keys(refundUpdates).length) {
+    await db.ref().update(refundUpdates);
   }
 
   const winnerSession = await getSession(winnerSessionId);
@@ -43,13 +88,25 @@ async function finalizeActiveAuction() {
     await pushStatusTransition(winnerSessionId, 'QUEUED', { source: 'auction_finalize', auction_id: auctionId });
   }
 
+  const winnerBidWei = String(auction.highest_bid_wei || '0');
+  const winnerWallet = String(auction?.bids?.[winnerSessionId]?.wallet || '');
+  await db.ref(`clawb/ads/sessions/${winnerSessionId}`).update({
+    auction_result: 'winner',
+    auction_winning_bid_wei: winnerBidWei,
+    updated_at: nowIso(),
+  });
+
   await auctionRef.update({
     status: 'closed',
     winner_session_id: winnerSessionId,
-    updated_at: new Date().toISOString(),
+    winner_wallet: winnerWallet || null,
+    final_winning_bid_wei: winnerBidWei,
+    refunds_enqueued: refundEntries.length,
+    finalized_at: nowIso(),
+    updated_at: nowIso(),
   });
   await activeRef.remove();
-  return { finalized: true, auctionId, winnerSessionId };
+  return { finalized: true, auctionId, winnerSessionId, refundsEnqueued: refundEntries.length };
 }
 
 exports.handler = async (event) => {
@@ -69,5 +126,6 @@ exports.handler = async (event) => {
 };
 
 module.exports = {
+  buildLosingRefundEntries,
   finalizeActiveAuction,
 };

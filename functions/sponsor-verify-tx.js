@@ -96,11 +96,22 @@ exports.handler = async (event) => {
     };
 
     if (session.tier === 'rotation') {
-      const auction = await recordRotationBid({
-        sessionId,
-        wallet: session.wallet,
-        paidWei: verification.valueWei,
-      });
+      let auction;
+      try {
+        auction = await recordRotationBid({
+          sessionId,
+          wallet: session.wallet,
+          paidWei: verification.valueWei,
+          auctionId: session.auction_id,
+        });
+      } catch (bidError) {
+        const code = String(bidError?.code || 'BID_REJECTED');
+        return json(400, {
+          error: bidError?.message || 'Rotation bid rejected.',
+          code,
+          nextValidBidWei: bidError?.floorWei || null,
+        });
+      }
       patch.auction_id = auction.auctionId;
       patch.auction_bid_wei = verification.valueWei;
       patch.auction_leading = auction.isHighest;

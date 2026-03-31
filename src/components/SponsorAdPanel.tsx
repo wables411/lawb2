@@ -1,16 +1,54 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { formatEther, parseEther } from 'viem';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
 type Tier = 'one_time' | 'rotation';
+type AuctionLifecycle = 'upcoming' | 'active' | 'ended';
+type AuctionSnapshot = {
+  found: boolean;
+  auctionId: string | null;
+  lifecycle: AuctionLifecycle;
+  status?: string;
+  starts_at_ms: number | null;
+  ends_at_ms: number | null;
+  reserve_wei: string;
+  highest_bid_wei: string;
+  next_valid_bid_wei: string;
+  highest_session_id?: string | null;
+  highest_wallet?: string | null;
+  winner_session_id?: string | null;
+  winner_wallet?: string | null;
+  reserve_eth?: string | null;
+  highest_bid_eth?: string | null;
+  next_valid_bid_eth?: string | null;
+};
 
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 const HARD_MAX_BYTES = 103809024;
 
 const SESSION_STORAGE_KEY = 'clawb_sponsor_session';
 const TX_STORAGE_KEY = 'clawb_sponsor_tx_hash';
+const BID_INCREMENT_WEI = BigInt('1000000000000000');
+
+const defaultAuctionSnapshot: AuctionSnapshot = {
+  found: false,
+  auctionId: null,
+  lifecycle: 'upcoming',
+  starts_at_ms: null,
+  ends_at_ms: null,
+  reserve_wei: '20000000000000000',
+  highest_bid_wei: '0',
+  next_valid_bid_wei: '21000000000000000',
+  highest_session_id: null,
+  highest_wallet: null,
+  winner_session_id: null,
+  winner_wallet: null,
+  reserve_eth: '0.02',
+  highest_bid_eth: '0',
+  next_valid_bid_eth: '0.021',
+};
 
 async function fetchWithFallback(primaryUrl: string, fallbackUrl: string, init: RequestInit): Promise<Response> {
   const primary = await fetch(primaryUrl, init);
@@ -26,6 +64,44 @@ async function readApiResponse(response: Response): Promise<{ ok: boolean; paylo
   } catch {
     return { ok: response.ok, payload: { error: raw } };
   }
+}
+
+function formatEthFromWei(wei: string): string {
+  try {
+    return formatEther(BigInt(String(wei || '0')));
+  } catch {
+    return '0';
+  }
+}
+
+function toWei(eth: string): bigint {
+  try {
+    return parseEther(String(eth || '0'));
+  } catch {
+    return BigInt(0);
+  }
+}
+
+function toWeiFromRaw(rawWei: string): bigint {
+  try {
+    return BigInt(String(rawWei || '0'));
+  } catch {
+    return BigInt(0);
+  }
+}
+
+function shortWallet(wallet?: string | null): string {
+  if (!wallet) return 'n/a';
+  return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+}
+
+function countdownLabel(ms: number): string {
+  if (ms <= 0) return '00:00:00';
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 const SponsorAdPanel: React.FC = () => {
@@ -51,9 +127,42 @@ const SponsorAdPanel: React.FC = () => {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploaded, setUploaded] = useState(false);
+  const [auction, setAuction] = useState<AuctionSnapshot>(defaultAuctionSnapshot);
+  const [auctionNowMs, setAuctionNowMs] = useState(Date.now());
+  const [bidError, setBidError] = useState('');
 
-  const canCreateSession = isConnected && Boolean(address) && !busy;
+  const auctionMsRemaining = Math.max(0, Number(auction.ends_at_ms || 0) - auctionNowMs);
+  const nextValidBidWei = toWeiFromRaw(String(auction.next_valid_bid_wei || defaultAuctionSnapshot.next_valid_bid_wei));
+  const nextValidBidEth = auction.next_valid_bid_eth || formatEthFromWei(nextValidBidWei.toString());
+  const rotationBidWei = toWei(rotationBidEth);
+  const rotationBidTooLow = tier === 'rotation' && rotationBidWei < nextValidBidWei;
+  const canBidAuction = auction.lifecycle === 'active';
+
+  const canCreateSession = isConnected && Boolean(address) && !busy && !(tier === 'rotation' && (rotationBidTooLow || !canBidAuction));
   const uploadEnabled = sessionStatus === 'PAID' && Boolean(sessionId) && !busy;
+
+  async function loadAuctionStatus() {
+    try {
+      const response = await fetchWithFallback('/.netlify/functions/sponsor-auction-status', '/api/sponsor/auction-status', { method: 'GET' });
+      if (!response.ok) return;
+      const { payload } = await readApiResponse(response);
+      const liveAuction = payload?.auction;
+      if (!liveAuction) return;
+      setAuction({
+        ...defaultAuctionSnapshot,
+        ...liveAuction,
+      });
+      if (tier === 'rotation') {
+        const currentWei = toWei(rotationBidEth);
+        const floorWei = BigInt(String(liveAuction.next_valid_bid_wei || defaultAuctionSnapshot.next_valid_bid_wei));
+        if (!rotationBidEth || currentWei < floorWei) {
+          setRotationBidEth(String(liveAuction.next_valid_bid_eth || formatEthFromWei(floorWei.toString())));
+        }
+      }
+    } catch {
+      // Non-blocking auction card refresh.
+    }
+  }
 
   async function ensureBase() {
     if (chainId === base.id) return;
@@ -165,12 +274,52 @@ const SponsorAdPanel: React.FC = () => {
     void recover();
   }, [address]);
 
+  useEffect(() => {
+    void loadAuctionStatus();
+    const refreshId = window.setInterval(() => {
+      void loadAuctionStatus();
+    }, 15000);
+    return () => window.clearInterval(refreshId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tier]);
+
+  useEffect(() => {
+    const ticker = window.setInterval(() => setAuctionNowMs(Date.now()), 1000);
+    return () => window.clearInterval(ticker);
+  }, []);
+
+  useEffect(() => {
+    if (tier !== 'rotation') {
+      setBidError('');
+      return;
+    }
+    if (auction.lifecycle !== 'active') {
+      setBidError('Auction is not live right now. Wait for next round.');
+      return;
+    }
+    if (rotationBidTooLow) {
+      setBidError(`Bid too low. Next valid bid is ${nextValidBidEth} ETH or higher.`);
+      return;
+    }
+    setBidError('');
+  }, [tier, auction.lifecycle, rotationBidTooLow, nextValidBidEth]);
+
   async function createSession() {
     if (!address) return;
     const trimmedSponsorName = sponsorName.trim();
     if (!trimmedSponsorName) {
       setError('Sponsor name is required.');
       return;
+    }
+    if (tier === 'rotation') {
+      if (!canBidAuction) {
+        setError('Rotation auction is not live. No bids accepted right now.');
+        return;
+      }
+      if (rotationBidTooLow) {
+        setError(`Bid too low. Next valid bid is ${nextValidBidEth} ETH.`);
+        return;
+      }
     }
     setBusy(true);
     setError('');
@@ -196,6 +345,12 @@ const SponsorAdPanel: React.FC = () => {
       setSessionStatus(payload.status);
       setMinEth(payload.payment.minEth);
       setMinWei(payload.payment.minWei);
+      if (payload.auction) {
+        setAuction({
+          ...defaultAuctionSnapshot,
+          ...payload.auction,
+        });
+      }
       setTxHash('');
       setTxHashInput('');
       persistSession(payload.sessionId);
@@ -346,6 +501,24 @@ const SponsorAdPanel: React.FC = () => {
         <p style={{ margin: '0 0 4px 0' }}>No duplicate video is played within the same break.</p>
         <p style={{ margin: 0 }}>If paid queue is empty, all 3 slots are Lawb Inc fallback videos.</p>
       </div>
+      <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Rotation auction</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>
+          <strong>{auction.lifecycle === 'active' ? 'Auction live' : auction.lifecycle === 'upcoming' ? 'Auction upcoming' : 'Auction ended'}</strong>
+        </p>
+        <p style={{ margin: '0 0 4px 0' }}>
+          <strong>Time remaining:</strong> {auction.lifecycle === 'active' ? countdownLabel(auctionMsRemaining) : '00:00:00'}
+        </p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Reserve:</strong> {auction.reserve_eth || formatEthFromWei(auction.reserve_wei)} ETH</p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Current highest:</strong> {auction.highest_bid_eth || formatEthFromWei(auction.highest_bid_wei)} ETH</p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Next valid bid &gt;=</strong> {nextValidBidEth} ETH</p>
+        {auction.lifecycle === 'ended' && (
+          <>
+            <p style={{ margin: '0 0 4px 0' }}><strong>Winner:</strong> {shortWallet(auction.winner_wallet || auction.highest_wallet)}</p>
+            <p style={{ margin: 0 }}><strong>Final bid:</strong> {auction.highest_bid_eth || formatEthFromWei(auction.highest_bid_wei)} ETH</p>
+          </>
+        )}
+      </div>
 
       {!isConnected && (
         <p style={{ margin: 0, color: '#b00020' }}>Connect wallet first, then create a sponsor session.</p>
@@ -404,16 +577,17 @@ const SponsorAdPanel: React.FC = () => {
             <input
               id="rotation-bid"
               type="number"
-              min="0.02"
+              min={nextValidBidEth}
               step="0.001"
               value={rotationBidEth}
               onChange={(e) => setRotationBidEth(e.target.value)}
               style={{ marginLeft: 8, width: isMobile ? 140 : 120, minHeight: isMobile ? 36 : 28 }}
-              disabled={busy}
+              disabled={busy || !canBidAuction}
             />
             <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
-              For auction only. Minimum reserve: 0.02.
+              Next valid bid is {nextValidBidEth} ETH. No soft stuff: underbids get kicked.
             </p>
+            {bidError && <p style={{ margin: '4px 0 0 0', color: '#b00020', fontSize: 12 }}>{bidError}</p>}
           </label>
         )}
       </div>
