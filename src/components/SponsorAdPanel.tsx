@@ -9,10 +9,6 @@ type Tier = 'one_time' | 'rotation';
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 const HARD_MAX_BYTES = 103809024;
 
-const tierLabels: Record<Tier, string> = {
-  one_time: 'One-time play',
-  rotation: 'Rotation auction (24h)',
-};
 const SESSION_STORAGE_KEY = 'clawb_sponsor_session';
 const TX_STORAGE_KEY = 'clawb_sponsor_tx_hash';
 
@@ -58,11 +54,6 @@ const SponsorAdPanel: React.FC = () => {
 
   const canCreateSession = isConnected && Boolean(address) && !busy;
   const uploadEnabled = sessionStatus === 'PAID' && Boolean(sessionId) && !busy;
-
-  const tierPriceText = useMemo(() => {
-    if (tier === 'one_time') return '0.01 ETH fixed';
-    return 'Reserve 0.02 ETH, highest bid at 24h close wins rotation';
-  }, [tier]);
 
   async function ensureBase() {
     if (chainId === base.id) return;
@@ -325,17 +316,28 @@ const SponsorAdPanel: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <h3 style={{ margin: 0 }}>Advertise on Clawb TV</h3>
-      <p style={{ margin: 0 }}>
-        Permissionless sponsor intake for Clawb TV commercials. No policy gating. Technical checks only.
-      </p>
+      <p style={{ margin: 0 }}>Buy a slot, upload your ad, and Clawb runs it automatically during sponsor breaks.</p>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
-        <p style={{ margin: '0 0 6px 0' }}><strong>Products</strong></p>
-        <p style={{ margin: '0 0 4px 0' }}>1) One-time play: fixed 0.01 ETH on Base.</p>
-        <p style={{ margin: 0 }}>2) Rotation auction: 24h auction, reserve 0.02 ETH, winner enters rotation pool.</p>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Rules</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>Permissionless intake</p>
+        <p style={{ margin: '0 0 4px 0' }}>No content review</p>
+        <p style={{ margin: '0 0 4px 0' }}>Technical checks only</p>
+        <p style={{ margin: '0 0 4px 0' }}>Max file size: 99MB (103,809,024 bytes)</p>
+        <p style={{ margin: 0 }}>Accepted formats: mp4, webm, mov</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
-        <p style={{ margin: '0 0 4px 0' }}><strong>Formats</strong>: mp4, webm, mov</p>
-        <p style={{ margin: 0 }}><strong>Hard cap</strong>: 99MB (103,809,024 bytes). Over cap is rejected.</p>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Products</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>One-Time Play - 0.01 ETH (Base)</strong></p>
+        <p style={{ margin: '0 0 6px 0' }}>Your ad is queued for the next eligible break and plays once.</p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Rotation Auction - 24h (reserve 0.02 ETH)</strong></p>
+        <p style={{ margin: 0 }}>Top bid at auction close gets added to recurring rotation.</p>
+      </div>
+      <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Flow</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>Create sponsor session</p>
+        <p style={{ margin: '0 0 4px 0' }}>Pay and verify onchain (Base)</p>
+        <p style={{ margin: '0 0 4px 0' }}>Upload commercial (unlocks after PAID)</p>
+        <p style={{ margin: 0 }}>Clawb ingests and schedules playback automatically</p>
       </div>
 
       {!isConnected && (
@@ -354,6 +356,9 @@ const SponsorAdPanel: React.FC = () => {
             style={{ marginTop: 4, width: '100%', maxWidth: isMobile ? '100%' : 360, minHeight: isMobile ? 40 : 30, boxSizing: 'border-box' }}
             disabled={busy}
           />
+          <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
+            Name shown in stream sponsor roll-call after your ad plays.
+          </p>
         </label>
         <label htmlFor="website-url">
           Website Link (optional)
@@ -366,8 +371,16 @@ const SponsorAdPanel: React.FC = () => {
             style={{ marginTop: 4, width: '100%', maxWidth: isMobile ? '100%' : 360, minHeight: isMobile ? 40 : 30, boxSizing: 'border-box' }}
             disabled={busy}
           />
+          <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
+            Shown with sponsor roll-call (example: example.com).
+          </p>
         </label>
-        <label htmlFor="sponsor-tier">Select product</label>
+        <label htmlFor="sponsor-tier">
+          Select Product
+          <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
+            Choose one-time play or rotation auction.
+          </p>
+        </label>
         <select
           id="sponsor-tier"
           value={tier}
@@ -380,7 +393,7 @@ const SponsorAdPanel: React.FC = () => {
         </select>
         {tier === 'rotation' && (
           <label htmlFor="rotation-bid">
-            Bid amount (ETH)
+            Bid Amount (ETH)
             <input
               id="rotation-bid"
               type="number"
@@ -391,17 +404,19 @@ const SponsorAdPanel: React.FC = () => {
               style={{ marginLeft: 8, width: isMobile ? 140 : 120, minHeight: isMobile ? 36 : 28 }}
               disabled={busy}
             />
+            <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
+              For auction only. Minimum reserve: 0.02.
+            </p>
           </label>
         )}
-        <p style={{ margin: 0, fontSize: 12 }}>{tierLabels[tier]} - {tierPriceText}</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={() => void createSession()} disabled={!canCreateSession || !sponsorName.trim()} style={{ minHeight: isMobile ? 44 : undefined }}>
-          Create sponsor session
+          Create Sponsor Session
         </button>
         <button type="button" onClick={() => void payAndVerify()} disabled={!sessionId || busy} style={{ minHeight: isMobile ? 44 : undefined }}>
-          Pay and verify onchain
+          Pay & Verify Onchain
         </button>
       </div>
 
@@ -464,7 +479,7 @@ const SponsorAdPanel: React.FC = () => {
           style={{ width: '100%' }}
         />
         <button type="button" onClick={() => void uploadVideo()} disabled={!uploadEnabled || !selectedFile} style={{ minHeight: isMobile ? 44 : undefined }}>
-          Upload commercial
+          Upload Commercial
         </button>
       </div>
 
