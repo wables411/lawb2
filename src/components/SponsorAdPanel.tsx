@@ -618,7 +618,14 @@ const SponsorAdPanel: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <h3 style={{ margin: 0 }}>Advertise on Clawb TV</h3>
-      <p style={{ margin: 0 }}>Feed the stream, fund the crab, get your clip aired. Onchain round logic, permissionless intake.</p>
+      <p style={{ margin: 0 }}>
+        Create a sponsor session, pay onchain, upload your clip, and Clawb handles the rest.
+        {' '}
+        <a href={`https://basescan.org/address/${CLAWB_ADSPACE_CONTRACT}`} target="_blank" rel="noreferrer">
+          View ClawbAdSpace contract
+        </a>
+        .
+      </p>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>Tech rules</strong></p>
         <p style={{ margin: '0 0 4px 0' }}>Permissionless intake. No content gate. No moderation queue.</p>
@@ -635,9 +642,9 @@ const SponsorAdPanel: React.FC = () => {
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>How it runs</strong></p>
         <p style={{ margin: '0 0 4px 0' }}>1) Create session with sponsor name + optional website.</p>
-        <p style={{ margin: '0 0 4px 0' }}>2) Pay onchain, wait confirmations, then upload unlocks.</p>
-        <p style={{ margin: '0 0 4px 0' }}>3) Upload media, Clawb ingests automatically.</p>
-        <p style={{ margin: 0 }}>4) Optional website link appears in sponsor mentions/listings.</p>
+        <p style={{ margin: '0 0 4px 0' }}>2) Pay onchain to ClawbAdSpace and wait confirmations.</p>
+        <p style={{ margin: '0 0 4px 0' }}>3) Upload unlocks after payment; file goes to cloud storage for ingest.</p>
+        <p style={{ margin: 0 }}>4) Clawb pulls it into playback; website link can appear in sponsor mentions/listing.</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>Break logic (live)</strong></p>

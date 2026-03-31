@@ -815,8 +815,18 @@ function App() {
               fontFamily: 'monospace',
               wordBreak: 'break-all',
             }}>
-              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn</p>
-              <p style={{marginBottom: '0'}}><strong>(base)</strong> 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
+              <p style={{marginBottom: '4px'}}>
+                <strong>(sol)</strong>{' '}
+                <a href="https://solscan.io/token/A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+                  A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn
+                </a>
+              </p>
+              <p style={{marginBottom: '0'}}>
+                <strong>(base)</strong>{' '}
+                <a href="https://basescan.org/token/0x26a43bd8a28a0423afb5725b8242ec0a40947b07" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+                  0x26a43bd8a28a0423afb5725b8242ec0a40947b07
+                </a>
+              </p>
             </div>
 
             <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
@@ -891,8 +901,18 @@ function App() {
               wordBreak: 'break-all',
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>$CLAWB Contract Addresses</p>
-              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn</p>
-              <p style={{marginBottom: '0'}}><strong>(base)</strong> 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
+              <p style={{marginBottom: '4px'}}>
+                <strong>(sol)</strong>{' '}
+                <a href="https://solscan.io/token/A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+                  A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn
+                </a>
+              </p>
+              <p style={{marginBottom: '0'}}>
+                <strong>(base)</strong>{' '}
+                <a href="https://basescan.org/token/0x26a43bd8a28a0423afb5725b8242ec0a40947b07" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+                  0x26a43bd8a28a0423afb5725b8242ec0a40947b07
+                </a>
+              </p>
             </div>
             <div style={{
               background: '#f0f0f0',

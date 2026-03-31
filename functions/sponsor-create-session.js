@@ -1,6 +1,7 @@
 const { ethers } = require('ethers');
 const {
   buildSubmissionIdHash,
+  CLAWB_ADSPACE_CONTRACT,
   TIERS,
   generateSessionId,
   getClientIp,
@@ -107,7 +108,7 @@ exports.handler = async (event) => {
       payment: {
         chainId: 8453,
         chainName: 'Base',
-        recipient: '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429',
+        recipient: CLAWB_ADSPACE_CONTRACT,
         minWei: requiredWei,
         minEth: ethers.formatEther(requiredWei),
       },
