@@ -82,8 +82,8 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - Chain: Base (`8453`)
 - Recipient wallet: `0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429`
 - One-time play: fixed `0.01 ETH` for `2` total airings across separate breaks
-- Rotation auction: `24h` auction, reserve `0.02 ETH`, highest bid wins rotation entry
-- Rotation increment: minimum `+0.001 ETH` over `max(highest_bid_wei, reserve_wei)`
+- Rotation auction: `24h` onchain round on Base via `ClawbAdSpace` (`0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1`)
+- Rotation increment: minimum `+0.001 ETH` (contract-enforced via `minimumNextBid` / `nextMinBid`)
 - Hard technical upload cap: `99MB` (`103,809,024` bytes)
 - Permissionless intake, no content moderation gate in this flow
 
@@ -94,7 +94,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 3. Create sponsor session (`/api/sponsor/session`).
 4. Send payment from connected wallet and verify tx (`/api/sponsor/verify`).
 5. Upload video (`/api/sponsor/upload`) after tx is confirmed.
-6. Backend writes sponsor ledger state and pings Clawb via Firebase:
+6. Backend writes intake/media state and pings Clawb via Firebase (auction truth stays onchain):
    - `clawb/ads/intake_notifications/{sessionId}`
    - `clawb/chat/visitor_messages/ad_sponsor_{sessionId}`
 7. Clawb worker ingests media locally and playback engine applies deterministic ordering.
@@ -105,8 +105,9 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - `POST /api/sponsor/verify` -> verify Base tx + idempotency + update to `PAID`
 - `POST /api/sponsor/upload` -> file safety checks + store upload + queue ad
 - `POST /api/sponsor/notify` -> retry-safe notify/thank-you trigger
-- `POST /api/sponsor/finalize-auctions` -> closes 24h rotation auction and queues winner
-- `GET /api/sponsor/auction-status` -> active/latest auction state for UI cards and countdowns
+- `POST /api/sponsor/finalize-auctions` -> legacy Firebase auction close path (read-only support)
+- `GET /api/sponsor/auction-status` -> onchain auction snapshot for UI cards/countdowns
+- `POST /api/sponsor/settle-auction` -> keeper-friendly onchain `settleAuction()` trigger (idempotent)
 - `GET /api/sponsor/session-status?sessionId=...` -> inspect session state
 
 ### State machine
@@ -126,7 +127,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - `clawb/ads/playback_ads/{sessionId}` -> queue + playback metadata
 - `clawb/ads/rotation_auctions/*` -> active 24h auction and bids
   - stable fields: `status`, `starts_at_ms`, `ends_at_ms`, `reserve_wei`, `highest_bid_wei`
-- `clawb/ads/refund_queue/{auctionId}_{sessionId}` -> pending loser refunds for OpenClaw payout worker
+- `clawb/ads/refund_queue/{auctionId}_{sessionId}` -> legacy-only loser refunds (disabled for onchain rounds by default)
 - `clawb/ads/intake_notifications/{sessionId}` -> Clawb ingest queue
 
 ### Deterministic playback behavior
@@ -140,7 +141,7 @@ The API endpoint is: `https://lawb-chess-api.wablesphoto.workers.dev`
 - The exact same 3-video set is avoided on consecutive breaks unless all 3 selected videos are paid ads.
 - `one_time` ads require `2` successful airings across separate breaks before consume/delete.
 - `rotation` ads remain queued for future random shuffle.
-- Rotation auction close has exactly one winner (`winner_session_id`); losing bids are enqueued to `refund_queue` for automatic refund execution by OpenClaw.
+- Rotation auction close has exactly one winner onchain (`currentAuction().winner` after `settleAuction()`); losing bidders claim refunds via contract `withdrawRefund()`.
 - Restart-safe: all sponsor/queue/playback state is persisted in Firebase.
 
 ### Environment variables
@@ -164,7 +165,7 @@ Required for Netlify functions and Clawb worker:
 ### Manual test checklist
 
 - Create one-time session, pay exactly `0.01 ETH`, verify tx, upload <=99MB file, confirm status becomes `QUEUED`.
-- Create rotation session with `>=0.02 ETH`, verify and upload, then finalize auction and confirm winner gets queued.
+- Create rotation session with bid at or above contract `minimumNextBid`, verify and upload, then settle and confirm winner/refunds come from contract reads.
 - Try underpaid tx and confirm rejection as `TX_INVALID`.
 - Reuse same tx hash in a second session and confirm `DUPLICATE_TX`.
 - Upload `103,809,025` bytes and confirm hard reject as `TOO_LARGE`.

@@ -1,10 +1,11 @@
 const { ethers } = require('ethers');
 const {
+  buildSubmissionIdHash,
   TIERS,
   generateSessionId,
   getClientIp,
   getTierConfig,
-  getRotationAuctionSnapshot,
+  readOnchainAuctionState,
   isRateLimited,
   isWallet,
   json,
@@ -48,22 +49,35 @@ exports.handler = async (event) => {
       return json(400, { error: 'Invalid tier selected.' });
     }
 
+    const sessionId = generateSessionId();
+    const submissionIdHash = buildSubmissionIdHash(sessionId);
     let requiredWei = '0';
     let rotationAuction = null;
     if (tier === 'one_time') {
       requiredWei = TIERS.one_time.fixedWei;
     } else {
-      rotationAuction = await getRotationAuctionSnapshot({ ensureActive: true });
-      const floorWei = BigInt(String(rotationAuction.next_valid_bid_wei || TIERS.rotation.reserveWei));
+      const onchain = await readOnchainAuctionState();
+      const floorWei = BigInt(String(onchain.nextMinBidWei || TIERS.rotation.reserveWei));
       const bidEthRaw = body.bidEth;
       const parsedBid = bidEthRaw ? ethers.parseEther(String(bidEthRaw)) : BigInt(0);
       requiredWei = (parsedBid > floorWei ? parsedBid : floorWei).toString();
+      rotationAuction = {
+        source: 'onchain',
+        auctionId: String(onchain.auctionId),
+        lifecycle: onchain.lifecycle,
+        starts_at_ms: onchain.startsAt,
+        ends_at_ms: onchain.endsAt,
+        reserve_wei: TIERS.rotation.reserveWei,
+        highest_bid_wei: onchain.highestBidWei,
+        next_valid_bid_wei: onchain.nextMinBidWei,
+        extension_used: onchain.extensionUsed,
+      };
     }
 
     const now = new Date().toISOString();
-    const sessionId = generateSessionId();
     const session = {
       session_id: sessionId,
+      submission_id_hash: submissionIdHash,
       wallet,
       tier,
       required_wei: requiredWei,
@@ -87,6 +101,7 @@ exports.handler = async (event) => {
       status: session.status,
       wallet,
       tier,
+      submissionIdHash,
       sponsorName,
       websiteUrl,
       payment: {

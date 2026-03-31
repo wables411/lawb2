@@ -1,5 +1,6 @@
 const Busboy = require('busboy');
 const {
+  adsPath,
   ALLOWED_VIDEO_MIME,
   MAX_FILE_BYTES,
   enqueueNotification,
@@ -195,7 +196,7 @@ exports.handler = async (event) => {
       await enqueueNotification(sessionId, session.wallet);
     } catch (notifyError) {
       console.warn('[sponsor-upload] notify failed', notifyError);
-      await getDb().ref(`clawb/ads/notify_retry/${sessionId}`).set({
+      await getDb().ref(adsPath(`notify_retry/${sessionId}`)).set({
         session_id: sessionId,
         wallet: session.wallet,
         created_at: new Date().toISOString(),

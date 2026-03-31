@@ -1,4 +1,5 @@
 const {
+  adsPath,
   getDb,
   isWallet,
   json,
@@ -21,7 +22,7 @@ exports.handler = async (event) => {
       return json(400, { error: 'wallet is required.' });
     }
 
-    const snap = await getDb().ref('clawb/ads/sessions').orderByChild('wallet').equalTo(wallet).get();
+    const snap = await getDb().ref(adsPath('sessions')).orderByChild('wallet').equalTo(wallet).get();
     if (!snap.exists()) {
       return json(200, { ok: true, found: false });
     }

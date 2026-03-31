@@ -1,4 +1,5 @@
 const {
+  adsPath,
   getDb,
   getSession,
   json,
@@ -36,11 +37,11 @@ function buildLosingRefundEntries(auctionId, auction, winnerSessionId) {
 
 async function finalizeActiveAuction() {
   const db = getDb();
-  const activeRef = db.ref('clawb/ads/rotation_auctions_meta/active_auction_id');
+  const activeRef = db.ref(adsPath('rotation_auctions_meta/active_auction_id'));
   const activeSnap = await activeRef.get();
   if (!activeSnap.exists()) return { finalized: false, reason: 'no_active_auction' };
   const auctionId = String(activeSnap.val());
-  const auctionRef = db.ref(`clawb/ads/rotation_auctions/${auctionId}`);
+  const auctionRef = db.ref(adsPath(`rotation_auctions/${auctionId}`));
   const auctionSnap = await auctionRef.get();
   if (!auctionSnap.exists()) return { finalized: false, reason: 'auction_missing' };
   const auction = auctionSnap.val();
@@ -59,17 +60,23 @@ async function finalizeActiveAuction() {
     return { finalized: true, reason: 'closed_no_winner', auctionId };
   }
 
-  // Losing bids are queued for on-chain refunds by OpenClaw runtime.
-  const refundEntries = buildLosingRefundEntries(auctionId, auction, winnerSessionId);
-  const refundUpdates = {};
-  for (const entry of refundEntries) {
-    refundUpdates[`clawb/ads/refund_queue/${entry.refundId}`] = entry.payload;
-    refundUpdates[`clawb/ads/sessions/${entry.payload.session_id}/refund_status`] = 'pending';
-    refundUpdates[`clawb/ads/sessions/${entry.payload.session_id}/refund_amount_wei`] = entry.payload.amount_wei;
-    refundUpdates[`clawb/ads/sessions/${entry.payload.session_id}/updated_at`] = nowIso();
-  }
-  if (Object.keys(refundUpdates).length) {
-    await db.ref().update(refundUpdates);
+  // Legacy Firebase refund queue can be toggled on for old auction rounds only.
+  // Onchain rounds use contract-native pendingRefunds/withdrawRefund and should not enqueue here.
+  const legacyRefundQueueEnabled = process.env.SPONSOR_LEGACY_AUCTION_REFUNDS === 'true';
+  const refundEntries = legacyRefundQueueEnabled
+    ? buildLosingRefundEntries(auctionId, auction, winnerSessionId)
+    : [];
+  if (legacyRefundQueueEnabled) {
+    const refundUpdates = {};
+    for (const entry of refundEntries) {
+      refundUpdates[adsPath(`refund_queue/${entry.refundId}`)] = entry.payload;
+      refundUpdates[adsPath(`sessions/${entry.payload.session_id}/refund_status`)] = 'pending';
+      refundUpdates[adsPath(`sessions/${entry.payload.session_id}/refund_amount_wei`)] = entry.payload.amount_wei;
+      refundUpdates[adsPath(`sessions/${entry.payload.session_id}/updated_at`)] = nowIso();
+    }
+    if (Object.keys(refundUpdates).length) {
+      await db.ref().update(refundUpdates);
+    }
   }
 
   const winnerSession = await getSession(winnerSessionId);
@@ -90,7 +97,7 @@ async function finalizeActiveAuction() {
 
   const winnerBidWei = String(auction.highest_bid_wei || '0');
   const winnerWallet = String(auction?.bids?.[winnerSessionId]?.wallet || '');
-  await db.ref(`clawb/ads/sessions/${winnerSessionId}`).update({
+  await db.ref(adsPath(`sessions/${winnerSessionId}`)).update({
     auction_result: 'winner',
     auction_winning_bid_wei: winnerBidWei,
     updated_at: nowIso(),

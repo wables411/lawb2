@@ -78,6 +78,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sponsor/settle-auction"
+  to = "/.netlify/functions/sponsor-settle-auction"
+  status = 200
+
+[[redirects]]
+  from = "/api/sponsor/legacy-cleanup"
+  to = "/.netlify/functions/sponsor-legacy-cleanup"
+  status = 200
+
+[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404

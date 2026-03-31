@@ -8,10 +8,9 @@ const {
   normalizeAddress,
   parseBody,
   pushStatusTransition,
-  recordRotationBid,
   reserveTxHash,
   saveSession,
-  verifyBaseTransfer,
+  verifyAdSpacePayment,
 } = require('./sponsor-shared');
 
 const RETRYABLE_SESSION_STATUSES = new Set([
@@ -69,10 +68,11 @@ exports.handler = async (event) => {
       });
     }
 
-    const verification = await verifyBaseTransfer({
+    const verification = await verifyAdSpacePayment({
       txHash,
       expectedFrom: normalizeAddress(session.wallet),
-      minWei: String(session.required_wei),
+      tier: String(session.tier || ''),
+      submissionIdHash: session.submission_id_hash || '',
     });
     if (!verification.ok) {
       await saveSession(sessionId, { status: verification.reason });
@@ -94,37 +94,6 @@ exports.handler = async (event) => {
       tx_confirmed_at: new Date().toISOString(),
       paid_wei: verification.valueWei,
     };
-
-    if (session.tier === 'rotation') {
-      let auction;
-      try {
-        auction = await recordRotationBid({
-          sessionId,
-          wallet: session.wallet,
-          paidWei: verification.valueWei,
-          auctionId: session.auction_id,
-        });
-      } catch (bidError) {
-        const code = String(bidError?.code || 'BID_REJECTED');
-        return json(400, {
-          error: bidError?.message || 'Rotation bid rejected.',
-          code,
-          nextValidBidWei: bidError?.floorWei || null,
-        });
-      }
-      patch.auction_id = auction.auctionId;
-      patch.auction_bid_wei = verification.valueWei;
-      patch.auction_leading = auction.isHighest;
-      patch.auction_ends_at_ms = auction.endsAtMs;
-      await saveSession(sessionId, patch);
-      return json(200, {
-        ok: true,
-        status: 'PAID',
-        txHash,
-        auction,
-        uploadUnlocked: true,
-      });
-    }
 
     await saveSession(sessionId, patch);
     return json(200, {

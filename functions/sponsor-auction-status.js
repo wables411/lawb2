@@ -1,5 +1,10 @@
 const { ethers } = require('ethers');
-const { getRotationAuctionSnapshot, json } = require('./sponsor-shared');
+const {
+  CLAWB_ADSPACE_CONTRACT,
+  TIERS,
+  json,
+  readOnchainAuctionState,
+} = require('./sponsor-shared');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -10,14 +15,29 @@ exports.handler = async (event) => {
   }
 
   try {
-    const snapshot = await getRotationAuctionSnapshot({ ensureActive: false });
+    const wallet = String(event.queryStringParameters?.wallet || '');
+    const snapshot = await readOnchainAuctionState(wallet);
     return json(200, {
       ok: true,
       auction: {
-        ...snapshot,
-        reserve_eth: snapshot.reserve_wei ? ethers.formatEther(snapshot.reserve_wei) : null,
-        highest_bid_eth: snapshot.highest_bid_wei ? ethers.formatEther(snapshot.highest_bid_wei) : null,
-        next_valid_bid_eth: snapshot.next_valid_bid_wei ? ethers.formatEther(snapshot.next_valid_bid_wei) : null,
+        source: 'onchain',
+        contract: CLAWB_ADSPACE_CONTRACT,
+        status: snapshot.lifecycle === 'ended' ? 'ended' : 'active',
+        lifecycle: snapshot.lifecycle,
+        auction_id: String(snapshot.auctionId),
+        starts_at_ms: snapshot.startsAt,
+        ends_at_ms: snapshot.endsAt,
+        settled: snapshot.settled,
+        winner: snapshot.winner,
+        reserve_wei: TIERS.rotation.reserveWei,
+        reserve_eth: ethers.formatEther(TIERS.rotation.reserveWei),
+        highest_bid_wei: snapshot.highestBidWei,
+        highest_bid_eth: ethers.formatEther(snapshot.highestBidWei),
+        next_valid_bid_wei: snapshot.nextMinBidWei,
+        next_valid_bid_eth: ethers.formatEther(snapshot.nextMinBidWei),
+        extension_used: snapshot.extensionUsed,
+        pending_refund_wei: snapshot.pendingRefundWei,
+        pending_refund_eth: ethers.formatEther(snapshot.pendingRefundWei || '0'),
       },
     });
   } catch (error) {

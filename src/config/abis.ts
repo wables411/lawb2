@@ -172,3 +172,70 @@ export const CLAWB_MERKLE_DISTRIBUTOR_ABI = [
     type: 'function',
   },
 ] as const;
+
+export const CLAWB_ADSPACE_ABI = [
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'submissionIdHash', type: 'bytes32' },
+      { internalType: 'string', name: 'mediaRef', type: 'string' },
+    ],
+    name: 'buyOneTimeAd',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'submissionIdHash', type: 'bytes32' },
+      { internalType: 'string', name: 'mediaRef', type: 'string' },
+    ],
+    name: 'placeBid',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'settleAuction',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'minimumNextBid',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'currentAuction',
+    outputs: [
+      { internalType: 'uint256', name: 'auctionId', type: 'uint256' },
+      { internalType: 'uint256', name: 'startAt', type: 'uint256' },
+      { internalType: 'uint256', name: 'endAt', type: 'uint256' },
+      { internalType: 'bool', name: 'settled', type: 'bool' },
+      { internalType: 'address', name: 'winner', type: 'address' },
+      { internalType: 'uint256', name: 'highestBid', type: 'uint256' },
+      { internalType: 'uint256', name: 'nextMinBid', type: 'uint256' },
+      { internalType: 'bool', name: 'extensionUsed', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: '', type: 'address' }],
+    name: 'pendingRefunds',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'withdrawRefund',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const;

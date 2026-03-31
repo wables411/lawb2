@@ -7,6 +7,8 @@ const DEFAULT_BASE_RPC = 'https://mainnet.base.org';
 const REQUIRED_CONFIRMATIONS = Number(process.env.SPONSOR_REQUIRED_CONFIRMATIONS || 2);
 const MAX_FILE_BYTES = 103809024; // 99 MB hard cap
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();
+const CLAWB_ADSPACE_CONTRACT = '0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1'.toLowerCase();
+const ADS_ROOT = String(process.env.SPONSOR_DB_ROOT || 'clawb/ads/onchain_indexer').replace(/^\/+|\/+$/g, '');
 
 const TIERS = {
   one_time: {
@@ -24,6 +26,16 @@ const TIERS = {
   },
 };
 const ROTATION_MIN_INCREMENT_WEI = ethers.parseEther('0.001').toString();
+const ONE_TIME_EXACT_WEI = ethers.parseEther('0.01').toString();
+const ADSPACE_IFACE = new ethers.Interface([
+  'function buyOneTimeAd(bytes32 submissionIdHash, string mediaRef) payable',
+  'function placeBid(bytes32 submissionIdHash, string mediaRef) payable',
+  'function settleAuction()',
+  'function minimumNextBid() view returns (uint256)',
+  'function currentAuction() view returns (uint256 auctionId, uint256 startAt, uint256 endAt, bool settled, address winner, uint256 highestBid, uint256 nextMinBid, bool extensionUsed)',
+  'function pendingRefunds(address) view returns (uint256)',
+  'function withdrawRefund()',
+]);
 
 const ALLOWED_VIDEO_MIME = new Set([
   'video/mp4',
@@ -110,8 +122,22 @@ function generateSessionId() {
   return `sps_${crypto.randomUUID().replace(/-/g, '')}`;
 }
 
+function buildSubmissionIdHash(sessionId) {
+  return ethers.keccak256(ethers.toUtf8Bytes(String(sessionId || '')));
+}
+
 function getRpcProvider() {
   return new ethers.JsonRpcProvider(process.env.BASE_RPC_URL || DEFAULT_BASE_RPC, BASE_CHAIN_ID);
+}
+
+function getAdSpaceContract(providerOrSigner) {
+  return new ethers.Contract(CLAWB_ADSPACE_CONTRACT, ADSPACE_IFACE, providerOrSigner);
+}
+
+function normalizeTimestampMs(rawValue) {
+  const n = Number(rawValue || 0);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return n < 1_000_000_000_000 ? n * 1000 : n;
 }
 
 function sanitizeFilename(name) {
@@ -146,6 +172,15 @@ function getDb() {
   return getFirebaseApp().database();
 }
 
+function adsPath(subPath = '') {
+  const clean = String(subPath || '').replace(/^\/+/, '');
+  return clean ? `${ADS_ROOT}/${clean}` : ADS_ROOT;
+}
+
+function adsRef(subPath = '') {
+  return getDb().ref(adsPath(subPath));
+}
+
 function getBucket() {
   const app = getFirebaseApp();
   const bucketName = process.env.FIREBASE_STORAGE_BUCKET || app.options.storageBucket;
@@ -156,7 +191,7 @@ function getBucket() {
 }
 
 async function getSession(sessionId) {
-  const snap = await getDb().ref(`clawb/ads/sessions/${sessionId}`).get();
+  const snap = await adsRef(`sessions/${sessionId}`).get();
   return snap.exists() ? snap.val() : null;
 }
 
@@ -177,7 +212,7 @@ function pickLatestResumableSession(sessionsById) {
 
 async function saveSession(sessionId, patch) {
   const timestamp = nowIso();
-  await getDb().ref(`clawb/ads/sessions/${sessionId}`).update({
+  await adsRef(`sessions/${sessionId}`).update({
     ...patch,
     updated_at: timestamp,
   });
@@ -186,7 +221,7 @@ async function saveSession(sessionId, patch) {
 async function pushStatusTransition(sessionId, toStatus, extra = {}) {
   const db = getDb();
   const ts = nowIso();
-  await db.ref(`clawb/ads/sessions/${sessionId}/status_history`).push({
+  await db.ref(adsPath(`sessions/${sessionId}/status_history`)).push({
     to_status: toStatus,
     timestamp: ts,
     ...extra,
@@ -209,6 +244,91 @@ async function verifyBaseTransfer({ txHash, expectedFrom, minWei }) {
     expectedFrom,
     minWei,
   });
+}
+
+async function verifyAdSpacePayment({ txHash, expectedFrom, tier, submissionIdHash }) {
+  const provider = getRpcProvider();
+  const [tx, receipt, latestBlock] = await Promise.all([
+    provider.getTransaction(txHash),
+    provider.getTransactionReceipt(txHash),
+    provider.getBlockNumber(),
+  ]);
+
+  if (!tx || !receipt) {
+    return { ok: false, reason: 'TX_INVALID', detail: 'Transaction not found or pending' };
+  }
+  const evaluated = evaluateAdSpaceTransaction({
+    tx,
+    receipt,
+    expectedFrom,
+    tier,
+    submissionIdHash,
+  });
+  if (!evaluated.ok) return evaluated;
+
+  const confirmations = latestBlock - receipt.blockNumber + 1;
+  if (confirmations < REQUIRED_CONFIRMATIONS) {
+    return {
+      ok: false,
+      reason: 'TX_INVALID',
+      detail: `Waiting for confirmations (${confirmations}/${REQUIRED_CONFIRMATIONS})`,
+      pendingConfirmations: true,
+    };
+  }
+
+  return {
+    ok: true,
+    tx,
+    receipt,
+    confirmations,
+    valueWei: tx.value.toString(),
+    method: evaluated.method,
+  };
+}
+
+function evaluateAdSpaceTransaction({ tx, receipt, expectedFrom, tier, submissionIdHash }) {
+  if (tx.chainId !== BigInt(BASE_CHAIN_ID)) {
+    return { ok: false, reason: 'TX_INVALID', detail: 'Wrong chain' };
+  }
+  if (!tx.to || tx.to.toLowerCase() !== CLAWB_ADSPACE_CONTRACT) {
+    return { ok: false, reason: 'HASH_MISMATCH', detail: 'Tx target is not ClawbAdSpace contract' };
+  }
+  if (expectedFrom && tx.from.toLowerCase() !== String(expectedFrom).toLowerCase()) {
+    return { ok: false, reason: 'HASH_MISMATCH', detail: 'Sender mismatch' };
+  }
+  if (receipt.status !== 1) {
+    return { ok: false, reason: 'TX_INVALID', detail: 'Transaction reverted' };
+  }
+
+  let parsed;
+  try {
+    parsed = ADSPACE_IFACE.parseTransaction({ data: tx.data, value: tx.value });
+  } catch {
+    return { ok: false, reason: 'HASH_MISMATCH', detail: 'Unsupported contract method' };
+  }
+  if (!parsed) {
+    return { ok: false, reason: 'HASH_MISMATCH', detail: 'Could not decode transaction method' };
+  }
+
+  const method = String(parsed.name || '');
+  const expectedMethod = tier === 'one_time' ? 'buyOneTimeAd' : 'placeBid';
+  if (method !== expectedMethod) {
+    return { ok: false, reason: 'HASH_MISMATCH', detail: `Expected ${expectedMethod} transaction` };
+  }
+  if (submissionIdHash) {
+    const txHashArg = String(parsed.args?.[0] || '').toLowerCase();
+    if (txHashArg !== String(submissionIdHash).toLowerCase()) {
+      return { ok: false, reason: 'HASH_MISMATCH', detail: 'Submission hash mismatch' };
+    }
+  }
+  if (tier === 'one_time' && tx.value.toString() !== ONE_TIME_EXACT_WEI) {
+    return { ok: false, reason: 'TX_INVALID', detail: 'One-time payment must be exactly 0.01 ETH' };
+  }
+  if (tier === 'rotation' && tx.value <= BigInt(0)) {
+    return { ok: false, reason: 'TX_INVALID', detail: 'Rotation bid must be greater than 0 ETH' };
+  }
+
+  return { ok: true, method };
 }
 
 function evaluateTransferForSession({ tx, receipt, latestBlock, expectedFrom, minWei }) {
@@ -252,7 +372,7 @@ function evaluateTransferForSession({ tx, receipt, latestBlock, expectedFrom, mi
 }
 
 async function checkDuplicateTx(txHash, sessionId) {
-  const ref = getDb().ref(`clawb/ads/tx_index/${txHash.toLowerCase()}`);
+  const ref = adsRef(`tx_index/${txHash.toLowerCase()}`);
   const snap = await ref.get();
   if (!snap.exists()) return false;
   const ownerSession = String(snap.val() || '');
@@ -260,20 +380,20 @@ async function checkDuplicateTx(txHash, sessionId) {
 }
 
 async function getTxOwnerSession(txHash) {
-  const ref = getDb().ref(`clawb/ads/tx_index/${txHash.toLowerCase()}`);
+  const ref = adsRef(`tx_index/${txHash.toLowerCase()}`);
   const snap = await ref.get();
   if (!snap.exists()) return null;
   return String(snap.val() || '');
 }
 
 async function reserveTxHash(txHash, sessionId) {
-  await getDb().ref(`clawb/ads/tx_index/${txHash.toLowerCase()}`).set(sessionId);
+  await adsRef(`tx_index/${txHash.toLowerCase()}`).set(sessionId);
 }
 
 async function getOrCreateRotationAuction() {
   const db = getDb();
-  const auctionsRef = db.ref('clawb/ads/rotation_auctions');
-  const activeRef = db.ref('clawb/ads/rotation_auctions_meta/active_auction_id');
+  const auctionsRef = db.ref(adsPath('rotation_auctions'));
+  const activeRef = db.ref(adsPath('rotation_auctions_meta/active_auction_id'));
   const activeSnap = await activeRef.get();
   const activeId = activeSnap.exists() ? String(activeSnap.val()) : '';
   const now = Date.now();
@@ -336,18 +456,18 @@ function getAuctionLifecycleStatus(auction, nowMs = Date.now()) {
 
 async function readLatestRotationAuction() {
   const db = getDb();
-  const activeIdSnap = await db.ref('clawb/ads/rotation_auctions_meta/active_auction_id').get();
+  const activeIdSnap = await db.ref(adsPath('rotation_auctions_meta/active_auction_id')).get();
   if (activeIdSnap.exists()) {
     const activeId = String(activeIdSnap.val() || '');
     if (activeId) {
-      const auctionSnap = await db.ref(`clawb/ads/rotation_auctions/${activeId}`).get();
+      const auctionSnap = await db.ref(adsPath(`rotation_auctions/${activeId}`)).get();
       if (auctionSnap.exists()) {
         return { auctionId: activeId, auction: auctionSnap.val() };
       }
     }
   }
 
-  const latestSnap = await db.ref('clawb/ads/rotation_auctions').orderByChild('ends_at_ms').limitToLast(1).get();
+  const latestSnap = await db.ref(adsPath('rotation_auctions')).orderByChild('ends_at_ms').limitToLast(1).get();
   if (!latestSnap.exists()) return { auctionId: null, auction: null };
   const value = latestSnap.val() || {};
   const entries = Object.entries(value);
@@ -410,6 +530,39 @@ async function getRotationAuctionSnapshot({ ensureActive = false } = {}) {
   };
 }
 
+async function readOnchainAuctionState(refundWallet) {
+  const provider = getRpcProvider();
+  const contract = getAdSpaceContract(provider);
+  const current = await contract.currentAuction();
+  const minimum = await contract.minimumNextBid();
+  const auctionId = Number(current.auctionId ?? current[0] ?? 0);
+  const startsAt = normalizeTimestampMs(current.startAt ?? current[1] ?? 0);
+  const endsAt = normalizeTimestampMs(current.endAt ?? current[2] ?? 0);
+  const settled = Boolean(current.settled ?? current[3] ?? false);
+  const winner = String(current.winner ?? current[4] ?? ethers.ZeroAddress);
+  const highestBid = String(current.highestBid ?? current[5] ?? '0');
+  const nextMinBid = String(current.nextMinBid ?? current[6] ?? minimum ?? '0');
+  const extensionUsed = Boolean(current.extensionUsed ?? current[7] ?? false);
+  const now = Date.now();
+  const lifecycle = settled ? 'ended' : now < startsAt ? 'upcoming' : now >= endsAt ? 'ended' : 'active';
+  let pendingRefundWei = '0';
+  if (refundWallet && ethers.isAddress(refundWallet)) {
+    pendingRefundWei = String(await contract.pendingRefunds(refundWallet));
+  }
+  return {
+    auctionId,
+    startsAt,
+    endsAt,
+    settled,
+    winner,
+    highestBidWei: highestBid,
+    nextMinBidWei: nextMinBid,
+    extensionUsed,
+    lifecycle,
+    pendingRefundWei,
+  };
+}
+
 async function recordRotationBid({ sessionId, wallet, paidWei, auctionId }) {
   const db = getDb();
   let targetAuctionId = String(auctionId || '');
@@ -418,7 +571,7 @@ async function recordRotationBid({ sessionId, wallet, paidWei, auctionId }) {
     targetAuctionId = created.auctionId;
   }
 
-  const auctionRef = db.ref(`clawb/ads/rotation_auctions/${targetAuctionId}`);
+  const auctionRef = db.ref(adsPath(`rotation_auctions/${targetAuctionId}`));
   let rejection = null;
   let computedFloorWei = null;
   const bidWei = normalizeWei(paidWei);
@@ -489,7 +642,7 @@ async function recordRotationBid({ sessionId, wallet, paidWei, auctionId }) {
 
 async function isRotationWinner(session) {
   if (!session.auction_id) return false;
-  const snap = await getDb().ref(`clawb/ads/rotation_auctions/${session.auction_id}`).get();
+  const snap = await adsRef(`rotation_auctions/${session.auction_id}`).get();
   if (!snap.exists()) return false;
   const auction = snap.val();
   return String(auction.highest_session_id || '') === String(session.session_id || '');
@@ -500,7 +653,7 @@ async function queueApprovedAd(session, uploadInfo) {
   const approvedAt = Date.now();
   const isOneTime = session.tier === 'one_time';
   const adRecord = buildPlaybackAdRecord(session, uploadInfo, approvedAt, isOneTime);
-  await db.ref(`clawb/ads/playback_ads/${session.session_id}`).set(adRecord);
+  await db.ref(adsPath(`playback_ads/${session.session_id}`)).set(adRecord);
 }
 
 function buildPlaybackAdRecord(session, uploadInfo, approvedAt, isOneTime) {
@@ -531,7 +684,7 @@ function buildPlaybackAdRecord(session, uploadInfo, approvedAt, isOneTime) {
 }
 
 async function upsertPlaybackAdMetadata(sessionId, sponsorName, websiteUrl) {
-  await getDb().ref(`clawb/ads/playback_ads/${sessionId}`).update({
+  await adsRef(`playback_ads/${sessionId}`).update({
     session_id: sessionId,
     sponsor_name: normalizeSponsorName(sponsorName),
     website_url: normalizeWebsiteUrl(websiteUrl),
@@ -543,7 +696,7 @@ async function enqueueNotification(sessionId, wallet) {
   const db = getDb();
   const ts = nowIso();
   const walletText = `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-  await db.ref(`clawb/ads/intake_notifications/${sessionId}`).set({
+  await db.ref(adsPath(`intake_notifications/${sessionId}`)).set({
     session_id: sessionId,
     type: 'sponsor_upload_ready',
     status: 'pending',
@@ -560,6 +713,8 @@ async function enqueueNotification(sessionId, wallet) {
 }
 
 module.exports = {
+  ADSPACE_IFACE,
+  CLAWB_ADSPACE_CONTRACT,
   ALLOWED_VIDEO_MIME,
   BASE_CHAIN_ID,
   CLAWB_WALLET,
@@ -571,6 +726,11 @@ module.exports = {
   getTxOwnerSession,
   enqueueNotification,
   generateSessionId,
+  buildSubmissionIdHash,
+  getAdSpaceContract,
+  ADS_ROOT,
+  adsPath,
+  adsRef,
   getBucket,
   getClientIp,
   getDb,
@@ -584,6 +744,7 @@ module.exports = {
   normalizeAddress,
   normalizeSponsorName,
   normalizeWebsiteUrl,
+  evaluateAdSpaceTransaction,
   parseBody,
   pickLatestResumableSession,
   pushStatusTransition,
@@ -591,6 +752,8 @@ module.exports = {
   buildPlaybackAdRecord,
   recordRotationBid,
   getRotationAuctionSnapshot,
+  getRpcProvider,
+  readOnchainAuctionState,
   computeRotationBidFloorWei,
   getAuctionLifecycleStatus,
   ROTATION_MIN_INCREMENT_WEI,
@@ -600,4 +763,5 @@ module.exports = {
   upsertPlaybackAdMetadata,
   evaluateTransferForSession,
   verifyBaseTransfer,
+  verifyAdSpacePayment,
 };

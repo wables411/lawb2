@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { formatEther, parseEther } from 'viem';
+import { encodeFunctionData, formatEther, keccak256, parseEther, toHex } from 'viem';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { CLAWB_ADSPACE_ABI } from '../config/abis';
 
 type Tier = 'one_time' | 'rotation';
 type AuctionLifecycle = 'upcoming' | 'active' | 'ended';
@@ -23,14 +24,19 @@ type AuctionSnapshot = {
   reserve_eth?: string | null;
   highest_bid_eth?: string | null;
   next_valid_bid_eth?: string | null;
+  settled?: boolean;
+  winner?: string;
+  extension_used?: boolean;
+  pending_refund_wei?: string;
+  pending_refund_eth?: string;
 };
 
-const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
+const CLAWB_ADSPACE_CONTRACT = '0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1';
 const HARD_MAX_BYTES = 103809024;
+const ONE_TIME_EXACT_ETH = '0.01';
 
 const SESSION_STORAGE_KEY = 'clawb_sponsor_session';
 const TX_STORAGE_KEY = 'clawb_sponsor_tx_hash';
-const BID_INCREMENT_WEI = BigInt('1000000000000000');
 
 const defaultAuctionSnapshot: AuctionSnapshot = {
   found: false,
@@ -48,6 +54,11 @@ const defaultAuctionSnapshot: AuctionSnapshot = {
   reserve_eth: '0.02',
   highest_bid_eth: '0',
   next_valid_bid_eth: '0.021',
+  settled: false,
+  winner: '0x0000000000000000000000000000000000000000',
+  extension_used: false,
+  pending_refund_wei: '0',
+  pending_refund_eth: '0',
 };
 
 async function fetchWithFallback(primaryUrl: string, fallbackUrl: string, init: RequestInit): Promise<Response> {
@@ -104,6 +115,23 @@ function countdownLabel(ms: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function toMsFromChain(raw: bigint | number | string): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return value < 1_000_000_000_000 ? value * 1000 : value;
+}
+
+function lifecycleFromChain(startsAtMs: number, endsAtMs: number, settled: boolean): AuctionLifecycle {
+  const now = Date.now();
+  if (settled || (endsAtMs > 0 && now >= endsAtMs)) return 'ended';
+  if (startsAtMs > now) return 'upcoming';
+  return 'active';
+}
+
+function buildSubmissionHash(sessionId: string): `0x${string}` {
+  return keccak256(toHex(sessionId || ''));
+}
+
 const SponsorAdPanel: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { address, isConnected } = useAccount();
@@ -117,6 +145,7 @@ const SponsorAdPanel: React.FC = () => {
   const [sponsorName, setSponsorName] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [sessionId, setSessionId] = useState('');
+  const [submissionIdHash, setSubmissionIdHash] = useState('');
   const [sessionStatus, setSessionStatus] = useState('PENDING_PAYMENT');
   const [minEth, setMinEth] = useState('0.01');
   const [minWei, setMinWei] = useState('');
@@ -130,6 +159,7 @@ const SponsorAdPanel: React.FC = () => {
   const [auction, setAuction] = useState<AuctionSnapshot>(defaultAuctionSnapshot);
   const [auctionNowMs, setAuctionNowMs] = useState(Date.now());
   const [bidError, setBidError] = useState('');
+  const [claimingRefund, setClaimingRefund] = useState(false);
 
   const auctionMsRemaining = Math.max(0, Number(auction.ends_at_ms || 0) - auctionNowMs);
   const nextValidBidWei = toWeiFromRaw(String(auction.next_valid_bid_wei || defaultAuctionSnapshot.next_valid_bid_wei));
@@ -142,12 +172,51 @@ const SponsorAdPanel: React.FC = () => {
   const uploadEnabled = sessionStatus === 'PAID' && Boolean(sessionId) && !busy;
 
   async function loadAuctionStatus() {
+    if (!publicClient) return;
     try {
-      const response = await fetchWithFallback('/.netlify/functions/sponsor-auction-status', '/api/sponsor/auction-status', { method: 'GET' });
-      if (!response.ok) return;
-      const { payload } = await readApiResponse(response);
-      const liveAuction = payload?.auction;
-      if (!liveAuction) return;
+      const currentAuction = await publicClient.readContract({
+        address: CLAWB_ADSPACE_CONTRACT as `0x${string}`,
+        abi: CLAWB_ADSPACE_ABI,
+        functionName: 'currentAuction',
+      }) as any;
+      const minimumNextBid = await publicClient.readContract({
+        address: CLAWB_ADSPACE_CONTRACT as `0x${string}`,
+        abi: CLAWB_ADSPACE_ABI,
+        functionName: 'minimumNextBid',
+      }) as bigint;
+      const startsAtMs = toMsFromChain(currentAuction?.startAt ?? currentAuction?.[1] ?? 0);
+      const endsAtMs = toMsFromChain(currentAuction?.endAt ?? currentAuction?.[2] ?? 0);
+      const settled = Boolean(currentAuction?.settled ?? currentAuction?.[3] ?? false);
+      const nextMinBidWei = String(currentAuction?.nextMinBid ?? currentAuction?.[6] ?? minimumNextBid ?? 0n);
+      let pendingRefundWei = '0';
+      if (address) {
+        const pending = await publicClient.readContract({
+          address: CLAWB_ADSPACE_CONTRACT as `0x${string}`,
+          abi: CLAWB_ADSPACE_ABI,
+          functionName: 'pendingRefunds',
+          args: [address as `0x${string}`],
+        }) as bigint;
+        pendingRefundWei = String(pending || 0n);
+      }
+
+      const liveAuction = {
+        source: 'onchain',
+        auctionId: String(currentAuction?.auctionId ?? currentAuction?.[0] ?? '0'),
+        starts_at_ms: startsAtMs,
+        ends_at_ms: endsAtMs,
+        settled,
+        winner: String(currentAuction?.winner ?? currentAuction?.[4] ?? '0x0000000000000000000000000000000000000000'),
+        highest_bid_wei: String(currentAuction?.highestBid ?? currentAuction?.[5] ?? '0'),
+        next_valid_bid_wei: nextMinBidWei,
+        reserve_wei: defaultAuctionSnapshot.reserve_wei,
+        reserve_eth: formatEthFromWei(defaultAuctionSnapshot.reserve_wei),
+        highest_bid_eth: formatEthFromWei(String(currentAuction?.highestBid ?? currentAuction?.[5] ?? '0')),
+        next_valid_bid_eth: formatEthFromWei(nextMinBidWei),
+        extension_used: Boolean(currentAuction?.extensionUsed ?? currentAuction?.[7] ?? false),
+        pending_refund_wei: pendingRefundWei,
+        pending_refund_eth: formatEthFromWei(pendingRefundWei),
+        lifecycle: lifecycleFromChain(startsAtMs, endsAtMs, settled),
+      };
       setAuction({
         ...defaultAuctionSnapshot,
         ...liveAuction,
@@ -160,7 +229,7 @@ const SponsorAdPanel: React.FC = () => {
         }
       }
     } catch {
-      // Non-blocking auction card refresh.
+      // Non-blocking onchain auction refresh.
     }
   }
 
@@ -181,6 +250,7 @@ const SponsorAdPanel: React.FC = () => {
 
   async function hydrateFromSession(sessionPayload: any, id: string) {
     setSessionId(id);
+    setSubmissionIdHash(String(sessionPayload.submission_id_hash || buildSubmissionHash(id)));
     setSessionStatus(String(sessionPayload.status || 'PENDING_PAYMENT'));
     setSponsorName(String(sessionPayload.sponsor_name || ''));
     setWebsiteUrl(String(sessionPayload.website_url || ''));
@@ -280,8 +350,7 @@ const SponsorAdPanel: React.FC = () => {
       void loadAuctionStatus();
     }, 15000);
     return () => window.clearInterval(refreshId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier]);
+  }, [tier, publicClient, address]);
 
   useEffect(() => {
     const ticker = window.setInterval(() => setAuctionNowMs(Date.now()), 1000);
@@ -342,6 +411,7 @@ const SponsorAdPanel: React.FC = () => {
         throw new Error(payload.error || 'Could not create session');
       }
       setSessionId(payload.sessionId);
+      setSubmissionIdHash(String(payload.submissionIdHash || buildSubmissionHash(String(payload.sessionId || ''))));
       setSessionStatus(payload.status);
       setMinEth(payload.payment.minEth);
       setMinWei(payload.payment.minWei);
@@ -354,7 +424,7 @@ const SponsorAdPanel: React.FC = () => {
       setTxHash('');
       setTxHashInput('');
       persistSession(payload.sessionId);
-      setStatus(`Session created. Send at least ${payload.payment.minEth} ETH to Clawb wallet.`);
+      setStatus(`Session created. Send onchain payment via ClawbAdSpace (${payload.payment.minEth} ETH minimum for this session).`);
     } catch (err) {
       setError((err as Error).message);
       setStatus('');
@@ -364,15 +434,39 @@ const SponsorAdPanel: React.FC = () => {
   }
 
   async function payAndVerify() {
-    if (!sessionId || !minEth) return;
+    if (!sessionId) return;
     setBusy(true);
     setError('');
     try {
       await ensureBase();
-      setStatus(`Sending payment (${minEth} ETH) on Base...`);
+      if (tier === 'rotation') {
+        if (auction.lifecycle !== 'active') {
+          throw new Error('Auction is not live. Wait for the next round.');
+        }
+        if (rotationBidTooLow) {
+          throw new Error(`Bid too low. Next valid bid is ${nextValidBidEth} ETH.`);
+        }
+      }
+
+      const submissionHash = (submissionIdHash || buildSubmissionHash(sessionId)) as `0x${string}`;
+      const mediaRef = `session:${sessionId}`;
+      const functionName = tier === 'one_time' ? 'buyOneTimeAd' : 'placeBid';
+      const valueEth = tier === 'one_time' ? ONE_TIME_EXACT_ETH : rotationBidEth;
+      const calldata = encodeFunctionData({
+        abi: CLAWB_ADSPACE_ABI,
+        functionName,
+        args: [submissionHash, mediaRef],
+      });
+
+      setStatus(
+        tier === 'one_time'
+          ? `Sending exact ${ONE_TIME_EXACT_ETH} ETH onchain payment...`
+          : `Sending ${valueEth} ETH onchain bid...`,
+      );
       const hash = await sendTransactionAsync({
-        to: CLAWB_WALLET as `0x${string}`,
-        value: parseEther(minEth),
+        to: CLAWB_ADSPACE_CONTRACT as `0x${string}`,
+        data: calldata,
+        value: parseEther(valueEth),
       });
       setTxHash(hash);
       setTxHashInput(hash);
@@ -383,6 +477,7 @@ const SponsorAdPanel: React.FC = () => {
       }
       setStatus('Verifying transaction...');
       await verifyTransactionHash(hash);
+      await loadAuctionStatus();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -468,31 +563,81 @@ const SponsorAdPanel: React.FC = () => {
     }
   }
 
+  async function claimRefund() {
+    if (!address) return;
+    setClaimingRefund(true);
+    setError('');
+    try {
+      await ensureBase();
+      const data = encodeFunctionData({
+        abi: CLAWB_ADSPACE_ABI,
+        functionName: 'withdrawRefund',
+        args: [],
+      });
+      setStatus('Claiming refund onchain...');
+      const hash = await sendTransactionAsync({
+        to: CLAWB_ADSPACE_CONTRACT as `0x${string}`,
+        data,
+        value: BigInt(0),
+      });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+      }
+      setStatus('Refund claimed. Ocean justice served.');
+      await loadAuctionStatus();
+    } catch (err) {
+      setError((err as Error).message || 'Refund claim failed.');
+    } finally {
+      setClaimingRefund(false);
+    }
+  }
+
+  async function settleAuctionNow() {
+    setBusy(true);
+    setError('');
+    try {
+      setStatus('Requesting auction settlement...');
+      const response = await fetchWithFallback('/.netlify/functions/sponsor-settle-auction', '/api/sponsor/settle-auction', {
+        method: 'POST',
+      });
+      const { payload } = await readApiResponse(response);
+      if (!response.ok) throw new Error(payload.error || 'Settlement failed');
+      if (payload?.skipped) {
+        setStatus(`Settlement skipped: ${payload.reason}`);
+      } else {
+        setStatus(`Auction settled onchain. tx: ${payload.txHash || 'n/a'}`);
+      }
+      await loadAuctionStatus();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <h3 style={{ margin: 0 }}>Advertise on Clawb TV</h3>
-      <p style={{ margin: 0 }}>Buy a slot, upload your ad, and Clawb runs it automatically during sponsor breaks.</p>
+      <p style={{ margin: 0 }}>Feed the stream, fund the crab, get your clip aired. Onchain round logic, permissionless intake.</p>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
-        <p style={{ margin: '0 0 6px 0' }}><strong>Rules</strong></p>
-        <p style={{ margin: '0 0 4px 0' }}>Permissionless intake</p>
-        <p style={{ margin: '0 0 4px 0' }}>No content review</p>
-        <p style={{ margin: '0 0 4px 0' }}>Technical checks only</p>
-        <p style={{ margin: '0 0 4px 0' }}>Max file size: 99MB (103,809,024 bytes)</p>
-        <p style={{ margin: 0 }}>Accepted formats: mp4, webm, mov</p>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Tech rules</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>Permissionless intake. No content gate. No moderation queue.</p>
+        <p style={{ margin: '0 0 4px 0' }}>Hard cap only: 99MB max (103,809,024 bytes).</p>
+        <p style={{ margin: 0 }}>Formats: mp4, webm, mov.</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>Products</strong></p>
-        <p style={{ margin: '0 0 4px 0' }}><strong>One-Time Play - 0.01 ETH (Base)</strong></p>
-        <p style={{ margin: '0 0 6px 0' }}>Your ad is prioritized for next eligible breaks and airs 2 total times across separate breaks.</p>
-        <p style={{ margin: '0 0 4px 0' }}><strong>Rotation Auction - 24h (reserve 0.02 ETH)</strong></p>
-        <p style={{ margin: 0 }}>Top bid at auction close gets added to recurring rotation and prioritized in upcoming breaks.</p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>One-Time Ad - exact 0.01 ETH on Base</strong></p>
+        <p style={{ margin: '0 0 6px 0' }}>Airs 2 times total across different breaks, then done.</p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Rotation Auction - 24h round</strong></p>
+        <p style={{ margin: 0 }}>Reserve 0.02 ETH, min increment 0.001 ETH. Winner stays in rotation.</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
-        <p style={{ margin: '0 0 6px 0' }}><strong>Flow</strong></p>
-        <p style={{ margin: '0 0 4px 0' }}>Create sponsor session</p>
-        <p style={{ margin: '0 0 4px 0' }}>Pay and verify onchain (Base)</p>
-        <p style={{ margin: '0 0 4px 0' }}>Upload commercial (unlocks after PAID)</p>
-        <p style={{ margin: 0 }}>Clawb ingests and schedules playback automatically</p>
+        <p style={{ margin: '0 0 6px 0' }}><strong>How it runs</strong></p>
+        <p style={{ margin: '0 0 4px 0' }}>1) Create session with sponsor name + optional website.</p>
+        <p style={{ margin: '0 0 4px 0' }}>2) Pay onchain, wait confirmations, then upload unlocks.</p>
+        <p style={{ margin: '0 0 4px 0' }}>3) Upload media, Clawb ingests automatically.</p>
+        <p style={{ margin: 0 }}>4) Optional website link appears in sponsor mentions/listings.</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
         <p style={{ margin: '0 0 6px 0' }}><strong>Break logic (live)</strong></p>
@@ -502,7 +647,7 @@ const SponsorAdPanel: React.FC = () => {
         <p style={{ margin: 0 }}>If paid queue is empty, all 3 slots are Lawb Inc fallback videos.</p>
       </div>
       <div style={{ border: '2px inset #808080', background: '#f3f3f3', padding: 8 }}>
-        <p style={{ margin: '0 0 6px 0' }}><strong>Rotation auction</strong></p>
+        <p style={{ margin: '0 0 6px 0' }}><strong>Rotation auction (onchain source of truth)</strong></p>
         <p style={{ margin: '0 0 4px 0' }}>
           <strong>{auction.lifecycle === 'active' ? 'Auction live' : auction.lifecycle === 'upcoming' ? 'Auction upcoming' : 'Auction ended'}</strong>
         </p>
@@ -512,12 +657,24 @@ const SponsorAdPanel: React.FC = () => {
         <p style={{ margin: '0 0 4px 0' }}><strong>Reserve:</strong> {auction.reserve_eth || formatEthFromWei(auction.reserve_wei)} ETH</p>
         <p style={{ margin: '0 0 4px 0' }}><strong>Current highest:</strong> {auction.highest_bid_eth || formatEthFromWei(auction.highest_bid_wei)} ETH</p>
         <p style={{ margin: '0 0 4px 0' }}><strong>Next valid bid &gt;=</strong> {nextValidBidEth} ETH</p>
+        <p style={{ margin: '0 0 4px 0' }}><strong>Anti-snipe extension used:</strong> {auction.extension_used ? 'yes' : 'no'}</p>
         {auction.lifecycle === 'ended' && (
           <>
-            <p style={{ margin: '0 0 4px 0' }}><strong>Winner:</strong> {shortWallet(auction.winner_wallet || auction.highest_wallet)}</p>
+            <p style={{ margin: '0 0 4px 0' }}><strong>Winner:</strong> {shortWallet(auction.winner)}</p>
             <p style={{ margin: 0 }}><strong>Final bid:</strong> {auction.highest_bid_eth || formatEthFromWei(auction.highest_bid_wei)} ETH</p>
           </>
         )}
+        <p style={{ margin: '6px 0 4px 0' }}>
+          <strong>Your claimable refund:</strong> {auction.pending_refund_eth || '0'} ETH
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => void claimRefund()} disabled={!address || claimingRefund || toWeiFromRaw(auction.pending_refund_wei || '0') <= BigInt(0)}>
+            {claimingRefund ? 'Claiming...' : 'Claim refund'}
+          </button>
+          <button type="button" onClick={() => void settleAuctionNow()} disabled={busy || auction.lifecycle !== 'ended' || !!auction.settled}>
+            Settle ended auction
+          </button>
+        </div>
       </div>
 
       {!isConnected && (
@@ -568,8 +725,8 @@ const SponsorAdPanel: React.FC = () => {
           style={{ width: '100%', maxWidth: isMobile ? '100%' : 280, minHeight: isMobile ? 40 : 30 }}
           disabled={busy}
         >
-          <option value="one_time">One-time: 2 airings across breaks (0.01 ETH)</option>
-          <option value="rotation">Rotation auction (reserve 0.02 ETH)</option>
+          <option value="one_time">One-time: exact 0.01 ETH, airs twice across breaks</option>
+          <option value="rotation">Rotation auction: 24h, reserve 0.02 ETH</option>
         </select>
         {tier === 'rotation' && (
           <label htmlFor="rotation-bid">
@@ -585,7 +742,7 @@ const SponsorAdPanel: React.FC = () => {
               disabled={busy || !canBidAuction}
             />
             <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
-              Next valid bid is {nextValidBidEth} ETH. No soft stuff: underbids get kicked.
+              Next valid bid is {nextValidBidEth} ETH (contract floor, +0.001 ETH min increment).
             </p>
             {bidError && <p style={{ margin: '4px 0 0 0', color: '#b00020', fontSize: 12 }}>{bidError}</p>}
           </label>
@@ -639,8 +796,9 @@ const SponsorAdPanel: React.FC = () => {
         <div style={{ border: '2px inset #808080', padding: 8, background: '#f3f3f3' }}>
           <p style={{ margin: '0 0 4px 0' }}><strong>Session:</strong> {sessionId}</p>
           <p style={{ margin: '0 0 4px 0' }}><strong>Status:</strong> {sessionStatus}</p>
-          <p style={{ margin: '0 0 4px 0' }}><strong>Recipient:</strong> {CLAWB_WALLET}</p>
-          <p style={{ margin: '0 0 4px 0' }}><strong>Min payment:</strong> {minEth} ETH ({minWei} wei)</p>
+          <p style={{ margin: '0 0 4px 0' }}><strong>Contract:</strong> {CLAWB_ADSPACE_CONTRACT}</p>
+          <p style={{ margin: '0 0 4px 0' }}><strong>One-time exact:</strong> {ONE_TIME_EXACT_ETH} ETH</p>
+          <p style={{ margin: '0 0 4px 0' }}><strong>Session floor:</strong> {minEth} ETH ({minWei} wei)</p>
           {txHash && (
             <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noreferrer">
               View tx on BaseScan
