@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
+import { UserLiquiditySection } from './UserLiquiditySection';
+import { METEORA_CLAWB_LAWB_POOL } from '../config/lpPools';
+import { meteoraProxyUrl } from '../utils/meteoraDlmm';
 import { fetchNFTInventory, fetchAggregatedNFTInventory, type WalletDescriptor } from '../utils/nftInventory';
 import { fetchBaseLawbClawbHoldingsBonus } from '../utils/leaderboardTokenBonus';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
@@ -384,9 +387,6 @@ const TokenBalancesSection: React.FC<{
 const CLAWB_EVM_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();
 const CLAWB_SOLANA_WALLET = 'FveSNArbJsdx5JTmGE8cti9pBt5gH8NVTrUvcp1C2Mbp';
 const METEORA_POSITION = '13N61SZdGVFgM24t6mtYbAhV7T2nD67QmzEqsaT1DEeg';
-const METEORA_PAIR = 'AVoLSxAV41A2estUDUkV4yCM9GJ7dM7V2A57jNtoaoWD';
-const meteoraProxyUrl = (suffix: string) =>
-  `/.netlify/functions/meteora-dlmm?path=${encodeURIComponent(suffix)}`;
 
 function isClawbProfileWallet(profileAddress: string): boolean {
   if (!profileAddress) return false;
@@ -426,8 +426,8 @@ function useMeteorLpPosition() {
         };
         const pnlQuery = `?user=${encodeURIComponent(CLAWB_SOLANA_WALLET)}&status=open`;
         const [pool, pnl] = await Promise.all([
-          loadJson(`/pools/${METEORA_PAIR}`),
-          loadJson(`/positions/${METEORA_PAIR}/pnl${pnlQuery}`),
+          loadJson(`/pools/${METEORA_CLAWB_LAWB_POOL}`),
+          loadJson(`/positions/${METEORA_CLAWB_LAWB_POOL}/pnl${pnlQuery}`),
         ]);
         if (cancelled) return;
 
@@ -495,7 +495,7 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           {loading && <span style={{ fontWeight: 400, fontSize: '11px', color: '#888', marginLeft: '6px' }}>(loading...)</span>}
         </h4>
         <a
-          href={`https://www.meteora.ag/dlmm/${METEORA_PAIR}?referrer=portfolio&position=${METEORA_POSITION}`}
+          href={`https://www.meteora.ag/dlmm/${METEORA_CLAWB_LAWB_POOL}?referrer=portfolio&position=${METEORA_POSITION}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ fontSize: isMobile ? '9px' : '10px', color: '#9945FF', textDecoration: 'none' }}
@@ -547,6 +547,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const connectionDisplay = useConnectionDisplay();
   const { open } = useAppKit();
   const connectedAddress = connectionDisplay.address;
+  const connectedSolana = connectionDisplay.solanaAddress;
+  const connectedEvm = connectionDisplay.evmAddress;
   const address = viewAddress || connectedAddress; // Use provided address or fallback to connected wallet
   const normalizeAddress = (value?: string) => {
     if (!value) return '';
@@ -1200,6 +1202,21 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 primaryWallet={primaryWallet}
                 linkedWallets={linkedWallets}
               />
+
+              {isOwnProfile && (
+                <UserLiquiditySection
+                  isMobile={isMobile}
+                  solanaAddress={
+                    connectedSolana ||
+                    linkedWallets.find((w) => w.chain === 'solana')?.address ||
+                    (!address.startsWith('0x') ? address : undefined)
+                  }
+                  evmAddress={
+                    connectedEvm ||
+                    (address.startsWith('0x') ? address : linkedWallets.find((w) => w.chain === 'evm')?.address)
+                  }
+                />
+              )}
 
               {isClawbProfileWallet(address) && <ClawbLpSection isMobile={isMobile} />}
 
