@@ -1,4 +1,4 @@
-import { createPublicClient, http, erc20Abi } from 'viem';
+import { createPublicClient, fallback, http, erc20Abi } from 'viem';
 import { base } from 'viem/chains';
 import { TOKEN_ADDRESSES_BY_CHAIN } from '../config/tokens';
 import { computeTokenHoldingsBonusPoints } from './leaderboardHoldingsScore';
@@ -23,43 +23,56 @@ function normalizeEvmAddresses(addresses: string[]): `0x${string}`[] {
  * Uses the public Base RPC (no Alchemy cost for this read).
  */
 export async function fetchBaseLawbClawbHoldingsBonus(evmAddresses: string[]): Promise<number> {
-  const addrs = normalizeEvmAddresses(evmAddresses);
-  if (addrs.length === 0) return 0;
+  try {
+    const addrs = normalizeEvmAddresses(evmAddresses);
+    if (addrs.length === 0) return 0;
 
-  const lawbAddr = TOKEN_ADDRESSES_BY_CHAIN[BASE_CHAIN_ID].LAWB_BASE as `0x${string}`;
-  const clawbAddr = TOKEN_ADDRESSES_BY_CHAIN[BASE_CHAIN_ID].CLAWB_BASE as `0x${string}`;
+    const lawbAddr = TOKEN_ADDRESSES_BY_CHAIN[BASE_CHAIN_ID]?.LAWB_BASE as `0x${string}` | undefined;
+    const clawbAddr = TOKEN_ADDRESSES_BY_CHAIN[BASE_CHAIN_ID]?.CLAWB_BASE as `0x${string}` | undefined;
+    if (!lawbAddr || !clawbAddr) return 0;
 
-  const client = createPublicClient({
-    chain: base,
-    transport: http(),
-  });
+    const transport = fallback([
+      http('https://mainnet.base.org'),
+      http('https://base.drpc.org'),
+    ]);
 
-  const rows = await Promise.all(
-    addrs.map(async (owner) => {
-      const [l, c] = await Promise.all([
-        client.readContract({
-          address: lawbAddr,
-          abi: erc20Abi,
-          functionName: 'balanceOf',
-          args: [owner],
-        }),
-        client.readContract({
-          address: clawbAddr,
-          abi: erc20Abi,
-          functionName: 'balanceOf',
-          args: [owner],
-        }),
-      ]);
-      return { l, c };
-    }),
-  );
+    const client = createPublicClient({
+      chain: base,
+      transport,
+    });
 
-  let totalLawb = 0n;
-  let totalClawb = 0n;
-  for (const { l, c } of rows) {
-    totalLawb += l;
-    totalClawb += c;
+    const rows = await Promise.all(
+      addrs.map(async (owner) => {
+        const [l, c] = await Promise.all([
+          client.readContract({
+            address: lawbAddr,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [owner],
+          }),
+          client.readContract({
+            address: clawbAddr,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [owner],
+          }),
+        ]);
+        return { l, c };
+      }),
+    );
+
+    let totalLawb = 0n;
+    let totalClawb = 0n;
+    for (const { l, c } of rows) {
+      totalLawb += l;
+      totalClawb += c;
+    }
+
+    return computeTokenHoldingsBonusPoints(totalLawb, totalClawb);
+  } catch (e) {
+    if (typeof console !== 'undefined') {
+      console.warn('[LEADERBOARD] Base token bonus skipped:', e);
+    }
+    return 0;
   }
-
-  return computeTokenHoldingsBonusPoints(totalLawb, totalClawb);
 }

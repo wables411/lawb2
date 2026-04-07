@@ -6,7 +6,9 @@ const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
 export async function fetchTokenMetadata(
   collection: keyof typeof NFT_COLLECTIONS,
   tokenId: string,
-  ownerAddress?: string
+  ownerAddress?: string,
+  /** Base58 Solana wallet — required for Magic Eden owner lookups when primary profile is EVM */
+  solanaOwnerAddress?: string,
 ): Promise<{ image_url: string; name?: string }> {
   const collectionConfig = NFT_COLLECTIONS[collection];
   
@@ -117,8 +119,12 @@ export async function fetchTokenMetadata(
         // tokenId is the mint address for Solana profile picture selection.
         const isMintLike = tokenId.length >= 24;
         const mintAddress = tokenId;
-        const response = ownerAddress
-          ? await getOpenSeaSolanaNFTsByOwner(ownerAddress, 200)
+        const isEvm = ownerAddress && /^0x[a-fA-F0-9]{40}$/.test(ownerAddress);
+        const solOwner =
+          solanaOwnerAddress ||
+          (!isEvm && ownerAddress ? ownerAddress : undefined);
+        const response = solOwner
+          ? await getOpenSeaSolanaNFTsByOwner(solOwner, 200)
           : await getOpenSeaSolanaNFTs(collectionConfig.slug, 200);
         const nft = response.data.find((n) => {
           if (isMintLike) return n.address === mintAddress || n.id === mintAddress;

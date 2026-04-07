@@ -383,7 +383,8 @@ const TokenBalancesSection: React.FC<{
 const CLAWB_SOLANA_WALLET = 'FveSNArbJsdx5JTmGE8cti9pBt5gH8NVTrUvcp1C2Mbp';
 const METEORA_POSITION = '13N61SZdGVFgM24t6mtYbAhV7T2nD67QmzEqsaT1DEeg';
 const METEORA_PAIR = 'AVoLSxAV41A2estUDUkV4yCM9GJ7dM7V2A57jNtoaoWD';
-const METEORA_API = 'https://dlmm-api.meteora.ag';
+const meteoraProxyUrl = (suffix: string) =>
+  `/.netlify/functions/meteora-dlmm?path=${encodeURIComponent(suffix)}`;
 
 interface LpPositionData {
   pairName: string;
@@ -406,9 +407,14 @@ function useMeteorLpPosition() {
     let cancelled = false;
     async function load() {
       try {
+        const loadJson = async (url: string) => {
+          const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+          if (!r.ok) throw new Error(`Meteora proxy HTTP ${r.status}`);
+          return r.json();
+        };
         const [pos, pair] = await Promise.all([
-          fetch(`${METEORA_API}/position/${METEORA_POSITION}`, { signal: AbortSignal.timeout(12000) }).then(r => r.json()),
-          fetch(`${METEORA_API}/pair/${METEORA_PAIR}`, { signal: AbortSignal.timeout(12000) }).then(r => r.json()),
+          loadJson(meteoraProxyUrl(`/position/${METEORA_POSITION}`)),
+          loadJson(meteoraProxyUrl(`/pair/${METEORA_PAIR}`)),
         ]);
         if (cancelled) return;
         setData({
@@ -710,7 +716,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           const cards = await Promise.all(
             tokenIds.map(async (tokenId) => {
               try {
-                const metadata = await fetchTokenMetadata(collection, tokenId, address);
+                const solOwner = profile.linked_wallets?.find((w) => w.chain === 'solana')?.address;
+                const metadata = await fetchTokenMetadata(collection, tokenId, address, solOwner);
                 return {
                   collection,
                   tokenId,
@@ -753,6 +760,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     address,
     profile?.nft_inventory?.lawbstation,
     profile?.nft_inventory?.lawbnexus,
+    profile?.linked_wallets,
   ]);
 
   // Check username availability as user types
@@ -846,7 +854,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       window.console.log('[PROFILE] Selecting profile picture:', collection, tokenId);
     }
     try {
-      const metadata = await fetchTokenMetadata(collection, tokenId, address);
+      const solOwner =
+        linkedWallets.find((w) => w.chain === 'solana')?.address ||
+        profile?.linked_wallets?.find((w) => w.chain === 'solana')?.address;
+      const metadata = await fetchTokenMetadata(collection, tokenId, address, solOwner);
       if (typeof window !== 'undefined' && window.console) {
         window.console.log('[PROFILE] Metadata fetched:', metadata);
       }
