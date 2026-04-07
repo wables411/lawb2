@@ -166,7 +166,7 @@ npm run preview  # Preview production build locally
 
 **Update Stockfish config**: Edit `simple-stockfish-api.js` on the DigitalOcean droplet, or update `Dockerfile.chess-api` and redeploy.
 
-**Update Firebase rules**: Edit `firebase.rules` and deploy via Firebase CLI.
+**Update Firebase rules**: Edit `database.rules.json` and deploy via Firebase CLI (`firebase deploy --only database`).
 
 **Add a new token for chess wagers**: Update `src/config/tokens.ts` (TOKEN_ADDRESSES_BY_CHAIN + SUPPORTED_TOKENS).
 

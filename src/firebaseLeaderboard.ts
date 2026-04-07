@@ -173,7 +173,7 @@ const LEADERBOARD_QUERY_CAP = 250;
 
 /**
  * Top entries by points using a single indexed query (avoids downloading the entire `leaderboard` tree).
- * Requires `.indexOn": ["points"]` on `leaderboard` in Firebase rules (see firebase.rules).
+ * Requires `.indexOn": ["points"]` on `leaderboard` in Firebase rules (see database.rules.json).
  */
 export const getTopLeaderboardEntries = async (limit: number = 20): Promise<LeaderboardEntry[]> => {
   try {
