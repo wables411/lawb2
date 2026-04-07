@@ -1,7 +1,16 @@
 /**
  * Server-side proxy for Meteora DLMM API (no CORS from browser).
- * GET ?path=%2Fposition%2F... or ?path=%2Fpair%2F...
+ *
+ * Meteora moved off dlmm-api.meteora.ag (/pair, /position → 404). Current host:
+ * https://dlmm.datapi.meteora.ag — e.g. GET /pools/{addr}, GET /positions/{pool}/pnl?user=...
+ *
+ * GET ?path= URL-encoded path, optional query string after first ?
  */
+const METEORA_BASE = 'https://dlmm.datapi.meteora.ag';
+
+// Solana-style base58 (no 0 O I l)
+const B58 = '[1-9A-HJ-NP-Za-km-z]+';
+
 exports.handler = async (event) => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
@@ -14,21 +23,28 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers: cors, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  let path = '';
+  let raw = '';
   try {
-    path = decodeURIComponent(event.queryStringParameters?.path || '');
+    raw = decodeURIComponent(event.queryStringParameters?.path || '');
   } catch {
     return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Bad path encoding' }) };
   }
 
-  if (!path.startsWith('/position/') && !path.startsWith('/pair/')) {
-    return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Invalid path' }) };
-  }
-  if (path.includes('..') || path.length > 256) {
+  const qIdx = raw.indexOf('?');
+  const pathname = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+  const search = qIdx >= 0 ? raw.slice(qIdx) : '';
+
+  if (!pathname || pathname.includes('..') || raw.length > 512) {
     return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Invalid path' }) };
   }
 
-  const url = `https://dlmm-api.meteora.ag${path}`;
+  const poolRe = new RegExp(`^/pools/${B58}$`);
+  const posRe = new RegExp(`^/positions/${B58}/(pnl|historical)$`);
+  if (!poolRe.test(pathname) && !posRe.test(pathname)) {
+    return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Path not allowed' }) };
+  }
+
+  const url = `${METEORA_BASE}${pathname}${search}`;
   try {
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },

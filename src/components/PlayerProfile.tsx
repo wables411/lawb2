@@ -390,14 +390,16 @@ interface LpPositionData {
   pairName: string;
   currentPrice: number;
   feesClaimedUsd: number;
-  feeApy24h: number;
+  feePerTvl24h: number;
   volume24h: number;
   fees24h: number;
   poolApr: number;
   reserveX: number;
   reserveY: number;
+  positionPnlUsd?: number;
 }
 
+/** Meteora datapi (2025): pool + positions PnL — old dlmm-api /pair and /position URLs are 404. */
 function useMeteorLpPosition() {
   const [data, setData] = useState<LpPositionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -407,35 +409,52 @@ function useMeteorLpPosition() {
     let cancelled = false;
     async function load() {
       try {
-        const loadJson = async (url: string) => {
-          const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+        const loadJson = async (pathAndQuery: string) => {
+          const r = await fetch(meteoraProxyUrl(pathAndQuery), { signal: AbortSignal.timeout(20000) });
           if (!r.ok) throw new Error(`Meteora proxy HTTP ${r.status}`);
           return r.json();
         };
-        const [pos, pair] = await Promise.all([
-          loadJson(meteoraProxyUrl(`/position/${METEORA_POSITION}`)),
-          loadJson(meteoraProxyUrl(`/pair/${METEORA_PAIR}`)),
+        const pnlQuery = `?user=${encodeURIComponent(CLAWB_SOLANA_WALLET)}&status=open`;
+        const [pool, pnl] = await Promise.all([
+          loadJson(`/pools/${METEORA_PAIR}`),
+          loadJson(`/positions/${METEORA_PAIR}/pnl${pnlQuery}`),
         ]);
         if (cancelled) return;
+
+        const positions = Array.isArray(pnl?.positions) ? pnl.positions : [];
+        const myPos = positions.find(
+          (p: { positionAddress?: string }) => p.positionAddress === METEORA_POSITION,
+        );
+        const feesClaimed = myPos?.allTimeFees?.total?.usd != null ? Number(myPos.allTimeFees.total.usd) : 0;
+        const feePerTvl =
+          myPos?.feePerTvl24h != null ? Number(String(myPos.feePerTvl24h).replace(/,/g, '')) : 0;
+        const pnlUsd = myPos?.pnlUsd != null ? Number(String(myPos.pnlUsd).replace(/,/g, '')) : undefined;
+
+        const vol = pool?.volume && typeof pool.volume === 'object' ? pool.volume['24h'] : undefined;
+        const fees = pool?.fees && typeof pool.fees === 'object' ? pool.fees['24h'] : undefined;
+
         setData({
-          pairName: pair.name || 'CLAWB-LAWB',
-          currentPrice: pair.current_price ?? 0,
-          feesClaimedUsd: pos.total_fee_usd_claimed ?? 0,
-          feeApy24h: pos.fee_apy_24h ?? 0,
-          volume24h: pair.trade_volume_24h ?? 0,
-          fees24h: pair.fees_24h ?? 0,
-          poolApr: pair.apr ?? 0,
-          reserveX: pair.reserve_x_amount ?? 0,
-          reserveY: pair.reserve_y_amount ?? 0,
+          pairName: pool?.name || 'CLAWB-LAWB',
+          currentPrice: Number(pool?.current_price ?? 0),
+          feesClaimedUsd: Number.isFinite(feesClaimed) ? feesClaimed : 0,
+          feePerTvl24h: Number.isFinite(feePerTvl) ? feePerTvl : 0,
+          volume24h: vol != null ? Number(vol) : 0,
+          fees24h: fees != null ? Number(fees) : 0,
+          poolApr: Number(pool?.apr ?? 0),
+          reserveX: Number(pool?.token_x_amount ?? 0),
+          reserveY: Number(pool?.token_y_amount ?? 0),
+          positionPnlUsd: pnlUsd,
         });
-      } catch (e: any) {
-        if (!cancelled) setError(e.message || 'Failed to load LP data');
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load LP data');
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { data, loading, error };
@@ -482,10 +501,14 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           {[
             { label: 'Pool', value: data.pairName, sub: 'Meteora DLMM' },
             { label: 'Price', value: `${data.currentPrice.toFixed(4)}`, sub: 'CLAWB/LAWB' },
-            { label: 'Pool APR', value: `${data.poolApr.toFixed(1)}%`, sub: '24h' },
+            { label: 'Pool APR', value: `${data.poolApr.toFixed(1)}%`, sub: 'pool' },
             { label: '24h Volume', value: `$${fmtNum(data.volume24h)}`, sub: '' },
-            { label: '24h Fees', value: `$${fmtNum(data.fees24h)}`, sub: '' },
-            { label: 'Fees Claimed', value: `$${fmtNum(data.feesClaimedUsd)}`, sub: 'total' },
+            { label: '24h Fees', value: `$${fmtNum(data.fees24h)}`, sub: 'pool' },
+            { label: 'Fee / TVL 24h', value: `${data.feePerTvl24h.toFixed(2)}%`, sub: 'position' },
+            { label: 'Fees Claimed', value: `$${fmtNum(data.feesClaimedUsd)}`, sub: 'position total' },
+            ...(data.positionPnlUsd != null && Number.isFinite(data.positionPnlUsd)
+              ? [{ label: 'Position PnL', value: `$${fmtNum(data.positionPnlUsd)}`, sub: 'USD' }]
+              : []),
           ].map((cell) => (
             <div key={cell.label} style={{
               padding: '8px',
