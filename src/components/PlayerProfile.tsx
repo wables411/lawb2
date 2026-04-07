@@ -380,11 +380,21 @@ const TokenBalancesSection: React.FC<{
   );
 };
 
+/** Clawb only — LP widget must not appear on other users' profiles (data is his position, not the viewer's). */
+const CLAWB_EVM_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();
 const CLAWB_SOLANA_WALLET = 'FveSNArbJsdx5JTmGE8cti9pBt5gH8NVTrUvcp1C2Mbp';
 const METEORA_POSITION = '13N61SZdGVFgM24t6mtYbAhV7T2nD67QmzEqsaT1DEeg';
 const METEORA_PAIR = 'AVoLSxAV41A2estUDUkV4yCM9GJ7dM7V2A57jNtoaoWD';
 const meteoraProxyUrl = (suffix: string) =>
   `/.netlify/functions/meteora-dlmm?path=${encodeURIComponent(suffix)}`;
+
+function isClawbProfileWallet(profileAddress: string): boolean {
+  if (!profileAddress) return false;
+  if (profileAddress.startsWith('0x')) {
+    return profileAddress.toLowerCase() === CLAWB_EVM_WALLET;
+  }
+  return profileAddress === CLAWB_SOLANA_WALLET;
+}
 
 interface LpPositionData {
   pairName: string;
@@ -481,7 +491,7 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px', color: '#fff' }}>
-          Clawb LP Position
+          Clawb Meteora LP (CLAWB / LAWB)
           {loading && <span style={{ fontWeight: 400, fontSize: '11px', color: '#888', marginLeft: '6px' }}>(loading...)</span>}
         </h4>
         <a
@@ -1191,7 +1201,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 linkedWallets={linkedWallets}
               />
 
-              <ClawbLpSection isMobile={isMobile} />
+              {isClawbProfileWallet(address) && <ClawbLpSection isMobile={isMobile} />}
 
               <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
