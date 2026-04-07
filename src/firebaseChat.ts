@@ -1,5 +1,5 @@
 import { ref, push, set, onValue, off, serverTimestamp, query, orderByChild, limitToLast } from 'firebase/database';
-import { database } from './firebaseApp';
+import { database, getFirebaseDatabase } from './firebaseApp';
 
 export interface ChatMessage {
   id: string;
@@ -25,7 +25,8 @@ export const sendPublicMessage = async (
   displayName: string
 ): Promise<void> => {
   try {
-    const messagesRef = ref(database, 'chess_chat/public/messages');
+    const db = getFirebaseDatabase();
+    const messagesRef = ref(db, 'chess_chat/public/messages');
     const newMessageRef = push(messagesRef);
     
     await set(newMessageRef, {
@@ -38,7 +39,7 @@ export const sendPublicMessage = async (
     });
 
     // Update last message timestamp
-    await set(ref(database, 'chess_chat/public/lastMessage'), serverTimestamp());
+    await set(ref(db, 'chess_chat/public/lastMessage'), serverTimestamp());
   } catch (error) {
     console.error('Error sending public message:', error);
     throw error;
@@ -53,7 +54,8 @@ export const sendPrivateMessage = async (
   displayName: string
 ): Promise<void> => {
   try {
-    const messagesRef = ref(database, `chess_chat/private/${inviteCode}/messages`);
+    const db = getFirebaseDatabase();
+    const messagesRef = ref(db, `chess_chat/private/${inviteCode}/messages`);
     const newMessageRef = push(messagesRef);
     
     await set(newMessageRef, {
@@ -67,7 +69,7 @@ export const sendPrivateMessage = async (
     });
 
     // Update last message timestamp
-    await set(ref(database, `chess_chat/private/${inviteCode}/lastMessage`), serverTimestamp());
+    await set(ref(db, `chess_chat/private/${inviteCode}/lastMessage`), serverTimestamp());
   } catch (error) {
     console.error('Error sending private message:', error);
     throw error;
@@ -81,7 +83,8 @@ export const createPrivateChatRoom = async (
   player2Wallet: string
 ): Promise<void> => {
   try {
-    const chatRoomRef = ref(database, `chess_chat/private/${inviteCode}`);
+    const db = getFirebaseDatabase();
+    const chatRoomRef = ref(db, `chess_chat/private/${inviteCode}`);
     await set(chatRoomRef, {
       participants: {
         [player1Wallet]: true,
@@ -100,7 +103,9 @@ export const listenToPublicChat = (
   callback: (messages: ChatMessage[]) => void,
   limit: number = 50
 ): (() => void) => {
-  const messagesRef = ref(database, 'chess_chat/public/messages');
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const messagesRef = ref(db, 'chess_chat/public/messages');
   const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(limit));
   
   const unsubscribe = onValue(messagesQuery, (snapshot) => {
@@ -126,7 +131,9 @@ export const listenToPrivateChat = (
   callback: (messages: ChatMessage[]) => void,
   limit: number = 50
 ): (() => void) => {
-  const messagesRef = ref(database, `chess_chat/private/${inviteCode}/messages`);
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const messagesRef = ref(db, `chess_chat/private/${inviteCode}/messages`);
   const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(limit));
   
   const unsubscribe = onValue(messagesQuery, (snapshot) => {
@@ -152,7 +159,8 @@ export const isPrivateChatParticipant = async (
   walletAddress: string
 ): Promise<boolean> => {
   try {
-    const participantsRef = ref(database, `chess_chat/private/${inviteCode}/participants/${walletAddress}`);
+    const db = getFirebaseDatabase();
+    const participantsRef = ref(db, `chess_chat/private/${inviteCode}/participants/${walletAddress}`);
     const snapshot = await onValue(participantsRef, (snapshot) => {
       return snapshot.exists();
     });

@@ -1,5 +1,5 @@
 import { database } from './firebaseApp';
-import { ref, set, update, get, query, orderByChild, limitToLast, equalTo, remove } from "firebase/database";
+import { ref, set, update, get, query, orderByChild, limitToLast, remove } from 'firebase/database';
 
 // Helper function to check if database is available
 const getDatabaseOrThrow = () => {
@@ -169,32 +169,32 @@ export const updateBothPlayersScores = async (
   }
 };
 
-// Get top leaderboard entries (ordered by points descending)
+const LEADERBOARD_QUERY_CAP = 250;
+
+/**
+ * Top entries by points using a single indexed query (avoids downloading the entire `leaderboard` tree).
+ * Requires `.indexOn": ["points"]` on `leaderboard` in Firebase rules (see firebase.rules).
+ */
 export const getTopLeaderboardEntries = async (limit: number = 20): Promise<LeaderboardEntry[]> => {
   try {
-    const database = getDatabaseOrThrow();
-    const leaderboardRef = ref(database, 'leaderboard');
-    console.log('[LEADERBOARD] Fetching from Firebase path: leaderboard');
-    
-    const snapshot = await get(leaderboardRef);
-    console.log('[LEADERBOARD] Snapshot exists:', snapshot.exists(), 'hasChildren:', snapshot.hasChildren());
-    
+    const db = getDatabaseOrThrow();
+    const leaderboardRef = ref(db, 'leaderboard');
+    const capped = Math.min(Math.max(1, limit), LEADERBOARD_QUERY_CAP);
+    const q = query(leaderboardRef, orderByChild('points'), limitToLast(capped));
+    const snapshot = await get(q);
+
     if (!snapshot.exists()) {
-      console.log('[LEADERBOARD] No data in leaderboard path');
       return [];
     }
 
     const entries: LeaderboardEntry[] = [];
     snapshot.forEach((childSnapshot) => {
       const entry = childSnapshot.val() as LeaderboardEntry;
-      if (entry) {
+      if (entry && typeof entry.points === 'number') {
         entries.push(entry);
       }
     });
 
-    console.log('[LEADERBOARD] Found', entries.length, 'entries before sorting');
-
-    // Sort by points descending, then by wins descending, then by total games ascending
     entries.sort((a, b) => {
       if (b.points !== a.points) {
         return b.points - a.points;
@@ -205,11 +205,12 @@ export const getTopLeaderboardEntries = async (limit: number = 20): Promise<Lead
       return a.total_games - b.total_games;
     });
 
-    const result = entries.slice(0, limit);
-    console.log('[LEADERBOARD] Returning', result.length, 'entries');
-    return result;
-  } catch (error: any) {
-    console.error('[LEADERBOARD] Error getting top entries:', error, 'message:', error?.message);
+    return entries.slice(0, limit);
+  } catch (error: unknown) {
+    console.error(
+      '[LEADERBOARD] Error getting top entries (is `.indexOn: [\"points\"]` deployed on `leaderboard`?):',
+      error,
+    );
     return [];
   }
 };
@@ -225,16 +226,16 @@ export const getLeaderboardEntryByRank = async (rank: number): Promise<Leaderboa
   }
 };
 
-// Get user's rank in leaderboard
+// Rank among top LEADERBOARD_QUERY_CAP by points; null if outside that window or unranked
 export const getUserRank = async (walletAddress: string): Promise<number | null> => {
   try {
     if (!walletAddress) return null;
 
-    const entries = await getTopLeaderboardEntries(1000); // Get all entries to find rank
-    const userIndex = entries.findIndex(entry => 
-      entry.username?.toLowerCase() === walletAddress.toLowerCase()
+    const entries = await getTopLeaderboardEntries(LEADERBOARD_QUERY_CAP);
+    const userIndex = entries.findIndex(
+      (entry) => entry.username?.toLowerCase() === walletAddress.toLowerCase(),
     );
-    
+
     return userIndex >= 0 ? userIndex + 1 : null;
   } catch (error) {
     console.error('[LEADERBOARD] Error getting user rank:', error);

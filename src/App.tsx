@@ -22,6 +22,10 @@ const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
 const ClawbClaimPanel = lazy(() => import('./components/ClawbClaimPanel'));
 const SponsorAdPanel = lazy(() => import('./components/SponsorAdPanel'));
+const PlayerProfile = lazy(() => import('./components/PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
+const LawbLeaderboardPanel = lazy(() =>
+  import('./components/LawbLeaderboardPanel').then((m) => ({ default: m.LawbLeaderboardPanel })),
+);
 
 const useStyles = createUseStyles({
   body: {
@@ -204,6 +208,20 @@ function App() {
       setShowNFTGallery(true);
     } else if (action === 'meme-generator') {
       setShowMemeGenerator(true);
+    } else if (action === 'lawb-profile') {
+      setMinimizedPopups((prev) => {
+        const next = new Set(prev);
+        next.delete('profile-popup');
+        return next;
+      });
+      setActivePopup('profile-popup');
+    } else if (action === 'lawb-leaderboard') {
+      setMinimizedPopups((prev) => {
+        const next = new Set(prev);
+        next.delete('leaderboard-popup');
+        return next;
+      });
+      setActivePopup('leaderboard-popup');
     }
   };
 
@@ -481,6 +499,22 @@ function App() {
           ens: connectionDisplay.ens
         }}
         onClawbClick={() => clawbRef.current?.triggerDance()}
+        onOpenProfile={() => {
+          setMinimizedPopups((prev) => {
+            const next = new Set(prev);
+            next.delete('profile-popup');
+            return next;
+          });
+          setActivePopup('profile-popup');
+        }}
+        onOpenLeaderboard={() => {
+          setMinimizedPopups((prev) => {
+            const next = new Set(prev);
+            next.delete('leaderboard-popup');
+            return next;
+          });
+          setActivePopup('leaderboard-popup');
+        }}
       />
 
       {/* Clawb desktop CTA button in bottom-right */}
@@ -724,6 +758,34 @@ function App() {
       <Popup id="sponsor-popup" isOpen={activePopup === 'sponsor-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2200} title="Advertise on Clawb TV">
         <Suspense fallback={<div>Loading sponsor panel...</div>}>
           <SponsorAdPanel />
+        </Suspense>
+      </Popup>
+
+      <Popup
+        id="profile-popup"
+        isOpen={activePopup === 'profile-popup'}
+        onClose={closePopup}
+        onMinimize={minimizePopup}
+        zIndex={2100}
+        title="Lawb Profile"
+        initialSize={{ width: isMobile ? 'calc(100vw - 24px)' : 520, height: isMobile ? '85vh' : 620 }}
+      >
+        <Suspense fallback={<div style={{ padding: 16 }}>Loading profile…</div>}>
+          <PlayerProfile isMobile={isMobile} />
+        </Suspense>
+      </Popup>
+
+      <Popup
+        id="leaderboard-popup"
+        isOpen={activePopup === 'leaderboard-popup'}
+        onClose={closePopup}
+        onMinimize={minimizePopup}
+        zIndex={2100}
+        title="Lawb Leaderboard"
+        initialSize={{ width: isMobile ? 'calc(100vw - 24px)' : 440, height: isMobile ? '70vh' : 520 }}
+      >
+        <Suspense fallback={<div style={{ padding: 16 }}>Loading…</div>}>
+          <LawbLeaderboardPanel isMobile={isMobile} />
         </Suspense>
       </Popup>
 

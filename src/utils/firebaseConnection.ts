@@ -1,4 +1,4 @@
-import { database } from '../firebaseApp';
+import { database, getFirebaseDatabase } from '../firebaseApp';
 import { ref, get } from 'firebase/database';
 
 // Test Firebase connection by trying to read a simple path
@@ -7,9 +7,10 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; erro
     if (!database) {
       return { success: false, error: 'Firebase database not initialized' };
     }
-    
+
+    const db = getFirebaseDatabase();
     // Try to read a simple path to test connection
-    const testRef = ref(database, '.info/connected');
+    const testRef = ref(db, '.info/connected');
     const snapshot = await get(testRef);
     
     return { success: true };
@@ -27,8 +28,9 @@ export const testFirebaseRead = async (path: string): Promise<{ success: boolean
     if (!database) {
       return { success: false, error: 'Firebase database not initialized' };
     }
-    
-    const testRef = ref(database, path);
+
+    const db = getFirebaseDatabase();
+    const testRef = ref(db, path);
     const snapshot = await get(testRef);
     
     return { 

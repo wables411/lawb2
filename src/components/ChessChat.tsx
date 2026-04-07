@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useLocation } from 'react-router-dom';
-import { database } from '../firebaseApp';
+import { database, getFirebaseDatabase } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast, get } from 'firebase/database';
 import { getDisplayName as getDisplayNameUtil } from '../utils/displayName';
 import { firebaseProfiles } from '../firebaseProfiles';
@@ -169,11 +169,12 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         return;
       }
       
+      const db = getFirebaseDatabase();
       const roomPath = currentRoom === 'public' 
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${currentInviteCode}/messages`;
       
-      const messagesRef = ref(database, roomPath);
+      const messagesRef = ref(db, roomPath);
       const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
       
       // Set up real-time listener (works on both desktop and mobile)
@@ -361,11 +362,12 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     };
     
     try {
+      const db = getFirebaseDatabase();
       const roomPath = currentRoom === 'public' 
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${currentInviteCode}/messages`;
       
-      const messagesRef = ref(database, roomPath);
+      const messagesRef = ref(db, roomPath);
       await push(messagesRef, messageData);
       
       setNewMessage('');

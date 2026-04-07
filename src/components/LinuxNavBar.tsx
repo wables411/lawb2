@@ -190,9 +190,19 @@ interface LinuxNavBarProps {
     ens?: string;
   };
   onClawbClick?: () => void;
+  /** Open Lawb profile popup (desktop / mobile shell) */
+  onOpenProfile?: () => void;
+  /** Open Lawb leaderboard popup */
+  onOpenLeaderboard?: () => void;
 }
 
-const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatus: connectionStatusProp, onClawbClick }) => {
+const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
+  walletButton,
+  connectionStatus: connectionStatusProp,
+  onClawbClick,
+  onOpenProfile,
+  onOpenLeaderboard,
+}) => {
   // Single source of truth: useConnectionDisplay handles reconnecting state to avoid navbar/Reown modal mismatch
   const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
   const connectionStatus = connectionDisplay;
@@ -304,6 +314,26 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({ walletButton, connectionStatu
             >
               <span>🦞</span>
               <span>Clawb</span>
+            </button>
+          )}
+          {onOpenProfile && (
+            <button
+              type="button"
+              className={classes.menuItem}
+              onClick={() => handleMenuLinkClick(undefined, onOpenProfile)}
+            >
+              <span>👤</span>
+              <span>Profile</span>
+            </button>
+          )}
+          {onOpenLeaderboard && (
+            <button
+              type="button"
+              className={classes.menuItem}
+              onClick={() => handleMenuLinkClick(undefined, onOpenLeaderboard)}
+            >
+              <span>🏆</span>
+              <span>Leaderboard</span>
             </button>
           )}
           <hr className={classes.menuSeparator} />

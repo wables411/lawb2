@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { encodeFunctionData, formatEther, keccak256, parseEther, toHex } from 'viem';
+import { decodeFunctionData, encodeFunctionData, formatEther, keccak256, parseEther, toHex } from 'viem';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { CLAWB_ADSPACE_ABI } from '../config/abis';
 
@@ -273,14 +273,41 @@ const SponsorAdPanel: React.FC = () => {
 
   async function verifyTransactionHash(hashToVerify: string) {
     const normalizedHash = String(hashToVerify || '').trim();
-    if (!sessionId || !normalizedHash) {
-      setError('Session and tx hash are required to verify.');
+    if (!normalizedHash) {
+      setError('Tx hash is required to verify.');
+      return;
+    }
+    let targetSessionId = sessionId;
+    if (!targetSessionId && publicClient) {
+      try {
+        const tx = await publicClient.getTransaction({ hash: normalizedHash as `0x${string}` });
+        if (tx?.input) {
+          const decoded = decodeFunctionData({
+            abi: CLAWB_ADSPACE_ABI,
+            data: tx.input,
+          });
+          const maybeMediaRef = String(decoded?.args?.[1] || '');
+          if (maybeMediaRef.startsWith('session:')) {
+            targetSessionId = maybeMediaRef.slice('session:'.length);
+            if (targetSessionId) {
+              setSessionId(targetSessionId);
+              persistSession(targetSessionId);
+              setStatus(`Recovered session ${targetSessionId} from tx. Verifying...`);
+            }
+          }
+        }
+      } catch {
+        // best-effort tx parsing; backend verify below remains source of truth
+      }
+    }
+    if (!targetSessionId) {
+      setError('No session selected. Create/recover a session first, or use a tx from ClawbAdSpace that includes session:<id>.');
       return;
     }
     const verifyInit: RequestInit = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, txHash: normalizedHash }),
+      body: JSON.stringify({ sessionId: targetSessionId, txHash: normalizedHash }),
     };
     const verifyResponse = await fetchWithFallback('/.netlify/functions/sponsor-verify-tx', '/api/sponsor/verify', verifyInit);
     const { payload: verifyPayload } = await readApiResponse(verifyResponse);
@@ -802,12 +829,12 @@ const SponsorAdPanel: React.FC = () => {
             onChange={(event) => setTxHashInput(event.target.value)}
             placeholder="0x..."
             style={{ marginTop: 4, width: '100%', boxSizing: 'border-box', minHeight: isMobile ? 40 : 30 }}
-            disabled={!sessionId || busy}
+            disabled={busy}
           />
         </label>
         <button
           type="button"
-          disabled={!sessionId || !txHashInput.trim() || busy}
+          disabled={!txHashInput.trim() || busy}
           onClick={() => void (async () => {
             setBusy(true);
             setError('');

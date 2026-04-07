@@ -11,7 +11,7 @@ import {
 import { getDisplayName } from '../utils/displayName';
 import { firebaseChess } from '../firebaseChess';
 import { firebaseProfiles } from '../firebaseProfiles';
-import { database } from '../firebaseApp';
+import { database, getFirebaseDatabase } from '../firebaseApp';
 import { ref, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
 import './ChessMultiplayer.css';
 import './ChessGameModern.css';
@@ -998,12 +998,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Load chat messages
   useEffect(() => {
     if (sidebarView !== 'chat') return;
-    
+    if (!database) return;
+
+    const db = getFirebaseDatabase();
     const roomPath = chatCurrentRoom === 'public' 
       ? 'chess_chat/public/messages'
       : `chess_chat/private/${inviteCode}/messages`;
     
-    const messagesRef = ref(database, roomPath);
+    const messagesRef = ref(db, roomPath);
     const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(50));
     
     const unsubscribe = onValue(messagesQuery, (snapshot) => {
@@ -1085,11 +1087,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     };
     
     try {
+      const db = getFirebaseDatabase();
       const roomPath = chatCurrentRoom === 'public' 
         ? 'chess_chat/public/messages'
         : `chess_chat/private/${inviteCode}/messages`;
       
-      await push(ref(database, roomPath), messageData);
+      await push(ref(db, roomPath), messageData);
       setChatNewMessage('');
       
       // Update display name map for current user

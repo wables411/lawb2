@@ -2,6 +2,7 @@ import { database } from './firebaseApp';
 import { ref, set, get, update, remove } from 'firebase/database';
 import type { NFTInventory } from './utils/nftInventory';
 import { setHoldingsPoints } from './firebaseLeaderboard';
+import { computeHoldingsLeaderboardScore } from './utils/leaderboardHoldingsScore';
 
 const getDatabaseOrThrow = () => {
   if (!database) {
@@ -121,7 +122,8 @@ export const firebaseProfiles = {
           pixelawbs: [],
           asciilawbs: [],
           lawbstation: [],
-          lawbnexus: []
+          lawbnexus: [],
+          lawb_lore: [],
         },
         game_stats: profileData.game_stats || existingProfile?.game_stats || {
           total_games: 0,
@@ -197,7 +199,11 @@ export const firebaseProfiles = {
   },
 
   // Update NFT inventory
-  async updateNFTInventory(walletAddress: string, inventory: NFTInventory): Promise<void> {
+  async updateNFTInventory(
+    walletAddress: string,
+    inventory: NFTInventory,
+    opts?: { tokenBonusPoints?: number },
+  ): Promise<void> {
     try {
       const db = getDatabaseOrThrow();
       const profileRef = ref(db, `profiles/${normalizeWalletAddress(walletAddress)}`);
@@ -218,15 +224,9 @@ export const firebaseProfiles = {
         'updated_at': new Date().toISOString()
       });
 
-      const totalHoldings =
-        (inventory.lawbsters?.length || 0) +
-        (inventory.lawbstarz?.length || 0) +
-        (inventory.halloween_lawbsters?.length || 0) +
-        (inventory.pixelawbs?.length || 0) +
-        (inventory.asciilawbs?.length || 0) +
-        (inventory.lawbstation?.length || 0) +
-        (inventory.lawbnexus?.length || 0);
-      await setHoldingsPoints(walletAddress, totalHoldings);
+      const tokenBonus = opts?.tokenBonusPoints ?? 0;
+      const holdingsScore = computeHoldingsLeaderboardScore(inventory, tokenBonus);
+      await setHoldingsPoints(walletAddress, holdingsScore);
       
       console.log('[FIREBASE] NFT inventory updated:', walletAddress);
     } catch (error) {

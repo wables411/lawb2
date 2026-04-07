@@ -1,11 +1,64 @@
 /**
- * firebaseApp.ts — Firebase DISABLED
+ * Firebase Web SDK — Realtime Database for profiles, leaderboard, usernames, wallet links, claims.
+ * Configure via Vite env (set in Netlify / local .env). If unset, `database` stays null and callers no-op/fail soft.
  *
- * lawb.xyz runs without Firebase. All exports are stubs.
- * Chess, profiles, chat, world are not on the live site.
+ * VITE_FIREBASE_API_KEY
+ * VITE_FIREBASE_AUTH_DOMAIN
+ * VITE_FIREBASE_DATABASE_URL   (required for RTDB, e.g. https://chess-220ee-default-rtdb.firebaseio.com)
+ * VITE_FIREBASE_PROJECT_ID
+ * VITE_FIREBASE_STORAGE_BUCKET
+ * VITE_FIREBASE_MESSAGING_SENDER_ID
+ * VITE_FIREBASE_APP_ID
  */
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getDatabase, type Database } from 'firebase/database';
 
-// Stub types for modules that import from here
-export const app = null as any;
-export const database = null as any;
-export const storage = null as any;
+function readEnv(key: string): string | undefined {
+  const v = import.meta.env[key];
+  return typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
+}
+
+const firebaseConfig = {
+  apiKey: readEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: readEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  databaseURL: readEnv('VITE_FIREBASE_DATABASE_URL'),
+  projectId: readEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: readEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: readEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: readEnv('VITE_FIREBASE_APP_ID'),
+};
+
+let app: FirebaseApp | null = null;
+let database: Database | null = null;
+
+const canInit = Boolean(firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId);
+
+if (canInit) {
+  const opts = {
+    apiKey: firebaseConfig.apiKey!,
+    authDomain: firebaseConfig.authDomain,
+    databaseURL: firebaseConfig.databaseURL!,
+    projectId: firebaseConfig.projectId!,
+    storageBucket: firebaseConfig.storageBucket,
+    messagingSenderId: firebaseConfig.messagingSenderId,
+    appId: firebaseConfig.appId,
+  };
+  app = getApps().length ? getApps()[0]! : initializeApp(opts);
+  database = getDatabase(app);
+} else if (import.meta.env.DEV) {
+  console.warn(
+    '[firebaseApp] Firebase not configured (missing VITE_FIREBASE_*). Profiles/leaderboard will be unavailable.',
+  );
+}
+
+/** Throws if Realtime Database is not configured (use when calling `ref()`). */
+export function getFirebaseDatabase(): Database {
+  if (!database) {
+    throw new Error(
+      '[firebaseApp] Firebase Realtime Database not configured (set VITE_FIREBASE_* env vars).',
+    );
+  }
+  return database;
+}
+
+export { app, database };

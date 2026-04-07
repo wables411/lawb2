@@ -10,7 +10,7 @@ import {
   onDisconnect,
   remove,
 } from 'firebase/database';
-import { database } from './firebaseApp';
+import { database, getFirebaseDatabase } from './firebaseApp';
 
 // --- Types ---
 
@@ -71,7 +71,9 @@ export interface WorldPlayerPresence {
 export const listenToClawbStatus = (
   callback: (status: ClawbStatus | null) => void
 ): (() => void) => {
-  const statusRef = ref(database, 'clawb/status');
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const statusRef = ref(db, 'clawb/status');
 
   const unsubscribe = onValue(statusRef, (snapshot) => {
     if (snapshot.exists()) {
@@ -93,7 +95,8 @@ export const sendClawbMessage = async (
   page: string
 ): Promise<string> => {
   try {
-    const messagesRef = ref(database, 'clawb/chat/visitor_messages');
+    const db = getFirebaseDatabase();
+    const messagesRef = ref(db, 'clawb/chat/visitor_messages');
     const newMessageRef = push(messagesRef);
     const messageId = newMessageRef.key!;
 
@@ -116,7 +119,9 @@ export const listenToClawbResponses = (
   callback: (messages: ClawbChatMessage[]) => void,
   limit: number = 50
 ): (() => void) => {
-  const messagesRef = ref(database, 'clawb/chat/messages');
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const messagesRef = ref(db, 'clawb/chat/messages');
   const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(limit));
 
   const unsubscribe = onValue(messagesQuery, (snapshot) => {
@@ -141,7 +146,9 @@ export const listenToVisitorMessages = (
   callback: (messages: ClawbChatMessage[]) => void,
   limit: number = 50
 ): (() => void) => {
-  const messagesRef = ref(database, 'clawb/chat/visitor_messages');
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const messagesRef = ref(db, 'clawb/chat/visitor_messages');
   const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(limit));
 
   const unsubscribe = onValue(messagesQuery, (snapshot) => {
@@ -234,7 +241,8 @@ export const enqueueWorldAction = async (
   source: string = 'world',
   extra: Record<string, unknown> = {}
 ): Promise<string> => {
-  const commandsRef = ref(database, 'clawb/world/commands');
+  const db = getFirebaseDatabase();
+  const commandsRef = ref(db, 'clawb/world/commands');
   const newCommandRef = push(commandsRef);
   const commandId = newCommandRef.key!;
   const payload = normalizeActionToCommand(action, by, source, extra);
@@ -250,7 +258,9 @@ export const listenToWorldActions = (
   callback: (actions: ClawbWorldAction[]) => void,
   limit: number = 30
 ): (() => void) => {
-  const actionsRef = ref(database, 'clawb/world/actions');
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const actionsRef = ref(db, 'clawb/world/actions');
   const actionsQuery = query(actionsRef, orderByChild('timestamp'), limitToLast(limit));
 
   const unsubscribe = onValue(actionsQuery, (snapshot) => {
@@ -287,26 +297,28 @@ export const upsertWorldPresence = async (
     ...payload,
     updatedAt: Date.now(),
   };
-  await set(ref(database, presencePathForWallet(wallet)), data);
+  await set(ref(getFirebaseDatabase(), presencePathForWallet(wallet)), data);
 };
 
 /** Remove this player's world presence (on leave). */
 export const removeWorldPresence = async (wallet: string): Promise<void> => {
   if (!wallet) return;
-  await remove(ref(database, presencePathForWallet(wallet)));
+  await remove(ref(getFirebaseDatabase(), presencePathForWallet(wallet)));
 };
 
 /** Register an onDisconnect cleanup for this wallet's world presence. */
 export const registerWorldPresenceDisconnectCleanup = async (wallet: string): Promise<void> => {
   if (!wallet) return;
-  await onDisconnect(ref(database, presencePathForWallet(wallet))).remove();
+  await onDisconnect(ref(getFirebaseDatabase(), presencePathForWallet(wallet))).remove();
 };
 
 /** Listen to all current world players. */
 export const listenToWorldPlayers = (
   callback: (players: WorldPlayerPresence[]) => void
 ): (() => void) => {
-  const playersRef = ref(database, 'world/players');
+  if (!database) return () => {};
+  const db = getFirebaseDatabase();
+  const playersRef = ref(db, 'world/players');
   const unsubscribe = onValue(playersRef, (snapshot) => {
     const players: WorldPlayerPresence[] = [];
     snapshot.forEach((child) => {

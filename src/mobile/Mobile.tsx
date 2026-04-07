@@ -14,6 +14,10 @@ import LinuxNavBar from '../components/LinuxNavBar';
 import PretextLabel from '../components/PretextLabel';
 const ClawbClaimPanel = lazy(() => import('../components/ClawbClaimPanel'));
 const SponsorAdPanel = lazy(() => import('../components/SponsorAdPanel'));
+const PlayerProfile = lazy(() => import('../components/PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
+const LawbLeaderboardPanel = lazy(() =>
+  import('../components/LawbLeaderboardPanel').then((m) => ({ default: m.LawbLeaderboardPanel })),
+);
 
 const useStyles = createUseStyles({
   mobileContainer: {
@@ -280,6 +284,8 @@ const Mobile = () => {
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showClaimPopup, setShowClaimPopup] = useState(false);
   const [showSponsorPopup, setShowSponsorPopup] = useState(false);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [showLeaderboardPopup, setShowLeaderboardPopup] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   // Twitter widgets loading for both lawbsters and lawbstarz popups on mobile
@@ -328,6 +334,8 @@ const Mobile = () => {
     { label: 'Advertise on Clawb TV', icon: '/assets/lawbidle_5s_finalfix_transparent_loop.gif', action: () => setShowSponsorPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
+    { label: 'Lawb Profile', icon: '/assets/wallet.png', action: () => setShowProfilePopup(true) },
+    { label: 'Leaderboard', icon: '/assets/chess.png', action: () => setShowLeaderboardPopup(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
@@ -802,6 +810,16 @@ const Mobile = () => {
           <SponsorAdPanel />
         </Suspense>
       </MobilePopup98>
+      <MobilePopup98 isOpen={showProfilePopup} onClose={() => setShowProfilePopup(false)} title="Lawb Profile">
+        <Suspense fallback={<div style={{ padding: 12 }}>Loading…</div>}>
+          <PlayerProfile isMobile />
+        </Suspense>
+      </MobilePopup98>
+      <MobilePopup98 isOpen={showLeaderboardPopup} onClose={() => setShowLeaderboardPopup(false)} title="Lawb Leaderboard">
+        <Suspense fallback={<div style={{ padding: 12 }}>Loading…</div>}>
+          <LawbLeaderboardPanel isMobile />
+        </Suspense>
+      </MobilePopup98>
       {/* Linux NavBar */}
       <LinuxNavBar
         walletButton={
@@ -833,6 +851,8 @@ const Mobile = () => {
           address: connectionDisplay.address,
           ens: connectionDisplay.ens
         }}
+        onOpenProfile={() => setShowProfilePopup(true)}
+        onOpenLeaderboard={() => setShowLeaderboardPopup(true)}
       />
     </div>
   );

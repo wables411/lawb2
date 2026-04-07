@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
 import { fetchNFTInventory, fetchAggregatedNFTInventory, type WalletDescriptor } from '../utils/nftInventory';
+import { fetchBaseLawbClawbHoldingsBonus } from '../utils/leaderboardTokenBonus';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
@@ -524,6 +526,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [linkedWallets, setLinkedWallets] = useState<LinkedWallet[]>([]);
   const [primaryWallet, setPrimaryWallet] = useState<string | null>(null);
   const [linkingWallet, setLinkingWallet] = useState(false);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -533,11 +536,18 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   useEffect(() => {
     if (!address) {
       setLoading(false);
+      setProfileLoadError(null);
       return;
     }
     
     const loadProfile = async () => {
       setLoading(true);
+      setProfileLoadError(null);
+      if (!database) {
+        setProfileLoadError('Profiles are unavailable until Firebase is configured for this site.');
+        setLoading(false);
+        return;
+      }
       if (typeof window !== 'undefined' && window.console) {
         window.console.log('[PROFILE] Loading profile for', address);
       }
@@ -567,15 +577,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             // For viewing other users, create a minimal profile object with default values
             profileData = {
               wallet_address: normalizeAddress(address),
-          nft_inventory: {
-            lawbsters: [],
-            lawbstarz: [],
-            halloween_lawbsters: [],
-            pixelawbs: [],
-            asciilawbs: [],
-            lawbstation: [],
-            lawbnexus: []
-          },
+              nft_inventory: {
+                lawbsters: [],
+                lawbstarz: [],
+                halloween_lawbsters: [],
+                pixelawbs: [],
+                asciilawbs: [],
+                lawbstation: [],
+                lawbnexus: [],
+                lawb_lore: [],
+              },
               game_stats: {
                 total_games: 0,
                 wins: 0,
@@ -602,8 +613,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               pixelawbs: [],
               asciilawbs: [],
               lawbstation: [],
-              lawbnexus: []
+              lawbnexus: [],
+              lawb_lore: [],
             };
+          }
+          if (!Array.isArray(profileData.nft_inventory.lawb_lore)) {
+            profileData.nft_inventory.lawb_lore = [];
           }
           if (!profileData.game_stats) {
             profileData.game_stats = {
@@ -634,7 +649,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             if (typeof window !== 'undefined' && window.console) {
               window.console.log('[PROFILE] NFT inventory fetched:', inventory);
             }
-            await firebaseProfiles.updateNFTInventory(profileAddress, inventory);
+            const tokenBonus = await fetchBaseLawbClawbHoldingsBonus(
+              allWallets.filter((w) => w.chain === 'evm').map((w) => w.address),
+            );
+            await firebaseProfiles.updateNFTInventory(profileAddress, inventory, {
+              tokenBonusPoints: tokenBonus,
+            });
             const updated = await firebaseProfiles.getProfile(profileAddress);
             if (updated) {
               profileData = updated;
@@ -657,6 +677,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         if (typeof window !== 'undefined' && window.console) {
           window.console.error('[PROFILE] Error loading profile:', error);
         }
+        setProfileLoadError('Could not load profile. Try again later or check your connection.');
       } finally {
         setLoading(false);
       }
@@ -801,7 +822,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       const inventory = allWallets.length > 1
         ? await fetchAggregatedNFTInventory(allWallets)
         : await fetchNFTInventory(targetWallet);
-      await firebaseProfiles.updateNFTInventory(targetWallet, inventory);
+      const tokenBonus = await fetchBaseLawbClawbHoldingsBonus(
+        allWallets.filter((w) => w.chain === 'evm').map((w) => w.address),
+      );
+      await firebaseProfiles.updateNFTInventory(targetWallet, inventory, {
+        tokenBonusPoints: tokenBonus,
+      });
       const updatedProfile = await firebaseProfiles.getProfile(targetWallet);
       setProfile(updatedProfile);
     } catch (error) {
@@ -861,6 +887,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     );
   }
 
+  if (profileLoadError && !profile) {
+    return (
+      <div className="profile-compact" style={{ padding: '20px', textAlign: 'center', color: '#a00' }}>
+        <div>{profileLoadError}</div>
+      </div>
+    );
+  }
+
   if (!address) {
     return (
       <div className="profile-compact" style={{ padding: '20px', textAlign: 'center' }}>
@@ -883,7 +917,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     pixelawbs: profile?.nft_inventory?.pixelawbs || [],
     asciilawbs: profile?.nft_inventory?.asciilawbs || [],
     lawbstation: profile?.nft_inventory?.lawbstation || [],
-    lawbnexus: profile?.nft_inventory?.lawbnexus || []
+    lawbnexus: profile?.nft_inventory?.lawbnexus || [],
+    lawb_lore: profile?.nft_inventory?.lawb_lore || [],
   };
 
   // Debug logging
@@ -897,14 +932,15 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       pixelawbs: inventory.pixelawbs?.length || 0,
       asciilawbs: inventory.asciilawbs?.length || 0,
       lawbstation: inventory.lawbstation?.length || 0,
-      lawbnexus: inventory.lawbnexus?.length || 0
+      lawbnexus: inventory.lawbnexus?.length || 0,
+      lawb_lore: inventory.lawb_lore?.length || 0,
     });
   }
 
   const totalNFTs = (inventory.lawbsters?.length || 0) + (inventory.lawbstarz?.length || 0) + 
                     (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0) +
                     (inventory.asciilawbs?.length || 0) + (inventory.lawbstation?.length || 0) +
-                    (inventory.lawbnexus?.length || 0);
+                    (inventory.lawbnexus?.length || 0) + (inventory.lawb_lore?.length || 0);
 
   const getBorderColor = () => '#4169e1';
 
@@ -1151,6 +1187,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           <div>ASCII Lawbsters: {inventory.asciilawbs?.length || 0}</div>
           <div>LawbStation (SOL): {inventory.lawbstation?.length || 0}</div>
           <div>LawbNexus (SOL): {inventory.lawbnexus?.length || 0}</div>
+          <div>Lawb Lore: {inventory.lawb_lore?.length || 0}</div>
         </div>
         {totalNFTs === 0 && (
           <div style={{ marginTop: '8px', fontSize: isMobile ? '11px' : '12px', color: '#888', fontStyle: 'italic' }}>
@@ -1241,7 +1278,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                            (profile?.nft_inventory?.pixelawbs?.length || 0) +
                            (profile?.nft_inventory?.asciilawbs?.length || 0) +
                            (profile?.nft_inventory?.lawbstation?.length || 0) +
-                           (profile?.nft_inventory?.lawbnexus?.length || 0);
+                           (profile?.nft_inventory?.lawbnexus?.length || 0) +
+                           (profile?.nft_inventory?.lawb_lore?.length || 0);
           // Clear profile picture if no NFTs owned
           if (totalNFTs === 0 && profile?.profile_picture) {
             // Clear profile picture asynchronously

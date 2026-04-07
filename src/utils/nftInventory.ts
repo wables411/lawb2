@@ -371,6 +371,8 @@ export interface NFTInventory {
   asciilawbs: string[];
   lawbstation: string[];
   lawbnexus: string[];
+  /** Lawb Lore (Ethereum) — Scatter slug `lawb-lore` */
+  lawb_lore: string[];
 }
 
 export async function fetchNFTInventory(walletAddress: string): Promise<NFTInventory> {
@@ -382,7 +384,8 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     pixelawbs: [],
     asciilawbs: [],
     lawbstation: [],
-    lawbnexus: []
+    lawbnexus: [],
+    lawb_lore: [],
   };
 
   // Solana wallets use a different ownership model; skip EVM scanners.
@@ -888,6 +891,26 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
+  // Lawb Lore (Ethereum) — Scatter collection slug aligned with OpenSea /lawb-lore
+  try {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[NFT] Fetching Lawb Lore for', walletAddress, 'from Scatter API');
+    }
+    const response = await getCollectionNFTs('lawb-lore', 1, 200, walletAddress);
+    const ownerLower = walletAddress.toLowerCase();
+    inventory.lawb_lore = response.data
+      .filter((nft) => (nft.owner_of || '').toLowerCase() === ownerLower)
+      .map((nft) => nft.token_id.toString());
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.log('[NFT] Found', inventory.lawb_lore.length, 'Lawb Lore from Scatter API');
+    }
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.console) {
+      window.console.warn('[NFT] Lawb Lore fetch failed (non-fatal):', error);
+    }
+    inventory.lawb_lore = [];
+  }
+
   return inventory;
 }
 
@@ -907,6 +930,7 @@ export async function fetchAggregatedNFTInventory(
     asciilawbs: [],
     lawbstation: [],
     lawbnexus: [],
+    lawb_lore: [],
   };
 
   const results = await Promise.allSettled(

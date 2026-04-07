@@ -42,7 +42,7 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
           <li>Match begins automatically - Blue (Player 1) moves first</li>
           <li>Winner claims the pot minus 5% house fee</li>
         </ol>
-        <p><strong>Leaderboard:</strong> All matches are tracked to your connected wallet. Win = 3 points, Draw = 1 point, Loss = 0 points.</p>
+        <p><strong>Leaderboard:</strong> Chess points use your connected wallet (win = 3, draw = 1, loss = 0). Holdings points weight NFT tiers (Lawbsters/Lawbstarz highest; Lawb Lore lowest) and add a capped Base $LAWB + $CLAWB bonus when you refresh your Lawb Profile inventory.</p>
         <p><strong>Lawb Chess Mainnet Sanko Contract:</strong> <a href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56?tab=contract" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56</a></p>
         <p><strong>Lawb Chess Mainnet Base Contract:</strong> <a href="https://basescan.org/address/0x06b6aae693cf1af27d5a5df0d0ac88af3fac9e11" target="_blank" rel="noopener noreferrer" style={{color: '#32CD32'}}>0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11</a></p>
         <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
