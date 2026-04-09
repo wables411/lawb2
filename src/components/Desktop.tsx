@@ -43,6 +43,7 @@ const ICONS: DesktopIcon[] = [
   // Row 4
   { id: 'chat', image: '/assets/miladychan.png', label: 'Miladychan', action: 'popup', popupId: 'miladychan-popup', row: 3, col: 0 },
   { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
+  { id: 'reef-arcade', image: '/assets/reef-arcade.svg', label: 'Reef Run', action: 'arcade', row: 2, col: 0 },
   { id: 'lawb-profile', image: '/assets/wallet.png', label: 'Lawb Profile', action: 'lawb-profile', row: 2, col: 2 },
   { id: 'lawb-leaderboard', image: '/assets/chess.png', label: 'Leaderboard', action: 'lawb-leaderboard', row: 2, col: 4 },
 ];

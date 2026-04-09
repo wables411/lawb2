@@ -208,7 +208,7 @@ export const getTopLeaderboardEntries = async (limit: number = 20): Promise<Lead
     return entries.slice(0, limit);
   } catch (error: unknown) {
     console.error(
-      '[LEADERBOARD] Error getting top entries (is `.indexOn: [\"points\"]` deployed on `leaderboard`?):',
+      '[LEADERBOARD] Error getting top entries (is `.indexOn: ["points"]` deployed on `leaderboard`?):',
       error,
     );
     return [];

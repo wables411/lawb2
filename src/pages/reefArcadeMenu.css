@@ -1,0 +1,579 @@
+/* Full-screen arcade shell — lazy-loaded with /arcade route only */
+
+.ra-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: #020810;
+  color: #e8f4ff;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* WebGL tunnel + plinths (Three.js) — sits under CSS gradients; needs hits for character select */
+.ra-three {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: auto;
+}
+
+.ra-bg {
+  position: absolute;
+  inset: -20%;
+  z-index: 1;
+  /* Let WebGL read through; keeps color grade on top */
+  opacity: 0.42;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(46, 230, 255, 0.18), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 20% 30%, rgba(224, 64, 251, 0.12), transparent 50%),
+    radial-gradient(ellipse 40% 50% at 85% 20%, rgba(255, 107, 53, 0.1), transparent 45%),
+    linear-gradient(180deg, #030d18 0%, #020810 40%, #051020 100%);
+  animation: ra-bg-drift 24s ease-in-out infinite alternate;
+}
+
+@keyframes ra-bg-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-2%, 1%) scale(1.03); }
+}
+
+.ra-scanlines {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.13) 2px,
+    rgba(0, 0, 0, 0.13) 3px
+  );
+  opacity: 0.35;
+}
+
+.ra-vignette {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.85);
+}
+
+.ra-grain {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ra-inner {
+  position: relative;
+  z-index: 5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 48px);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* Intro */
+.ra-intro {
+  text-align: center;
+  max-width: 640px;
+  pointer-events: auto;
+}
+
+.ra-intro-eyebrow {
+  font-size: clamp(11px, 2vw, 13px);
+  letter-spacing: 0.55em;
+  color: rgba(46, 230, 255, 0.75);
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  animation: ra-fade-up 1.2s ease-out both;
+}
+
+.ra-intro-title {
+  font-size: clamp(2.2rem, 8vw, 4rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.05;
+  margin: 0 0 0.5rem;
+  background: linear-gradient(135deg, #fff 0%, #2ee6ff 45%, #e040fb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 24px rgba(46, 230, 255, 0.35));
+  animation: ra-title-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.ra-intro-sub {
+  font-size: clamp(13px, 2.4vw, 15px);
+  color: rgba(232, 244, 255, 0.55);
+  letter-spacing: 0.12em;
+  margin-bottom: 2.5rem;
+  animation: ra-fade-up 1s ease-out 0.5s both;
+}
+
+.ra-intro-hint {
+  font-size: clamp(12px, 2vw, 14px);
+  letter-spacing: 0.35em;
+  color: rgba(126, 231, 135, 0.9);
+  text-transform: uppercase;
+  animation: ra-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes ra-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ra-title-in {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes ra-pulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
+/* Main menu */
+.ra-menu {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  pointer-events: auto;
+}
+
+/* Character select — UI sits over WebGL; gaps pass pointer through to canvas */
+.ra-select-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 32px);
+  pointer-events: none;
+}
+
+.ra-select-panel {
+  width: 100%;
+  max-width: 480px;
+  padding: clamp(18px, 3vw, 24px);
+  border-radius: 6px;
+  background: linear-gradient(165deg, rgba(12, 28, 48, 0.92) 0%, rgba(4, 12, 22, 0.96) 100%);
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 255, 0.3),
+    0 16px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+}
+
+.ra-select-title {
+  margin: 0 0 8px;
+  font-size: clamp(0.95rem, 2.8vw, 1.15rem);
+  letter-spacing: 0.22em;
+  text-align: center;
+  color: #fff;
+}
+
+.ra-select-hint {
+  margin: 0 0 16px;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  color: rgba(232, 244, 255, 0.5);
+  font-family: system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.ra-select-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.ra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(46, 230, 255, 0.22);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(232, 244, 255, 0.9);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.ra-chip:hover {
+  border-color: rgba(46, 230, 255, 0.45);
+}
+
+.ra-chip-active {
+  border-color: rgba(126, 231, 135, 0.75);
+  box-shadow: 0 0 16px rgba(46, 230, 255, 0.2);
+  background: rgba(46, 230, 255, 0.08);
+}
+
+.ra-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ra-select-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ra-select-actions .ra-btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* In-play HUD */
+.ra-play-hud {
+  position: fixed;
+  top: clamp(12px, 3vw, 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ra-play-hud-title {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.35em;
+  color: rgba(46, 230, 255, 0.65);
+}
+
+.ra-play-hud-keys {
+  margin: 6px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Game over */
+.ra-gameover-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 8, 16, 0.72);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.ra-gameover-panel {
+  width: 100%;
+  max-width: 400px;
+  padding: clamp(24px, 5vw, 36px);
+  border-radius: 6px;
+  text-align: center;
+  background: linear-gradient(165deg, rgba(20, 45, 72, 0.96) 0%, rgba(6, 18, 32, 0.98) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 51, 85, 0.35),
+    0 24px 80px rgba(0, 0, 0, 0.65);
+}
+
+.ra-gameover-title {
+  margin: 0 0 8px;
+  font-size: clamp(1.25rem, 4vw, 1.6rem);
+  letter-spacing: 0.28em;
+  color: #fff;
+}
+
+.ra-gameover-sub {
+  margin: 0 0 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(232, 244, 255, 0.55);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.ra-gameover-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ra-logo-block {
+  margin-bottom: clamp(28px, 6vh, 48px);
+}
+
+.ra-logo-small {
+  font-size: clamp(11px, 1.8vw, 12px);
+  letter-spacing: 0.4em;
+  color: rgba(46, 230, 255, 0.5);
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.ra-logo-main {
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  margin: 0;
+  color: #fff;
+  text-shadow:
+    0 0 20px rgba(46, 230, 255, 0.5),
+    0 0 60px rgba(224, 64, 251, 0.25);
+}
+
+.ra-logo-tag {
+  margin: 0.5rem 0 0;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.ra-btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ra-btn {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+  color: #061018;
+  background: linear-gradient(180deg, #e8fbff 0%, #7ee787 100%);
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 255, 0.5),
+    0 4px 24px rgba(46, 230, 255, 0.2);
+}
+
+.ra-btn:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 255, 0.8),
+    0 8px 32px rgba(46, 230, 255, 0.35);
+}
+
+.ra-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.ra-btn-secondary {
+  background: linear-gradient(180deg, #1a3a52 0%, #0f2438 100%);
+  color: #b8e8ff;
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ra-btn-secondary:hover {
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 255, 0.45),
+    0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.ra-btn-badge {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  padding: 4px 8px;
+  border-radius: 2px;
+  background: rgba(255, 107, 53, 0.95);
+  color: #fff;
+}
+
+.ra-footer-row {
+  margin-top: clamp(24px, 5vh, 40px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.ra-link-quiet {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ra-link-quiet:hover {
+  color: rgba(46, 230, 255, 0.8);
+}
+
+/* Modal overlay */
+.ra-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(2, 8, 16, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: ra-fade-in 0.25s ease;
+}
+
+@keyframes ra-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ra-panel {
+  width: 100%;
+  max-width: 520px;
+  max-height: min(86vh, 640px);
+  overflow: auto;
+  border-radius: 6px;
+  padding: clamp(20px, 4vw, 32px);
+  background: linear-gradient(165deg, rgba(20, 45, 72, 0.95) 0%, rgba(6, 18, 32, 0.98) 100%);
+  box-shadow:
+    0 0 0 1px rgba(46, 230, 255, 0.35),
+    0 24px 80px rgba(0, 0, 0, 0.65);
+}
+
+.ra-panel h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  letter-spacing: 0.15em;
+  color: #fff;
+}
+
+.ra-panel p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(232, 244, 255, 0.65);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.ra-soon-pill {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 6px 14px;
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  background: rgba(255, 107, 53, 0.2);
+  color: #ff9b6b;
+  border: 1px solid rgba(255, 107, 53, 0.45);
+  border-radius: 2px;
+}
+
+.ra-char-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .ra-char-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ra-char-card {
+  padding: 14px 10px;
+  border-radius: 4px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(46, 230, 255, 0.15);
+}
+
+.ra-char-avatar {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #020810;
+}
+
+.ra-char-name {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ra-char-note {
+  margin-top: 6px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 107, 53, 0.85);
+  font-family: system-ui, sans-serif;
+}
+
+.ra-panel-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ra-panel-actions .ra-btn {
+  flex: 1;
+  min-width: 120px;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  padding: 12px 14px;
+}
+
+.ra-wallet-status {
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  color: rgba(126, 231, 135, 0.9);
+  word-break: break-all;
+  margin-bottom: 12px;
+}

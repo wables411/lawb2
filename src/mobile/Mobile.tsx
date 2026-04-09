@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createUseStyles } from 'react-jss';
 import { useAccount, useConnect, useDisconnect, useEnsName, useChainId } from 'wagmi';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
@@ -246,6 +247,7 @@ interface FolderNFT {
 
 const Mobile = () => {
   const classes = useStyles();
+  const navigate = useNavigate();
   const { open } = useAppKit();
   const { address, isConnected } = useAccount();
   const { data: ens } = useEnsName({ address });
@@ -334,6 +336,7 @@ const Mobile = () => {
     { label: 'Advertise on Clawb TV', icon: '/assets/lawbidle_5s_finalfix_transparent_loop.gif', action: () => setShowSponsorPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
+    { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
     { label: 'Lawb Profile', icon: '/assets/wallet.png', action: () => setShowProfilePopup(true) },
     { label: 'Leaderboard', icon: '/assets/chess.png', action: () => setShowLeaderboardPopup(true) },
   ];

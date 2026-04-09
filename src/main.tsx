@@ -1,8 +1,10 @@
 // Firebase disabled — lawb.xyz runs without Firebase
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import Mobile from './mobile/Mobile.tsx';
+
+const ReefArcadeMenu = lazy(() => import('./pages/ReefArcadeMenu'));
 import { useMediaQuery } from './hooks/useMediaQuery.ts';
 import './index.css';
 import './walletModal.css';
@@ -84,6 +86,32 @@ const AppWithWagmi = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Root />} />
+              <Route
+                path="/arcade"
+                element={
+                  <Suspense
+                    fallback={
+                      <div
+                        style={{
+                          minHeight: '100vh',
+                          background: '#020810',
+                          color: '#2ee6ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontFamily: 'Orbitron, system-ui, sans-serif',
+                          letterSpacing: '0.35em',
+                          fontSize: 12,
+                        }}
+                      >
+                        LOADING
+                      </div>
+                    }
+                  >
+                    <ReefArcadeMenu />
+                  </Suspense>
+                }
+              />
               <Route path="/chess" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

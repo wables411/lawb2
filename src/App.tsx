@@ -222,6 +222,8 @@ function App() {
         return next;
       });
       setActivePopup('leaderboard-popup');
+    } else if (action === 'arcade') {
+      navigate('/arcade');
     }
   };
 
