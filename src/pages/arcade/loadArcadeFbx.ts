@@ -294,10 +294,58 @@ export function alignFbxVerticalAfterLayout(root: THREE.Object3D, targetWorldMin
 }
 
 /**
- * Radbro FBX often ships MeshPhysical with sheen/clearcoat and high env response — with no real env map
- * it reads as a flat, desaturated haze. Tone down once at load (clone shares materials with podium idle).
+ * Radbro tread FBX uses MeshPhysical (sheen/specular layers). With no scene `environment`, that reads as
+ * blown-out white in play and flat grey on select. Strip to plain Standard + conservative PBR.
  */
-function toneRadbroFbxMaterials(root: THREE.Object3D): void {
+function flattenRadbroPhysicalMaterials(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next: THREE.Material[] = [];
+    for (const m of mats) {
+      const phys = m as THREE.MeshPhysicalMaterial;
+      if (phys.isMeshPhysicalMaterial) {
+        const std = new THREE.MeshStandardMaterial({
+          name: phys.name,
+          color: phys.color.clone(),
+          map: phys.map,
+          normalMap: phys.normalMap,
+          normalScale: phys.normalScale?.clone() ?? new THREE.Vector2(1, 1),
+          roughnessMap: phys.roughnessMap,
+          metalnessMap: phys.metalnessMap,
+          aoMap: phys.aoMap,
+          bumpMap: phys.bumpMap,
+          bumpScale: phys.bumpScale ?? 1,
+          emissive: phys.emissive.clone(),
+          emissiveMap: phys.emissiveMap,
+          emissiveIntensity: phys.emissiveIntensity,
+          roughness: THREE.MathUtils.clamp(phys.roughness, 0.42, 0.92),
+          metalness: THREE.MathUtils.clamp(phys.metalness, 0, 0.18),
+          envMapIntensity: 0,
+          side: THREE.DoubleSide,
+          transparent: false,
+          depthWrite: true,
+        });
+        setColorTextureSRGB(std.map);
+        setColorTextureSRGB(std.emissiveMap);
+        setDataTextureLinear(std.normalMap);
+        setDataTextureLinear(std.roughnessMap);
+        setDataTextureLinear(std.metalnessMap);
+        setDataTextureLinear(std.aoMap);
+        setDataTextureLinear(std.bumpMap);
+        phys.dispose();
+        next.push(std);
+      } else {
+        next.push(m);
+      }
+    }
+    mesh.material = next.length === 1 ? next[0]! : next;
+  });
+}
+
+/** Final Radbro pass: diffuse-first shading, no env probe, refresh material snapshots for UI highlight. */
+function toneRadbroForArcade(root: THREE.Object3D): void {
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -305,15 +353,19 @@ function toneRadbroFbxMaterials(root: THREE.Object3D): void {
     for (const m of mats) {
       const sm = m as THREE.MeshStandardMaterial;
       if (!sm.isMeshStandardMaterial) continue;
-      sm.envMapIntensity = THREE.MathUtils.clamp((sm.envMapIntensity ?? 0) * 0.35, 0, 0.16);
-      sm.roughness = THREE.MathUtils.clamp(sm.roughness * 0.9, 0.06, 0.72);
-      const phys = sm as THREE.MeshPhysicalMaterial;
-      if (phys.isMeshPhysicalMaterial) {
-        phys.sheen = 0;
-        phys.clearcoat = 0;
-        phys.transmission = 0;
-      }
+      sm.envMap = null;
+      sm.envMapIntensity = 0;
+      // Maps multiply uniforms — a dark metalness tex or glossy roughness tex still reads metallic in play.
+      sm.metalnessMap = null;
+      sm.roughnessMap = null;
+      sm.metalness = THREE.MathUtils.clamp(sm.metalness * 0.4, 0, 0.06);
+      sm.roughness = THREE.MathUtils.clamp(Math.max(sm.roughness, 0.55), 0.55, 0.95);
+      sm.emissive.setRGB(0, 0, 0);
+      sm.emissiveIntensity = 0;
       sm.needsUpdate = true;
+      const u = sm.userData as { arcadeMatBase?: ArcadeMatSnapshot };
+      delete u.arcadeMatBase;
+      snapshotArcadeMaterialBase(sm);
     }
   });
 }
@@ -324,7 +376,8 @@ export function prepareArcadeModel(
 ): void {
   repairFbxMaterials(root);
   if (opts?.characterId === 'radbro') {
-    toneRadbroFbxMaterials(root);
+    flattenRadbroPhysicalMaterials(root);
+    toneRadbroForArcade(root);
   }
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
