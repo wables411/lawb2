@@ -7,6 +7,7 @@ import {
 import {
   alignFbxBottomBeforeParent,
   alignFbxVerticalAfterLayout,
+  applyArcadeHeroScale,
   loadArcadeFbx,
   startLoopClip,
 } from './loadArcadeFbx';
@@ -96,6 +97,7 @@ export class ArcadeSceneController {
   private _vCamTarget = new THREE.Vector3();
   private _vCamPos = new THREE.Vector3();
   private _vDir = new THREE.Vector3();
+  private _vPlayCenter = new THREE.Vector3();
 
   constructor(
     container: HTMLElement,
@@ -184,7 +186,7 @@ export class ArcadeSceneController {
     return u.arcadeMatBase;
   }
 
-  /** Dim non-selected; cyan rim-light feel on selected (select screen only). */
+  /** Dim non-selected; subtle warm lift on selected (select screen only). */
   private applySelectScreenHighlight(): void {
     const sel = this.selectedId ?? 'clawb';
     for (const [id, slot] of this.slots) {
@@ -202,9 +204,9 @@ export class ArcadeSceneController {
             if (!sm.isMeshStandardMaterial) continue;
             const base = this.snapshotMaterialBase(sm);
             if (isSel) {
-              sm.emissive.copy(base.emissive).lerp(new THREE.Color(0x3af0ff), 0.5);
-              sm.emissiveIntensity = base.emissiveIntensity + 0.55;
-              sm.color.copy(base.color).multiplyScalar(1.12);
+              sm.emissive.copy(base.emissive).lerp(new THREE.Color(0xffeed5), 0.22);
+              sm.emissiveIntensity = base.emissiveIntensity + 0.28;
+              sm.color.copy(base.color).multiplyScalar(1.05);
             } else {
               sm.emissive.copy(base.emissive).multiplyScalar(0.15);
               sm.emissiveIntensity = base.emissiveIntensity * 0.28;
@@ -263,6 +265,8 @@ export class ArcadeSceneController {
     } else {
       this._boxSel.getCenter(this._vSelCenter);
       this._boxSel.getSize(this._vSelSize);
+      this._vSelSize.y = THREE.MathUtils.clamp(this._vSelSize.y, 0.35, 2.45);
+      this._vSelSize.x = THREE.MathUtils.clamp(this._vSelSize.x, 0.3, 1.25);
     }
 
     const margin = 1.22;
@@ -280,8 +284,8 @@ export class ArcadeSceneController {
     this._vDir.set(swayX, 0.34 + swayY, 1).normalize();
     this._vCamPos.copy(this._vSelCenter).add(this._vDir.multiplyScalar(dist));
 
-    const lerp = 1 - Math.pow(0.83, dt * 60 * 0.22);
-    this.camera.position.lerp(this._vCamPos, Math.min(lerp, 0.38));
+    const lerp = 1 - Math.pow(0.83, dt * 60 * 0.32);
+    this.camera.position.lerp(this._vCamPos, Math.min(lerp, 0.55));
 
     this._vCamTarget.copy(this._vSelCenter);
     this._vCamTarget.y += this._vSelSize.y * 0.07;
@@ -360,13 +364,13 @@ export class ArcadeSceneController {
     }
     this.scene.add(this.ringGroup);
 
-    this.scene.add(new THREE.AmbientLight(0x2a4a68, 0.45));
-    const key = new THREE.PointLight(0x2ee6ff, 120, 45, 1.8);
-    key.position.set(3.5, 2.5, 6);
-    const fill = new THREE.PointLight(0xe040fb, 55, 38, 2);
-    fill.position.set(-4, -1.5, 4);
-    const rim = new THREE.DirectionalLight(0xa8f0ff, 0.35);
-    rim.position.set(0, 2, 8);
+    this.scene.add(new THREE.AmbientLight(0xf5f0ea, 0.38));
+    const key = new THREE.PointLight(0xffe8dd, 85, 48, 1.85);
+    key.position.set(3.2, 2.8, 6.5);
+    const fill = new THREE.PointLight(0xe8c8ff, 42, 40, 2);
+    fill.position.set(-3.5, -1.2, 4.5);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.28);
+    rim.position.set(-0.5, 3.5, 7);
     this.scene.add(key, fill, rim);
 
     const n = window.innerWidth < 768 ? 500 : 1400;
@@ -418,8 +422,8 @@ export class ArcadeSceneController {
       try {
         const { root, clips } = await loadArcadeFbx(def.idle);
         root.userData.characterId = def.id;
-        root.scale.setScalar(def.scale);
         root.rotation.y = faces[i]!;
+        applyArcadeHeroScale(root, def.heightMul ?? 1);
         alignFbxBottomBeforeParent(root, 0.15);
         anchor.add(root);
       const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
@@ -558,8 +562,8 @@ export class ArcadeSceneController {
         try {
           const { root, clips } = await loadArcadeFbx(slot.def.dance);
           root.userData.characterId = slot.def.id;
-          root.scale.setScalar(slot.def.scale);
           root.rotation.copy(slot.idleRoot.rotation);
+          applyArcadeHeroScale(root, slot.def.heightMul ?? 1);
           alignFbxBottomBeforeParent(root, 0.15);
           slot.anchor.add(root);
           slot.danceRoot = root;
@@ -601,10 +605,10 @@ export class ArcadeSceneController {
 
     try {
       const { root, clips } = await loadArcadeFbx(slot.def.swim);
-      root.scale.setScalar(slot.def.scale * 1.05);
       root.rotation.y = Math.PI;
       root.position.set(0, 0, PLAYER_Z);
       this.playerWorld.add(root);
+      applyArcadeHeroScale(root, (slot.def.heightMul ?? 1) * 1.06);
       alignFbxVerticalAfterLayout(root, -0.85);
       this.swimRoot = root;
       const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true });
@@ -664,9 +668,19 @@ export class ArcadeSceneController {
       this.camera.position.x += (targetCamX - this.camera.position.x) * 0.085;
       this.camera.position.y += (targetCamY - this.camera.position.y) * 0.07;
       this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.06;
-      const lookX = this.playerX * 0.28;
-      const lookY = -0.55;
-      const lookZ = PLAYER_Z - 1.1;
+      let lookX = this.playerX * 0.28;
+      let lookY = -0.55;
+      let lookZ = PLAYER_Z - 1.1;
+      if (this.swimRoot) {
+        this.swimRoot.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(this.swimRoot);
+        if (!b.isEmpty()) {
+          b.getCenter(this._vPlayCenter);
+          lookX = THREE.MathUtils.lerp(this.playerX * 0.25, this._vPlayCenter.x, 0.58);
+          lookY = this._vPlayCenter.y + 0.12;
+          lookZ = THREE.MathUtils.lerp(PLAYER_Z - 1.1, this._vPlayCenter.z - 0.92, 0.52);
+        }
+      }
       this.camera.lookAt(lookX, lookY, lookZ);
     } else if (this.screen === 'select') {
       this.applySelectScreenHighlight();

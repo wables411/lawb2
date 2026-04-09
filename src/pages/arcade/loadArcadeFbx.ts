@@ -1,5 +1,16 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { ARCADE_HERO_TARGET_HEIGHT } from './arcadeAssetConfig';
+
+/** Uniform on-screen size: scale root so world AABB height ≈ ARCADE_HERO_TARGET_HEIGHT × multiplier. */
+export function applyArcadeHeroScale(root: THREE.Object3D, sizeMultiplier = 1): void {
+  root.scale.set(1, 1, 1);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const h = box.max.y - box.min.y;
+  if (h <= 0.0005) return;
+  root.scale.setScalar((ARCADE_HERO_TARGET_HEIGHT * sizeMultiplier) / h);
+}
 
 /**
  * True for armature root / hips translation only — not every bone `.position`.
@@ -79,7 +90,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
         setDataTextureLinear(stdIn.aoMap);
         stdIn.roughness = THREE.MathUtils.clamp(stdIn.roughness, 0.06, 0.92);
         stdIn.metalness = THREE.MathUtils.clamp(stdIn.metalness, 0, 0.45);
-        stdIn.envMapIntensity = Math.max(stdIn.envMapIntensity ?? 0, 0.9);
+        stdIn.envMapIntensity = THREE.MathUtils.clamp(stdIn.envMapIntensity ?? 0, 0, 0.42);
         if (stdIn.color.r + stdIn.color.g + stdIn.color.b < 0.02 && !stdIn.map) {
           stdIn.color.setScalar(0.72);
         }
@@ -103,7 +114,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
           depthWrite: true,
           roughness: 0.4,
           metalness: 0.12,
-          envMapIntensity: 1.05,
+          envMapIntensity: 0.38,
         });
         setColorTextureSRGB(std.map);
         setColorTextureSRGB(std.emissiveMap);
@@ -130,7 +141,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
           depthWrite: true,
           roughness: 0.55,
           metalness: 0.06,
-          envMapIntensity: 1.05,
+          envMapIntensity: 0.38,
         });
         setColorTextureSRGB(std.map);
         setColorTextureSRGB(std.emissiveMap);
@@ -150,7 +161,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
           depthWrite: true,
           roughness: 0.5,
           metalness: 0.08,
-          envMapIntensity: 1.0,
+          envMapIntensity: 0.35,
         });
         setColorTextureSRGB(std.map);
         basic.dispose();

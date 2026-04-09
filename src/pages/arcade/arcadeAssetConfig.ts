@@ -2,12 +2,16 @@
 
 export const ARCADE_ASSET_BASE = '/arcade-assets';
 
+/** World-space height after FBX load (each rig is scaled to match — fixes tiny/huge heroes). */
+export const ARCADE_HERO_TARGET_HEIGHT = 2.08;
+
 export type ArcadeCharacterId = 'clawb' | 'milady' | 'radbro';
 
 export type ArcadeCharacterDef = {
   id: ArcadeCharacterId;
   label: string;
-  scale: number;
+  /** Applied after height normalize (1 = default). */
+  heightMul?: number;
   idle: string;
   dance: string;
   swim: string;
@@ -18,7 +22,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
   {
     id: 'clawb',
     label: 'CLAWB',
-    scale: 0.012,
+    heightMul: 1,
     idle: `${ARCADE_ASSET_BASE}/lawbidle.fbx`,
     dance: `${ARCADE_ASSET_BASE}/lawbdance1.fbx`,
     swim: `${ARCADE_ASSET_BASE}/lawbswim.fbx`,
@@ -26,7 +30,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
   {
     id: 'radbro',
     label: 'RADBRO',
-    scale: 0.011,
+    heightMul: 1,
     idle: `${ARCADE_ASSET_BASE}/radbrotreading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/radbrodance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/radbroswimming.fbx`,
@@ -34,7 +38,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
   {
     id: 'milady',
     label: 'MILADY',
-    scale: 0.011,
+    heightMul: 1,
     idle: `${ARCADE_ASSET_BASE}/milady11treading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/milady11dance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/milady11swimming.fbx`,
