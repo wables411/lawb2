@@ -15,8 +15,16 @@ import {
   loadArcadeFbxClipsOnly,
   startLoopClip,
 } from './loadArcadeFbx';
+import {
+  reefRunHudFromSurvivalSec,
+  swimSpeedMultiplierForTier,
+  tierIndexFromSurvivalSec,
+  type ReefRunHudPayload,
+} from './arcadeDifficulty';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
+
+export type { ReefRunHudPayload } from './arcadeDifficulty';
 
 /** Matches `arcadeMatBase` stored on materials in `loadArcadeFbx.repairFbxMaterials`. */
 type ArcadeMatBase = {
@@ -97,10 +105,16 @@ export class ArcadeSceneController {
   private spawnInterval = 1.42;
   private baseScroll = 0.14;
   private playEnded = false;
+  /** Survival time while swim is active (excludes async load gap). */
+  private runSurvivalSec = 0;
+  private runClockActive = false;
+  private hudEmitAcc = 0;
+  private lastEmittedTier = -1;
   private loaded = false;
   private pendingScreen: ArcadeGameScreen | null = null;
   private onPickCharacter: (id: ArcadeCharacterId) => void;
   private onGameOver: () => void;
+  private onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   private pointerBound = false;
   private keyBound = false;
   private _boxSel = new THREE.Box3();
@@ -123,11 +137,13 @@ export class ArcadeSceneController {
     handlers: {
       onPickCharacter: (id: ArcadeCharacterId) => void;
       onGameOver: () => void;
+      onRunDifficulty?: (payload: ReefRunHudPayload) => void;
     },
   ) {
     this.container = container;
     this.onPickCharacter = handlers.onPickCharacter;
     this.onGameOver = handlers.onGameOver;
+    this.onRunDifficulty = handlers.onRunDifficulty;
   }
 
   getScreen(): ArcadeGameScreen {
@@ -151,6 +167,8 @@ export class ArcadeSceneController {
     }
     if (next === 'gameover') {
       this.playEnded = true;
+      this.runClockActive = false;
+      if (this.swimMixer) this.swimMixer.timeScale = 1;
     }
     if (next === 'menu') {
       this.clearSelectScreenHighlight();
@@ -716,6 +734,10 @@ export class ArcadeSceneController {
     this.playerLane = 1;
     this.playerX = LANES[1];
     this.spawnAcc = Math.max(0, this.spawnInterval - FIRST_OBSTACLE_AFTER_S);
+    this.runSurvivalSec = 0;
+    this.runClockActive = false;
+    this.hudEmitAcc = 0;
+    this.lastEmittedTier = -1;
 
     while (this.playerWorld.children.length) {
       this.playerWorld.remove(this.playerWorld.children[0]);
@@ -768,6 +790,11 @@ export class ArcadeSceneController {
       box.position.set(0, -0.5, PLAYER_Z);
       this.playerWorld.add(box);
     }
+
+    this.runClockActive = true;
+    this.lastEmittedTier = 0;
+    this.hudEmitAcc = 0;
+    this.onRunDifficulty?.(reefRunHudFromSurvivalSec(0));
   }
 
   private clearObstacles(): void {
@@ -816,6 +843,7 @@ export class ArcadeSceneController {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(this.clock.getDelta(), 0.05);
     const t = this.clock.elapsedTime;
+    let swimSpd = 1;
 
     const CAM_INTRO = 5.2;
     const CAM_MENU = 11.2;
@@ -869,12 +897,6 @@ export class ArcadeSceneController {
       if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.09 + (i % 5) * 0.015);
     });
 
-    const particles = (this as unknown as { _particles?: THREE.Points })._particles;
-    if (particles) {
-      particles.position.z += 0.055;
-      if (particles.position.z > 6) particles.position.z = -4;
-    }
-
     const targetX = LANES[this.playerLane];
     this.playerX += (targetX - this.playerX) * Math.min(1, dt * 8);
     if (this.swimRoot) {
@@ -884,6 +906,23 @@ export class ArcadeSceneController {
     }
 
     if (this.screen === 'play' && !this.playEnded) {
+      if (this.runClockActive) {
+        this.runSurvivalSec += dt;
+      }
+      const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
+      swimSpd = swimSpeedMultiplierForTier(tierNow);
+      if (this.swimMixer) this.swimMixer.timeScale = swimSpd;
+
+      this.hudEmitAcc += dt;
+      if (
+        this.onRunDifficulty &&
+        (this.hudEmitAcc >= 0.2 || tierNow !== this.lastEmittedTier)
+      ) {
+        this.hudEmitAcc = 0;
+        this.lastEmittedTier = tierNow;
+        this.onRunDifficulty(reefRunHudFromSurvivalSec(this.runSurvivalSec));
+      }
+
       this.spawnAcc += dt;
       if (this.spawnAcc >= this.spawnInterval) {
         this.spawnAcc = 0;
@@ -891,7 +930,7 @@ export class ArcadeSceneController {
       }
       for (const o of this.obstacles) {
         if (o.hit) continue;
-        o.mesh.position.z += o.speed * dt * 60 * 0.18;
+        o.mesh.position.z += o.speed * swimSpd * dt * 60 * 0.18;
         if (
           !this.playEnded &&
           Math.abs(o.mesh.position.z - HIT_Z) < HIT_HALF_DEPTH &&
@@ -909,6 +948,13 @@ export class ArcadeSceneController {
         }
       }
       this.obstacles = this.obstacles.filter((o) => o.mesh.parent === this.obstacleGroup);
+    }
+
+    const particles = (this as unknown as { _particles?: THREE.Points })._particles;
+    if (particles) {
+      const drift = 0.055 * (this.screen === 'play' && !this.playEnded ? swimSpd : 1);
+      particles.position.z += drift;
+      if (particles.position.z > 6) particles.position.z = -4;
     }
 
     for (const m of this.mixers) {

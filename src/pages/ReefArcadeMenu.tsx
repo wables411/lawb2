@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
+import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeGameScreen } from './arcade/ArcadeSceneController';
 import './reefArcadeMenu.css';
 
@@ -35,6 +36,7 @@ export default function ReefArcadeMenu() {
   const [modal, setModal] = useState<ModalKind>(null);
   const [gameScreen, setGameScreen] = useState<ArcadeGameScreen>('menu');
   const [selectedCharacterId, setSelectedCharacterId] = useState<ArcadeCharacterId>('clawb');
+  const [runHud, setRunHud] = useState<ReefRunHudPayload | null>(null);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -60,6 +62,16 @@ export default function ReefArcadeMenu() {
     setGameScreen('gameover');
   }, []);
 
+  const onRunDifficulty = useCallback((payload: ReefRunHudPayload) => {
+    setRunHud(payload);
+  }, []);
+
+  useEffect(() => {
+    if (gameScreen === 'menu' || gameScreen === 'select') {
+      setRunHud(null);
+    }
+  }, [gameScreen]);
+
   const goConnect = () => {
     void open({ view: isConnected ? 'Account' : 'Connect' });
   };
@@ -77,6 +89,7 @@ export default function ReefArcadeMenu() {
           selectedCharacterId={selectedCharacterId}
           onPickCharacter={onPickCharacter}
           onGameOver={onGameOver}
+          onRunDifficulty={onRunDifficulty}
         />
       </Suspense>
       <div className="ra-bg" aria-hidden />
@@ -113,8 +126,7 @@ export default function ReefArcadeMenu() {
                 WALLET CONNECT
               </button>
               <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setModal('difficulty')}>
-                DIFFICULTY
-                <span className="ra-btn-badge">SOON</span>
+                DEPTH & SPEED
               </button>
             </div>
 
@@ -168,6 +180,26 @@ export default function ReefArcadeMenu() {
         {phase === 'menu' && gameScreen === 'play' && (
           <div className="ra-play-hud" aria-live="polite">
             <p className="ra-play-hud-title">REEF RUN</p>
+            {runHud && (
+              <div className="ra-play-depth">
+                <p className="ra-play-depth-label">DEPTH</p>
+                <p className="ra-play-depth-roman" aria-label={`Depth tier ${runHud.roman}`}>
+                  {runHud.roman}
+                </p>
+                <div className="ra-play-depth-bar-wrap" aria-hidden>
+                  <div
+                    className="ra-play-depth-bar"
+                    style={{
+                      width: `${Math.min(100, (100 * runHud.secondsElapsedInTier) / runHud.tierDurationSec)}%`,
+                    }}
+                  />
+                </div>
+                <p className="ra-play-depth-meta">
+                  {Math.floor(runHud.secondsElapsedInTier)}s / {runHud.tierDurationSec}s → next mark ·{' '}
+                  {runHud.speedMultiplier.toFixed(2)}× swim
+                </p>
+              </div>
+            )}
             <p className="ra-play-hud-keys">← → or A D · dodge the red blocks</p>
           </div>
         )}
@@ -176,6 +208,12 @@ export default function ReefArcadeMenu() {
           <div className="ra-gameover-layer">
             <div className="ra-gameover-panel">
               <h2 className="ra-gameover-title">GAME OVER</h2>
+              {runHud && (
+                <p className="ra-gameover-depth">
+                  Depth reached · <span className="ra-gameover-roman">{runHud.roman}</span>
+                  <span className="ra-gameover-time"> · {Math.floor(runHud.survivalSec)}s run</span>
+                </p>
+              )}
               <p className="ra-gameover-sub">You hit an obstacle. Swim again?</p>
               <div className="ra-gameover-actions">
                 <button type="button" className="ra-btn" onClick={() => setGameScreen('play')}>
@@ -198,11 +236,16 @@ export default function ReefArcadeMenu() {
           <div className="ra-panel" onClick={(e) => e.stopPropagation()}>
             {modal === 'difficulty' && (
               <>
-                <span className="ra-soon-pill">COMING SOON</span>
-                <h2>DIFFICULTY</h2>
+                <h2>DEPTH & SPEED</h2>
                 <p>
-                  Planned: Casual · Reef · Abyss — faster currents, tighter gaps, juicier multipliers. Tuned after the
-                  core loop feels right.
+                  There are no fixed difficulty presets. The longer you survive without a hit, the faster the swim
+                  current runs: obstacle drift and your swim animation both scale up together.
+                </p>
+                <p>
+                  Every <strong>45 seconds</strong> you cross a new <strong>depth mark</strong>, shown as Roman
+                  numerals (<strong>I</strong>, <strong>II</strong>, <strong>III</strong>, <strong>IV</strong>,{' '}
+                  <strong>V</strong> … <strong>X</strong> and beyond). The bar in the HUD is your progress through the
+                  current 45-second bracket toward the next mark.
                 </p>
               </>
             )}

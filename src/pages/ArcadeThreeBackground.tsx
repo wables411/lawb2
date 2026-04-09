@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
+import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import { ArcadeSceneController, type ArcadeGameScreen } from './arcade/ArcadeSceneController';
 
 export type ArcadeThreePhase = 'intro' | 'menu';
@@ -11,6 +12,8 @@ type Props = {
   selectedCharacterId: ArcadeCharacterId;
   onPickCharacter: (id: ArcadeCharacterId) => void;
   onGameOver: () => void;
+  /** Throttled (~5 Hz + on tier change) while the run clock is active. */
+  onRunDifficulty?: (payload: ReefRunHudPayload) => void;
 };
 
 /**
@@ -22,13 +25,16 @@ export function ArcadeThreeBackground({
   selectedCharacterId,
   onPickCharacter,
   onGameOver,
+  onRunDifficulty,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
   const pickRef = useRef(onPickCharacter);
   const overRef = useRef(onGameOver);
+  const diffRef = useRef(onRunDifficulty);
   pickRef.current = onPickCharacter;
   overRef.current = onGameOver;
+  diffRef.current = onRunDifficulty;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -40,6 +46,7 @@ export function ArcadeThreeBackground({
     const engine = new ArcadeSceneController(container, {
       onPickCharacter: (id) => pickRef.current(id),
       onGameOver: () => overRef.current(),
+      onRunDifficulty: (p) => diffRef.current?.(p),
     });
     engineRef.current = engine;
     void engine.bootstrap();
