@@ -48,11 +48,30 @@ const PLAYER_Z = 2.8;
 const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
 const HIT_HALF_DEPTH = 1.35;
-/** Obstacles in this Z band count as “at the player” for keeping ≥1 open lane. */
-const LANE_BLOCK_Z0 = HIT_Z - HIT_HALF_DEPTH * 2.85;
-const LANE_BLOCK_Z1 = HIT_Z + HIT_HALF_DEPTH * 2.1;
+/** Must match obstacle `BoxGeometry` depth (Z extent) for lane-open logic. */
+const OBSTACLE_BOX_DEPTH_Z = 2.2;
+const OBSTACLE_HALF_DEPTH_Z = OBSTACLE_BOX_DEPTH_Z / 2;
+/**
+ * World Z slab where a collision can register (`|obstacleZ - HIT_Z| < HIT_HALF_DEPTH` on centers).
+ * Lane “blocked” if obstacle’s Z box overlaps this slab so the player always has ≥1 lane that fits.
+ */
+const PASSAGE_Z0 = HIT_Z - HIT_HALF_DEPTH;
+const PASSAGE_Z1 = HIT_Z + HIT_HALF_DEPTH;
+/**
+ * Wider slab for **spawn** lane choice only: reserves lanes while hazards are still approaching,
+ * so speed differences cannot stack three full-width boxes over the same passage window.
+ */
+const SPAWN_PASSAGE_BUFFER_Z = 1.35;
+const SPAWN_PASSAGE_Z0 = PASSAGE_Z0 - SPAWN_PASSAGE_BUFFER_Z;
+const SPAWN_PASSAGE_Z1 = PASSAGE_Z1 + SPAWN_PASSAGE_BUFFER_Z;
 /** First hazard after this many seconds (spawnAcc primed in `enterPlay`). */
 const FIRST_OBSTACLE_AFTER_S = 0.38;
+
+function obstacleBoxOverlapsZSlab(obstacleCenterZ: number, slabZ0: number, slabZ1: number): boolean {
+  const lo = obstacleCenterZ - OBSTACLE_HALF_DEPTH_Z;
+  const hi = obstacleCenterZ + OBSTACLE_HALF_DEPTH_Z;
+  return hi > slabZ0 && lo < slabZ1;
+}
 
 /** Plinth X positions: left, center (hero), right */
 const PODIUM_X = { L: -2.85, C: 0, R: 2.85 } as const;
@@ -778,24 +797,23 @@ export class ArcadeSceneController {
   }
 
   /**
-   * Pick a lane so at least one lane stays open in the near-hit Z band (avoids “wall of three”
-   * when speeds differ). Returns null only if all three are already occupied there — defer spawn.
+   * Lanes whose obstacle Z-extent overlaps the **spawn** passage slab are “closed”.
+   * Always leave ≥1 lane that can reach the play slab without overlapping another hazard’s box.
    */
   private pickSpawnLane(): number | null {
-    const used = new Set<number>();
+    const closed = new Set<number>();
     for (const o of this.obstacles) {
       if (o.hit) continue;
-      const z = o.mesh.position.z;
-      if (z >= LANE_BLOCK_Z0 && z <= LANE_BLOCK_Z1) used.add(o.lane);
+      if (obstacleBoxOverlapsZSlab(o.mesh.position.z, SPAWN_PASSAGE_Z0, SPAWN_PASSAGE_Z1)) closed.add(o.lane);
     }
-    if (used.size >= 3) return null;
-    const free = [0, 1, 2].filter((l) => !used.has(l));
-    if (used.size === 2) return free[0]!;
-    return free[Math.floor(Math.random() * free.length)]!;
+    if (closed.size >= 3) return null;
+    const open = [0, 1, 2].filter((l) => !closed.has(l));
+    if (closed.size === 2) return open[0]!;
+    return open[Math.floor(Math.random() * open.length)]!;
   }
 
   private spawnObstacle(lane: number): void {
-    const geo = new THREE.BoxGeometry(1.4, 1.4, 2.2);
+    const geo = new THREE.BoxGeometry(1.4, 1.4, OBSTACLE_BOX_DEPTH_Z);
     const mat = new THREE.MeshStandardMaterial({
       color: 0xd94a38,
       emissive: 0x6a2018,
@@ -880,7 +898,7 @@ export class ArcadeSceneController {
       this.playerWorld.children[0].position.x = this.playerX;
     }
 
-    if (this.screen === 'play') {
+    if (this.screen === 'play' && !this.playEnded) {
       this.spawnAcc += dt;
       if (this.spawnAcc >= this.spawnInterval) {
         const lane = this.pickSpawnLane();
