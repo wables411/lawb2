@@ -17,6 +17,10 @@ export type ArcadeCharacterDef = {
    * Avoids a second FBX body that often shows as white shards when skinning/textures mismatch.
    */
   danceUsesIdleMesh?: boolean;
+  /**
+   * Play mode: clone idle rig and drive it with `swim` clips only (no separate swim FBX mesh).
+   */
+  swimUsesIdleMesh?: boolean;
   idle: string;
   dance: string;
   swim: string;
@@ -37,6 +41,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
     label: 'RADBRO',
     heightMul: 1,
     danceUsesIdleMesh: true,
+    swimUsesIdleMesh: true,
     idle: `${ARCADE_ASSET_BASE}/radbrotreading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/radbrodance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/radbroswimming.fbx`,
@@ -46,6 +51,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
     label: 'MILADY',
     heightMul: 1,
     danceUsesIdleMesh: true,
+    swimUsesIdleMesh: true,
     idle: `${ARCADE_ASSET_BASE}/milady11treading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/milady11dance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/milady11swimming.fbx`,

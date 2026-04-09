@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
   ARCADE_CHARACTERS,
   type ArcadeCharacterDef,
@@ -674,17 +675,39 @@ export class ArcadeSceneController {
     this.swimMixer = null;
 
     try {
-      const { root, clips } = await loadArcadeFbx(slot.def.swim);
-      root.rotation.y = Math.PI;
-      root.position.set(0, 0, PLAYER_Z);
-      this.playerWorld.add(root);
-      applyArcadeHeroScale(root, (slot.def.heightMul ?? 1) * 1.06);
-      alignFbxVerticalAfterLayout(root, -0.85);
-      this.swimRoot = root;
-      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true, retarget: true });
-      this.swimMixer = mixer;
-      if (mixer) this.mixers.push(mixer);
-      void action;
+      if (slot.def.swimUsesIdleMesh) {
+        const root = SkeletonUtils.clone(slot.idleRoot) as THREE.Group;
+        root.userData.characterId = slot.def.id;
+        root.position.set(0, 0, 0);
+        root.rotation.set(0, Math.PI, 0);
+        root.scale.copy(slot.idleRoot.scale).multiplyScalar(1.06);
+        root.updateMatrixWorld(true);
+        root.position.set(0, 0, PLAYER_Z);
+        this.playerWorld.add(root);
+        alignFbxVerticalAfterLayout(root, -0.85);
+        this.swimRoot = root;
+        const clips = await loadArcadeFbxClipsOnly(slot.def.swim);
+        const clip = buildArcadePlayableClip(clips, root, { stripRootMotion: true, retarget: true });
+        if (!clip) throw new Error('no swim clip');
+        const mixer = new THREE.AnimationMixer(root);
+        const action = mixer.clipAction(clip);
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.play();
+        this.swimMixer = mixer;
+        this.mixers.push(mixer);
+      } else {
+        const { root, clips } = await loadArcadeFbx(slot.def.swim);
+        root.rotation.y = Math.PI;
+        root.position.set(0, 0, PLAYER_Z);
+        this.playerWorld.add(root);
+        applyArcadeHeroScale(root, (slot.def.heightMul ?? 1) * 1.06);
+        alignFbxVerticalAfterLayout(root, -0.85);
+        this.swimRoot = root;
+        const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true, retarget: true });
+        this.swimMixer = mixer;
+        if (mixer) this.mixers.push(mixer);
+        void action;
+      }
     } catch (e) {
       console.warn('[Arcade] swim load failed', e);
       const box = new THREE.Mesh(
