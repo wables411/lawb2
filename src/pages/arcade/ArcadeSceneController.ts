@@ -103,7 +103,11 @@ export class ArcadeSceneController {
   private _vCamPos = new THREE.Vector3();
   private _vDir = new THREE.Vector3();
   private _vPlayCenter = new THREE.Vector3();
+  /** World feet / pivot for yaw toward camera on select screen. */
+  private _vFacePivot = new THREE.Vector3();
+  private _hslScratch = { h: 0, s: 0, l: 0 };
   private selectFillLight!: THREE.PointLight;
+  private selectHemiLight!: THREE.HemisphereLight;
   /** Invalidates in-flight async dance loads when selection changes quickly. */
   private danceApplyGen = 0;
 
@@ -147,6 +151,9 @@ export class ArcadeSceneController {
       this.layoutMenuPodiums();
     }
     if (next === 'select') {
+      for (const slot of this.slots.values()) {
+        slot.anchor.rotation.set(0, 0, 0);
+      }
       this.resetSelectionVisuals();
       this.layoutSelectionPodiums();
       void this.applySelectionAnimations();
@@ -182,6 +189,19 @@ export class ArcadeSceneController {
     });
   }
 
+  /** Radbro’s PBR export reads flat vs Clawb/Milady; nudge albedo on the select pass only. */
+  private applyRadbroSelectAlbedo(sm: THREE.MeshStandardMaterial, base: ArcadeMatBase, isSel: boolean): void {
+    sm.color.copy(base.color);
+    if (isSel) {
+      sm.color.getHSL(this._hslScratch);
+      this._hslScratch.s = THREE.MathUtils.clamp(this._hslScratch.s * 1.2, 0, 1);
+      this._hslScratch.l = THREE.MathUtils.clamp(this._hslScratch.l * 1.05, 0, 1);
+      sm.color.setHSL(this._hslScratch.h, this._hslScratch.s, this._hslScratch.l);
+    } else {
+      sm.color.multiplyScalar(0.74);
+    }
+  }
+
   private snapshotMaterialBase(m: THREE.MeshStandardMaterial): ArcadeMatBase {
     const u = m.userData as { arcadeMatBase?: ArcadeMatBase };
     if (!u.arcadeMatBase) {
@@ -215,13 +235,21 @@ export class ArcadeSceneController {
             if (!sm.isMeshStandardMaterial) continue;
             const base = this.snapshotMaterialBase(sm);
             if (isSel) {
-              sm.color.copy(base.color);
+              if (id === 'radbro') {
+                this.applyRadbroSelectAlbedo(sm, base, true);
+              } else {
+                sm.color.copy(base.color);
+              }
               sm.emissive.copy(base.emissive);
               sm.emissiveIntensity = base.emissiveIntensity;
             } else {
               sm.emissive.copy(base.emissive).multiplyScalar(0.28);
               sm.emissiveIntensity = base.emissiveIntensity * 0.32;
-              sm.color.copy(base.color).multiplyScalar(0.64);
+              if (id === 'radbro') {
+                this.applyRadbroSelectAlbedo(sm, base, false);
+              } else {
+                sm.color.copy(base.color).multiplyScalar(0.64);
+              }
             }
             sm.needsUpdate = true;
           }
@@ -310,6 +338,23 @@ export class ArcadeSceneController {
     this.selectFillLight.position.z += (lz - this.selectFillLight.position.z) * 0.14;
   }
 
+  /**
+   * Yaw idle (and Clawb dance root) toward the camera on the XZ plane.
+   * `+ Math.PI`: these FBX rigs face -Z by default; camera sits on +Z side of the podiums.
+   */
+  private updateSelectionFaceCamera(): void {
+    const cx = this.camera.position.x;
+    const cz = this.camera.position.z;
+    for (const slot of this.slots.values()) {
+      slot.idleRoot.getWorldPosition(this._vFacePivot);
+      const dx = cx - this._vFacePivot.x;
+      const dz = cz - this._vFacePivot.z;
+      const yaw = Math.atan2(dx, dz) + Math.PI;
+      slot.idleRoot.rotation.y = yaw;
+      if (slot.danceRoot) slot.danceRoot.rotation.y = yaw;
+    }
+  }
+
   /** Selected character always on center podium; others split left/right by roster order. */
   private layoutSelectionPodiums(): void {
     const sel = this.selectedId ?? 'clawb';
@@ -317,17 +362,15 @@ export class ArcadeSceneController {
     const others = ordered.filter((id) => id !== sel);
     const leftId = others[0]!;
     const rightId = others[1]!;
-    const plan = new Map<ArcadeCharacterId, { x: number; face: number }>([
-      [leftId, { x: PODIUM_X.L, face: FACE_LEFT }],
-      [sel, { x: PODIUM_X.C, face: FACE_CENTER }],
-      [rightId, { x: PODIUM_X.R, face: FACE_RIGHT }],
+    const plan = new Map<ArcadeCharacterId, number>([
+      [leftId, PODIUM_X.L],
+      [sel, PODIUM_X.C],
+      [rightId, PODIUM_X.R],
     ]);
     for (const [id, slot] of this.slots) {
-      const p = plan.get(id);
-      if (!p) continue;
-      slot.anchor.position.set(p.x, PODIUM_Y, PODIUM_Z);
-      slot.idleRoot.rotation.y = p.face;
-      if (slot.danceRoot) slot.danceRoot.rotation.y = p.face;
+      const x = plan.get(id);
+      if (x === undefined) continue;
+      slot.anchor.position.set(x, PODIUM_Y, PODIUM_Z);
     }
   }
 
@@ -392,7 +435,10 @@ export class ArcadeSceneController {
     this.selectFillLight = new THREE.PointLight(0xfff2e6, 48, 18, 1.55);
     this.selectFillLight.position.set(1.4, 2.5, 4.5);
     this.selectFillLight.visible = false;
-    this.scene.add(key, fill, rim, this.selectFillLight);
+    this.selectHemiLight = new THREE.HemisphereLight(0xfff4ec, 0x1a2a38, 0.4);
+    this.selectHemiLight.position.set(0, 5.5, 1.5);
+    this.selectHemiLight.visible = false;
+    this.scene.add(key, fill, rim, this.selectFillLight, this.selectHemiLight);
 
     const n = window.innerWidth < 768 ? 500 : 1400;
     const positions = new Float32Array(n * 3);
@@ -753,6 +799,7 @@ export class ArcadeSceneController {
     const CAM_MENU = 11.2;
 
     this.selectFillLight.visible = this.screen === 'select';
+    this.selectHemiLight.visible = this.screen === 'select';
 
     if (this.screen === 'play' || this.screen === 'gameover') {
       const driftX = Math.sin(t * 0.1) * 0.32;
@@ -780,9 +827,7 @@ export class ArcadeSceneController {
     } else if (this.screen === 'select') {
       this.applySelectScreenHighlight();
       this.updateSelectCamera(dt, t);
-      for (const slot of this.slots.values()) {
-        slot.anchor.rotation.y += 0.0018;
-      }
+      this.updateSelectionFaceCamera();
     } else {
       let targetZ = CAM_MENU;
       if (this.screen === 'intro') targetZ = CAM_INTRO;
