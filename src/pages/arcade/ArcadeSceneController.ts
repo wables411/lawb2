@@ -14,6 +14,7 @@ import {
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
 
+/** Matches `arcadeMatBase` stored on materials in `loadArcadeFbx.repairFbxMaterials`. */
 type ArcadeMatBase = {
   emissive: THREE.Color;
   emissiveIntensity: number;
@@ -98,6 +99,7 @@ export class ArcadeSceneController {
   private _vCamPos = new THREE.Vector3();
   private _vDir = new THREE.Vector3();
   private _vPlayCenter = new THREE.Vector3();
+  private selectFillLight!: THREE.PointLight;
 
   constructor(
     container: HTMLElement,
@@ -186,7 +188,10 @@ export class ArcadeSceneController {
     return u.arcadeMatBase;
   }
 
-  /** Dim non-selected; subtle warm lift on selected (select screen only). */
+  /**
+   * Select screen: keep selected hero at full albedo (no emissive wash — that reads desaturated).
+   * Dim others slightly; `selectFillLight` adds separation.
+   */
   private applySelectScreenHighlight(): void {
     const sel = this.selectedId ?? 'clawb';
     for (const [id, slot] of this.slots) {
@@ -204,13 +209,13 @@ export class ArcadeSceneController {
             if (!sm.isMeshStandardMaterial) continue;
             const base = this.snapshotMaterialBase(sm);
             if (isSel) {
-              sm.emissive.copy(base.emissive).lerp(new THREE.Color(0xffeed5), 0.22);
-              sm.emissiveIntensity = base.emissiveIntensity + 0.28;
-              sm.color.copy(base.color).multiplyScalar(1.05);
+              sm.color.copy(base.color);
+              sm.emissive.copy(base.emissive);
+              sm.emissiveIntensity = base.emissiveIntensity;
             } else {
-              sm.emissive.copy(base.emissive).multiplyScalar(0.15);
-              sm.emissiveIntensity = base.emissiveIntensity * 0.28;
-              sm.color.copy(base.color).multiplyScalar(0.48);
+              sm.emissive.copy(base.emissive).multiplyScalar(0.28);
+              sm.emissiveIntensity = base.emissiveIntensity * 0.32;
+              sm.color.copy(base.color).multiplyScalar(0.64);
             }
             sm.needsUpdate = true;
           }
@@ -290,6 +295,13 @@ export class ArcadeSceneController {
     this._vCamTarget.copy(this._vSelCenter);
     this._vCamTarget.y += this._vSelSize.y * 0.07;
     this.camera.lookAt(this._vCamTarget);
+
+    const lx = this._vSelCenter.x + 1.05;
+    const ly = this._vSelCenter.y + 1.55;
+    const lz = this._vSelCenter.z + 2.75;
+    this.selectFillLight.position.x += (lx - this.selectFillLight.position.x) * 0.14;
+    this.selectFillLight.position.y += (ly - this.selectFillLight.position.y) * 0.14;
+    this.selectFillLight.position.z += (lz - this.selectFillLight.position.z) * 0.14;
   }
 
   /** Selected character always on center podium; others split left/right by roster order. */
@@ -371,7 +383,10 @@ export class ArcadeSceneController {
     fill.position.set(-3.5, -1.2, 4.5);
     const rim = new THREE.DirectionalLight(0xffffff, 0.28);
     rim.position.set(-0.5, 3.5, 7);
-    this.scene.add(key, fill, rim);
+    this.selectFillLight = new THREE.PointLight(0xfff2e6, 48, 18, 1.55);
+    this.selectFillLight.position.set(1.4, 2.5, 4.5);
+    this.selectFillLight.visible = false;
+    this.scene.add(key, fill, rim, this.selectFillLight);
 
     const n = window.innerWidth < 768 ? 500 : 1400;
     const positions = new Float32Array(n * 3);
@@ -426,7 +441,7 @@ export class ArcadeSceneController {
         applyArcadeHeroScale(root, def.heightMul ?? 1);
         alignFbxBottomBeforeParent(root, 0.15);
         anchor.add(root);
-      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
+      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false, retarget: true });
       this.mixers.push(mixer);
         this.slots.set(def.id, {
           def,
@@ -567,7 +582,7 @@ export class ArcadeSceneController {
           alignFbxBottomBeforeParent(root, 0.15);
           slot.anchor.add(root);
           slot.danceRoot = root;
-          const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
+          const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false, retarget: true });
           if (mixer) this.mixers.push(mixer);
           slot.danceMixer = mixer;
           slot.danceAction = action;
@@ -611,7 +626,7 @@ export class ArcadeSceneController {
       applyArcadeHeroScale(root, (slot.def.heightMul ?? 1) * 1.06);
       alignFbxVerticalAfterLayout(root, -0.85);
       this.swimRoot = root;
-      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true });
+      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true, retarget: true });
       this.swimMixer = mixer;
       if (mixer) this.mixers.push(mixer);
       void action;
@@ -658,6 +673,8 @@ export class ArcadeSceneController {
 
     const CAM_INTRO = 5.2;
     const CAM_MENU = 11.2;
+
+    this.selectFillLight.visible = this.screen === 'select';
 
     if (this.screen === 'play' || this.screen === 'gameover') {
       const driftX = Math.sin(t * 0.1) * 0.32;

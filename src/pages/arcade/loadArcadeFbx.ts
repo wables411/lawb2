@@ -29,6 +29,60 @@ function isRootHipsPositionTrack(trackName: string): boolean {
 }
 
 /** Zero root XZ on swim clips (treadmill); keeps vertical bob and all bone offsets. */
+/** Prefer the clip that actually drives the rig (FBX files may ship multiple stubs). */
+export function pickArcadeAnimationClip(clips: THREE.AnimationClip[]): THREE.AnimationClip {
+  if (!clips.length) throw new Error('pickArcadeAnimationClip: no clips');
+  if (clips.length === 1) return clips[0]!;
+  return clips.reduce((best, c) => {
+    const score = c.tracks.length * (c.duration || 1);
+    const bestScore = best.tracks.length * (best.duration || 1);
+    return score > bestScore ? c : best;
+  });
+}
+
+/**
+ * Remap clip tracks to bone names present under `targetRoot` (Mixamo / nested paths / colons).
+ * Mirrors clawb-world ViewerAvatarManager.retargetClip — fixes partial or “exploded” rigs.
+ */
+export function retargetClipToModel(clip: THREE.AnimationClip, targetRoot: THREE.Object3D): THREE.AnimationClip {
+  const boneNames = new Set<string>();
+  targetRoot.traverse((obj) => {
+    if (obj.name) boneNames.add(obj.name);
+  });
+
+  const newTracks: THREE.KeyframeTrack[] = [];
+  for (const track of clip.tracks) {
+    const dotIdx = track.name.indexOf('.');
+    if (dotIdx < 0) {
+      newTracks.push(track.clone());
+      continue;
+    }
+    const objPath = track.name.slice(0, dotIdx);
+    const prop = track.name.slice(dotIdx);
+
+    if (boneNames.has(objPath)) {
+      newTracks.push(track.clone());
+      continue;
+    }
+
+    const bare = objPath.includes('/') ? objPath.slice(objPath.lastIndexOf('/') + 1) : objPath;
+    if (boneNames.has(bare)) {
+      const cloned = track.clone();
+      cloned.name = bare + prop;
+      newTracks.push(cloned);
+      continue;
+    }
+
+    const afterColon = bare.includes(':') ? bare.slice(bare.lastIndexOf(':') + 1) : '';
+    if (afterColon && boneNames.has(afterColon)) {
+      const cloned = track.clone();
+      cloned.name = afterColon + prop;
+      newTracks.push(cloned);
+    }
+  }
+  return new THREE.AnimationClip(clip.name, clip.duration, newTracks, clip.blendMode);
+}
+
 export function clipSwimInPlace(clip: THREE.AnimationClip): THREE.AnimationClip {
   const c = clip.clone();
   c.tracks = c.tracks.map((track) => {
@@ -48,6 +102,23 @@ export function clipSwimInPlace(clip: THREE.AnimationClip): THREE.AnimationClip 
   });
   c.resetDuration();
   return c;
+}
+
+export type ArcadeMatSnapshot = {
+  emissive: THREE.Color;
+  emissiveIntensity: number;
+  color: THREE.Color;
+};
+
+/** Capture albedo/emissive after FBX repair so UI highlight never snapshots a dimmed state. */
+function snapshotArcadeMaterialBase(m: THREE.MeshStandardMaterial): void {
+  const u = m.userData as { arcadeMatBase?: ArcadeMatSnapshot };
+  if (u.arcadeMatBase) return;
+  u.arcadeMatBase = {
+    emissive: m.emissive.clone(),
+    emissiveIntensity: m.emissiveIntensity,
+    color: m.color.clone(),
+  };
 }
 
 function setColorTextureSRGB(tex: THREE.Texture | null | undefined): void {
@@ -95,6 +166,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
           stdIn.color.setScalar(0.72);
         }
         stdIn.needsUpdate = true;
+        snapshotArcadeMaterialBase(stdIn);
         next.push(stdIn);
         continue;
       }
@@ -125,6 +197,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
         }
         phong.dispose();
         std.needsUpdate = true;
+        snapshotArcadeMaterialBase(std);
         next.push(std);
         continue;
       }
@@ -147,6 +220,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
         setColorTextureSRGB(std.emissiveMap);
         lambert.dispose();
         std.needsUpdate = true;
+        snapshotArcadeMaterialBase(std);
         next.push(std);
         continue;
       }
@@ -166,6 +240,7 @@ export function repairFbxMaterials(root: THREE.Object3D): void {
         setColorTextureSRGB(std.map);
         basic.dispose();
         std.needsUpdate = true;
+        snapshotArcadeMaterialBase(std);
         next.push(std);
         continue;
       }
@@ -245,11 +320,17 @@ export async function loadArcadeFbx(url: string): Promise<{
 export function startLoopClip(
   root: THREE.Group,
   clips: THREE.AnimationClip[],
-  opts?: { stripRootMotion?: boolean },
+  opts?: { stripRootMotion?: boolean; retarget?: boolean },
 ): { mixer: THREE.AnimationMixer; action: THREE.AnimationAction | null } {
   const mixer = new THREE.AnimationMixer(root);
   if (!clips.length) return { mixer, action: null };
-  const clip = opts?.stripRootMotion ? clipSwimInPlace(clips[0]) : clips[0];
+  let clip = pickArcadeAnimationClip(clips);
+  if (opts?.stripRootMotion) clip = clipSwimInPlace(clip);
+  if (opts?.retarget) {
+    const ret = retargetClipToModel(clip, root);
+    // If retarget drops most tracks, keep source (bad remap is worse than raw).
+    if (ret.tracks.length >= Math.max(6, clip.tracks.length * 0.28)) clip = ret;
+  }
   const action = mixer.clipAction(clip);
   action.setLoop(THREE.LoopRepeat, Infinity);
   action.play();
