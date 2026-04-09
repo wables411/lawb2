@@ -82,6 +82,19 @@ function obstacleFrontPastApproachPipe(zCenter: number): boolean {
   return zCenter + OBSTACLE_HALF_Z > APPROACH_PIPE_Z;
 }
 
+const OBSTACLE_RECYCLE_Z = 8;
+
+/** Distinct lanes with any live hazard still on the run (not recycled). Includes freshly spawned at `SPAWN_Z`. */
+function lanesOnActiveTrack(obstacles: Obstacle[]): Set<number> {
+  const lanes = new Set<number>();
+  for (const o of obstacles) {
+    if (o.hit) continue;
+    if (o.mesh.position.z >= OBSTACLE_RECYCLE_Z) continue;
+    lanes.add(o.lane);
+  }
+  return lanes;
+}
+
 export class ArcadeSceneController {
   private container: HTMLElement;
   private scene!: THREE.Scene;
@@ -828,14 +841,35 @@ export class ArcadeSceneController {
   }
 
   /**
-   * Each wave leaves one gap lane, but **multiple waves** were overlapping in Z so three rows
-   * could still cover all lanes. We defer a new wave while **≥2 lanes** already have hazards in
-   * the approach pipe (see `APPROACH_PIPE_Z`). Obstacles are moved **before** this check each tick.
+   * Per-wave gap is not enough: new spawns sit at `SPAWN_Z` **outside** the approach pipe, so
+   * `lanesBusyInApproachPipe().size` could be 0–1 while **two-block** row 3 still adds the third
+   * lane on the full track (classic by “third row”). We also gate on **all** lanes on track and
+   * forbid two-block rows unless the track is empty.
    */
   /** @returns false if spawn was deferred. */
   private trySpawnObstacleRow(): boolean {
     if (this.lanesBusyInApproachPipe().size >= 2) {
       return false;
+    }
+
+    const track = lanesOnActiveTrack(this.obstacles);
+    if (track.size >= 3) {
+      return false;
+    }
+
+    if (track.size === 2) {
+      const free = ([0, 1, 2] as const).find((l) => !track.has(l));
+      if (free === undefined) return false;
+      this.spawnObstacleInLane(free, SPAWN_Z);
+      return true;
+    }
+
+    if (track.size === 1) {
+      const busy = [...track][0]!;
+      const open = [0, 1, 2].filter((l) => l !== busy);
+      const lane = open[Math.floor(Math.random() * open.length)]!;
+      this.spawnObstacleInLane(lane, SPAWN_Z);
+      return true;
     }
 
     const gapLane = Math.floor(Math.random() * 3);
@@ -962,7 +996,7 @@ export class ArcadeSceneController {
           this.playEnded = true;
           this.onGameOver();
         }
-        if (o.mesh.position.z > 8) {
+        if (o.mesh.position.z > OBSTACLE_RECYCLE_Z) {
           this.obstacleGroup.remove(o.mesh);
           o.mesh.geometry.dispose();
           (o.mesh.material as THREE.Material).dispose();
