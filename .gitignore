@@ -83,3 +83,7 @@ clawb/blender-scripts/
 clawb/world-asset-generator.js
 clawb/run-upgrade-ocean.js
 .cursor/skills/blender-world-assets/
+
+# Cursor — local/editor only (not for git)
+.cursor/settings.json
+.cursor/rules/
