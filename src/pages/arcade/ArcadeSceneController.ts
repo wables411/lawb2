@@ -57,14 +57,32 @@ type Obstacle = {
   hit: boolean;
 };
 
-const LANES = [-2.1, 0, 2.1];
+/** Lane centers (world X). Spacing 2.1 ⇒ ~0.78 gap between 1.32-wide obstacles. */
+const LANES = [-2.1, 0, 2.1] as const;
 const PLAYER_Z = 2.8;
 const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
+/** Z half-thickness of the hit slab (must cover obstacle half-depth + timing slop). */
 const HIT_HALF_DEPTH = 1.35;
 /** Must match obstacle `BoxGeometry` depth (Z). */
 const OBSTACLE_BOX_DEPTH_Z = 2.2;
 const OBSTACLE_HALF_Z = OBSTACLE_BOX_DEPTH_Z / 2;
+/** Obstacle width (X): slightly under lane spacing so neighbors read as separate columns. */
+const OBSTACLE_BOX_WIDTH_X = 1.32;
+/**
+ * Obstacle height (Y): tall enough to overlap the swim hero’s AABB (feet ≈ {@link PLAYER_FEET_Y}),
+ * so hazards read as “in your lane” rather than a floor the swimmer floats above.
+ */
+const OBSTACLE_BOX_HEIGHT_Y = 2.05;
+const OBSTACLE_HALF_Y = OBSTACLE_BOX_HEIGHT_Y / 2;
+/**
+ * World Y where swim FBX soles sit after {@link alignFbxVerticalAfterLayout} (keep in sync below).
+ * Coral bases sit slightly lower so columns feel anchored in the same volume as the player.
+ */
+const PLAYER_FEET_Y = -0.88;
+const CORAL_BASE_BELOW_FEET = 0.12;
+/** World Y center of obstacle column (BoxGeometry is axis-aligned). */
+const OBSTACLE_CENTER_Y = PLAYER_FEET_Y - CORAL_BASE_BELOW_FEET + OBSTACLE_HALF_Y;
 /** Tiny Z separation so two blocks in one row don’t z-fight. */
 const ROW_Z_EPS = 0.04;
 /** First hazard row after this many seconds (`enterPlay` primes `spawnAcc`). */
@@ -790,7 +808,7 @@ export class ArcadeSceneController {
         root.updateMatrixWorld(true);
         root.position.set(0, 0, PLAYER_Z);
         this.playerWorld.add(root);
-        alignFbxVerticalAfterLayout(root, -0.85);
+        alignFbxVerticalAfterLayout(root, PLAYER_FEET_Y);
         this.swimRoot = root;
         const clips = await loadArcadeFbxClipsOnly(slot.def.swim);
         const clip = buildArcadePlayableClip(clips, root, { stripRootMotion: true, retarget: true });
@@ -807,7 +825,7 @@ export class ArcadeSceneController {
         root.position.set(0, 0, PLAYER_Z);
         this.playerWorld.add(root);
         applyArcadeHeroScale(root, (slot.def.heightMul ?? 1) * 1.06);
-        alignFbxVerticalAfterLayout(root, -0.85);
+        alignFbxVerticalAfterLayout(root, PLAYER_FEET_Y);
         this.swimRoot = root;
         const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true, retarget: true });
         this.swimMixer = mixer;
@@ -895,7 +913,7 @@ export class ArcadeSceneController {
   }
 
   private spawnObstacleInLane(lane: number, z: number): void {
-    const geo = new THREE.BoxGeometry(1.4, 1.4, OBSTACLE_BOX_DEPTH_Z);
+    const geo = new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z);
     const mat = new THREE.MeshStandardMaterial({
       color: 0xd94a38,
       emissive: 0x6a2018,
@@ -904,7 +922,7 @@ export class ArcadeSceneController {
       roughness: 0.62,
     });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(LANES[lane], -0.35, z);
+    mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
     this.obstacleGroup.add(mesh);
     const base =
       REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
@@ -927,23 +945,27 @@ export class ArcadeSceneController {
     if (this.screen === 'play' || this.screen === 'gameover') {
       const driftX = Math.sin(t * 0.1) * 0.32;
       const driftY = Math.cos(t * 0.07) * 0.12;
-      const targetCamX = this.playerX * 0.62 + driftX;
-      const targetCamY = 3.85 + driftY;
-      const targetCamZ = 13.6;
+      const targetCamX = this.playerX * 0.58 + driftX;
+      const targetCamY = 3.28 + driftY;
+      const targetCamZ = 12.85;
       this.camera.position.x += (targetCamX - this.camera.position.x) * 0.085;
       this.camera.position.y += (targetCamY - this.camera.position.y) * 0.07;
       this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.06;
-      let lookX = this.playerX * 0.28;
-      let lookY = -0.55;
-      let lookZ = PLAYER_Z - 1.1;
+      let lookX = this.playerX * 0.26;
+      let lookY = PLAYER_FEET_Y + 0.42;
+      let lookZ = PLAYER_Z - 0.85;
       if (this.swimRoot) {
         this.swimRoot.updateMatrixWorld(true);
         const b = new THREE.Box3().setFromObject(this.swimRoot);
         if (!b.isEmpty()) {
           b.getCenter(this._vPlayCenter);
-          lookX = THREE.MathUtils.lerp(this.playerX * 0.25, this._vPlayCenter.x, 0.58);
-          lookY = this._vPlayCenter.y + 0.12;
-          lookZ = THREE.MathUtils.lerp(PLAYER_Z - 1.1, this._vPlayCenter.z - 0.92, 0.52);
+          lookX = THREE.MathUtils.lerp(this.playerX * 0.22, this._vPlayCenter.x, 0.62);
+          lookY = THREE.MathUtils.lerp(
+            PLAYER_FEET_Y + 0.42,
+            this._vPlayCenter.y + 0.04,
+            0.72,
+          );
+          lookZ = THREE.MathUtils.lerp(PLAYER_Z - 0.85, this._vPlayCenter.z - 0.78, 0.55);
         }
       }
       this.camera.lookAt(lookX, lookY, lookZ);
@@ -971,7 +993,7 @@ export class ArcadeSceneController {
     });
 
     const targetX = LANES[this.playerLane];
-    this.playerX += (targetX - this.playerX) * Math.min(1, dt * 8);
+    this.playerX += (targetX - this.playerX) * Math.min(1, dt * 11);
     if (this.swimRoot) {
       this.swimRoot.position.x = this.playerX;
     } else if (this.playerWorld.children[0]) {
