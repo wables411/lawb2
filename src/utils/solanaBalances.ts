@@ -1,6 +1,9 @@
 const RPC_TIMEOUT_MS = 12_000;
 
-/** Public endpoints (browser-safe). Official api.mainnet-beta.solana.com often returns 403 from the public web. */
+/** Same-origin Netlify function — avoids CSP blocks on public RPC hostnames and browser 403 on api.mainnet-beta.solana.com. */
+const SOLANA_RPC_PROXY = '/.netlify/functions/solana-rpc';
+
+/** Direct fallbacks for local Vite (no functions) or if the proxy errors. Many hosts are not in connect-src; production should rely on the proxy. */
 const DEFAULT_SOLANA_RPC_URLS = [
   'https://solana.publicnode.com',
   'https://rpc.ankr.com/solana',
@@ -16,7 +19,7 @@ function solanaRpcUrlList(): string[] {
 export const CLAWB_SOL_MINT = 'A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn';
 export const LAWB_SOL_MINT = '65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6';
 
-async function rpc(method: string, params: unknown[]): Promise<any> {
+async function rpcDirect(method: string, params: unknown[]): Promise<any> {
   let lastError: Error | null = null;
   for (const rpcUrl of solanaRpcUrlList()) {
     try {
@@ -36,6 +39,32 @@ async function rpc(method: string, params: unknown[]): Promise<any> {
     }
   }
   throw lastError ?? new Error('Solana RPC failed');
+}
+
+async function rpc(method: string, params: unknown[]): Promise<any> {
+  try {
+    const res = await fetch(SOLANA_RPC_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+    });
+    const json = await res.json();
+    if (json.error) {
+      throw new Error(json.error.message || 'Solana RPC error');
+    }
+    if (!res.ok) {
+      throw new Error(`Solana RPC proxy HTTP ${res.status}`);
+    }
+    return json.result;
+  } catch (proxyErr) {
+    if (import.meta.env.DEV) {
+      console.warn('[SOLANA] Proxy unavailable or failed, using direct RPC:', proxyErr);
+    } else {
+      console.warn('[SOLANA] Proxy failed, trying direct RPC (may be blocked by CSP):', proxyErr);
+    }
+    return rpcDirect(method, params);
+  }
 }
 
 export async function fetchSolBalance(address: string): Promise<number> {
