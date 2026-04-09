@@ -10,7 +10,7 @@ import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
-import { useAppKit } from '@reown/appkit/react';
+import { useAppKitSafe } from '../hooks/useAppKitSafe';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -545,7 +545,7 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
   const connectionDisplay = useConnectionDisplay();
-  const { open } = useAppKit();
+  const { open } = useAppKitSafe();
   const connectedAddress = connectionDisplay.address;
   const connectedSolana = connectionDisplay.solanaAddress;
   const connectedEvm = connectionDisplay.evmAddress;
