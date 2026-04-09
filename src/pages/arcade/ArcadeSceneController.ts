@@ -48,30 +48,12 @@ const PLAYER_Z = 2.8;
 const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
 const HIT_HALF_DEPTH = 1.35;
-/** Must match obstacle `BoxGeometry` depth (Z extent) for lane-open logic. */
+/** Must match obstacle `BoxGeometry` depth (Z). */
 const OBSTACLE_BOX_DEPTH_Z = 2.2;
-const OBSTACLE_HALF_DEPTH_Z = OBSTACLE_BOX_DEPTH_Z / 2;
-/**
- * World Z slab where a collision can register (`|obstacleZ - HIT_Z| < HIT_HALF_DEPTH` on centers).
- * Lane “blocked” if obstacle’s Z box overlaps this slab so the player always has ≥1 lane that fits.
- */
-const PASSAGE_Z0 = HIT_Z - HIT_HALF_DEPTH;
-const PASSAGE_Z1 = HIT_Z + HIT_HALF_DEPTH;
-/**
- * Wider slab for **spawn** lane choice only: reserves lanes while hazards are still approaching,
- * so speed differences cannot stack three full-width boxes over the same passage window.
- */
-const SPAWN_PASSAGE_BUFFER_Z = 1.35;
-const SPAWN_PASSAGE_Z0 = PASSAGE_Z0 - SPAWN_PASSAGE_BUFFER_Z;
-const SPAWN_PASSAGE_Z1 = PASSAGE_Z1 + SPAWN_PASSAGE_BUFFER_Z;
-/** First hazard after this many seconds (spawnAcc primed in `enterPlay`). */
+/** Tiny Z separation so two blocks in one row don’t z-fight. */
+const ROW_Z_EPS = 0.04;
+/** First hazard row after this many seconds (`enterPlay` primes `spawnAcc`). */
 const FIRST_OBSTACLE_AFTER_S = 0.38;
-
-function obstacleBoxOverlapsZSlab(obstacleCenterZ: number, slabZ0: number, slabZ1: number): boolean {
-  const lo = obstacleCenterZ - OBSTACLE_HALF_DEPTH_Z;
-  const hi = obstacleCenterZ + OBSTACLE_HALF_DEPTH_Z;
-  return hi > slabZ0 && lo < slabZ1;
-}
 
 /** Plinth X positions: left, center (hero), right */
 const PODIUM_X = { L: -2.85, C: 0, R: 2.85 } as const;
@@ -111,7 +93,8 @@ export class ArcadeSceneController {
   }
   private obstacles: Obstacle[] = [];
   private spawnAcc = 0;
-  private spawnInterval = 1.15;
+  /** Seconds between obstacle *rows* (a row is 1–2 blocks, never 3). */
+  private spawnInterval = 1.42;
   private baseScroll = 0.14;
   private playEnded = false;
   private loaded = false;
@@ -797,22 +780,24 @@ export class ArcadeSceneController {
   }
 
   /**
-   * Lanes whose obstacle Z-extent overlaps the **spawn** passage slab are “closed”.
-   * Always leave ≥1 lane that can reach the play slab without overlapping another hazard’s box.
+   * One “row” of hazards: pick a **gap lane** that stays empty for this wave, then spawn only
+   * in the other two lanes (one block, or two). Same rule as lane runners / Temple Run — never
+   * a 3-wide wall; independent random per tick cannot guarantee that.
    */
-  private pickSpawnLane(): number | null {
-    const closed = new Set<number>();
-    for (const o of this.obstacles) {
-      if (o.hit) continue;
-      if (obstacleBoxOverlapsZSlab(o.mesh.position.z, SPAWN_PASSAGE_Z0, SPAWN_PASSAGE_Z1)) closed.add(o.lane);
+  private spawnObstacleRow(): void {
+    const gapLane = Math.floor(Math.random() * 3);
+    const lanes = [0, 1, 2].filter((l) => l !== gapLane);
+    const twoBlockRow = Math.random() < 0.58;
+    if (twoBlockRow) {
+      this.spawnObstacleInLane(lanes[0]!, SPAWN_Z);
+      this.spawnObstacleInLane(lanes[1]!, SPAWN_Z + ROW_Z_EPS);
+    } else {
+      const lane = lanes[Math.floor(Math.random() * 2)]!;
+      this.spawnObstacleInLane(lane, SPAWN_Z);
     }
-    if (closed.size >= 3) return null;
-    const open = [0, 1, 2].filter((l) => !closed.has(l));
-    if (closed.size === 2) return open[0]!;
-    return open[Math.floor(Math.random() * open.length)]!;
   }
 
-  private spawnObstacle(lane: number): void {
+  private spawnObstacleInLane(lane: number, z: number): void {
     const geo = new THREE.BoxGeometry(1.4, 1.4, OBSTACLE_BOX_DEPTH_Z);
     const mat = new THREE.MeshStandardMaterial({
       color: 0xd94a38,
@@ -822,7 +807,7 @@ export class ArcadeSceneController {
       roughness: 0.62,
     });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(LANES[lane], -0.35, SPAWN_Z);
+    mesh.position.set(LANES[lane], -0.35, z);
     this.obstacleGroup.add(mesh);
     this.obstacles.push({ mesh, lane, speed: this.baseScroll + Math.random() * 0.06, hit: false });
   }
@@ -901,13 +886,8 @@ export class ArcadeSceneController {
     if (this.screen === 'play' && !this.playEnded) {
       this.spawnAcc += dt;
       if (this.spawnAcc >= this.spawnInterval) {
-        const lane = this.pickSpawnLane();
-        if (lane !== null) {
-          this.spawnAcc = 0;
-          this.spawnObstacle(lane);
-        } else {
-          this.spawnAcc = this.spawnInterval * 0.88;
-        }
+        this.spawnAcc = 0;
+        this.spawnObstacleRow();
       }
       for (const o of this.obstacles) {
         if (o.hit) continue;
