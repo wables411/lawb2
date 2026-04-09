@@ -48,6 +48,11 @@ const PLAYER_Z = 2.8;
 const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
 const HIT_HALF_DEPTH = 1.35;
+/** Obstacles in this Z band count as “at the player” for keeping ≥1 open lane. */
+const LANE_BLOCK_Z0 = HIT_Z - HIT_HALF_DEPTH * 2.85;
+const LANE_BLOCK_Z1 = HIT_Z + HIT_HALF_DEPTH * 2.1;
+/** First hazard after this many seconds (spawnAcc primed in `enterPlay`). */
+const FIRST_OBSTACLE_AFTER_S = 0.38;
 
 /** Plinth X positions: left, center (hero), right */
 const PODIUM_X = { L: -2.85, C: 0, R: 2.85 } as const;
@@ -374,7 +379,7 @@ export class ArcadeSceneController {
 
   async bootstrap(): Promise<void> {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x020810, 0.038);
+    this.scene.fog = new THREE.FogExp2(0x062830, 0.034);
 
     this.camera = new THREE.PerspectiveCamera(52, 1, 0.1, 220);
     this.camera.position.set(0, 0, 6);
@@ -387,7 +392,7 @@ export class ArcadeSceneController {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 0.98;
     this.renderer.domElement.style.display = 'block';
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
@@ -395,12 +400,12 @@ export class ArcadeSceneController {
 
     const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, 72, 28, true);
     const tunnelMat = new THREE.MeshStandardMaterial({
-      color: 0x082038,
-      metalness: 0.25,
-      roughness: 0.82,
+      color: 0x0c3228,
+      metalness: 0.08,
+      roughness: 0.9,
       side: THREE.BackSide,
-      emissive: 0x041424,
-      emissiveIntensity: 0.55,
+      emissive: 0x051810,
+      emissiveIntensity: 0.22,
     });
     this.tunnel = new THREE.Mesh(tunnelGeo, tunnelMat);
     this.tunnel.rotation.x = Math.PI / 2;
@@ -409,11 +414,11 @@ export class ArcadeSceneController {
 
     this.ringGroup = new THREE.Group();
     for (let i = 0; i < 28; i++) {
-      const hue = 0.52 + (i % 7) * 0.018;
+      const hue = 0.42 + (i % 7) * 0.014;
       const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(hue, 0.85, 0.58),
+        color: new THREE.Color().setHSL(hue, 0.45, 0.42),
         transparent: true,
-        opacity: 0.22 + (i % 4) * 0.06,
+        opacity: 0.14 + (i % 4) * 0.045,
         depthWrite: false,
       });
       const mesh = new THREE.Mesh(new THREE.TorusGeometry(7.4 + (i % 5) * 0.08, 0.045, 8, 96), mat);
@@ -423,13 +428,13 @@ export class ArcadeSceneController {
     }
     this.scene.add(this.ringGroup);
 
-    this.scene.add(new THREE.AmbientLight(0xf5f0ea, 0.38));
-    const key = new THREE.PointLight(0xffe8dd, 85, 48, 1.85);
-    key.position.set(3.2, 2.8, 6.5);
-    const fill = new THREE.PointLight(0xe8c8ff, 42, 40, 2);
-    fill.position.set(-3.5, -1.2, 4.5);
-    const rim = new THREE.DirectionalLight(0xffffff, 0.28);
-    rim.position.set(-0.5, 3.5, 7);
+    this.scene.add(new THREE.AmbientLight(0xd8ebe4, 0.44));
+    const key = new THREE.PointLight(0xfff4e0, 72, 52, 1.9);
+    key.position.set(2.8, 3.2, 7);
+    const fill = new THREE.PointLight(0x6ec4a8, 38, 44, 2.1);
+    fill.position.set(-3.8, -0.8, 5);
+    const rim = new THREE.DirectionalLight(0xa8dcc8, 0.32);
+    rim.position.set(-0.4, 4.2, 6.5);
     this.selectFillLight = new THREE.PointLight(0xfff2e6, 48, 18, 1.55);
     this.selectFillLight.position.set(1.4, 2.5, 4.5);
     this.selectFillLight.visible = false;
@@ -448,12 +453,12 @@ export class ArcadeSceneController {
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const pMat = new THREE.PointsMaterial({
-      color: 0x7ee8ff,
-      size: 0.055,
+      color: 0xb0ddd0,
+      size: 0.048,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.38,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       sizeAttenuation: true,
     });
     const particles = new THREE.Points(pGeo, pMat);
@@ -708,7 +713,7 @@ export class ArcadeSceneController {
     this.clearObstacles();
     this.playerLane = 1;
     this.playerX = LANES[1];
-    this.spawnAcc = 0;
+    this.spawnAcc = Math.max(0, this.spawnInterval - FIRST_OBSTACLE_AFTER_S);
 
     while (this.playerWorld.children.length) {
       this.playerWorld.remove(this.playerWorld.children[0]);
@@ -756,7 +761,7 @@ export class ArcadeSceneController {
       console.warn('[Arcade] swim load failed', e);
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 1.2, 0.5),
-        new THREE.MeshStandardMaterial({ color: 0x2ee6ff, emissive: 0x2ee6ff, emissiveIntensity: 0.4 }),
+        new THREE.MeshStandardMaterial({ color: 0x4a9e8c, emissive: 0x1a4a40, emissiveIntensity: 0.35 }),
       );
       box.position.set(0, -0.5, PLAYER_Z);
       this.playerWorld.add(box);
@@ -772,15 +777,31 @@ export class ArcadeSceneController {
     this.obstacles = [];
   }
 
-  private spawnObstacle(): void {
-    const lane = Math.floor(Math.random() * 3);
+  /**
+   * Pick a lane so at least one lane stays open in the near-hit Z band (avoids “wall of three”
+   * when speeds differ). Returns null only if all three are already occupied there — defer spawn.
+   */
+  private pickSpawnLane(): number | null {
+    const used = new Set<number>();
+    for (const o of this.obstacles) {
+      if (o.hit) continue;
+      const z = o.mesh.position.z;
+      if (z >= LANE_BLOCK_Z0 && z <= LANE_BLOCK_Z1) used.add(o.lane);
+    }
+    if (used.size >= 3) return null;
+    const free = [0, 1, 2].filter((l) => !used.has(l));
+    if (used.size === 2) return free[0]!;
+    return free[Math.floor(Math.random() * free.length)]!;
+  }
+
+  private spawnObstacle(lane: number): void {
     const geo = new THREE.BoxGeometry(1.4, 1.4, 2.2);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0xff3355,
-      emissive: 0xff2200,
-      emissiveIntensity: 0.55,
-      metalness: 0.3,
-      roughness: 0.4,
+      color: 0xd94a38,
+      emissive: 0x6a2018,
+      emissiveIntensity: 0.35,
+      metalness: 0.12,
+      roughness: 0.62,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(LANES[lane], -0.35, SPAWN_Z);
@@ -839,10 +860,10 @@ export class ArcadeSceneController {
       }
     }
 
-    this.tunnel.rotation.z = t * 0.018;
-    this.ringGroup.rotation.z = t * 0.06;
+    this.tunnel.rotation.z = t * 0.011;
+    this.ringGroup.rotation.z = t * 0.034;
     this.ringGroup.children.forEach((mesh, i) => {
-      if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.15 + (i % 5) * 0.02);
+      if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.09 + (i % 5) * 0.015);
     });
 
     const particles = (this as unknown as { _particles?: THREE.Points })._particles;
@@ -862,8 +883,13 @@ export class ArcadeSceneController {
     if (this.screen === 'play') {
       this.spawnAcc += dt;
       if (this.spawnAcc >= this.spawnInterval) {
-        this.spawnAcc = 0;
-        this.spawnObstacle();
+        const lane = this.pickSpawnLane();
+        if (lane !== null) {
+          this.spawnAcc = 0;
+          this.spawnObstacle(lane);
+        } else {
+          this.spawnAcc = this.spawnInterval * 0.88;
+        }
       }
       for (const o of this.obstacles) {
         if (o.hit) continue;
