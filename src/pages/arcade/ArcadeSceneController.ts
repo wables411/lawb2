@@ -58,6 +58,7 @@ const HIT_Z = PLAYER_Z;
 const HIT_HALF_DEPTH = 1.35;
 /** Must match obstacle `BoxGeometry` depth (Z). */
 const OBSTACLE_BOX_DEPTH_Z = 2.2;
+const OBSTACLE_HALF_Z = OBSTACLE_BOX_DEPTH_Z / 2;
 /** Tiny Z separation so two blocks in one row don’t z-fight. */
 const ROW_Z_EPS = 0.04;
 /** First hazard row after this many seconds (`enterPlay` primes `spawnAcc`). */
@@ -70,6 +71,16 @@ const PODIUM_Z = 0.8;
 const FACE_LEFT = 0.35;
 const FACE_CENTER = 0;
 const FACE_RIGHT = -0.35;
+
+/**
+ * Front of obstacle box past this line ⇒ lane is “committed” on approach (stacks with other rows).
+ * Prevents three waves from piling into the hit slab together even when none overlap it yet this frame.
+ */
+const APPROACH_PIPE_Z = HIT_Z - HIT_HALF_DEPTH - 10;
+
+function obstacleFrontPastApproachPipe(zCenter: number): boolean {
+  return zCenter + OBSTACLE_HALF_Z > APPROACH_PIPE_Z;
+}
 
 export class ArcadeSceneController {
   private container: HTMLElement;
@@ -806,22 +817,38 @@ export class ArcadeSceneController {
     this.obstacles = [];
   }
 
+  /** Lanes with a live hazard whose front has passed the approach line (same lane can stack; set size = lane count). */
+  private lanesBusyInApproachPipe(): Set<number> {
+    const lanes = new Set<number>();
+    for (const o of this.obstacles) {
+      if (o.hit) continue;
+      if (obstacleFrontPastApproachPipe(o.mesh.position.z)) lanes.add(o.lane);
+    }
+    return lanes;
+  }
+
   /**
-   * One “row” of hazards: pick a **gap lane** that stays empty for this wave, then spawn only
-   * in the other two lanes (one block, or two). Same rule as lane runners / Temple Run — never
-   * a 3-wide wall; independent random per tick cannot guarantee that.
+   * Each wave leaves one gap lane, but **multiple waves** were overlapping in Z so three rows
+   * could still cover all lanes. We defer a new wave while **≥2 lanes** already have hazards in
+   * the approach pipe (see `APPROACH_PIPE_Z`). Obstacles are moved **before** this check each tick.
    */
-  private spawnObstacleRow(): void {
+  /** @returns false if spawn was deferred. */
+  private trySpawnObstacleRow(): boolean {
+    if (this.lanesBusyInApproachPipe().size >= 2) {
+      return false;
+    }
+
     const gapLane = Math.floor(Math.random() * 3);
-    const lanes = [0, 1, 2].filter((l) => l !== gapLane);
+    const fillLanes = [0, 1, 2].filter((l) => l !== gapLane);
     const twoBlockRow = Math.random() < 0.58;
     if (twoBlockRow) {
-      this.spawnObstacleInLane(lanes[0]!, SPAWN_Z);
-      this.spawnObstacleInLane(lanes[1]!, SPAWN_Z + ROW_Z_EPS);
+      this.spawnObstacleInLane(fillLanes[0]!, SPAWN_Z);
+      this.spawnObstacleInLane(fillLanes[1]!, SPAWN_Z + ROW_Z_EPS);
     } else {
-      const lane = lanes[Math.floor(Math.random() * 2)]!;
+      const lane = fillLanes[Math.floor(Math.random() * 2)]!;
       this.spawnObstacleInLane(lane, SPAWN_Z);
     }
+    return true;
   }
 
   private spawnObstacleInLane(lane: number, z: number): void {
@@ -923,11 +950,6 @@ export class ArcadeSceneController {
         this.onRunDifficulty(reefRunHudFromSurvivalSec(this.runSurvivalSec));
       }
 
-      this.spawnAcc += dt;
-      if (this.spawnAcc >= this.spawnInterval) {
-        this.spawnAcc = 0;
-        this.spawnObstacleRow();
-      }
       for (const o of this.obstacles) {
         if (o.hit) continue;
         o.mesh.position.z += o.speed * swimSpd * dt * 60 * 0.18;
@@ -948,6 +970,15 @@ export class ArcadeSceneController {
         }
       }
       this.obstacles = this.obstacles.filter((o) => o.mesh.parent === this.obstacleGroup);
+
+      this.spawnAcc += dt;
+      if (this.spawnAcc >= this.spawnInterval) {
+        if (this.trySpawnObstacleRow()) {
+          this.spawnAcc = 0;
+        } else {
+          this.spawnAcc = Math.max(0, this.spawnInterval - 0.32);
+        }
+      }
     }
 
     const particles = (this as unknown as { _particles?: THREE.Points })._particles;
