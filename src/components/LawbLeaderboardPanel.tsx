@@ -64,6 +64,10 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
       }}
     >
       <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Lawb leaderboard (top 25 by points)</p>
+      <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#444', lineHeight: 1.35 }}>
+        Total points sum chess results, NFT holdings (profile refresh), stream/game bonuses when used, and a one-time
+        WalletConnect bonus per wallet.
+      </p>
       {loading && <p style={{ margin: 0 }}>Loading…</p>}
       {error && <p style={{ margin: 0, color: '#a00' }}>{error}</p>}
       {!loading && !error && rows.length === 0 && (

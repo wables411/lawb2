@@ -14,7 +14,32 @@ export interface PointsBreakdown {
   stream: number;
   games: number;
   holdings: number;
+  /** One-time bonus when the wallet is first seen via Reown / WalletConnect (see `claimWalletConnectLeaderboardBonus`). */
+  wallet_connect: number;
   [key: string]: number; // extensible for future sources
+}
+
+/** Points granted once per leaderboard key on first qualifying wallet connection. */
+export const WALLET_CONNECT_LEADERBOARD_BONUS = 10;
+
+function emptyPointsBreakdown(): PointsBreakdown {
+  return {
+    chess: 0,
+    stream: 0,
+    games: 0,
+    holdings: 0,
+    wallet_connect: 0,
+  };
+}
+
+function normalizeLeaderboardWalletKey(addr: string): string | null {
+  const t = addr.trim();
+  if (!t) return null;
+  if (t === '0x0000000000000000000000000000000000000000') return null;
+  if (t.startsWith('0x')) return t.toLowerCase();
+  // Solana base58 (length varies; avoid obvious non-address strings)
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,48}$/.test(t)) return t;
+  return null;
 }
 
 export interface LeaderboardEntry {
@@ -93,7 +118,9 @@ export const updateLeaderboardEntry = async (
       stream: 0,
       games: 0,
       holdings: 0,
+      wallet_connect: 0,
     };
+    if (breakdown.wallet_connect === undefined) breakdown.wallet_connect = 0;
     breakdown.chess = (breakdown.chess || 0) + chessPoints;
 
     const totalPoints = Object.values(breakdown).reduce(
@@ -215,6 +242,66 @@ export const getTopLeaderboardEntries = async (limit: number = 20): Promise<Lead
   }
 };
 
+/**
+ * Award {@link WALLET_CONNECT_LEADERBOARD_BONUS} once per normalized wallet key (EVM lowercased, Solana base58).
+ * Idempotent: skips if `points_breakdown.wallet_connect` is already &gt; 0 or session lock shows a completed claim.
+ */
+export const claimWalletConnectLeaderboardBonus = async (
+  walletAddress: string,
+): Promise<{ claimed: boolean; skipped?: string }> => {
+  try {
+    if (!database) {
+      return { claimed: false, skipped: 'no_database' };
+    }
+    const key = normalizeLeaderboardWalletKey(walletAddress);
+    if (!key) {
+      return { claimed: false, skipped: 'invalid_address' };
+    }
+
+    const sessionKey = `lawb_wcb_lb_${key}`;
+    if (typeof sessionStorage !== 'undefined') {
+      const s = sessionStorage.getItem(sessionKey);
+      if (s === 'done') {
+        return { claimed: false, skipped: 'session_done' };
+      }
+      if (s === 'pending') {
+        return { claimed: false, skipped: 'session_pending' };
+      }
+      sessionStorage.setItem(sessionKey, 'pending');
+    }
+
+    try {
+      const existing = await getUserLeaderboardEntry(key);
+      const breakdown = existing?.points_breakdown;
+      const priorConnect = breakdown?.wallet_connect ?? 0;
+      if (priorConnect > 0) {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(sessionKey, 'done');
+        }
+        return { claimed: false, skipped: 'already_claimed' };
+      }
+
+      const ok = await addEcosystemPoints(key, 'wallet_connect', WALLET_CONNECT_LEADERBOARD_BONUS);
+      if (typeof sessionStorage !== 'undefined') {
+        if (ok) {
+          sessionStorage.setItem(sessionKey, 'done');
+        } else {
+          sessionStorage.removeItem(sessionKey);
+        }
+      }
+      return { claimed: ok, skipped: ok ? undefined : 'write_failed' };
+    } catch (e) {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(sessionKey);
+      }
+      throw e;
+    }
+  } catch (e) {
+    console.error('[LEADERBOARD] claimWalletConnectLeaderboardBonus:', e);
+    return { claimed: false, skipped: 'error' };
+  }
+};
+
 // Get leaderboard entry by rank (1-based)
 export const getLeaderboardEntryByRank = async (rank: number): Promise<LeaderboardEntry | null> => {
   try {
@@ -265,7 +352,9 @@ export const addEcosystemPoints = async (
       stream: 0,
       games: 0,
       holdings: 0,
+      wallet_connect: 0,
     };
+    if (breakdown.wallet_connect === undefined) breakdown.wallet_connect = 0;
     breakdown[source] = (breakdown[source] || 0) + amount;
 
     const totalPoints = Object.values(breakdown).reduce(
@@ -323,7 +412,9 @@ export const setHoldingsPoints = async (
       stream: 0,
       games: 0,
       holdings: 0,
+      wallet_connect: 0,
     };
+    if (breakdown.wallet_connect === undefined) breakdown.wallet_connect = 0;
     breakdown.holdings = holdingsPoints;
 
     const totalPoints = Object.values(breakdown).reduce(
@@ -365,7 +456,15 @@ export const getUserPointsBreakdown = async (walletAddress: string): Promise<Poi
   try {
     const entry = await getUserLeaderboardEntry(walletAddress);
     if (!entry) return null;
-    return entry.points_breakdown || { chess: entry.points || 0, stream: 0, games: 0, holdings: 0 };
+    return (
+      entry.points_breakdown || {
+        chess: entry.points || 0,
+        stream: 0,
+        games: 0,
+        holdings: 0,
+        wallet_connect: 0,
+      }
+    );
   } catch (error) {
     console.error('[LEADERBOARD] Error getting points breakdown:', error);
     return null;
@@ -389,7 +488,7 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
       draws: 0,
       total_games: 0,
       points: 0,
-      points_breakdown: { chess: 0, stream: 0, games: 0, holdings: 0 },
+      points_breakdown: emptyPointsBreakdown(),
       created_at: now,
       updated_at: now
     };

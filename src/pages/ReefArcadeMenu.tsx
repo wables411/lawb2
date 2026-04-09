@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
+import { WALLET_CONNECT_LEADERBOARD_BONUS } from '../firebaseLeaderboard';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
@@ -254,8 +255,10 @@ export default function ReefArcadeMenu() {
               <>
                 <h2>WALLET CONNECT</h2>
                 <p>
-                  Connect the same wallet you use on lawb.xyz. When leaderboards go live, signed runs will tie to this
-                  address — play offline still works without it.
+                  Connect the same wallet you use on lawb.xyz. Your first connection adds{' '}
+                  <strong>{WALLET_CONNECT_LEADERBOARD_BONUS} leaderboard points</strong> (same Firebase leaderboard as
+                  Chess and profile holdings). Reef Run scores may tie to this address in a future update — play still
+                  works offline without a wallet.
                 </p>
                 {isConnected && address ? (
                   <p className="ra-wallet-status">CONNECTED · {shortenAddress(address)}</p>

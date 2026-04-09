@@ -16,6 +16,7 @@ import { wagmiAdapter, initializeAppKit } from './appkit.ts';
 import { config as wagmiConfig } from './wagmi';
 import { LawbAudioProvider } from './contexts/LawbAudioContext';
 import LawbMiniPlayer from './components/LawbMiniPlayer';
+import { WalletConnectLeaderboardSync } from './components/WalletConnectLeaderboardSync';
 const queryClient = new QueryClient();
 
 const Root = () => {
@@ -83,6 +84,7 @@ const AppWithWagmi = () => {
     <WagmiProvider key={configKey} config={currentConfig}>
       <QueryClientProvider client={queryClient}>
         <LawbAudioProvider>
+          <WalletConnectLeaderboardSync />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Root />} />
