@@ -37,7 +37,17 @@ exports.handler = async (event) => {
 
     let upstreamUrl = '';
 
-    if (mode === 'collection') {
+    if (mode === 'mint') {
+      const mint = String(qs.mint || '').trim();
+      if (!mint || mint.length < 32) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Missing or invalid parameter: mint' }),
+        };
+      }
+      upstreamUrl = `${MAGIC_EDEN_API_BASE}/tokens/${encodeURIComponent(mint)}`;
+    } else if (mode === 'collection') {
       const collectionSlug = String(qs.collectionSlug || '').trim();
       if (!collectionSlug) {
         return {
@@ -61,7 +71,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Invalid mode. Use mode=collection or mode=owner' }),
+        body: JSON.stringify({ error: 'Invalid mode. Use mode=collection, mode=owner, or mode=mint' }),
       };
     }
 

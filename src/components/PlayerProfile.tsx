@@ -35,6 +35,20 @@ function detectWalletChain(address: string): 'evm' | 'solana' | null {
   return null;
 }
 
+/** Firebase / Alchemy may store token ids as strings or nested `{ token_id }` objects — never render raw objects in React children. */
+function normalizeInventoryEntry(entry: unknown): string {
+  if (entry === null || entry === undefined) return '';
+  if (typeof entry === 'string' || typeof entry === 'number') return String(entry);
+  if (typeof entry === 'object' && entry !== null && 'token_id' in entry) {
+    return String((entry as { token_id: unknown }).token_id);
+  }
+  return String(entry);
+}
+
+function sameProfileToken(stored: unknown, candidate: unknown): boolean {
+  return normalizeInventoryEntry(stored) === normalizeInventoryEntry(candidate);
+}
+
 const WalletLinkingSection: React.FC<{
   isOwnProfile: boolean;
   isMobile: boolean;
@@ -733,8 +747,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       return;
     }
 
-    const stationIds = (profile.nft_inventory.lawbstation || []).slice(0, 6);
-    const nexusIds = (profile.nft_inventory.lawbnexus || []).slice(0, 6);
+    const stationIds = (profile.nft_inventory.lawbstation || [])
+      .map(normalizeInventoryEntry)
+      .filter(Boolean)
+      .slice(0, 6);
+    const nexusIds = (profile.nft_inventory.lawbnexus || [])
+      .map(normalizeInventoryEntry)
+      .filter(Boolean)
+      .slice(0, 6);
     if (stationIds.length === 0 && nexusIds.length === 0) {
       setSolanaGalleryCards([]);
       return;
@@ -907,7 +927,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       
       await firebaseProfiles.updateProfilePicture(address, {
         collection,
-        token_id: tokenId,
+        token_id: normalizeInventoryEntry(tokenId) || String(tokenId),
         image_url: metadata.image_url
       });
       const updatedProfile = await firebaseProfiles.getProfile(address);
@@ -957,14 +977,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     : `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   const inventory = {
-    lawbsters: profile?.nft_inventory?.lawbsters || [],
-    lawbstarz: profile?.nft_inventory?.lawbstarz || [],
-    halloween_lawbsters: profile?.nft_inventory?.halloween_lawbsters || [],
-    pixelawbs: profile?.nft_inventory?.pixelawbs || [],
-    asciilawbs: profile?.nft_inventory?.asciilawbs || [],
-    lawbstation: profile?.nft_inventory?.lawbstation || [],
-    lawbnexus: profile?.nft_inventory?.lawbnexus || [],
-    lawb_lore: profile?.nft_inventory?.lawb_lore || [],
+    lawbsters: (profile?.nft_inventory?.lawbsters || []).map(normalizeInventoryEntry).filter(Boolean),
+    lawbstarz: (profile?.nft_inventory?.lawbstarz || []).map(normalizeInventoryEntry).filter(Boolean),
+    halloween_lawbsters: (profile?.nft_inventory?.halloween_lawbsters || []).map(normalizeInventoryEntry).filter(Boolean),
+    pixelawbs: (profile?.nft_inventory?.pixelawbs || []).map(normalizeInventoryEntry).filter(Boolean),
+    asciilawbs: (profile?.nft_inventory?.asciilawbs || []).map(normalizeInventoryEntry).filter(Boolean),
+    lawbstation: (profile?.nft_inventory?.lawbstation || []).map(normalizeInventoryEntry).filter(Boolean),
+    lawbnexus: (profile?.nft_inventory?.lawbnexus || []).map(normalizeInventoryEntry).filter(Boolean),
+    lawb_lore: (profile?.nft_inventory?.lawb_lore || []).map(normalizeInventoryEntry).filter(Boolean),
   };
 
   // Debug logging
@@ -1269,7 +1289,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             {solanaGalleryCards.map((card) => {
               const selected =
                 profile?.profile_picture?.collection === card.collection &&
-                profile?.profile_picture?.token_id === card.tokenId;
+                sameProfileToken(profile?.profile_picture?.token_id, card.tokenId);
               return (
                 <button
                   key={`${card.collection}-${card.tokenId}`}
@@ -1379,7 +1399,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 }} 
               />
               <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
-                {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{profile.profile_picture.token_id}
+                {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{normalizeInventoryEntry(profile.profile_picture.token_id)}
               </div>
             </div>
           )
@@ -1405,8 +1425,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('pixelawbs', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'pixelawbs' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'pixelawbs' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'pixelawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'pixelawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
@@ -1429,8 +1449,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('lawbsters', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbsters' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbsters' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
@@ -1453,8 +1473,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('lawbstarz', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbstarz' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbstarz' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'lawbstarz' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbstarz' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
@@ -1477,8 +1497,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('halloween_lawbsters', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'halloween_lawbsters' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'halloween_lawbsters' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'halloween_lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'halloween_lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
@@ -1501,8 +1521,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('asciilawbs', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'asciilawbs' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'asciilawbs' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'asciilawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'asciilawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
@@ -1525,8 +1545,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('lawbstation', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbstation' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbstation' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'lawbstation' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbstation' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',
@@ -1549,8 +1569,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       onClick={() => handleSelectProfilePicture('lawbnexus', tokenId)}
                       style={{
                         padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbnexus' && profile.profile_picture.token_id === tokenId ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbnexus' && profile.profile_picture.token_id === tokenId ? '#fff' : '#000',
+                        background: profile?.profile_picture?.collection === 'lawbnexus' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
+                        color: profile?.profile_picture?.collection === 'lawbnexus' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
                         border: '1px solid #000',
                         borderRadius: '2px',
                         cursor: 'pointer',

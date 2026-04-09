@@ -581,7 +581,7 @@ function App() {
         </p>
         <p>Chain: Ethereum</p>
         <p>
-          Collect on <a href="https://magiceden.us/collections/ethereum/0xd7922cd333da5ab3758c95f774b092a7b13a5449" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
+          Collect on <a href="https://opensea.io/collection/lawbstarz" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
         <div id="twitter-embed-lawbstarz">
@@ -599,7 +599,7 @@ function App() {
         </p>
         <p style={{marginBottom: '10px'}}>Chain: Solana</p>
         <p style={{marginBottom: '10px'}}>
-          <a href="https://magiceden.us/marketplace/lawbstation" target="_blank" rel="noopener noreferrer">Collect Lawbstations on Secondary</a>
+          <a href="https://www.tensor.trade/trade/lawbstation" target="_blank" rel="noopener noreferrer">Collect Lawbstations on Secondary</a>
         </p>
         <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
         <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', marginTop: '10px' }} />
@@ -607,7 +607,7 @@ function App() {
       
       <Popup id="nexus-popup" isOpen={activePopup === 'nexus-popup'} onClose={closePopup} onMinimize={minimizePopup}>
         <p style={{marginBottom: '10px'}}>
-          1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://magiceden.us/marketplace/lawbnexus" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
+          1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://www.tensor.trade/trade/lawbnexus" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
         <video controls src="/assets/nexusminting.mp4" style={{ width: '100%' }} />
@@ -619,7 +619,7 @@ function App() {
         </p>
         <p>Chain: Ethereum</p>
         <p style={{marginBottom: '10px'}}>
-          Collect on <a href="https://magiceden.us/collections/ethereum/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>NFTX</a>
+          Collect on <a href="https://opensea.io/collection/lawbsters" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a> or <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/buy/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>NFTX</a>
         </p>
         <div id="twitter-embed-lawbsters" style={{ maxWidth: '560px', margin: '10px auto', width: '100%' }}>
           <blockquote className="twitter-tweet" data-media-max-width="560">
@@ -732,7 +732,7 @@ function App() {
         </p>
         <p style={{marginBottom: '10px'}}>Chain: Base</p>
         <p style={{marginBottom: '10px'}}>
-          Collect on <a href="https://magiceden.us/collections/base/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
+          Collect on <a href="https://opensea.io/collection/a-lawbster-halloween" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
         <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
         <div ref={tiktokRef} style={{ maxWidth: '400px', margin: '0 auto' }}>

@@ -26,6 +26,17 @@ const BASE_RPC_ENDPOINTS = [
   'https://1rpc.io/base'
 ];
 
+/** Alchemy ownedNft entries: token id may be string, number, or nested metadata object. */
+function extractAlchemyTokenId(nft: any): string {
+  const raw = nft?.tokenId ?? nft?.id?.tokenId ?? nft?.id?.token_id;
+  if (raw === null || raw === undefined) return '';
+  if (typeof raw === 'string' || typeof raw === 'number') return String(raw);
+  if (typeof raw === 'object' && 'token_id' in raw) {
+    return String((raw as { token_id: unknown }).token_id);
+  }
+  return '';
+}
+
 /**
  * Helper function to try multiple RPC endpoints with automatic fallback
  * Returns a provider that works, or throws if all endpoints fail
@@ -526,11 +537,9 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       const alchemyData = await alchemyResponse.json();
       if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
         // Extract token IDs from Alchemy response
-        inventory.lawbsters = alchemyData.ownedNfts.map((nft: any) => {
-          // Alchemy returns tokenId as hex string or number, convert to string
-          const tokenId = nft.id?.tokenId || nft.tokenId;
-          return typeof tokenId === 'string' ? tokenId : tokenId.toString();
-        });
+        inventory.lawbsters = alchemyData.ownedNfts
+          .map((nft: any) => extractAlchemyTokenId(nft))
+          .filter((id: string) => id.length > 0);
         
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from Alchemy API (current holdings)');
@@ -729,11 +738,9 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       const alchemyData = await alchemyResponse.json();
       if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
         // Extract token IDs from Alchemy response
-        inventory.halloween_lawbsters = alchemyData.ownedNfts.map((nft: any) => {
-          // Alchemy returns tokenId as hex string or number, convert to string
-          const tokenId = nft.id?.tokenId || nft.tokenId;
-          return typeof tokenId === 'string' ? tokenId : tokenId.toString();
-        });
+        inventory.halloween_lawbsters = alchemyData.ownedNfts
+          .map((nft: any) => extractAlchemyTokenId(nft))
+          .filter((id: string) => id.length > 0);
         
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[NFT] Found', inventory.halloween_lawbsters.length, 'Halloween Lawbsters from Alchemy API (Base chain, current holdings)');
@@ -822,11 +829,9 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       const alchemyData = await alchemyResponse.json();
       if (alchemyData.ownedNfts && Array.isArray(alchemyData.ownedNfts)) {
         // Extract token IDs from Alchemy response
-        inventory.asciilawbs = alchemyData.ownedNfts.map((nft: any) => {
-          // Alchemy returns tokenId as hex string or number, convert to string
-          const tokenId = nft.id?.tokenId || nft.tokenId;
-          return typeof tokenId === 'string' ? tokenId : tokenId.toString();
-        });
+        inventory.asciilawbs = alchemyData.ownedNfts
+          .map((nft: any) => extractAlchemyTokenId(nft))
+          .filter((id: string) => id.length > 0);
         
         if (typeof window !== 'undefined' && window.console) {
           window.console.log('[NFT] Found', inventory.asciilawbs.length, 'ASCII Lawbsters from Alchemy API (Base chain, current holdings)');

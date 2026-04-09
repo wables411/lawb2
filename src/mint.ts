@@ -587,7 +587,13 @@ export async function getOpenSeaSolanaNFTs(collectionSlug: string, pageSize: num
     const transformedNfts: NFT[] = (Array.isArray(listings) ? listings : []).map((listing: any): NFT => {
       const token = listing?.token || {};
       const mint = token?.mintAddress || listing?.tokenMint || listing?.tokenAddress || '';
-      const imageUrl = token?.image || listing?.extra?.img || '';
+      const imageUrl =
+        token?.image ||
+        token?.imageUrl ||
+        token?.img ||
+        listing?.extra?.img ||
+        listing?.img ||
+        '';
       const name = token?.name || `${collectionSlug} #${mint?.slice?.(0, 8) || 'unknown'}`;
       return {
       id: mint || listing?.pdaAddress || 'unknown',
@@ -667,7 +673,7 @@ export async function getOpenSeaSolanaNFTsByOwner(ownerAddress: string, pageSize
       token_id: parseInt(String(token?.name || '').replace(/\D/g, '') || '0', 10),
       attributes: JSON.stringify(token.attributes || []),
       name: token.name || `#${String(token.mintAddress || '').slice(0, 8)}`,
-      image_url: token.image || '',
+      image_url: token.image || token.imageUrl || token.img || token.extra?.img || '',
       owner_of: ownerAddress,
       block_minted: 0,
       contract_type: 'SOL',

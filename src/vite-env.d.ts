@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Optional dedicated Solana mainnet RPC (Helius, Alchemy, etc.) — avoids public-RPC 403 in the browser. */
+  readonly VITE_SOLANA_RPC_URL?: string;
   readonly VITE_FIREBASE_API_KEY?: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string;
   readonly VITE_FIREBASE_DATABASE_URL?: string;
