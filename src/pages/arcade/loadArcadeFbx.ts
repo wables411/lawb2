@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import { ARCADE_HERO_TARGET_HEIGHT } from './arcadeAssetConfig';
+import { ARCADE_HERO_TARGET_HEIGHT, type ArcadeCharacterId } from './arcadeAssetConfig';
 
 /** Uniform on-screen size: scale root so world AABB height ≈ ARCADE_HERO_TARGET_HEIGHT × multiplier. */
 export function applyArcadeHeroScale(root: THREE.Object3D, sizeMultiplier = 1): void {
@@ -293,8 +293,39 @@ export function alignFbxVerticalAfterLayout(root: THREE.Object3D, targetWorldMin
   root.updateMatrixWorld(true);
 }
 
-export function prepareArcadeModel(root: THREE.Group): void {
+/**
+ * Radbro FBX often ships MeshPhysical with sheen/clearcoat and high env response — with no real env map
+ * it reads as a flat, desaturated haze. Tone down once at load (clone shares materials with podium idle).
+ */
+function toneRadbroFbxMaterials(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const m of mats) {
+      const sm = m as THREE.MeshStandardMaterial;
+      if (!sm.isMeshStandardMaterial) continue;
+      sm.envMapIntensity = THREE.MathUtils.clamp((sm.envMapIntensity ?? 0) * 0.35, 0, 0.16);
+      sm.roughness = THREE.MathUtils.clamp(sm.roughness * 0.9, 0.06, 0.72);
+      const phys = sm as THREE.MeshPhysicalMaterial;
+      if (phys.isMeshPhysicalMaterial) {
+        phys.sheen = 0;
+        phys.clearcoat = 0;
+        phys.transmission = 0;
+      }
+      sm.needsUpdate = true;
+    }
+  });
+}
+
+export function prepareArcadeModel(
+  root: THREE.Group,
+  opts?: { characterId?: ArcadeCharacterId },
+): void {
   repairFbxMaterials(root);
+  if (opts?.characterId === 'radbro') {
+    toneRadbroFbxMaterials(root);
+  }
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (mesh.isMesh) {
@@ -343,7 +374,10 @@ export async function loadArcadeFbxClipsOnly(url: string): Promise<THREE.Animati
   }
 }
 
-export async function loadArcadeFbx(url: string): Promise<{
+export async function loadArcadeFbx(
+  url: string,
+  characterId?: ArcadeCharacterId,
+): Promise<{
   root: THREE.Group;
   clips: THREE.AnimationClip[];
 }> {
@@ -357,7 +391,7 @@ export async function loadArcadeFbx(url: string): Promise<{
   };
   try {
     const group = await loader.loadAsync(url);
-    prepareArcadeModel(group);
+    prepareArcadeModel(group, { characterId });
     const clips = group.animations?.length ? [...group.animations] : [];
     return { root: group, clips };
   } finally {

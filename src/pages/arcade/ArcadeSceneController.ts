@@ -189,16 +189,17 @@ export class ArcadeSceneController {
     });
   }
 
-  /** Radbro’s PBR export reads flat vs Clawb/Milady; nudge albedo on the select pass only. */
+  /** Radbro’s PBR export reads flat vs Clawb/Milady; boost albedo each select frame (see also `toneRadbroFbxMaterials`). */
   private applyRadbroSelectAlbedo(sm: THREE.MeshStandardMaterial, base: ArcadeMatBase, isSel: boolean): void {
     sm.color.copy(base.color);
     if (isSel) {
       sm.color.getHSL(this._hslScratch);
-      this._hslScratch.s = THREE.MathUtils.clamp(this._hslScratch.s * 1.2, 0, 1);
-      this._hslScratch.l = THREE.MathUtils.clamp(this._hslScratch.l * 1.05, 0, 1);
+      this._hslScratch.s = THREE.MathUtils.clamp(this._hslScratch.s * 1.42, 0, 1);
+      this._hslScratch.l = THREE.MathUtils.clamp(this._hslScratch.l * 1.12, 0, 1);
       sm.color.setHSL(this._hslScratch.h, this._hslScratch.s, this._hslScratch.l);
+      sm.color.multiplyScalar(1.1);
     } else {
-      sm.color.multiplyScalar(0.74);
+      sm.color.multiplyScalar(0.84);
     }
   }
 
@@ -338,10 +339,7 @@ export class ArcadeSceneController {
     this.selectFillLight.position.z += (lz - this.selectFillLight.position.z) * 0.14;
   }
 
-  /**
-   * Yaw idle (and Clawb dance root) toward the camera on the XZ plane.
-   * `+ Math.PI`: these FBX rigs face -Z by default; camera sits on +Z side of the podiums.
-   */
+  /** Yaw idle (and Clawb dance root) toward the camera on the XZ plane (FBX forward matches atan2 toward cam). */
   private updateSelectionFaceCamera(): void {
     const cx = this.camera.position.x;
     const cz = this.camera.position.z;
@@ -349,7 +347,7 @@ export class ArcadeSceneController {
       slot.idleRoot.getWorldPosition(this._vFacePivot);
       const dx = cx - this._vFacePivot.x;
       const dz = cz - this._vFacePivot.z;
-      const yaw = Math.atan2(dx, dz) + Math.PI;
+      const yaw = Math.atan2(dx, dz);
       slot.idleRoot.rotation.y = yaw;
       if (slot.danceRoot) slot.danceRoot.rotation.y = yaw;
     }
@@ -487,7 +485,7 @@ export class ArcadeSceneController {
       );
       anchor.add(base);
       try {
-        const { root, clips } = await loadArcadeFbx(def.idle);
+        const { root, clips } = await loadArcadeFbx(def.idle, def.id);
         root.userData.characterId = def.id;
         root.rotation.y = faces[i]!;
         applyArcadeHeroScale(root, def.heightMul ?? 1);
@@ -675,7 +673,7 @@ export class ArcadeSceneController {
       slot.idleRoot.visible = false;
       if (!slot.danceRoot) {
         try {
-          const { root, clips } = await loadArcadeFbx(slot.def.dance);
+          const { root, clips } = await loadArcadeFbx(slot.def.dance, slot.def.id);
           if (gen !== this.danceApplyGen) return;
           root.userData.characterId = slot.def.id;
           root.rotation.copy(slot.idleRoot.rotation);
@@ -742,7 +740,7 @@ export class ArcadeSceneController {
         this.swimMixer = mixer;
         this.mixers.push(mixer);
       } else {
-        const { root, clips } = await loadArcadeFbx(slot.def.swim);
+        const { root, clips } = await loadArcadeFbx(slot.def.swim, slot.def.id);
         root.rotation.y = Math.PI;
         root.position.set(0, 0, PLAYER_Z);
         this.playerWorld.add(root);
