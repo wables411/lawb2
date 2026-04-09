@@ -17,7 +17,13 @@ import {
 } from './loadArcadeFbx';
 import {
   reefRunHudFromSurvivalSec,
-  swimSpeedMultiplierForTier,
+  reefRunPlayIntensityMultiplier,
+  reefRunSpawnIntervalSec,
+  reefRunSpawnRowThisWave,
+  reefRunTwoBlockRowChance,
+  REEF_RUN_FIRST_HIT_TARGET_SEC,
+  REEF_RUN_TICK_Z_SCALE,
+  REEF_RUN_Z_TRAVEL,
   tierIndexFromSurvivalSec,
   type ReefRunHudPayload,
 } from './arcadeDifficulty';
@@ -125,9 +131,11 @@ export class ArcadeSceneController {
   }
   private obstacles: Obstacle[] = [];
   private spawnAcc = 0;
-  /** Seconds between obstacle *rows* (a row is 1–2 blocks, never 3). */
-  private spawnInterval = 1.42;
-  private baseScroll = 0.14;
+  /**
+   * Increments each spawn timer fire; early game uses even waves only (every other row).
+   * Starts at -1 so the first fire becomes wave 0 (always spawns).
+   */
+  private spawnWaveIndex = -1;
   private playEnded = false;
   /** Survival time while swim is active (excludes async load gap). */
   private runSurvivalSec = 0;
@@ -757,7 +765,8 @@ export class ArcadeSceneController {
     this.clearObstacles();
     this.playerLane = 1;
     this.playerX = LANES[1];
-    this.spawnAcc = Math.max(0, this.spawnInterval - FIRST_OBSTACLE_AFTER_S);
+    this.spawnWaveIndex = -1;
+    this.spawnAcc = Math.max(0, reefRunSpawnIntervalSec(0) - FIRST_OBSTACLE_AFTER_S);
     this.runSurvivalSec = 0;
     this.runClockActive = false;
     this.hudEmitAcc = 0;
@@ -874,7 +883,7 @@ export class ArcadeSceneController {
 
     const gapLane = Math.floor(Math.random() * 3);
     const fillLanes = [0, 1, 2].filter((l) => l !== gapLane);
-    const twoBlockRow = Math.random() < 0.58;
+    const twoBlockRow = Math.random() < reefRunTwoBlockRowChance(this.runSurvivalSec);
     if (twoBlockRow) {
       this.spawnObstacleInLane(fillLanes[0]!, SPAWN_Z);
       this.spawnObstacleInLane(fillLanes[1]!, SPAWN_Z + ROW_Z_EPS);
@@ -897,7 +906,10 @@ export class ArcadeSceneController {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(LANES[lane], -0.35, z);
     this.obstacleGroup.add(mesh);
-    this.obstacles.push({ mesh, lane, speed: this.baseScroll + Math.random() * 0.06, hit: false });
+    const base =
+      REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
+    const speed = base * (0.94 + Math.random() * 0.12);
+    this.obstacles.push({ mesh, lane, speed, hit: false });
   }
 
   private tick = (): void => {
@@ -970,10 +982,10 @@ export class ArcadeSceneController {
       if (this.runClockActive) {
         this.runSurvivalSec += dt;
       }
-      const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
-      swimSpd = swimSpeedMultiplierForTier(tierNow);
+      swimSpd = reefRunPlayIntensityMultiplier(this.runSurvivalSec);
       if (this.swimMixer) this.swimMixer.timeScale = swimSpd;
 
+      const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
       this.hudEmitAcc += dt;
       if (
         this.onRunDifficulty &&
@@ -986,7 +998,7 @@ export class ArcadeSceneController {
 
       for (const o of this.obstacles) {
         if (o.hit) continue;
-        o.mesh.position.z += o.speed * swimSpd * dt * 60 * 0.18;
+        o.mesh.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
         if (
           !this.playEnded &&
           Math.abs(o.mesh.position.z - HIT_Z) < HIT_HALF_DEPTH &&
@@ -1005,12 +1017,18 @@ export class ArcadeSceneController {
       }
       this.obstacles = this.obstacles.filter((o) => o.mesh.parent === this.obstacleGroup);
 
+      const rowInterval = reefRunSpawnIntervalSec(this.runSurvivalSec);
       this.spawnAcc += dt;
-      if (this.spawnAcc >= this.spawnInterval) {
-        if (this.trySpawnObstacleRow()) {
-          this.spawnAcc = 0;
+      if (this.spawnAcc >= rowInterval) {
+        this.spawnWaveIndex++;
+        if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex)) {
+          if (this.trySpawnObstacleRow()) {
+            this.spawnAcc = 0;
+          } else {
+            this.spawnAcc = Math.max(0, rowInterval - 0.32);
+          }
         } else {
-          this.spawnAcc = Math.max(0, this.spawnInterval - 0.32);
+          this.spawnAcc = 0;
         }
       }
     }

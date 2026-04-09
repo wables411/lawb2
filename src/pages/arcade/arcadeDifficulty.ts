@@ -7,6 +7,64 @@ export const REEF_RUN_MAX_SPEED_TIER = 28;
 /** Obstacle / swim speed multiplier += this per tier (tier 0 = baseline 1×). */
 export const REEF_RUN_SPEED_PER_TIER = 0.095;
 
+/**
+ * Must match `ArcadeSceneController`: `HIT_Z - SPAWN_Z` (obstacle center travel to reach player plane).
+ * Keep in sync when those constants change.
+ */
+export const REEF_RUN_Z_TRAVEL = 2.8 - -52;
+
+/** Same as obstacle motion in `ArcadeSceneController`: `dt * 60 * 0.18` factor → units/sec = speed * mult * this. */
+export const REEF_RUN_TICK_Z_SCALE = 60 * 0.18;
+
+/** Target seconds from spawn (at obstacle Z) until the first row reaches the player at tier-0 baseline intensity. */
+export const REEF_RUN_FIRST_HIT_TARGET_SEC = 10;
+
+function clamp01(x: number): number {
+  return Math.min(1, Math.max(0, x));
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = clamp01((x - edge0) / (edge1 - edge0));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Global run intensity: Roman tiers (every {@link REEF_RUN_TIER_SECONDS}) plus a smooth ramp over ~2 minutes
+ * so speed tightens gradually (harder = faster scroll + tighter row cadence via {@link reefRunSpawnIntervalSec}).
+ */
+export function reefRunPlayIntensityMultiplier(survivalSec: number): number {
+  const tier = tierIndexFromSurvivalSec(survivalSec);
+  const tierMul = swimSpeedMultiplierForTier(tier);
+  const clockRamp = 1 + smoothstep(0, 120, survivalSec) * 0.5;
+  return tierMul * clockRamp;
+}
+
+/** Seconds between row *timers*; early game is sparser (see {@link reefRunSpawnRowThisWave}). */
+export function reefRunSpawnIntervalSec(survivalSec: number): number {
+  const a = 2.35;
+  const b = 0.62;
+  return a + (b - a) * smoothstep(0, 120, survivalSec);
+}
+
+/**
+ * Early: only even-index waves place blocks (every other row). Mid: blend in odd rows; late (~80s+): every wave.
+ */
+export function reefRunSpawnRowThisWave(survivalSec: number, waveIndex: number): boolean {
+  if (waveIndex % 2 === 0) return true;
+  if (survivalSec < 42) return false;
+  if (survivalSec >= 82) return true;
+  const t = smoothstep(42, 82, survivalSec);
+  return Math.random() < t;
+}
+
+/**
+ * Probability of a **two-block** row (one clear lane) when the track is empty. Rises toward ~1 by ~2 min so
+ * most rows have a single correct lane.
+ */
+export function reefRunTwoBlockRowChance(survivalSec: number): number {
+  return 0.2 + 0.78 * smoothstep(25, 125, survivalSec);
+}
+
 export type ReefRunHudPayload = {
   tierIndex: number;
   /** Display label: I, II, III, IV, … for current depth bracket. */
@@ -68,6 +126,6 @@ export function reefRunHudFromSurvivalSec(survivalSec: number): ReefRunHudPayloa
     survivalSec,
     secondsElapsedInTier,
     tierDurationSec: REEF_RUN_TIER_SECONDS,
-    speedMultiplier: swimSpeedMultiplierForTier(tierIndex),
+    speedMultiplier: reefRunPlayIntensityMultiplier(survivalSec),
   };
 }
