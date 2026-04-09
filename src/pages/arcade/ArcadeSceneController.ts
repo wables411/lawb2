@@ -4,9 +4,20 @@ import {
   type ArcadeCharacterDef,
   type ArcadeCharacterId,
 } from './arcadeAssetConfig';
-import { loadArcadeFbx, startLoopClip } from './loadArcadeFbx';
+import {
+  alignFbxBottomBeforeParent,
+  alignFbxVerticalAfterLayout,
+  loadArcadeFbx,
+  startLoopClip,
+} from './loadArcadeFbx';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
+
+type ArcadeMatBase = {
+  emissive: THREE.Color;
+  emissiveIntensity: number;
+  color: THREE.Color;
+};
 
 type CharacterSlot = {
   def: ArcadeCharacterDef;
@@ -79,6 +90,12 @@ export class ArcadeSceneController {
   private onGameOver: () => void;
   private pointerBound = false;
   private keyBound = false;
+  private _boxSel = new THREE.Box3();
+  private _vSelCenter = new THREE.Vector3();
+  private _vSelSize = new THREE.Vector3();
+  private _vCamTarget = new THREE.Vector3();
+  private _vCamPos = new THREE.Vector3();
+  private _vDir = new THREE.Vector3();
 
   constructor(
     container: HTMLElement,
@@ -115,6 +132,7 @@ export class ArcadeSceneController {
       this.playEnded = true;
     }
     if (next === 'menu') {
+      this.clearSelectScreenHighlight();
       this.resetSelectionVisuals();
       this.layoutMenuPodiums();
     }
@@ -122,6 +140,9 @@ export class ArcadeSceneController {
       this.resetSelectionVisuals();
       this.layoutSelectionPodiums();
       void this.applySelectionAnimations();
+    }
+    if (next === 'play' || next === 'intro' || next === 'gameover') {
+      this.clearSelectScreenHighlight();
     }
     if (next === 'menu' || next === 'select') {
       this.clearObstacles();
@@ -149,6 +170,122 @@ export class ArcadeSceneController {
       slot.idleRoot.rotation.y = faces[i]!;
       if (slot.danceRoot) slot.danceRoot.rotation.y = faces[i]!;
     });
+  }
+
+  private snapshotMaterialBase(m: THREE.MeshStandardMaterial): ArcadeMatBase {
+    const u = m.userData as { arcadeMatBase?: ArcadeMatBase };
+    if (!u.arcadeMatBase) {
+      u.arcadeMatBase = {
+        emissive: m.emissive.clone(),
+        emissiveIntensity: m.emissiveIntensity,
+        color: m.color.clone(),
+      };
+    }
+    return u.arcadeMatBase;
+  }
+
+  /** Dim non-selected; cyan rim-light feel on selected (select screen only). */
+  private applySelectScreenHighlight(): void {
+    const sel = this.selectedId ?? 'clawb';
+    for (const [id, slot] of this.slots) {
+      const isSel = id === sel;
+      const roots: THREE.Group[] = isSel
+        ? ([slot.idleRoot, slot.danceRoot].filter(Boolean) as THREE.Group[])
+        : [slot.idleRoot];
+      for (const visRoot of roots) {
+        visRoot.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          for (const mat of mats) {
+            const sm = mat as THREE.MeshStandardMaterial;
+            if (!sm.isMeshStandardMaterial) continue;
+            const base = this.snapshotMaterialBase(sm);
+            if (isSel) {
+              sm.emissive.copy(base.emissive).lerp(new THREE.Color(0x3af0ff), 0.5);
+              sm.emissiveIntensity = base.emissiveIntensity + 0.55;
+              sm.color.copy(base.color).multiplyScalar(1.12);
+            } else {
+              sm.emissive.copy(base.emissive).multiplyScalar(0.15);
+              sm.emissiveIntensity = base.emissiveIntensity * 0.28;
+              sm.color.copy(base.color).multiplyScalar(0.48);
+            }
+            sm.needsUpdate = true;
+          }
+        });
+      }
+    }
+  }
+
+  private clearSelectScreenHighlight(): void {
+    for (const slot of this.slots.values()) {
+      for (const root of [slot.idleRoot, slot.danceRoot].filter(Boolean) as THREE.Group[]) {
+        root.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          for (const mat of mats) {
+            const sm = mat as THREE.MeshStandardMaterial;
+            if (!sm.isMeshStandardMaterial) continue;
+            const u = sm.userData as { arcadeMatBase?: ArcadeMatBase };
+            const base = u.arcadeMatBase;
+            if (!base) continue;
+            sm.emissive.copy(base.emissive);
+            sm.emissiveIntensity = base.emissiveIntensity;
+            sm.color.copy(base.color);
+            sm.needsUpdate = true;
+          }
+        });
+      }
+    }
+  }
+
+  /** Frame the selected hero: distance from bbox, look-at center, smooth follow on swap. */
+  private updateSelectCamera(dt: number, t: number): void {
+    const sel = this.selectedId ?? 'clawb';
+    const slot = this.slots.get(sel);
+    if (!slot) return;
+
+    const roots: THREE.Object3D[] = [];
+    if (slot.danceRoot?.visible) roots.push(slot.danceRoot);
+    else roots.push(slot.idleRoot);
+
+    this._boxSel.makeEmpty();
+    for (const r of roots) {
+      r.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(r);
+      if (!b.isEmpty()) this._boxSel.union(b);
+    }
+
+    if (this._boxSel.isEmpty()) {
+      this._vSelCenter.set(0, -0.2, PODIUM_Z);
+      this._vSelSize.set(1.1, 1.9, 0.55);
+    } else {
+      this._boxSel.getCenter(this._vSelCenter);
+      this._boxSel.getSize(this._vSelSize);
+    }
+
+    const margin = 1.22;
+    const vFovRad = THREE.MathUtils.degToRad(this.camera.fov);
+    const aspect = Math.max(this.camera.aspect, 0.4);
+    const halfH = Math.max(this._vSelSize.y * margin * 0.5, 0.52);
+    const halfW = Math.max(this._vSelSize.x * margin * 0.5, 0.42);
+    const distY = halfH / Math.tan(vFovRad / 2);
+    const distX = halfW / (Math.tan(vFovRad / 2) * aspect);
+    let dist = Math.max(distY, distX, 3.85);
+    dist = Math.min(dist, 10.8);
+
+    const swayX = Math.sin(t * 0.09) * 0.14;
+    const swayY = Math.cos(t * 0.07) * 0.07;
+    this._vDir.set(swayX, 0.34 + swayY, 1).normalize();
+    this._vCamPos.copy(this._vSelCenter).add(this._vDir.multiplyScalar(dist));
+
+    const lerp = 1 - Math.pow(0.83, dt * 60 * 0.22);
+    this.camera.position.lerp(this._vCamPos, Math.min(lerp, 0.38));
+
+    this._vCamTarget.copy(this._vSelCenter);
+    this._vCamTarget.y += this._vSelSize.y * 0.07;
+    this.camera.lookAt(this._vCamTarget);
   }
 
   /** Selected character always on center podium; others split left/right by roster order. */
@@ -282,8 +419,8 @@ export class ArcadeSceneController {
         const { root, clips } = await loadArcadeFbx(def.idle);
         root.userData.characterId = def.id;
         root.scale.setScalar(def.scale);
-        root.position.y = 0.15;
         root.rotation.y = faces[i]!;
+        alignFbxBottomBeforeParent(root, 0.15);
         anchor.add(root);
       const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
       this.mixers.push(mixer);
@@ -422,8 +559,8 @@ export class ArcadeSceneController {
           const { root, clips } = await loadArcadeFbx(slot.def.dance);
           root.userData.characterId = slot.def.id;
           root.scale.setScalar(slot.def.scale);
-          root.position.copy(slot.idleRoot.position);
           root.rotation.copy(slot.idleRoot.rotation);
+          alignFbxBottomBeforeParent(root, 0.15);
           slot.anchor.add(root);
           slot.danceRoot = root;
           const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
@@ -465,9 +602,10 @@ export class ArcadeSceneController {
     try {
       const { root, clips } = await loadArcadeFbx(slot.def.swim);
       root.scale.setScalar(slot.def.scale * 1.05);
-      root.position.set(0, -0.85, PLAYER_Z);
       root.rotation.y = Math.PI;
+      root.position.set(0, 0, PLAYER_Z);
       this.playerWorld.add(root);
+      alignFbxVerticalAfterLayout(root, -0.85);
       this.swimRoot = root;
       const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true });
       this.swimMixer = mixer;
@@ -516,7 +654,6 @@ export class ArcadeSceneController {
 
     const CAM_INTRO = 5.2;
     const CAM_MENU = 11.2;
-    const CAM_SELECT = 9.2;
 
     if (this.screen === 'play' || this.screen === 'gameover') {
       const driftX = Math.sin(t * 0.1) * 0.32;
@@ -531,15 +668,23 @@ export class ArcadeSceneController {
       const lookY = -0.55;
       const lookZ = PLAYER_Z - 1.1;
       this.camera.lookAt(lookX, lookY, lookZ);
+    } else if (this.screen === 'select') {
+      this.applySelectScreenHighlight();
+      this.updateSelectCamera(dt, t);
+      for (const slot of this.slots.values()) {
+        slot.anchor.rotation.y += 0.0018;
+      }
     } else {
       let targetZ = CAM_MENU;
       if (this.screen === 'intro') targetZ = CAM_INTRO;
-      else if (this.screen === 'select') targetZ = CAM_SELECT;
 
       this.camera.position.z += (targetZ - this.camera.position.z) * 0.065;
       this.camera.position.x = Math.sin(t * 0.11) * 0.42;
       this.camera.position.y = Math.cos(t * 0.085) * 0.22;
       this.camera.lookAt(0, -0.15, -32);
+      for (const slot of this.slots.values()) {
+        slot.anchor.rotation.y += 0.004;
+      }
     }
 
     this.tunnel.rotation.z = t * 0.018;
@@ -552,10 +697,6 @@ export class ArcadeSceneController {
     if (particles) {
       particles.position.z += 0.055;
       if (particles.position.z > 6) particles.position.z = -4;
-    }
-
-    for (const slot of this.slots.values()) {
-      slot.anchor.rotation.y += 0.004;
     }
 
     const targetX = LANES[this.playerLane];
