@@ -39,20 +39,166 @@ export function clipSwimInPlace(clip: THREE.AnimationClip): THREE.AnimationClip 
   return c;
 }
 
+function setColorTextureSRGB(tex: THREE.Texture | null | undefined): void {
+  if (!tex) return;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+}
+
+function setDataTextureLinear(tex: THREE.Texture | null | undefined): void {
+  if (!tex) return;
+  tex.colorSpace = THREE.LinearSRGBColorSpace;
+  tex.needsUpdate = true;
+}
+
+/**
+ * FBXLoader often yields MeshPhongMaterial with diffuse on `.map`. Three's FBX parser skips
+ * some legacy maps (e.g. ShininessExponent) — converting to MeshStandardMaterial matches
+ * clawb-world ViewerAvatarManager and fixes missing body / face / clothing textures.
+ */
+export function repairFbxMaterials(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next: THREE.Material[] = [];
+
+    for (const m of mats) {
+      m.side = THREE.DoubleSide;
+      m.transparent = false;
+      m.depthWrite = true;
+
+      const stdIn = m as THREE.MeshStandardMaterial;
+      if (stdIn.isMeshStandardMaterial) {
+        setColorTextureSRGB(stdIn.map);
+        setColorTextureSRGB(stdIn.emissiveMap);
+        setDataTextureLinear(stdIn.normalMap);
+        setDataTextureLinear(stdIn.roughnessMap);
+        setDataTextureLinear(stdIn.metalnessMap);
+        setDataTextureLinear(stdIn.aoMap);
+        stdIn.roughness = THREE.MathUtils.clamp(stdIn.roughness, 0.06, 0.92);
+        stdIn.metalness = THREE.MathUtils.clamp(stdIn.metalness, 0, 0.45);
+        stdIn.envMapIntensity = Math.max(stdIn.envMapIntensity ?? 0, 0.9);
+        if (stdIn.color.r + stdIn.color.g + stdIn.color.b < 0.02 && !stdIn.map) {
+          stdIn.color.setScalar(0.72);
+        }
+        stdIn.needsUpdate = true;
+        next.push(stdIn);
+        continue;
+      }
+
+      const phong = m as THREE.MeshPhongMaterial;
+      if (phong.isMeshPhongMaterial) {
+        const std = new THREE.MeshStandardMaterial({
+          color: phong.color?.clone() ?? new THREE.Color(0xffffff),
+          map: phong.map ?? null,
+          normalMap: phong.normalMap ?? null,
+          bumpMap: phong.bumpMap ?? null,
+          bumpScale: phong.bumpScale ?? 1,
+          emissive: phong.emissive?.clone() ?? new THREE.Color(0x000000),
+          emissiveMap: phong.emissiveMap ?? null,
+          side: THREE.DoubleSide,
+          transparent: false,
+          depthWrite: true,
+          roughness: 0.4,
+          metalness: 0.12,
+          envMapIntensity: 1.05,
+        });
+        setColorTextureSRGB(std.map);
+        setColorTextureSRGB(std.emissiveMap);
+        setDataTextureLinear(std.normalMap);
+        setDataTextureLinear(std.bumpMap);
+        if (std.color.r + std.color.g + std.color.b < 0.03 && !std.map) {
+          std.color.setScalar(0.72);
+        }
+        phong.dispose();
+        std.needsUpdate = true;
+        next.push(std);
+        continue;
+      }
+
+      const lambert = m as THREE.MeshLambertMaterial;
+      if (lambert.isMeshLambertMaterial) {
+        const std = new THREE.MeshStandardMaterial({
+          color: lambert.color?.clone() ?? new THREE.Color(0xffffff),
+          map: lambert.map ?? null,
+          emissive: lambert.emissive?.clone() ?? new THREE.Color(0),
+          emissiveMap: lambert.emissiveMap ?? null,
+          side: THREE.DoubleSide,
+          transparent: false,
+          depthWrite: true,
+          roughness: 0.55,
+          metalness: 0.06,
+          envMapIntensity: 1.05,
+        });
+        setColorTextureSRGB(std.map);
+        setColorTextureSRGB(std.emissiveMap);
+        lambert.dispose();
+        std.needsUpdate = true;
+        next.push(std);
+        continue;
+      }
+
+      const basic = m as THREE.MeshBasicMaterial;
+      if (basic.isMeshBasicMaterial) {
+        const std = new THREE.MeshStandardMaterial({
+          color: basic.color?.clone() ?? new THREE.Color(0xffffff),
+          map: basic.map ?? null,
+          side: THREE.DoubleSide,
+          transparent: false,
+          depthWrite: true,
+          roughness: 0.5,
+          metalness: 0.08,
+          envMapIntensity: 1.0,
+        });
+        setColorTextureSRGB(std.map);
+        basic.dispose();
+        std.needsUpdate = true;
+        next.push(std);
+        continue;
+      }
+
+      next.push(m);
+    }
+
+    mesh.material = next.length === 1 ? next[0]! : next;
+  });
+}
+
+/**
+ * With root parentless (or only uniform transform), set Y so AABB bottom sits at `targetBottomY`
+ * in the space `setFromObject` uses (world space when parent is scene/null stack).
+ */
+export function alignFbxBottomBeforeParent(root: THREE.Object3D, targetBottomY: number): void {
+  root.position.x = 0;
+  root.position.z = 0;
+  root.position.y = 0;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  if (!Number.isFinite(box.min.y)) {
+    root.position.y = targetBottomY;
+    return;
+  }
+  root.position.y = targetBottomY - box.min.y;
+}
+
+/** After position/scale/rotation (and optional parent), nudge Y so AABB bottom hits `targetWorldMinY`. */
+export function alignFbxVerticalAfterLayout(root: THREE.Object3D, targetWorldMinY: number): void {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  if (!Number.isFinite(box.min.y)) return;
+  root.position.y += targetWorldMinY - box.min.y;
+  root.updateMatrixWorld(true);
+}
+
 export function prepareArcadeModel(root: THREE.Group): void {
+  repairFbxMaterials(root);
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (mesh.isMesh) {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      mats.forEach((m) => {
-        m.side = THREE.DoubleSide;
-        const std = m as THREE.MeshStandardMaterial;
-        if (std.isMeshStandardMaterial) {
-          std.envMapIntensity = Math.max(std.envMapIntensity ?? 0, 0.85);
-        }
-      });
     }
     const skin = child as THREE.SkinnedMesh;
     if (skin.isSkinnedMesh) {
@@ -70,7 +216,9 @@ export async function loadArcadeFbx(url: string): Promise<{
   const loader = new FBXLoader();
   const prevWarn = console.warn;
   console.warn = (...args: unknown[]) => {
-    if (typeof args[0] === 'string' && args[0].includes('Vertex has more than 4 skinning weights')) return;
+    const s = typeof args[0] === 'string' ? args[0] : '';
+    if (s.includes('Vertex has more than 4 skinning weights')) return;
+    if (s.includes('ShininessExponent map is not supported')) return;
     prevWarn.apply(console, args);
   };
   try {
