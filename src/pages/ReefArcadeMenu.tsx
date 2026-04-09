@@ -34,7 +34,7 @@ export default function ReefArcadeMenu() {
   const [phase, setPhase] = useState<Phase>('intro');
   const [modal, setModal] = useState<ModalKind>(null);
   const [gameScreen, setGameScreen] = useState<ArcadeGameScreen>('menu');
-  const [selectedCharacterId, setSelectedCharacterId] = useState<ArcadeCharacterId | null>(null);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<ArcadeCharacterId>('clawb');
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -65,11 +65,7 @@ export default function ReefArcadeMenu() {
   };
 
   const startRun = () => {
-    if (selectedCharacterId) {
-      setGameScreen('play');
-    } else {
-      setGameScreen('select');
-    }
+    setGameScreen('play');
   };
 
   return (
@@ -158,12 +154,7 @@ export default function ReefArcadeMenu() {
                 ))}
               </div>
               <div className="ra-select-actions">
-                <button
-                  type="button"
-                  className="ra-btn"
-                  disabled={!selectedCharacterId}
-                  onClick={() => selectedCharacterId && setGameScreen('play')}
-                >
+                <button type="button" className="ra-btn" onClick={() => setGameScreen('play')}>
                   CONFIRM
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('menu')}>
@@ -187,12 +178,7 @@ export default function ReefArcadeMenu() {
               <h2 className="ra-gameover-title">GAME OVER</h2>
               <p className="ra-gameover-sub">You hit an obstacle. Swim again?</p>
               <div className="ra-gameover-actions">
-                <button
-                  type="button"
-                  className="ra-btn"
-                  onClick={() => setGameScreen('play')}
-                  disabled={!selectedCharacterId}
-                >
+                <button type="button" className="ra-btn" onClick={() => setGameScreen('play')}>
                   RETRY
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('select')}>

@@ -32,6 +32,14 @@ const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
 const HIT_HALF_DEPTH = 1.35;
 
+/** Plinth X positions: left, center (hero), right */
+const PODIUM_X = { L: -2.85, C: 0, R: 2.85 } as const;
+const PODIUM_Y = -1.05;
+const PODIUM_Z = 0.8;
+const FACE_LEFT = 0.35;
+const FACE_CENTER = 0;
+const FACE_RIGHT = -0.35;
+
 export class ArcadeSceneController {
   private container: HTMLElement;
   private scene!: THREE.Scene;
@@ -49,7 +57,7 @@ export class ArcadeSceneController {
   private ndc = new THREE.Vector2();
   private mixers: THREE.AnimationMixer[] = [];
   private screen: ArcadeGameScreen = 'intro';
-  private selectedId: ArcadeCharacterId | null = null;
+  private selectedId: ArcadeCharacterId | null = 'clawb';
   private playerLane = 1;
   private playerX = 0;
   private swimRoot: THREE.Group | null = null;
@@ -108,9 +116,11 @@ export class ArcadeSceneController {
     }
     if (next === 'menu') {
       this.resetSelectionVisuals();
+      this.layoutMenuPodiums();
     }
     if (next === 'select') {
       this.resetSelectionVisuals();
+      this.layoutSelectionPodiums();
       void this.applySelectionAnimations();
     }
     if (next === 'menu' || next === 'select') {
@@ -122,7 +132,44 @@ export class ArcadeSceneController {
 
   setSelectedId(id: ArcadeCharacterId | null): void {
     this.selectedId = id;
+    if (this.screen === 'select') {
+      this.layoutSelectionPodiums();
+    }
     void this.applySelectionAnimations();
+  }
+
+  /** Linear order: Clawb · Radbro · Milady (main menu). */
+  private layoutMenuPodiums(): void {
+    const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R] as const;
+    const faces = [FACE_LEFT, FACE_CENTER, FACE_RIGHT] as const;
+    ARCADE_CHARACTERS.forEach((def, i) => {
+      const slot = this.slots.get(def.id);
+      if (!slot) return;
+      slot.anchor.position.set(xs[i]!, PODIUM_Y, PODIUM_Z);
+      slot.idleRoot.rotation.y = faces[i]!;
+      if (slot.danceRoot) slot.danceRoot.rotation.y = faces[i]!;
+    });
+  }
+
+  /** Selected character always on center podium; others split left/right by roster order. */
+  private layoutSelectionPodiums(): void {
+    const sel = this.selectedId ?? 'clawb';
+    const ordered = ARCADE_CHARACTERS.map((c) => c.id);
+    const others = ordered.filter((id) => id !== sel);
+    const leftId = others[0]!;
+    const rightId = others[1]!;
+    const plan = new Map<ArcadeCharacterId, { x: number; face: number }>([
+      [leftId, { x: PODIUM_X.L, face: FACE_LEFT }],
+      [sel, { x: PODIUM_X.C, face: FACE_CENTER }],
+      [rightId, { x: PODIUM_X.R, face: FACE_RIGHT }],
+    ]);
+    for (const [id, slot] of this.slots) {
+      const p = plan.get(id);
+      if (!p) continue;
+      slot.anchor.position.set(p.x, PODIUM_Y, PODIUM_Z);
+      slot.idleRoot.rotation.y = p.face;
+      if (slot.danceRoot) slot.danceRoot.rotation.y = p.face;
+    }
   }
 
   async bootstrap(): Promise<void> {
@@ -212,11 +259,13 @@ export class ArcadeSceneController {
     this.scene.add(this.obstacleGroup);
     this.playerWorld.visible = false;
 
-    const offsets = [-4.4, 0, 4.4];
+    /* Tighter X so all three stay in view on portrait / narrow aspect (was ±4.4). */
+    const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R];
+    const faces = [FACE_LEFT, FACE_CENTER, FACE_RIGHT];
     for (let i = 0; i < ARCADE_CHARACTERS.length; i++) {
       const def = ARCADE_CHARACTERS[i];
       const anchor = new THREE.Group();
-      anchor.position.set(offsets[i], -1.05, 0.8);
+      anchor.position.set(xs[i]!, PODIUM_Y, PODIUM_Z);
       anchor.userData.characterId = def.id;
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.55, 0.72, 0.22, 28),
@@ -231,12 +280,13 @@ export class ArcadeSceneController {
       anchor.add(base);
       try {
         const { root, clips } = await loadArcadeFbx(def.idle);
+        root.userData.characterId = def.id;
         root.scale.setScalar(def.scale);
         root.position.y = 0.15;
-        root.rotation.y = i === 1 ? 0 : i === 0 ? 0.35 : -0.35;
+        root.rotation.y = faces[i]!;
         anchor.add(root);
-        const { mixer, action } = startLoopClip(root, clips);
-        this.mixers.push(mixer);
+      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
+      this.mixers.push(mixer);
         this.slots.set(def.id, {
           def,
           anchor,
@@ -254,6 +304,7 @@ export class ArcadeSceneController {
           new THREE.MeshStandardMaterial({ color: 0xff6b35, emissive: 0xff6b35, emissiveIntensity: 0.3 }),
         );
         fallback.position.y = 0.75;
+        fallback.userData.characterId = def.id;
         anchor.add(fallback);
         const mixer = new THREE.AnimationMixer(anchor);
         this.slots.set(def.id, {
@@ -369,12 +420,13 @@ export class ArcadeSceneController {
       if (!slot.danceRoot) {
         try {
           const { root, clips } = await loadArcadeFbx(slot.def.dance);
+          root.userData.characterId = slot.def.id;
           root.scale.setScalar(slot.def.scale);
           root.position.copy(slot.idleRoot.position);
           root.rotation.copy(slot.idleRoot.rotation);
           slot.anchor.add(root);
           slot.danceRoot = root;
-          const { mixer, action } = startLoopClip(root, clips);
+          const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: false });
           if (mixer) this.mixers.push(mixer);
           slot.danceMixer = mixer;
           slot.danceAction = action;
@@ -417,7 +469,7 @@ export class ArcadeSceneController {
       root.rotation.y = Math.PI;
       this.playerWorld.add(root);
       this.swimRoot = root;
-      const { mixer, action } = startLoopClip(root, clips);
+      const { mixer, action } = startLoopClip(root, clips, { stripRootMotion: true });
       this.swimMixer = mixer;
       if (mixer) this.mixers.push(mixer);
       void action;
@@ -465,16 +517,30 @@ export class ArcadeSceneController {
     const CAM_INTRO = 5.2;
     const CAM_MENU = 11.2;
     const CAM_SELECT = 9.2;
-    const CAM_PLAY = 7.4;
-    let targetZ = CAM_MENU;
-    if (this.screen === 'intro') targetZ = CAM_INTRO;
-    else if (this.screen === 'select') targetZ = CAM_SELECT;
-    else if (this.screen === 'play' || this.screen === 'gameover') targetZ = CAM_PLAY;
 
-    this.camera.position.z += (targetZ - this.camera.position.z) * 0.065;
-    this.camera.position.x = Math.sin(t * 0.11) * 0.42;
-    this.camera.position.y = Math.cos(t * 0.085) * 0.22;
-    this.camera.lookAt(0, -0.15, -32);
+    if (this.screen === 'play' || this.screen === 'gameover') {
+      const driftX = Math.sin(t * 0.1) * 0.32;
+      const driftY = Math.cos(t * 0.07) * 0.12;
+      const targetCamX = this.playerX * 0.62 + driftX;
+      const targetCamY = 3.85 + driftY;
+      const targetCamZ = 13.6;
+      this.camera.position.x += (targetCamX - this.camera.position.x) * 0.085;
+      this.camera.position.y += (targetCamY - this.camera.position.y) * 0.07;
+      this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.06;
+      const lookX = this.playerX * 0.28;
+      const lookY = -0.55;
+      const lookZ = PLAYER_Z - 1.1;
+      this.camera.lookAt(lookX, lookY, lookZ);
+    } else {
+      let targetZ = CAM_MENU;
+      if (this.screen === 'intro') targetZ = CAM_INTRO;
+      else if (this.screen === 'select') targetZ = CAM_SELECT;
+
+      this.camera.position.z += (targetZ - this.camera.position.z) * 0.065;
+      this.camera.position.x = Math.sin(t * 0.11) * 0.42;
+      this.camera.position.y = Math.cos(t * 0.085) * 0.22;
+      this.camera.lookAt(0, -0.15, -32);
+    }
 
     this.tunnel.rotation.z = t * 0.018;
     this.ringGroup.rotation.z = t * 0.06;

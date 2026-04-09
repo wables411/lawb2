@@ -13,6 +13,7 @@ export type ArcadeCharacterDef = {
   swim: string;
 };
 
+/** Plinth order left → right matches UI chips: Clawb, Radbro, Milady. */
 export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
   {
     id: 'clawb',
@@ -23,19 +24,19 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
     swim: `${ARCADE_ASSET_BASE}/lawbswim.fbx`,
   },
   {
-    id: 'milady',
-    label: 'MILADY',
-    scale: 0.011,
-    idle: `${ARCADE_ASSET_BASE}/milady11treading.fbx`,
-    dance: `${ARCADE_ASSET_BASE}/milady11dance.fbx`,
-    swim: `${ARCADE_ASSET_BASE}/milady11swimming.fbx`,
-  },
-  {
     id: 'radbro',
     label: 'RADBRO',
     scale: 0.011,
     idle: `${ARCADE_ASSET_BASE}/radbrotreading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/radbrodance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/radbroswimming.fbx`,
+  },
+  {
+    id: 'milady',
+    label: 'MILADY',
+    scale: 0.011,
+    idle: `${ARCADE_ASSET_BASE}/milady11treading.fbx`,
+    dance: `${ARCADE_ASSET_BASE}/milady11dance.fbx`,
+    swim: `${ARCADE_ASSET_BASE}/milady11swimming.fbx`,
   },
 ];

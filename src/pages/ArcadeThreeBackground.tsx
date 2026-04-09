@@ -8,7 +8,7 @@ type Props = {
   phase: ArcadeThreePhase;
   /** Drives camera + interaction; `intro` uses cinematic zoom until user skips. */
   gameScreen: ArcadeGameScreen;
-  selectedCharacterId: ArcadeCharacterId | null;
+  selectedCharacterId: ArcadeCharacterId;
   onPickCharacter: (id: ArcadeCharacterId) => void;
   onGameOver: () => void;
 };
