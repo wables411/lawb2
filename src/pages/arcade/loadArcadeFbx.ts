@@ -28,7 +28,6 @@ function isRootHipsPositionTrack(trackName: string): boolean {
   );
 }
 
-/** Zero root XZ on swim clips (treadmill); keeps vertical bob and all bone offsets. */
 /** Prefer the clip that actually drives the rig (FBX files may ship multiple stubs). */
 export function pickArcadeAnimationClip(clips: THREE.AnimationClip[]): THREE.AnimationClip {
   if (!clips.length) throw new Error('pickArcadeAnimationClip: no clips');
@@ -81,6 +80,22 @@ export function retargetClipToModel(clip: THREE.AnimationClip, targetRoot: THREE
     }
   }
   return new THREE.AnimationClip(clip.name, clip.duration, newTracks, clip.blendMode);
+}
+
+/** Pick clip, optional swim XZ strip + retarget — shared by mesh playback and clip-only dance. */
+export function buildArcadePlayableClip(
+  clips: THREE.AnimationClip[],
+  root: THREE.Object3D,
+  opts?: { stripRootMotion?: boolean; retarget?: boolean },
+): THREE.AnimationClip | null {
+  if (!clips.length) return null;
+  let clip = pickArcadeAnimationClip(clips);
+  if (opts?.stripRootMotion) clip = clipSwimInPlace(clip);
+  if (opts?.retarget) {
+    const ret = retargetClipToModel(clip, root);
+    if (ret.tracks.length >= Math.max(6, clip.tracks.length * 0.28)) clip = ret;
+  }
+  return clip;
 }
 
 export function clipSwimInPlace(clip: THREE.AnimationClip): THREE.AnimationClip {
@@ -295,6 +310,39 @@ export function prepareArcadeModel(root: THREE.Group): void {
   });
 }
 
+/** Dispose mesh data from a loaded FBX group (e.g. after extracting clips only). */
+export function disposeArcadeLoadedRoot(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    mesh.geometry.dispose();
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      (mat as THREE.Material | undefined)?.dispose?.();
+    }
+  });
+}
+
+/** Load an FBX, clone its animation clips, throw away geometry/materials (no scene add). */
+export async function loadArcadeFbxClipsOnly(url: string): Promise<THREE.AnimationClip[]> {
+  const loader = new FBXLoader();
+  const prevWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    const s = typeof args[0] === 'string' ? args[0] : '';
+    if (s.includes('Vertex has more than 4 skinning weights')) return;
+    if (s.includes('ShininessExponent map is not supported')) return;
+    prevWarn.apply(console, args);
+  };
+  try {
+    const group = await loader.loadAsync(url);
+    const clips = group.animations?.length ? group.animations.map((c) => c.clone()) : [];
+    disposeArcadeLoadedRoot(group);
+    return clips;
+  } finally {
+    console.warn = prevWarn;
+  }
+}
+
 export async function loadArcadeFbx(url: string): Promise<{
   root: THREE.Group;
   clips: THREE.AnimationClip[];
@@ -323,14 +371,8 @@ export function startLoopClip(
   opts?: { stripRootMotion?: boolean; retarget?: boolean },
 ): { mixer: THREE.AnimationMixer; action: THREE.AnimationAction | null } {
   const mixer = new THREE.AnimationMixer(root);
-  if (!clips.length) return { mixer, action: null };
-  let clip = pickArcadeAnimationClip(clips);
-  if (opts?.stripRootMotion) clip = clipSwimInPlace(clip);
-  if (opts?.retarget) {
-    const ret = retargetClipToModel(clip, root);
-    // If retarget drops most tracks, keep source (bad remap is worse than raw).
-    if (ret.tracks.length >= Math.max(6, clip.tracks.length * 0.28)) clip = ret;
-  }
+  const clip = buildArcadePlayableClip(clips, root, opts);
+  if (!clip) return { mixer, action: null };
   const action = mixer.clipAction(clip);
   action.setLoop(THREE.LoopRepeat, Infinity);
   action.play();

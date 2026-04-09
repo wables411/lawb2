@@ -12,6 +12,11 @@ export type ArcadeCharacterDef = {
   label: string;
   /** Applied after height normalize (1 = default). */
   heightMul?: number;
+  /**
+   * Load `dance` as animation clips only and play on the idle mesh (same skeleton/textures as tread).
+   * Avoids a second FBX body that often shows as white shards when skinning/textures mismatch.
+   */
+  danceUsesIdleMesh?: boolean;
   idle: string;
   dance: string;
   swim: string;
@@ -31,6 +36,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
     id: 'radbro',
     label: 'RADBRO',
     heightMul: 1,
+    danceUsesIdleMesh: true,
     idle: `${ARCADE_ASSET_BASE}/radbrotreading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/radbrodance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/radbroswimming.fbx`,
@@ -39,6 +45,7 @@ export const ARCADE_CHARACTERS: ArcadeCharacterDef[] = [
     id: 'milady',
     label: 'MILADY',
     heightMul: 1,
+    danceUsesIdleMesh: true,
     idle: `${ARCADE_ASSET_BASE}/milady11treading.fbx`,
     dance: `${ARCADE_ASSET_BASE}/milady11dance.fbx`,
     swim: `${ARCADE_ASSET_BASE}/milady11swimming.fbx`,

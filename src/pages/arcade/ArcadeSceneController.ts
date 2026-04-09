@@ -8,7 +8,10 @@ import {
   alignFbxBottomBeforeParent,
   alignFbxVerticalAfterLayout,
   applyArcadeHeroScale,
+  buildArcadePlayableClip,
+  disposeArcadeLoadedRoot,
   loadArcadeFbx,
+  loadArcadeFbxClipsOnly,
   startLoopClip,
 } from './loadArcadeFbx';
 
@@ -100,6 +103,8 @@ export class ArcadeSceneController {
   private _vDir = new THREE.Vector3();
   private _vPlayCenter = new THREE.Vector3();
   private selectFillLight!: THREE.PointLight;
+  /** Invalidates in-flight async dance loads when selection changes quickly. */
+  private danceApplyGen = 0;
 
   constructor(
     container: HTMLElement,
@@ -554,8 +559,8 @@ export class ArcadeSceneController {
       if (slot.idleRoot) slot.idleRoot.visible = true;
       if (slot.danceRoot) {
         slot.danceRoot.visible = false;
-        slot.danceAction?.stop();
       }
+      slot.danceAction?.stop();
       if (slot.idleAction) {
         slot.idleAction.paused = false;
         slot.idleAction.play();
@@ -563,19 +568,68 @@ export class ArcadeSceneController {
     }
   }
 
+  /** Older builds added a full dance FBX for Radbro/Milady; remove if still present. */
+  private disposeLegacyDanceRoot(slot: CharacterSlot): void {
+    if (!slot.danceRoot) return;
+    slot.anchor.remove(slot.danceRoot);
+    this.removeMixerFromList(slot.danceMixer);
+    slot.danceMixer?.stopAllAction();
+    disposeArcadeLoadedRoot(slot.danceRoot);
+    slot.danceRoot = null;
+    slot.danceMixer = null;
+    slot.danceAction = null;
+  }
+
   private async applySelectionAnimations(): Promise<void> {
+    const gen = ++this.danceApplyGen;
+
+    for (const slot of this.slots.values()) {
+      if (slot.def.danceUsesIdleMesh && slot.danceRoot) {
+        this.disposeLegacyDanceRoot(slot);
+      }
+    }
+
     for (const [id, slot] of this.slots) {
       const isSel = id === this.selectedId;
       if (!isSel) {
         if (slot.danceRoot) slot.danceRoot.visible = false;
+        slot.danceAction?.stop();
         slot.idleRoot.visible = true;
-        slot.idleAction?.play();
+        slot.idleAction?.reset().fadeIn(0.12).play();
         continue;
       }
+
+      if (slot.def.danceUsesIdleMesh) {
+        slot.idleRoot.visible = true;
+        if (!slot.danceAction) {
+          try {
+            const clips = await loadArcadeFbxClipsOnly(slot.def.dance);
+            if (gen !== this.danceApplyGen) return;
+            const clip = buildArcadePlayableClip(clips, slot.idleRoot, { retarget: true });
+            if (!clip || clip.tracks.length === 0) {
+              console.warn('[Arcade] no usable dance tracks for', slot.def.id);
+              slot.idleAction?.play();
+              continue;
+            }
+            slot.danceAction = slot.idleMixer.clipAction(clip);
+            slot.danceAction.setLoop(THREE.LoopRepeat, Infinity);
+          } catch (e) {
+            console.warn('[Arcade] dance clip load failed', slot.def.id, e);
+            slot.idleAction?.play();
+            continue;
+          }
+        }
+        if (gen !== this.danceApplyGen) return;
+        slot.idleAction?.fadeOut(0.22);
+        slot.danceAction?.reset().fadeIn(0.28).play();
+        continue;
+      }
+
       slot.idleRoot.visible = false;
       if (!slot.danceRoot) {
         try {
           const { root, clips } = await loadArcadeFbx(slot.def.dance);
+          if (gen !== this.danceApplyGen) return;
           root.userData.characterId = slot.def.id;
           root.rotation.copy(slot.idleRoot.rotation);
           applyArcadeHeroScale(root, slot.def.heightMul ?? 1);
@@ -592,6 +646,7 @@ export class ArcadeSceneController {
           continue;
         }
       }
+      if (gen !== this.danceApplyGen) return;
       if (slot.danceRoot) {
         slot.danceRoot.visible = true;
         slot.danceAction?.reset().fadeIn(0.2).play();
