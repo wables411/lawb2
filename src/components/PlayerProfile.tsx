@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
+import {
+  getUserLeaderboardEntry,
+  type LeaderboardEntry,
+  type PointsBreakdown,
+} from '../firebaseLeaderboard';
 import { UserLiquiditySection } from './UserLiquiditySection';
 import { METEORA_CLAWB_LAWB_POOL } from '../config/lpPools';
 import { meteoraProxyUrl } from '../utils/meteoraDlmm';
@@ -47,6 +52,35 @@ function normalizeInventoryEntry(entry: unknown): string {
 
 function sameProfileToken(stored: unknown, candidate: unknown): boolean {
   return normalizeInventoryEntry(stored) === normalizeInventoryEntry(candidate);
+}
+
+const LB_BREAKDOWN_ORDER = ['chess', 'holdings', 'wallet_connect', 'stream', 'games'] as const;
+
+const LB_BREAKDOWN_LABELS: Record<(typeof LB_BREAKDOWN_ORDER)[number], string> = {
+  chess: 'Chess',
+  holdings: 'Holdings (NFTs & tokens)',
+  wallet_connect: 'Wallet connect bonus',
+  stream: 'Stream / other',
+  games: 'Games',
+};
+
+function leaderboardBreakdownRows(pb: PointsBreakdown | undefined): { key: string; label: string; value: number }[] {
+  const b = pb ?? ({} as PointsBreakdown);
+  const seen = new Set<string>();
+  const out: { key: string; label: string; value: number }[] = [];
+  for (const k of LB_BREAKDOWN_ORDER) {
+    const v = typeof b[k] === 'number' ? b[k]! : 0;
+    out.push({ key: k, label: LB_BREAKDOWN_LABELS[k], value: v });
+    seen.add(k);
+  }
+  for (const k of Object.keys(b)) {
+    if (seen.has(k)) continue;
+    const v = b[k as keyof PointsBreakdown];
+    if (typeof v === 'number') {
+      out.push({ key: k, label: k, value: v });
+    }
+  }
+  return out;
 }
 
 const WalletLinkingSection: React.FC<{
@@ -582,6 +616,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [primaryWallet, setPrimaryWallet] = useState<string | null>(null);
   const [linkingWallet, setLinkingWallet] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [leaderboardEntry, setLeaderboardEntry] = useState<LeaderboardEntry | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Immediate console log on render - use window.console to ensure it's not stripped
   if (typeof window !== 'undefined' && window.console) {
@@ -740,6 +776,35 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     
     loadProfile();
   }, [address, connectedAddress]);
+
+  useEffect(() => {
+    if (!database || !primaryWallet) {
+      setLeaderboardEntry(null);
+      return;
+    }
+    let cancelled = false;
+    setLeaderboardLoading(true);
+    const key = primaryWallet.startsWith('0x') ? primaryWallet.toLowerCase() : primaryWallet;
+    void (async () => {
+      try {
+        const entry = await getUserLeaderboardEntry(key);
+        if (!cancelled) {
+          setLeaderboardEntry(entry);
+        }
+      } catch {
+        if (!cancelled) {
+          setLeaderboardEntry(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLeaderboardLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [primaryWallet, profile?.updated_at]);
 
   useEffect(() => {
     if (!address || !profile?.nft_inventory) {
@@ -1086,6 +1151,60 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         
         {/* Stats overlay removed - moved to separate section above NFT inventory */}
       </div>
+
+      {database && primaryWallet && (
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '600px',
+            padding: '14px',
+            background: '#e8f4fc',
+            borderRadius: '8px',
+            border: '1px solid #b8d4e8',
+            boxSizing: 'border-box',
+          }}
+        >
+          <h4 style={{ margin: '0 0 10px 0', fontSize: isMobile ? '13px' : '14px', color: '#0a3d5c' }}>
+            Lawb leaderboard points
+          </h4>
+          {leaderboardLoading ? (
+            <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#555' }}>Loading points…</div>
+          ) : leaderboardEntry ? (
+            <>
+              <div
+                style={{
+                  fontSize: isMobile ? 22 : 24,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  color: '#062a42',
+                }}
+              >
+                Total · {leaderboardEntry.points}
+              </div>
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  fontSize: isMobile ? '11px' : '12px',
+                  lineHeight: 1.65,
+                  color: '#1a1a1a',
+                }}
+              >
+                {leaderboardBreakdownRows(leaderboardEntry.points_breakdown).map((row) => (
+                  <li key={row.key}>
+                    <strong>{row.label}:</strong> {row.value}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#555' }}>
+              No leaderboard row yet for this wallet — play chess, refresh NFT holdings on your profile, or connect with
+              WalletConnect to earn points.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Editing Features - Only show when viewing own profile */}
       {isOwnProfile && (

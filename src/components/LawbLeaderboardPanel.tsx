@@ -4,7 +4,7 @@ import { formatAddress, getTopLeaderboardEntries, type LeaderboardEntry } from '
 
 const ROW_STYLE: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '36px 1fr 52px 52px 52px 52px',
+  gridTemplateColumns: '36px 1fr 64px',
   gap: '6px',
   alignItems: 'center',
   fontSize: '12px',
@@ -63,10 +63,9 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
         overflow: 'auto',
       }}
     >
-      <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Lawb leaderboard (top 25 by points)</p>
+      <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Lawb leaderboard (top 25 by total points)</p>
       <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#444', lineHeight: 1.35 }}>
-        Total points sum chess results, NFT holdings (profile refresh), stream/game bonuses when used, and a one-time
-        WalletConnect bonus per wallet.
+        Sorted by total points. Open your Lawb Profile to see how your points break down.
       </p>
       {loading && <p style={{ margin: 0 }}>Loading…</p>}
       {error && <p style={{ margin: 0, color: '#a00' }}>{error}</p>}
@@ -86,9 +85,6 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
             <span>#</span>
             <span>Player</span>
             <span style={{ textAlign: 'right' }}>Pts</span>
-            <span style={{ textAlign: 'right' }}>W</span>
-            <span style={{ textAlign: 'right' }}>L</span>
-            <span style={{ textAlign: 'right' }}>D</span>
           </div>
           {rows.map((entry, i) => (
             <div key={entry.username || i} style={ROW_STYLE}>
@@ -97,9 +93,6 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                 {formatAddress(entry.username)}
               </span>
               <span style={{ textAlign: 'right' }}>{entry.points}</span>
-              <span style={{ textAlign: 'right' }}>{entry.wins}</span>
-              <span style={{ textAlign: 'right' }}>{entry.losses}</span>
-              <span style={{ textAlign: 'right' }}>{entry.draws}</span>
             </div>
           ))}
         </>
