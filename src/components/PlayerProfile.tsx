@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
 import {
   getUserLeaderboardEntry,
+  mergeLeaderboardEntriesForDisplay,
+  normalizeLeaderboardPathKey,
   type LeaderboardEntry,
   type PointsBreakdown,
 } from '../firebaseLeaderboard';
@@ -63,6 +65,41 @@ const LB_BREAKDOWN_LABELS: Record<(typeof LB_BREAKDOWN_ORDER)[number], string> =
   stream: 'Stream / other',
   games: 'Games',
 };
+
+function isProfileDebugVerbose(): boolean {
+  try {
+    return Boolean(
+      import.meta.env.DEV &&
+        typeof localStorage !== 'undefined' &&
+        localStorage.getItem('lawbDebugProfile') === '1',
+    );
+  } catch {
+    return false;
+  }
+}
+
+function profileDebugLog(...args: unknown[]): void {
+  if (!isProfileDebugVerbose()) return;
+  if (typeof window !== 'undefined' && window.console) {
+    window.console.log(...args);
+  }
+}
+
+function collectProfileLeaderboardKeys(
+  primaryWallet: string | null,
+  pageAddress: string | undefined,
+  linked: LinkedWallet[],
+): string[] {
+  const set = new Set<string>();
+  const add = (raw: string | null | undefined) => {
+    const k = normalizeLeaderboardPathKey(raw ?? '');
+    if (k) set.add(k);
+  };
+  add(primaryWallet);
+  add(pageAddress);
+  for (const w of linked) add(w.address);
+  return [...set];
+}
 
 function leaderboardBreakdownRows(pb: PointsBreakdown | undefined): { key: string; label: string; value: number }[] {
   const b = pb ?? ({} as PointsBreakdown);
@@ -618,11 +655,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [leaderboardEntry, setLeaderboardEntry] = useState<LeaderboardEntry | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardMergedMultiKey, setLeaderboardMergedMultiKey] = useState(false);
 
-  // Immediate console log on render - use window.console to ensure it's not stripped
-  if (typeof window !== 'undefined' && window.console) {
-    window.console.log('[PROFILE] Component rendered', { address, isMobile, hasProfile: !!profile });
-  }
+  profileDebugLog('[PROFILE] Component rendered', { address, isMobile, hasProfile: !!profile });
+
+  const linkedWalletKeysDep = useMemo(
+    () => linkedWallets.map((w) => `${w.chain}:${w.address}`).join('|'),
+    [linkedWallets],
+  );
 
   useEffect(() => {
     if (!address) {
@@ -639,9 +679,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         setLoading(false);
         return;
       }
-      if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] Loading profile for', address);
-      }
+      profileDebugLog('[PROFILE] Loading profile for', address);
       try {
         const resolvedPrimary = await firebaseProfiles.getPrimaryWallet(address);
         setPrimaryWallet(resolvedPrimary);
@@ -650,20 +688,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
         const linked = await firebaseProfiles.getLinkedWallets(profileAddress);
         setLinkedWallets(linked);
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[PROFILE] Profile data from Firebase:', profileData);
-        }
+        profileDebugLog('[PROFILE] Profile data from Firebase:', profileData);
         
         const isOwnProfile = normalizeAddress(address) === normalizeAddress(connectedAddress);
         
         if (!profileData) {
           // Only create profile if it's the user's own profile
           if (isOwnProfile) {
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[PROFILE] Creating new profile for own account...');
-            }
-            await firebaseProfiles.upsertProfile(address, {});
-            profileData = await firebaseProfiles.getProfile(address);
+            profileDebugLog('[PROFILE] Creating new profile for own account...');
+            await firebaseProfiles.upsertProfile(profileAddress, {});
+            profileData = await firebaseProfiles.getProfile(profileAddress);
           } else {
             // For viewing other users, create a minimal profile object with default values
             profileData = {
@@ -726,9 +760,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         }
         
         if (profileData && isOwnProfile) {
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[PROFILE] Refreshing NFT inventory to ensure accuracy...');
-          }
+          profileDebugLog('[PROFILE] Refreshing NFT inventory to ensure accuracy...');
           try {
             const allWallets: WalletDescriptor[] = [
               { address: profileAddress, chain: profileAddress.startsWith('0x') ? 'evm' : 'solana' },
@@ -737,9 +769,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             const inventory = allWallets.length > 1
               ? await fetchAggregatedNFTInventory(allWallets)
               : await fetchNFTInventory(profileAddress);
-            if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[PROFILE] NFT inventory fetched:', inventory);
-            }
+            profileDebugLog('[PROFILE] NFT inventory fetched:', inventory);
             const tokenBonus = await fetchBaseLawbClawbHoldingsBonus(
               allWallets.filter((w) => w.chain === 'evm').map((w) => w.address),
             );
@@ -758,9 +788,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           }
         }
         
-        if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[PROFILE] Final profile data:', profileData);
-        }
+        profileDebugLog('[PROFILE] Final profile data:', profileData);
         if (profileData) {
           setProfile(profileData);
         }
@@ -780,20 +808,29 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   useEffect(() => {
     if (!database || !primaryWallet) {
       setLeaderboardEntry(null);
+      setLeaderboardMergedMultiKey(false);
+      return;
+    }
+    const keys = collectProfileLeaderboardKeys(primaryWallet, address, linkedWallets);
+    if (keys.length === 0) {
+      setLeaderboardEntry(null);
+      setLeaderboardMergedMultiKey(false);
       return;
     }
     let cancelled = false;
     setLeaderboardLoading(true);
-    const key = primaryWallet.startsWith('0x') ? primaryWallet.toLowerCase() : primaryWallet;
     void (async () => {
       try {
-        const entry = await getUserLeaderboardEntry(key);
+        const entries = await Promise.all(keys.map((k) => getUserLeaderboardEntry(k)));
+        const merged = mergeLeaderboardEntriesForDisplay(entries);
         if (!cancelled) {
-          setLeaderboardEntry(entry);
+          setLeaderboardEntry(merged);
+          setLeaderboardMergedMultiKey(keys.length > 1);
         }
       } catch {
         if (!cancelled) {
           setLeaderboardEntry(null);
+          setLeaderboardMergedMultiKey(false);
         }
       } finally {
         if (!cancelled) {
@@ -804,7 +841,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     return () => {
       cancelled = true;
     };
-  }, [primaryWallet, profile?.updated_at]);
+  }, [primaryWallet, address, linkedWalletKeysDep, profile?.updated_at]);
 
   useEffect(() => {
     if (!address || !profile?.nft_inventory) {
@@ -917,17 +954,19 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
   const handleSetUsername = async () => {
     if (!address || !usernameInput) return;
+
+    const profileOwner = primaryWallet || address;
     
     setUsernameError(null);
     setUsernameSuccess(false);
     
-    const result = await firebaseProfiles.setUsername(address, usernameInput);
+    const result = await firebaseProfiles.setUsername(profileOwner, usernameInput);
     
     if (result.success) {
       setUsernameSuccess(true);
       setUsernameInput('');
       // Reload profile to get updated username
-      const updatedProfile = await firebaseProfiles.getProfile(address);
+      const updatedProfile = await firebaseProfiles.getProfile(profileOwner);
       setProfile(updatedProfile);
       
       // Clear success message after 3 seconds
@@ -969,17 +1008,19 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
   const handleSelectProfilePicture = async (collection: keyof typeof NFT_COLLECTIONS, tokenId: string) => {
     if (!address) return;
+
+    const profileOwner = primaryWallet || address;
     
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[PROFILE] Selecting profile picture:', collection, tokenId);
+      profileDebugLog('[PROFILE] Selecting profile picture:', collection, tokenId);
     }
     try {
       const solOwner =
         linkedWallets.find((w) => w.chain === 'solana')?.address ||
         profile?.linked_wallets?.find((w) => w.chain === 'solana')?.address;
-      const metadata = await fetchTokenMetadata(collection, tokenId, address, solOwner);
+      const metadata = await fetchTokenMetadata(collection, tokenId, profileOwner, solOwner);
       if (typeof window !== 'undefined' && window.console) {
-        window.console.log('[PROFILE] Metadata fetched:', metadata);
+        profileDebugLog('[PROFILE] Metadata fetched:', metadata);
       }
       
       if (!metadata.image_url) {
@@ -990,15 +1031,15 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         return;
       }
       
-      await firebaseProfiles.updateProfilePicture(address, {
+      await firebaseProfiles.updateProfilePicture(profileOwner, {
         collection,
         token_id: normalizeInventoryEntry(tokenId) || String(tokenId),
         image_url: metadata.image_url
       });
-      const updatedProfile = await firebaseProfiles.getProfile(address);
+      const updatedProfile = await firebaseProfiles.getProfile(profileOwner);
       if (updatedProfile) {
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[PROFILE] Profile picture updated:', updatedProfile.profile_picture);
+          profileDebugLog('[PROFILE] Profile picture updated:', updatedProfile.profile_picture);
         }
         setProfile(updatedProfile);
       }
@@ -1052,21 +1093,18 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     lawb_lore: (profile?.nft_inventory?.lawb_lore || []).map(normalizeInventoryEntry).filter(Boolean),
   };
 
-  // Debug logging
-  if (typeof window !== 'undefined' && window.console) {
-    window.console.log('[PROFILE RENDER] Current profile:', profile);
-    window.console.log('[PROFILE RENDER] Current inventory:', inventory);
-    window.console.log('[PROFILE RENDER] Inventory counts:', {
-      lawbsters: inventory.lawbsters?.length || 0,
-      lawbstarz: inventory.lawbstarz?.length || 0,
-      halloween_lawbsters: inventory.halloween_lawbsters?.length || 0,
-      pixelawbs: inventory.pixelawbs?.length || 0,
-      asciilawbs: inventory.asciilawbs?.length || 0,
-      lawbstation: inventory.lawbstation?.length || 0,
-      lawbnexus: inventory.lawbnexus?.length || 0,
-      lawb_lore: inventory.lawb_lore?.length || 0,
-    });
-  }
+  profileDebugLog('[PROFILE RENDER] Current profile:', profile);
+  profileDebugLog('[PROFILE RENDER] Current inventory:', inventory);
+  profileDebugLog('[PROFILE RENDER] Inventory counts:', {
+    lawbsters: inventory.lawbsters?.length || 0,
+    lawbstarz: inventory.lawbstarz?.length || 0,
+    halloween_lawbsters: inventory.halloween_lawbsters?.length || 0,
+    pixelawbs: inventory.pixelawbs?.length || 0,
+    asciilawbs: inventory.asciilawbs?.length || 0,
+    lawbstation: inventory.lawbstation?.length || 0,
+    lawbnexus: inventory.lawbnexus?.length || 0,
+    lawb_lore: inventory.lawb_lore?.length || 0,
+  });
 
   const totalNFTs = (inventory.lawbsters?.length || 0) + (inventory.lawbstarz?.length || 0) + 
                     (inventory.halloween_lawbsters?.length || 0) + (inventory.pixelawbs?.length || 0) +
@@ -1082,9 +1120,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setProfileImageSize({ width: img.naturalWidth, height: img.naturalHeight });
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[PROFILE] Image loaded, dimensions:', img.naturalWidth, 'x', img.naturalHeight);
-    }
+    profileDebugLog('[PROFILE] Image loaded, dimensions:', img.naturalWidth, 'x', img.naturalHeight);
   };
 
   return (
@@ -1196,6 +1232,19 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                   </li>
                 ))}
               </ul>
+              {leaderboardMergedMultiKey && (
+                <p
+                  style={{
+                    margin: '10px 0 0 0',
+                    fontSize: isMobile ? '10px' : '11px',
+                    color: '#3d5a73',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Totals combine leaderboard rows for your primary wallet and any linked addresses (for example chess
+                  points on EVM and NFT holdings points on Solana).
+                </p>
+              )}
             </>
           ) : (
             <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#555' }}>
@@ -1483,7 +1532,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           // Clear profile picture if no NFTs owned
           if (totalNFTs === 0 && profile?.profile_picture) {
             // Clear profile picture asynchronously
-            firebaseProfiles.updateProfilePicture(address, null).catch(err => {
+            const profileOwner = primaryWallet || address;
+            firebaseProfiles.updateProfilePicture(profileOwner, null).catch(err => {
               if (typeof window !== 'undefined' && window.console) {
                 window.console.error('[PROFILE] Error clearing profile picture:', err);
               }
@@ -1504,7 +1554,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 }}
                 onLoad={() => {
                   if (typeof window !== 'undefined' && window.console) {
-                    window.console.log('[PROFILE] Profile picture loaded in selection:', profile.profile_picture?.image_url);
+                    profileDebugLog('[PROFILE] Profile picture loaded in selection:', profile.profile_picture?.image_url);
                   }
                 }}
                 style={{ 

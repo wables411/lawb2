@@ -4,26 +4,46 @@ import { firebaseProfiles } from '../firebaseProfiles';
 
 export async function getDisplayName(walletAddress: string): Promise<string> {
   if (!walletAddress) return '';
-  
-  // Try to get username from Firebase profile
+
+  // Username + inventory live on the primary profile; leaderboard rows may be keyed by a linked wallet.
+  let primary = walletAddress;
   try {
-    const profile = await firebaseProfiles.getProfile(walletAddress);
-    if (profile?.username && profile.username.trim() !== '') {
+    primary = await firebaseProfiles.getPrimaryWallet(walletAddress);
+  } catch {
+    // keep walletAddress
+  }
+
+  try {
+    const profile = await firebaseProfiles.getProfile(primary);
+    if (profile?.username?.trim()) {
       return profile.username;
     }
-  } catch (error) {
-    // Silently fail - fallback to other methods
+  } catch {
+    // continue
   }
-  
-  // Try ENS
-  try {
-    const ensName = await getEnsName(config, { address: walletAddress as `0x${string}` });
-    if (ensName) return ensName;
-  } catch (error) {
-    // Silently fail - fallback to address
+
+  if (primary !== walletAddress) {
+    try {
+      const profile = await firebaseProfiles.getProfile(walletAddress);
+      if (profile?.username?.trim()) {
+        return profile.username;
+      }
+    } catch {
+      // continue
+    }
   }
-  
-  // Fallback to truncated address
+
+  const ensTarget =
+    primary.startsWith('0x') ? primary : walletAddress.startsWith('0x') ? walletAddress : null;
+  if (ensTarget) {
+    try {
+      const ensName = await getEnsName(config, { address: ensTarget as `0x${string}` });
+      if (ensName) return ensName;
+    } catch {
+      // fallback below
+    }
+  }
+
   return `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
 }
 

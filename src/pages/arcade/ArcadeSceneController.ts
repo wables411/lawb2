@@ -16,6 +16,11 @@ import {
   startLoopClip,
 } from './loadArcadeFbx';
 import {
+  getCharacterStats,
+  oxygenDrainPerSec,
+  speedBandForStars,
+} from './arcadeCharacterStats';
+import {
   reefRunHudFromSurvivalSec,
   reefRunPlayIntensityMultiplier,
   reefRunSpawnIntervalSec,
@@ -27,6 +32,17 @@ import {
   tierIndexFromSurvivalSec,
   type ReefRunHudPayload,
 } from './arcadeDifficulty';
+import {
+  applyPickupEffect,
+  createInitialRunState,
+  rollPickupKind,
+  runStateToHud,
+  type ArcadeRunHudState,
+  type PickupKind,
+  type RunEndReason,
+  type RunState,
+} from './arcadePickupKinds';
+import { pickupMeshForKind, pulsePickupMaterial, spinPickupMesh } from './arcadePickupMesh';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
 
@@ -55,6 +71,14 @@ type Obstacle = {
   lane: number;
   speed: number;
   hit: boolean;
+};
+
+type PickupEnt = {
+  mesh: THREE.Mesh;
+  lane: number;
+  speed: number;
+  hit: boolean;
+  kind: PickupKind;
 };
 
 /** Lane centers (world X). Spacing 2.1 ⇒ ~0.78 gap between 1.32-wide obstacles. */
@@ -126,6 +150,7 @@ export class ArcadeSceneController {
   private renderer!: THREE.WebGLRenderer;
   private clock = new THREE.Clock();
   private raf = 0;
+  private pathRoot = new THREE.Group();
   private tunnel!: THREE.Mesh;
   private ringGroup!: THREE.Group;
   private plinthWorld = new THREE.Group();
@@ -148,6 +173,16 @@ export class ArcadeSceneController {
     if (i >= 0) this.mixers.splice(i, 1);
   }
   private obstacles: Obstacle[] = [];
+  private pickups: PickupEnt[] = [];
+  private runState: RunState | null = null;
+  private throttleSmoothed = 0;
+  private keyW = false;
+  private keyS = false;
+  private hudRunAcc = 0;
+  private pickupSpawnAcc = 0;
+  /** Screen shake (seconds left, peak magnitude for offset). */
+  private cameraShakeT = 0;
+  private cameraShakePeak = 0;
   private spawnAcc = 0;
   /**
    * Increments each spawn timer fire; early game uses even waves only (every other row).
@@ -163,8 +198,10 @@ export class ArcadeSceneController {
   private loaded = false;
   private pendingScreen: ArcadeGameScreen | null = null;
   private onPickCharacter: (id: ArcadeCharacterId) => void;
-  private onGameOver: () => void;
+  /** Final survival time + how the run ended (UI + leaderboard). */
+  private onGameOver: (survivalSec: number, reason: RunEndReason) => void;
   private onRunDifficulty?: (payload: ReefRunHudPayload) => void;
+  private onRunHud?: (hud: ArcadeRunHudState) => void;
   private pointerBound = false;
   private keyBound = false;
   private _boxSel = new THREE.Box3();
@@ -186,14 +223,16 @@ export class ArcadeSceneController {
     container: HTMLElement,
     handlers: {
       onPickCharacter: (id: ArcadeCharacterId) => void;
-      onGameOver: () => void;
+      onGameOver: (survivalSec: number, reason: RunEndReason) => void;
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
+      onRunHud?: (hud: ArcadeRunHudState) => void;
     },
   ) {
     this.container = container;
     this.onPickCharacter = handlers.onPickCharacter;
     this.onGameOver = handlers.onGameOver;
     this.onRunDifficulty = handlers.onRunDifficulty;
+    this.onRunHud = handlers.onRunHud;
   }
 
   getScreen(): ArcadeGameScreen {
@@ -213,6 +252,8 @@ export class ArcadeSceneController {
     this.updatePointerCapture();
     if (next === 'play') {
       this.playEnded = false;
+      this.cameraShakeT = 0;
+      this.cameraShakePeak = 0;
       void this.enterPlay();
     }
     if (next === 'gameover') {
@@ -237,6 +278,9 @@ export class ArcadeSceneController {
       this.clearSelectScreenHighlight();
     }
     if (next === 'menu' || next === 'select') {
+      this.cameraShakeT = 0;
+      this.cameraShakePeak = 0;
+      this.clearPickups();
       this.clearObstacles();
       this.playerWorld.visible = false;
       this.plinthWorld.visible = true;
@@ -480,7 +524,6 @@ export class ArcadeSceneController {
     this.tunnel = new THREE.Mesh(tunnelGeo, tunnelMat);
     this.tunnel.rotation.x = Math.PI / 2;
     this.tunnel.position.z = -42;
-    this.scene.add(this.tunnel);
 
     this.ringGroup = new THREE.Group();
     for (let i = 0; i < 28; i++) {
@@ -496,7 +539,8 @@ export class ArcadeSceneController {
       mesh.rotation.x = Math.PI / 2;
       this.ringGroup.add(mesh);
     }
-    this.scene.add(this.ringGroup);
+    this.pathRoot.add(this.tunnel, this.ringGroup);
+    this.scene.add(this.pathRoot);
 
     this.scene.add(new THREE.AmbientLight(0xd8ebe4, 0.44));
     const key = new THREE.PointLight(0xfff4e0, 72, 52, 1.9);
@@ -662,6 +706,7 @@ export class ArcadeSceneController {
   private bindKeys(): void {
     if (this.keyBound) return;
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
     this.keyBound = true;
   }
 
@@ -671,7 +716,16 @@ export class ArcadeSceneController {
       this.playerLane = Math.max(0, this.playerLane - 1);
     } else if (ev.code === 'ArrowRight' || ev.code === 'KeyD') {
       this.playerLane = Math.min(2, this.playerLane + 1);
+    } else if (ev.code === 'KeyW') {
+      this.keyW = true;
+    } else if (ev.code === 'KeyS') {
+      this.keyS = true;
     }
+  };
+
+  private onKeyUp = (ev: KeyboardEvent): void => {
+    if (ev.code === 'KeyW') this.keyW = false;
+    if (ev.code === 'KeyS') this.keyS = false;
   };
 
   private resetSelectionVisuals(): void {
@@ -781,6 +835,7 @@ export class ArcadeSceneController {
     this.plinthWorld.visible = false;
     this.playerWorld.visible = true;
     this.clearObstacles();
+    this.clearPickups();
     this.playerLane = 1;
     this.playerX = LANES[1];
     this.spawnWaveIndex = -1;
@@ -842,10 +897,21 @@ export class ArcadeSceneController {
       this.playerWorld.add(box);
     }
 
+    this.runState = createInitialRunState(this.selectedId ?? 'clawb', this.clock.elapsedTime);
+    this.throttleSmoothed = 0;
+    this.keyW = false;
+    this.keyS = false;
+    this.pickupSpawnAcc = 0;
+    this.hudRunAcc = 0;
     this.runClockActive = true;
     this.lastEmittedTier = 0;
     this.hudEmitAcc = 0;
     this.onRunDifficulty?.(reefRunHudFromSurvivalSec(0));
+    if (this.onRunHud && this.runState) {
+      this.onRunHud(
+        runStateToHud(this.runState, this.clock.elapsedTime, 1),
+      );
+    }
   }
 
   private clearObstacles(): void {
@@ -915,11 +981,11 @@ export class ArcadeSceneController {
   private spawnObstacleInLane(lane: number, z: number): void {
     const geo = new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0xd94a38,
-      emissive: 0x6a2018,
-      emissiveIntensity: 0.35,
-      metalness: 0.12,
-      roughness: 0.62,
+      color: 0xf25544,
+      emissive: 0x8a2218,
+      emissiveIntensity: 0.48,
+      metalness: 0.14,
+      roughness: 0.55,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
@@ -928,6 +994,67 @@ export class ArcadeSceneController {
       REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
     const speed = base * (0.94 + Math.random() * 0.12);
     this.obstacles.push({ mesh, lane, speed, hit: false });
+  }
+
+  private clearPickups(): void {
+    for (const p of this.pickups) {
+      this.obstacleGroup.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      const mat = p.mesh.material;
+      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+      else (mat as THREE.Material).dispose();
+    }
+    this.pickups = [];
+  }
+
+  private laneBlockedForPickup(lane: number): boolean {
+    return this.obstacles.some(
+      (o) => !o.hit && o.lane === lane && o.mesh.position.z > -50 && o.mesh.position.z < 5,
+    );
+  }
+
+  private trySpawnPickup(): void {
+    for (let tryN = 0; tryN < 3; tryN++) {
+      const lane = (Math.floor(Math.random() * 3) + tryN) % 3;
+      if (!this.laneBlockedForPickup(lane)) {
+        this.spawnPickupInLane(lane, rollPickupKind());
+        return;
+      }
+    }
+  }
+
+  private spawnPickupInLane(lane: number, kind: PickupKind): void {
+    const mesh = pickupMeshForKind(kind);
+    mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, SPAWN_Z);
+    this.obstacleGroup.add(mesh);
+    const base =
+      REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
+    /** Slightly slower than coral so pickups are easier to read. */
+    const speed = base * (0.88 + Math.random() * 0.12) * 0.74;
+    this.pickups.push({ mesh, lane, speed, hit: false, kind });
+  }
+
+  /** Longer runs = slightly longer between pickup spawns (focus on dodging). */
+  private pickupSpawnIntervalSec(): number {
+    const x = Math.min(1, Math.max(0, this.runSurvivalSec / 95));
+    const s = x * x * (3 - 2 * x);
+    return 2.18 + s * 0.62;
+  }
+
+  private addCameraShake(peak: number): void {
+    if (peak <= 0) return;
+    this.cameraShakeT = Math.max(this.cameraShakeT, 0.26);
+    this.cameraShakePeak = Math.max(this.cameraShakePeak, peak);
+  }
+
+  private triggerGameOver(reason: RunEndReason): void {
+    if (this.playEnded) return;
+    this.playEnded = true;
+    if (reason === 'crush') this.addCameraShake(0.48);
+    else if (reason === 'oxygen') this.addCameraShake(0.2);
+    else this.addCameraShake(0.4);
+    this.onRunDifficulty?.(reefRunHudFromSurvivalSec(this.runSurvivalSec));
+    this.onGameOver(this.runSurvivalSec, reason);
   }
 
   private tick = (): void => {
@@ -943,15 +1070,38 @@ export class ArcadeSceneController {
     this.selectHemiLight.visible = this.screen === 'select';
 
     if (this.screen === 'play' || this.screen === 'gameover') {
+      const p = this.runSurvivalSec;
+      this.pathRoot.position.x = Math.sin(p * 0.62) * 2.85;
+      this.pathRoot.position.y = Math.sin(p * 0.41) * 0.72;
+      this.pathRoot.rotation.z = Math.sin(p * 0.48) * 0.13;
+      this.pathRoot.rotation.y = Math.sin(p * 0.27) * 0.078;
+    } else {
+      this.pathRoot.position.x = Math.sin(t * 0.14) * 0.4;
+      this.pathRoot.position.y = Math.cos(t * 0.11) * 0.25;
+      this.pathRoot.rotation.z = t * 0.007;
+      this.pathRoot.rotation.y = 0;
+    }
+
+    if (this.screen === 'play' || this.screen === 'gameover') {
       const driftX = Math.sin(t * 0.1) * 0.32;
       const driftY = Math.cos(t * 0.07) * 0.12;
-      const targetCamX = this.playerX * 0.58 + driftX;
-      const targetCamY = 3.28 + driftY;
+      const ox = this.pathRoot.position.x;
+      const oy = this.pathRoot.position.y;
+      let targetCamX = this.playerX * 0.58 + driftX + ox * 0.95;
+      let targetCamY = 3.28 + driftY + oy * 0.62;
       const targetCamZ = 12.85;
+      if (this.cameraShakeT > 0) {
+        const phase = Math.min(1, this.cameraShakeT / 0.26);
+        const mag = this.cameraShakePeak * phase;
+        targetCamX += (Math.random() - 0.5) * mag * 2.4;
+        targetCamY += (Math.random() - 0.5) * mag * 1.35;
+        this.cameraShakeT -= dt;
+        if (this.cameraShakeT <= 0) this.cameraShakePeak = 0;
+      }
       this.camera.position.x += (targetCamX - this.camera.position.x) * 0.085;
       this.camera.position.y += (targetCamY - this.camera.position.y) * 0.07;
       this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.06;
-      let lookX = this.playerX * 0.26;
+      let lookX = this.playerX * 0.26 + ox * 0.2;
       let lookY = PLAYER_FEET_Y + 0.42;
       let lookZ = PLAYER_Z - 0.85;
       if (this.swimRoot) {
@@ -959,7 +1109,7 @@ export class ArcadeSceneController {
         const b = new THREE.Box3().setFromObject(this.swimRoot);
         if (!b.isEmpty()) {
           b.getCenter(this._vPlayCenter);
-          lookX = THREE.MathUtils.lerp(this.playerX * 0.22, this._vPlayCenter.x, 0.62);
+          lookX = THREE.MathUtils.lerp(this.playerX * 0.22, this._vPlayCenter.x, 0.62) + ox * 0.18;
           lookY = THREE.MathUtils.lerp(
             PLAYER_FEET_Y + 0.42,
             this._vPlayCenter.y + 0.04,
@@ -1000,57 +1150,146 @@ export class ArcadeSceneController {
       this.playerWorld.children[0].position.x = this.playerX;
     }
 
-    if (this.screen === 'play' && !this.playEnded) {
-      if (this.runClockActive) {
-        this.runSurvivalSec += dt;
+    if (this.screen === 'play') {
+      if (!this.playEnded) {
+        if (this.runClockActive) {
+          this.runSurvivalSec += dt;
+        }
       }
-      swimSpd = reefRunPlayIntensityMultiplier(this.runSurvivalSec);
+
+      const intensityBase = reefRunPlayIntensityMultiplier(this.runSurvivalSec);
+      let playerMult = 1;
+      const st = this.runState;
+
+      if (!this.playEnded && st) {
+        const now = this.clock.elapsedTime;
+        const targetT = this.keyW && !this.keyS ? 1 : this.keyS && !this.keyW ? -1 : 0;
+        this.throttleSmoothed += (targetT - this.throttleSmoothed) * Math.min(1, dt * 4.8);
+        const band = speedBandForStars(getCharacterStats(st.characterId).speed);
+        const u = (this.throttleSmoothed + 1) / 2;
+        playerMult = band.min + u * (band.max - band.min);
+        if (now < st.cheeseUntil) playerMult += 0.27;
+        if (now < st.dragUntil) playerMult *= 0.54;
+
+        const oxyStars = getCharacterStats(st.characterId).oxygen;
+        const drain =
+          oxygenDrainPerSec(oxyStars) *
+          (0.86 +
+            0.16 *
+              Math.min(1.55, (intensityBase * playerMult) / Math.max(0.001, intensityBase)));
+        st.oxygen -= drain * dt;
+        if (st.oxygen <= 0) {
+          st.oxygen = 0;
+          this.triggerGameOver('oxygen');
+        }
+      }
+
+      swimSpd = intensityBase * (st && !this.playEnded ? playerMult : st ? playerMult : 1);
+      if (this.playEnded) {
+        swimSpd = intensityBase;
+      }
       if (this.swimMixer) this.swimMixer.timeScale = swimSpd;
 
-      const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
-      this.hudEmitAcc += dt;
-      if (
-        this.onRunDifficulty &&
-        (this.hudEmitAcc >= 0.2 || tierNow !== this.lastEmittedTier)
-      ) {
-        this.hudEmitAcc = 0;
-        this.lastEmittedTier = tierNow;
-        this.onRunDifficulty(reefRunHudFromSurvivalSec(this.runSurvivalSec));
+      if (!this.playEnded && st) {
+        this.hudRunAcc += dt;
+        if (this.onRunHud && this.hudRunAcc >= 0.14) {
+          this.hudRunAcc = 0;
+          const now = this.clock.elapsedTime;
+          const rel = swimSpd / Math.max(0.001, intensityBase);
+          this.onRunHud(runStateToHud(st, now, rel));
+        }
       }
 
-      for (const o of this.obstacles) {
-        if (o.hit) continue;
-        o.mesh.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+      if (!this.playEnded) {
+        const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
+        this.hudEmitAcc += dt;
         if (
-          !this.playEnded &&
-          Math.abs(o.mesh.position.z - HIT_Z) < HIT_HALF_DEPTH &&
-          o.lane === this.playerLane
+          this.onRunDifficulty &&
+          (this.hudEmitAcc >= 0.2 || tierNow !== this.lastEmittedTier)
         ) {
-          o.hit = true;
-          this.playEnded = true;
-          this.onGameOver();
+          this.hudEmitAcc = 0;
+          this.lastEmittedTier = tierNow;
+          this.onRunDifficulty(reefRunHudFromSurvivalSec(this.runSurvivalSec));
         }
-        if (o.mesh.position.z > OBSTACLE_RECYCLE_Z) {
-          this.obstacleGroup.remove(o.mesh);
-          o.mesh.geometry.dispose();
-          (o.mesh.material as THREE.Material).dispose();
-          o.hit = true;
-        }
-      }
-      this.obstacles = this.obstacles.filter((o) => o.mesh.parent === this.obstacleGroup);
 
-      const rowInterval = reefRunSpawnIntervalSec(this.runSurvivalSec);
-      this.spawnAcc += dt;
-      if (this.spawnAcc >= rowInterval) {
-        this.spawnWaveIndex++;
-        if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex)) {
-          if (this.trySpawnObstacleRow()) {
-            this.spawnAcc = 0;
-          } else {
-            this.spawnAcc = Math.max(0, rowInterval - 0.32);
+        for (const o of this.obstacles) {
+          if (o.hit) continue;
+          o.mesh.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+          if (
+            Math.abs(o.mesh.position.z - HIT_Z) < HIT_HALF_DEPTH &&
+            o.lane === this.playerLane
+          ) {
+            o.hit = true;
+            this.triggerGameOver('crush');
+            break;
           }
-        } else {
-          this.spawnAcc = 0;
+          if (o.mesh.position.z > OBSTACLE_RECYCLE_Z) {
+            this.obstacleGroup.remove(o.mesh);
+            o.mesh.geometry.dispose();
+            (o.mesh.material as THREE.Material).dispose();
+            o.hit = true;
+          }
+        }
+        this.obstacles = this.obstacles.filter((o) => o.mesh.parent === this.obstacleGroup);
+
+        if (!this.playEnded) {
+          const pickupHitZ = HIT_HALF_DEPTH * 0.78;
+          for (const p of this.pickups) {
+            if (p.hit) continue;
+            pulsePickupMaterial(p.mesh, t);
+            spinPickupMesh(p.mesh, dt);
+            p.mesh.position.z += p.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+            if (
+              this.runState &&
+              Math.abs(p.mesh.position.z - HIT_Z) < pickupHitZ &&
+              p.lane === this.playerLane
+            ) {
+              p.hit = true;
+              const out = applyPickupEffect(p.kind, this.runState, this.clock.elapsedTime);
+              if (out.cameraShake) this.addCameraShake(out.cameraShake);
+              this.obstacleGroup.remove(p.mesh);
+              p.mesh.geometry.dispose();
+              const pm = p.mesh.material;
+              if (Array.isArray(pm)) pm.forEach((m) => m.dispose());
+              else (pm as THREE.Material).dispose();
+              if (out.gameOver) {
+                this.triggerGameOver(out.gameOver);
+                break;
+              }
+            }
+            if (p.mesh.position.z > OBSTACLE_RECYCLE_Z) {
+              this.obstacleGroup.remove(p.mesh);
+              p.mesh.geometry.dispose();
+              const pm = p.mesh.material;
+              if (Array.isArray(pm)) pm.forEach((m) => m.dispose());
+              else (pm as THREE.Material).dispose();
+              p.hit = true;
+            }
+          }
+          this.pickups = this.pickups.filter((p) => p.mesh.parent === this.obstacleGroup);
+        }
+
+        if (!this.playEnded) {
+          this.pickupSpawnAcc += dt;
+          if (this.pickupSpawnAcc >= this.pickupSpawnIntervalSec()) {
+            this.pickupSpawnAcc = 0;
+            this.trySpawnPickup();
+          }
+
+          const rowInterval = reefRunSpawnIntervalSec(this.runSurvivalSec);
+          this.spawnAcc += dt;
+          if (this.spawnAcc >= rowInterval) {
+            this.spawnWaveIndex++;
+            if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex)) {
+              if (this.trySpawnObstacleRow()) {
+                this.spawnAcc = 0;
+              } else {
+                this.spawnAcc = Math.max(0, rowInterval - 0.32);
+              }
+            } else {
+              this.spawnAcc = 0;
+            }
+          }
         }
       }
     }
@@ -1072,11 +1311,13 @@ export class ArcadeSceneController {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
     if (this.pointerBound) {
       this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
     }
     const ro = (this as unknown as { _ro?: ResizeObserver })._ro;
     ro?.disconnect();
+    this.clearPickups();
     this.clearObstacles();
     this.renderer.dispose();
     if (this.renderer.domElement.parentNode === this.container) {

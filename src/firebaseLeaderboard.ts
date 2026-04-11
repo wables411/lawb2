@@ -32,7 +32,8 @@ function emptyPointsBreakdown(): PointsBreakdown {
   };
 }
 
-function normalizeLeaderboardWalletKey(addr: string): string | null {
+/** RTDB `leaderboard/{key}` path segment: EVM lowercased, Solana base58 as stored. */
+export function normalizeLeaderboardPathKey(addr: string): string | null {
   const t = addr.trim();
   if (!t) return null;
   if (t === '0x0000000000000000000000000000000000000000') return null;
@@ -40,6 +41,51 @@ function normalizeLeaderboardWalletKey(addr: string): string | null {
   // Solana base58 (length varies; avoid obvious non-address strings)
   if (/^[1-9A-HJ-NP-Za-km-z]{32,48}$/.test(t)) return t;
   return null;
+}
+
+/** Sum points and per-source breakdown across multiple RTDB rows (e.g. EVM primary + Solana linked). */
+export function mergeLeaderboardEntriesForDisplay(
+  entries: (LeaderboardEntry | null)[],
+): LeaderboardEntry | null {
+  const rows = entries.filter((e): e is LeaderboardEntry => e != null);
+  if (rows.length === 0) return null;
+
+  const mergedBreakdown = emptyPointsBreakdown();
+
+  for (const e of rows) {
+    const pb = e.points_breakdown;
+    if (pb && typeof pb === 'object') {
+      for (const k of Object.keys(pb)) {
+        const kk = k as keyof PointsBreakdown;
+        const v = pb[kk];
+        if (typeof v === 'number') {
+          const prev = typeof mergedBreakdown[kk] === 'number' ? mergedBreakdown[kk]! : 0;
+          mergedBreakdown[kk] = prev + v;
+        }
+      }
+    } else {
+      mergedBreakdown.chess = (mergedBreakdown.chess || 0) + (e.points || 0);
+    }
+  }
+
+  const totalPoints = Object.values(mergedBreakdown).reduce(
+    (sum, v) => sum + (typeof v === 'number' ? v : 0),
+    0,
+  );
+
+  const first = rows[0]!;
+  return {
+    username: first.username,
+    chain_type: first.chain_type,
+    wins: rows.reduce((s, e) => s + (e.wins || 0), 0),
+    losses: rows.reduce((s, e) => s + (e.losses || 0), 0),
+    draws: rows.reduce((s, e) => s + (e.draws || 0), 0),
+    total_games: rows.reduce((s, e) => s + (e.total_games || 0), 0),
+    points: totalPoints,
+    points_breakdown: mergedBreakdown,
+    created_at: first.created_at,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 export interface LeaderboardEntry {
@@ -69,8 +115,13 @@ export const getUserLeaderboardEntry = async (walletAddress: string): Promise<Le
       return null;
     }
 
+    const key = normalizeLeaderboardPathKey(walletAddress);
+    if (!key) {
+      return null;
+    }
+
     const database = getDatabaseOrThrow();
-    const entryRef = ref(database, `leaderboard/${walletAddress}`);
+    const entryRef = ref(database, `leaderboard/${key}`);
     const snapshot = await get(entryRef);
     
     if (snapshot.exists()) {
@@ -94,16 +145,16 @@ export const updateLeaderboardEntry = async (
       console.error('[LEADERBOARD] No wallet address provided');
       return false;
     }
-    
-    // Prevent zero addresses from being recorded in leaderboard
-    if (walletAddress === '0x0000000000000000000000000000000000000000') {
-      console.warn('[LEADERBOARD] Skipping leaderboard update for zero address');
+
+    const key = normalizeLeaderboardPathKey(walletAddress);
+    if (!key) {
+      console.warn('[LEADERBOARD] Skipping leaderboard update — invalid or zero address');
       return false;
     }
 
     const now = new Date().toISOString();
     const database = getDatabaseOrThrow();
-    const entryRef = ref(database, `leaderboard/${walletAddress}`);
+    const entryRef = ref(database, `leaderboard/${key}`);
     
     // Get existing entry
     const snapshot = await get(entryRef);
@@ -129,7 +180,7 @@ export const updateLeaderboardEntry = async (
     );
 
     const updatedEntry: LeaderboardEntry = {
-      username: walletAddress,
+      username: key,
       chain_type: 'sanko',
       wins: (existingEntry?.wins || 0) + (result === 'win' ? 1 : 0),
       losses: (existingEntry?.losses || 0) + (result === 'loss' ? 1 : 0),
@@ -144,7 +195,7 @@ export const updateLeaderboardEntry = async (
     // Update the entry
     await set(entryRef, updatedEntry);
     
-    console.log('[LEADERBOARD] Successfully updated entry for:', formatAddress(walletAddress), 'Result:', result);
+    console.log('[LEADERBOARD] Successfully updated entry for:', formatAddress(key), 'Result:', result);
     return true;
   } catch (error) {
     console.error('[LEADERBOARD] Error updating leaderboard entry:', error);
@@ -253,7 +304,7 @@ export const claimWalletConnectLeaderboardBonus = async (
     if (!database) {
       return { claimed: false, skipped: 'no_database' };
     }
-    const key = normalizeLeaderboardWalletKey(walletAddress);
+    const key = normalizeLeaderboardPathKey(walletAddress);
     if (!key) {
       return { claimed: false, skipped: 'invalid_address' };
     }
@@ -318,10 +369,18 @@ export const getUserRank = async (walletAddress: string): Promise<number | null>
   try {
     if (!walletAddress) return null;
 
+    const key = normalizeLeaderboardPathKey(walletAddress);
+    if (!key) return null;
+
     const entries = await getTopLeaderboardEntries(LEADERBOARD_QUERY_CAP);
-    const userIndex = entries.findIndex(
-      (entry) => entry.username?.toLowerCase() === walletAddress.toLowerCase(),
-    );
+    const userIndex = entries.findIndex((entry) => {
+      const u = entry.username;
+      if (!u) return false;
+      if (u.startsWith('0x') && key.startsWith('0x')) {
+        return u.toLowerCase() === key.toLowerCase();
+      }
+      return u === key;
+    });
 
     return userIndex >= 0 ? userIndex + 1 : null;
   } catch (error) {
@@ -338,11 +397,13 @@ export const addEcosystemPoints = async (
 ): Promise<boolean> => {
   try {
     if (!walletAddress || amount <= 0) return false;
-    if (walletAddress === '0x0000000000000000000000000000000000000000') return false;
+
+    const key = normalizeLeaderboardPathKey(walletAddress);
+    if (!key) return false;
 
     const now = new Date().toISOString();
     const database = getDatabaseOrThrow();
-    const entryRef = ref(database, `leaderboard/${walletAddress}`);
+    const entryRef = ref(database, `leaderboard/${key}`);
 
     const snapshot = await get(entryRef);
     const existingEntry = snapshot.exists() ? snapshot.val() as LeaderboardEntry : null;
@@ -370,7 +431,7 @@ export const addEcosystemPoints = async (
       });
     } else {
       await set(entryRef, {
-        username: walletAddress,
+        username: key,
         chain_type: 'base',
         wins: 0,
         losses: 0,
@@ -383,7 +444,7 @@ export const addEcosystemPoints = async (
       });
     }
 
-    console.log(`[LEADERBOARD] +${amount} ${source} points for ${formatAddress(walletAddress)} (total: ${totalPoints})`);
+    console.log(`[LEADERBOARD] +${amount} ${source} points for ${formatAddress(key)} (total: ${totalPoints})`);
     return true;
   } catch (error) {
     console.error('[LEADERBOARD] Error adding ecosystem points:', error);
@@ -398,11 +459,13 @@ export const setHoldingsPoints = async (
 ): Promise<boolean> => {
   try {
     if (!walletAddress || holdingsPoints < 0) return false;
-    if (walletAddress === '0x0000000000000000000000000000000000000000') return false;
+
+    const key = normalizeLeaderboardPathKey(walletAddress);
+    if (!key) return false;
 
     const now = new Date().toISOString();
     const dbRef = getDatabaseOrThrow();
-    const entryRef = ref(dbRef, `leaderboard/${walletAddress}`);
+    const entryRef = ref(dbRef, `leaderboard/${key}`);
 
     const snapshot = await get(entryRef);
     const existingEntry = snapshot.exists() ? snapshot.val() as LeaderboardEntry : null;
@@ -430,8 +493,8 @@ export const setHoldingsPoints = async (
       });
     } else {
       await set(entryRef, {
-        username: walletAddress,
-        chain_type: walletAddress.startsWith('0x') ? 'base' : 'solana',
+        username: key,
+        chain_type: key.startsWith('0x') ? 'base' : 'solana',
         wins: 0,
         losses: 0,
         draws: 0,
@@ -443,7 +506,7 @@ export const setHoldingsPoints = async (
       });
     }
 
-    console.log(`[LEADERBOARD] holdings points synced for ${formatAddress(walletAddress)} => ${holdingsPoints}`);
+    console.log(`[LEADERBOARD] holdings points synced for ${formatAddress(key)} => ${holdingsPoints}`);
     return true;
   } catch (error) {
     console.error('[LEADERBOARD] Error setting holdings points:', error);
@@ -476,12 +539,15 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
   try {
     if (!walletAddress) return false;
 
+    const key = normalizeLeaderboardPathKey(walletAddress);
+    if (!key) return false;
+
     const now = new Date().toISOString();
     const database = getDatabaseOrThrow();
-    const entryRef = ref(database, `leaderboard/${walletAddress}`);
+    const entryRef = ref(database, `leaderboard/${key}`);
     
     const resetEntry: LeaderboardEntry = {
-      username: walletAddress,
+      username: key,
       chain_type: 'sanko',
       wins: 0,
       losses: 0,

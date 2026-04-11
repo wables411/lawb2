@@ -1681,17 +1681,24 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Fetch player profile picture when game starts in AI mode
   useEffect(() => {
     if (leaderboardWalletAddress && gameMode === GameMode.AI && showGame && gameState === 'active') {
-      firebaseProfiles.getProfile(leaderboardWalletAddress).then(profile => {
-        if (profile?.profile_picture?.image_url) {
-          setPlayerProfilePic(profile.profile_picture.image_url);
-          console.log('[PROFILE] Loaded player profile picture:', profile.profile_picture.image_url);
-        } else {
+      void (async () => {
+        try {
+          const primary = await firebaseProfiles.getPrimaryWallet(leaderboardWalletAddress);
+          let profile = await firebaseProfiles.getProfile(primary);
+          if (!profile?.profile_picture?.image_url && primary !== leaderboardWalletAddress) {
+            profile = await firebaseProfiles.getProfile(leaderboardWalletAddress);
+          }
+          if (profile?.profile_picture?.image_url) {
+            setPlayerProfilePic(profile.profile_picture.image_url);
+            console.log('[PROFILE] Loaded player profile picture:', profile.profile_picture.image_url);
+          } else {
+            setPlayerProfilePic(null);
+          }
+        } catch (err) {
+          console.error('[PROFILE] Error fetching player profile:', err);
           setPlayerProfilePic(null);
         }
-      }).catch(err => {
-        console.error('[PROFILE] Error fetching player profile:', err);
-        setPlayerProfilePic(null);
-      });
+      })();
     } else {
       setPlayerProfilePic(null);
     }

@@ -45,7 +45,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
   { id: 'reef-arcade', image: '/assets/reef-arcade.svg', label: 'Reef Run', action: 'arcade', row: 2, col: 0 },
   { id: 'lawb-profile', image: '/assets/wallet.png', label: 'Lawb Profile', action: 'lawb-profile', row: 2, col: 2 },
-  { id: 'lawb-leaderboard', image: '/assets/chess.png', label: 'Leaderboard', action: 'lawb-leaderboard', row: 2, col: 4 },
+  { id: 'lawb-leaderboard', image: '/images/sticker3.png', label: 'Leaderboard', action: 'lawb-leaderboard', row: 2, col: 4 },
 ];
 
 // Icon sizing

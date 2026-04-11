@@ -2175,17 +2175,19 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           const displayName = await getDisplayName(entry.username);
           displayNames[entry.username] = displayName;
           
-          // Fetch profile picture
+          // Fetch profile picture (canonical profile is under primary wallet when linked)
           try {
-            const profile = await firebaseProfiles.getProfile(entry.username);
+            const primaryForProfile = await firebaseProfiles.getPrimaryWallet(entry.username);
+            let profile = await firebaseProfiles.getProfile(primaryForProfile);
+            if (!profile?.profile_picture?.image_url && primaryForProfile !== entry.username) {
+              profile = await firebaseProfiles.getProfile(entry.username);
+            }
             if (profile?.profile_picture?.image_url) {
               profilePictures[entry.username] = profile.profile_picture.image_url;
             } else {
-              // Use default image if no profile picture
               profilePictures[entry.username] = '/images/sticker4.png';
             }
           } catch (profileError) {
-            // Use default image on error
             profilePictures[entry.username] = '/images/sticker4.png';
           }
         } catch (error) {

@@ -1,10 +1,19 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAccount } from 'wagmi';
-import { WALLET_CONNECT_LEADERBOARD_BONUS } from '../firebaseLeaderboard';
+import {
+  WALLET_CONNECT_LEADERBOARD_BONUS,
+  addEcosystemPoints,
+  normalizeLeaderboardPathKey,
+} from '../firebaseLeaderboard';
+import { database } from '../firebaseApp';
+import { firebaseProfiles } from '../firebaseProfiles';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
+import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
+import { reefRunLeaderboardPointsForRound } from '../utils/reefRunLeaderboardPoints';
+import { CHARACTER_STATS, starsRow } from './arcade/arcadeCharacterStats';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
-import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
+import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arcadeDifficulty';
+import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
 import type { ArcadeGameScreen } from './arcade/ArcadeSceneController';
 import './reefArcadeMenu.css';
 
@@ -26,18 +35,35 @@ function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+function runEndSummary(reason: RunEndReason): string {
+  switch (reason) {
+    case 'oxygen':
+      return 'Ran out of oxygen — grab air tanks (Milady/Radbro) or pick Clawb for max breath.';
+    case 'crush':
+      return 'Coral block collision — change lanes with A/D.';
+    case 'wrecked':
+      return 'Armor depleted — avoid jellyfish, pufferfish, and mines; grab peptides.';
+    default:
+      return 'Run ended.';
+  }
+}
+
 /**
  * Full-screen arcade shell for lawb.xyz — Three.js tunnel, FBX idle/dance/swim, lane dodge.
  */
 export default function ReefArcadeMenu() {
   const navigate = useNavigate();
   const { open } = useAppKitSafe();
-  const { address, isConnected } = useAccount();
+  const connection = useConnectionDisplay();
   const [phase, setPhase] = useState<Phase>('intro');
   const [modal, setModal] = useState<ModalKind>(null);
   const [gameScreen, setGameScreen] = useState<ArcadeGameScreen>('menu');
   const [selectedCharacterId, setSelectedCharacterId] = useState<ArcadeCharacterId>('clawb');
   const [runHud, setRunHud] = useState<ReefRunHudPayload | null>(null);
+  const [runStatsHud, setRunStatsHud] = useState<ArcadeRunHudState | null>(null);
+  const [lastRunEndReason, setLastRunEndReason] = useState<RunEndReason | null>(null);
+  /** Leaderboard note after last run (points saved, or hint if no wallet). */
+  const [lastRunLbNote, setLastRunLbNote] = useState<string | null>(null);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -59,9 +85,46 @@ export default function ReefArcadeMenu() {
     setSelectedCharacterId(id);
   }, []);
 
-  const onGameOver = useCallback(() => {
-    setGameScreen('gameover');
+  const onRunHud = useCallback((hud: ArcadeRunHudState) => {
+    setRunStatsHud(hud);
   }, []);
+
+  const onGameOver = useCallback(
+    (survivalSec: number, reason: RunEndReason) => {
+      setRunHud(reefRunHudFromSurvivalSec(survivalSec));
+      setLastRunEndReason(reason);
+      setGameScreen('gameover');
+
+      if (!connection.connected || !connection.address) {
+        setLastRunLbNote(
+          'Connect a wallet to earn Lawb leaderboard points (1 pt if under 1 min, then 3 pts per full minute).',
+        );
+        return;
+      }
+      if (!database) {
+        setLastRunLbNote('Leaderboard unavailable (Firebase not configured).');
+        return;
+      }
+
+      const pts = reefRunLeaderboardPointsForRound(survivalSec);
+      // Single leaderboard sync per run (see reefRunLeaderboardPoints.ts) — avoids Firebase write spam.
+      void (async () => {
+        const primary = await firebaseProfiles.getPrimaryWallet(connection.address!);
+        const key = normalizeLeaderboardPathKey(primary);
+        if (!key) {
+          setLastRunLbNote('Could not record points for this wallet address.');
+          return;
+        }
+        const ok = await addEcosystemPoints(key, 'games', pts);
+        if (ok) {
+          setLastRunLbNote(`+${pts} leaderboard pts (Reef Run → Games). Synced to Firebase.`);
+        } else {
+          setLastRunLbNote('Could not save leaderboard points. Check connection and try again.');
+        }
+      })();
+    },
+    [connection.connected, connection.address],
+  );
 
   const onRunDifficulty = useCallback((payload: ReefRunHudPayload) => {
     setRunHud(payload);
@@ -74,12 +137,15 @@ export default function ReefArcadeMenu() {
   }, [gameScreen]);
 
   const goConnect = () => {
-    void open({ view: isConnected ? 'Account' : 'Connect' });
+    void open({ view: connection.connected ? 'Account' : 'Connect' });
   };
 
-  const startRun = () => {
+  const beginRun = useCallback(() => {
+    setLastRunLbNote(null);
+    setLastRunEndReason(null);
+    setRunStatsHud(null);
     setGameScreen('play');
-  };
+  }, []);
 
   return (
     <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
@@ -91,6 +157,7 @@ export default function ReefArcadeMenu() {
           onPickCharacter={onPickCharacter}
           onGameOver={onGameOver}
           onRunDifficulty={onRunDifficulty}
+          onRunHud={onRunHud}
         />
       </Suspense>
       <div className="ra-bg" aria-hidden />
@@ -117,7 +184,7 @@ export default function ReefArcadeMenu() {
             </div>
 
             <div className="ra-btn-stack">
-              <button type="button" className="ra-btn" onClick={startRun}>
+              <button type="button" className="ra-btn" onClick={beginRun}>
                 START RUN
               </button>
               <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('select')}>
@@ -153,6 +220,21 @@ export default function ReefArcadeMenu() {
             <div className="ra-select-panel">
               <h2 className="ra-select-title">PICK YOUR SWIMMER</h2>
               <p className="ra-select-hint">Click the 3D models or use the buttons — idle preview, dance when selected.</p>
+              <div className="ra-stat-block" style={{ marginBottom: 14, fontSize: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.82)' }}>
+                {(() => {
+                  const s = CHARACTER_STATS[selectedCharacterId];
+                  return (
+                    <>
+                      <div>{starsRow('Speed', s.speed)}</div>
+                      <div>{starsRow('Breath (O₂)', s.oxygen)}</div>
+                      <div>{starsRow('Armor', s.armor)}</div>
+                      <p style={{ margin: '8px 0 0', fontSize: 11, opacity: 0.75 }}>
+                        Air tanks only refill Milady &amp; Radbro. Clawb already has legendary lungs.
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
               <div className="ra-select-chips">
                 {CHARACTERS.map((c) => (
                   <button
@@ -167,7 +249,7 @@ export default function ReefArcadeMenu() {
                 ))}
               </div>
               <div className="ra-select-actions">
-                <button type="button" className="ra-btn" onClick={() => setGameScreen('play')}>
+                <button type="button" className="ra-btn" onClick={beginRun}>
                   CONFIRM
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('menu')}>
@@ -196,12 +278,53 @@ export default function ReefArcadeMenu() {
                   />
                 </div>
                 <p className="ra-play-depth-meta">
-                  {Math.floor(runHud.secondsElapsedInTier)}s / {runHud.tierDurationSec}s → next mark ·{' '}
-                  {runHud.speedMultiplier.toFixed(2)}× swim
+                  {Math.floor(runHud.secondsElapsedInTier)}s / {runHud.tierDurationSec}s → next mark · current{' '}
+                  {runHud.speedMultiplier.toFixed(2)}× depth ramp
                 </p>
               </div>
             )}
-            <p className="ra-play-hud-keys">← → or A D · dodge the red blocks</p>
+            {runStatsHud && (
+              <div className="ra-play-stats" style={{ marginTop: 10, width: '100%', maxWidth: 320 }}>
+                <div className="ra-bar-row" style={{ marginBottom: 6 }}>
+                  <span style={{ width: 52, fontSize: 10 }}>O₂</span>
+                  <div style={{ flex: 1, height: 8, background: 'rgba(0,0,0,0.35)', borderRadius: 4 }}>
+                    <div
+                      style={{
+                        width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
+                        height: '100%',
+                        borderRadius: 4,
+                        background: 'linear-gradient(90deg,#4fc3f7,#81d4fa)',
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="ra-bar-row" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 52, fontSize: 10 }}>Armor</span>
+                  <div style={{ flex: 1, height: 8, background: 'rgba(0,0,0,0.35)', borderRadius: 4 }}>
+                    <div
+                      style={{
+                        width: `${Math.min(100, (100 * runStatsHud.armor) / Math.max(1, runStatsHud.armorMax))}%`,
+                        height: '100%',
+                        borderRadius: 4,
+                        background: 'linear-gradient(90deg,#78909c,#b0bec5)',
+                      }}
+                    />
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.45 }}>
+                  Coins {runStatsHud.coins} · Trash {runStatsHud.trash} · Swim {runStatsHud.relativeSpeed.toFixed(2)}×
+                  {runStatsHud.cheeseSecLeft > 0 && (
+                    <span style={{ color: '#ffe066' }}> · Cheese boost</span>
+                  )}
+                  {runStatsHud.dragSecLeft > 0 && (
+                    <span style={{ color: '#b388ff' }}> · Drag</span>
+                  )}
+                </p>
+              </div>
+            )}
+            <p className="ra-play-hud-keys">
+              A / D lanes · W faster · S slower · dodge red coral; grab pickups, mind O₂ &amp; armor
+            </p>
           </div>
         )}
 
@@ -215,9 +338,21 @@ export default function ReefArcadeMenu() {
                   <span className="ra-gameover-time"> · {Math.floor(runHud.survivalSec)}s run</span>
                 </p>
               )}
-              <p className="ra-gameover-sub">You hit an obstacle. Swim again?</p>
+              <p className="ra-gameover-sub">
+                {lastRunEndReason ? runEndSummary(lastRunEndReason) : 'Swim again?'}
+              </p>
+              {runStatsHud && (
+                <p style={{ margin: '8px 0 0', fontSize: 12, opacity: 0.9 }}>
+                  Loot: {runStatsHud.coins} coins · {runStatsHud.trash} trash hauled
+                </p>
+              )}
+              {lastRunLbNote && (
+                <p className="ra-gameover-lb-note" style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>
+                  {lastRunLbNote}
+                </p>
+              )}
               <div className="ra-gameover-actions">
-                <button type="button" className="ra-btn" onClick={() => setGameScreen('play')}>
+                <button type="button" className="ra-btn" onClick={beginRun}>
                   RETRY
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('select')}>
@@ -239,14 +374,13 @@ export default function ReefArcadeMenu() {
               <>
                 <h2>DEPTH & SPEED</h2>
                 <p>
-                  There are no fixed difficulty presets. The longer you survive without a hit, the faster the swim
-                  current runs: obstacle drift and your swim animation both scale up together.
+                  <strong>W / S</strong> throttle forward swim (faster uses more oxygen). <strong>A / D</strong> change
+                  lanes. The reef tube <strong>banks and sways</strong> as you dive deeper — stay centered mentally.
                 </p>
                 <p>
-                  Every <strong>45 seconds</strong> you cross a new <strong>depth mark</strong>, shown as Roman
-                  numerals (<strong>I</strong>, <strong>II</strong>, <strong>III</strong>, <strong>IV</strong>,{' '}
-                  <strong>V</strong> … <strong>X</strong> and beyond). The bar in the HUD is your progress through the
-                  current 45-second bracket toward the next mark.
+                  The longer you survive, the faster the baseline current. Every <strong>45 seconds</strong> you cross a
+                  new <strong>depth mark</strong> (Roman numerals). Collect cheese for a nitro burst, peptides for armor,
+                  coins and trash for bragging rights; jellyfish, puffers, and mines chew through armor.
                 </p>
               </>
             )}
@@ -255,13 +389,14 @@ export default function ReefArcadeMenu() {
               <>
                 <h2>WALLET CONNECT</h2>
                 <p>
-                  Connect the same wallet you use on lawb.xyz. Your first connection adds{' '}
-                  <strong>{WALLET_CONNECT_LEADERBOARD_BONUS} leaderboard points</strong> (same Firebase leaderboard as
-                  Chess and profile holdings). Reef Run scores may tie to this address in a future update — play still
-                  works offline without a wallet.
+                  Connect the same wallet you use on lawb.xyz. <strong>Reef Run</strong> adds{' '}
+                  <strong>Games</strong> points to the same Firebase leaderboard as Chess and profile holdings:{' '}
+                  <strong>1 pt</strong> if your run is under one minute, then <strong>3 pts</strong> for each full
+                  minute survived (same value as a chess win per minute). Your first site-wide wallet connect can also
+                  add <strong>{WALLET_CONNECT_LEADERBOARD_BONUS} pts</strong> elsewhere on lawb.xyz.
                 </p>
-                {isConnected && address ? (
-                  <p className="ra-wallet-status">CONNECTED · {shortenAddress(address)}</p>
+                {connection.connected && connection.address ? (
+                  <p className="ra-wallet-status">CONNECTED · {shortenAddress(connection.address)}</p>
                 ) : (
                   <p className="ra-wallet-status" style={{ color: 'rgba(255,255,255,0.45)' }}>
                     NOT CONNECTED
@@ -269,7 +404,7 @@ export default function ReefArcadeMenu() {
                 )}
                 <div className="ra-panel-actions">
                   <button type="button" className="ra-btn" onClick={goConnect}>
-                    {isConnected ? 'MANAGE WALLET' : 'CONNECT'}
+                    {connection.connected ? 'MANAGE WALLET' : 'CONNECT'}
                   </button>
                   <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setModal(null)}>
                     BACK

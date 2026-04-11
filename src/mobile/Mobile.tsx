@@ -338,7 +338,7 @@ const Mobile = () => {
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
     { label: 'Lawb Profile', icon: '/assets/wallet.png', action: () => setShowProfilePopup(true) },
-    { label: 'Leaderboard', icon: '/assets/chess.png', action: () => setShowLeaderboardPopup(true) },
+    { label: 'Leaderboard', icon: '/images/sticker3.png', action: () => setShowLeaderboardPopup(true) },
   ];
 
   const handleIconClick = (icon: typeof icons[0]) => {
