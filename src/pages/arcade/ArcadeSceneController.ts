@@ -21,6 +21,7 @@ import {
   speedBandForStars,
 } from './arcadeCharacterStats';
 import {
+  forcedOxyTankIntervalSec,
   reefRunHudFromSurvivalSec,
   reefRunPlayIntensityMultiplier,
   reefRunSpawnIntervalSec,
@@ -34,6 +35,8 @@ import {
 } from './arcadeDifficulty';
 import {
   applyPickupEffect,
+  characterHasUnlimitedOxygen,
+  characterUsesOxygenMechanic,
   createInitialRunState,
   rollPickupKind,
   runStateToHud,
@@ -197,6 +200,12 @@ export class ArcadeSceneController {
   private lastEmittedTier = -1;
   private loaded = false;
   private pendingScreen: ArcadeGameScreen | null = null;
+  /** Milady/Radbro: survival time at which the next guaranteed O₂ tank must spawn. */
+  private nextForcedOxyTankSurvival = Number.POSITIVE_INFINITY;
+  private readonly reefFogDensityBase = 0.034;
+  private ambianceParticles: THREE.Points | null = null;
+  private streakParticles: THREE.Points | null = null;
+  private tunnelMaterial!: THREE.MeshStandardMaterial;
   private onPickCharacter: (id: ArcadeCharacterId) => void;
   /** Final survival time + how the run ended (UI + leaderboard). */
   private onGameOver: (survivalSec: number, reason: RunEndReason) => void;
@@ -493,7 +502,7 @@ export class ArcadeSceneController {
 
   async bootstrap(): Promise<void> {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x062830, 0.034);
+    this.scene.fog = new THREE.FogExp2(0x051c28, this.reefFogDensityBase);
 
     this.camera = new THREE.PerspectiveCamera(52, 1, 0.1, 220);
     this.camera.position.set(0, 0, 6);
@@ -513,28 +522,28 @@ export class ArcadeSceneController {
     this.container.appendChild(this.renderer.domElement);
 
     const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, 72, 28, true);
-    const tunnelMat = new THREE.MeshStandardMaterial({
-      color: 0x0c3228,
-      metalness: 0.08,
-      roughness: 0.9,
+    this.tunnelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x063d42,
+      metalness: 0.22,
+      roughness: 0.78,
       side: THREE.BackSide,
-      emissive: 0x051810,
-      emissiveIntensity: 0.22,
+      emissive: 0x0a4a58,
+      emissiveIntensity: 0.38,
     });
-    this.tunnel = new THREE.Mesh(tunnelGeo, tunnelMat);
+    this.tunnel = new THREE.Mesh(tunnelGeo, this.tunnelMaterial);
     this.tunnel.rotation.x = Math.PI / 2;
     this.tunnel.position.z = -42;
 
     this.ringGroup = new THREE.Group();
     for (let i = 0; i < 28; i++) {
-      const hue = 0.42 + (i % 7) * 0.014;
+      const hue = 0.48 + (i % 7) * 0.018;
       const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(hue, 0.45, 0.42),
+        color: new THREE.Color().setHSL(hue, 0.62, 0.52),
         transparent: true,
-        opacity: 0.14 + (i % 4) * 0.045,
+        opacity: 0.22 + (i % 4) * 0.055,
         depthWrite: false,
       });
-      const mesh = new THREE.Mesh(new THREE.TorusGeometry(7.4 + (i % 5) * 0.08, 0.045, 8, 96), mat);
+      const mesh = new THREE.Mesh(new THREE.TorusGeometry(7.4 + (i % 5) * 0.08, 0.038, 8, 96), mat);
       mesh.position.z = -i * 3.2;
       mesh.rotation.x = Math.PI / 2;
       this.ringGroup.add(mesh);
@@ -557,7 +566,7 @@ export class ArcadeSceneController {
     this.selectHemiLight.visible = false;
     this.scene.add(key, fill, rim, this.selectFillLight, this.selectHemiLight);
 
-    const n = window.innerWidth < 768 ? 500 : 1400;
+    const n = window.innerWidth < 768 ? 620 : 1800;
     const positions = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 18;
@@ -567,17 +576,39 @@ export class ArcadeSceneController {
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const pMat = new THREE.PointsMaterial({
-      color: 0xb0ddd0,
-      size: 0.048,
+      color: 0xc8f5ff,
+      size: 0.042,
       transparent: true,
-      opacity: 0.38,
+      opacity: 0.45,
       depthWrite: false,
-      blending: THREE.NormalBlending,
+      blending: THREE.AdditiveBlending,
       sizeAttenuation: true,
     });
-    const particles = new THREE.Points(pGeo, pMat);
-    this.scene.add(particles);
-    (this as unknown as { _particles?: THREE.Points })._particles = particles;
+    this.ambianceParticles = new THREE.Points(pGeo, pMat);
+    this.scene.add(this.ambianceParticles);
+
+    const ns = window.innerWidth < 768 ? 320 : 1100;
+    const sp = new Float32Array(ns * 3);
+    for (let i = 0; i < ns; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 6.2 + Math.random() * 3.2;
+      sp[i * 3] = Math.cos(ang) * rad;
+      sp[i * 3 + 1] = (Math.random() - 0.5) * 8;
+      sp[i * 3 + 2] = -Math.random() * 95;
+    }
+    const sGeo = new THREE.BufferGeometry();
+    sGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    const sMat = new THREE.PointsMaterial({
+      color: 0x7ee8e0,
+      size: 0.028,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    this.streakParticles = new THREE.Points(sGeo, sMat);
+    this.scene.add(this.streakParticles);
 
     this.scene.add(this.plinthWorld);
     this.scene.add(this.playerWorld);
@@ -832,6 +863,8 @@ export class ArcadeSceneController {
     if (!this.selectedId) return;
     const slot = this.slots.get(this.selectedId);
     if (!slot) return;
+    /** Must match run stats after async loads — do not re-read `selectedId` after `await`. */
+    const playCharacterId = slot.def.id;
     this.plinthWorld.visible = false;
     this.playerWorld.visible = true;
     this.clearObstacles();
@@ -897,7 +930,10 @@ export class ArcadeSceneController {
       this.playerWorld.add(box);
     }
 
-    this.runState = createInitialRunState(this.selectedId ?? 'clawb', this.clock.elapsedTime);
+    this.runState = createInitialRunState(playCharacterId, this.clock.elapsedTime);
+    this.nextForcedOxyTankSurvival = characterUsesOxygenMechanic(playCharacterId)
+      ? 6.5
+      : Number.POSITIVE_INFINITY;
     this.throttleSmoothed = 0;
     this.keyW = false;
     this.keyS = false;
@@ -1014,13 +1050,26 @@ export class ArcadeSceneController {
   }
 
   private trySpawnPickup(): void {
+    const cid = this.runState?.characterId ?? 'clawb';
     for (let tryN = 0; tryN < 3; tryN++) {
       const lane = (Math.floor(Math.random() * 3) + tryN) % 3;
       if (!this.laneBlockedForPickup(lane)) {
-        this.spawnPickupInLane(lane, rollPickupKind());
+        this.spawnPickupInLane(lane, rollPickupKind(this.runSurvivalSec, cid));
         return;
       }
     }
+  }
+
+  /** Guaranteed tank for O₂ characters — prefers center lane when clear. */
+  private trySpawnForcedOxygenTank(): boolean {
+    const order = [1, 0, 2] as const;
+    for (const lane of order) {
+      if (!this.laneBlockedForPickup(lane)) {
+        this.spawnPickupInLane(lane, 'air_tank');
+        return true;
+      }
+    }
+    return false;
   }
 
   private spawnPickupInLane(lane: number, kind: PickupKind): void {
@@ -1071,10 +1120,14 @@ export class ArcadeSceneController {
 
     if (this.screen === 'play' || this.screen === 'gameover') {
       const p = this.runSurvivalSec;
-      this.pathRoot.position.x = Math.sin(p * 0.62) * 2.85;
-      this.pathRoot.position.y = Math.sin(p * 0.41) * 0.72;
-      this.pathRoot.rotation.z = Math.sin(p * 0.48) * 0.13;
-      this.pathRoot.rotation.y = Math.sin(p * 0.27) * 0.078;
+      const bank =
+        this.screen === 'play' && !this.playEnded
+          ? 1 + Math.min(0.85, (reefRunPlayIntensityMultiplier(p) - 1) * 0.45)
+          : 1;
+      this.pathRoot.position.x = Math.sin(p * 0.62) * 2.85 * bank;
+      this.pathRoot.position.y = Math.sin(p * 0.41) * 0.72 * bank;
+      this.pathRoot.rotation.z = Math.sin(p * 0.48) * 0.13 * bank;
+      this.pathRoot.rotation.y = Math.sin(p * 0.27) * 0.078 * bank;
     } else {
       this.pathRoot.position.x = Math.sin(t * 0.14) * 0.4;
       this.pathRoot.position.y = Math.cos(t * 0.11) * 0.25;
@@ -1136,12 +1189,6 @@ export class ArcadeSceneController {
       }
     }
 
-    this.tunnel.rotation.z = t * 0.011;
-    this.ringGroup.rotation.z = t * 0.034;
-    this.ringGroup.children.forEach((mesh, i) => {
-      if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.09 + (i % 5) * 0.015);
-    });
-
     const targetX = LANES[this.playerLane];
     this.playerX += (targetX - this.playerX) * Math.min(1, dt * 11);
     if (this.swimRoot) {
@@ -1171,16 +1218,20 @@ export class ArcadeSceneController {
         if (now < st.cheeseUntil) playerMult += 0.27;
         if (now < st.dragUntil) playerMult *= 0.54;
 
-        const oxyStars = getCharacterStats(st.characterId).oxygen;
-        const drain =
-          oxygenDrainPerSec(oxyStars) *
-          (0.86 +
-            0.16 *
-              Math.min(1.55, (intensityBase * playerMult) / Math.max(0.001, intensityBase)));
-        st.oxygen -= drain * dt;
-        if (st.oxygen <= 0) {
-          st.oxygen = 0;
-          this.triggerGameOver('oxygen');
+        if (characterHasUnlimitedOxygen(st.characterId)) {
+          st.oxygen = st.oxygenMax;
+        } else {
+          const oxyStars = getCharacterStats(st.characterId).oxygen;
+          const drain =
+            oxygenDrainPerSec(oxyStars) *
+            (0.86 +
+              0.16 *
+                Math.min(1.55, (intensityBase * playerMult) / Math.max(0.001, intensityBase)));
+          st.oxygen -= drain * dt;
+          if (st.oxygen <= 0) {
+            st.oxygen = 0;
+            this.triggerGameOver('oxygen');
+          }
         }
       }
 
@@ -1269,6 +1320,17 @@ export class ArcadeSceneController {
           this.pickups = this.pickups.filter((p) => p.mesh.parent === this.obstacleGroup);
         }
 
+        if (!this.playEnded && st && characterUsesOxygenMechanic(st.characterId)) {
+          if (this.runSurvivalSec >= this.nextForcedOxyTankSurvival) {
+            if (this.trySpawnForcedOxygenTank()) {
+              this.nextForcedOxyTankSurvival =
+                this.runSurvivalSec + forcedOxyTankIntervalSec(this.runSurvivalSec);
+            } else {
+              this.nextForcedOxyTankSurvival = this.runSurvivalSec + 0.28;
+            }
+          }
+        }
+
         if (!this.playEnded) {
           this.pickupSpawnAcc += dt;
           if (this.pickupSpawnAcc >= this.pickupSpawnIntervalSec()) {
@@ -1294,11 +1356,40 @@ export class ArcadeSceneController {
       }
     }
 
-    const particles = (this as unknown as { _particles?: THREE.Points })._particles;
-    if (particles) {
-      const drift = 0.055 * (this.screen === 'play' && !this.playEnded ? swimSpd : 1);
-      particles.position.z += drift;
-      if (particles.position.z > 6) particles.position.z = -4;
+    const warp = this.screen === 'play' && !this.playEnded ? swimSpd : 1;
+    this.tunnel.rotation.z = t * (0.014 + warp * 0.05);
+    this.ringGroup.rotation.z = t * (0.048 + warp * 0.11);
+    this.ringGroup.children.forEach((mesh, i) => {
+      if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.11 + (i % 5) * 0.024 + warp * 0.07);
+    });
+    const pulse =
+      0.34 + Math.sin(t * 2.4) * 0.14 + (this.screen === 'play' ? Math.min(0.42, (warp - 1) * 0.28) : 0);
+    this.tunnelMaterial.emissiveIntensity = pulse;
+
+    if (this.scene.fog instanceof THREE.FogExp2) {
+      const fd =
+        this.screen === 'play' && !this.playEnded
+          ? this.reefFogDensityBase + Math.min(0.85, warp - 1) * 0.019
+          : this.reefFogDensityBase;
+      this.scene.fog.density = THREE.MathUtils.lerp(this.scene.fog.density, fd, 0.08);
+    }
+    if (this.screen === 'play' || this.screen === 'gameover') {
+      const targetFov = 52 + (this.screen === 'play' && !this.playEnded ? Math.min(6.5, (swimSpd - 1) * 5.5) : 0);
+      this.camera.fov += (targetFov - this.camera.fov) * 0.06;
+      this.camera.updateProjectionMatrix();
+    } else {
+      this.camera.fov += (52 - this.camera.fov) * 0.05;
+      this.camera.updateProjectionMatrix();
+    }
+
+    const driftMain = 0.062 * warp;
+    if (this.ambianceParticles) {
+      this.ambianceParticles.position.z += driftMain;
+      if (this.ambianceParticles.position.z > 6) this.ambianceParticles.position.z = -4;
+    }
+    if (this.streakParticles) {
+      this.streakParticles.position.z += driftMain * 1.65;
+      if (this.streakParticles.position.z > 8) this.streakParticles.position.z = -6;
     }
 
     for (const m of this.mixers) {

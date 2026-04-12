@@ -38,7 +38,7 @@ function shortenAddress(addr: string) {
 function runEndSummary(reason: RunEndReason): string {
   switch (reason) {
     case 'oxygen':
-      return 'Ran out of oxygen — grab air tanks (Milady/Radbro) or pick Clawb for max breath.';
+      return 'Ran out of oxygen — stay on Milady/Radbro’s timed O₂ tanks. Clawb does not run out of breath underwater.';
     case 'crush':
       return 'Coral block collision — change lanes with A/D.';
     case 'wrecked':
@@ -226,10 +226,24 @@ export default function ReefArcadeMenu() {
                   return (
                     <>
                       <div>{starsRow('Speed', s.speed)}</div>
-                      <div>{starsRow('Breath (O₂)', s.oxygen)}</div>
+                      {selectedCharacterId === 'clawb' ? (
+                        <div>Breath (O₂) ★★★★★ — unlimited underwater (lobster)</div>
+                      ) : (
+                        <div>{starsRow('Breath (O₂)', s.oxygen)}</div>
+                      )}
                       <div>{starsRow('Armor', s.armor)}</div>
                       <p style={{ margin: '8px 0 0', fontSize: 11, opacity: 0.75 }}>
-                        Air tanks only refill Milady &amp; Radbro. Clawb already has legendary lungs.
+                        {selectedCharacterId === 'clawb' ? (
+                          <>
+                            Clawb does not use the O₂ meter — dodge coral and protect armor. Milady &amp; Radbro rely on
+                            timed O₂ tanks (tighter spacing at depth) plus bonus pickups.
+                          </>
+                        ) : (
+                          <>
+                            O₂ tanks spawn on a timer (spacing widens as depth increases) and randomly from the pickup
+                            table — collect them to keep swimming.
+                          </>
+                        )}
                       </p>
                     </>
                   );
@@ -285,18 +299,32 @@ export default function ReefArcadeMenu() {
             )}
             {runStatsHud && (
               <div className="ra-play-stats" style={{ marginTop: 10, width: '100%', maxWidth: 320 }}>
-                <div className="ra-bar-row" style={{ marginBottom: 6 }}>
+                <div className="ra-bar-row" style={{ marginBottom: 6, alignItems: 'center' }}>
                   <span style={{ width: 52, fontSize: 10 }}>O₂</span>
-                  <div style={{ flex: 1, height: 8, background: 'rgba(0,0,0,0.35)', borderRadius: 4 }}>
+                  {runStatsHud.oxygenInfinite ? (
                     <div
                       style={{
-                        width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
-                        height: '100%',
-                        borderRadius: 4,
-                        background: 'linear-gradient(90deg,#4fc3f7,#81d4fa)',
+                        flex: 1,
+                        fontSize: 11,
+                        letterSpacing: 0.06,
+                        color: '#b2ebf2',
+                        textShadow: '0 0 8px rgba(100,220,255,0.5)',
                       }}
-                    />
-                  </div>
+                    >
+                      ∞ · LOBSTER LUNGS
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1, height: 8, background: 'rgba(0,0,0,0.35)', borderRadius: 4 }}>
+                      <div
+                        style={{
+                          width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
+                          height: '100%',
+                          borderRadius: 4,
+                          background: 'linear-gradient(90deg,#4fc3f7,#81d4fa)',
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="ra-bar-row" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ width: 52, fontSize: 10 }}>Armor</span>
@@ -323,7 +351,8 @@ export default function ReefArcadeMenu() {
               </div>
             )}
             <p className="ra-play-hud-keys">
-              A / D lanes · W faster · S slower · dodge red coral; grab pickups, mind O₂ &amp; armor
+              A / D lanes · W faster · S slower · dodge red coral; grab pickups
+              {runStatsHud?.oxygenInfinite ? ' · armor' : ' · O₂ tanks & armor'}
             </p>
           </div>
         )}
@@ -374,13 +403,15 @@ export default function ReefArcadeMenu() {
               <>
                 <h2>DEPTH & SPEED</h2>
                 <p>
-                  <strong>W / S</strong> throttle forward swim (faster uses more oxygen). <strong>A / D</strong> change
-                  lanes. The reef tube <strong>banks and sways</strong> as you dive deeper — stay centered mentally.
+                  <strong>W / S</strong> throttle forward swim. <strong>Milady / Radbro:</strong> faster swim burns O₂
+                  faster. <strong>Clawb</strong> is underwater indefinitely — no O₂ fail. <strong>A / D</strong> change
+                  lanes. The reef tube <strong>banks and sways</strong> as you dive deeper.
                 </p>
                 <p>
                   The longer you survive, the faster the baseline current. Every <strong>45 seconds</strong> you cross a
-                  new <strong>depth mark</strong> (Roman numerals). Collect cheese for a nitro burst, peptides for armor,
-                  coins and trash for bragging rights; jellyfish, puffers, and mines chew through armor.
+                  new <strong>depth mark</strong> (Roman numerals). <strong>O₂ tanks</strong> for Milady/Radbro spawn on
+                  a schedule (wider gaps at depth) plus random pickups — never zero in the table, but timing gets urgent.
+                  Collect cheese for a nitro burst, peptides for armor; jellyfish, puffers, and mines chew armor.
                 </p>
               </>
             )}

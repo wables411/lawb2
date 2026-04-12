@@ -239,8 +239,13 @@ export const firebaseProfiles = {
   async updateProfilePicture(walletAddress: string, picture: ProfilePicture | null): Promise<void> {
     try {
       const db = getDatabaseOrThrow();
-      const profileRef = ref(db, `profiles/${normalizeWalletAddress(walletAddress)}`);
-      
+      const normalized = normalizeWalletAddress(walletAddress);
+      const profileRef = ref(db, `profiles/${normalized}`);
+      const existing = await get(profileRef);
+      if (!existing.exists()) {
+        await this.upsertProfile(walletAddress, {});
+      }
+
       if (picture === null) {
         // Clear profile picture
         await update(profileRef, {

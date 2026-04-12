@@ -66,13 +66,17 @@ export function ArcadeThreeBackground({
 
   const engineScreen: ArcadeGameScreen = phase === 'intro' ? 'intro' : gameScreen;
 
+  /**
+   * Always push the React-selected character into the engine *before* changing screen.
+   * Otherwise `setScreen('play')` can start async `enterPlay` while `selectedId` is still stale,
+   * and `runState` created after `await` can disagree with the swimmer you see (e.g. Clawb mesh + Milady O₂).
+   */
   useEffect(() => {
-    engineRef.current?.setScreen(engineScreen);
-  }, [engineScreen]);
-
-  useEffect(() => {
-    engineRef.current?.setSelectedId(selectedCharacterId);
-  }, [selectedCharacterId]);
+    const eng = engineRef.current;
+    if (!eng) return;
+    eng.setSelectedId(selectedCharacterId);
+    eng.setScreen(engineScreen);
+  }, [engineScreen, selectedCharacterId]);
 
   return <div ref={containerRef} className="ra-three" aria-hidden />;
 }

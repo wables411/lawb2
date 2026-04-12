@@ -955,16 +955,18 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const handleSetUsername = async () => {
     if (!address || !usernameInput) return;
 
-    const profileOwner = primaryWallet || address;
-    
+    /** Always resolve primary at write time — `primaryWallet` state can lag linked-wallet resolution. */
+    const profileOwner = await firebaseProfiles.getPrimaryWallet(address);
+
     setUsernameError(null);
     setUsernameSuccess(false);
-    
+
     const result = await firebaseProfiles.setUsername(profileOwner, usernameInput);
-    
+
     if (result.success) {
       setUsernameSuccess(true);
       setUsernameInput('');
+      setPrimaryWallet(profileOwner);
       // Reload profile to get updated username
       const updatedProfile = await firebaseProfiles.getProfile(profileOwner);
       setProfile(updatedProfile);
@@ -977,14 +979,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   };
 
   const handleRefreshInventory = async () => {
-    const targetWallet = primaryWallet || address;
-    if (!targetWallet) return;
-    
+    if (!address) return;
+
     setRefreshingInventory(true);
     try {
+      const targetWallet = await firebaseProfiles.getPrimaryWallet(address);
+      setPrimaryWallet(targetWallet);
+      const linkedFresh = await firebaseProfiles.getLinkedWallets(targetWallet);
       const allWallets: WalletDescriptor[] = [
         { address: targetWallet, chain: targetWallet.startsWith('0x') ? 'evm' : 'solana' },
-        ...linkedWallets.map((lw) => ({ address: lw.address, chain: lw.chain })),
+        ...linkedFresh.map((lw) => ({ address: lw.address, chain: lw.chain })),
       ];
       const inventory = allWallets.length > 1
         ? await fetchAggregatedNFTInventory(allWallets)
@@ -995,6 +999,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       await firebaseProfiles.updateNFTInventory(targetWallet, inventory, {
         tokenBonusPoints: tokenBonus,
       });
+      setLinkedWallets(linkedFresh);
       const updatedProfile = await firebaseProfiles.getProfile(targetWallet);
       setProfile(updatedProfile);
     } catch (error) {
@@ -1009,14 +1014,16 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const handleSelectProfilePicture = async (collection: keyof typeof NFT_COLLECTIONS, tokenId: string) => {
     if (!address) return;
 
-    const profileOwner = primaryWallet || address;
-    
+    const profileOwner = await firebaseProfiles.getPrimaryWallet(address);
+    setPrimaryWallet(profileOwner);
+
     if (typeof window !== 'undefined' && window.console) {
-      profileDebugLog('[PROFILE] Selecting profile picture:', collection, tokenId);
+      profileDebugLog('[PROFILE] Selecting profile picture:', collection, tokenId, 'owner', profileOwner);
     }
     try {
+      const linkedForMeta = await firebaseProfiles.getLinkedWallets(profileOwner);
       const solOwner =
-        linkedWallets.find((w) => w.chain === 'solana')?.address ||
+        linkedForMeta.find((w) => w.chain === 'solana')?.address ||
         profile?.linked_wallets?.find((w) => w.chain === 'solana')?.address;
       const metadata = await fetchTokenMetadata(collection, tokenId, profileOwner, solOwner);
       if (typeof window !== 'undefined' && window.console) {
@@ -1519,29 +1526,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           {/* Profile Picture Selection */}
           <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px', width: '100%', maxWidth: '600px' }}>
         <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Profile Picture</h4>
-        {(() => {
-          if (!profile) return false;
-          const totalNFTs = (profile?.nft_inventory?.lawbsters?.length || 0) + 
-                           (profile?.nft_inventory?.lawbstarz?.length || 0) + 
-                           (profile?.nft_inventory?.halloween_lawbsters?.length || 0) + 
-                           (profile?.nft_inventory?.pixelawbs?.length || 0) +
-                           (profile?.nft_inventory?.asciilawbs?.length || 0) +
-                           (profile?.nft_inventory?.lawbstation?.length || 0) +
-                           (profile?.nft_inventory?.lawbnexus?.length || 0) +
-                           (profile?.nft_inventory?.lawb_lore?.length || 0);
-          // Clear profile picture if no NFTs owned
-          if (totalNFTs === 0 && profile?.profile_picture) {
-            // Clear profile picture asynchronously
-            const profileOwner = primaryWallet || address;
-            firebaseProfiles.updateProfilePicture(profileOwner, null).catch(err => {
-              if (typeof window !== 'undefined' && window.console) {
-                window.console.error('[PROFILE] Error clearing profile picture:', err);
-              }
-            });
-          }
-          return profile?.profile_picture && totalNFTs > 0;
-        })() ? (
-          profile?.profile_picture && (
+        {profile?.profile_picture ? (
             <div style={{ marginBottom: '12px' }}>
               <img 
                 src={profile.profile_picture.image_url} 
@@ -1571,7 +1556,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 {NFT_COLLECTIONS[profile.profile_picture.collection].name} #{normalizeInventoryEntry(profile.profile_picture.token_id)}
               </div>
             </div>
-          )
         ) : (
           <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#888', marginBottom: '12px' }}>
             No profile picture set. Select an NFT below.

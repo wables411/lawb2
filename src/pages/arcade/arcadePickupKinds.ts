@@ -4,6 +4,7 @@ import {
   getCharacterStats,
   oxygenCapacityForStars,
 } from './arcadeCharacterStats';
+import { reefRunAirTankRandomPickupWeight } from './arcadeDifficulty';
 
 export type PickupKind =
   | 'air_tank'
@@ -20,6 +21,8 @@ export type RunEndReason = 'oxygen' | 'crush' | 'wrecked';
 export type ArcadeRunHudState = {
   oxygen: number;
   oxygenMax: number;
+  /** Clawb: underwater lobster — no breath meter / no O₂ fail state. */
+  oxygenInfinite: boolean;
   armor: number;
   armorMax: number;
   coins: number;
@@ -29,6 +32,15 @@ export type ArcadeRunHudState = {
   cheeseSecLeft: number;
   dragSecLeft: number;
 };
+
+export function characterUsesOxygenMechanic(id: ArcadeCharacterId): boolean {
+  return id === 'milady' || id === 'radbro';
+}
+
+/** Clawb only — no O₂ drain / no breath game over (lobster underwater). */
+export function characterHasUnlimitedOxygen(id: ArcadeCharacterId): boolean {
+  return id === 'clawb';
+}
 
 export type RunState = {
   characterId: ArcadeCharacterId;
@@ -64,9 +76,10 @@ export function createInitialRunState(characterId: ArcadeCharacterId, _nowSec: n
 
 /**
  * Weighted pickup table — favors loot & sustain, hazards readable but not spammy.
- * (Follow-up pass: fewer simultaneous threats than v1.)
+ * Clawb: no air tanks (redistribute weight). Milady/Radbro: air weight scales down with depth, never to 0
+ * (see also guaranteed tank cadence in `ArcadeSceneController`).
  */
-const SPAWN_WEIGHTS: { kind: PickupKind; w: number }[] = [
+const SPAWN_WEIGHTS_BASE: { kind: PickupKind; w: number }[] = [
   { kind: 'coin', w: 26 },
   { kind: 'trash', w: 12 },
   { kind: 'air_tank', w: 10 },
@@ -77,10 +90,30 @@ const SPAWN_WEIGHTS: { kind: PickupKind; w: number }[] = [
   { kind: 'mine', w: 3 },
 ];
 
-export function rollPickupKind(): PickupKind {
-  const sum = SPAWN_WEIGHTS.reduce((a, b) => a + b.w, 0);
+export function rollPickupKind(
+  survivalSec: number,
+  characterId: ArcadeCharacterId,
+): PickupKind {
+  const rows = SPAWN_WEIGHTS_BASE.map((r) => ({ ...r }));
+  if (characterId === 'clawb') {
+    const i = rows.findIndex((r) => r.kind === 'air_tank');
+    if (i >= 0) rows[i]!.w = 0;
+    const add = (kind: PickupKind, d: number) => {
+      const row = rows.find((r) => r.kind === kind);
+      if (row) row.w += d;
+    };
+    add('coin', 5);
+    add('trash', 3);
+    add('cheese', 2);
+  } else {
+    const air = rows.find((r) => r.kind === 'air_tank');
+    if (air) air.w = reefRunAirTankRandomPickupWeight(survivalSec);
+  }
+  const sum = rows.reduce((a, b) => a + Math.max(0, b.w), 0);
+  if (sum <= 0) return 'coin';
   let r = Math.random() * sum;
-  for (const row of SPAWN_WEIGHTS) {
+  for (const row of rows) {
+    if (row.w <= 0) continue;
     r -= row.w;
     if (r <= 0) return row.kind;
   }
@@ -94,8 +127,8 @@ export function applyPickupEffect(
 ): { gameOver?: RunEndReason; cameraShake?: number } {
   switch (kind) {
     case 'air_tank': {
-      if (st.characterId === 'milady' || st.characterId === 'radbro') {
-        st.oxygen = Math.min(st.oxygenMax, st.oxygen + 34);
+      if (characterUsesOxygenMechanic(st.characterId)) {
+        st.oxygen = Math.min(st.oxygenMax, st.oxygen + 38);
       }
       break;
     }
@@ -141,6 +174,7 @@ export function runStateToHud(
   return {
     oxygen: st.oxygen,
     oxygenMax: st.oxygenMax,
+    oxygenInfinite: characterHasUnlimitedOxygen(st.characterId),
     armor: st.armor,
     armorMax: st.armorMax,
     coins: st.coins,

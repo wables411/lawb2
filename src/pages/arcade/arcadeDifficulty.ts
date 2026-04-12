@@ -79,6 +79,21 @@ export function tierIndexFromSurvivalSec(sec: number): number {
   return Math.floor(sec / REEF_RUN_TIER_SECONDS);
 }
 
+/**
+ * Guaranteed O₂ tank cadence for Milady/Radbro — spacing widens with depth (more timing pressure)
+ * but stays within sustainable oxygen math (~10–14s at typical drain).
+ */
+export function forcedOxyTankIntervalSec(survivalSec: number): number {
+  const u = smoothstep(0, 165, survivalSec);
+  return 10 + u * 4.2;
+}
+
+/** Random pickup table: air-tank weight vs survival (never below floor — never “zero air” in the table). */
+export function reefRunAirTankRandomPickupWeight(survivalSec: number): number {
+  const u = smoothstep(0, 200, survivalSec);
+  return Math.max(3.6, 10 * (1 - 0.58 * u));
+}
+
 export function swimSpeedMultiplierForTier(tierIndex: number): number {
   const t = Math.min(Math.max(0, tierIndex), REEF_RUN_MAX_SPEED_TIER);
   return 1 + t * REEF_RUN_SPEED_PER_TIER;
