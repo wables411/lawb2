@@ -86,9 +86,6 @@ type PickupEnt = {
 /** Lane centers (world X). Spacing 2.1 ⇒ ~0.78 gap between 1.32-wide obstacles. */
 const LANES = [-2.1, 0, 2.1] as const;
 const PLAYER_Z = 2.8;
-/** Torus hoops along -Z; must match scroll wrap modulo in `tick`. */
-const RING_ALONG_Z_SPACING = 3.2;
-const RING_COUNT = 32;
 const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
 /** Z half-thickness of the hit slab (must cover obstacle half-depth + timing slop). */
@@ -148,6 +145,48 @@ function lanesOnActiveTrack(obstacles: Obstacle[]): Set<number> {
   return lanes;
 }
 
+/** Procedural streaks for the reef tunnel interior (UV-scrolled = hyperspeed / warp motion). */
+function createReefHyperspeedTunnelTexture(): THREE.CanvasTexture {
+  const w = 128;
+  const h = 512;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d');
+  const radial = ctx.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.72);
+  radial.addColorStop(0, '#061e28');
+  radial.addColorStop(0.45, '#0a3040');
+  radial.addColorStop(1, '#020a10');
+  ctx.fillStyle = radial;
+  ctx.fillRect(0, 0, w, h);
+  const wash = ctx.createLinearGradient(0, 0, 0, h);
+  wash.addColorStop(0, 'rgba(6,40,48,0.5)');
+  wash.addColorStop(0.5, 'rgba(12,70,82,0.2)');
+  wash.addColorStop(1, 'rgba(4,28,36,0.55)');
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 64; i++) {
+    const x = (i / 64) * w + Math.sin(i * 2.1) * 3.5;
+    const bw = 0.35 + (i % 5) * 0.28;
+    const a = 0.06 + (i % 8) * 0.014;
+    ctx.fillStyle = `rgba(150, 255, 250, ${a})`;
+    ctx.fillRect(x, 0, bw, h);
+  }
+  for (let j = 0; j < 36; j++) {
+    const y = (j / 36) * h;
+    const bh = 0.8 + (j % 4) * 0.5;
+    ctx.fillStyle = `rgba(60, 190, 205, ${0.03 + (j % 6) * 0.01})`;
+    ctx.fillRect(0, y, w, bh);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.repeat.set(5, 18);
+  return tex;
+}
+
 export class ArcadeSceneController {
   private container: HTMLElement;
   private scene!: THREE.Scene;
@@ -157,7 +196,7 @@ export class ArcadeSceneController {
   private raf = 0;
   private pathRoot = new THREE.Group();
   private tunnel!: THREE.Mesh;
-  private ringGroup!: THREE.Group;
+  private tunnelFlowTex!: THREE.CanvasTexture;
   private plinthWorld = new THREE.Group();
   private playerWorld = new THREE.Group();
   private obstacleGroup = new THREE.Group();
@@ -524,37 +563,23 @@ export class ArcadeSceneController {
     this.renderer.domElement.style.height = '100%';
     this.container.appendChild(this.renderer.domElement);
 
-    const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, 72, 28, true);
+    const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, 96, 36, true);
+    this.tunnelFlowTex = createReefHyperspeedTunnelTexture();
     this.tunnelMaterial = new THREE.MeshStandardMaterial({
-      color: 0x063d42,
-      metalness: 0.22,
-      roughness: 0.78,
+      color: 0x031820,
+      metalness: 0.38,
+      roughness: 0.42,
       side: THREE.BackSide,
-      emissive: 0x0a4a58,
-      emissiveIntensity: 0.38,
+      map: this.tunnelFlowTex,
+      emissive: 0x1a7080,
+      emissiveMap: this.tunnelFlowTex,
+      emissiveIntensity: 0.52,
     });
     this.tunnel = new THREE.Mesh(tunnelGeo, this.tunnelMaterial);
     this.tunnel.rotation.x = Math.PI / 2;
     this.tunnel.position.z = -42;
 
-    this.ringGroup = new THREE.Group();
-    /** Coaxial with tunnel bore (~8.5); one radius so hoops read as a single tunnel, not a wobbly stack. */
-    const ringMajorR = 7.62;
-    const ringTubeR = 0.042;
-    for (let i = 0; i < RING_COUNT; i++) {
-      const hue = 0.48 + (i % 9) * 0.014;
-      const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(hue, 0.58, 0.5),
-        transparent: true,
-        opacity: 0.26 + (i % 5) * 0.028,
-        depthWrite: false,
-      });
-      const mesh = new THREE.Mesh(new THREE.TorusGeometry(ringMajorR, ringTubeR, 10, 72), mat);
-      mesh.position.z = -i * RING_ALONG_Z_SPACING;
-      mesh.rotation.x = Math.PI / 2;
-      this.ringGroup.add(mesh);
-    }
-    this.pathRoot.add(this.tunnel, this.ringGroup);
+    this.pathRoot.add(this.tunnel);
     this.scene.add(this.pathRoot);
 
     this.scene.add(new THREE.AmbientLight(0xd8ebe4, 0.44));
@@ -1255,13 +1280,6 @@ export class ArcadeSceneController {
       }
 
       if (!this.playEnded) {
-        /** Scroll tunnel + hoops toward the camera at the same rate as coral rows (periodic wrap = endless tunnel). */
-        const ringDz = REEF_RUN_OBSTACLE_BASE_SPEED * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
-        this.pathRoot.position.z += ringDz;
-        while (this.pathRoot.position.z > RING_ALONG_Z_SPACING) {
-          this.pathRoot.position.z -= RING_ALONG_Z_SPACING;
-        }
-
         const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
         this.hudEmitAcc += dt;
         if (
@@ -1368,20 +1386,21 @@ export class ArcadeSceneController {
 
     const warp = this.screen === 'play' && !this.playEnded ? swimSpd : 1;
     if (this.screen === 'play' && !this.playEnded) {
-      /** Hoops are a readable tunnel while scrolling; avoid the old “locked knot” of fast per-ring spins. */
-      this.tunnel.rotation.z = t * (0.016 + warp * 0.028);
-      this.ringGroup.rotation.z = t * (0.012 + warp * 0.02);
-      this.ringGroup.children.forEach((mesh, i) => {
-        if (mesh instanceof THREE.Mesh) {
-          mesh.rotation.z = t * (0.018 + (i % 7) * 0.004 + warp * 0.012);
-        }
-      });
+      /** Hyperspeed tunnel: spiral + UV flow (texture scroll below). */
+      this.tunnel.rotation.z = t * (0.02 + warp * 0.048);
     } else {
       this.tunnel.rotation.z = t * (0.014 + warp * 0.05);
-      this.ringGroup.rotation.z = t * (0.048 + warp * 0.11);
-      this.ringGroup.children.forEach((mesh, i) => {
-        if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.11 + (i % 5) * 0.024 + warp * 0.07);
-      });
+    }
+
+    if (this.tunnelFlowTex) {
+      const flow =
+        this.screen === 'play' && !this.playEnded
+          ? REEF_RUN_OBSTACLE_BASE_SPEED * swimSpd * dt * REEF_RUN_TICK_Z_SCALE * 0.26
+          : dt * 0.038;
+      this.tunnelFlowTex.offset.y += flow;
+      this.tunnelFlowTex.offset.x += flow * 0.11 + Math.sin(t * 0.42) * dt * 0.012;
+      this.tunnelFlowTex.offset.y = THREE.MathUtils.euclideanModulo(this.tunnelFlowTex.offset.y, 1);
+      this.tunnelFlowTex.offset.x = THREE.MathUtils.euclideanModulo(this.tunnelFlowTex.offset.x, 1);
     }
     const pulse =
       0.34 + Math.sin(t * 2.4) * 0.14 + (this.screen === 'play' ? Math.min(0.42, (warp - 1) * 0.28) : 0);
@@ -1390,12 +1409,13 @@ export class ArcadeSceneController {
     if (this.scene.fog instanceof THREE.FogExp2) {
       const fd =
         this.screen === 'play' && !this.playEnded
-          ? this.reefFogDensityBase + Math.min(0.85, warp - 1) * 0.019
+          ? this.reefFogDensityBase + Math.min(0.95, warp - 1) * 0.024
           : this.reefFogDensityBase;
       this.scene.fog.density = THREE.MathUtils.lerp(this.scene.fog.density, fd, 0.08);
     }
     if (this.screen === 'play' || this.screen === 'gameover') {
-      const targetFov = 52 + (this.screen === 'play' && !this.playEnded ? Math.min(6.5, (swimSpd - 1) * 5.5) : 0);
+      const targetFov =
+        52 + (this.screen === 'play' && !this.playEnded ? Math.min(9.2, (swimSpd - 1) * 6.2) : 0);
       this.camera.fov += (targetFov - this.camera.fov) * 0.06;
       this.camera.updateProjectionMatrix();
     } else {
@@ -1403,13 +1423,17 @@ export class ArcadeSceneController {
       this.camera.updateProjectionMatrix();
     }
 
-    const driftMain = 0.062 * warp;
+    let driftMain = 0.062 * warp;
+    if (this.screen === 'play' && !this.playEnded) {
+      driftMain *= 1.35 + Math.max(0, warp - 1) * 1.05;
+    }
     if (this.ambianceParticles) {
       this.ambianceParticles.position.z += driftMain;
       if (this.ambianceParticles.position.z > 6) this.ambianceParticles.position.z = -4;
     }
     if (this.streakParticles) {
-      this.streakParticles.position.z += driftMain * 1.65;
+      const streakMul = this.screen === 'play' && !this.playEnded ? 2.35 + (warp - 1) * 0.55 : 1.65;
+      this.streakParticles.position.z += driftMain * streakMul;
       if (this.streakParticles.position.z > 8) this.streakParticles.position.z = -6;
     }
 
@@ -1431,6 +1455,9 @@ export class ArcadeSceneController {
     ro?.disconnect();
     this.clearPickups();
     this.clearObstacles();
+    this.tunnel?.geometry.dispose();
+    (this.tunnel?.material as THREE.Material | undefined)?.dispose();
+    this.tunnelFlowTex?.dispose();
     this.renderer.dispose();
     if (this.renderer.domElement.parentNode === this.container) {
       this.container.removeChild(this.renderer.domElement);

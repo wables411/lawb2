@@ -19,7 +19,7 @@ export const REEF_RUN_TICK_Z_SCALE = 60 * 0.18;
 /** Target seconds from spawn (at obstacle Z) until the first row reaches the player at tier-0 baseline intensity. */
 export const REEF_RUN_FIRST_HIT_TARGET_SEC = 10;
 
-/** Obstacle Z-scroll base (mean); matches `spawnObstacleInLane` before 0.94–1.06 jitter. Tunnel rings use the same rate. */
+/** Obstacle Z-scroll base (mean); matches `spawnObstacleInLane` before 0.94–1.06 jitter. */
 export const REEF_RUN_OBSTACLE_BASE_SPEED =
   REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
 
