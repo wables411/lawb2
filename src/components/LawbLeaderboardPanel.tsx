@@ -1,7 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { database } from '../firebaseApp';
-import { formatAddress, getTopLeaderboardEntries, type LeaderboardEntry } from '../firebaseLeaderboard';
+import { firebaseProfiles } from '../firebaseProfiles';
+import {
+  formatAddress,
+  getTopLeaderboardEntries,
+  mergeLeaderboardEntriesForDisplay,
+  normalizeLeaderboardPathKey,
+  type LeaderboardEntry,
+} from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
+
+/** Group key for linked EVM + Solana rows that share one primary profile. */
+function primaryGroupKey(addr: string): string {
+  const n = normalizeLeaderboardPathKey(addr.trim());
+  if (n) return n;
+  const t = addr.trim();
+  return t.startsWith('0x') ? t.toLowerCase() : t;
+}
+
+/** Fetch extra raw rows so after merging linked keys we still have up to `outLimit` distinct players. */
+const RAW_LEADERBOARD_FETCH = 100;
 
 const ROW_STYLE: React.CSSProperties = {
   display: 'grid',
@@ -33,7 +51,33 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
       setLoading(true);
       setError(null);
       try {
-        const data = await getTopLeaderboardEntries(25);
+        const raw = await getTopLeaderboardEntries(RAW_LEADERBOARD_FETCH);
+        const withPrimary = await Promise.all(
+          raw.map(async (e) => ({
+            entry: e,
+            primary: primaryGroupKey(await firebaseProfiles.getPrimaryWallet(e.username)),
+          })),
+        );
+        const groups = new Map<string, LeaderboardEntry[]>();
+        for (const { entry, primary } of withPrimary) {
+          const list = groups.get(primary) ?? [];
+          list.push(entry);
+          groups.set(primary, list);
+        }
+        const merged: LeaderboardEntry[] = [];
+        for (const [primary, list] of groups) {
+          const m = mergeLeaderboardEntriesForDisplay(list);
+          if (m) {
+            m.username = primary;
+            merged.push(m);
+          }
+        }
+        merged.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          return a.total_games - b.total_games;
+        });
+        const data = merged.slice(0, 25);
         if (!cancelled) {
           setRows(data);
           if (data.length === 0) {
@@ -88,7 +132,8 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
     >
       <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Lawb leaderboard (top 25 by total points)</p>
       <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#444', lineHeight: 1.35 }}>
-        Sorted by total points. Open your Lawb Profile to see how your points break down.
+        Sorted by total points. Linked wallets under the same Lawb profile are merged into one row (points added
+        together). Open your Lawb Profile for a per-source breakdown.
       </p>
       {loading && <p style={{ margin: 0 }}>Loading…</p>}
       {error && <p style={{ margin: 0, color: '#a00' }}>{error}</p>}
@@ -111,9 +156,11 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
           </div>
           {rows.map((entry, i) => {
             const key = entry.username;
-            const resolved = nameByKey[key] ?? formatAddress(key);
+            const resolvedRaw = (nameByKey[key] ?? formatAddress(key)).trim();
+            const resolved = resolvedRaw.startsWith('@') ? resolvedRaw.slice(1) : resolvedRaw;
+            const shortKey = formatAddress(key);
             const sub =
-              resolved && resolved !== formatAddress(key) ? (
+              resolved && resolved !== shortKey ? (
                 <div
                   style={{
                     fontSize: 10,
@@ -124,7 +171,7 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                   }}
                   title={key}
                 >
-                  {formatAddress(key)}
+                  {shortKey}
                 </div>
               ) : null;
             const mainLooksLikeAddr = /\.\.\./.test(resolved);

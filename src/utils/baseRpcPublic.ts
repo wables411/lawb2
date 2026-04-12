@@ -9,12 +9,12 @@ export function basePublicFallbackTransport(): Transport {
     typeof import.meta !== 'undefined' && import.meta.env?.VITE_BASE_RPC_URL
       ? String(import.meta.env.VITE_BASE_RPC_URL).trim()
       : '';
+  // Hosts must appear in `_headers` connect-src (production blocks e.g. 1rpc / publicnode).
   const urls = [
     ...(env ? [env] : []),
     'https://mainnet.base.org',
-    'https://1rpc.io/base',
-    'https://base.meowrpc.com',
-    'https://base.publicnode.com',
+    'https://base.gateway.tenderly.co',
+    'https://rpc.ankr.com/base',
     'https://base.drpc.org',
   ];
   return fallback(urls.map((url) => http(url, { batch: false })));
