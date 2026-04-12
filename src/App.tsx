@@ -35,9 +35,11 @@ const useStyles = createUseStyles({
     fontFamily: "'MS Sans Serif', Arial, sans-serif",
     color: '#000',
     cursor: 'url("/assets/lawbpointer.png"), auto',
-    position: 'relative', // Required for absolute positioning of popups
+    position: 'relative',
+    isolation: 'isolate',
+    backgroundColor: 'transparent',
     // overflow: 'hidden', // Removed to allow modals to be clickable
-  }
+  },
 });
 
 function App() {

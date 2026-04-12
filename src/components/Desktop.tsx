@@ -120,6 +120,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
   return (
     <div style={{ 
       position: 'relative',
+      zIndex: 1,
       width: '100vw',
       height: '100vh',
       background: 'transparent',

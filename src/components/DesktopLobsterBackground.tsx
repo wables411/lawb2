@@ -312,7 +312,8 @@ const DesktopLobsterBackground: React.FC = () => {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: -1,
+        /* Must be ≥0 — z-index:-1 paints behind <body> (#1a3a5c) so the canvas was invisible. */
+        zIndex: 0,
         overflow: 'hidden',
         pointerEvents: 'none',
       }}

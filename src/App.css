@@ -21,6 +21,8 @@ body:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   width: 100vw;
   margin: 0;
   padding: 0;
+  position: relative;
+  isolation: isolate;
 }
 
 /* Mobile optimizations */
