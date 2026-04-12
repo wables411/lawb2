@@ -27,9 +27,8 @@ import {
   reefRunSpawnIntervalSec,
   reefRunSpawnRowThisWave,
   reefRunTwoBlockRowChance,
-  REEF_RUN_FIRST_HIT_TARGET_SEC,
+  REEF_RUN_OBSTACLE_BASE_SPEED,
   REEF_RUN_TICK_Z_SCALE,
-  REEF_RUN_Z_TRAVEL,
   tierIndexFromSurvivalSec,
   type ReefRunHudPayload,
 } from './arcadeDifficulty';
@@ -87,6 +86,9 @@ type PickupEnt = {
 /** Lane centers (world X). Spacing 2.1 ⇒ ~0.78 gap between 1.32-wide obstacles. */
 const LANES = [-2.1, 0, 2.1] as const;
 const PLAYER_Z = 2.8;
+/** Torus hoops along -Z; must match scroll wrap modulo in `tick`. */
+const RING_ALONG_Z_SPACING = 3.2;
+const RING_COUNT = 32;
 const SPAWN_Z = -52;
 const HIT_Z = PLAYER_Z;
 /** Z half-thickness of the hit slab (must cover obstacle half-depth + timing slop). */
@@ -293,6 +295,7 @@ export class ArcadeSceneController {
       this.clearObstacles();
       this.playerWorld.visible = false;
       this.plinthWorld.visible = true;
+      this.pathRoot.position.z = 0;
     }
   }
 
@@ -535,16 +538,19 @@ export class ArcadeSceneController {
     this.tunnel.position.z = -42;
 
     this.ringGroup = new THREE.Group();
-    for (let i = 0; i < 28; i++) {
-      const hue = 0.48 + (i % 7) * 0.018;
+    /** Coaxial with tunnel bore (~8.5); one radius so hoops read as a single tunnel, not a wobbly stack. */
+    const ringMajorR = 7.62;
+    const ringTubeR = 0.042;
+    for (let i = 0; i < RING_COUNT; i++) {
+      const hue = 0.48 + (i % 9) * 0.014;
       const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(hue, 0.62, 0.52),
+        color: new THREE.Color().setHSL(hue, 0.58, 0.5),
         transparent: true,
-        opacity: 0.22 + (i % 4) * 0.055,
+        opacity: 0.26 + (i % 5) * 0.028,
         depthWrite: false,
       });
-      const mesh = new THREE.Mesh(new THREE.TorusGeometry(7.4 + (i % 5) * 0.08, 0.038, 8, 96), mat);
-      mesh.position.z = -i * 3.2;
+      const mesh = new THREE.Mesh(new THREE.TorusGeometry(ringMajorR, ringTubeR, 10, 72), mat);
+      mesh.position.z = -i * RING_ALONG_Z_SPACING;
       mesh.rotation.x = Math.PI / 2;
       this.ringGroup.add(mesh);
     }
@@ -863,6 +869,7 @@ export class ArcadeSceneController {
     if (!this.selectedId) return;
     const slot = this.slots.get(this.selectedId);
     if (!slot) return;
+    this.pathRoot.position.z = 0;
     /** Must match run stats after async loads — do not re-read `selectedId` after `await`. */
     const playCharacterId = slot.def.id;
     this.plinthWorld.visible = false;
@@ -1026,9 +1033,7 @@ export class ArcadeSceneController {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
     this.obstacleGroup.add(mesh);
-    const base =
-      REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
-    const speed = base * (0.94 + Math.random() * 0.12);
+    const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.94 + Math.random() * 0.12);
     this.obstacles.push({ mesh, lane, speed, hit: false });
   }
 
@@ -1076,10 +1081,8 @@ export class ArcadeSceneController {
     const mesh = pickupMeshForKind(kind);
     mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, SPAWN_Z);
     this.obstacleGroup.add(mesh);
-    const base =
-      REEF_RUN_Z_TRAVEL / (REEF_RUN_FIRST_HIT_TARGET_SEC * REEF_RUN_TICK_Z_SCALE);
     /** Slightly slower than coral so pickups are easier to read. */
-    const speed = base * (0.88 + Math.random() * 0.12) * 0.74;
+    const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + Math.random() * 0.12) * 0.74;
     this.pickups.push({ mesh, lane, speed, hit: false, kind });
   }
 
@@ -1252,6 +1255,13 @@ export class ArcadeSceneController {
       }
 
       if (!this.playEnded) {
+        /** Scroll tunnel + hoops toward the camera at the same rate as coral rows (periodic wrap = endless tunnel). */
+        const ringDz = REEF_RUN_OBSTACLE_BASE_SPEED * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+        this.pathRoot.position.z += ringDz;
+        while (this.pathRoot.position.z > RING_ALONG_Z_SPACING) {
+          this.pathRoot.position.z -= RING_ALONG_Z_SPACING;
+        }
+
         const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
         this.hudEmitAcc += dt;
         if (
@@ -1357,11 +1367,22 @@ export class ArcadeSceneController {
     }
 
     const warp = this.screen === 'play' && !this.playEnded ? swimSpd : 1;
-    this.tunnel.rotation.z = t * (0.014 + warp * 0.05);
-    this.ringGroup.rotation.z = t * (0.048 + warp * 0.11);
-    this.ringGroup.children.forEach((mesh, i) => {
-      if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.11 + (i % 5) * 0.024 + warp * 0.07);
-    });
+    if (this.screen === 'play' && !this.playEnded) {
+      /** Hoops are a readable tunnel while scrolling; avoid the old “locked knot” of fast per-ring spins. */
+      this.tunnel.rotation.z = t * (0.016 + warp * 0.028);
+      this.ringGroup.rotation.z = t * (0.012 + warp * 0.02);
+      this.ringGroup.children.forEach((mesh, i) => {
+        if (mesh instanceof THREE.Mesh) {
+          mesh.rotation.z = t * (0.018 + (i % 7) * 0.004 + warp * 0.012);
+        }
+      });
+    } else {
+      this.tunnel.rotation.z = t * (0.014 + warp * 0.05);
+      this.ringGroup.rotation.z = t * (0.048 + warp * 0.11);
+      this.ringGroup.children.forEach((mesh, i) => {
+        if (mesh instanceof THREE.Mesh) mesh.rotation.z = t * (0.11 + (i % 5) * 0.024 + warp * 0.07);
+      });
+    }
     const pulse =
       0.34 + Math.sin(t * 2.4) * 0.14 + (this.screen === 'play' ? Math.min(0.42, (warp - 1) * 0.28) : 0);
     this.tunnelMaterial.emissiveIntensity = pulse;
