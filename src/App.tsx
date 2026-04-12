@@ -57,10 +57,6 @@ function App() {
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [lawbTab, setLawbTab] = useState<'tokens' | 'lore'>('tokens');
 
-  // Debug: log activePopup changes
-  useEffect(() => {
-    console.log('[APP] activePopup changed to:', activePopup);
-  }, [activePopup]);
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');

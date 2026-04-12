@@ -138,11 +138,15 @@ export async function getCollectionNFTs(collectionSlug: string, page: number = 1
     
     if (response.ok) {
       return await response.json() as NFTResponse;
-    } else {
-      throw new Error(`Failed to get NFTs: ${response.statusText}`);
     }
-  } catch (error) {
-    console.error('Error getting collection NFTs:', error);
+    const err = new Error(`Failed to get NFTs: HTTP ${response.status}`) as Error & { status: number };
+    err.status = response.status;
+    throw err;
+  } catch (error: unknown) {
+    const st = typeof error === 'object' && error !== null && 'status' in error ? (error as { status: number }).status : undefined;
+    if (st !== 404) {
+      console.warn('[Scatter] collection NFTs failed:', collectionSlug, error);
+    }
     throw error;
   }
 }

@@ -58,8 +58,18 @@ function ticksFromPositionInfo(info: bigint): { tickLower: number; tickUpper: nu
 /** Base `eth_getLogs` allows at most 10_000 blocks per query (inclusive span). */
 const LOG_BLOCK_SPAN = 10000n;
 const MAX_CHUNKS_DEFAULT = 220;
-/** Keep low: parallel `eth_getLogs` chunks trigger 429s on public RPCs. */
-const LOG_BATCH_CONCURRENCY = 2;
+/** Space out `eth_getLogs` — public RPCs 429 when many chunks fire in parallel. */
+const BETWEEN_CHUNK_MS = 140;
+const GETLOGS_RETRIES = 2;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isRateLimitError(e: unknown): boolean {
+  const s = e instanceof Error ? e.message : String(e);
+  return /429|rate|limit|too many/i.test(s);
+}
 
 export interface BaseUniswapV4ClawbPosition {
   tokenId: string;
@@ -125,28 +135,46 @@ function makeRangesFromLatest(
   return { ranges, hitDeploy };
 }
 
+async function getLogsWithRetry(
+  client: BaseLiquidityClient,
+  params: Parameters<BaseLiquidityClient['getLogs']>[0],
+): Promise<Awaited<ReturnType<BaseLiquidityClient['getLogs']>>> {
+  let last: unknown;
+  for (let attempt = 0; attempt <= GETLOGS_RETRIES; attempt++) {
+    try {
+      return await client.getLogs(params);
+    } catch (e) {
+      last = e;
+      if (isRateLimitError(e) && attempt < GETLOGS_RETRIES) {
+        await sleep(450 * (attempt + 1));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw last;
+}
+
 async function fetchTransferLogs(
   client: BaseLiquidityClient,
   owner: `0x${string}`,
   fromBlock: bigint,
   toBlock: bigint,
 ) {
-  const [incoming, outgoing] = await Promise.all([
-    client.getLogs({
-      address: BASE_UNISWAP_V4_POSITION_MANAGER,
-      event: transferEvent,
-      args: { to: owner },
-      fromBlock,
-      toBlock,
-    }),
-    client.getLogs({
-      address: BASE_UNISWAP_V4_POSITION_MANAGER,
-      event: transferEvent,
-      args: { from: owner },
-      fromBlock,
-      toBlock,
-    }),
-  ]);
+  const incoming = await getLogsWithRetry(client, {
+    address: BASE_UNISWAP_V4_POSITION_MANAGER,
+    event: transferEvent,
+    args: { to: owner },
+    fromBlock,
+    toBlock,
+  });
+  const outgoing = await getLogsWithRetry(client, {
+    address: BASE_UNISWAP_V4_POSITION_MANAGER,
+    event: transferEvent,
+    args: { from: owner },
+    fromBlock,
+    toBlock,
+  });
   return [...incoming, ...outgoing];
 }
 
@@ -205,12 +233,10 @@ export async function fetchBaseUniswapV4ClawbEthPositions(
     if (!hitDeploy) scanIncomplete = true;
 
     const allLogs: Awaited<ReturnType<typeof fetchTransferLogs>> = [];
-    for (let i = 0; i < ranges.length; i += LOG_BATCH_CONCURRENCY) {
-      const slice = ranges.slice(i, i + LOG_BATCH_CONCURRENCY);
-      const batches = await Promise.all(
-        slice.map(([from, to]) => fetchTransferLogs(client, owner, from, to)),
-      );
-      for (const b of batches) allLogs.push(...b);
+    for (const [from, to] of ranges) {
+      const batch = await fetchTransferLogs(client, owner, from, to);
+      allLogs.push(...batch);
+      await sleep(BETWEEN_CHUNK_MS);
     }
     tokenIds = ownedTokenIdsFromLogs(allLogs, ownerLower);
     if (tokenIds.length < Number(bal)) scanIncomplete = true;

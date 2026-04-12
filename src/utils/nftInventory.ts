@@ -1,30 +1,45 @@
-import { JsonRpcProvider, Contract } from 'ethers';
+import { JsonRpcProvider, Contract, type Log } from 'ethers';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { getCollectionNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
 import { cachedFetch } from './fetchCache';
+import { basePublicRpcHttpUrls } from './baseRpcPublic';
 
 const ERC721_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
   "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
 ];
 
-// RPC endpoints for Ethereum mainnet (with fallbacks)
+// RPC endpoints for Ethereum mainnet (ankr/blockscout before llamarpc — fewer 429s in the wild)
 const ETHEREUM_RPC_ENDPOINTS = [
-  'https://eth.llamarpc.com',
-  'https://eth.blockscout.com/api/eth-rpc',
   'https://rpc.ankr.com/eth',
-  'https://eth-mainnet.public.blastapi.io'
+  'https://eth.blockscout.com/api/eth-rpc',
+  'https://eth.llamarpc.com',
+  'https://eth-mainnet.public.blastapi.io',
 ];
 
-// RPC endpoints for Base mainnet (with fallbacks)
-const BASE_RPC_ENDPOINTS = [
-  'https://mainnet.base.org',
-  'https://base.llamarpc.com',
-  'https://base-rpc.publicnode.com',
-  'https://base.gateway.tenderly.co',
-  'https://base.drpc.org',
-  'https://1rpc.io/base'
-];
+const LOG_CHUNK_BLOCKS = 100_000;
+
+async function getLogsChunked(
+  provider: JsonRpcProvider,
+  filter: { address: string; topics: (string | null)[] },
+  fromBlock: number,
+  toBlock: number,
+): Promise<Log[]> {
+  const out: Log[] = [];
+  let start = fromBlock;
+  while (start <= toBlock) {
+    const end = Math.min(start + LOG_CHUNK_BLOCKS - 1, toBlock);
+    const chunk = await provider.getLogs({
+      ...filter,
+      fromBlock: start,
+      toBlock: end,
+    });
+    out.push(...chunk);
+    start = end + 1;
+    await new Promise((r) => setTimeout(r, 75));
+  }
+  return out;
+}
 
 /** Alchemy ownedNft entries: token id may be string, number, or nested metadata object. */
 function extractAlchemyTokenId(nft: any): string {
@@ -49,7 +64,7 @@ async function getEthereumProvider(): Promise<JsonRpcProvider> {
       const provider = new JsonRpcProvider(rpcUrl);
       // Test the connection by getting the latest block number
       await provider.getBlockNumber();
-      if (typeof window !== 'undefined' && window.console) {
+      if (import.meta.env.DEV && typeof window !== 'undefined' && window.console) {
         window.console.log('[NFT] Using RPC endpoint:', rpcUrl);
       }
       return provider;
@@ -70,12 +85,12 @@ async function getEthereumProvider(): Promise<JsonRpcProvider> {
 async function getBaseProvider(): Promise<JsonRpcProvider> {
   let lastError: Error | null = null;
   
-  for (const rpcUrl of BASE_RPC_ENDPOINTS) {
+  for (const rpcUrl of basePublicRpcHttpUrls()) {
     try {
       const provider = new JsonRpcProvider(rpcUrl);
       // Test the connection by getting the latest block number
       await provider.getBlockNumber();
-      if (typeof window !== 'undefined' && window.console) {
+      if (import.meta.env.DEV && typeof window !== 'undefined' && window.console) {
         window.console.log('[NFT] Using Base RPC endpoint:', rpcUrl);
       }
       return provider;
@@ -113,38 +128,38 @@ async function fetchTokenIdsFromTransferEvents(
     // Query from 1 year ago (approximately 2.5M blocks) or use earliest if that's too much
     const currentBlock = await provider.getBlockNumber();
     const fromBlock = Math.max(0, currentBlock - 2500000); // ~1 year of blocks
-    
-    // Query Transfer events where 'to' is the wallet address
-    // Some RPCs don't accept null in topics, so we'll query all Transfer events and filter client-side
-    let logs;
+    const toBlock = currentBlock;
+
+    // Query Transfer events where 'to' is the wallet address (chunked — single huge getLogs causes 429s)
+    let logs: Log[];
     try {
-      // Try with null topics first (most efficient)
-      logs = await provider.getLogs({
-        address: contractAddress,
-        topics: [
-          TRANSFER_EVENT_SIGNATURE,
-          null, // from (any address)
-          walletAddressPadded // to (our wallet)
-        ],
-        fromBlock: fromBlock,
-        toBlock: 'latest'
-      });
+      logs = await getLogsChunked(
+        provider,
+        {
+          address: contractAddress,
+          topics: [TRANSFER_EVENT_SIGNATURE, null, walletAddressPadded],
+        },
+        fromBlock,
+        toBlock,
+      );
     } catch (nullError) {
-      // If null topics fail, query all Transfer events and filter client-side
       if (typeof window !== 'undefined' && window.console) {
-        window.console.warn(`[NFT] RPC doesn't support null topics, querying all Transfer events for ${collectionName}`);
+        window.console.warn(
+          `[NFT] RPC doesn't support null topics or chunk failed; wide Transfer scan for ${collectionName}`,
+        );
       }
-      const allLogs = await provider.getLogs({
-        address: contractAddress,
-        topics: [TRANSFER_EVENT_SIGNATURE],
-        fromBlock: fromBlock,
-        toBlock: 'latest'
-      });
-      
-      // Filter logs where 'to' is our wallet address
-      logs = allLogs.filter(log => {
+      const allLogs = await getLogsChunked(
+        provider,
+        {
+          address: contractAddress,
+          topics: [TRANSFER_EVENT_SIGNATURE],
+        },
+        fromBlock,
+        toBlock,
+      );
+
+      logs = allLogs.filter((log) => {
         if (log.topics.length >= 3) {
-          // topics[2] is the 'to' address
           return log.topics[2]?.toLowerCase() === walletAddressPadded.toLowerCase();
         }
         return false;
@@ -169,31 +184,30 @@ async function fetchTokenIdsFromTransferEvents(
     }
     
     // Also check for Transfer events where 'from' is the wallet (to handle transfers out)
-    let fromLogs;
+    let fromLogs: Log[];
     try {
-      fromLogs = await provider.getLogs({
-        address: contractAddress,
-        topics: [
-          TRANSFER_EVENT_SIGNATURE,
-          walletAddressPadded, // from (our wallet)
-          null // to (any address)
-        ],
-        fromBlock: fromBlock,
-        toBlock: 'latest'
-      });
+      fromLogs = await getLogsChunked(
+        provider,
+        {
+          address: contractAddress,
+          topics: [TRANSFER_EVENT_SIGNATURE, walletAddressPadded, null],
+        },
+        fromBlock,
+        toBlock,
+      );
     } catch (nullError) {
-      // If null topics fail, query all Transfer events and filter client-side
-      const allLogs = await provider.getLogs({
-        address: contractAddress,
-        topics: [TRANSFER_EVENT_SIGNATURE],
-        fromBlock: fromBlock,
-        toBlock: 'latest'
-      });
-      
-      // Filter logs where 'from' is our wallet address
-      fromLogs = allLogs.filter(log => {
+      const allLogs = await getLogsChunked(
+        provider,
+        {
+          address: contractAddress,
+          topics: [TRANSFER_EVENT_SIGNATURE],
+        },
+        fromBlock,
+        toBlock,
+      );
+
+      fromLogs = allLogs.filter((log) => {
         if (log.topics.length >= 2) {
-          // topics[1] is the 'from' address
           return log.topics[1]?.toLowerCase() === walletAddressPadded.toLowerCase();
         }
         return false;
@@ -492,7 +506,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       throw new Error(`Etherscan HTTP error: ${etherscanResponse.status}`);
     }
     } catch (etherscanError) {
-      if (typeof window !== 'undefined' && window.console) {
+      if (import.meta.env.DEV && typeof window !== 'undefined' && window.console) {
         window.console.warn('Error fetching Pixelawbs from Etherscan, trying Scatter API directly:', etherscanError);
       }
       // Fallback to Scatter API (most reliable for getting token IDs)
@@ -695,7 +709,7 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
       throw new Error(`Etherscan HTTP error: ${etherscanResponse.status}`);
     }
   } catch (etherscanError) {
-    if (typeof window !== 'undefined' && window.console) {
+    if (import.meta.env.DEV && typeof window !== 'undefined' && window.console) {
       window.console.warn('Error fetching Lawbstarz from Etherscan, trying Scatter API directly:', etherscanError);
     }
     // Fallback to Scatter API (most reliable for getting token IDs)
@@ -909,8 +923,12 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     if (typeof window !== 'undefined' && window.console) {
       window.console.log('[NFT] Found', inventory.lawb_lore.length, 'Lawb Lore from Scatter API');
     }
-  } catch (error) {
-    if (typeof window !== 'undefined' && window.console) {
+  } catch (error: unknown) {
+    const st =
+      typeof error === 'object' && error !== null && 'status' in error
+        ? (error as { status: number }).status
+        : undefined;
+    if (st !== 404 && typeof window !== 'undefined' && window.console) {
       window.console.warn('[NFT] Lawb Lore fetch failed (non-fatal):', error);
     }
     inventory.lawb_lore = [];

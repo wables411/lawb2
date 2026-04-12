@@ -1,5 +1,7 @@
 import { createConfig, http } from 'wagmi';
+import { fallback } from 'viem';
 import { mainnet, arbitrum, base } from 'wagmi/chains';
+import { basePublicRpcHttpUrls } from './utils/baseRpcPublic';
 
 // Custom Sanko networks
 export const sankoTestnet = {
@@ -52,16 +54,25 @@ export const sankoMainnet = {
   },
 } as const;
 
-// Get RPC URLs from environment variables or use public endpoints
-const getRpcUrl = (chainId: number, defaultUrls: string[]): string => {
-  // Check for environment variable first (e.g., VITE_MAINNET_RPC_URL, VITE_BASE_RPC_URL)
-  const envKey = `VITE_${chainId === 1 ? 'MAINNET' : chainId === 8453 ? 'BASE' : chainId === 42161 ? 'ARBITRUM' : 'RPC'}_RPC_URL`;
-  const envUrl = import.meta.env[envKey];
-  if (envUrl) return envUrl;
-  
-  // Use first default URL as fallback
-  return defaultUrls[0];
+const viteRpc = (key: string): string | undefined => {
+  const v = import.meta.env[key];
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 };
+
+function mainnetFallbackTransport() {
+  const urls = [
+    viteRpc('VITE_MAINNET_RPC_URL'),
+    'https://rpc.ankr.com/eth',
+    'https://eth.blockscout.com/api/eth-rpc',
+    'https://eth.llamarpc.com',
+  ].filter(Boolean) as string[];
+  return urls.length === 1 ? http(urls[0]!, { batch: false }) : fallback(urls.map((u) => http(u, { batch: false })));
+}
+
+function baseFallbackTransport() {
+  const urls = basePublicRpcHttpUrls();
+  return urls.length === 1 ? http(urls[0]!, { batch: false }) : fallback(urls.map((u) => http(u, { batch: false })));
+}
 
 // Create wagmi config - AppKit's WagmiAdapter will add its own connectors
 export const config = createConfig({
@@ -69,9 +80,12 @@ export const config = createConfig({
   connectors: [], // AppKit's WagmiAdapter will add its own connectors
   multiInjectedProviderDiscovery: true, // Enable EIP-6963 wallet discovery
   transports: {
-    [mainnet.id]: http(getRpcUrl(mainnet.id, ['https://eth.llamarpc.com', 'https://rpc.ankr.com/eth'])),
-    [arbitrum.id]: http(getRpcUrl(arbitrum.id, ['https://arb1.arbitrum.io/rpc', 'https://rpc.ankr.com/arbitrum'])),
-    [base.id]: http(getRpcUrl(base.id, ['https://mainnet.base.org', 'https://base.llamarpc.com'])),
+    [mainnet.id]: mainnetFallbackTransport(),
+    [arbitrum.id]: http(
+      viteRpc('VITE_ARBITRUM_RPC_URL') ?? 'https://arb1.arbitrum.io/rpc',
+      { batch: false },
+    ),
+    [base.id]: baseFallbackTransport(),
     [sankoTestnet.id]: http('https://sanko-arb-sepolia.rpc.caldera.xyz/http'),
     [sankoMainnet.id]: http('https://mainnet.sanko.xyz'),
   },
