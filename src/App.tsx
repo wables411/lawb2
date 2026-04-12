@@ -19,7 +19,7 @@ import type { ClawbStreamButtonHandle } from './components/ClawbStreamButton';
 const ClawbStreamButton = lazy(() => import('./components/ClawbStreamButton'));
 const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
-const WorldBackground = lazy(() => import('./components/WorldBackground2D'));
+const DesktopBackground = lazy(() => import('./components/DesktopLobsterBackground'));
 const ClawbClaimPanel = lazy(() => import('./components/ClawbClaimPanel'));
 const SponsorAdPanel = lazy(() => import('./components/SponsorAdPanel'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
@@ -384,9 +384,9 @@ function App() {
 
   return (
     <div className={classes.body}>
-      {/* Desktop background (2D — no 3D models) */}
+      {/* Desktop background: canvas lobsters (no network / no Firebase) */}
       <Suspense fallback={null}>
-        <WorldBackground />
+        <DesktopBackground />
       </Suspense>
 
       <Desktop onIconClick={handleIconClick} />
