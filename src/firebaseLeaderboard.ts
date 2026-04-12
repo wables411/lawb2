@@ -1,5 +1,6 @@
 import { database } from './firebaseApp';
 import { ref, set, update, get, query, orderByChild, limitToLast, remove } from 'firebase/database';
+import { getAddress } from 'viem';
 
 // Helper function to check if database is available
 const getDatabaseOrThrow = () => {
@@ -107,7 +108,11 @@ export const formatAddress = (address: string): string => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-// Get a specific user's leaderboard entry
+/**
+ * RTDB keys are case-sensitive. Legacy chess rows may live under EIP-55 checksummed paths
+ * (`0x5bBA…E429`) while the app writes normalized lowercase (`0x5bba…e429`). Read both and merge
+ * so profile totals match what you see if you open either path in the Firebase console.
+ */
 export const getUserLeaderboardEntry = async (walletAddress: string): Promise<LeaderboardEntry | null> => {
   try {
     if (!walletAddress) {
@@ -120,15 +125,43 @@ export const getUserLeaderboardEntry = async (walletAddress: string): Promise<Le
       return null;
     }
 
-    const database = getDatabaseOrThrow();
-    const entryRef = ref(database, `leaderboard/${key}`);
-    const snapshot = await get(entryRef);
-    
-    if (snapshot.exists()) {
-      return snapshot.val() as LeaderboardEntry;
+    const db = getDatabaseOrThrow();
+    const variants: LeaderboardEntry[] = [];
+
+    const snapLower = await get(ref(db, `leaderboard/${key}`));
+    if (snapLower.exists()) {
+      variants.push(snapLower.val() as LeaderboardEntry);
     }
-    
-    return null;
+
+    if (key.startsWith('0x')) {
+      try {
+        const checksummed = getAddress(key as `0x${string}`);
+        if (checksummed !== key) {
+          const snapCs = await get(ref(db, `leaderboard/${checksummed}`));
+          if (snapCs.exists()) {
+            variants.push(snapCs.val() as LeaderboardEntry);
+          }
+        }
+      } catch {
+        /* invalid hex */
+      }
+    }
+
+    if (variants.length === 0) {
+      return null;
+    }
+
+    if (variants.length === 1) {
+      const e = variants[0]!;
+      return { ...e, username: key };
+    }
+
+    const merged = mergeLeaderboardEntriesForDisplay(variants);
+    if (!merged) {
+      return null;
+    }
+    merged.username = key;
+    return merged;
   } catch (error) {
     console.error('[LEADERBOARD] Error getting user entry:', error);
     return null;
