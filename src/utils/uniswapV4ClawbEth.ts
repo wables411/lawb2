@@ -1,11 +1,4 @@
-import {
-  createPublicClient,
-  fallback,
-  http,
-  parseAbi,
-  parseAbiItem,
-  zeroAddress,
-} from 'viem';
+import { createPublicClient, parseAbi, parseAbiItem, zeroAddress } from 'viem';
 import { base } from 'viem/chains';
 import {
   BASE_CLAWB_TOKEN,
@@ -13,6 +6,7 @@ import {
   BASE_UNISWAP_V4_POSITION_MANAGER,
   BASE_WETH,
 } from '../config/lpPools';
+import { basePublicFallbackTransport } from './baseRpcPublic';
 
 const pmAbi = parseAbi([
   'function balanceOf(address owner) view returns (uint256)',
@@ -27,7 +21,7 @@ const transferEvent = parseAbiItem(
 function baseLiquidityClient() {
   return createPublicClient({
     chain: base,
-    transport: fallback([http('https://mainnet.base.org'), http('https://base.drpc.org')]),
+    transport: basePublicFallbackTransport(),
   });
 }
 type BaseLiquidityClient = ReturnType<typeof baseLiquidityClient>;
@@ -64,7 +58,8 @@ function ticksFromPositionInfo(info: bigint): { tickLower: number; tickUpper: nu
 /** Base `eth_getLogs` allows at most 10_000 blocks per query (inclusive span). */
 const LOG_BLOCK_SPAN = 10000n;
 const MAX_CHUNKS_DEFAULT = 220;
-const LOG_BATCH_CONCURRENCY = 6;
+/** Keep low: parallel `eth_getLogs` chunks trigger 429s on public RPCs. */
+const LOG_BATCH_CONCURRENCY = 2;
 
 export interface BaseUniswapV4ClawbPosition {
   tokenId: string;

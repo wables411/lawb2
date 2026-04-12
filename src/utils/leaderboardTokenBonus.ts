@@ -1,7 +1,8 @@
-import { createPublicClient, fallback, http, erc20Abi } from 'viem';
+import { createPublicClient, erc20Abi } from 'viem';
 import { base } from 'viem/chains';
 import { TOKEN_ADDRESSES_BY_CHAIN } from '../config/tokens';
 import { computeTokenHoldingsBonusPoints } from './leaderboardHoldingsScore';
+import { basePublicFallbackTransport } from './baseRpcPublic';
 
 const BASE_CHAIN_ID = 8453;
 
@@ -31,14 +32,9 @@ export async function fetchBaseLawbClawbHoldingsBonus(evmAddresses: string[]): P
     const clawbAddr = TOKEN_ADDRESSES_BY_CHAIN[BASE_CHAIN_ID]?.CLAWB_BASE as `0x${string}` | undefined;
     if (!lawbAddr || !clawbAddr) return 0;
 
-    const transport = fallback([
-      http('https://mainnet.base.org'),
-      http('https://base.drpc.org'),
-    ]);
-
     const client = createPublicClient({
       chain: base,
-      transport,
+      transport: basePublicFallbackTransport(),
     });
 
     const rows = await Promise.all(

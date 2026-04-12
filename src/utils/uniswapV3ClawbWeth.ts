@@ -1,10 +1,11 @@
-import { createPublicClient, fallback, http, parseAbi } from 'viem';
+import { createPublicClient, parseAbi } from 'viem';
 import { base } from 'viem/chains';
 import {
   BASE_CLAWB_TOKEN,
   BASE_UNISWAP_V3_POSITION_MANAGER,
   BASE_WETH,
 } from '../config/lpPools';
+import { basePublicFallbackTransport } from './baseRpcPublic';
 
 const npmAbi = parseAbi([
   'function balanceOf(address owner) view returns (uint256)',
@@ -45,7 +46,7 @@ export async function fetchBaseUniswapClawbWethPositions(
 ): Promise<BaseClawbWethPosition[]> {
   const client = createPublicClient({
     chain: base,
-    transport: fallback([http('https://mainnet.base.org'), http('https://base.drpc.org')]),
+    transport: basePublicFallbackTransport(),
   });
 
   const npm = BASE_UNISWAP_V3_POSITION_MANAGER;

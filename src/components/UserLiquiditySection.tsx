@@ -35,6 +35,13 @@ function shortenSol(s: string): string {
   return `${s.slice(0, 4)}…${s.slice(-4)}`;
 }
 
+function formatUniRpcError(raw: string): string {
+  if (/429|Too many request|rate.?limit/i.test(raw)) {
+    return 'Public Base RPC rate limit while scanning Uniswap (many eth_getLogs calls). Wait a bit and refresh, or set VITE_BASE_RPC_URL to your own Base endpoint.';
+  }
+  return raw;
+}
+
 const cardStyle: React.CSSProperties = {
   marginBottom: '20px',
   width: '100%',
@@ -120,7 +127,10 @@ export const UserLiquiditySection: React.FC<UserLiquiditySectionProps> = ({
           setUniV4ScanIncomplete(v4.scanIncomplete);
         }
       } catch (e: unknown) {
-        if (!cancelled) setUniErr(e instanceof Error ? e.message : 'Uniswap scan failed');
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : 'Uniswap scan failed';
+          setUniErr(formatUniRpcError(msg));
+        }
       } finally {
         if (!cancelled) setUniLoading(false);
       }

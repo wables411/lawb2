@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { database } from '../firebaseApp';
 import { formatAddress, getTopLeaderboardEntries, type LeaderboardEntry } from '../firebaseLeaderboard';
+import { getDisplayName } from '../utils/displayName';
 
 const ROW_STYLE: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '36px 1fr 64px',
+  gridTemplateColumns: '36px minmax(0, 1fr) 64px',
   gap: '6px',
   alignItems: 'center',
   fontSize: '12px',
@@ -19,6 +20,7 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
   const [rows, setRows] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nameByKey, setNameByKey] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +52,27 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (rows.length === 0) {
+      setNameByKey({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const pairs = await Promise.all(
+        rows.map(async (r) => {
+          const key = r.username;
+          const name = await getDisplayName(key);
+          return [key, name] as const;
+        }),
+      );
+      if (!cancelled) setNameByKey(Object.fromEntries(pairs));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rows]);
 
   return (
     <div
@@ -86,15 +109,47 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
             <span>Player</span>
             <span style={{ textAlign: 'right' }}>Pts</span>
           </div>
-          {rows.map((entry, i) => (
-            <div key={entry.username || i} style={ROW_STYLE}>
-              <span>{i + 1}</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {formatAddress(entry.username)}
-              </span>
-              <span style={{ textAlign: 'right' }}>{entry.points}</span>
-            </div>
-          ))}
+          {rows.map((entry, i) => {
+            const key = entry.username;
+            const resolved = nameByKey[key] ?? formatAddress(key);
+            const sub =
+              resolved && resolved !== formatAddress(key) ? (
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: '#555',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={key}
+                >
+                  {formatAddress(key)}
+                </div>
+              ) : null;
+            const mainLooksLikeAddr = /\.\.\./.test(resolved);
+            const mainLabel = !mainLooksLikeAddr && resolved ? `@${resolved}` : resolved;
+            return (
+              <div key={key || i} style={ROW_STYLE}>
+                <span>{i + 1}</span>
+                <span style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={key}
+                  >
+                    {mainLabel}
+                  </div>
+                  {sub}
+                </span>
+                <span style={{ textAlign: 'right' }}>{entry.points}</span>
+              </div>
+            );
+          })}
         </>
       )}
     </div>

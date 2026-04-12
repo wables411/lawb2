@@ -18,6 +18,7 @@ import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
+import { getDisplayName } from '../utils/displayName';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -656,6 +657,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [leaderboardEntry, setLeaderboardEntry] = useState<LeaderboardEntry | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardMergedMultiKey, setLeaderboardMergedMultiKey] = useState(false);
+  const [profileCardTitle, setProfileCardTitle] = useState('');
 
   profileDebugLog('[PROFILE] Component rendered', { address, isMobile, hasProfile: !!profile });
 
@@ -663,6 +665,25 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     () => linkedWallets.map((w) => `${w.chain}:${w.address}`).join('|'),
     [linkedWallets],
   );
+
+  useEffect(() => {
+    if (!address) {
+      setProfileCardTitle('');
+      return;
+    }
+    if (profile?.username?.trim()) {
+      setProfileCardTitle(profile.username.trim());
+    } else {
+      setProfileCardTitle(shortenAddr(address));
+    }
+    let cancelled = false;
+    void getDisplayName(address).then((name) => {
+      if (!cancelled && name) setProfileCardTitle(name);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, profile?.username, profile?.updated_at]);
 
   useEffect(() => {
     if (!address) {
@@ -1085,10 +1106,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   // Determine if this is own profile
   const isOwnProfile = normalizeAddress(address) === normalizeAddress(connectedAddress);
 
-  const displayName = profile?.username 
-    ? profile.username 
-    : `${address.slice(0, 6)}...${address.slice(-4)}`;
-
   const inventory = {
     lawbsters: (profile?.nft_inventory?.lawbsters || []).map(normalizeInventoryEntry).filter(Boolean),
     lawbstarz: (profile?.nft_inventory?.lawbstarz || []).map(normalizeInventoryEntry).filter(Boolean),
@@ -1138,6 +1155,31 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       padding: isMobile ? '16px' : '20px',
       gap: '20px'
     }}>
+      <div style={{ width: '100%', maxWidth: 600, textAlign: 'center' }}>
+        <h2
+          style={{
+            margin: '0 0 6px 0',
+            fontSize: isMobile ? 20 : 26,
+            fontWeight: 700,
+            color: '#1a1a1a',
+          }}
+        >
+          {(() => {
+            const t = (profileCardTitle || shortenAddr(address)).trim();
+            const looksLikeShortAddr = /\.\.\./.test(t);
+            if (t && !looksLikeShortAddr) return `@${t}`;
+            return t;
+          })()}
+        </h2>
+        {isOwnProfile &&
+          primaryWallet &&
+          normalizeAddress(address) !== normalizeAddress(primaryWallet) && (
+            <p style={{ margin: '0 0 8px 0', fontSize: 11, color: '#555', lineHeight: 1.45 }}>
+              Name and inventory follow your primary profile wallet ({shortenAddr(primaryWallet)}). This address is
+              linked.
+            </p>
+          )}
+      </div>
       {/* Pokemon Card Style Profile */}
       <div style={{
         position: 'relative',

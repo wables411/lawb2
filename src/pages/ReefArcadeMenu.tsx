@@ -81,6 +81,25 @@ export default function ReefArcadeMenu() {
     };
   }, [phase, skipIntro]);
 
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape') return;
+      if (phase === 'intro') {
+        skipIntro();
+        return;
+      }
+      if (gameScreen === 'play' || gameScreen === 'gameover' || gameScreen === 'select') {
+        ev.preventDefault();
+        setGameScreen('menu');
+        setRunHud(null);
+        setRunStatsHud(null);
+        setLastRunEndReason(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [phase, gameScreen, skipIntro]);
+
   const onPickCharacter = useCallback((id: ArcadeCharacterId) => {
     setSelectedCharacterId(id);
   }, []);
