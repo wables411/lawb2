@@ -382,7 +382,7 @@ function App() {
 
   return (
     <div className={classes.body}>
-      {/* Desktop background: canvas lobsters (no network / no Firebase) */}
+      {/* Desktop background: Lawbster GIF sprites + ocean gradient (local assets only) */}
       <Suspense fallback={null}>
         <DesktopBackground />
       </Suspense>
