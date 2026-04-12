@@ -1,12 +1,13 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { CLAWB_STREAM_DANCE_GIF, CLAWB_STREAM_IDLE_GIF } from '../config/lawbIsolatedGifs';
 import PretextLabel from './PretextLabel';
 
 export interface ClawbStreamButtonHandle {
   triggerDance: () => void;
 }
 
-const IDLE_GIF = '/assets/lawbidle_5s_finalfix_transparent_loop.gif';
-const DANCE_GIF = '/assets/lawbdance2_5s_finalfix_transparent_loop.gif';
+const IDLE_GIF = CLAWB_STREAM_IDLE_GIF;
+const DANCE_GIF = CLAWB_STREAM_DANCE_GIF;
 const STREAM_URL = 'https://retake.tv/clawb';
 const CTA_MESSAGE = 'choose a clawb tv option';
 

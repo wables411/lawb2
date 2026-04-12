@@ -1,13 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-
-/** Local Lawbster GIFs (transparent) — same assets used elsewhere on lawb.xyz */
-const LAWBSTER_SPRITES = [
-  '/assets/lawbsters.gif',
-  '/assets/lawbidle_5s_finalfix_transparent_loop.gif',
-  '/assets/lawbidle_5s_fullbody_facing_transparent_loop.gif',
-  '/assets/lawbdance2_5s_finalfix_transparent_loop.gif',
-  '/assets/lawbdance2_5s_fullbody_facing_transparent_loop.gif',
-] as const;
+import { DESKTOP_CHESS_BACKDROP_PIECE_URLS } from '../config/chessPieceSets';
 
 async function loadImages(urls: readonly string[]): Promise<HTMLImageElement[]> {
   const out: HTMLImageElement[] = [];
@@ -29,8 +21,7 @@ async function loadImages(urls: readonly string[]): Promise<HTMLImageElement[]> 
 }
 
 /**
- * Desktop backdrop: Lawbster GIFs in a slow orbit, nudged away from the cursor.
- * Canvas + local assets only (no network at runtime beyond cache).
+ * Desktop backdrop: Lawbstation + Pixelawbs chess piece PNGs in a slow orbit, cursor dodge.
  */
 const DesktopLobsterBackground: React.FC = () => {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -45,7 +36,7 @@ const DesktopLobsterBackground: React.FC = () => {
     void (async () => {
       let sprites: HTMLImageElement[] = [];
       try {
-        sprites = await loadImages(LAWBSTER_SPRITES);
+        sprites = await loadImages(DESKTOP_CHESS_BACKDROP_PIECE_URLS);
       } catch {
         sprites = [];
       }
@@ -142,7 +133,7 @@ const DesktopLobsterBackground: React.FC = () => {
         img: HTMLImageElement,
         narrow: boolean,
       ) {
-        const baseW = 52 * scale * (narrow ? 0.9 : 1);
+        const baseW = 48 * scale * (narrow ? 0.9 : 1);
         const nw = img.naturalWidth || 1;
         const nh = img.naturalHeight || 1;
         const dw = baseW;

@@ -55,6 +55,16 @@ export const CHESS_PIECE_SETS: ChessPieceSet[] = [
   }
 ];
 
+/** Lawbstation + Pixelawbs piece PNGs for decorative layers (e.g. OS desktop canvas). */
+export const DESKTOP_CHESS_BACKDROP_PIECE_URLS: readonly string[] = (() => {
+  const ls = CHESS_PIECE_SETS.find((s) => s.id === 'lawbstation');
+  const px = CHESS_PIECE_SETS.find((s) => s.id === 'pixelawbs');
+  return [
+    ...Object.values(ls?.pieceImages ?? {}),
+    ...Object.values(px?.pieceImages ?? {}),
+  ];
+})();
+
 export const getPieceSetById = (id: string): ChessPieceSet | undefined => {
   return CHESS_PIECE_SETS.find(set => set.id === id);
 };
