@@ -142,7 +142,7 @@ const PULSE_TABLE: Record<PickupKind, { rate: number; amp: number }> = {
   trash: { rate: 3, amp: 0.06 },
 };
 
-/** Emissive pulse on all `MeshStandardMaterial` children (GLB or primitive). */
+/** Emissive pulse on PBR mesh children (GLB or primitive). */
 export function pulsePickupVisual(root: THREE.Object3D, elapsed: number): void {
   const kind = root.userData.pickupKind as PickupKind | undefined;
   if (!kind) return;
@@ -151,7 +151,7 @@ export function pulsePickupVisual(root: THREE.Object3D, elapsed: number): void {
     if (!(child as THREE.Mesh).isMesh) return;
     const mesh = child as THREE.Mesh;
     const mat = mesh.material;
-    if (!(mat instanceof THREE.MeshStandardMaterial)) return;
+    if (!(mat instanceof THREE.MeshStandardMaterial) && !(mat instanceof THREE.MeshPhysicalMaterial)) return;
     if (mesh.userData._emBase == null) {
       mesh.userData._emBase = mat.emissiveIntensity;
     }

@@ -251,64 +251,104 @@
   min-width: 120px;
 }
 
-/* In-play HUD */
+/* In-play HUD — corners keep the swim lane clear (desktop + mobile) */
 .ra-play-hud {
   position: fixed;
-  top: clamp(12px, 3vw, 24px);
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
   z-index: 6;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding:
+    calc(8px + env(safe-area-inset-top, 0px))
+    clamp(8px, 2.2vw, 20px)
+    calc(6px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
   pointer-events: none;
 }
 
-.ra-play-hud-title {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.35em;
-  color: rgba(46, 230, 255, 0.65);
+.ra-play-hud-top {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.ra-play-hud-depth-col {
+  flex: 0 1 auto;
+  max-width: min(200px, 44vw);
+  text-align: left;
+}
+
+.ra-play-hud-stats-col {
+  flex: 0 1 auto;
+  max-width: min(232px, 52vw);
+  text-align: right;
+}
+
+.ra-play-hud-brand {
+  margin: 0 0 6px;
+  font-size: 8px;
+  letter-spacing: 0.32em;
+  color: rgba(46, 230, 255, 0.45);
+}
+
+.ra-play-hud-bottom {
+  flex-shrink: 0;
+  width: 100%;
+  text-align: center;
 }
 
 .ra-play-hud-keys {
-  margin: 6px 0 0;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  padding: 0 4px;
+  font-size: clamp(9px, 2.4vw, 10px);
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.38);
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+.ra-play-keys-line {
+  display: inline-block;
+  max-width: min(560px, 100%);
+}
+
 .ra-play-depth {
-  margin: 14px 0 0;
-  padding: 10px 18px 12px;
-  border-radius: 8px;
-  background: rgba(4, 26, 24, 0.55);
-  box-shadow: 0 0 0 1px rgba(110, 196, 168, 0.22);
+  margin: 0;
+  padding: 8px 12px 10px;
+  border-radius: 6px;
+  background: rgba(4, 22, 26, 0.62);
+  box-shadow: 0 0 0 1px rgba(90, 180, 170, 0.2);
+  backdrop-filter: blur(6px);
 }
 
 .ra-play-depth-label {
   margin: 0;
-  font-size: 9px;
-  letter-spacing: 0.42em;
-  color: rgba(168, 220, 200, 0.75);
+  font-size: 8px;
+  letter-spacing: 0.38em;
+  color: rgba(168, 220, 200, 0.7);
 }
 
 .ra-play-depth-roman {
-  margin: 4px 0 8px;
+  margin: 2px 0 6px;
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: clamp(2rem, 7vw, 2.75rem);
+  font-size: clamp(1.5rem, 5.5vw, 2.2rem);
   font-weight: 400;
   line-height: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: #e8f8f2;
-  text-shadow: 0 0 28px rgba(110, 196, 168, 0.35);
+  text-shadow: 0 0 20px rgba(110, 196, 168, 0.28);
 }
 
 .ra-play-depth-bar-wrap {
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .ra-play-depth-bar {
@@ -320,10 +360,140 @@
 
 .ra-play-depth-meta {
   margin: 0;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.42);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.4);
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+.ra-play-stats {
+  margin: 0;
+  width: 100%;
+  max-width: 232px;
+  margin-left: auto;
+  padding: 8px 12px 10px;
+  border-radius: 6px;
+  background: rgba(4, 18, 28, 0.62);
+  box-shadow: 0 0 0 1px rgba(80, 160, 200, 0.18);
+  backdrop-filter: blur(6px);
+  box-sizing: border-box;
+}
+
+.ra-play-stat-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.ra-play-stat-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.ra-play-stat-label {
+  flex: 0 0 28px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: rgba(200, 230, 240, 0.65);
+  text-align: left;
+}
+
+.ra-play-meter {
+  flex: 1;
+  height: 7px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.38);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ra-play-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.1s linear;
+}
+
+.ra-play-meter-oxy {
+  background: linear-gradient(90deg, #4fc3f7, #81d4fa);
+}
+
+.ra-play-meter-armor {
+  background: linear-gradient(90deg, #78909c, #b0bec5);
+}
+
+.ra-play-stat-lobster {
+  flex: 1;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #b2ebf2;
+  text-shadow: 0 0 8px rgba(100, 220, 255, 0.45);
+  text-align: right;
+}
+
+.ra-play-stat-line {
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  color: rgba(220, 235, 240, 0.72);
+  font-family: system-ui, -apple-system, sans-serif;
+  text-align: right;
+}
+
+.ra-play-stat-chip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ra-play-stat-chip:first-child {
+  margin-left: 0;
+}
+
+.ra-play-stat-cheese {
+  color: #ffe066;
+}
+
+.ra-play-stat-drag {
+  color: #c4a8ff;
+}
+
+@media (max-width: 520px) {
+  .ra-play-hud-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ra-play-hud-depth-col,
+  .ra-play-hud-stats-col {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .ra-play-stats {
+    margin-left: 0;
+    max-width: none;
+  }
+
+  .ra-play-stat-line {
+    text-align: left;
+  }
+
+  .ra-play-stat-lobster {
+    text-align: left;
+  }
+
+  .ra-play-hud-keys {
+    font-size: 8px;
+    letter-spacing: 0.04em;
+  }
 }
 
 /* Game over */

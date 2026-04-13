@@ -295,84 +295,88 @@ export default function ReefArcadeMenu() {
 
         {phase === 'menu' && gameScreen === 'play' && (
           <div className="ra-play-hud" aria-live="polite">
-            <p className="ra-play-hud-title">REEF RUN</p>
-            {runHud && (
-              <div className="ra-play-depth">
-                <p className="ra-play-depth-label">DEPTH</p>
-                <p className="ra-play-depth-roman" aria-label={`Depth tier ${runHud.roman}`}>
-                  {runHud.roman}
-                </p>
-                <div className="ra-play-depth-bar-wrap" aria-hidden>
-                  <div
-                    className="ra-play-depth-bar"
-                    style={{
-                      width: `${Math.min(100, (100 * runHud.secondsElapsedInTier) / runHud.tierDurationSec)}%`,
-                    }}
-                  />
-                </div>
-                <p className="ra-play-depth-meta">
-                  {Math.floor(runHud.secondsElapsedInTier)}s / {runHud.tierDurationSec}s → next mark · current{' '}
-                  {runHud.speedMultiplier.toFixed(2)}× depth ramp
-                </p>
-              </div>
-            )}
-            {runStatsHud && (
-              <div className="ra-play-stats" style={{ marginTop: 10, width: '100%', maxWidth: 320 }}>
-                <div className="ra-bar-row" style={{ marginBottom: 6, alignItems: 'center' }}>
-                  <span style={{ width: 52, fontSize: 10 }}>O₂</span>
-                  {runStatsHud.oxygenInfinite ? (
-                    <div
-                      style={{
-                        flex: 1,
-                        fontSize: 11,
-                        letterSpacing: 0.06,
-                        color: '#b2ebf2',
-                        textShadow: '0 0 8px rgba(100,220,255,0.5)',
-                      }}
-                    >
-                      ∞ · LOBSTER LUNGS
-                    </div>
-                  ) : (
-                    <div style={{ flex: 1, height: 8, background: 'rgba(0,0,0,0.35)', borderRadius: 4 }}>
+            <div className="ra-play-hud-top">
+              <div className="ra-play-hud-depth-col">
+                <p className="ra-play-hud-brand">REEF RUN</p>
+                {runHud && (
+                  <div className="ra-play-depth">
+                    <p className="ra-play-depth-label">DEPTH</p>
+                    <p className="ra-play-depth-roman" aria-label={`Depth tier ${runHud.roman}`}>
+                      {runHud.roman}
+                    </p>
+                    <div className="ra-play-depth-bar-wrap" aria-hidden>
                       <div
+                        className="ra-play-depth-bar"
                         style={{
-                          width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
-                          height: '100%',
-                          borderRadius: 4,
-                          background: 'linear-gradient(90deg,#4fc3f7,#81d4fa)',
+                          width: `${Math.min(100, (100 * runHud.secondsElapsedInTier) / runHud.tierDurationSec)}%`,
                         }}
                       />
                     </div>
-                  )}
-                </div>
-                <div className="ra-bar-row" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 52, fontSize: 10 }}>Armor</span>
-                  <div style={{ flex: 1, height: 8, background: 'rgba(0,0,0,0.35)', borderRadius: 4 }}>
-                    <div
-                      style={{
-                        width: `${Math.min(100, (100 * runStatsHud.armor) / Math.max(1, runStatsHud.armorMax))}%`,
-                        height: '100%',
-                        borderRadius: 4,
-                        background: 'linear-gradient(90deg,#78909c,#b0bec5)',
-                      }}
-                    />
+                    <p className="ra-play-depth-meta">
+                      {Math.floor(runHud.secondsElapsedInTier)}s / {runHud.tierDurationSec}s → next ·{' '}
+                      {runHud.speedMultiplier.toFixed(2)}×
+                    </p>
+                  </div>
+                )}
+              </div>
+              {runStatsHud && (
+                <div className="ra-play-hud-stats-col">
+                  <div className="ra-play-stats">
+                    <div className="ra-play-stat-row">
+                      <span className="ra-play-stat-label">O₂</span>
+                      {runStatsHud.oxygenInfinite ? (
+                        <div className="ra-play-stat-lobster">∞ lobster</div>
+                      ) : (
+                        <div className="ra-play-meter">
+                          <div
+                            className="ra-play-meter-fill ra-play-meter-oxy"
+                            style={{
+                              width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="ra-play-stat-row">
+                      <span className="ra-play-stat-label">ARM</span>
+                      <div className="ra-play-meter">
+                        <div
+                          className="ra-play-meter-fill ra-play-meter-armor"
+                          style={{
+                            width: `${Math.min(100, (100 * runStatsHud.armor) / Math.max(1, runStatsHud.armorMax))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <p className="ra-play-stat-line">
+                      <span className="ra-play-stat-chip" title="Coins">
+                        {runStatsHud.coins}c
+                      </span>
+                      <span className="ra-play-stat-chip" title="Trash">
+                        {runStatsHud.trash}t
+                      </span>
+                      <span className="ra-play-stat-chip" title="Swim speed">
+                        ×{runStatsHud.relativeSpeed.toFixed(2)}
+                      </span>
+                      {runStatsHud.cheeseSecLeft > 0 && (
+                        <span className="ra-play-stat-chip ra-play-stat-cheese">cheese</span>
+                      )}
+                      {runStatsHud.dragSecLeft > 0 && (
+                        <span className="ra-play-stat-chip ra-play-stat-drag">drag</span>
+                      )}
+                    </p>
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.45 }}>
-                  Coins {runStatsHud.coins} · Trash {runStatsHud.trash} · Swim {runStatsHud.relativeSpeed.toFixed(2)}×
-                  {runStatsHud.cheeseSecLeft > 0 && (
-                    <span style={{ color: '#ffe066' }}> · Cheese boost</span>
-                  )}
-                  {runStatsHud.dragSecLeft > 0 && (
-                    <span style={{ color: '#b388ff' }}> · Drag</span>
-                  )}
-                </p>
-              </div>
-            )}
-            <p className="ra-play-hud-keys">
-              A / D lanes · W faster · S slower · dodge red coral; grab pickups
-              {runStatsHud?.oxygenInfinite ? ' · armor' : ' · O₂ tanks & armor'}
-            </p>
+              )}
+            </div>
+            <div className="ra-play-hud-bottom">
+              <p className="ra-play-hud-keys">
+                <span className="ra-play-keys-line">
+                  A/D lanes · W/S speed · dodge coral · grab pickups
+                  {runStatsHud?.oxygenInfinite ? ' · armor' : ' · O₂ & armor'}
+                </span>
+              </p>
+            </div>
           </div>
         )}
 
