@@ -17,6 +17,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: auto;
+  touch-action: none;
 }
 
 .ra-bg {
@@ -645,4 +646,30 @@
   color: rgba(126, 231, 135, 0.9);
   word-break: break-all;
   margin-bottom: 12px;
+}
+
+/* Mobile: less compositing / paint work behind WebGL */
+@media (max-width: 767px) {
+  .ra-bg {
+    animation: none;
+    opacity: 0.32;
+  }
+
+  .ra-grain {
+    display: none;
+  }
+
+  .ra-scanlines {
+    opacity: 0.22;
+  }
+
+  .ra-vignette {
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.75);
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .ra-bg {
+    opacity: 0.38;
+  }
 }

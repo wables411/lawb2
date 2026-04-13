@@ -1,4 +1,4 @@
-/** Static paths — files copied from clawb-world `public/assets` → lawb2 `public/arcade-assets`. */
+/** Static paths — character FBX + reef prop GLBs in `public/arcade-assets/` (see `arcadeGlbProps.ts`). */
 
 export const ARCADE_ASSET_BASE = '/arcade-assets';
 

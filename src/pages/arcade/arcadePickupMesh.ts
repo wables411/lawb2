@@ -1,11 +1,8 @@
 import * as THREE from 'three';
 import type { PickupKind } from './arcadePickupKinds';
 
-/** Keep in sync with `ArcadeSceneController` obstacle column Y. */
-const OBSTACLE_CENTER_Y = -0.88 - 0.12 + 2.05 / 2;
-
-/** Per-kind scale so pickups read at speed (hazards slightly larger). */
-const VISUAL_SCALE: Record<PickupKind, number> = {
+/** Per-kind scale multiplier (applied after GLB fit or on primitives). */
+export const PICKUP_VISUAL_SCALE: Record<PickupKind, number> = {
   air_tank: 1.18,
   coin: 1.28,
   trash: 1.15,
@@ -16,7 +13,8 @@ const VISUAL_SCALE: Record<PickupKind, number> = {
   mine: 1.38,
 };
 
-export function pickupMeshForKind(kind: PickupKind): THREE.Mesh {
+/** Primitive fallback when no GLB template exists for this kind. */
+export function createPrimitivePickupMesh(kind: PickupKind): THREE.Mesh {
   let mesh: THREE.Mesh;
   switch (kind) {
     case 'air_tank':
@@ -123,47 +121,55 @@ export function pickupMeshForKind(kind: PickupKind): THREE.Mesh {
       );
   }
   mesh.userData.pickupKind = kind;
-  mesh.position.y = OBSTACLE_CENTER_Y;
-  const s = VISUAL_SCALE[kind] ?? 1.15;
+  const s = PICKUP_VISUAL_SCALE[kind] ?? 1.15;
   mesh.scale.multiplyScalar(s);
   return mesh;
 }
 
-/** Emissive pulse so hazards & power-ups pop in murky water. */
-export function pulsePickupMaterial(mesh: THREE.Mesh, elapsed: number): void {
-  const kind = mesh.userData.pickupKind as PickupKind | undefined;
-  if (!kind) return;
-  const mat = mesh.material;
-  if (!(mat instanceof THREE.MeshStandardMaterial)) return;
-  if (mesh.userData._emBase == null) {
-    mesh.userData._emBase = mat.emissiveIntensity;
-  }
-  const base = mesh.userData._emBase as number;
-  const table: Record<PickupKind, { rate: number; amp: number }> = {
-    mine: { rate: 12, amp: 0.5 },
-    jellyfish: { rate: 7, amp: 0.28 },
-    pufferfish: { rate: 6, amp: 0.2 },
-    peptides: { rate: 8, amp: 0.22 },
-    cheese: { rate: 9, amp: 0.25 },
-    coin: { rate: 10, amp: 0.18 },
-    air_tank: { rate: 5, amp: 0.12 },
-    trash: { rate: 3, amp: 0.06 },
-  };
-  const { rate, amp } = table[kind];
-  mat.emissiveIntensity = base * (1 + Math.sin(elapsed * rate) * amp);
+/** @deprecated Use `createPrimitivePickupMesh` or `clonePickupVisual`. */
+export function pickupMeshForKind(kind: PickupKind): THREE.Mesh {
+  return createPrimitivePickupMesh(kind);
 }
 
-/** Slow spin for coins / cheese / trash so motion catches the eye. */
-export function spinPickupMesh(mesh: THREE.Mesh, dt: number): void {
-  const kind = mesh.userData.pickupKind as PickupKind | undefined;
+const PULSE_TABLE: Record<PickupKind, { rate: number; amp: number }> = {
+  mine: { rate: 12, amp: 0.5 },
+  jellyfish: { rate: 7, amp: 0.28 },
+  pufferfish: { rate: 6, amp: 0.2 },
+  peptides: { rate: 8, amp: 0.22 },
+  cheese: { rate: 9, amp: 0.25 },
+  coin: { rate: 10, amp: 0.18 },
+  air_tank: { rate: 5, amp: 0.12 },
+  trash: { rate: 3, amp: 0.06 },
+};
+
+/** Emissive pulse on all `MeshStandardMaterial` children (GLB or primitive). */
+export function pulsePickupVisual(root: THREE.Object3D, elapsed: number): void {
+  const kind = root.userData.pickupKind as PickupKind | undefined;
+  if (!kind) return;
+  const { rate, amp } = PULSE_TABLE[kind];
+  root.traverse((child) => {
+    if (!(child as THREE.Mesh).isMesh) return;
+    const mesh = child as THREE.Mesh;
+    const mat = mesh.material;
+    if (!(mat instanceof THREE.MeshStandardMaterial)) return;
+    if (mesh.userData._emBase == null) {
+      mesh.userData._emBase = mat.emissiveIntensity;
+    }
+    const base = mesh.userData._emBase as number;
+    mat.emissiveIntensity = base * (1 + Math.sin(elapsed * rate) * amp);
+  });
+}
+
+export function spinPickupVisual(root: THREE.Object3D, dt: number): void {
+  const kind = root.userData.pickupKind as PickupKind | undefined;
   if (kind === 'coin') {
-    mesh.rotation.y += dt * 2.8;
+    root.rotation.y += dt * 2.8;
   } else if (kind === 'cheese' || kind === 'trash') {
-    mesh.rotation.y += dt * 1.2;
+    root.rotation.y += dt * 1.2;
   } else if (kind === 'air_tank') {
-    mesh.rotation.y += dt * 0.9;
+    root.rotation.y += dt * 0.9;
   } else if (kind === 'mine') {
-    mesh.rotation.y += dt * 1.6;
-    mesh.rotation.x += dt * 0.4;
+    root.rotation.y += dt * 1.6;
+    root.rotation.x += dt * 0.4;
   }
 }

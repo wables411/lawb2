@@ -112,13 +112,13 @@ const DesktopLobsterBackground: React.FC = () => {
       const DRAG = 2.8;
 
       function patternTarget(lawb: Lawb, t: number): { tx: number; ty: number } {
-        const driftX = Math.sin(t * 0.11) * w * 0.08;
-        const driftY = Math.cos(t * 0.09) * h * 0.06;
+        const driftX = Math.sin(t * 0.11) * w * 0.11;
+        const driftY = Math.cos(t * 0.09) * h * 0.09;
         const cx = w * 0.5 + driftX;
         const cy = h * 0.5 + driftY;
         const ang = lawb.phase + t * lawb.orbitSpeed;
         const tx = cx + Math.cos(ang) * lawb.orbitR;
-        const ty = cy + Math.sin(ang * 1.31) * lawb.orbitR * 0.52;
+        const ty = cy + Math.sin(ang * 1.31) * lawb.orbitR * 0.72;
         return {
           tx: tx + Math.sin(t * 0.45 + lawb.phase * 3) * 14,
           ty: ty + Math.cos(t * 0.38 + lawb.phase * 2) * 10,
@@ -191,7 +191,7 @@ const DesktopLobsterBackground: React.FC = () => {
           lawb.x += lawb.vx * dt;
           lawb.y += lawb.vy * dt;
 
-          const margin = 80;
+          const margin = 44;
           if (lawb.x < margin) lawb.x += (margin - lawb.x) * 0.04;
           if (lawb.x > w - margin) lawb.x -= (lawb.x - (w - margin)) * 0.04;
           if (lawb.y < margin) lawb.y += (margin - lawb.y) * 0.04;
@@ -238,17 +238,19 @@ const DesktopLobsterBackground: React.FC = () => {
 
         const n = lawbsterCount();
         const shortSide = Math.min(w, h);
-        const baseR = shortSide * (isNarrow() ? 0.2 : 0.22);
+        const longSide = Math.max(w, h);
+        // Bias radius with long side so ultrawide layouts fill width, not only a short-side cap.
+        const baseR = Math.min(longSide * 0.42, shortSide * (isNarrow() ? 0.36 : 0.4));
         lawbs = Array.from({ length: n }, (_, i) => {
           const t = (i / n) * Math.PI * 2;
           return {
             phase: t + Math.random() * 0.4,
-            orbitR: baseR * (0.72 + (i % 5) * 0.06),
+            orbitR: baseR * (0.55 + (i % 5) * 0.095),
             orbitSpeed: 0.22 + (i % 7) * 0.028,
             size: 0.78 + (i % 4) * 0.1,
             spriteIndex: i % sprites.length,
             x: w * 0.5 + Math.cos(t) * baseR,
-            y: h * 0.5 + Math.sin(t) * baseR * 0.58,
+            y: h * 0.5 + Math.sin(t) * baseR * 0.72,
             vx: 0,
             vy: 0,
           };

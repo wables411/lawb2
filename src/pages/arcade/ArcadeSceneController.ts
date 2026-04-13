@@ -44,7 +44,9 @@ import {
   type RunEndReason,
   type RunState,
 } from './arcadePickupKinds';
-import { pickupMeshForKind, pulsePickupMaterial, spinPickupMesh } from './arcadePickupMesh';
+import { disposeObject3DResources } from './arcadePropPlacement';
+import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
+import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
 
@@ -69,14 +71,15 @@ type CharacterSlot = {
 };
 
 type Obstacle = {
-  mesh: THREE.Mesh;
+  /** World root for this hazard (primitive `Mesh` or loaded `Group`). See `arcadePropPlacement.ts`. */
+  root: THREE.Object3D;
   lane: number;
   speed: number;
   hit: boolean;
 };
 
 type PickupEnt = {
-  mesh: THREE.Mesh;
+  root: THREE.Object3D;
   lane: number;
   speed: number;
   hit: boolean;
@@ -139,51 +142,77 @@ function lanesOnActiveTrack(obstacles: Obstacle[]): Set<number> {
   const lanes = new Set<number>();
   for (const o of obstacles) {
     if (o.hit) continue;
-    if (o.mesh.position.z >= OBSTACLE_RECYCLE_Z) continue;
+    if (o.root.position.z >= OBSTACLE_RECYCLE_Z) continue;
     lanes.add(o.lane);
   }
   return lanes;
 }
 
+/**
+ * Narrow / touch-first layouts: fewer pixels, simpler materials, lighter geometry.
+ * Phone: under 768px width. Tablet: width under 1024px with coarse pointer (avoids fine-pointer touch laptops).
+ */
+function isArcadeLowPowerDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const sw = Math.min(window.innerWidth, window.innerHeight);
+  const lw = Math.max(window.innerWidth, window.innerHeight);
+  if (sw < 768) return true;
+  if (lw < 1024) {
+    try {
+      return window.matchMedia('(pointer: coarse)').matches;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 /** Procedural streaks for the reef tunnel interior (UV-scrolled = hyperspeed / warp motion). */
-function createReefHyperspeedTunnelTexture(): THREE.CanvasTexture {
-  const w = 128;
-  const h = 512;
+function createReefHyperspeedTunnelTexture(compact: boolean): THREE.CanvasTexture {
+  const w = compact ? 96 : 128;
+  const h = compact ? 384 : 512;
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
   const ctx = c.getContext('2d');
   if (!ctx) throw new Error('canvas 2d');
   const radial = ctx.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.72);
-  radial.addColorStop(0, '#061e28');
-  radial.addColorStop(0.45, '#0a3040');
-  radial.addColorStop(1, '#020a10');
+  radial.addColorStop(0, '#020c14');
+  radial.addColorStop(0.42, '#061c28');
+  radial.addColorStop(1, '#010508');
   ctx.fillStyle = radial;
   ctx.fillRect(0, 0, w, h);
   const wash = ctx.createLinearGradient(0, 0, 0, h);
-  wash.addColorStop(0, 'rgba(6,40,48,0.5)');
-  wash.addColorStop(0.5, 'rgba(12,70,82,0.2)');
-  wash.addColorStop(1, 'rgba(4,28,36,0.55)');
+  wash.addColorStop(0, 'rgba(4,32,52,0.55)');
+  wash.addColorStop(0.5, 'rgba(8,55,78,0.28)');
+  wash.addColorStop(1, 'rgba(2,18,32,0.62)');
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, w, h);
-  for (let i = 0; i < 64; i++) {
-    const x = (i / 64) * w + Math.sin(i * 2.1) * 3.5;
+  const streaksV = compact ? 36 : 64;
+  for (let i = 0; i < streaksV; i++) {
+    const x = (i / streaksV) * w + Math.sin(i * 2.1) * 3.5;
     const bw = 0.35 + (i % 5) * 0.28;
-    const a = 0.06 + (i % 8) * 0.014;
-    ctx.fillStyle = `rgba(150, 255, 250, ${a})`;
+    const a = 0.085 + (i % 8) * 0.02;
+    ctx.fillStyle = `rgba(120, 245, 255, ${a})`;
     ctx.fillRect(x, 0, bw, h);
   }
-  for (let j = 0; j < 36; j++) {
-    const y = (j / 36) * h;
+  const bands = compact ? 22 : 36;
+  for (let j = 0; j < bands; j++) {
+    const y = (j / bands) * h;
     const bh = 0.8 + (j % 4) * 0.5;
-    ctx.fillStyle = `rgba(60, 190, 205, ${0.03 + (j % 6) * 0.01})`;
+    ctx.fillStyle = `rgba(40, 160, 210, ${0.045 + (j % 6) * 0.014})`;
     ctx.fillRect(0, y, w, bh);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.repeat.set(5, 18);
+  if (compact) {
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+  }
+  tex.repeat.set(compact ? 5 : 6, compact ? 18 : 22);
   return tex;
 }
 
@@ -197,6 +226,8 @@ export class ArcadeSceneController {
   private pathRoot = new THREE.Group();
   private tunnel!: THREE.Mesh;
   private tunnelFlowTex!: THREE.CanvasTexture;
+  /** Mobile / tablet: cheaper renderer, tunnel material, particles, cylinder segments. */
+  private lowPowerMode = false;
   private plinthWorld = new THREE.Group();
   private playerWorld = new THREE.Group();
   private obstacleGroup = new THREE.Group();
@@ -243,7 +274,7 @@ export class ArcadeSceneController {
   private pendingScreen: ArcadeGameScreen | null = null;
   /** Milady/Radbro: survival time at which the next guaranteed O₂ tank must spawn. */
   private nextForcedOxyTankSurvival = Number.POSITIVE_INFINITY;
-  private readonly reefFogDensityBase = 0.034;
+  private readonly reefFogDensityBase = 0.041;
   private ambianceParticles: THREE.Points | null = null;
   private streakParticles: THREE.Points | null = null;
   private tunnelMaterial!: THREE.MeshStandardMaterial;
@@ -543,37 +574,50 @@ export class ArcadeSceneController {
   }
 
   async bootstrap(): Promise<void> {
+    this.lowPowerMode = isArcadeLowPowerDevice();
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x051c28, this.reefFogDensityBase);
+    this.scene.fog = new THREE.FogExp2(0x020a14, this.reefFogDensityBase);
 
-    this.camera = new THREE.PerspectiveCamera(52, 1, 0.1, 220);
+    this.camera = new THREE.PerspectiveCamera(
+      52,
+      1,
+      0.1,
+      this.lowPowerMode ? 165 : 220,
+    );
     this.camera.position.set(0, 0, 6);
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !this.lowPowerMode,
       alpha: true,
       powerPreference: 'high-performance',
+      stencil: false,
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.setClearColor(0x000000, 0);
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.98;
+    if (this.lowPowerMode) {
+      this.renderer.toneMapping = THREE.LinearToneMapping;
+      this.renderer.toneMappingExposure = 1;
+    } else {
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 0.98;
+    }
     this.renderer.domElement.style.display = 'block';
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
     this.container.appendChild(this.renderer.domElement);
 
-    const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, 96, 36, true);
-    this.tunnelFlowTex = createReefHyperspeedTunnelTexture();
+    const tr = this.lowPowerMode ? 42 : 96;
+    const th = this.lowPowerMode ? 14 : 36;
+    const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, tr, th, true);
+    this.tunnelFlowTex = createReefHyperspeedTunnelTexture(this.lowPowerMode);
     this.tunnelMaterial = new THREE.MeshStandardMaterial({
-      color: 0x031820,
-      metalness: 0.38,
-      roughness: 0.42,
+      color: 0x020c18,
+      metalness: this.lowPowerMode ? 0.22 : 0.44,
+      roughness: this.lowPowerMode ? 0.48 : 0.36,
       side: THREE.BackSide,
       map: this.tunnelFlowTex,
-      emissive: 0x1a7080,
+      emissive: 0x0d4a62,
       emissiveMap: this.tunnelFlowTex,
-      emissiveIntensity: 0.52,
+      emissiveIntensity: this.lowPowerMode ? 0.62 : 0.68,
     });
     this.tunnel = new THREE.Mesh(tunnelGeo, this.tunnelMaterial);
     this.tunnel.rotation.x = Math.PI / 2;
@@ -582,10 +626,20 @@ export class ArcadeSceneController {
     this.pathRoot.add(this.tunnel);
     this.scene.add(this.pathRoot);
 
-    this.scene.add(new THREE.AmbientLight(0xd8ebe4, 0.44));
-    const key = new THREE.PointLight(0xfff4e0, 72, 52, 1.9);
+    this.scene.add(new THREE.AmbientLight(0xb8d5e8, this.lowPowerMode ? 0.44 : 0.36));
+    const key = new THREE.PointLight(
+      0xc8e8ff,
+      this.lowPowerMode ? 52 : 64,
+      this.lowPowerMode ? 50 : 56,
+      1.85,
+    );
     key.position.set(2.8, 3.2, 7);
-    const fill = new THREE.PointLight(0x6ec4a8, 38, 44, 2.1);
+    const fill = new THREE.PointLight(
+      0x4ab8d8,
+      this.lowPowerMode ? 32 : 44,
+      this.lowPowerMode ? 46 : 48,
+      2.05,
+    );
     fill.position.set(-3.8, -0.8, 5);
     const rim = new THREE.DirectionalLight(0xa8dcc8, 0.32);
     rim.position.set(-0.4, 4.2, 6.5);
@@ -595,9 +649,10 @@ export class ArcadeSceneController {
     this.selectHemiLight = new THREE.HemisphereLight(0xfff4ec, 0x1a2a38, 0.4);
     this.selectHemiLight.position.set(0, 5.5, 1.5);
     this.selectHemiLight.visible = false;
-    this.scene.add(key, fill, rim, this.selectFillLight, this.selectHemiLight);
+    this.scene.add(key, fill, this.selectFillLight, this.selectHemiLight);
+    if (!this.lowPowerMode) this.scene.add(rim);
 
-    const n = window.innerWidth < 768 ? 620 : 1800;
+    const n = this.lowPowerMode ? 340 : 1800;
     const positions = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 18;
@@ -607,10 +662,10 @@ export class ArcadeSceneController {
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const pMat = new THREE.PointsMaterial({
-      color: 0xc8f5ff,
-      size: 0.042,
+      color: 0x9ae8ff,
+      size: this.lowPowerMode ? 0.055 : 0.048,
       transparent: true,
-      opacity: 0.45,
+      opacity: this.lowPowerMode ? 0.48 : 0.52,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       sizeAttenuation: true,
@@ -618,7 +673,7 @@ export class ArcadeSceneController {
     this.ambianceParticles = new THREE.Points(pGeo, pMat);
     this.scene.add(this.ambianceParticles);
 
-    const ns = window.innerWidth < 768 ? 320 : 1100;
+    const ns = this.lowPowerMode ? 150 : 1100;
     const sp = new Float32Array(ns * 3);
     for (let i = 0; i < ns; i++) {
       const ang = Math.random() * Math.PI * 2;
@@ -630,10 +685,10 @@ export class ArcadeSceneController {
     const sGeo = new THREE.BufferGeometry();
     sGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
     const sMat = new THREE.PointsMaterial({
-      color: 0x7ee8e0,
-      size: 0.028,
+      color: 0x5ad8f0,
+      size: this.lowPowerMode ? 0.038 : 0.032,
       transparent: true,
-      opacity: 0.55,
+      opacity: this.lowPowerMode ? 0.55 : 0.62,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       sizeAttenuation: true,
@@ -646,6 +701,12 @@ export class ArcadeSceneController {
     this.scene.add(this.obstacleGroup);
     this.playerWorld.visible = false;
 
+    try {
+      await loadArcadePropGlbTemplates();
+    } catch (e) {
+      console.warn('[Arcade] Prop GLB preload failed', e);
+    }
+
     /* Tighter X so all three stay in view on portrait / narrow aspect (was ±4.4). */
     const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R];
     const faces = [FACE_LEFT, FACE_CENTER, FACE_RIGHT];
@@ -655,7 +716,7 @@ export class ArcadeSceneController {
       anchor.position.set(xs[i]!, PODIUM_Y, PODIUM_Z);
       anchor.userData.characterId = def.id;
       const base = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.72, 0.22, 28),
+        new THREE.CylinderGeometry(0.55, 0.72, 0.22, this.lowPowerMode ? 14 : 28),
         new THREE.MeshStandardMaterial({
           color: 0x0a1018,
           metalness: 0.65,
@@ -730,6 +791,11 @@ export class ArcadeSceneController {
     const h = this.container.clientHeight || window.innerHeight;
     this.camera.aspect = w / Math.max(h, 1);
     this.camera.updateProjectionMatrix();
+    const pr = Math.min(
+      typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
+      this.lowPowerMode ? 1.12 : 1.75,
+    );
+    this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
   }
 
@@ -984,9 +1050,8 @@ export class ArcadeSceneController {
 
   private clearObstacles(): void {
     for (const o of this.obstacles) {
-      this.obstacleGroup.remove(o.mesh);
-      o.mesh.geometry.dispose();
-      (o.mesh.material as THREE.Material).dispose();
+      this.obstacleGroup.remove(o.root);
+      disposeObject3DResources(o.root);
     }
     this.obstacles = [];
   }
@@ -996,7 +1061,7 @@ export class ArcadeSceneController {
     const lanes = new Set<number>();
     for (const o of this.obstacles) {
       if (o.hit) continue;
-      if (obstacleFrontPastApproachPipe(o.mesh.position.z)) lanes.add(o.lane);
+      if (obstacleFrontPastApproachPipe(o.root.position.z)) lanes.add(o.lane);
     }
     return lanes;
   }
@@ -1047,35 +1112,38 @@ export class ArcadeSceneController {
   }
 
   private spawnObstacleInLane(lane: number, z: number): void {
-    const geo = new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xf25544,
-      emissive: 0x8a2218,
-      emissiveIntensity: 0.48,
-      metalness: 0.14,
-      roughness: 0.55,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
-    this.obstacleGroup.add(mesh);
+    let root: THREE.Object3D;
+    const coral = cloneCoralObstacleVisual();
+    if (coral) {
+      root = coral;
+    } else {
+      const geo = new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xf25544,
+        emissive: 0x8a2218,
+        emissiveIntensity: 0.48,
+        metalness: 0.14,
+        roughness: 0.55,
+      });
+      root = new THREE.Mesh(geo, mat);
+    }
+    root.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
+    this.obstacleGroup.add(root);
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.94 + Math.random() * 0.12);
-    this.obstacles.push({ mesh, lane, speed, hit: false });
+    this.obstacles.push({ root, lane, speed, hit: false });
   }
 
   private clearPickups(): void {
     for (const p of this.pickups) {
-      this.obstacleGroup.remove(p.mesh);
-      p.mesh.geometry.dispose();
-      const mat = p.mesh.material;
-      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-      else (mat as THREE.Material).dispose();
+      this.obstacleGroup.remove(p.root);
+      disposeObject3DResources(p.root);
     }
     this.pickups = [];
   }
 
   private laneBlockedForPickup(lane: number): boolean {
     return this.obstacles.some(
-      (o) => !o.hit && o.lane === lane && o.mesh.position.z > -50 && o.mesh.position.z < 5,
+      (o) => !o.hit && o.lane === lane && o.root.position.z > -50 && o.root.position.z < 5,
     );
   }
 
@@ -1103,12 +1171,12 @@ export class ArcadeSceneController {
   }
 
   private spawnPickupInLane(lane: number, kind: PickupKind): void {
-    const mesh = pickupMeshForKind(kind);
-    mesh.position.set(LANES[lane], OBSTACLE_CENTER_Y, SPAWN_Z);
-    this.obstacleGroup.add(mesh);
+    const root = clonePickupVisual(kind);
+    root.position.set(LANES[lane], OBSTACLE_CENTER_Y, SPAWN_Z);
+    this.obstacleGroup.add(root);
     /** Slightly slower than coral so pickups are easier to read. */
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + Math.random() * 0.12) * 0.74;
-    this.pickups.push({ mesh, lane, speed, hit: false, kind });
+    this.pickups.push({ root, lane, speed, hit: false, kind });
   }
 
   /** Longer runs = slightly longer between pickup spawns (focus on dodging). */
@@ -1293,59 +1361,52 @@ export class ArcadeSceneController {
 
         for (const o of this.obstacles) {
           if (o.hit) continue;
-          o.mesh.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+          o.root.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
           if (
-            Math.abs(o.mesh.position.z - HIT_Z) < HIT_HALF_DEPTH &&
+            Math.abs(o.root.position.z - HIT_Z) < HIT_HALF_DEPTH &&
             o.lane === this.playerLane
           ) {
             o.hit = true;
             this.triggerGameOver('crush');
             break;
           }
-          if (o.mesh.position.z > OBSTACLE_RECYCLE_Z) {
-            this.obstacleGroup.remove(o.mesh);
-            o.mesh.geometry.dispose();
-            (o.mesh.material as THREE.Material).dispose();
+          if (o.root.position.z > OBSTACLE_RECYCLE_Z) {
+            this.obstacleGroup.remove(o.root);
+            disposeObject3DResources(o.root);
             o.hit = true;
           }
         }
-        this.obstacles = this.obstacles.filter((o) => o.mesh.parent === this.obstacleGroup);
+        this.obstacles = this.obstacles.filter((o) => o.root.parent === this.obstacleGroup);
 
         if (!this.playEnded) {
           const pickupHitZ = HIT_HALF_DEPTH * 0.78;
           for (const p of this.pickups) {
             if (p.hit) continue;
-            pulsePickupMaterial(p.mesh, t);
-            spinPickupMesh(p.mesh, dt);
-            p.mesh.position.z += p.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+            pulsePickupVisual(p.root, t);
+            spinPickupVisual(p.root, dt);
+            p.root.position.z += p.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
             if (
               this.runState &&
-              Math.abs(p.mesh.position.z - HIT_Z) < pickupHitZ &&
+              Math.abs(p.root.position.z - HIT_Z) < pickupHitZ &&
               p.lane === this.playerLane
             ) {
               p.hit = true;
               const out = applyPickupEffect(p.kind, this.runState, this.clock.elapsedTime);
               if (out.cameraShake) this.addCameraShake(out.cameraShake);
-              this.obstacleGroup.remove(p.mesh);
-              p.mesh.geometry.dispose();
-              const pm = p.mesh.material;
-              if (Array.isArray(pm)) pm.forEach((m) => m.dispose());
-              else (pm as THREE.Material).dispose();
+              this.obstacleGroup.remove(p.root);
+              disposeObject3DResources(p.root);
               if (out.gameOver) {
                 this.triggerGameOver(out.gameOver);
                 break;
               }
             }
-            if (p.mesh.position.z > OBSTACLE_RECYCLE_Z) {
-              this.obstacleGroup.remove(p.mesh);
-              p.mesh.geometry.dispose();
-              const pm = p.mesh.material;
-              if (Array.isArray(pm)) pm.forEach((m) => m.dispose());
-              else (pm as THREE.Material).dispose();
+            if (p.root.position.z > OBSTACLE_RECYCLE_Z) {
+              this.obstacleGroup.remove(p.root);
+              disposeObject3DResources(p.root);
               p.hit = true;
             }
           }
-          this.pickups = this.pickups.filter((p) => p.mesh.parent === this.obstacleGroup);
+          this.pickups = this.pickups.filter((p) => p.root.parent === this.obstacleGroup);
         }
 
         if (!this.playEnded && st && characterUsesOxygenMechanic(st.characterId)) {
