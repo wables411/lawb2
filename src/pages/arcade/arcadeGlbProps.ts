@@ -112,6 +112,11 @@ export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
 
   if (tpl) {
     const root = tpl.clone(true);
+    /**
+     * GLB instances share geometry/material/texture references from cached templates.
+     * Cleanup must NOT dispose those shared GPU resources per instance.
+     */
+    root.userData.arcadeKeepSharedResources = true;
     root.userData.pickupKind = kind;
     const mx = extentOverride ?? PICKUP_MAX_EXTENT[kind] ?? 0.65;
     fitReefObstacleVisual(root, { maxExtent: mx });
@@ -127,6 +132,8 @@ export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
 export function cloneCoralObstacleVisual(): THREE.Object3D | null {
   if (!coralTemplate) return null;
   const root = coralTemplate.clone(true);
+  // Coral instances also share template resources; dispose only the Object3D tree.
+  root.userData.arcadeKeepSharedResources = true;
   fitReefObstacleVisual(root, { maxExtent: CORAL_MAX_EXTENT });
   return root;
 }

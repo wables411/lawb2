@@ -4,6 +4,9 @@ import * as THREE from 'three';
  * Dispose all geometries and materials under a prop root (cloned GLB/FBX or procedural Group).
  */
 export function disposeObject3DResources(root: THREE.Object3D): void {
+  // GLB clones from cached templates share material/texture/geometry across instances.
+  // Disposing per-instance would invalidate live assets and cause white models + warnings.
+  if (root.userData?.arcadeKeepSharedResources) return;
   root.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       const mesh = child as THREE.Mesh;
