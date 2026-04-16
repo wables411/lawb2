@@ -136,6 +136,9 @@ function obstacleFrontPastApproachPipe(zCenter: number): boolean {
 }
 
 const OBSTACLE_RECYCLE_Z = 8;
+/** Keep distant props out of the draw list; gameplay/collision still runs on lane + Z logic. */
+const OBSTACLE_RENDER_START_Z = -28;
+const PICKUP_RENDER_START_Z = -24;
 
 /** Distinct lanes with any live hazard still on the run (not recycled). Includes freshly spawned at `SPAWN_Z`. */
 function lanesOnActiveTrack(obstacles: Obstacle[]): Set<number> {
@@ -793,7 +796,7 @@ export class ArcadeSceneController {
     this.camera.updateProjectionMatrix();
     const pr = Math.min(
       typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
-      this.lowPowerMode ? 1.12 : 1.75,
+      this.lowPowerMode ? 1.0 : 1.35,
     );
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
@@ -1128,6 +1131,7 @@ export class ArcadeSceneController {
       root = new THREE.Mesh(geo, mat);
     }
     root.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
+    root.visible = z > OBSTACLE_RENDER_START_Z;
     this.obstacleGroup.add(root);
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.94 + Math.random() * 0.12);
     this.obstacles.push({ root, lane, speed, hit: false });
@@ -1173,6 +1177,7 @@ export class ArcadeSceneController {
   private spawnPickupInLane(lane: number, kind: PickupKind): void {
     const root = clonePickupVisual(kind);
     root.position.set(LANES[lane], OBSTACLE_CENTER_Y, SPAWN_Z);
+    root.visible = SPAWN_Z > PICKUP_RENDER_START_Z;
     this.obstacleGroup.add(root);
     /** Slightly slower than coral so pickups are easier to read. */
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + Math.random() * 0.12) * 0.74;
@@ -1362,6 +1367,7 @@ export class ArcadeSceneController {
         for (const o of this.obstacles) {
           if (o.hit) continue;
           o.root.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+          o.root.visible = o.root.position.z > OBSTACLE_RENDER_START_Z;
           if (
             Math.abs(o.root.position.z - HIT_Z) < HIT_HALF_DEPTH &&
             o.lane === this.playerLane
@@ -1385,6 +1391,7 @@ export class ArcadeSceneController {
             pulsePickupVisual(p.root, t);
             spinPickupVisual(p.root, dt);
             p.root.position.z += p.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+            p.root.visible = p.root.position.z > PICKUP_RENDER_START_Z;
             if (
               this.runState &&
               Math.abs(p.root.position.z - HIT_Z) < pickupHitZ &&

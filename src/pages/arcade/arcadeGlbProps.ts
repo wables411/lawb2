@@ -1,13 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { ARCADE_ASSET_BASE } from './arcadeAssetConfig';
 import { createPrimitivePickupMesh, PICKUP_VISUAL_SCALE } from './arcadePickupMesh';
 import type { PickupKind } from './arcadePickupKinds';
 import { fitReefObstacleVisual } from './arcadePropPlacement';
 
 const loader = new GLTFLoader();
-loader.setMeshoptDecoder(MeshoptDecoder);
 
 const PICKUP_GLB: Partial<Record<PickupKind, string>> = {
   air_tank: `${ARCADE_ASSET_BASE}/reef-o2-tank.glb`,
