@@ -238,7 +238,7 @@ export const updateLeaderboardEntry = async (
 
 // Update both players' scores when a game ends
 export const updateBothPlayersScores = async (
-  winner: 'blue' | 'red',
+  winner: 'blue' | 'red' | null,
   bluePlayerAddress: string,
   redPlayerAddress: string
 ): Promise<boolean> => {

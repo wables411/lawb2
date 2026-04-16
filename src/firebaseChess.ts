@@ -1,3 +1,8 @@
+/**
+ * Chess RTDB surface — keep reads bounded:
+ * - Prefer `getActiveGames` / `getOpenGames` (indexed queries), not full-tree reads.
+ * - UI: subscribe to `chess_games/{inviteCode}` only while in a match; never `subscribeToAllGames` in production UI.
+ */
 import { database } from './firebaseApp';
 import { ref, set, get, onValue, off, remove, update, query, orderByChild, equalTo } from 'firebase/database';
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();

@@ -8,11 +8,6 @@
   VITE_EXCLUDE_WORLD = "true"
 
 [[redirects]]
-  from = "/chess"
-  to = "/"
-  status = 301
-
-[[redirects]]
   from = "/api/game-monitor"
   to = "/.netlify/functions/game-monitor"
   status = 200

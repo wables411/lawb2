@@ -73,6 +73,15 @@
       }
     },
 
+    "chess_games": {
+      ".read": true,
+      ".indexOn": ["game_state", "game_type"],
+      "$inviteCode": {
+        ".write": true,
+        ".validate": "!newData.exists() || (newData.hasChild('game_state') && newData.child('game_state').isString())"
+      }
+    },
+
     "claims": {
       ".read": false,
       "$claimId": {

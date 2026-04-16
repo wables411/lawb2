@@ -32,6 +32,14 @@ import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
 import ClawbDanceLoop from './ClawbDanceLoop2D';
 import { debugIngest } from '../utils/debugIngest';
+import { Chess } from 'chess.js';
+import {
+  boardFromChess,
+  chessTurnToUi,
+  loadLawbPositionIntoChess,
+  lawbLegalMoveDestinations,
+  tryMoveOnChess,
+} from '../utils/lawbChessCore';
 
 // Get contract address based on current network
 const getContractAddress = (chainId: number) => {
@@ -661,6 +669,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   
   // Game state
   const [board, setBoard] = useState<(string | null)[][]>(initialBoard);
+  const chessRef = useRef<Chess>(new Chess());
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedSquare, setSelectedSquare] = useState<{ row: number; col: number } | null>(null);
   const [validMoves, setValidMoves] = useState<{ row: number; col: number }[]>([]);
@@ -670,6 +679,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [gameStatus, setGameStatus] = useState<string>('Waiting for opponent...');
   const [gameMode, setGameMode] = useState<typeof GameMode[keyof typeof GameMode]>(GameMode.LOBBY);
   const [isLocalMoveInProgress, setIsLocalMoveInProgress] = useState(false);
+
+  useEffect(() => {
+    if (gameMode !== GameMode.ACTIVE) return;
+    if (isLocalMoveInProgress) return;
+    loadLawbPositionIntoChess(chessRef.current, board, currentPlayer);
+  }, [board, currentPlayer, gameMode, isLocalMoveInProgress]);
 
   // Piece set state
   const [selectedPieceSet, setSelectedPieceSet] = useState<ChessPieceSet>(getDefaultPieceSet());
@@ -2255,7 +2270,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
 
   // Update both players' scores when game ends using Firebase
-  const updateBothPlayersScoresLocal = async (winner: 'blue' | 'red', bluePlayer: string, redPlayer: string) => {
+  const updateBothPlayersScoresLocal = async (winner: 'blue' | 'red' | null, bluePlayer: string, redPlayer: string) => {
     try {
       console.log('[SCORE] Updating both players scores:', { winner, bluePlayer, redPlayer });
       
@@ -4468,401 +4483,36 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     return `${fromSquare}-${toSquare}`;
   };
 
-  const isKingInCheck = (board: (string | null)[][], player: 'blue' | 'red'): boolean => {
-    // Find the king
-    const kingPiece = player === 'red' ? 'K' : 'k';
-    let kingRow = -1, kingCol = -1;
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        if (board[row][col] === kingPiece) {
-          kingRow = row;
-          kingCol = col;
-          break;
-        }
-      }
-      if (kingRow !== -1) break;
-    }
-    
-    if (kingRow === -1) return false;
-    
-    // Check if any opponent piece can attack the king
-    const opponentColor = player === 'red' ? 'blue' : 'red';
-    return isSquareUnderAttack(kingRow, kingCol, opponentColor, board);
-  };
-
-  const isSquareUnderAttack = (row: number, col: number, attackingColor: 'blue' | 'red', board: (string | null)[][]): boolean => {
-    // Safety check for board structure
-    if (!board || !Array.isArray(board) || board.length !== 8) {
-      console.warn('[SAFETY] Invalid board structure in isSquareUnderAttack:', board);
-      return false;
-    }
-    
-    for (let r = 0; r < 8; r++) {
-      if (!board[r] || !Array.isArray(board[r]) || board[r].length !== 8) {
-        console.warn('[SAFETY] Invalid board row structure:', board[r]);
-        return false;
-      }
-      
-      for (let c = 0; c < 8; c++) {
-        const piece = board[r][c];
-        if (piece && getPieceColor(piece) === attackingColor) {
-          if (canPieceMove(piece, r, c, row, col, false, attackingColor, board, true)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  };
-
-  const wouldMoveExposeCheck = (startRow: number, startCol: number, endRow: number, endCol: number, player: 'blue' | 'red', boardState = board): boolean => {
-    const piece = boardState[startRow][startCol];
-    if (!piece) return false;
-    
-    const newBoard = boardState.map(row => [...row]);
-    newBoard[endRow][endCol] = piece;
-    newBoard[startRow][startCol] = null;
-    
-    return isKingInCheck(newBoard, player);
-  };
-
-  const isValidPawnMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
-    const direction = color === 'blue' ? -1 : 1;
-    const startingRow = color === 'blue' ? 6 : 1;
-    
-    // Check if target square is within board bounds
-    if (!isWithinBoard(endRow, endCol)) {
-      return false;
-    }
-    
-    // Early validation - pawns can only move forward
-    if (color === 'blue' && endRow >= startRow) return false; // Blue pawns move up (decreasing row)
-    if (color === 'red' && endRow <= startRow) return false;  // Red pawns move down (increasing row)
-    
-    // Forward move (1 square)
-    if (startCol === endCol && endRow === startRow + direction) {
-      return board[endRow][endCol] === null;
-    }
-    
-    // Initial 2-square move
-    if (startCol === endCol && startRow === startingRow && endRow === startRow + 2 * direction) {
-      return board[startRow + direction][startCol] === null && board[endRow][endCol] === null;
-    }
-    
-    // Capture move (diagonal)
-    if (Math.abs(startCol - endCol) === 1 && endRow === startRow + direction) {
-      const targetPiece = board[endRow][endCol];
-      if (targetPiece !== null && getPieceColor(targetPiece) !== color) {
-        return true;
-      }
-      
-      // En passant (only if no regular capture is possible)
-      if (targetPiece === null && pieceState.lastPawnDoubleMove) {
-        const { row: lastPawnRow, col: lastPawnCol } = pieceState.lastPawnDoubleMove;
-        if (lastPawnRow === startRow && lastPawnCol === endCol) {
-          const enPassantPawn = board[startRow][endCol];
-          if (enPassantPawn && enPassantPawn.toLowerCase() === 'p' && getPieceColor(enPassantPawn) !== color) {
-            return true;
-          }
-        }
-      }
-    }
-    
-    return false;
-  };
-
-  const isValidRookMove = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
-    return startRow === endRow || startCol === endCol;
-  };
-
-  const isValidKnightMove = (startRow: number, startCol: number, endRow: number, endCol: number): boolean => {
-    const rowDiff = Math.abs(startRow - endRow);
-    const colDiff = Math.abs(startCol - endCol);
-    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-  };
-
-  const isValidBishopMove = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
-    return Math.abs(startRow - endRow) === Math.abs(startCol - endCol);
-  };
-
-  const isValidQueenMove = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
-    return isValidRookMove(startRow, startCol, endRow, endCol, board) || 
-           isValidBishopMove(startRow, startCol, endRow, endCol, board);
-  };
-
-  const getOppositeColor = (color: 'blue' | 'red'): 'blue' | 'red' => {
-    return color === 'blue' ? 'red' : 'blue';
-  };
-
-  const isValidKingMove = (color: 'blue' | 'red', startRow: number, startCol: number, endRow: number, endCol: number, boardState = board, skipCheckValidation = false): boolean => {
-    const rowDiff = Math.abs(startRow - endRow);
-    const colDiff = Math.abs(startCol - endCol);
-    
-    // Normal king move
-    if (rowDiff <= 1 && colDiff <= 1) return true;
-    
-    // Castling
-    if (rowDiff === 0 && colDiff === 2) {
-      // Skip check validation if we're already in the middle of checking legal moves
-      if (!skipCheckValidation) {
-        // Check if king is currently in check - castling is not allowed when king is in check
-        if (isKingInCheck(boardState, color)) {
-          return false;
-        }
-      }
-      
-      if (color === 'blue' && !pieceState.blueKingMoved) {
-        if (endCol === 6 && !pieceState.blueRooksMove.right) {
-          // Kingside castling - check if path is clear and king doesn't move through check
-          if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
-            // Check if king moves through check (only if not skipping validation)
-            if (!skipCheckValidation) {
-              const attackingColor = color === 'blue' ? 'red' : 'blue';
-              if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
-                  !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
-                return true;
-              }
-            } else {
-              return true; // Skip check validation for castling during legal move generation
-            }
-          }
-        }
-        if (endCol === 2 && !pieceState.blueRooksMove.left) {
-          // Queenside castling - check if path is clear and king doesn't move through check
-          if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
-            // Check if king moves through check (only if not skipping validation)
-            if (!skipCheckValidation) {
-              const attackingColor = color === 'blue' ? 'red' : 'blue';
-              if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
-                  !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
-                return true;
-              }
-            } else {
-              return true; // Skip check validation for castling during legal move generation
-            }
-          }
-        }
-      } else if (color === 'red' && !pieceState.redKingMoved) {
-        if (endCol === 6 && !pieceState.redRooksMove.right) {
-          // Kingside castling - check if path is clear and king doesn't move through check
-          if (boardState[startRow][5] === null && boardState[startRow][6] === null) {
-            // Check if king moves through check (only if not skipping validation)
-            if (!skipCheckValidation) {
-              const attackingColor: 'blue' | 'red' = getOppositeColor(color);
-              if (!isSquareUnderAttack(startRow, 5, attackingColor, boardState) &&
-                  !isSquareUnderAttack(startRow, 6, attackingColor, boardState)) {
-                return true;
-              }
-            } else {
-              return true; // Skip check validation for castling during legal move generation
-            }
-          }
-        }
-        if (endCol === 2 && !pieceState.redRooksMove.left) {
-          // Queenside castling - check if path is clear and king doesn't move through check
-          if (boardState[startRow][1] === null && boardState[startRow][2] === null && boardState[startRow][3] === null) {
-            // Check if king moves through check (only if not skipping validation)
-            if (!skipCheckValidation) {
-              const attackingColor: 'blue' | 'red' = getOppositeColor(color);
-              if (!isSquareUnderAttack(startRow, 2, attackingColor, boardState) &&
-                  !isSquareUnderAttack(startRow, 3, attackingColor, boardState)) {
-                return true;
-              }
-            } else {
-              return true; // Skip check validation for castling during legal move generation
-            }
-          }
-        }
-      }
-    }
-    
-    return false;
-  };
-
-  const isPathClear = (startRow: number, startCol: number, endRow: number, endCol: number, board: (string | null)[][]): boolean => {
-    const rowStep = startRow === endRow ? 0 : (endRow - startRow) / Math.abs(endRow - startRow);
-    const colStep = startCol === endCol ? 0 : (endCol - startCol) / Math.abs(endCol - startCol);
-    
-    let currentRow = startRow + rowStep;
-    let currentCol = startCol + colStep;
-    
-    while (currentRow !== endRow || currentCol !== endCol) {
-      if (board[currentRow][currentCol] !== null) {
-        return false;
-      }
-      currentRow += rowStep;
-      currentCol += colStep;
-    }
-    
-    return true;
-  };
-
-  const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board, silent = false): boolean => {
-    if (!piece) return false;
-    
-    if (!isWithinBoard(endRow, endCol)) {
-      return false;
-    }
-    
-    const targetPiece = boardState[endRow][endCol];
-    
-    // Can't capture own piece
-    if (targetPiece && getPieceColor(targetPiece) === playerColor) {
-      return false;
-    }
-    
-    let isValidMove = false;
-    
-    switch (piece.toUpperCase()) {
-      case 'P': // Pawn
-        isValidMove = isValidPawnMove(playerColor, startRow, startCol, endRow, endCol, boardState);
-        break;
-      case 'R': // Rook
-        isValidMove = isValidRookMove(startRow, startCol, endRow, endCol, boardState) && 
-                     isPathClear(startRow, startCol, endRow, endCol, boardState);
-        break;
-      case 'N': // Knight
-        isValidMove = isValidKnightMove(startRow, startCol, endRow, endCol);
-        break;
-      case 'B': // Bishop
-        isValidMove = isValidBishopMove(startRow, startCol, endRow, endCol, boardState) && 
-                     isPathClear(startRow, startCol, endRow, endCol, boardState);
-        break;
-      case 'Q': // Queen
-        isValidMove = isValidQueenMove(startRow, startCol, endRow, endCol, boardState) && 
-                     isPathClear(startRow, startCol, endRow, endCol, boardState);
-        break;
-      case 'K': // King
-        isValidMove = isValidKingMove(playerColor, startRow, startCol, endRow, endCol, boardState, !checkForCheck);
-        break;
-    }
-    
-    if (!isValidMove) {
-      return false;
-    }
-    
-    // Check if move would expose king to check
-    if (checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState)) {
-      return false;
-    }
-    
-    return true;
-  };
-
-  const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer, checkForCheck = true, depth = 0): { row: number; col: number }[] => {
-    // Prevent infinite recursion
-    if (depth > 10) {
-      console.warn('[RECURSION_GUARD] Maximum recursion depth reached in getLegalMoves');
-      return [];
-    }
-    const moves: { row: number; col: number }[] = [];
-    const piece = boardState[from.row][from.col];
-    
-    if (!piece || getPieceColor(piece) !== player) return moves;
-    
-    const pieceType = piece.toLowerCase();
-    
-    // Optimize move generation based on piece type
-    if (pieceType === 'p') {
-      // For pawns, only check relevant squares
-      const direction = player === 'blue' ? -1 : 1;
-      const startingRow = player === 'blue' ? 6 : 1;
-      
-      // Forward moves
-      const forwardRow = from.row + direction;
-      if (forwardRow >= 0 && forwardRow < 8) {
-        if (canPieceMove(piece, from.row, from.col, forwardRow, from.col, checkForCheck, player, boardState, true)) {
-          moves.push({ row: forwardRow, col: from.col });
-        }
-      }
-      
-      // Double move from starting position
-      if (from.row === startingRow) {
-        const doubleRow = from.row + 2 * direction;
-        if (doubleRow >= 0 && doubleRow < 8) {
-          if (canPieceMove(piece, from.row, from.col, doubleRow, from.col, checkForCheck, player, boardState, true)) {
-            moves.push({ row: doubleRow, col: from.col });
-          }
-        }
-      }
-      
-      // Diagonal captures
-      for (const colOffset of [-1, 1]) {
-        const captureCol = from.col + colOffset;
-        const captureRow = from.row + direction;
-        if (captureCol >= 0 && captureCol < 8 && captureRow >= 0 && captureRow < 8) {
-          if (canPieceMove(piece, from.row, from.col, captureRow, captureCol, checkForCheck, player, boardState, true)) {
-            moves.push({ row: captureRow, col: captureCol });
-          }
-        }
-      }
-    } else if (pieceType === 'n') {
-      // For knights, only check L-shaped moves
-      const knightMoves = [
-        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-        [1, -2], [1, 2], [2, -1], [2, 1]
-      ];
-      
-      for (const [rowOffset, colOffset] of knightMoves) {
-        const newRow = from.row + rowOffset;
-        const newCol = from.col + colOffset;
-        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-          if (canPieceMove(piece, from.row, from.col, newRow, newCol, checkForCheck, player, boardState, true)) {
-            moves.push({ row: newRow, col: newCol });
-          }
-        }
-      }
-    } else {
-      // For other pieces (rook, bishop, queen, king), check all squares but use silent mode
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          if (canPieceMove(piece, from.row, from.col, row, col, checkForCheck, player, boardState, true)) {
-            moves.push({ row, col });
-          }
-        }
-      }
-    }
-    
-    return moves;
+  const isKingInCheck = (boardState: (string | null)[][], player: 'blue' | 'red'): boolean => {
+    const ch = new Chess();
+    if (!loadLawbPositionIntoChess(ch, boardState, player)) return false;
+    return ch.isCheck();
   };
 
   const isCheckmate = (player: 'blue' | 'red', boardState = board): boolean => {
-    if (!isKingInCheck(boardState, player)) return false;
-    
-    // Check if any piece can make a legal move
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = boardState[row][col];
-        if (piece && getPieceColor(piece) === player) {
-          const legalMoves = getLegalMoves({ row, col }, boardState, player, true, 0);
-          if (legalMoves.length > 0) {
-            return false;
-          }
-        }
-      }
-    }
-    
-    return true;
+    const ch = new Chess();
+    if (!loadLawbPositionIntoChess(ch, boardState, player)) return false;
+    return ch.isCheckmate();
   };
 
   const isStalemate = (player: 'blue' | 'red', boardState = board): boolean => {
-    if (isKingInCheck(boardState, player)) return false;
-    
-    // Check if any piece can make a legal move
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = boardState[row][col];
-        if (piece && getPieceColor(piece) === player) {
-          const legalMoves = getLegalMoves({ row, col }, boardState, player, true, 0);
-          if (legalMoves.length > 0) {
-            return false;
-          }
-        }
-      }
-    }
-    
-    return true;
+    const ch = new Chess();
+    if (!loadLawbPositionIntoChess(ch, boardState, player)) return false;
+    return ch.isStalemate();
+  };
+
+  const getLegalMoves = (
+    from: { row: number; col: number },
+    boardState = board,
+    player = currentPlayer,
+    _checkForCheck = true,
+    _depth = 0,
+  ): { row: number; col: number }[] => {
+    const piece = boardState[from.row][from.col];
+    if (!piece || getPieceColor(piece) !== player) return [];
+    const ch = new Chess();
+    if (!loadLawbPositionIntoChess(ch, boardState, player)) return [];
+    return lawbLegalMoveDestinations(ch, from.row, from.col);
   };
 
   // Handle square click
@@ -5028,60 +4678,52 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       currentBoard: board.map(row => [...row])
     });
     
-    const newBoard = board.map(row => [...row]);
-    
-    // Handle pawn promotion BEFORE moving the piece to avoid display delay
-    let pieceToPlace = pieceString;
-    if (pieceString.toLowerCase() === 'p' && ((getPieceColor(pieceString) === 'blue' && to.row === 0) || (getPieceColor(pieceString) === 'red' && to.row === 7))) {
-      pieceToPlace = getPieceColor(pieceString) === 'blue' ? promotionPiece.toLowerCase() : promotionPiece.toUpperCase();
-      console.log('[MOVE_ANIMATION] Promoting pawn to:', pieceToPlace);
+    const ch = chessRef.current;
+    if (!loadLawbPositionIntoChess(ch, board, currentPlayer)) {
+      console.error('[MOVE] chess.js could not load position');
+      clearTimeout(safetyTimeout);
+      setIsLocalMoveInProgress(false);
+      setGameStatus('Invalid board — please reload.');
+      return;
     }
-    
-    // Execute the move with the correct piece (promoted if applicable)
-    newBoard[to.row][to.col] = pieceToPlace;
-    newBoard[from.row][from.col] = null;
-    
-    // Handle special moves (castling, en passant) - but NOT pawn promotion since we handled it above
-    console.log('[MOVE_ANIMATION] Before special moves handling');
-    handleSpecialMoves(newBoard, from, to, pieceString, promotionPiece);
-    console.log('[MOVE_ANIMATION] After special moves handling');
-    
-    console.log('[MOVE_ANIMATION] Move completed:', {
-      from: { row: from.row, col: from.col },
-      to: { row: to.row, col: to.col },
-      piece: pieceToPlace,
-      finalBoardState: newBoard.map(row => [...row])
-    });
-    
-    // Update piece state
+
+    const mv = tryMoveOnChess(ch, from, to, promotionPiece);
+    if (!mv) {
+      console.error('[MOVE] Illegal move rejected');
+      clearTimeout(safetyTimeout);
+      setIsLocalMoveInProgress(false);
+      setGameStatus('That move is not legal.');
+      return;
+    }
+
+    const newBoard = boardFromChess(ch);
     updatePieceState(from, to, pieceString);
-    
-    // Update move history
-    const moveNotation = getMoveNotation(from, to, pieceString, newBoard);
+
+    const moveNotation = mv.san;
     const updatedMoveHistory = [...moveHistory, moveNotation];
     setMoveHistory(prev => {
       const updated = [...prev, moveNotation];
       console.log('[MOVE HISTORY UPDATED]', updated);
       return updated;
     });
-    
-    const nextPlayer = currentPlayer === 'blue' ? 'red' : 'blue';
-    
-    // Update last move time for timeout timer
+
+    const nextPlayer = chessTurnToUi(ch.turn());
+
     setLastMoveTime(Date.now());
-    
-    // Check for check
-    if (isKingInCheck(newBoard, nextPlayer)) {
+
+    if (ch.isCheck()) {
       playSound('check');
     }
-    
-    // Check for game end
+
     let gameState = 'active';
     let winner: 'blue' | 'red' | null = null;
-          if (isCheckmate(nextPlayer, newBoard)) {
+    let endReason: string | undefined;
+
+    if (ch.isCheckmate()) {
         console.log('[CHECKMATE] Checkmate detected! Setting winner:', currentPlayer);
         gameState = 'finished';
         winner = currentPlayer;
+        endReason = 'checkmate';
         setGameStatus(`${currentPlayer === 'red' ? 'Red' : 'Blue'} wins by checkmate!`);
         setGameJustFinished(true); // Prevent excessive lobby loading
         
@@ -5135,114 +4777,42 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           claimWinnings();
         }, CELEBRATION_DELAY_MS + 2000); // After celebration delay + small buffer
       }
-    } else if (isStalemate(nextPlayer, newBoard)) {
-      // Stalemate = loss for the player who gets stalemated
-      // nextPlayer is the one who has no legal moves, so they lose
-      winner = currentPlayer; // Player who made the move that caused stalemate
+    } else if (ch.isStalemate() || ch.isDraw()) {
       gameState = 'finished';
-      setGameStatus(`${winner === 'red' ? 'Red' : 'Blue'} wins by stalemate!`);
-      setGameJustFinished(true); // Prevent excessive lobby loading
-      
-      // Clear the flag after 30 seconds to allow normal lobby loading
+      winner = null;
+      endReason = ch.isStalemate() ? 'stalemate' : 'draw';
+      setGameStatus(endReason === 'stalemate' ? 'Stalemate — draw.' : 'Draw — game over.');
+      setGameJustFinished(true);
       setTimeout(() => {
         setGameJustFinished(false);
       }, 30000);
-      
-      // Mark this as the winning move and show announcement
-      setIsWinningMove(true);
-      setCheckmateAnnouncement('STALEMATE!');
-      
-      // DELAY the celebration so the player can see the board
+      setIsWinningMove(false);
+      setCheckmateAnnouncement(endReason === 'stalemate' ? 'STALEMATE!' : 'DRAW!');
       if (celebrationDelayTimeout.current) clearTimeout(celebrationDelayTimeout.current);
       celebrationDelayTimeout.current = setTimeout(() => {
         setCheckmateAnnouncement(null);
-        if (winner === playerColor) {
-          playSound('victory');
-          triggerVictoryCelebration();
-        } else {
-          playSound('loser');
-          triggerDefeatCelebration();
-        }
       }, CELEBRATION_DELAY_MS);
-      
-      // Update Firebase FIRST (critical for winner field)
+
       try {
-        if (!inviteCode) {
-          console.error('[BUG] inviteCode is missing when trying to update game!');
-          setGameStatus('Game code missing. Please reload or rejoin the game.');
-          return;
-        }
-        
-        // Flatten the board for Firebase storage
-        const flattenedBoard = flattenBoard(newBoard);
-        
-        // Update Firebase with the new board state
-        console.log('[FIREBASE_UPDATE] About to update Firebase with:', {
-          inviteCode,
-          gameState,
-          winner,
-          currentPlayer,
-          nextPlayer,
-          playerColor
-        });
-        console.log('[FIREBASE_UPDATE] CRITICAL: Setting winner field to:', winner, 'for game:', inviteCode);
-        
-        await firebaseChess.updateGame(inviteCode, {
-          board: { 
-            positions: flattenedBoard,
-            rows: 8,
-            cols: 8
-          },
-          current_player: nextPlayer,
-          game_state: gameState,
-          winner: winner,
-          last_move: { from, to },
-          move_history: updatedMoveHistory
-        });
-        
-        console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
-      } catch (error) {
-        console.error('[DATABASE] Error updating game:', error);
-        console.error('[DATABASE] Error details:', {
-          inviteCode,
-          gameState,
-          winner,
-          error: String(error)
-        });
-      }
-      
-              // Update scores for both players (AFTER Firebase update)
-        try {
-          const currentContractData = getCurrentContractGameData();
-          
-          if (currentContractData && Array.isArray(currentContractData) && (currentContractData as any).length >= 2) {
+        const currentContractData = getCurrentContractGameData();
+        let blueP: string | null = null;
+        let redP: string | null = null;
+        if (currentContractData && Array.isArray(currentContractData) && (currentContractData as any).length >= 2) {
           const contractData = currentContractData as unknown as any[];
           if (contractData[0] && contractData[1]) {
-            const player1 = contractData[0] as string;
-            const player2 = contractData[1] as string;
-            await updateBothPlayersScoresLocal(winner, player1, player2);
-          } else {
-            // Fallback to single player update if contract data not available
-            await updateScore(winner === playerColor ? 'win' : 'loss');
-            // Reload leaderboard after single player update
-            await loadLeaderboard();
+            blueP = contractData[0] as string;
+            redP = contractData[1] as string;
           }
-        } else {
-          // Fallback to single player update if contract data not available
-          await updateScore(winner === playerColor ? 'win' : 'loss');
-          // Reload leaderboard after single player update
-          await loadLeaderboard();
+        }
+        if ((!blueP || !redP) && address && opponent && playerColor) {
+          blueP = playerColor === 'blue' ? address : opponent;
+          redP = playerColor === 'red' ? address : opponent;
+        }
+        if (blueP && redP) {
+          await updateBothPlayersScoresLocal(null, blueP, redP);
         }
       } catch (error) {
-        console.error('[SCORE] Error updating scores:', error);
-        // Don't fail the entire game end if score update fails
-      }
-      
-      // Trigger contract payout for the winner
-      if (winner === playerColor) {
-        setTimeout(() => {
-          claimWinnings();
-        }, 2000); // Small delay to ensure UI updates first
+        console.error('[SCORE] Error updating scores (draw):', error);
       }
     }
       try {
@@ -5282,7 +4852,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           game_state: gameState,
           winner: winner,
           last_move: { from, to },
-          move_history: updatedMoveHistory
+          move_history: updatedMoveHistory,
+          ...(endReason ? { end_reason: endReason } : {}),
         });
         
         console.log('[FIREBASE_UPDATE] Firebase update completed successfully');
@@ -5405,52 +4976,6 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         document.body.appendChild(bloodDrip);
         setTimeout(() => bloodDrip.remove(), 2800);
       }, i * 150);
-    }
-  };
-
-  // Handle special moves (castling, en passant, pawn promotion)
-  const handleSpecialMoves = (newBoard: (string | null)[][], from: { row: number; col: number }, to: { row: number; col: number }, piece: string, promotionPiece = 'q') => {
-    console.log('[SPECIAL_MOVES] Checking for special moves:', {
-      piece: piece,
-      from: from,
-      to: to,
-      isKing: piece.toLowerCase() === 'k',
-      colDifference: Math.abs(from.col - to.col)
-    });
-    
-    // Handle castling
-    if (piece.toLowerCase() === 'k' && Math.abs(from.col - to.col) === 2) {
-      console.log('[SPECIAL_MOVES] Castling detected!', {
-        fromCol: from.col,
-        toCol: to.col,
-        castlingType: to.col === 6 ? 'kingside' : 'queenside'
-      });
-      
-      if (to.col === 6) { // Kingside
-        console.log('[SPECIAL_MOVES] Executing kingside castling');
-        newBoard[from.row][7] = null;
-        newBoard[from.row][5] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
-      } else if (to.col === 2) { // Queenside
-        console.log('[SPECIAL_MOVES] Executing queenside castling');
-        // Save the queen if it exists at d1/d8 before moving the rook
-        const queenPiece = newBoard[from.row][3];
-        // If there was a queen at d1/d8, move it to a safe position (e1/e8) FIRST
-        if (queenPiece && queenPiece.toLowerCase() === 'q') {
-          newBoard[from.row][4] = queenPiece;
-        }
-        // Now move the rook
-        newBoard[from.row][0] = null;
-        newBoard[from.row][3] = getPieceColor(piece) === 'blue' ? 'r' : 'R';
-      }
-    } else {
-      console.log('[SPECIAL_MOVES] No castling detected');
-    }
-    
-    // Handle en passant
-    if (piece.toLowerCase() === 'p' && Math.abs(from.col - to.col) === 1 && newBoard[to.row][to.col] === null) {
-      if (pieceState.lastPawnDoubleMove && pieceState.lastPawnDoubleMove.row === from.row && pieceState.lastPawnDoubleMove.col === to.col) {
-        newBoard[from.row][to.col] = null; // Remove the captured pawn
-      }
     }
   };
 
@@ -6484,15 +6009,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     checkStuckGames(); // Check for stuck games on load
     
     // Also reload leaderboard periodically to ensure data is fresh
+    const onVisible = () => {
+      if (!document.hidden) void loadLeaderboard();
+    };
+    document.addEventListener('visibilitychange', onVisible);
     const leaderboardInterval = setInterval(() => {
-      void loadLeaderboard();
-    }, 30000); // Reload every 30 seconds
-    
+      if (!document.hidden) void loadLeaderboard();
+    }, 60000);
+
     // Set up polling for open games with debouncing and reduced frequency
     let timeoutId: NodeJS.Timeout;
     const debouncedLoadOpenGames = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
+        if (document.hidden) return;
         // Only load if we're in lobby mode and not in an active game
         if (gameMode === GameMode.LOBBY && !inviteCode) {
           loadOpenGames();
@@ -6503,6 +6033,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const interval = setInterval(debouncedLoadOpenGames, 60000); // Changed from 30s to 60s
     
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       clearInterval(interval);
       clearInterval(leaderboardInterval);
       clearTimeout(timeoutId);

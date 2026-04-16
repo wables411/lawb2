@@ -27,6 +27,16 @@ import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
 import { debugIngest } from '../utils/debugIngest';
+import { Chess } from 'chess.js';
+import {
+  boardFromChess,
+  lawbBoardToFen,
+  tryMoveOnChess,
+  lawbLegalMoveDestinations,
+  pickEasyPassiveMove,
+  validateEngineUci,
+  chessTurnToUi,
+} from '../utils/lawbChessCore';
 
 import './ChessGame.css';
 import './ChessGameModern.css';
@@ -341,6 +351,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const aiWorkerRef = useRef<Worker | null>(null);
   const isAIMovingRef = useRef(false);
   const boardRef = useRef(board);
+  /** Single source of truth for legality / AI (synced with `board` after each move). */
+  const chessRef = useRef(new Chess());
+  const checkGameEndFromChessRef = useRef<(chess: Chess) => 'checkmate' | 'stalemate' | 'draw' | null>(() => null);
   const makeMoveRef = useRef<((from: { row: number; col: number }, to: { row: number; col: number }, isAIMove?: boolean) => void) | null>(null);
   const aiTimeoutRef = useRef<number | null>(null);
   const lastAIMoveRef = useRef(false);
@@ -563,14 +576,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load leaderboard
+  // Load leaderboard (single policy: 60s poll, pause when tab hidden, refresh on focus)
   useEffect(() => {
     void loadLeaderboard();
-    // Also reload periodically to ensure data is fresh
+    const onVisible = () => {
+      if (!document.hidden) void loadLeaderboard();
+    };
+    document.addEventListener('visibilitychange', onVisible);
     const interval = setInterval(() => {
-      void loadLeaderboard();
-    }, 30000); // Reload every 30 seconds
-    return () => clearInterval(interval);
+      if (!document.hidden) void loadLeaderboard();
+    }, 60000);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   // Load leaderboard data from Firebase
@@ -935,77 +954,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return isValid;
   };
 
-  // Get legal moves for a piece (optimized)
+  // Legal moves — chess.js only (matches Stockfish FEN orientation via lawbBoardToFen).
   const getLegalMoves = (from: { row: number; col: number }, boardState = board, player = currentPlayer): { row: number; col: number }[] => {
-    const moves: { row: number; col: number }[] = [];
     const piece = boardState[from.row][from.col];
-    
-    if (!piece || getPieceColor(piece) !== player) return moves;
-    
-    const pieceType = piece.toLowerCase();
-    
-    // Optimize move generation based on piece type
-    if (pieceType === 'p') {
-      // For pawns, only check relevant squares
-      const direction = player === 'blue' ? -1 : 1;
-      const startingRow = player === 'blue' ? 6 : 1;
-      
-      // Forward moves
-      const forwardRow = from.row + direction;
-      if (forwardRow >= 0 && forwardRow < 8) {
-        if (canPieceMove(piece, from.row, from.col, forwardRow, from.col, true, player, boardState, true)) {
-          moves.push({ row: forwardRow, col: from.col });
-        }
-      }
-      
-      // Double move from starting position
-      if (from.row === startingRow) {
-        const doubleRow = from.row + 2 * direction;
-        if (doubleRow >= 0 && doubleRow < 8) {
-          if (canPieceMove(piece, from.row, from.col, doubleRow, from.col, true, player, boardState, true)) {
-            moves.push({ row: doubleRow, col: from.col });
-          }
-        }
-      }
-      
-      // Diagonal captures
-      for (const colOffset of [-1, 1]) {
-        const captureCol = from.col + colOffset;
-        const captureRow = from.row + direction;
-        if (captureCol >= 0 && captureCol < 8 && captureRow >= 0 && captureRow < 8) {
-          if (canPieceMove(piece, from.row, from.col, captureRow, captureCol, true, player, boardState, true)) {
-            moves.push({ row: captureRow, col: captureCol });
-          }
-        }
-      }
-    } else if (pieceType === 'n') {
-      // For knights, only check L-shaped moves
-      const knightMoves = [
-        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-        [1, -2], [1, 2], [2, -1], [2, 1]
-      ];
-      
-      for (const [rowOffset, colOffset] of knightMoves) {
-        const newRow = from.row + rowOffset;
-        const newCol = from.col + colOffset;
-        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-          if (canPieceMove(piece, from.row, from.col, newRow, newCol, true, player, boardState, true)) {
-            moves.push({ row: newRow, col: newCol });
-          }
-        }
-      }
-    } else {
-      // For other pieces (rook, bishop, queen, king), check all squares but use silent mode
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          if (canPieceMove(piece, from.row, from.col, row, col, true, player, boardState, true)) {
-            moves.push({ row, col });
-          }
-        }
-      }
+    if (!piece || getPieceColor(piece) !== player) return [];
+    try {
+      const tmp = new Chess();
+      tmp.load(lawbBoardToFen(boardState, player));
+      return lawbLegalMoveDestinations(tmp, from.row, from.col);
+    } catch {
+      return [];
     }
-    
-    return moves;
   };
 
   // Check for checkmate
@@ -1120,147 +1079,94 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Store makeMove in ref for AI worker access
   makeMoveRef.current = makeMove;
 
-  // Enhanced move execution with opening analysis
+  // Move execution — chess.js mutates `chessRef` (single source of truth for rules).
   const executeMoveAfterAnimation = useCallback((from: { row: number; col: number }, to: { row: number; col: number }, promotionPiece = 'q', isAIMove: boolean = false) => {
-    
-    
-    // Set flag to prevent AI validation during board update
     setIsUpdatingBoard(true);
-    
-    const newBoard = board.map(row => [...row]);
-    const piece = newBoard[from.row][from.col];
-    
+    const ch = chessRef.current;
+    const piece = board[from.row][from.col];
     if (!piece) {
       addMobileDebug(`ERR: executeMove no piece at ${from.row}${from.col}`);
       playerMoveInProgressRef.current = false;
+      setIsUpdatingBoard(false);
       return;
     }
-    
-    // Handle pawn promotion BEFORE moving the piece to avoid display delay
-    let pieceToPlace = piece;
-    if (piece.toLowerCase() === 'p' && ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7))) {
-      pieceToPlace = promotionPiece;
+    const needPromo =
+      piece.toLowerCase() === 'p' &&
+      ((getPieceColor(piece) === 'blue' && to.row === 0) || (getPieceColor(piece) === 'red' && to.row === 7));
+    const mv = tryMoveOnChess(ch, from, to, needPromo ? promotionPiece : undefined);
+    if (!mv) {
+      addMobileDebug('ERR: chess.js rejected move');
+      playerMoveInProgressRef.current = false;
+      setIsUpdatingBoard(false);
+      return;
     }
-    
-    // Execute the move with the correct piece (promoted if applicable)
-    newBoard[to.row][to.col] = pieceToPlace;
-    newBoard[from.row][from.col] = null;
-    
-    // Handle special moves (castling, en passant) - but NOT pawn promotion since we handled it above
-    handleSpecialMoves(newBoard, from, to, piece);
-    
-    
-    
-    // Update move history
-    const moveNotation = getMoveNotation(from, to, piece, newBoard);
-    setMoveHistory(prev => {
+    const newBoard = boardFromChess(ch);
+    const moveNotation = mv.san;
+    setMoveHistory((prev) => {
       const updated = [...prev, moveNotation];
-      console.log('[MOVE HISTORY UPDATED]', updated);
+      if (updated.length <= 10 && !isAIMove) {
+        void getOpeningData(ch.fen()).then((data) => {
+          if (data && data.moves && data.moves.length > 0) {
+            setOpeningSuggestions(data.moves.slice(0, 3));
+            setShowOpeningSuggestions(true);
+            setTimeout(() => setShowOpeningSuggestions(false), 5000);
+          }
+        });
+      }
       return updated;
     });
-    
-    // Update last move for highlighting
     setLastMove({ from, to });
-    
-    // Clear selection
     setSelectedPiece(null);
     setLegalMoves([]);
-    
-    // Check for opening analysis (first 10 moves)
-    if (moveHistory.length < 10 && !isAIMove) {
-      const fen = boardToFEN(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
-      getOpeningData(fen).then(data => {
-        if (data && data.moves && data.moves.length > 0) {
-          setOpeningSuggestions(data.moves.slice(0, 3)); // Top 3 moves
-          setShowOpeningSuggestions(true);
-          // Auto-hide after 5 seconds
-          setTimeout(() => setShowOpeningSuggestions(false), 5000);
-        }
-      });
-    }
-    
-    // CRITICAL FIX: Set lastAIMoveRef BEFORE updatePieceState to prevent race condition
-    // The AI useEffect depends on pieceState, so when updatePieceState triggers setPieceState,
-    // it can cause the useEffect to run. We must set the blocking flag FIRST.
-    const flagDataBefore = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard,currentPlayer};
+
+    const flagDataBefore = { isAIMove, isAIMovingRef: isAIMovingRef.current, lastAIMoveRef: lastAIMoveRef.current, apiCallInProgress: apiCallInProgressRef.current, isUpdatingBoard, currentPlayer };
     console.log('[DEBUG] executeMoveAfterAnimation before flag update', flagDataBefore);
-    // #region agent log
-    debugIngest({location:'ChessGame.tsx:1121',message:'executeMoveAfterAnimation before flag update',data:flagDataBefore,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
-    // #endregion
+    debugIngest({ location: 'ChessGame.tsx:1121', message: 'executeMoveAfterAnimation before flag update', data: flagDataBefore, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' });
     if (isAIMove) {
-      lastAIMoveRef.current = true; // Block useEffect from triggering again
-      isAIMovingRef.current = false; // Allow player to move
-      addMobileDebug(`AI MOVE done lastAI=T prev=${currentPlayer}->blue`);
-      console.log('[DEBUG] executeMoveAfterAnimation AI move flags set', {isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current});
-      // #region agent log
-      debugIngest({location:'ChessGame.tsx:1123',message:'executeMoveAfterAnimation AI move flags set',data:{isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
-      // #endregion
+      lastAIMoveRef.current = true;
+      isAIMovingRef.current = false;
+      addMobileDebug(`AI MOVE done lastAI=T`);
+      debugIngest({ location: 'ChessGame.tsx:1123', message: 'executeMoveAfterAnimation AI move flags set', data: { isAIMovingRef: isAIMovingRef.current, lastAIMoveRef: lastAIMoveRef.current }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' });
     } else {
-      // Player made a move - reset all flags so AI can move next
-      addMobileDebug(`PLAYER MOVE prev=${currentPlayer}->red`);
+      addMobileDebug(`PLAYER MOVE`);
       isAIMovingRef.current = false;
       lastAIMoveRef.current = false;
-      playerMoveInProgressRef.current = false; // Allow clicks after move completes
+      playerMoveInProgressRef.current = false;
     }
-    
-    // Update piece state
-    updatePieceState(from, to, piece);
-    
-    
-    
-    // Switch players - use flushSync for AI moves to force turn switch on mobile
-    // (React batching can defer/drop the update, leaving currentPlayer stuck at red)
+
     const doSwitch = () => {
-      setCurrentPlayer(prev => {
-        const newPlayer = prev === 'blue' ? 'red' : 'blue';
-        addMobileDebug(`setCP ${prev}->${newPlayer} ai=${isAIMove}`);
-        const playerSwitchData = {prev,newPlayer,isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current};
-        console.log('[DEBUG] Player switched to:', newPlayer, playerSwitchData);
-        // #region agent log
-        debugIngest({location:'ChessGame.tsx:1137',message:'setCurrentPlayer callback',data:playerSwitchData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
-        // #endregion
-        // Check game end for the player who is about to move (after switch)
-        checkGameEnd(newBoard, newPlayer);
-        
-        // Reset timer for the new player's turn - reset to 60 minutes
-        const now = Date.now();
-        setLastMoveTime(now);
-        setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Reset to full 60 minutes
-        console.log('[TIMER] Move completed, timer reset for', newPlayer, 'turn');
-        
-        return newPlayer;
-      });
+      const next = chessTurnToUi(ch.turn());
+      setCurrentPlayer(next);
+      addMobileDebug(`setCP ->${next}`);
+      debugIngest({ location: 'ChessGame.tsx:1137', message: 'setCurrentPlayer from chess', data: { next, isAIMove }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' });
+      checkGameEndFromChessRef.current(ch);
+      const now = Date.now();
+      setLastMoveTime(now);
+      setTimeoutCountdown(GAME_TIMEOUT_MS / 1000);
     };
     if (isAIMove) {
       flushSync(doSwitch);
     } else {
       doSwitch();
     }
-    
-    // Check game end conditions
-    checkGameEnd(newBoard, currentPlayer === 'blue' ? 'red' : 'blue');
-    
-    // Update board state IMMEDIATELY to ensure AI validation uses correct state
+
     setBoard(newBoard);
+    boardRef.current = newBoard;
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);
-    
-    // Sync move to Firebase for vs Clawb tracking
+
     if (vsClawbInviteCode && difficulty === 'hard') {
-      const nextPlayer = currentPlayer === 'blue' ? 'red' : 'blue';
-      firebaseChess.updateGame(vsClawbInviteCode, {
-        board: { positions: boardToPositions(newBoard), rows: 8, cols: 8 },
-        current_player: nextPlayer,
-        last_move: { from: { row: from.row, col: from.col }, to: { row: to.row, col: to.col } },
-        last_move_timestamp: Date.now(),
-      }).catch((err: any) => console.warn('[VS-CLAWB] Firebase sync failed:', err));
+      firebaseChess
+        .updateGame(vsClawbInviteCode, {
+          board: { positions: boardToPositions(newBoard), rows: 8, cols: 8 },
+          current_player: chessTurnToUi(ch.turn()),
+          last_move: { from: { row: from.row, col: from.col }, to: { row: to.row, col: to.col } },
+          last_move_timestamp: Date.now(),
+        })
+        .catch((err: any) => console.warn('[VS-CLAWB] Firebase sync failed:', err));
     }
-    const endFlagData = {isAIMove,isAIMovingRef:isAIMovingRef.current,lastAIMoveRef:lastAIMoveRef.current,apiCallInProgress:apiCallInProgressRef.current,isUpdatingBoard:false};
-    console.log('[DEBUG] executeMoveAfterAnimation end flags reset', endFlagData);
-    // #region agent log
-    debugIngest({location:'ChessGame.tsx:1157',message:'executeMoveAfterAnimation end flags reset',data:endFlagData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'});
-    // #endregion
-  }, [board, currentPlayer, moveHistory, getOpeningData, addMobileDebug]);
+    debugIngest({ location: 'ChessGame.tsx:1157', message: 'executeMoveAfterAnimation end', data: { isAIMove }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' });
+  }, [board, currentPlayer, getOpeningData, addMobileDebug, vsClawbInviteCode, difficulty]);
 
   // Reset lastAIMoveRef when it becomes player's turn (blue)
   // This ensures the flag is cleared after the state updates from AI move
@@ -1309,11 +1215,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       debugIngest({location:'ChessGame.tsx:1175',message:'AI useEffect starting AI move',data:{difficulty,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       // #endregion
       if (difficulty === 'easy') {
-        // Easy: random move
         setTimeout(() => {
-          const move = getRandomAIMove(board);
-          if (move) {
-            makeMove(move.from, move.to, true);
+          const m = pickEasyPassiveMove(chessRef.current);
+          if (m) {
+            executeMove(m.from, m.to, (m.promotion || 'q').toLowerCase(), true);
           } else {
             isAIMovingRef.current = false;
           }
@@ -1327,33 +1232,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
         // Hard mode must remain Stockfish-only. No random fallback.
         setStatus('Clawb engine thinking...');
-        const fen = boardToFEN(boardRef.current, currentPlayer);
+        const fen = chessRef.current.fen();
         if (apiCallInProgressRef.current) return;
         apiCallInProgressRef.current = true;
 
-        const parseMoveObj = (move: string) => {
-          if (!move || move.length < 4) return null;
-          const fromCol = move.charCodeAt(0) - 97;
-          const fromRowStockfish = parseInt(move[1]);
-          const toCol = move.charCodeAt(2) - 97;
-          const toRowStockfish = parseInt(move[3]);
-          const fromRow = 8 - fromRowStockfish;
-          const toRow = 8 - toRowStockfish;
-          if (
-            fromCol < 0 || fromCol > 7 || fromRow < 0 || fromRow > 7 ||
-            toCol < 0 || toCol > 7 || toRow < 0 || toRow > 7
-          ) {
-            return null;
-          }
-          const piece = boardRef.current[fromRow][fromCol];
-          if (!piece || getPieceColor(piece) !== 'red') return null;
-          if (!canPieceMove(piece, fromRow, fromCol, toRow, toCol, true, 'red', boardRef.current)) return null;
-          return { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
-        };
-
         (async () => {
           try {
-            let moveObj: { from: { row: number; col: number }; to: { row: number; col: number } } | null = null;
+            let moveObj: { from: { row: number; col: number }; to: { row: number; col: number }; promotion?: string } | null = null;
             let lastRawMove: string | null = null;
             let lastErr: unknown = null;
             const MAX_ATTEMPTS = 3;
@@ -1361,7 +1246,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               try {
                 const rawMove = await getCloudflareStockfishMove(fen, 5000);
                 lastRawMove = rawMove;
-                moveObj = rawMove ? parseMoveObj(rawMove) : null;
+                moveObj = rawMove ? validateEngineUci(chessRef.current, rawMove) : null;
                 if (moveObj) break;
                 console.warn('[STOCKFISH] Rejected move from engine', { attempt, rawMove, fen });
               } catch (err) {
@@ -1384,7 +1269,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             }
 
             hardAICooldownUntilRef.current = 0;
-            makeMove(moveObj.from, moveObj.to, true);
+            executeMove(moveObj.from, moveObj.to, (moveObj.promotion || 'q').toLowerCase(), true);
           } catch (error) {
             hardAICooldownUntilRef.current = Date.now() + 3500;
             setStatus('Clawb engine unavailable. Retrying... (no fallback moves)');
@@ -1396,210 +1281,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         })();
       }
     }
-  }, [currentPlayer, gameMode, difficulty, pieceState, stockfishReady, getStockfishMove, getCloudflareStockfishMove, addMobileDebug]);
-
-  // Update Clawb's leaderboard + Firebase game when vs Clawb game ends
-  const handleVsClawbGameEnd = (winner: 'blue' | 'red' | 'draw', endReason: string) => {
-    if (difficulty !== 'hard') return;
-    // Update Clawb's leaderboard entry
-    const clawbResult = winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
-    void updateLeaderboardEntry(CLAWB_WALLET, clawbResult as 'win' | 'loss' | 'draw');
-    console.log('[VS-CLAWB] Updated Clawb leaderboard:', clawbResult);
-    // Update Firebase game state
-    if (vsClawbInviteCode) {
-      firebaseChess.updateGame(vsClawbInviteCode, {
-        game_state: 'finished',
-        winner,
-        end_reason: endReason,
-      }).catch((err: any) => console.warn('[VS-CLAWB] Firebase game end update failed:', err));
-    }
-  };
-
-  // Check game end
-  const checkGameEnd = (boardState: (string | null)[][], playerToMove: 'blue' | 'red'): 'checkmate' | 'stalemate' | null => {
-    console.log('Checking game end for player:', playerToMove);
-    
-    // Check for king capture first
-    const blueKingFound = boardState.some(row => row.some(piece => piece === 'k'));
-    const redKingFound = boardState.some(row => row.some(piece => piece === 'K'));
-    
-    if (!blueKingFound) {
-      console.log('[GAME END] KING CAPTURED - Red wins!');
-      setGameState('checkmate');
-      setStatus('King captured! Red wins!');
-      void updateScore('loss');
-      handleVsClawbGameEnd('red', 'checkmate');
-      setShowLeaderboardUpdated(true);
-      setTimeout(() => setShowLeaderboardUpdated(false), 3000);
-      return 'checkmate';
-    }
-    
-    if (!redKingFound) {
-      console.log('[GAME END] KING CAPTURED - Blue wins!');
-      setGameState('checkmate');
-      setStatus('King captured! You win!');
-      void updateScore('win');
-      handleVsClawbGameEnd('blue', 'checkmate');
-      setShowLeaderboardUpdated(true);
-      setTimeout(() => setShowLeaderboardUpdated(false), 3000);
-      return 'checkmate';
-    }
-    
-    console.log('Is king in check:', isKingInCheck(boardState, playerToMove));
-    
-    if (isCheckmate(playerToMove, boardState)) {
-      console.log('[GAME END] CHECKMATE', { winner: playerToMove === 'blue' ? 'red' : 'blue', board: JSON.parse(JSON.stringify(boardState)), moveHistory });
-      setGameState('checkmate');
-      
-      // Determine winner and update leaderboard
-      const winner = playerToMove === 'blue' ? 'red' : 'blue';
-      const isPlayerWin = winner === 'blue'; // Blue is always the human player
-      
-      if (isPlayerWin) {
-        setStatus(`Checkmate! You win!`);
-        playSound('victory');
-        setShowVictory(true);
-        setVictoryCelebration(true);
-        triggerVictoryCelebration();
-        void updateScore('win');
-        handleVsClawbGameEnd('blue', 'checkmate');
-        setShowLeaderboardUpdated(true);
-        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
-      } else {
-        setStatus(`Checkmate! ${winner === 'red' ? (difficulty === 'hard' ? 'Clawb' : 'AI') : 'Opponent'} wins!`);
-        playSound('loser');
-        // Add 3-second delay before showing defeat overlay
-        setDefeatDelayActive(true);
-        setTimeout(() => {
-          setShowDefeat(true);
-          setDefeatDelayActive(false);
-        }, 3000);
-        void updateScore('loss');
-        handleVsClawbGameEnd('red', 'checkmate');
-        setShowLeaderboardUpdated(true);
-        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
-      }
-      
-      return 'checkmate';
-    }
-    
-    if (isStalemate(playerToMove, boardState)) {
-      console.log('[GAME END] STALEMATE', { board: JSON.parse(JSON.stringify(boardState)), moveHistory });
-      setGameState('stalemate');
-      
-      // Stalemate = loss for the player who gets stalemated
-      // playerToMove is the one who has no legal moves, so they lose
-      const winner = playerToMove === 'blue' ? 'red' : 'blue';
-      const isPlayerWin = winner === 'blue'; // Blue is always the human player
-      
-      if (isPlayerWin) {
-        setStatus(`Stalemate! You win!`);
-        playSound('victory');
-        setShowVictory(true);
-        setVictoryCelebration(true);
-        triggerVictoryCelebration();
-        void updateScore('win');
-        handleVsClawbGameEnd('blue', 'stalemate');
-        setShowLeaderboardUpdated(true);
-        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
-      } else {
-        setStatus(`Stalemate! ${winner === 'red' ? (difficulty === 'hard' ? 'Clawb' : 'AI') : 'Opponent'} wins!`);
-        playSound('loser');
-        // Add 3-second delay before showing defeat overlay
-        setDefeatDelayActive(true);
-        setTimeout(() => {
-          setShowDefeat(true);
-          setDefeatDelayActive(false);
-        }, 3000);
-        void updateScore('loss');
-        handleVsClawbGameEnd('red', 'stalemate');
-        setShowLeaderboardUpdated(true);
-        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
-      }
-      
-      return 'stalemate';
-    }
-    
-    if (isKingInCheck(boardState, playerToMove)) {
-      console.log('CHECK detected!');
-      playSound('check');
-      setStatus(`${playerToMove === 'blue' ? 'Blue' : 'Red'} is in check!`);
-    } else {
-      setStatus(`Your turn`);
-    }
-    
-    return null;
-  };
-
-  // Simple AI move (fallback)
-  const getRandomAIMove = (boardState: (string | null)[][]): { from: { row: number; col: number }; to: { row: number; col: number } } | null => {
-    const aiPieces: { row: number; col: number }[] = [];
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = boardState[row][col];
-        if (piece && getPieceColor(piece) === 'red') {
-          aiPieces.push({ row, col });
-        }
-      }
-    }
-    // Shuffle pieces for randomness
-    for (let i = aiPieces.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [aiPieces[i], aiPieces[j]] = [aiPieces[j], aiPieces[i]];
-    }
-    // Separate moves into captures and non-captures
-    const captureMoves: { from: { row: number; col: number }; to: { row: number; col: number }; value: number }[] = [];
-    const nonCaptureMoves: { from: { row: number; col: number }; to: { row: number; col: number } }[] = [];
-    for (const piece of aiPieces) {
-      const legalMoves = getLegalMoves(piece, boardState, 'red');
-      for (const move of legalMoves) {
-        const targetPiece = boardState[move.row][move.col];
-        if (targetPiece && getPieceColor(targetPiece) === 'blue') {
-          // This is a capture move
-          const pieceValues: { [key: string]: number } = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
-          const value = pieceValues[targetPiece.toLowerCase()] || 0;
-          captureMoves.push({ from: piece, to: move, value });
-        } else {
-          nonCaptureMoves.push({ from: piece, to: move });
-        }
-      }
-    }
-    // 30% chance to capture if possible, otherwise prefer non-capturing moves
-    if (captureMoves.length > 0 && Math.random() < 0.3) {
-      captureMoves.sort((a, b) => a.value - b.value);
-      for (const bestCapture of captureMoves) {
-        const tempBoard = boardState.map(row => [...row]);
-        const pieceSymbol = tempBoard[bestCapture.from.row][bestCapture.from.col];
-        tempBoard[bestCapture.to.row][bestCapture.to.col] = pieceSymbol;
-        tempBoard[bestCapture.from.row][bestCapture.from.col] = null;
-        if (!isKingInCheck(tempBoard, 'red')) {
-          return { from: bestCapture.from, to: bestCapture.to };
-        }
-      }
-    }
-    // Prefer non-capturing moves
-    for (const move of nonCaptureMoves) {
-      const tempBoard = boardState.map(row => [...row]);
-      const pieceSymbol = tempBoard[move.from.row][move.from.col];
-      tempBoard[move.to.row][move.to.col] = pieceSymbol;
-      tempBoard[move.from.row][move.from.col] = null;
-      if (!isKingInCheck(tempBoard, 'red')) {
-        return move;
-      }
-    }
-    // If no non-capturing moves, pick a random capture (lowest value first for passivity)
-    captureMoves.sort((a, b) => a.value - b.value);
-    for (const bestCapture of captureMoves) {
-      const tempBoard = boardState.map(row => [...row]);
-      const pieceSymbol = tempBoard[bestCapture.from.row][bestCapture.from.col];
-      tempBoard[bestCapture.to.row][bestCapture.to.col] = pieceSymbol;
-      tempBoard[bestCapture.from.row][bestCapture.from.col] = null;
-      if (!isKingInCheck(tempBoard, 'red')) {
-        return { from: bestCapture.from, to: bestCapture.to };
-      }
-    }
-    return null;
-  };
+  }, [currentPlayer, gameMode, difficulty, stockfishReady, getStockfishMove, getCloudflareStockfishMove, addMobileDebug]);
 
   // Game control functions
   const resetGame = () => {
@@ -1610,7 +1292,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       }).catch(() => {});
     }
     setVsClawbInviteCode(null);
-    setBoard(JSON.parse(JSON.stringify(initialBoard)));
+    chessRef.current = new Chess();
+    setBoard(boardFromChess(chessRef.current));
     setCurrentPlayer('blue');
     setSelectedPiece(null);
     setGameState('active');
@@ -1732,6 +1415,10 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setShowGame(true);
     setShowDifficulty(false);
     setShowPieceSetSelector(false);
+    chessRef.current = new Chess();
+    setBoard(boardFromChess(chessRef.current));
+    setCurrentPlayer('blue');
+    setGameState('active');
     setStatus(`Match started! Your turn`);
     setMobileDebugLog([]);
     mobileDebugSeqRef.current = 0;
@@ -2377,6 +2064,74 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showDefeat, setShowDefeat] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
   const [defeatDelayActive, setDefeatDelayActive] = useState(false);
+
+  const handleVsClawbGameEnd = (winner: 'blue' | 'red' | 'draw', endReason: string) => {
+    if (difficulty !== 'hard') return;
+    const clawbResult = winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
+    void updateLeaderboardEntry(CLAWB_WALLET, clawbResult as 'win' | 'loss' | 'draw');
+    console.log('[VS-CLAWB] Updated Clawb leaderboard:', clawbResult);
+    if (vsClawbInviteCode) {
+      firebaseChess
+        .updateGame(vsClawbInviteCode, {
+          game_state: 'finished',
+          winner,
+          end_reason: endReason,
+        })
+        .catch((err: any) => console.warn('[VS-CLAWB] Firebase game end update failed:', err));
+    }
+  };
+
+  checkGameEndFromChessRef.current = (chess: Chess): 'checkmate' | 'stalemate' | 'draw' | null => {
+    if (chess.isCheckmate()) {
+      const loser = chess.turn() === 'w' ? 'blue' : 'red';
+      const winner = loser === 'blue' ? 'red' : 'blue';
+      console.log('[GAME END] CHECKMATE', { loser, winner });
+      setGameState('checkmate');
+      const isPlayerWin = winner === 'blue';
+      if (isPlayerWin) {
+        setStatus(`Checkmate! You win!`);
+        playSound('victory');
+        setShowVictory(true);
+        setVictoryCelebration(true);
+        triggerVictoryCelebration();
+        void updateScore('win');
+        handleVsClawbGameEnd('blue', 'checkmate');
+        setShowLeaderboardUpdated(true);
+        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      } else {
+        setStatus(`Checkmate! ${winner === 'red' ? (difficulty === 'hard' ? 'Clawb' : 'AI') : 'Opponent'} wins!`);
+        playSound('loser');
+        setDefeatDelayActive(true);
+        setTimeout(() => {
+          setShowDefeat(true);
+          setDefeatDelayActive(false);
+        }, 3000);
+        void updateScore('loss');
+        handleVsClawbGameEnd('red', 'checkmate');
+        setShowLeaderboardUpdated(true);
+        setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      }
+      return 'checkmate';
+    }
+    if (chess.isStalemate() || chess.isDraw()) {
+      console.log('[GAME END] DRAW', { stalemate: chess.isStalemate(), draw: chess.isDraw() });
+      setGameState('stalemate');
+      setStatus('Draw.');
+      void updateScore('draw');
+      handleVsClawbGameEnd('draw', chess.isStalemate() ? 'stalemate' : 'draw');
+      setShowLeaderboardUpdated(true);
+      setTimeout(() => setShowLeaderboardUpdated(false), 3000);
+      return chess.isStalemate() ? 'stalemate' : 'draw';
+    }
+    const side = chessTurnToUi(chess.turn());
+    if (chess.isCheck()) {
+      playSound('check');
+      setStatus(`${side === 'blue' ? 'You' : difficulty === 'hard' ? 'Clawb' : 'AI'} are in check!`);
+    } else {
+      setStatus(side === 'blue' ? 'Your turn' : `${difficulty === 'hard' ? 'Clawb' : 'AI'} thinking…`);
+    }
+    return null;
+  };
 
   // Helper to clear victory/defeat overlays
   const clearCelebration = () => {

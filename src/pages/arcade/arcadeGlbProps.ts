@@ -17,11 +17,18 @@ const PICKUP_GLB: Partial<Record<PickupKind, string>> = {
   pufferfish: `${ARCADE_ASSET_BASE}/puffer-fish.glb`,
 };
 
-const TRASH_GLB = [`${ARCADE_ASSET_BASE}/trash1.glb`, `${ARCADE_ASSET_BASE}/trash2.glb`] as const;
+/** Trash variants: each gets its own target max axis (new GLBs vary a lot in authored scale). */
+const TRASH_CONFIG = [
+  { url: `${ARCADE_ASSET_BASE}/trash1.glb`, maxExtent: 0.72 },
+  { url: `${ARCADE_ASSET_BASE}/trash2.glb`, maxExtent: 0.72 },
+  { url: `${ARCADE_ASSET_BASE}/trash-cube.glb`, maxExtent: 0.62 },
+] as const;
+
 const CORAL_GLB = `${ARCADE_ASSET_BASE}/coral1.glb`;
 
 const pickupTemplates: Partial<Record<PickupKind, THREE.Object3D>> = {};
-const trashTemplates: THREE.Object3D[] = [];
+type TrashProp = { tpl: THREE.Object3D; maxExtent: number };
+let trashProps: TrashProp[] = [];
 let coralTemplate: THREE.Object3D | null = null;
 
 let templatesLoadPromise: Promise<void> | null = null;
@@ -48,13 +55,16 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
           }),
         );
       }
-      for (const url of TRASH_GLB) {
-        jobs.push(
-          loadSceneQuiet(url).then((sc) => {
-            if (sc) trashTemplates.push(sc);
-          }),
-        );
-      }
+      jobs.push(
+        (async () => {
+          const loaded = await Promise.all(
+            TRASH_CONFIG.map(({ url, maxExtent }) =>
+              loadSceneQuiet(url).then((sc) => (sc ? ({ tpl: sc, maxExtent } as TrashProp) : null)),
+            ),
+          );
+          trashProps = loaded.filter((x): x is TrashProp => x !== null);
+        })(),
+      );
       jobs.push(
         loadSceneQuiet(CORAL_GLB).then((sc) => {
           coralTemplate = sc;
@@ -66,26 +76,33 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
   return templatesLoadPromise;
 }
 
-/** Largest axis after uniform scale — tuned to match old primitive silhouettes. */
+/**
+ * Largest axis after uniform fit (`fitReefObstacleVisual`), before `PICKUP_VISUAL_SCALE`.
+ * Tuned for current `public/arcade-assets/*.glb` reef props (~1.32 m lane width; read at ~0.7–1.0 m).
+ */
 const PICKUP_MAX_EXTENT: Partial<Record<PickupKind, number>> = {
-  air_tank: 0.9,
+  air_tank: 0.86,
   cheese: 0.68,
   coin: 0.52,
   jellyfish: 1.02,
-  mine: 1.02,
-  peptides: 0.74,
+  mine: 0.96,
+  peptides: 0.78,
   pufferfish: 0.98,
   trash: 0.7,
 };
 
-const CORAL_MAX_EXTENT = 2.22;
+/** Coral obstacle: match `OBSTACLE_BOX_*` (~2.05 Y, 2.2 Z) so the mesh reads like the gameplay column. */
+const CORAL_MAX_EXTENT = 2.14;
 
 /** Spawn-ready pickup root (GLB clone + scale, or primitive mesh). */
 export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
   let tpl: THREE.Object3D | undefined;
+  let extentOverride: number | undefined;
   if (kind === 'trash') {
-    if (trashTemplates.length > 0) {
-      tpl = trashTemplates[Math.floor(Math.random() * trashTemplates.length)];
+    if (trashProps.length > 0) {
+      const pick = trashProps[Math.floor(Math.random() * trashProps.length)]!;
+      tpl = pick.tpl;
+      extentOverride = pick.maxExtent;
     }
   } else {
     tpl = pickupTemplates[kind];
@@ -94,7 +111,7 @@ export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
   if (tpl) {
     const root = tpl.clone(true);
     root.userData.pickupKind = kind;
-    const mx = PICKUP_MAX_EXTENT[kind] ?? 0.65;
+    const mx = extentOverride ?? PICKUP_MAX_EXTENT[kind] ?? 0.65;
     fitReefObstacleVisual(root, { maxExtent: mx });
     const s = PICKUP_VISUAL_SCALE[kind] ?? 1.15;
     root.scale.multiplyScalar(s);

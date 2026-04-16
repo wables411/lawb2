@@ -3,14 +3,15 @@ import type { PickupKind } from './arcadePickupKinds';
 
 /** Per-kind scale multiplier (applied after GLB fit or on primitives). */
 export const PICKUP_VISUAL_SCALE: Record<PickupKind, number> = {
-  air_tank: 1.18,
+  /** With `PICKUP_MAX_EXTENT.air_tank` in arcadeGlbProps — keeps O₂ tank readable but not lane-filling. */
+  air_tank: 1.12,
   coin: 1.28,
-  trash: 1.15,
+  trash: 1.08,
   cheese: 1.22,
-  peptides: 1.2,
+  peptides: 1.14,
   jellyfish: 1.32,
   pufferfish: 1.28,
-  mine: 1.38,
+  mine: 1.32,
 };
 
 /** Primitive fallback when no GLB template exists for this kind. */
