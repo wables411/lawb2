@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   WALLET_CONNECT_LEADERBOARD_BONUS,
@@ -15,6 +15,7 @@ import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
 import type { ArcadeGameScreen } from './arcade/ArcadeSceneController';
+import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
 const LazyArcadeThree = lazy(async () => {
@@ -35,12 +36,22 @@ function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+function prefersTouchInput(): boolean {
+  if (typeof window === 'undefined') return false;
+  const narrow = Math.min(window.innerWidth, window.innerHeight) <= 900;
+  const touchCapable =
+    window.matchMedia?.('(pointer: coarse)').matches ||
+    window.matchMedia?.('(hover: none)').matches ||
+    navigator.maxTouchPoints > 0;
+  return Boolean(narrow || touchCapable);
+}
+
 function runEndSummary(reason: RunEndReason): string {
   switch (reason) {
     case 'oxygen':
       return 'Ran out of oxygen — stay on Milady/Radbro’s timed O₂ tanks. Clawb does not run out of breath underwater.';
     case 'crush':
-      return 'Coral block collision — change lanes with A/D.';
+      return 'Coral block collision — change lanes with A/D or touch lane controls.';
     case 'wrecked':
       return 'Armor depleted — avoid jellyfish, pufferfish, and mines; grab peptides.';
     default:
@@ -64,6 +75,9 @@ export default function ReefArcadeMenu() {
   const [lastRunEndReason, setLastRunEndReason] = useState<RunEndReason | null>(null);
   /** Leaderboard note after last run (points saved, or hint if no wallet). */
   const [lastRunLbNote, setLastRunLbNote] = useState<string | null>(null);
+  const [touchUiEnabled, setTouchUiEnabled] = useState<boolean>(prefersTouchInput);
+  const [touchThrottleMode, setTouchThrottleMode] = useState<-1 | 0 | 1>(0);
+  const arcadeInputRef = useRef<ArcadePlayInputHandle | null>(null);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -90,6 +104,8 @@ export default function ReefArcadeMenu() {
       }
       if (gameScreen === 'play' || gameScreen === 'gameover' || gameScreen === 'select') {
         ev.preventDefault();
+        setTouchThrottleMode(0);
+        arcadeInputRef.current?.clearVirtualThrottle();
         setGameScreen('menu');
         setRunHud(null);
         setRunStatsHud(null);
@@ -100,8 +116,40 @@ export default function ReefArcadeMenu() {
     return () => window.removeEventListener('keydown', onKey);
   }, [phase, gameScreen, skipIntro]);
 
+  useEffect(() => {
+    const refreshTouchUi = () => setTouchUiEnabled(prefersTouchInput());
+    refreshTouchUi();
+    window.addEventListener('resize', refreshTouchUi);
+    const coarse = window.matchMedia('(pointer: coarse)');
+    const hoverNone = window.matchMedia('(hover: none)');
+    const bind = (mq: MediaQueryList) => {
+      if (mq.addEventListener) mq.addEventListener('change', refreshTouchUi);
+      else mq.addListener(refreshTouchUi);
+    };
+    const unbind = (mq: MediaQueryList) => {
+      if (mq.removeEventListener) mq.removeEventListener('change', refreshTouchUi);
+      else mq.removeListener(refreshTouchUi);
+    };
+    bind(coarse);
+    bind(hoverNone);
+    return () => {
+      window.removeEventListener('resize', refreshTouchUi);
+      unbind(coarse);
+      unbind(hoverNone);
+    };
+  }, []);
+
   const onPickCharacter = useCallback((id: ArcadeCharacterId) => {
     setSelectedCharacterId(id);
+  }, []);
+
+  const cycleCharacter = useCallback((delta: -1 | 1) => {
+    setSelectedCharacterId((prev) => {
+      const idx = CHARACTERS.findIndex((c) => c.id === prev);
+      if (idx < 0) return prev;
+      const next = (idx + delta + CHARACTERS.length) % CHARACTERS.length;
+      return CHARACTERS[next]!.id;
+    });
   }, []);
 
   const onRunHud = useCallback((hud: ArcadeRunHudState) => {
@@ -163,13 +211,135 @@ export default function ReefArcadeMenu() {
     setLastRunLbNote(null);
     setLastRunEndReason(null);
     setRunStatsHud(null);
+    setTouchThrottleMode(0);
+    arcadeInputRef.current?.clearVirtualThrottle();
     setGameScreen('play');
   }, []);
+
+  const goMainMenu = useCallback(() => {
+    setGameScreen('menu');
+    setRunHud(null);
+    setRunStatsHud(null);
+    setLastRunEndReason(null);
+    setTouchThrottleMode(0);
+    arcadeInputRef.current?.clearVirtualThrottle();
+  }, []);
+
+  const tapLane = useCallback((delta: -1 | 1) => {
+    arcadeInputRef.current?.nudgeLane(delta);
+  }, []);
+
+  useEffect(() => {
+    if (gameScreen !== 'play') {
+      arcadeInputRef.current?.clearVirtualThrottle();
+      return;
+    }
+    arcadeInputRef.current?.setVirtualThrottle({
+      forward: touchThrottleMode > 0,
+      backward: touchThrottleMode < 0,
+    });
+  }, [gameScreen, touchThrottleMode]);
+
+  useEffect(() => {
+    if (phase !== 'menu') return;
+    const onShortcutKey = (ev: KeyboardEvent) => {
+      const k = ev.key.toLowerCase();
+      if (modal) {
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          setModal(null);
+          return;
+        }
+        if (modal === 'difficulty' && (ev.key === 'Enter' || ev.key === ' ')) {
+          ev.preventDefault();
+          setModal(null);
+          return;
+        }
+        if (modal === 'wallet' && (ev.key === 'Enter' || ev.key === ' ' || k === 'w')) {
+          ev.preventDefault();
+          goConnect();
+        }
+        return;
+      }
+
+      if (gameScreen === 'menu') {
+        if (ev.key === 'Enter' || ev.key === ' ' || k === '1') {
+          ev.preventDefault();
+          beginRun();
+          return;
+        }
+        if (k === '2' || k === 'p') {
+          ev.preventDefault();
+          setGameScreen('select');
+          return;
+        }
+        if (k === '3' || k === 'w') {
+          ev.preventDefault();
+          setModal('wallet');
+          return;
+        }
+        if (k === '4' || k === 'd') {
+          ev.preventDefault();
+          setModal('difficulty');
+          return;
+        }
+        if (k === 'x') {
+          ev.preventDefault();
+          navigate('/');
+        }
+        return;
+      }
+
+      if (gameScreen === 'select') {
+        if (ev.key === 'ArrowLeft' || k === 'a') {
+          ev.preventDefault();
+          cycleCharacter(-1);
+          return;
+        }
+        if (ev.key === 'ArrowRight' || k === 'd') {
+          ev.preventDefault();
+          cycleCharacter(1);
+          return;
+        }
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          beginRun();
+          return;
+        }
+        if (ev.key === 'Backspace') {
+          ev.preventDefault();
+          goMainMenu();
+          return;
+        }
+      }
+
+      if (gameScreen === 'gameover') {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          beginRun();
+          return;
+        }
+        if (k === 'c') {
+          ev.preventDefault();
+          setGameScreen('select');
+          return;
+        }
+        if (k === 'm') {
+          ev.preventDefault();
+          goMainMenu();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onShortcutKey);
+    return () => window.removeEventListener('keydown', onShortcutKey);
+  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate]);
 
   return (
     <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
       <Suspense fallback={null}>
         <LazyArcadeThree
+          ref={arcadeInputRef}
           phase={phase}
           gameScreen={gameScreen}
           selectedCharacterId={selectedCharacterId}
@@ -216,6 +386,7 @@ export default function ReefArcadeMenu() {
                 DEPTH & SPEED
               </button>
             </div>
+            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 select · 3 wallet · 4 depth · X exit</p>
 
             <div className="ra-footer-row">
               <button type="button" className="ra-link-quiet" onClick={() => navigate('/')}>
@@ -238,7 +409,9 @@ export default function ReefArcadeMenu() {
           <div className="ra-select-layer">
             <div className="ra-select-panel">
               <h2 className="ra-select-title">PICK YOUR SWIMMER</h2>
-              <p className="ra-select-hint">Click the 3D models or use the buttons — idle preview, dance when selected.</p>
+              <p className="ra-select-hint">
+                Click models, tap chips, or use keyboard (←/→ to swap, Enter confirm).
+              </p>
               <div className="ra-stat-block" style={{ marginBottom: 14, fontSize: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.82)' }}>
                 {(() => {
                   const s = CHARACTER_STATS[selectedCharacterId];
@@ -372,10 +545,56 @@ export default function ReefArcadeMenu() {
             <div className="ra-play-hud-bottom">
               <p className="ra-play-hud-keys">
                 <span className="ra-play-keys-line">
-                  A/D lanes · W/S speed · dodge coral · grab pickups
+                  {touchUiEnabled
+                    ? 'Tap controls or use keyboard · dodge coral · grab pickups'
+                    : 'A/D lanes · W/S speed · dodge coral · grab pickups'}
                   {runStatsHud?.oxygenInfinite ? ' · armor' : ' · O₂ & armor'}
                 </span>
               </p>
+              {touchUiEnabled && (
+                <div className="ra-touch-controls" role="group" aria-label="Touch gameplay controls">
+                  <button
+                    type="button"
+                    className="ra-touch-btn"
+                    onClick={() => tapLane(-1)}
+                    aria-label="Move left lane"
+                  >
+                    ◀ Lane
+                  </button>
+                  <button
+                    type="button"
+                    className={`ra-touch-btn ${touchThrottleMode < 0 ? 'ra-touch-btn-active' : ''}`}
+                    onClick={() => setTouchThrottleMode(-1)}
+                    aria-label="Set slower swim speed"
+                  >
+                    Slow
+                  </button>
+                  <button
+                    type="button"
+                    className={`ra-touch-btn ${touchThrottleMode === 0 ? 'ra-touch-btn-active' : ''}`}
+                    onClick={() => setTouchThrottleMode(0)}
+                    aria-label="Set normal swim speed"
+                  >
+                    Cruise
+                  </button>
+                  <button
+                    type="button"
+                    className={`ra-touch-btn ${touchThrottleMode > 0 ? 'ra-touch-btn-active' : ''}`}
+                    onClick={() => setTouchThrottleMode(1)}
+                    aria-label="Set faster swim speed"
+                  >
+                    Boost
+                  </button>
+                  <button
+                    type="button"
+                    className="ra-touch-btn"
+                    onClick={() => tapLane(1)}
+                    aria-label="Move right lane"
+                  >
+                    Lane ▶
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

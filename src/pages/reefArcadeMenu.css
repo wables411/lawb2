@@ -316,6 +316,36 @@
   max-width: min(560px, 100%);
 }
 
+.ra-touch-controls {
+  margin: 10px auto 0;
+  width: min(680px, 100%);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.ra-touch-btn {
+  border: 1px solid rgba(120, 220, 210, 0.35);
+  background: linear-gradient(180deg, rgba(8, 34, 48, 0.92), rgba(4, 18, 30, 0.95));
+  color: rgba(224, 246, 255, 0.95);
+  border-radius: 6px;
+  padding: 10px 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-weight: 600;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.ra-touch-btn-active {
+  border-color: rgba(126, 231, 135, 0.8);
+  box-shadow: 0 0 0 1px rgba(126, 231, 135, 0.4), 0 0 24px rgba(126, 231, 135, 0.2);
+  background: linear-gradient(180deg, rgba(20, 64, 58, 0.95), rgba(8, 30, 28, 0.98));
+}
+
 .ra-play-depth {
   margin: 0;
   padding: 8px 12px 10px;
@@ -494,6 +524,16 @@
     font-size: 8px;
     letter-spacing: 0.04em;
   }
+
+  .ra-touch-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .ra-touch-btn {
+    padding: 10px 6px;
+    font-size: 10px;
+  }
 }
 
 /* Game over */
@@ -598,6 +638,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.ra-menu-kbd-hint {
+  margin: 12px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(210, 235, 240, 0.42);
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 .ra-btn {

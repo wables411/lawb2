@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
@@ -19,10 +19,16 @@ type Props = {
   onRunHud?: (hud: ArcadeRunHudState) => void;
 };
 
+export type ArcadePlayInputHandle = {
+  nudgeLane: (delta: -1 | 1) => void;
+  setVirtualThrottle: (opts: { forward: boolean; backward: boolean }) => void;
+  clearVirtualThrottle: () => void;
+};
+
 /**
  * WebGL layer: tunnel, FBX characters from `/arcade-assets`, selection (idle/dance), swim gameplay.
  */
-export function ArcadeThreeBackground({
+export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(function ArcadeThreeBackground({
   phase,
   gameScreen,
   selectedCharacterId,
@@ -30,7 +36,7 @@ export function ArcadeThreeBackground({
   onGameOver,
   onRunDifficulty,
   onRunHud,
-}: Props) {
+}: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
   const pickRef = useRef(onPickCharacter);
@@ -78,5 +84,21 @@ export function ArcadeThreeBackground({
     eng.setScreen(engineScreen);
   }, [engineScreen, selectedCharacterId]);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      nudgeLane: (delta) => {
+        engineRef.current?.nudgeLane(delta);
+      },
+      setVirtualThrottle: (opts) => {
+        engineRef.current?.setVirtualThrottle(opts);
+      },
+      clearVirtualThrottle: () => {
+        engineRef.current?.clearVirtualThrottle();
+      },
+    }),
+    [],
+  );
+
   return <div ref={containerRef} className="ra-three" aria-hidden />;
-}
+});

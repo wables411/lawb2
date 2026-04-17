@@ -256,6 +256,8 @@ export class ArcadeSceneController {
   private throttleSmoothed = 0;
   private keyW = false;
   private keyS = false;
+  private virtualW = false;
+  private virtualS = false;
   private hudRunAcc = 0;
   private pickupSpawnAcc = 0;
   /** Screen shake (seconds left, peak magnitude for offset). */
@@ -333,6 +335,7 @@ export class ArcadeSceneController {
 
   private applyScreen(next: ArcadeGameScreen): void {
     this.screen = next;
+    if (next !== 'play') this.clearVirtualThrottle();
     this.updatePointerCapture();
     if (next === 'play') {
       this.playEnded = false;
@@ -378,6 +381,27 @@ export class ArcadeSceneController {
       this.layoutSelectionPodiums();
     }
     void this.applySelectionAnimations();
+  }
+
+  /**
+   * UI input bridge (touch/buttons): move one lane left/right without keyboard events.
+   */
+  nudgeLane(delta: -1 | 1): void {
+    if (this.screen !== 'play' || this.playEnded) return;
+    this.playerLane = THREE.MathUtils.clamp(this.playerLane + delta, 0, 2);
+  }
+
+  /**
+   * UI input bridge (touch/buttons): virtual throttle state combined with W/S keys.
+   */
+  setVirtualThrottle(opts: { forward: boolean; backward: boolean }): void {
+    this.virtualW = Boolean(opts.forward);
+    this.virtualS = Boolean(opts.backward);
+  }
+
+  clearVirtualThrottle(): void {
+    this.virtualW = false;
+    this.virtualS = false;
   }
 
   /** Linear order: Clawb · Radbro · Milady (main menu). */
@@ -1311,7 +1335,9 @@ export class ArcadeSceneController {
 
       if (!this.playEnded && st) {
         const now = this.clock.elapsedTime;
-        const targetT = this.keyW && !this.keyS ? 1 : this.keyS && !this.keyW ? -1 : 0;
+        const forward = this.keyW || this.virtualW;
+        const backward = this.keyS || this.virtualS;
+        const targetT = forward && !backward ? 1 : backward && !forward ? -1 : 0;
         this.throttleSmoothed += (targetT - this.throttleSmoothed) * Math.min(1, dt * 4.8);
         const band = speedBandForStars(getCharacterStats(st.characterId).speed);
         const u = (this.throttleSmoothed + 1) / 2;
