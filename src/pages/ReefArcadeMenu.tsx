@@ -25,6 +25,7 @@ const LazyArcadeThree = lazy(async () => {
 
 type Phase = 'intro' | 'menu';
 type ModalKind = 'difficulty' | 'wallet' | null;
+type TouchGesture = { pointerId: number; startY: number };
 
 const CHARACTERS: { id: ArcadeCharacterId; name: string; color: string }[] = [
   { id: 'clawb', name: 'CLAWB', color: '#ff6b35' },
@@ -78,6 +79,7 @@ export default function ReefArcadeMenu() {
   const [touchUiEnabled, setTouchUiEnabled] = useState<boolean>(prefersTouchInput);
   const [touchThrottleMode, setTouchThrottleMode] = useState<-1 | 0 | 1>(0);
   const arcadeInputRef = useRef<ArcadePlayInputHandle | null>(null);
+  const touchGestureRef = useRef<TouchGesture | null>(null);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -229,8 +231,45 @@ export default function ReefArcadeMenu() {
     arcadeInputRef.current?.nudgeLane(delta);
   }, []);
 
+  const applySwipeThrottle = useCallback((deltaY: number) => {
+    const threshold = 28;
+    const nextMode: -1 | 0 | 1 = deltaY <= -threshold ? 1 : deltaY >= threshold ? -1 : 0;
+    setTouchThrottleMode((prev) => (prev === nextMode ? prev : nextMode));
+  }, []);
+
+  const onTouchSurfacePointerDown = useCallback(
+    (ev: React.PointerEvent<HTMLDivElement>) => {
+      if (!touchUiEnabled || gameScreen !== 'play' || ev.pointerType === 'mouse') return;
+      ev.preventDefault();
+      ev.currentTarget.setPointerCapture?.(ev.pointerId);
+      touchGestureRef.current = { pointerId: ev.pointerId, startY: ev.clientY };
+      tapLane(ev.clientX < window.innerWidth * 0.5 ? -1 : 1);
+      setTouchThrottleMode(0);
+    },
+    [gameScreen, tapLane, touchUiEnabled],
+  );
+
+  const onTouchSurfacePointerMove = useCallback(
+    (ev: React.PointerEvent<HTMLDivElement>) => {
+      const g = touchGestureRef.current;
+      if (!g || g.pointerId !== ev.pointerId) return;
+      ev.preventDefault();
+      applySwipeThrottle(ev.clientY - g.startY);
+    },
+    [applySwipeThrottle],
+  );
+
+  const onTouchSurfacePointerEnd = useCallback((ev: React.PointerEvent<HTMLDivElement>) => {
+    const g = touchGestureRef.current;
+    if (!g || g.pointerId !== ev.pointerId) return;
+    ev.preventDefault();
+    touchGestureRef.current = null;
+    setTouchThrottleMode(0);
+  }, []);
+
   useEffect(() => {
     if (gameScreen !== 'play') {
+      touchGestureRef.current = null;
       arcadeInputRef.current?.clearVirtualThrottle();
       return;
     }
@@ -239,6 +278,31 @@ export default function ReefArcadeMenu() {
       backward: touchThrottleMode < 0,
     });
   }, [gameScreen, touchThrottleMode]);
+
+  useEffect(() => {
+    if (!touchUiEnabled || gameScreen !== 'play') return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverscroll = html.style.overscrollBehaviorY;
+    const prevBodyOverscroll = body.style.overscrollBehaviorY;
+    const prevBodyTouchAction = body.style.touchAction;
+    html.style.overscrollBehaviorY = 'none';
+    body.style.overscrollBehaviorY = 'none';
+    body.style.touchAction = 'none';
+
+    const preventSurfaceScroll = (ev: TouchEvent) => {
+      const el = ev.target as Element | null;
+      if (el?.closest('.ra-touch-surface')) ev.preventDefault();
+    };
+    document.addEventListener('touchmove', preventSurfaceScroll, { passive: false });
+
+    return () => {
+      document.removeEventListener('touchmove', preventSurfaceScroll);
+      html.style.overscrollBehaviorY = prevHtmlOverscroll;
+      body.style.overscrollBehaviorY = prevBodyOverscroll;
+      body.style.touchAction = prevBodyTouchAction;
+    };
+  }, [touchUiEnabled, gameScreen]);
 
   useEffect(() => {
     if (phase !== 'menu') return;
@@ -419,7 +483,7 @@ export default function ReefArcadeMenu() {
                     <>
                       <div>{starsRow('Speed', s.speed)}</div>
                       {selectedCharacterId === 'clawb' ? (
-                        <div>Breath (O₂) ★★★★★ — unlimited underwater (lobster)</div>
+                        <div>Breath (O₂) ★★★★★ — lawbster lungs (unlimited underwater)</div>
                       ) : (
                         <div>{starsRow('Breath (O₂)', s.oxygen)}</div>
                       )}
@@ -498,7 +562,7 @@ export default function ReefArcadeMenu() {
                     <div className="ra-play-stat-row">
                       <span className="ra-play-stat-label">O₂</span>
                       {runStatsHud.oxygenInfinite ? (
-                        <div className="ra-play-stat-lobster">∞ lobster</div>
+                        <div className="ra-play-stat-lobster">∞ lawbster lungs</div>
                       ) : (
                         <div className="ra-play-meter">
                           <div
@@ -546,55 +610,33 @@ export default function ReefArcadeMenu() {
               <p className="ra-play-hud-keys">
                 <span className="ra-play-keys-line">
                   {touchUiEnabled
-                    ? 'Tap controls or use keyboard · dodge coral · grab pickups'
+                    ? 'Tap left/right half to move · hold + swipe up/down to boost/slow'
                     : 'A/D lanes · W/S speed · dodge coral · grab pickups'}
                   {runStatsHud?.oxygenInfinite ? ' · armor' : ' · O₂ & armor'}
                 </span>
               </p>
-              {touchUiEnabled && (
-                <div className="ra-touch-controls" role="group" aria-label="Touch gameplay controls">
-                  <button
-                    type="button"
-                    className="ra-touch-btn"
-                    onClick={() => tapLane(-1)}
-                    aria-label="Move left lane"
-                  >
-                    ◀ Lane
-                  </button>
-                  <button
-                    type="button"
-                    className={`ra-touch-btn ${touchThrottleMode < 0 ? 'ra-touch-btn-active' : ''}`}
-                    onClick={() => setTouchThrottleMode(-1)}
-                    aria-label="Set slower swim speed"
-                  >
-                    Slow
-                  </button>
-                  <button
-                    type="button"
-                    className={`ra-touch-btn ${touchThrottleMode === 0 ? 'ra-touch-btn-active' : ''}`}
-                    onClick={() => setTouchThrottleMode(0)}
-                    aria-label="Set normal swim speed"
-                  >
-                    Cruise
-                  </button>
-                  <button
-                    type="button"
-                    className={`ra-touch-btn ${touchThrottleMode > 0 ? 'ra-touch-btn-active' : ''}`}
-                    onClick={() => setTouchThrottleMode(1)}
-                    aria-label="Set faster swim speed"
-                  >
-                    Boost
-                  </button>
-                  <button
-                    type="button"
-                    className="ra-touch-btn"
-                    onClick={() => tapLane(1)}
-                    aria-label="Move right lane"
-                  >
-                    Lane ▶
-                  </button>
-                </div>
-              )}
+            </div>
+          </div>
+        )}
+
+        {phase === 'menu' && gameScreen === 'play' && touchUiEnabled && (
+          <div
+            className="ra-touch-surface"
+            role="application"
+            aria-label="Touch play area: tap left or right to move lanes, hold and swipe up or down to control speed"
+            onPointerDown={onTouchSurfacePointerDown}
+            onPointerMove={onTouchSurfacePointerMove}
+            onPointerUp={onTouchSurfacePointerEnd}
+            onPointerCancel={onTouchSurfacePointerEnd}
+          >
+            <div className="ra-touch-side ra-touch-side-left" aria-hidden>
+              TAP LEFT
+            </div>
+            <div className="ra-touch-side ra-touch-side-right" aria-hidden>
+              TAP RIGHT
+            </div>
+            <div className="ra-touch-throttle" aria-hidden>
+              {touchThrottleMode > 0 ? 'BOOST' : touchThrottleMode < 0 ? 'SLOW' : 'CRUISE'}
             </div>
           </div>
         )}
@@ -647,7 +689,8 @@ export default function ReefArcadeMenu() {
                 <p>
                   <strong>W / S</strong> throttle forward swim. <strong>Milady / Radbro:</strong> faster swim burns O₂
                   faster. <strong>Clawb</strong> is underwater indefinitely — no O₂ fail. <strong>A / D</strong> change
-                  lanes. The reef tube <strong>banks and sways</strong> as you dive deeper.
+                  lanes. Mobile touch: <strong>tap left/right</strong> to lane shift, then <strong>hold + swipe up/down</strong>{' '}
+                  to boost/slow. The reef tube <strong>banks and sways</strong> as you dive deeper.
                 </p>
                 <p>
                   The longer you survive, the faster the baseline current. Every <strong>45 seconds</strong> you cross a
