@@ -37,6 +37,7 @@ import {
   characterHasUnlimitedOxygen,
   characterUsesOxygenMechanic,
   createInitialRunState,
+  isBeneficialPickup,
   rollPickupKind,
   runStateToHud,
   type ArcadeRunHudState,
@@ -84,6 +85,13 @@ type PickupEnt = {
   speed: number;
   hit: boolean;
   kind: PickupKind;
+};
+
+type ImpactFx = {
+  root: THREE.Object3D;
+  age: number;
+  life: number;
+  update: (f: ImpactFx, dt: number) => void;
 };
 
 /** Lane centers (world X). Spacing 2.1 ⇒ ~0.78 gap between 1.32-wide obstacles. */
@@ -252,6 +260,7 @@ export class ArcadeSceneController {
   }
   private obstacles: Obstacle[] = [];
   private pickups: PickupEnt[] = [];
+  private impactFx: ImpactFx[] = [];
   private runState: RunState | null = null;
   private throttleSmoothed = 0;
   private keyW = false;
@@ -273,6 +282,7 @@ export class ArcadeSceneController {
   /** Survival time while swim is active (excludes async load gap). */
   private runSurvivalSec = 0;
   private runClockActive = false;
+  private playerPulseT = 0;
   private hudEmitAcc = 0;
   private lastEmittedTier = -1;
   private loaded = false;
@@ -367,6 +377,8 @@ export class ArcadeSceneController {
     if (next === 'menu' || next === 'select') {
       this.cameraShakeT = 0;
       this.cameraShakePeak = 0;
+      this.playerPulseT = 0;
+      this.clearImpactFx();
       this.clearPickups();
       this.clearObstacles();
       this.playerWorld.visible = false;
@@ -994,6 +1006,7 @@ export class ArcadeSceneController {
     this.playerWorld.visible = true;
     this.clearObstacles();
     this.clearPickups();
+    this.clearImpactFx();
     this.playerLane = 1;
     this.playerX = LANES[1];
     this.spawnWaveIndex = -1;
@@ -1221,6 +1234,166 @@ export class ArcadeSceneController {
     this.cameraShakePeak = Math.max(this.cameraShakePeak, peak);
   }
 
+  private addImpactFx(
+    root: THREE.Object3D,
+    life: number,
+    update: (f: ImpactFx, dt: number) => void,
+  ): void {
+    root.renderOrder = 30;
+    this.obstacleGroup.add(root);
+    this.impactFx.push({ root, age: 0, life, update });
+  }
+
+  private spawnMineExplosion(position: THREE.Vector3): void {
+    const root = new THREE.Group();
+    root.position.copy(position);
+
+    const burst = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 18, 14),
+      new THREE.MeshBasicMaterial({
+        color: 0xff5a2a,
+        transparent: true,
+        opacity: 0.92,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    root.add(burst);
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.28, 0.07, 10, 24),
+      new THREE.MeshBasicMaterial({
+        color: 0xffb144,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    ring.rotation.x = Math.PI / 2;
+    root.add(ring);
+
+    this.addImpactFx(root, 0.42, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      const s = 0.45 + t * 2.4;
+      burst.scale.setScalar(s);
+      ring.scale.setScalar(0.55 + t * 3.2);
+      (burst.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.92;
+      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.8;
+    });
+  }
+
+  private spawnPufferInflate(position: THREE.Vector3): void {
+    const puff = new THREE.Mesh(
+      new THREE.SphereGeometry(0.34, 16, 12),
+      new THREE.MeshBasicMaterial({
+        color: 0xf7d28a,
+        transparent: true,
+        opacity: 0.88,
+        depthWrite: false,
+      }),
+    );
+    puff.position.copy(position);
+    puff.scale.setScalar(0.45);
+    this.addImpactFx(puff, 0.36, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      const inflate = 0.45 + t * 2.05;
+      puff.scale.setScalar(inflate);
+      (puff.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.86;
+    });
+  }
+
+  private spawnJellyShock(position: THREE.Vector3): void {
+    const root = new THREE.Group();
+    root.position.copy(position);
+
+    const ringA = new THREE.Mesh(
+      new THREE.TorusGeometry(0.24, 0.04, 8, 28),
+      new THREE.MeshBasicMaterial({
+        color: 0x78cfff,
+        transparent: true,
+        opacity: 0.86,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    ringA.rotation.x = Math.PI / 2;
+    root.add(ringA);
+
+    const ringB = ringA.clone();
+    ringB.material = (ringA.material as THREE.MeshBasicMaterial).clone();
+    ringB.rotation.y = Math.PI / 2;
+    root.add(ringB);
+
+    this.addImpactFx(root, 0.34, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      const s = 0.7 + t * 2.3;
+      ringA.scale.setScalar(s);
+      ringB.scale.setScalar(0.55 + t * 1.9);
+      (ringA.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.86;
+      (ringB.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.72;
+    });
+  }
+
+  private triggerPickupImpactFx(kind: PickupKind, position: THREE.Vector3): void {
+    if (kind === 'mine') this.spawnMineExplosion(position);
+    else if (kind === 'pufferfish') this.spawnPufferInflate(position);
+    else if (kind === 'jellyfish') this.spawnJellyShock(position);
+  }
+
+  private triggerPlayerPulse(): void {
+    this.playerPulseT = Math.max(this.playerPulseT, 0.55);
+  }
+
+  private updatePlayerPulse(dt: number): void {
+    if (!this.swimRoot) return;
+    const active = this.playerPulseT > 0;
+    const strength = Math.min(1, this.playerPulseT / 0.55);
+    const pulse = active ? 1 + Math.sin(this.clock.elapsedTime * 24) * 0.32 * strength : 1;
+
+    this.swimRoot.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const m of mats) {
+        const sm = m as THREE.MeshStandardMaterial;
+        if (!sm.isMeshStandardMaterial) continue;
+        const u = sm.userData as { arcadePulseBaseEmissive?: number };
+        if (u.arcadePulseBaseEmissive == null) u.arcadePulseBaseEmissive = sm.emissiveIntensity;
+        const base = u.arcadePulseBaseEmissive;
+        sm.emissiveIntensity = active ? base * pulse : base;
+      }
+    });
+
+    this.playerPulseT = Math.max(0, this.playerPulseT - dt);
+  }
+
+  private updateImpactFx(dt: number): void {
+    if (this.impactFx.length === 0) return;
+    for (const fx of this.impactFx) {
+      fx.age += dt;
+      fx.update(fx, dt);
+    }
+    const keep: ImpactFx[] = [];
+    for (const fx of this.impactFx) {
+      if (fx.age < fx.life) {
+        keep.push(fx);
+      } else {
+        this.obstacleGroup.remove(fx.root);
+        disposeObject3DResources(fx.root);
+      }
+    }
+    this.impactFx = keep;
+  }
+
+  private clearImpactFx(): void {
+    for (const fx of this.impactFx) {
+      this.obstacleGroup.remove(fx.root);
+      disposeObject3DResources(fx.root);
+    }
+    this.impactFx = [];
+  }
+
   private triggerGameOver(reason: RunEndReason): void {
     if (this.playEnded) return;
     this.playEnded = true;
@@ -1321,6 +1494,8 @@ export class ArcadeSceneController {
     } else if (this.playerWorld.children[0]) {
       this.playerWorld.children[0].position.x = this.playerX;
     }
+    this.updatePlayerPulse(dt);
+    this.updateImpactFx(dt);
 
     if (this.screen === 'play') {
       if (!this.playEnded) {
@@ -1424,6 +1599,11 @@ export class ArcadeSceneController {
               p.lane === this.playerLane
             ) {
               p.hit = true;
+              const impactPos = p.root.position.clone();
+              this.triggerPickupImpactFx(p.kind, impactPos);
+              if (isBeneficialPickup(p.kind)) {
+                this.triggerPlayerPulse();
+              }
               const out = applyPickupEffect(p.kind, this.runState, this.clock.elapsedTime);
               if (out.cameraShake) this.addCameraShake(out.cameraShake);
               this.obstacleGroup.remove(p.root);
@@ -1547,6 +1727,7 @@ export class ArcadeSceneController {
     }
     const ro = (this as unknown as { _ro?: ResizeObserver })._ro;
     ro?.disconnect();
+    this.clearImpactFx();
     this.clearPickups();
     this.clearObstacles();
     this.tunnel?.geometry.dispose();

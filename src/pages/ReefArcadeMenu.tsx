@@ -696,7 +696,8 @@ export default function ReefArcadeMenu() {
                   The longer you survive, the faster the baseline current. Every <strong>45 seconds</strong> you cross a
                   new <strong>depth mark</strong> (Roman numerals). <strong>O₂ tanks</strong> for Milady/Radbro spawn on
                   a schedule (wider gaps at depth) plus random pickups — never zero in the table, but timing gets urgent.
-                  Collect cheese for a nitro burst, peptides for armor; jellyfish, puffers, and mines chew armor.
+                  Collect cheese for a nitro burst, peptides for armor + cleanse, and note that jellyfish/puffers/mines
+                  damage armor while also draining some O₂ on non-Clawb swimmers.
                 </p>
               </>
             )}

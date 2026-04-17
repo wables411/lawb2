@@ -16,6 +16,16 @@ export type PickupKind =
   | 'pufferfish'
   | 'mine';
 
+export function isBeneficialPickup(kind: PickupKind): boolean {
+  return (
+    kind === 'air_tank' ||
+    kind === 'coin' ||
+    kind === 'trash' ||
+    kind === 'cheese' ||
+    kind === 'peptides'
+  );
+}
+
 export type RunEndReason = 'oxygen' | 'crush' | 'wrecked';
 
 export type ArcadeRunHudState = {
@@ -80,21 +90,67 @@ export function createInitialRunState(characterId: ArcadeCharacterId, _nowSec: n
  * (see also guaranteed tank cadence in `ArcadeSceneController`).
  */
 const SPAWN_WEIGHTS_BASE: { kind: PickupKind; w: number }[] = [
-  { kind: 'coin', w: 26 },
-  { kind: 'trash', w: 12 },
+  { kind: 'coin', w: 24 },
+  { kind: 'trash', w: 11 },
   { kind: 'air_tank', w: 10 },
   { kind: 'cheese', w: 8 },
-  { kind: 'peptides', w: 9 },
-  { kind: 'jellyfish', w: 8 },
-  { kind: 'pufferfish', w: 7 },
-  { kind: 'mine', w: 3 },
+  { kind: 'peptides', w: 10 },
+  { kind: 'jellyfish', w: 7 },
+  { kind: 'pufferfish', w: 6 },
+  { kind: 'mine', w: 4 },
 ];
+
+type PickupTuning = {
+  coins?: number;
+  trash?: number;
+  oxygenDelta?: number;
+  armorDelta?: number;
+  oxygenPenalty?: number;
+  cheeseSec?: number;
+  dragSec?: number;
+  clearDrag?: boolean;
+  cameraShake?: number;
+};
+
+/**
+ * Per-object gameplay identity:
+ * - loot/sustain: coin, trash, air_tank, peptides
+ * - tempo buffs/debuffs: cheese, jellyfish, pufferfish
+ * - high-threat spike: mine
+ */
+const PICKUP_TUNING: Record<PickupKind, PickupTuning> = {
+  air_tank: { oxygenDelta: 44, clearDrag: true, cameraShake: 0.03 },
+  coin: { coins: 1, oxygenDelta: 2 },
+  trash: { trash: 1, armorDelta: 3 },
+  cheese: { cheeseSec: 3.6 },
+  peptides: { armorDelta: 22, clearDrag: true, cameraShake: 0.04 },
+  jellyfish: { armorDelta: -5, oxygenPenalty: 8, dragSec: 2.2, cameraShake: 0.1 },
+  pufferfish: { armorDelta: -10, oxygenPenalty: 4, dragSec: 1.5, cameraShake: 0.12 },
+  mine: { armorDelta: -26, oxygenPenalty: 10, dragSec: 1.2, cameraShake: 0.24 },
+};
 
 export function rollPickupKind(
   survivalSec: number,
   characterId: ArcadeCharacterId,
 ): PickupKind {
   const rows = SPAWN_WEIGHTS_BASE.map((r) => ({ ...r }));
+  /**
+   * Depth ramp: hazards become more common deeper in the run while sustain/loot taper a bit.
+   * Keeps early game readable and late game tense.
+   */
+  const depthU = Math.min(1, Math.max(0, (survivalSec - 20) / 140));
+  const scale = (kind: PickupKind, mul: number) => {
+    const row = rows.find((r) => r.kind === kind);
+    if (row) row.w *= mul;
+  };
+  scale('coin', 1 - 0.2 * depthU);
+  scale('trash', 1 - 0.12 * depthU);
+  scale('cheese', 1 - 0.1 * depthU);
+  scale('peptides', 1 + 0.16 * depthU);
+  scale('jellyfish', 1 + 0.32 * depthU);
+  scale('pufferfish', 1 + 0.38 * depthU);
+  scale('mine', 1 + 0.62 * depthU);
+
   if (characterId === 'clawb') {
     const i = rows.findIndex((r) => r.kind === 'air_tank');
     if (i >= 0) rows[i]!.w = 0;
@@ -125,45 +181,42 @@ export function applyPickupEffect(
   st: RunState,
   nowSec: number,
 ): { gameOver?: RunEndReason; cameraShake?: number } {
-  switch (kind) {
-    case 'air_tank': {
-      if (characterUsesOxygenMechanic(st.characterId)) {
-        st.oxygen = Math.min(st.oxygenMax, st.oxygen + 38);
-      }
-      break;
-    }
-    case 'coin':
-      st.coins += 1;
-      break;
-    case 'trash':
-      st.trash += 1;
-      break;
-    case 'cheese':
-      st.cheeseUntil = Math.max(st.cheeseUntil, nowSec + 4.2);
-      break;
-    case 'peptides':
-      st.armor = Math.min(st.armorMax, st.armor + 26);
-      break;
-    case 'jellyfish':
-    case 'pufferfish':
-      st.dragUntil = Math.max(st.dragUntil, nowSec + 2.8);
-      st.armor -= 7;
-      if (st.armor <= 0) {
-        st.armor = 0;
-        return { gameOver: 'wrecked' };
-      }
-      return { cameraShake: kind === 'jellyfish' ? 0.09 : 0.07 };
-    case 'mine':
-      st.armor -= 32;
-      if (st.armor <= 0) {
-        st.armor = 0;
-        return { gameOver: 'wrecked', cameraShake: 0.28 };
-      }
-      return { cameraShake: 0.22 };
-    default:
-      break;
+  const fx = PICKUP_TUNING[kind];
+  if (!fx) return {};
+
+  if (fx.coins) st.coins += fx.coins;
+  if (fx.trash) st.trash += fx.trash;
+
+  if (fx.cheeseSec && fx.cheeseSec > 0) {
+    const buffEnd = Math.max(nowSec, st.cheeseUntil) + fx.cheeseSec;
+    st.cheeseUntil = Math.min(nowSec + 7.4, buffEnd);
   }
-  return {};
+
+  if (fx.dragSec && fx.dragSec > 0) {
+    const debuffEnd = Math.max(nowSec, st.dragUntil) + fx.dragSec;
+    st.dragUntil = Math.min(nowSec + 4.8, debuffEnd);
+  }
+  if (fx.clearDrag) st.dragUntil = nowSec;
+
+  if (characterUsesOxygenMechanic(st.characterId)) {
+    if (fx.oxygenDelta && fx.oxygenDelta > 0) {
+      st.oxygen = Math.min(st.oxygenMax, st.oxygen + fx.oxygenDelta);
+    }
+    if (fx.oxygenPenalty && fx.oxygenPenalty > 0) {
+      st.oxygen = Math.max(0, st.oxygen - fx.oxygenPenalty);
+      if (st.oxygen <= 0) return { gameOver: 'oxygen', cameraShake: fx.cameraShake };
+    }
+  }
+
+  if (typeof fx.armorDelta === 'number' && fx.armorDelta !== 0) {
+    st.armor = Math.min(st.armorMax, st.armor + fx.armorDelta);
+    if (st.armor <= 0) {
+      st.armor = 0;
+      return { gameOver: 'wrecked', cameraShake: fx.cameraShake };
+    }
+  }
+
+  return fx.cameraShake ? { cameraShake: fx.cameraShake } : {};
 }
 
 export function runStateToHud(
