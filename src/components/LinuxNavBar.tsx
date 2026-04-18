@@ -190,18 +190,18 @@ interface LinuxNavBarProps {
     ens?: string;
   };
   onClawbClick?: () => void;
-  /** Open Lawb profile popup (desktop / mobile shell) */
+  /** Legacy optional callbacks kept for compatibility with existing callers. */
   onOpenProfile?: () => void;
-  /** Open Lawb leaderboard popup */
   onOpenLeaderboard?: () => void;
+  /** Open UwU popup */
+  onOpenUwU?: () => void;
 }
 
 const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
   walletButton,
   connectionStatus: connectionStatusProp,
   onClawbClick,
-  onOpenProfile,
-  onOpenLeaderboard,
+  onOpenUwU,
 }) => {
   // Single source of truth: useConnectionDisplay handles reconnecting state to avoid navbar/Reown modal mismatch
   const connectionDisplay = useConnectionDisplay(connectionStatusProp?.ens);
@@ -307,33 +307,14 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
             <span>🏠</span>
             <span>Home</span>
           </button>
-          {onClawbClick && (
-            <button
-              className={classes.menuItem}
-              onClick={() => handleMenuLinkClick(undefined, onClawbClick)}
-            >
-              <span>🦞</span>
-              <span>Clawb</span>
-            </button>
-          )}
-          {onOpenProfile && (
+          {onOpenUwU && (
             <button
               type="button"
               className={classes.menuItem}
-              onClick={() => handleMenuLinkClick(undefined, onOpenProfile)}
+              onClick={() => handleMenuLinkClick(undefined, onOpenUwU)}
             >
-              <span>👤</span>
-              <span>Profile</span>
-            </button>
-          )}
-          {onOpenLeaderboard && (
-            <button
-              type="button"
-              className={classes.menuItem}
-              onClick={() => handleMenuLinkClick(undefined, onOpenLeaderboard)}
-            >
-              <span>🏆</span>
-              <span>Leaderboard</span>
+              <span>🦄</span>
+              <span>UwU 🦄</span>
             </button>
           )}
           <hr className={classes.menuSeparator} />

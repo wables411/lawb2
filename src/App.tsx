@@ -53,8 +53,14 @@ function App() {
   const chainId = useChainId();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // No auto-popup on load - user must click to open popups
   const [activePopup, setActivePopup] = useState<string | null>(null);
+  // Re-open Pixelawbs promo window on homepage load (skip stream mode).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stream') === '1') return;
+    setActivePopup((current) => current ?? 'pixelawbs-popup');
+  }, []);
   
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [lawbTab, setLawbTab] = useState<'tokens' | 'lore'>('tokens');
@@ -501,21 +507,13 @@ function App() {
           ens: connectionDisplay.ens
         }}
         onClawbClick={() => clawbRef.current?.triggerDance()}
-        onOpenProfile={() => {
+        onOpenUwU={() => {
           setMinimizedPopups((prev) => {
             const next = new Set(prev);
-            next.delete('profile-popup');
+            next.delete('uwu-popup');
             return next;
           });
-          setActivePopup('profile-popup');
-        }}
-        onOpenLeaderboard={() => {
-          setMinimizedPopups((prev) => {
-            const next = new Set(prev);
-            next.delete('leaderboard-popup');
-            return next;
-          });
-          setActivePopup('leaderboard-popup');
+          setActivePopup('uwu-popup');
         }}
       />
 
@@ -643,7 +641,17 @@ function App() {
               <p style={{marginBottom: '10px'}}>
                 PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}} onClick={handleCollectHere}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>SCATTER.ART</a>
               </p>
-              <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} preload="none" poster="/assets/pixelawbsintro.png" />
+              <video
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+                src="/assets/pixelawbs.mp4"
+                style={{ width: '100%', marginBottom: '10px' }}
+                preload="auto"
+                poster="/assets/pixelawbsintro.png"
+              />
               <p style={{marginBottom: '10px'}}>
                 2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
               </p>
@@ -761,6 +769,18 @@ function App() {
         <Suspense fallback={<div>Loading sponsor panel...</div>}>
           <SponsorAdPanel />
         </Suspense>
+      </Popup>
+
+      <Popup id="uwu-popup" isOpen={activePopup === 'uwu-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2200} title="UwU 🦄">
+        <video
+          src="/assets/lawbuwu.MP4"
+          style={{ width: '100%', maxHeight: isMobile ? '56vh' : '70vh', background: '#000' }}
+          autoPlay
+          controls
+          loop
+          playsInline
+          muted
+        />
       </Popup>
 
       <Popup

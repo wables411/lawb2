@@ -288,6 +288,7 @@ const Mobile = () => {
   const [showSponsorPopup, setShowSponsorPopup] = useState(false);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showLeaderboardPopup, setShowLeaderboardPopup] = useState(false);
+  const [showUwUPopup, setShowUwUPopup] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
 
   // Twitter widgets loading for both lawbsters and lawbstarz popups on mobile
@@ -353,7 +354,10 @@ const Mobile = () => {
     return () => window.clearInterval(interval);
   }, []);
 
-  // No auto-popup on load - user must click to open popups
+  // Re-open Pixelawbs promo popup on mobile homepage load.
+  useEffect(() => {
+    setShowPixelawbsPopup(true);
+  }, []);
 
 
   if (activeView === 'gallery') {
@@ -545,7 +549,17 @@ const Mobile = () => {
           <p style={{marginBottom: '10px'}}>
             PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: '#ff0000', textDecoration: 'underline', cursor: 'pointer'}} onClick={() => { setShowPixelawbsPopup(false); setShowMintPopup(true); }}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>SCATTER.ART</a>
           </p>
-          <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} preload="none" poster="/assets/pixelawbsintro.png" />
+          <video
+            controls
+            autoPlay
+            loop
+            muted
+            playsInline
+            src="/assets/pixelawbs.mp4"
+            style={{ width: '100%', marginBottom: '10px' }}
+            preload="auto"
+            poster="/assets/pixelawbsintro.png"
+          />
           <p style={{marginBottom: '10px'}}>
             2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
           </p>
@@ -709,7 +723,17 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>
           PIXELAWBS NOW MINTING ON ETHEREUM! CONNECT WALLET AND <span style={{color: '#ff0000', textDecoration: 'underline', cursor: 'pointer'}} onClick={() => { setShowPixelawbs(false); setShowMintPopup(true); }}>COLLECT HERE</span> OR VISIT <a href="https://www.scatter.art/collection/pixelawbs" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>SCATTER.ART</a>
         </p>
-        <video controls src="/assets/pixelawbs.mp4" style={{ width: '100%', marginBottom: '10px' }} preload="none" poster="/assets/pixelawbsintro.png" />
+        <video
+          controls
+          autoPlay
+          loop
+          muted
+          playsInline
+          src="/assets/pixelawbs.mp4"
+          style={{ width: '100%', marginBottom: '10px' }}
+          preload="auto"
+          poster="/assets/pixelawbsintro.png"
+        />
         <p style={{marginBottom: '10px'}}>
           2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
         </p>
@@ -813,6 +837,18 @@ const Mobile = () => {
           <SponsorAdPanel />
         </Suspense>
       </MobilePopup98>
+      {/* UwU Popup */}
+      <MobilePopup98 isOpen={showUwUPopup} onClose={() => setShowUwUPopup(false)} title="UwU 🦄">
+        <video
+          controls
+          autoPlay
+          loop
+          playsInline
+          muted
+          src="/assets/lawbuwu.MP4"
+          style={{ width: '100%', maxHeight: '60vh', background: '#000' }}
+        />
+      </MobilePopup98>
       <MobilePopup98 isOpen={showProfilePopup} onClose={() => setShowProfilePopup(false)} title="Lawb Profile">
         <Suspense fallback={<div style={{ padding: 12 }}>Loading…</div>}>
           <PlayerProfile isMobile />
@@ -854,6 +890,7 @@ const Mobile = () => {
           address: connectionDisplay.address,
           ens: connectionDisplay.ens
         }}
+        onOpenUwU={() => setShowUwUPopup(true)}
         onOpenProfile={() => setShowProfilePopup(true)}
         onOpenLeaderboard={() => setShowLeaderboardPopup(true)}
       />
