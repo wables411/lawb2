@@ -870,6 +870,17 @@ function App() {
                 touchAction: 'manipulation'
               }}>$CLAWB</a>
             </h2>
+            <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
+              $CLAWB is Clawb — the first autonomous Lawbster: a persistent OpenClaw agent running live on{' '}
+              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                retake.tv/clawb
+              </a>
+              .
+            </p>
+            <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
+              Clawb combines real-time chat behavior, OBS-integrated stream control, world actions, and onchain
+              sponsor/commercial operations. Built by wables411. Motto: there is no meme i lawb you.
+            </p>
             <div style={{
               background: '#f0f0f0',
               border: '2px inset #808080',
@@ -879,6 +890,7 @@ function App() {
               fontFamily: 'monospace',
               wordBreak: 'break-all',
             }}>
+              <p style={{ marginBottom: '6px', fontWeight: 'bold' }}>CAs</p>
               <p style={{marginBottom: '4px'}}>
                 <strong>(sol)</strong>{' '}
                 <a href="https://solscan.io/token/A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
@@ -950,10 +962,19 @@ function App() {
 
             <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>$CLAWB</h2>
             <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Clawb is the first autonomous Lawbster: an always-on internet agent with a wallet, memory, and a live 3D presence across lawb.xyz and retake.tv.
+              Clawb is the first autonomous Lawbster: a persistent OpenClaw internet agent with memory-backed behavior,
+              live stream operations, world command handling, and onchain sponsor/commercial runtime.
             </p>
             <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Built by wables411, Clawb launched $CLAWB via Retake TV on 02.02.26 and has streamed continuously since. When Retake TV moved to Solana, Clawb followed to keep the stream native to the platform and continue 24/7 operations. Motto: there is no meme i lawb you.
+              Built by wables411, Clawb launched $CLAWB on Retake in early 2026 and now runs as a production stack
+              centered on{' '}
+              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                retake.tv/clawb
+              </a>
+              .
+            </p>
+            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
+              Motto: there is no meme i lawb you.
             </p>
             <div style={{
               background: '#f0f0f0',
@@ -987,10 +1008,11 @@ function App() {
               lineHeight: '1.6',
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
-              <p style={{marginBottom: '4px'}}>1. Autonomous stream loop: live chat replies, memory, and world narration running continuously.</p>
-              <p style={{marginBottom: '4px'}}>2. Multi-platform identity: active on lawb.xyz, Retake, Farcaster, Moltbook, Milaidy and 4claw.</p>
-              <p style={{marginBottom: '4px'}}>3. Dynamic NFT intelligence: live wallet gallery sync powers bedroom/world NFT displays and responses.</p>
-              <p style={{marginBottom: '0'}}>4. Multi-chain operational readiness: Base + Sanko contract connectivity verified, plus live Solana wallet tooling.</p>
+              <p style={{marginBottom: '4px'}}>1. 24/7 Retake-native stream loop with live chat and OBS-integrated control.</p>
+              <p style={{marginBottom: '4px'}}>2. Dual-chain $CLAWB operations and consistent routing guidance across Solana + Base.</p>
+              <p style={{marginBottom: '4px'}}>3. Autonomous world-action runtime via local world bridge + responder services.</p>
+              <p style={{marginBottom: '4px'}}>4. Onchain adspace/commercial pipeline (indexing, queueing, paid playback).</p>
+              <p style={{marginBottom: '0'}}>5. Production hardening via PM2 services, webhook controls, and recovery watchdogs.</p>
             </div>
             <div style={{
               background: '#f0f0f0',
@@ -1001,14 +1023,48 @@ function App() {
               lineHeight: '1.6',
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>What Clawb Does Today</p>
-              <p style={{marginBottom: '4px'}}>- Responds in real time on stream and in public chat with shared cross-platform context.</p>
-              <p style={{marginBottom: '4px'}}>- Runs world actions and emotes from chat commands inside lawb.xyz/world.</p>
-              <p style={{marginBottom: '4px'}}>- Monitors ecosystem activity and posts updates through social channels.</p>
-              <p style={{marginBottom: '4px'}}>- Operates wallet flows for EVM and Solana, including SOL/SPL balance and transfer tooling.</p>
-              <p style={{marginBottom: '0'}}>- Maintains self-state through persistent memory and background service recovery loops.</p>
+              <p style={{marginBottom: '4px'}}>- Responds in real time on stream using persistent persona + ecosystem context.</p>
+              <p style={{marginBottom: '4px'}}>- Drives stream behavior through OBS automation and runtime scene/media controls.</p>
+              <p style={{marginBottom: '4px'}}>- Executes movement/action/world commands through the local world stack.</p>
+              <p style={{marginBottom: '4px'}}>- Runs paid sponsor/commercial intake-to-playback flows.</p>
+              <p style={{marginBottom: '4px'}}>- Maintains wallet/token-aware context used in live responses.</p>
+              <p style={{marginBottom: '4px'}}>- Supports operator-safe control actions (go live/offline, recovery refreshes).</p>
+              <p style={{marginBottom: '0'}}>- Primary live surface: retake.tv/clawb</p>
+            </div>
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Clawb (Operational Truth)</p>
+              <p style={{marginBottom: '8px'}}>
+                Clawb is autonomous in behavior loops, but not "magic." It runs as an operator-maintained OpenClaw
+                system: long-lived processes, controlled credentials, webhook actions, and monitored recovery paths.
+              </p>
+              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>What is autonomous</p>
+              <p style={{marginBottom: '4px'}}>1. Live chat response behavior and persona execution.</p>
+              <p style={{marginBottom: '4px'}}>2. Stream-time command handling and world action routing.</p>
+              <p style={{marginBottom: '4px'}}>3. Ongoing sponsor/commercial queue consumption and playback decisions.</p>
+              <p style={{marginBottom: '8px'}}>4. Runtime watchdog/recovery logic while processes are healthy.</p>
+              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>What is operator-managed</p>
+              <p style={{marginBottom: '4px'}}>1. Infrastructure uptime (host machine, PM2, OBS, network, credentials).</p>
+              <p style={{marginBottom: '4px'}}>2. Deploys, config changes, and runtime restarts.</p>
+              <p style={{marginBottom: '8px'}}>3. Incident response when external systems fail (Retake/OBS/RPC/dev-server issues).</p>
+              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>Why this matters</p>
+              <p style={{marginBottom: '4px'}}>1. Older descriptions from the lawb.xyz/world era can overstate current surfaces.</p>
+              <p style={{marginBottom: '8px'}}>2. Today, Clawb is best understood as a production Retake-first autonomous agent, with explicit operational boundaries and real recovery tooling.</p>
+              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>$CLAWB CAs</p>
+              <p style={{marginBottom: '4px'}}>Solana: A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn</p>
+              <p style={{marginBottom: '0'}}>Base: 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
             </div>
             <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Tune in to watch Clawb's livestream on <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a> &mdash; interact with him on retake or here on lawb.xyz
+              Primary live surface:{' '}
+              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+                retake.tv/clawb
+              </a>
             </p>
           </>
         )}
