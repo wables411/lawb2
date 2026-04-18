@@ -19,6 +19,15 @@ import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { getDisplayName } from '../utils/displayName';
+import {
+  linuxNotesButtonStyle,
+  linuxNotesHeaderStyle,
+  linuxNotesInputStyle,
+  linuxNotesPillStyle,
+  linuxNotesSectionStyle,
+  linuxNotesShellStyle,
+  linuxNotesSubtleTextStyle,
+} from './linuxNotesTheme';
 
 interface PlayerProfileProps {
   isMobile?: boolean;
@@ -163,27 +172,24 @@ const WalletLinkingSection: React.FC<{
 
   const hasAnythingToShow = linkedWallets.length > 0 || canLinkEvm || canLinkSolana;
   if (!hasAnythingToShow && !isOwnProfile) return null;
+  const sectionStyle = linuxNotesSectionStyle(isMobile);
+  const buttonStyle = linuxNotesButtonStyle(isMobile);
+  const inputStyle = linuxNotesInputStyle(isMobile);
 
   return (
     <div style={{
+      ...sectionStyle,
       marginBottom: '20px',
-      width: '100%',
       maxWidth: '600px',
-      padding: '12px',
-      background: '#f0f0f0',
-      borderRadius: '4px',
     }}>
-      <h4 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '13px' : '14px' }}>
+      <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 8 }}>
         Linked Wallets
       </h4>
-      <div style={{ fontSize: isMobile ? '11px' : '12px', marginBottom: '8px' }}>
+      <div style={{ fontSize: isMobile ? '11px' : '12px', marginBottom: '8px', color: '#2f2f2b' }}>
         <span style={{
-          display: 'inline-block',
-          padding: '2px 6px',
-          borderRadius: '3px',
+          ...linuxNotesPillStyle(isMobile),
           background: primaryWallet.startsWith('0x') ? '#627EEA' : '#9945FF',
           color: '#fff',
-          fontSize: isMobile ? '9px' : '10px',
           marginRight: '6px',
         }}>
           {primaryWallet.startsWith('0x') ? 'EVM' : 'SOL'}
@@ -202,12 +208,9 @@ const WalletLinkingSection: React.FC<{
           }}
         >
           <span style={{
-            display: 'inline-block',
-            padding: '2px 6px',
-            borderRadius: '3px',
+            ...linuxNotesPillStyle(isMobile),
             background: lw.chain === 'evm' ? '#627EEA' : '#9945FF',
             color: '#fff',
-            fontSize: isMobile ? '9px' : '10px',
           }}>
             {lw.chain === 'evm' ? 'EVM' : 'SOL'}
           </span>
@@ -217,11 +220,10 @@ const WalletLinkingSection: React.FC<{
               onClick={() => onUnlink(lw.address)}
               disabled={linkingWallet}
               style={{
+                ...buttonStyle,
                 padding: '1px 6px',
                 background: '#c0392b',
                 color: '#fff',
-                border: 'none',
-                borderRadius: '2px',
                 cursor: 'pointer',
                 fontSize: isMobile ? '9px' : '10px',
                 opacity: linkingWallet ? 0.5 : 1,
@@ -237,12 +239,10 @@ const WalletLinkingSection: React.FC<{
           onClick={() => onLink(connectedEvmAddress, 'evm')}
           disabled={linkingWallet}
           style={{
+            ...buttonStyle,
             marginTop: '8px',
-            padding: '6px 12px',
             background: '#627EEA',
             color: '#fff',
-            border: 'none',
-            borderRadius: '3px',
             cursor: 'pointer',
             fontSize: isMobile ? '11px' : '12px',
             opacity: linkingWallet ? 0.5 : 1,
@@ -256,13 +256,11 @@ const WalletLinkingSection: React.FC<{
           onClick={() => onLink(connectedSolanaAddress, 'solana')}
           disabled={linkingWallet}
           style={{
+            ...buttonStyle,
             marginTop: '8px',
             marginLeft: canLinkEvm ? '8px' : '0',
-            padding: '6px 12px',
             background: '#9945FF',
             color: '#fff',
-            border: 'none',
-            borderRadius: '3px',
             cursor: 'pointer',
             fontSize: isMobile ? '11px' : '12px',
             opacity: linkingWallet ? 0.5 : 1,
@@ -277,12 +275,10 @@ const WalletLinkingSection: React.FC<{
             onClick={onOpenConnect}
             disabled={linkingWallet}
             style={{
+              ...buttonStyle,
               marginBottom: '8px',
-              padding: '6px 12px',
               background: '#000080',
               color: '#fff',
-              border: 'none',
-              borderRadius: '3px',
               cursor: linkingWallet ? 'default' : 'pointer',
               fontSize: isMobile ? '11px' : '12px',
               opacity: linkingWallet ? 0.5 : 1,
@@ -302,11 +298,10 @@ const WalletLinkingSection: React.FC<{
               }}
               placeholder="0x... or Solana address"
               style={{
+                ...inputStyle,
                 flex: 1,
                 minWidth: isMobile ? '100%' : '260px',
-                padding: '6px',
                 border: manualWalletError ? '2px solid #c0392b' : '1px solid #bbb',
-                borderRadius: '3px',
                 fontSize: isMobile ? '11px' : '12px',
               }}
             />
@@ -327,11 +322,10 @@ const WalletLinkingSection: React.FC<{
                 setManualWalletInput('');
               }}
               style={{
+                ...buttonStyle,
                 padding: '6px 10px',
                 background: '#1f6f3f',
                 color: '#fff',
-                border: 'none',
-                borderRadius: '3px',
                 cursor: linkingWallet ? 'default' : 'pointer',
                 fontSize: isMobile ? '11px' : '12px',
                 opacity: linkingWallet || !manualWalletInput.trim() ? 0.5 : 1,
@@ -393,17 +387,15 @@ const TokenBalancesSection: React.FC<{
     { label: '$LAWB', chain: 'Solana', value: balances.lawbSol, color: '#8B4513', chainColor: '#9945FF', hasWallet: !!solanaAddress },
     { label: '$LAWB', chain: 'Arbitrum', value: balances.lawbArb, color: '#8B4513', chainColor: '#28A0F0', hasWallet: !!evmAddress },
   ];
+  const sectionStyle = linuxNotesSectionStyle(isMobile);
 
   return (
     <div style={{
+      ...sectionStyle,
       marginBottom: '20px',
-      width: '100%',
       maxWidth: '600px',
-      padding: '12px',
-      background: '#f0f0f0',
-      borderRadius: '4px',
     }}>
-      <h4 style={{ margin: '0 0 10px 0', fontSize: isMobile ? '13px' : '14px' }}>
+      <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 10 }}>
         Token Balances {balances.loading && <span style={{ fontWeight: 400, fontSize: isMobile ? '10px' : '11px', color: '#888' }}>(loading...)</span>}
       </h4>
       <div style={{
@@ -416,8 +408,8 @@ const TokenBalancesSection: React.FC<{
             key={`${t.label}-${t.chain}`}
             style={{
               padding: '10px',
-              background: '#fff',
-              border: '1px solid #ddd',
+              background: '#ffffff',
+              border: '1px solid #d8d8d3',
               borderRadius: '6px',
               opacity: t.hasWallet ? 1 : 0.45,
             }}
@@ -567,16 +559,12 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
   return (
     <div style={{
+      ...linuxNotesSectionStyle(isMobile),
       marginBottom: '20px',
-      width: '100%',
       maxWidth: '600px',
-      padding: '12px',
-      background: 'linear-gradient(135deg, #0a0a2e 0%, #1a0a3e 100%)',
-      borderRadius: '6px',
-      border: '1px solid #9945FF44',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px', color: '#fff' }}>
+        <h4 style={{ ...linuxNotesHeaderStyle(isMobile), margin: 0 }}>
           Clawb Meteora LP (CLAWB / LAWB)
           {loading && <span style={{ fontWeight: 400, fontSize: '11px', color: '#888', marginLeft: '6px' }}>(loading...)</span>}
         </h4>
@@ -584,7 +572,7 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           href={`https://www.meteora.ag/dlmm/${METEORA_CLAWB_LAWB_POOL}?referrer=portfolio&position=${METEORA_POSITION}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: isMobile ? '9px' : '10px', color: '#9945FF', textDecoration: 'none' }}
+          style={{ fontSize: isMobile ? '9px' : '10px', color: '#6f6f6a', textDecoration: 'none' }}
         >
           Meteora ↗
         </a>
@@ -593,7 +581,7 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
       {error && <div style={{ fontSize: '11px', color: '#c0392b' }}>{error}</div>}
 
       {data && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '8px' }}>
           {[
             { label: 'Pool', value: data.pairName, sub: 'Meteora DLMM' },
             { label: 'Price', value: `${data.currentPrice.toFixed(4)}`, sub: 'CLAWB/LAWB' },
@@ -608,14 +596,14 @@ const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           ].map((cell) => (
             <div key={cell.label} style={{
               padding: '8px',
-              background: '#ffffff08',
+              background: '#ffffff',
               borderRadius: '4px',
-              border: '1px solid #ffffff12',
+              border: '1px solid #d8d8d3',
             }}>
-              <div style={{ fontSize: isMobile ? '9px' : '10px', color: '#9945FF', fontWeight: 600, marginBottom: '2px' }}>
+              <div style={{ fontSize: isMobile ? '9px' : '10px', color: '#6f6f6a', fontWeight: 600, marginBottom: '2px' }}>
                 {cell.label}
               </div>
-              <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#fff' }}>
+              <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#2c2c2c' }}>
                 {cell.value}
               </div>
               {cell.sub && (
@@ -1081,7 +1069,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
   if (loading) {
     return (
-      <div className="profile-compact" style={{ padding: '20px', textAlign: 'center' }}>
+      <div className="profile-compact" style={{ ...linuxNotesShellStyle(isMobile), padding: '20px', textAlign: 'center' }}>
         <div>Loading profile...</div>
       </div>
     );
@@ -1089,7 +1077,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
   if (profileLoadError && !profile) {
     return (
-      <div className="profile-compact" style={{ padding: '20px', textAlign: 'center', color: '#a00' }}>
+      <div className="profile-compact" style={{ ...linuxNotesShellStyle(isMobile), padding: '20px', textAlign: 'center', color: '#a00' }}>
         <div>{profileLoadError}</div>
       </div>
     );
@@ -1097,7 +1085,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
   if (!address) {
     return (
-      <div className="profile-compact" style={{ padding: '20px', textAlign: 'center' }}>
+      <div className="profile-compact" style={{ ...linuxNotesShellStyle(isMobile), padding: '20px', textAlign: 'center' }}>
         <div>Please connect your wallet to view your profile</div>
       </div>
     );
@@ -1135,7 +1123,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     (inventory.asciilawbs?.length || 0) + (inventory.lawbstation?.length || 0) +
                     (inventory.lawbnexus?.length || 0) + (inventory.lawb_lore?.length || 0);
 
-  const getBorderColor = () => '#4169e1';
+  const getBorderColor = () => '#d2d2cc';
 
   // Get profile image URL or default
   const profileImageUrl = profile?.profile_picture?.image_url || '/images/sticker4.png';
@@ -1146,22 +1134,35 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     setProfileImageSize({ width: img.naturalWidth, height: img.naturalHeight });
     profileDebugLog('[PROFILE] Image loaded, dimensions:', img.naturalWidth, 'x', img.naturalHeight);
   };
+  const sectionStyle = linuxNotesSectionStyle(isMobile);
+  const buttonStyle = linuxNotesButtonStyle(isMobile);
+  const inputStyle = linuxNotesInputStyle(isMobile);
+  const notesTokenChipStyle = (selected: boolean): React.CSSProperties => ({
+    padding: isMobile ? '4px 8px' : '3px 8px',
+    background: selected ? '#d6b04a' : '#f4f4f1',
+    color: selected ? '#1f1a12' : '#2d2d2a',
+    border: selected ? '1px solid #a9842a' : '1px solid #d0d0cb',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: isMobile ? '9px' : '10px',
+    fontWeight: selected ? 600 : 500,
+  });
 
   return (
     <div style={{ 
+      ...linuxNotesShellStyle(isMobile),
       display: 'flex', 
       flexDirection: 'column', 
       alignItems: 'center',
-      padding: isMobile ? '16px' : '20px',
-      gap: '20px'
+      padding: isMobile ? '16px' : '18px',
+      gap: '16px'
     }}>
-      <div style={{ width: '100%', maxWidth: 600, textAlign: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 600, textAlign: 'left' }}>
         <h2
           style={{
-            margin: '0 0 6px 0',
-            fontSize: isMobile ? 20 : 26,
-            fontWeight: 700,
-            color: '#1a1a1a',
+            ...linuxNotesHeaderStyle(isMobile),
+            marginBottom: 6,
+            fontSize: isMobile ? 20 : 22,
           }}
         >
           {(() => {
@@ -1174,24 +1175,25 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         {isOwnProfile &&
           primaryWallet &&
           normalizeAddress(address) !== normalizeAddress(primaryWallet) && (
-            <p style={{ margin: '0 0 8px 0', fontSize: 11, color: '#555', lineHeight: 1.45 }}>
+            <p style={{ ...linuxNotesSubtleTextStyle(isMobile), marginBottom: 8 }}>
               Name and inventory follow your primary profile wallet ({shortenAddr(primaryWallet)}). This address is
               linked.
             </p>
           )}
       </div>
-      {/* Pokemon Card Style Profile */}
+      {/* Profile card */}
       <div style={{
+        ...sectionStyle,
         position: 'relative',
         width: profileImageSize ? `${Math.min(profileImageSize.width, isMobile ? 350 : 600)}px` : '100%',
         maxWidth: '100%',
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)',
-        borderRadius: '12px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
+        borderRadius: '8px',
         overflow: 'hidden',
-        border: `4px solid ${getBorderColor()}`,
-        transform: 'perspective(1000px) rotateX(2deg)',
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        background: '#fff',
+        border: `1px solid ${getBorderColor()}`,
+        transform: 'none',
+        transition: 'box-shadow 0.2s ease',
+        background: '#ffffff',
         zIndex: 1,
         cursor: !isOwnProfile ? 'pointer' : 'default'
       }}
@@ -1200,14 +1202,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       }}
       onMouseEnter={(e) => {
         if (!isMobile) {
-          e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) scale(1.02)';
-          e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.3)';
+          e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.18)';
         }
       }}
       onMouseLeave={(e) => {
         if (!isMobile) {
-          e.currentTarget.style.transform = 'perspective(1000px) rotateX(2deg)';
-          e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2)';
+          e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.7)';
         }
       }}
       >
@@ -1230,7 +1230,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             objectFit: 'contain',
             position: 'relative',
             zIndex: 2,
-            background: '#fff'
+            background: '#ffffff'
           }} 
         />
         
@@ -1240,16 +1240,13 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       {database && primaryWallet && (
         <div
           style={{
+            ...sectionStyle,
             width: '100%',
             maxWidth: '600px',
-            padding: '14px',
-            background: '#e8f4fc',
-            borderRadius: '8px',
-            border: '1px solid #b8d4e8',
             boxSizing: 'border-box',
           }}
         >
-          <h4 style={{ margin: '0 0 10px 0', fontSize: isMobile ? '13px' : '14px', color: '#0a3d5c' }}>
+          <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 10, color: '#2a2a28' }}>
             Lawb leaderboard points
           </h4>
           {leaderboardLoading ? (
@@ -1261,7 +1258,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                   fontSize: isMobile ? 22 : 24,
                   fontWeight: 700,
                   marginBottom: 10,
-                  color: '#062a42',
+                  color: '#2a2a28',
                 }}
               >
                 Total · {leaderboardEntry.points}
@@ -1286,7 +1283,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                   style={{
                     margin: '10px 0 0 0',
                     fontSize: isMobile ? '10px' : '11px',
-                    color: '#3d5a73',
+                    color: '#696963',
                     lineHeight: 1.45,
                   }}
                 >
@@ -1309,10 +1306,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         <>
 
           {/* Username Section */}
-          <div style={{ marginBottom: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px', width: '100%', maxWidth: '600px' }}>
+          <div style={{ ...sectionStyle, marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         {!profile?.username ? (
           <>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '13px' : '14px' }}>Create Username</h4>
+            <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 8 }}>Create Username</h4>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input
                 type="text"
@@ -1323,10 +1320,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 placeholder="3-20 characters"
                 maxLength={20}
                 style={{
+                  ...inputStyle,
                   flex: 1,
-                  padding: '6px',
                   border: usernameError ? '2px solid #ff0000' : '1px solid #ccc',
-                  borderRadius: '2px',
                   fontSize: isMobile ? '12px' : '13px'
                 }}
               />
@@ -1334,11 +1330,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 onClick={handleSetUsername}
                 disabled={!usernameInput || usernameInput.length < 3 || !!usernameError || isCheckingUsername}
                 style={{
-                  padding: '6px 12px',
-                  background: '#000080',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '2px',
+                  ...buttonStyle,
                   cursor: 'pointer',
                   fontSize: isMobile ? '11px' : '12px',
                   opacity: (!usernameInput || usernameInput.length < 3 || !!usernameError || isCheckingUsername) ? 0.5 : 1
@@ -1363,10 +1355,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 placeholder="New username"
                 maxLength={20}
                 style={{
+                  ...inputStyle,
                   flex: 1,
-                  padding: '6px',
                   border: usernameError ? '2px solid #ff0000' : '1px solid #ccc',
-                  borderRadius: '2px',
                   fontSize: isMobile ? '12px' : '13px'
                 }}
               />
@@ -1374,11 +1365,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 onClick={handleSetUsername}
                 disabled={!usernameInput || usernameInput.length < 3 || !!usernameError || isCheckingUsername}
                 style={{
-                  padding: '6px 12px',
-                  background: '#000080',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '2px',
+                  ...buttonStyle,
                   cursor: 'pointer',
                   fontSize: isMobile ? '11px' : '12px',
                   opacity: (!usernameInput || usernameInput.length < 3 || !!usernameError || isCheckingUsername) ? 0.5 : 1
@@ -1457,18 +1444,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
 
               {isClawbProfileWallet(address) && <ClawbLpSection isMobile={isMobile} />}
 
-              <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
+              <div style={{ ...sectionStyle, marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px' }}>NFT Inventory ({totalNFTs})</h4>
+          <h4 style={{ ...linuxNotesHeaderStyle(isMobile), margin: 0 }}>NFT Inventory ({totalNFTs})</h4>
           <button
             onClick={handleRefreshInventory}
             disabled={refreshingInventory}
             style={{
-              padding: '4px 8px',
-              background: '#000080',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '2px',
+              ...buttonStyle,
               cursor: 'pointer',
               fontSize: isMobile ? '10px' : '11px',
               opacity: refreshingInventory ? 0.5 : 1
@@ -1495,9 +1478,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       </div>
 
       {(inventory.lawbstation.length > 0 || inventory.lawbnexus.length > 0) && (
-        <div style={{ marginBottom: '20px', width: '100%', maxWidth: '600px', padding: '12px', background: '#f0f0f0', borderRadius: '4px' }}>
+        <div style={{ ...sectionStyle, marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <h4 style={{ margin: 0, fontSize: isMobile ? '13px' : '14px' }}>Solana Lawb Gallery</h4>
+            <h4 style={{ ...linuxNotesHeaderStyle(isMobile), margin: 0 }}>Solana Lawb Gallery</h4>
             {solanaGalleryLoading && (
               <span style={{ fontSize: isMobile ? '10px' : '11px', color: '#666' }}>Loading...</span>
             )}
@@ -1516,12 +1499,13 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     }
                   }}
                   style={{
-                    border: selected ? '2px solid #000080' : '1px solid #999',
+                    border: selected ? '2px solid #d6b04a' : '1px solid #d0d0cb',
                     background: '#fff',
                     padding: '4px',
-                    borderRadius: '2px',
+                    borderRadius: '6px',
                     cursor: isOwnProfile ? 'pointer' : 'default',
                     textAlign: 'left',
+                    boxShadow: selected ? '0 0 0 1px rgba(169,132,42,0.25)' : 'none',
                   }}
                   title={`${card.name} (${card.tokenId})`}
                 >
@@ -1532,8 +1516,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                       width: '100%',
                       aspectRatio: '1 / 1',
                       objectFit: 'cover',
-                      border: '1px solid #000',
+                      border: '1px solid #d9d9d4',
                       marginBottom: '4px',
+                      borderRadius: '4px',
                     }}
                     onError={(e) => {
                       e.currentTarget.src = '/images/sticker4.png';
@@ -1566,8 +1551,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
       )}
 
           {/* Profile Picture Selection */}
-          <div style={{ marginTop: '20px', padding: '12px', background: '#f0f0f0', borderRadius: '4px', width: '100%', maxWidth: '600px' }}>
-        <h4 style={{ margin: '0 0 12px 0', fontSize: isMobile ? '13px' : '14px' }}>Profile Picture</h4>
+          <div style={{ ...sectionStyle, marginTop: '20px', width: '100%', maxWidth: '600px' }}>
+        <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 12 }}>Profile Picture</h4>
         {profile?.profile_picture ? (
             <div style={{ marginBottom: '12px' }}>
               <img 
@@ -1587,11 +1572,11 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 style={{ 
                   width: '60px', 
                   height: '60px', 
-                  borderRadius: '4px', 
-                  border: '2px solid #000',
+                  borderRadius: '6px', 
+                  border: '1px solid #d0d0cb',
                   objectFit: 'cover',
                   marginBottom: '8px',
-                  backgroundColor: '#f0f0f0'
+                  backgroundColor: '#f4f4f1'
                 }} 
               />
               <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#666' }}>
@@ -1618,15 +1603,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`pixelawbs-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('pixelawbs', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'pixelawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'pixelawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'pixelawbs' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       #{tokenId}
                     </button>
@@ -1642,15 +1622,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`lawbsters-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('lawbsters', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'lawbsters' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       #{tokenId}
                     </button>
@@ -1666,15 +1641,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`lawbstarz-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('lawbstarz', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbstarz' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbstarz' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'lawbstarz' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       #{tokenId}
                     </button>
@@ -1690,15 +1660,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`halloween-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('halloween_lawbsters', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'halloween_lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'halloween_lawbsters' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'halloween_lawbsters' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       #{tokenId}
                     </button>
@@ -1714,15 +1679,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`asciilawbs-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('asciilawbs', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'asciilawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'asciilawbs' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'asciilawbs' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       #{tokenId}
                     </button>
@@ -1738,15 +1698,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`lawbstation-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('lawbstation', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbstation' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbstation' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'lawbstation' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       {tokenId.slice(0, 4)}...{tokenId.slice(-4)}
                     </button>
@@ -1762,15 +1717,10 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                     <button
                       key={`lawbnexus-${tokenId}`}
                       onClick={() => handleSelectProfilePicture('lawbnexus', tokenId)}
-                      style={{
-                        padding: '4px 8px',
-                        background: profile?.profile_picture?.collection === 'lawbnexus' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#000080' : '#ccc',
-                        color: profile?.profile_picture?.collection === 'lawbnexus' && sameProfileToken(profile?.profile_picture?.token_id, tokenId) ? '#fff' : '#000',
-                        border: '1px solid #000',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        fontSize: isMobile ? '9px' : '10px'
-                      }}
+                      style={notesTokenChipStyle(
+                        profile?.profile_picture?.collection === 'lawbnexus' &&
+                          sameProfileToken(profile?.profile_picture?.token_id, tokenId),
+                      )}
                     >
                       {tokenId.slice(0, 4)}...{tokenId.slice(-4)}
                     </button>

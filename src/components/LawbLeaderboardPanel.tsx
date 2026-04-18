@@ -9,6 +9,13 @@ import {
   type LeaderboardEntry,
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
+import {
+  linuxNotesHeaderStyle,
+  linuxNotesPillStyle,
+  linuxNotesSectionStyle,
+  linuxNotesShellStyle,
+  linuxNotesSubtleTextStyle,
+} from './linuxNotesTheme';
 
 /** Group key for linked EVM + Solana rows that share one primary profile. */
 function primaryGroupKey(addr: string): string {
@@ -23,12 +30,12 @@ const RAW_LEADERBOARD_FETCH = 100;
 
 const ROW_STYLE: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '36px minmax(0, 1fr) 64px',
+  gridTemplateColumns: '40px minmax(0, 1fr) 70px',
   gap: '6px',
   alignItems: 'center',
   fontSize: '12px',
-  padding: '4px 0',
-  borderBottom: '1px solid #c0c0c0',
+  padding: '8px 0',
+  borderBottom: '1px solid #dfdfda',
 };
 
 /**
@@ -121,17 +128,17 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
   return (
     <div
       style={{
-        fontFamily: "'MS Sans Serif', Tahoma, sans-serif",
-        fontSize: isMobile ? 14 : 12,
-        color: '#000',
-        padding: isMobile ? '8px 4px' : '4px',
+        ...linuxNotesShellStyle(isMobile),
         minHeight: 200,
         maxHeight: isMobile ? '70vh' : 420,
         overflow: 'auto',
       }}
     >
-      <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Lawb leaderboard (top 25 by total points)</p>
-      <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#444', lineHeight: 1.35 }}>
+      <div style={{ marginBottom: 10 }}>
+        <h3 style={linuxNotesHeaderStyle(isMobile)}>Lawb Leaderboard</h3>
+        <div style={linuxNotesPillStyle(isMobile)}>Top 25 by total points</div>
+      </div>
+      <p style={{ ...linuxNotesSubtleTextStyle(isMobile), marginBottom: 10 }}>
         Sorted by total points. Linked wallets under the same Lawb profile are merged into one row (points added
         together). Open your Lawb Profile for a per-source breakdown.
       </p>
@@ -141,13 +148,20 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
         <p style={{ margin: 0 }}>No entries yet. Play Lawb Chess when it returns to earn points.</p>
       )}
       {!loading && rows.length > 0 && (
-        <>
+        <div
+          style={{
+            ...linuxNotesSectionStyle(isMobile),
+            paddingTop: 8,
+            paddingBottom: 8,
+          }}
+        >
           <div
             style={{
               ...ROW_STYLE,
               fontWeight: 'bold',
-              borderBottom: '2px solid #808080',
+              borderBottom: '1px solid #d3d3ce',
               paddingBottom: 6,
+              color: '#666761',
             }}
           >
             <span>#</span>
@@ -178,7 +192,7 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
             const mainLabel = !mainLooksLikeAddr && resolved ? `@${resolved}` : resolved;
             return (
               <div key={key || i} style={ROW_STYLE}>
-                <span>{i + 1}</span>
+                <span style={{ color: '#6f7068', fontWeight: 600 }}>{i + 1}</span>
                 <span style={{ minWidth: 0 }}>
                   <div
                     style={{
@@ -193,11 +207,11 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                   </div>
                   {sub}
                 </span>
-                <span style={{ textAlign: 'right' }}>{entry.points}</span>
+                <span style={{ textAlign: 'right', fontWeight: 700 }}>{entry.points}</span>
               </div>
             );
           })}
-        </>
+        </div>
       )}
     </div>
   );

@@ -1244,12 +1244,29 @@ export class ArcadeSceneController {
     this.impactFx.push({ root, age: 0, life, update });
   }
 
+  private randomUnitVector3(): THREE.Vector3 {
+    const v = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
+    return v.lengthSq() > 1e-6 ? v.normalize() : new THREE.Vector3(0, 1, 0);
+  }
+
   private spawnMineExplosion(position: THREE.Vector3): void {
     const root = new THREE.Group();
     root.position.copy(position);
 
-    const burst = new THREE.Mesh(
-      new THREE.SphereGeometry(0.42, 18, 14),
+    const flash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.26, 18, 14),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff2c9,
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    root.add(flash);
+
+    const fireball = new THREE.Mesh(
+      new THREE.SphereGeometry(0.44, 18, 14),
       new THREE.MeshBasicMaterial({
         color: 0xff5a2a,
         transparent: true,
@@ -1258,10 +1275,10 @@ export class ArcadeSceneController {
         blending: THREE.AdditiveBlending,
       }),
     );
-    root.add(burst);
+    root.add(fireball);
 
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.28, 0.07, 10, 24),
+    const ringA = new THREE.Mesh(
+      new THREE.TorusGeometry(0.32, 0.08, 10, 26),
       new THREE.MeshBasicMaterial({
         color: 0xffb144,
         transparent: true,
@@ -1270,42 +1287,142 @@ export class ArcadeSceneController {
         blending: THREE.AdditiveBlending,
       }),
     );
-    ring.rotation.x = Math.PI / 2;
-    root.add(ring);
+    ringA.rotation.x = Math.PI / 2;
+    root.add(ringA);
 
-    this.addImpactFx(root, 0.42, (fx) => {
+    const ringB = new THREE.Mesh(
+      new THREE.TorusGeometry(0.24, 0.06, 8, 22),
+      new THREE.MeshBasicMaterial({
+        color: 0xff6b38,
+        transparent: true,
+        opacity: 0.86,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    ringB.rotation.y = Math.PI / 2;
+    root.add(ringB);
+
+    const sparkCount = 34;
+    const sparkPos = new Float32Array(sparkCount * 3);
+    const sparkVel = new Float32Array(sparkCount * 3);
+    for (let i = 0; i < sparkCount; i++) {
+      const d = this.randomUnitVector3();
+      const speed = 1.8 + Math.random() * 4;
+      sparkVel[i * 3] = d.x * speed;
+      sparkVel[i * 3 + 1] = d.y * speed * 0.9 + 0.8;
+      sparkVel[i * 3 + 2] = d.z * speed;
+    }
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkAttr = new THREE.BufferAttribute(sparkPos, 3);
+    sparkGeo.setAttribute('position', sparkAttr);
+    const sparkMat = new THREE.PointsMaterial({
+      color: 0xffd89c,
+      size: 0.11,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    const sparks = new THREE.Points(sparkGeo, sparkMat);
+    root.add(sparks);
+
+    this.addImpactFx(root, 0.72, (fx) => {
       const t = Math.min(1, fx.age / fx.life);
-      const s = 0.45 + t * 2.4;
-      burst.scale.setScalar(s);
-      ring.scale.setScalar(0.55 + t * 3.2);
-      (burst.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.92;
-      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.8;
+      const blast = 1 - Math.pow(1 - t, 3);
+      flash.scale.setScalar(0.2 + blast * 3.2);
+      fireball.scale.setScalar(0.52 + blast * 2.8);
+      ringA.scale.setScalar(0.5 + blast * 4.4);
+      ringB.scale.setScalar(0.42 + blast * 3.7);
+      (flash.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 1.15);
+      (fireball.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.82);
+      (ringA.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.92);
+      (ringB.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.76);
+
+      const age = fx.age;
+      for (let i = 0; i < sparkCount; i++) {
+        const ix = i * 3;
+        sparkPos[ix] = sparkVel[ix] * age;
+        sparkPos[ix + 1] = sparkVel[ix + 1] * age - age * age * 1.2;
+        sparkPos[ix + 2] = sparkVel[ix + 2] * age;
+      }
+      sparkAttr.needsUpdate = true;
+      sparkMat.opacity = Math.max(0, (1 - t) * 0.95);
     });
   }
 
   private spawnPufferInflate(position: THREE.Vector3): void {
+    const root = new THREE.Group();
+    root.position.copy(position);
+
     const puff = new THREE.Mesh(
       new THREE.SphereGeometry(0.34, 16, 12),
       new THREE.MeshBasicMaterial({
         color: 0xf7d28a,
         transparent: true,
-        opacity: 0.88,
+        opacity: 0.95,
         depthWrite: false,
+        blending: THREE.AdditiveBlending,
       }),
     );
-    puff.position.copy(position);
-    puff.scale.setScalar(0.45);
-    this.addImpactFx(puff, 0.36, (fx) => {
+    root.add(puff);
+
+    const spikes = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.43, 1),
+      new THREE.MeshBasicMaterial({
+        color: 0xffe8b4,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.82,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    root.add(spikes);
+
+    const pressureRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.3, 0.045, 8, 20),
+      new THREE.MeshBasicMaterial({
+        color: 0xffde91,
+        transparent: true,
+        opacity: 0.74,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    pressureRing.rotation.x = Math.PI / 2;
+    root.add(pressureRing);
+
+    this.addImpactFx(root, 0.58, (fx) => {
       const t = Math.min(1, fx.age / fx.life);
-      const inflate = 0.45 + t * 2.05;
-      puff.scale.setScalar(inflate);
-      (puff.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.86;
+      const inflate = t < 0.4 ? 0.24 + (t / 0.4) * 2.45 : 2.69 - ((t - 0.4) / 0.6) * 1.05;
+      const wobble = 1 + Math.sin(fx.age * 32) * 0.07 * (1 - t);
+      puff.scale.setScalar(inflate * wobble);
+      spikes.scale.setScalar(inflate * (1.16 + Math.sin(fx.age * 26) * 0.04));
+      pressureRing.scale.setScalar(0.4 + t * 3.1);
+      pressureRing.rotation.z += 0.04;
+      (puff.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.92);
+      (spikes.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.76);
+      (pressureRing.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.62);
     });
   }
 
   private spawnJellyShock(position: THREE.Vector3): void {
     const root = new THREE.Group();
     root.position.copy(position);
+
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.26, 12, 10),
+      new THREE.MeshBasicMaterial({
+        color: 0x90dbff,
+        transparent: true,
+        opacity: 0.72,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    root.add(glow);
 
     const ringA = new THREE.Mesh(
       new THREE.TorusGeometry(0.24, 0.04, 8, 28),
@@ -1325,13 +1442,79 @@ export class ArcadeSceneController {
     ringB.rotation.y = Math.PI / 2;
     root.add(ringB);
 
-    this.addImpactFx(root, 0.34, (fx) => {
+    const boltCount = 11;
+    const segmentCount = 5;
+    const boltPos = new Float32Array(boltCount * segmentCount * 2 * 3);
+    const boltGeo = new THREE.BufferGeometry();
+    const boltAttr = new THREE.BufferAttribute(boltPos, 3);
+    boltGeo.setAttribute('position', boltAttr);
+    const boltMat = new THREE.LineBasicMaterial({
+      color: 0xa7ecff,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const bolts = new THREE.LineSegments(boltGeo, boltMat);
+    root.add(bolts);
+
+    const dirs: THREE.Vector3[] = [];
+    const sideA: THREE.Vector3[] = [];
+    const sideB: THREE.Vector3[] = [];
+    for (let i = 0; i < boltCount; i++) {
+      const d = this.randomUnitVector3();
+      dirs.push(d);
+      let a = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 1, 0));
+      if (a.lengthSq() < 1e-5) a = new THREE.Vector3().crossVectors(d, new THREE.Vector3(1, 0, 0));
+      a.normalize();
+      const b = new THREE.Vector3().crossVectors(d, a).normalize();
+      sideA.push(a);
+      sideB.push(b);
+    }
+
+    this.addImpactFx(root, 0.62, (fx) => {
       const t = Math.min(1, fx.age / fx.life);
-      const s = 0.7 + t * 2.3;
-      ringA.scale.setScalar(s);
-      ringB.scale.setScalar(0.55 + t * 1.9);
-      (ringA.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.86;
-      (ringB.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.72;
+      const shock = 1 - Math.pow(1 - t, 2.3);
+      const radius = 0.45 + shock * 2.7;
+      const jitterTime = fx.age * 75;
+      let cursor = 0;
+      for (let b = 0; b < boltCount; b++) {
+        const d = dirs[b]!;
+        const a = sideA[b]!;
+        const c = sideB[b]!;
+        let px = 0;
+        let py = 0;
+        let pz = 0;
+        for (let s = 0; s < segmentCount; s++) {
+          const u1 = (s + 1) / segmentCount;
+          const noiseAmp = (1 - u1) * (0.28 + (1 - t) * 0.12);
+          const wave = Math.sin(jitterTime + b * 1.7 + s * 2.4);
+          const wave2 = Math.cos(jitterTime * 0.86 + b * 1.1 + s * 1.9);
+          const nx = a.x * wave * noiseAmp + c.x * wave2 * noiseAmp;
+          const ny = a.y * wave * noiseAmp + c.y * wave2 * noiseAmp;
+          const nz = a.z * wave * noiseAmp + c.z * wave2 * noiseAmp;
+          const tx = d.x * (u1 * radius) + nx;
+          const ty = d.y * (u1 * radius) + ny;
+          const tz = d.z * (u1 * radius) + nz;
+          boltPos[cursor++] = px;
+          boltPos[cursor++] = py;
+          boltPos[cursor++] = pz;
+          boltPos[cursor++] = tx;
+          boltPos[cursor++] = ty;
+          boltPos[cursor++] = tz;
+          px = tx;
+          py = ty;
+          pz = tz;
+        }
+      }
+      boltAttr.needsUpdate = true;
+      boltMat.opacity = Math.max(0, (1 - t) * (0.76 + Math.sin(jitterTime) * 0.2));
+      glow.scale.setScalar(0.55 + shock * 1.45);
+      ringA.scale.setScalar(0.7 + shock * 2.8);
+      ringB.scale.setScalar(0.55 + shock * 2.2);
+      (glow.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.68);
+      (ringA.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.88);
+      (ringB.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.74);
     });
   }
 
