@@ -1294,3 +1294,53 @@
     padding: 4px 7px;
   }
 }
+
+/* ============================================
+   AAA Interaction Polish
+   ============================================ */
+
+.ra-root {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ra-btn,
+.ra-chip {
+  min-height: 44px;
+}
+
+.ra-touch-side {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (pointer: coarse) {
+  .ra-btn,
+  .ra-chip {
+    min-height: 46px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .ra-menu-kbd-hint {
+    display: none;
+  }
+
+  .ra-loading-model-shell {
+    transform: scale(0.92);
+    transform-origin: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ra-btn,
+  .ra-chip,
+  .ra-loading-model-shell,
+  .ra-loading-bubble,
+  .ra-loading-text {
+    animation: none !important;
+    transition: none !important;
+  }
+}

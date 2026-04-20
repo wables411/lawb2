@@ -5922,3 +5922,33 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   }
 }
 
+/* ============================================
+   AAA Interaction Polish
+   ============================================ */
+
+.chess-page-simple .chess-game.mobile .mobile-pregame-panel,
+.chess-page-simple .chess-game.mobile .single-setup-panel {
+  scrollbar-gutter: stable both-edges;
+}
+
+@media (max-width: 768px) {
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel,
+  .chess-page-simple .chess-game.mobile .single-setup-panel {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chess-page-simple .chess-game.mobile .mode-selection-compact.mobile-stack .mode-btn-compact,
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .start-btn-compact,
+  .chess-page-simple .chess-game.mobile .single-setup-actions-mobile button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 932px) and (max-height: 430px) and (orientation: landscape) {
+  .chess-page-simple .chess-game.mobile .home-status-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+

@@ -400,3 +400,33 @@ body.chess-route #root {
   }
 }
 
+/* ============================================
+   AAA Interaction Polish
+   ============================================ */
+
+.chess-page-simple {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.chess-page-simple .chess-content-simple,
+.chess-page-simple .chess-main-area {
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 768px) {
+  /* Prevent iOS auto-zoom when focusing form controls */
+  .chess-page-simple input,
+  .chess-page-simple select,
+  .chess-page-simple textarea {
+    font-size: 16px !important;
+  }
+
+  .chess-page-simple button,
+  .chess-page-simple .mode-btn-compact,
+  .chess-page-simple .start-btn-compact {
+    min-height: 44px;
+  }
+}
+
