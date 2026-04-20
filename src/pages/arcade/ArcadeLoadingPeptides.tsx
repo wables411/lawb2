@@ -30,12 +30,12 @@ function normalizeModelPlacement(root: THREE.Object3D): void {
   box.getSize(size);
   box.getCenter(center);
   const maxAxis = Math.max(size.x, size.y, size.z, 0.0001);
-  const targetExtent = 1.65;
+  const targetExtent = 1.26;
   const scale = targetExtent / maxAxis;
   root.scale.setScalar(scale);
   root.position.sub(center.multiplyScalar(scale));
   const post = new THREE.Box3().setFromObject(root);
-  root.position.y += -0.62 - post.min.y;
+  root.position.y += -0.5 - post.min.y;
 }
 
 /**
@@ -50,8 +50,8 @@ export function ArcadeLoadingPeptides() {
     if (!host) return undefined;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 24);
-    camera.position.set(0, 0.2, 3.3);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 24);
+    camera.position.set(0, 0.28, 4.2);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -105,7 +105,7 @@ export function ArcadeLoadingPeptides() {
       if (root) {
         root.rotation.y = t * 0.9;
         root.rotation.z = Math.sin(t * 1.1) * 0.08;
-        root.position.y = -0.62 + Math.sin(t * 2.1) * 0.07;
+        root.position.y = -0.5 + Math.sin(t * 2.1) * 0.07;
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);

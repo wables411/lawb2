@@ -6566,14 +6566,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               <h2 style={{
                 color: '#ff0000',
                 fontFamily: 'Impact, Charcoal, sans-serif',
-                fontSize: isMobile ? '28px' : '48px',
+                fontSize: isMobile ? '22px' : '48px',
                 fontWeight: 'bold',
-                textShadow: '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
+                textShadow: isMobile ? '0 0 8px #ff0000, 0 0 16px #ff0000' : '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
                 marginBottom: isMobile ? '4px' : '10px',
                 marginTop: isMobile ? '0' : undefined,
                 paddingTop: isMobile ? '0' : undefined,
                 textTransform: 'uppercase'
-              }}>PVP CHESS LAWBY</h2>
+              }}>{isMobile ? 'Base PvP Lobby' : 'PVP CHESS LAWBY'}</h2>
               
               {!isConnected ? (
                 <div className="wallet-notice" style={{ marginBottom: '20px', color: '#ff0000' }}>
@@ -6595,9 +6595,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   >
                     Connect Wallet
                   </button>
-                  <div className="pvp-visible-howto" style={{ marginTop: '14px' }}>
-                    <HowToContent />
-                  </div>
+                  {isMobile ? (
+                    <button
+                      type="button"
+                      className="pvp-lobby-howto-btn"
+                      onClick={openHowToGuide}
+                      style={{ marginTop: '12px' }}
+                    >
+                      How To + Piece Key
+                    </button>
+                  ) : (
+                    <div className="pvp-visible-howto" style={{ marginTop: '14px' }}>
+                      <HowToContent />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -6619,13 +6630,34 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     </button>
                   </div>
                   
-                  <div className="lobby-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-                    <div className="actions" style={{ order: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    className="lobby-content"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: isMobile ? '12px' : '20px',
+                      maxHeight: isMobile ? 'calc(100dvh - 220px)' : undefined,
+                      overflow: isMobile ? 'hidden' : undefined,
+                    }}
+                  >
+                    <div
+                      className="actions"
+                      style={{
+                        order: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '10px',
+                        width: isMobile ? '100%' : 'auto',
+                        maxWidth: isMobile ? '420px' : undefined,
+                      }}
+                    >
                       <button 
                         className="create-btn"
                         onClick={() => setIsCreatingGame(true)}
                         disabled={isCreatingGame || isGameCreationInProgress}
-                        style={{ color: '#ff0000' }}
+                        style={{ color: '#ff0000', width: isMobile ? '100%' : undefined }}
                       >
                         Create New Match
                       </button>
@@ -6639,43 +6671,48 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           borderRadius: '0px',
                           cursor: 'pointer',
                           fontFamily: 'Courier New, monospace',
-                          fontSize: '14px',
+                          fontSize: isMobile ? '13px' : '14px',
                           fontWeight: 'bold',
-                          transition: 'all 0.3s ease'
+                          transition: 'all 0.3s ease',
+                          width: isMobile ? '100%' : undefined
                         }}
                       >
                         🔄 Refresh Lobby
                       </button>
 
-                      <button 
-                        onClick={() => window.location.href = '/chess'}
-                        style={{ 
-                          background: 'rgba(255, 0, 0, 0.1)',
-                          border: '2px solid #ff0000',
-                          color: '#ff0000',
-                          padding: '12px 24px',
-                          borderRadius: '0px',
-                          cursor: 'pointer',
-                          fontFamily: 'Courier New, monospace',
-                          fontSize: '16px',
-                          fontWeight: 'bold',
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
-                        🏠 Back to Chess Home
-                      </button>
+                      {!isMobile && (
+                        <button 
+                          onClick={() => window.location.href = '/chess'}
+                          style={{ 
+                            background: 'rgba(255, 0, 0, 0.1)',
+                            border: '2px solid #ff0000',
+                            color: '#ff0000',
+                            padding: '12px 24px',
+                            borderRadius: '0px',
+                            cursor: 'pointer',
+                            fontFamily: 'Courier New, monospace',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          🏠 Back to Chess Home
+                        </button>
+                      )}
                     </div>
 
-                    <div className="pvp-visible-howto" style={{ order: 2 }}>
-                      <HowToContent />
-                    </div>
+                    {!isMobile && (
+                      <div className="pvp-visible-howto" style={{ order: 2 }}>
+                        <HowToContent />
+                      </div>
+                    )}
                     
                     {isCreatingGame && (
                       <div className="create-form" style={{ 
                         order: 3, 
                         marginBottom: '20px',
-                        maxHeight: 'none',
-                        overflowY: 'visible',
+                        maxHeight: isMobile ? '34dvh' : 'none',
+                        overflowY: isMobile ? 'auto' : 'visible',
                         padding: undefined
                       }}>
                         <h3 style={{ 
@@ -6685,26 +6722,43 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         }}>Create New Match</h3>
                         
                         {/* Game Creation Flow Explanation - Desktop/Web */}
-                        <div style={{ 
-                          background: 'rgba(255, 0, 0, 0.1)', 
-                          border: '1px solid #ff0000', 
-                          padding: '12px', 
-                          marginBottom: '15px',
-                          borderRadius: '4px',
-                          fontSize: '13px',
-                          lineHeight: '1.4',
-                          color: '#ff0000'
-                        }}>
-                          <strong>📋 Game Creation Flow:</strong><br/>
-                          1️⃣ <strong>Switch to Base</strong> (Chain ID 8453).<br/>
-                          2️⃣ <strong>Select token + amount</strong> for your wager.<br/>
-                          3️⃣ <strong>Select Piece Set</strong> for this match.<br/>
-                          4️⃣ <strong>Click "Create Game"</strong> and confirm wallet transaction(s).<br/>
-                          &nbsp;&nbsp;&nbsp;• ERC20 tokens usually need <strong>Approve</strong> + <strong>Create Game</strong><br/>
-                          &nbsp;&nbsp;&nbsp;• Native ETH may only need the <strong>Create Game</strong> transaction<br/>
-                          <br/>
-                          <strong>💡 Note:</strong> NFT wagers are still coming soon.
-                        </div>
+                        {isMobile ? (
+                          <div
+                            style={{
+                              background: 'rgba(255, 0, 0, 0.1)',
+                              border: '1px solid #ff0000',
+                              padding: '8px 10px',
+                              marginBottom: '12px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              lineHeight: '1.35',
+                              color: '#ff0000',
+                            }}
+                          >
+                            <strong>Flow:</strong> Base network, token + amount, piece set, confirm wallet tx.
+                          </div>
+                        ) : (
+                          <div style={{ 
+                            background: 'rgba(255, 0, 0, 0.1)', 
+                            border: '1px solid #ff0000', 
+                            padding: '12px', 
+                            marginBottom: '15px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                            color: '#ff0000'
+                          }}>
+                            <strong>📋 Game Creation Flow:</strong><br/>
+                            1️⃣ <strong>Switch to Base</strong> (Chain ID 8453).<br/>
+                            2️⃣ <strong>Select token + amount</strong> for your wager.<br/>
+                            3️⃣ <strong>Select Piece Set</strong> for this match.<br/>
+                            4️⃣ <strong>Click "Create Game"</strong> and confirm wallet transaction(s).<br/>
+                            &nbsp;&nbsp;&nbsp;• ERC20 tokens usually need <strong>Approve</strong> + <strong>Create Game</strong><br/>
+                            &nbsp;&nbsp;&nbsp;• Native ETH may only need the <strong>Create Game</strong> transaction<br/>
+                            <br/>
+                            <strong>💡 Note:</strong> NFT wagers are still coming soon.
+                          </div>
+                        )}
                         
                         <div style={{ marginBottom: '10px', color: '#ff0000', fontWeight: 'bold' }}>
                           Network: Base Mainnet (Chain ID 8453)
@@ -6885,9 +6939,26 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     )}
 
                     
-                    <div className="open-games" style={{ order: 4 }}>
+                    <div
+                      className="open-games"
+                      style={{
+                        order: 4,
+                        flex: isMobile ? '1 1 auto' : undefined,
+                        minHeight: isMobile ? 0 : undefined,
+                        width: isMobile ? '100%' : undefined,
+                      }}
+                    >
                       <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
-                      <div className="games-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div
+                        className="games-list"
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '5px',
+                          maxHeight: isMobile ? '30dvh' : undefined,
+                          overflowY: isMobile ? 'auto' : undefined,
+                        }}
+                      >
                         {openGames.map(game => {
                           console.log('[RENDER LOBBY] Rendering game:', game);
                           
@@ -6936,7 +7007,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             flexDirection: 'column', 
                             alignItems: 'center',
                             gap: '5px',
-                            padding: '8px',
+                            padding: isMobile ? '6px' : '8px',
                             border: '1px solid #333',
                             borderRadius: '3px',
                             backgroundColor: '#000000'

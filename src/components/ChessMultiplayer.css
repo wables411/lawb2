@@ -983,6 +983,200 @@ button.sidebar-menu-btn,
   .pvp-visible-howto {
     max-height: 300px;
   }
+
+  .chess-multiplayer-lobby {
+    padding: 0 10px !important;
+  }
+
+  .chess-multiplayer-lobby .status-bar {
+    margin-bottom: 12px !important;
+    font-size: 12px;
+  }
+
+  .chess-multiplayer-lobby .lobby-content {
+    width: 100%;
+    max-width: 420px;
+    gap: 12px !important;
+  }
+
+  .chess-multiplayer-lobby .lobby-content .actions {
+    width: 100%;
+  }
+
+  .chess-multiplayer-lobby .lobby-content .actions button {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .chess-multiplayer-lobby .open-games {
+    width: 100%;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 120px);
+    min-height: calc(100dvh - 120px);
+    max-height: calc(100dvh - 120px);
+    overflow: hidden;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .lobby-content {
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games .games-list {
+    padding-right: 2px;
+  }
+}
+
+/* ============================================
+   Device Profiles: Lawb Chess PvP lobby
+   iPhone (<=430), Samsung phones (431-767),
+   tablets/iPad (768-1180), desktop (>=1181)
+   ============================================ */
+
+/* iPhone / small phones */
+@media (max-width: 430px) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 114px);
+    min-height: calc(100dvh - 114px);
+    max-height: calc(100dvh - 114px);
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games .games-list {
+    max-height: 28dvh !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form {
+    max-height: 32dvh !important;
+  }
+}
+
+/* Samsung / larger phones */
+@media (min-width: 431px) and (max-width: 767px) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games .games-list {
+    max-height: 30dvh !important;
+  }
+}
+
+/* iPad / tablet touch layout */
+@media (min-width: 768px) and (max-width: 1180px) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 92px);
+    min-height: calc(100dvh - 92px);
+    max-height: calc(100dvh - 92px);
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .lobby-content {
+    max-width: 820px;
+    gap: 14px !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .lobby-content .actions {
+    max-width: 520px;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form {
+    max-height: 36dvh !important;
+    overflow-y: auto !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games .games-list {
+    max-height: 30dvh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Exact viewport presets (portrait + landscape) */
+
+/* iPhone 390x844 portrait baseline */
+@media (min-width: 375px) and (max-width: 430px) and (min-height: 780px) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 110px);
+    min-height: calc(100dvh - 110px);
+    max-height: calc(100dvh - 110px);
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form {
+    max-height: 34dvh !important;
+  }
+}
+
+/* Galaxy 360x780 portrait baseline */
+@media (max-width: 374px) and (min-height: 740px) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 108px);
+    min-height: calc(100dvh - 108px);
+    max-height: calc(100dvh - 108px);
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form,
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games .games-list {
+    max-height: 31dvh !important;
+  }
+}
+
+/* iPad 820x1180 portrait baseline */
+@media (min-width: 820px) and (max-width: 900px) and (min-height: 1080px) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    max-width: 860px;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form {
+    max-height: 34dvh !important;
+  }
+}
+
+/* iPad landscape baseline (1180x820 class) */
+@media (min-width: 1024px) and (max-width: 1180px) and (max-height: 900px) and (orientation: landscape) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 84px);
+    min-height: calc(100dvh - 84px);
+    max-height: calc(100dvh - 84px);
+    max-width: 960px;
+  }
+}
+
+/* Phone landscape anti-clipping (iPhone/Galaxy landscape) */
+@media (max-width: 932px) and (max-height: 430px) and (orientation: landscape) {
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby {
+    height: calc(100dvh - 60px);
+    min-height: calc(100dvh - 60px);
+    max-height: calc(100dvh - 60px);
+    padding: 0 8px !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .status-bar {
+    margin-bottom: 8px !important;
+    font-size: 11px;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .lobby-content {
+    gap: 8px !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .create-form,
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .open-games .games-list {
+    max-height: 30dvh !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .chess-multiplayer-lobby .lobby-content .actions button {
+    min-height: 36px;
+    font-size: 11px;
+  }
 }
 
 .chessboard-container {

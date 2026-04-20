@@ -1861,14 +1861,16 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <div className="piece-set-selection-panel single-setup-panel">
             <h2 className="single-setup-title">Single Player Setup</h2>
             <p className="single-setup-subtitle">
-              Pick your chess set, choose difficulty, and start your match.
+              {isMobile ? 'Pick your set and difficulty, then start.' : 'Pick your chess set, choose difficulty, and start your match.'}
             </p>
 
             <div className="single-setup-perks">
               <div className="single-setup-perks-title">Chess Title: {collectionPerks.playerTitle}</div>
-              <div>
-                Collection score: {collectionPerks.weightedHoldingsScore} | Total NFTs tracked: {collectionPerks.totalNfts}
-              </div>
+              {!isMobile && (
+                <div>
+                  Collection score: {collectionPerks.weightedHoldingsScore} | Total NFTs tracked: {collectionPerks.totalNfts}
+                </div>
+              )}
               {isLoadingCollectionPerks && (
                 <div className="single-setup-perks-note">Syncing collection perks...</div>
               )}
@@ -1933,7 +1935,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </div>
             </div>
 
-            <div className="single-setup-actions">
+            <div className={`single-setup-actions ${isMobile ? 'single-setup-actions-mobile' : ''}`}>
               <button className="single-setup-start-btn" onClick={() => { startGame(); }}>
                 Start Match
               </button>
@@ -2477,14 +2479,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Show home/mode selection UI if not in a game and not picking difficulty or piece set
   if (!showGame && !showDifficulty && !showPieceSetSelector) {
     return (
-      <div className="chess-game">
+      <div className={`chess-game ${isMobile ? 'mobile mobile-device' : 'desktop'}`}>
         <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="center-area">
           </div>
-          <div className="game-mode-panel-streamlined">
+          <div className={`game-mode-panel-streamlined ${isMobile ? 'mobile-pregame-panel' : ''}`}>
             {/* Status Display and Network Switching - Visible on mobile with compact styling */}
-            <div style={{ 
+            <div className="home-status-card" style={{ 
               textAlign: 'center', 
               marginBottom: isMobile ? '4px' : '20px',
               marginTop: isMobile ? '0px' : '0px',
@@ -2496,7 +2498,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               fontSize: isMobile ? '11px' : '14px',
               lineHeight: isMobile ? '1.2' : 'normal'
             }}>
-              <div style={{ 
+              <div className="home-status-text" style={{ 
                 color: '#ff0000', 
                 fontSize: isMobile ? '11px' : '14px', 
                 fontWeight: 'bold',
@@ -2519,21 +2521,34 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               {/* Chain switching no longer required for single-player - any EVM chain works */}
             </div>
 
-            <div className="setup-quick-guide">
-              <div className="setup-quick-guide-header">
-                <h3>Lawb Chess Beta 3000 Setup</h3>
+            {isMobile ? (
+              <div className="setup-quick-guide setup-quick-guide-mobile">
+                <p>Choose mode, then continue to setup. PvP opens the Base wager lobby.</p>
                 <button
                   type="button"
                   className="setup-guide-btn"
                   onClick={openHowToGuide}
                 >
-                  Open Full How To
+                  How To + Piece Key
                 </button>
               </div>
-              <p>Play VS AI immediately, or switch to PvP for Base chain wager matches.</p>
-            </div>
+            ) : (
+              <div className="setup-quick-guide">
+                <div className="setup-quick-guide-header">
+                  <h3>Lawb Chess Beta 3000 Setup</h3>
+                  <button
+                    type="button"
+                    className="setup-guide-btn"
+                    onClick={openHowToGuide}
+                  >
+                    Open Full How To
+                  </button>
+                </div>
+                <p>Play VS AI immediately, or switch to PvP for Base chain wager matches.</p>
+              </div>
+            )}
             
-            <div className="mode-selection-compact">
+            <div className={`mode-selection-compact ${isMobile ? 'mobile-stack' : ''}`}>
               <button 
                 className={`mode-btn-compact chess-primary-btn ${gameMode === 'ai' ? 'selected' : ''}`}
                 onClick={() => setGameMode('ai')}
@@ -2557,33 +2572,43 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             )}
             {isOnline && (
               <div className="pvp-info">
-                <p>Base-only PvP wager lobby</p>
-                <p>Create or join token matches on Base mainnet</p>
+                {isMobile ? (
+                  <p>Base-only PvP wager lobby.</p>
+                ) : (
+                  <>
+                    <p>Base-only PvP wager lobby</p>
+                    <p>Create or join token matches on Base mainnet</p>
+                  </>
+                )}
               </div>
             )}
-            <div className="help-section-compact visible-howto-panel">
-              <HowToContent />
-            </div>
-            {/* Chessboards GIF */}
-            <div style={{
-              textAlign: 'center', 
-              marginTop: isMobile ? '4px' : '8px', 
-              marginBottom: isMobile ? '8px' : '20px',
-              paddingBottom: isMobile ? '8px' : '0px'
-            }}>
-              <img 
-                src="/images/chessboards.gif" 
-                alt="Chessboards Animation" 
-                style={{
-                  maxWidth: isMobile ? '100%' : '60%',
-                  width: isMobile ? '100%' : '60%',
-                  height: 'auto',
-                  borderRadius: '0px',
-                  boxShadow: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+            {!isMobile && (
+              <>
+                <div className="help-section-compact visible-howto-panel">
+                  <HowToContent />
+                </div>
+                {/* Chessboards GIF */}
+                <div style={{
+                  textAlign: 'center',
+                  marginTop: '8px',
+                  marginBottom: '20px',
+                  paddingBottom: '0px'
+                }}>
+                  <img
+                    src="/images/chessboards.gif"
+                    alt="Chessboards Animation"
+                    style={{
+                      maxWidth: '60%',
+                      width: '60%',
+                      height: 'auto',
+                      borderRadius: '0px',
+                      boxShadow: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </>
+            )}
             {/* Sidebar toggle buttons removed - use menu button instead */}
           </div>
         </div>
@@ -3604,8 +3629,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           ) : showPieceSetSelector ? (
             renderPieceSetSelector()
           ) : (
-            <div className="game-mode-panel-streamlined">
-              <div className="mode-selection-compact">
+            <div className={`game-mode-panel-streamlined ${isMobile ? 'mobile-pregame-panel' : ''}`}>
+              <div className={`mode-selection-compact ${isMobile ? 'mobile-stack' : ''}`}>
                 <button 
                   className={`mode-btn-compact chess-primary-btn ${gameMode === 'ai' ? 'selected' : ''}`}
                   onClick={() => setGameMode('ai')}
@@ -3626,29 +3651,39 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {isOnline && (
                 <div className="pvp-info">
-                  <p>Base-only PvP wager lobby</p>
-                  <p>Create or join token matches on Base mainnet</p>
+                  {isMobile ? (
+                    <p>Base-only PvP wager lobby.</p>
+                  ) : (
+                    <>
+                      <p>Base-only PvP wager lobby</p>
+                      <p>Create or join token matches on Base mainnet</p>
+                    </>
+                  )}
                 </div>
               )}
-              {/* Help Section - Use HowToContent component */}
-              <div className="help-section-compact">
-                <HowToContent />
-              </div>
-              {/* Chessboards GIF */}
-              <div style={{textAlign: 'center', marginTop: '8px', marginBottom: '20px'}}>
-                <img 
-                  src="/images/chessboards.gif" 
-                  alt="Chessboards Animation" 
-                  style={{
-                    maxWidth: '60%',
-                    width: '60%',
-                    height: 'auto',
-                    borderRadius: '0px',
-                    boxShadow: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
+              {!isMobile && (
+                <>
+                  {/* Help Section - Use HowToContent component */}
+                  <div className="help-section-compact">
+                    <HowToContent />
+                  </div>
+                  {/* Chessboards GIF */}
+                  <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '20px' }}>
+                    <img
+                      src="/images/chessboards.gif"
+                      alt="Chessboards Animation"
+                      style={{
+                        maxWidth: '60%',
+                        width: '60%',
+                        height: 'auto',
+                        borderRadius: '0px',
+                        boxShadow: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
               {/* Sidebar toggle buttons removed - use menu button instead */}
             </div>
           )}
