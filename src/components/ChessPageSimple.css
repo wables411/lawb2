@@ -255,3 +255,18 @@ body.chess-route #root {
   }
 }
 
+/* Linux-style page shell */
+.chess-page-simple {
+  background:
+    radial-gradient(circle at 16% 20%, rgba(108, 128, 166, 0.2), transparent 32%),
+    radial-gradient(circle at 82% 14%, rgba(83, 105, 139, 0.16), transparent 28%),
+    linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.lawb-app-light-mode .chess-page-simple {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(146, 176, 214, 0.25), transparent 34%),
+    radial-gradient(circle at 86% 12%, rgba(175, 198, 226, 0.22), transparent 30%),
+    linear-gradient(180deg, #f7fbff 0%, #e6edf8 100%);
+}
+

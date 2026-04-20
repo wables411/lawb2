@@ -930,6 +930,61 @@ button.sidebar-menu-btn,
   box-sizing: border-box;
 }
 
+.pvp-lobby-intro-card {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto 14px auto;
+  padding: 12px;
+  border: 2px outset #fff;
+  background: rgba(0, 0, 0, 0.72);
+  color: #ff0000;
+  text-align: left;
+}
+
+.pvp-lobby-intro-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.pvp-lobby-intro-text {
+  font-size: 12px;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.pvp-lobby-howto-btn {
+  border: 2px outset #fff;
+  background: #c0c0c0;
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.pvp-lobby-howto-btn:active {
+  border: 2px inset #fff;
+}
+
+.pvp-visible-howto {
+  width: 100%;
+  max-width: 620px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .pvp-lobby-intro-card {
+    margin-bottom: 10px;
+    padding: 10px;
+  }
+
+  .pvp-visible-howto {
+    max-height: 300px;
+  }
+}
+
 .chessboard-container {
   width: 100%;
   height: 100%;
@@ -3956,4 +4011,334 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
     max-height: calc(80vh - 200px);
     min-height: 200px;
   }
-} 
+}
+
+/* ============================================
+   Linux Theme Pass - PvP Lobby
+   ============================================ */
+.chess-page-simple .chess-multiplayer-lobby {
+  --linux-panel-top: #4f5c72;
+  --linux-panel-bottom: #2f394b;
+  --linux-border: #1b2330;
+  --linux-text: #e2e8f0;
+  --linux-muted: #c5d0df;
+  --linux-accent: #90cdf4;
+  --linux-button-top: #5f6d85;
+  --linux-button-bottom: #4a5568;
+  --linux-button-border: #2d3748;
+}
+
+.chess-page-simple .chess-multiplayer-lobby > h2 {
+  color: #d9ecff !important;
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif !important;
+  font-size: clamp(1.6rem, 4vw, 2.3rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-transform: none !important;
+  text-shadow: none !important;
+  margin-bottom: 12px !important;
+}
+
+.chess-page-simple .wallet-notice,
+.chess-page-simple .status-bar,
+.chess-page-simple .pvp-lobby-intro-card,
+.chess-page-simple .create-form,
+.chess-page-simple .open-games,
+.chess-page-simple .game-item,
+.chess-page-simple .no-games,
+.chess-page-simple .pvp-visible-howto {
+  background: linear-gradient(180deg, var(--linux-panel-top), var(--linux-panel-bottom)) !important;
+  border: 1px solid var(--linux-border) !important;
+  border-radius: 10px !important;
+  color: var(--linux-text) !important;
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.24) !important;
+}
+
+.chess-page-simple .pvp-lobby-intro-title,
+.chess-page-simple .pvp-lobby-intro-text,
+.chess-page-simple .wallet-notice,
+.chess-page-simple .status-bar,
+.chess-page-simple .create-form h3,
+.chess-page-simple .create-form label,
+.chess-page-simple .create-form strong,
+.chess-page-simple .open-games h3,
+.chess-page-simple .game-details,
+.chess-page-simple .game-id,
+.chess-page-simple .wager,
+.chess-page-simple .creator,
+.chess-page-simple .no-games {
+  color: var(--linux-text) !important;
+  text-shadow: none !important;
+}
+
+.chess-page-simple .actions > button,
+.chess-page-simple .pvp-lobby-howto-btn,
+.chess-page-simple .join-btn,
+.chess-page-simple .create-confirm-btn,
+.chess-page-simple .cancel-btn,
+.chess-page-simple .wallet-notice button,
+.chess-page-simple .create-form button {
+  background: linear-gradient(180deg, var(--linux-button-top), var(--linux-button-bottom)) !important;
+  border: 1px solid var(--linux-button-border) !important;
+  border-radius: 6px !important;
+  color: var(--linux-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif !important;
+  text-transform: none !important;
+  letter-spacing: 0.01em !important;
+}
+
+.chess-page-simple .actions > button:hover,
+.chess-page-simple .pvp-lobby-howto-btn:hover,
+.chess-page-simple .join-btn:hover,
+.chess-page-simple .create-confirm-btn:hover,
+.chess-page-simple .cancel-btn:hover,
+.chess-page-simple .wallet-notice button:hover,
+.chess-page-simple .create-form button:hover {
+  filter: brightness(1.08);
+}
+
+.chess-page-simple .create-btn,
+.chess-page-simple .create-confirm-btn {
+  border-color: var(--linux-accent) !important;
+}
+
+.chess-page-simple .create-form > div[style*="Game Creation Flow"],
+.chess-page-simple .create-form > div[style*="Game Creation Flow"] * {
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .create-form div[style*="rgba(255, 0, 0, 0.1)"] {
+  background: rgba(11, 19, 31, 0.44) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.chess-page-simple .create-form div[style*="Network: Base Mainnet"] {
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .game-item {
+  background: rgba(15, 24, 39, 0.55) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.chess-page-simple .no-games > div {
+  color: var(--linux-text) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-lobby > h2 {
+  color: #21324a !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .wallet-notice,
+.lawb-app-light-mode .chess-page-simple .status-bar,
+.lawb-app-light-mode .chess-page-simple .pvp-lobby-intro-card,
+.lawb-app-light-mode .chess-page-simple .create-form,
+.lawb-app-light-mode .chess-page-simple .open-games,
+.lawb-app-light-mode .chess-page-simple .game-item,
+.lawb-app-light-mode .chess-page-simple .no-games,
+.lawb-app-light-mode .chess-page-simple .pvp-visible-howto {
+  background: linear-gradient(180deg, #f8fbff, #e7eef8) !important;
+  border-color: #b8c6da !important;
+  box-shadow: 0 10px 18px rgba(10, 22, 40, 0.12) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .pvp-lobby-intro-title,
+.lawb-app-light-mode .chess-page-simple .pvp-lobby-intro-text,
+.lawb-app-light-mode .chess-page-simple .wallet-notice,
+.lawb-app-light-mode .chess-page-simple .status-bar,
+.lawb-app-light-mode .chess-page-simple .create-form h3,
+.lawb-app-light-mode .chess-page-simple .create-form label,
+.lawb-app-light-mode .chess-page-simple .create-form strong,
+.lawb-app-light-mode .chess-page-simple .open-games h3,
+.lawb-app-light-mode .chess-page-simple .game-details,
+.lawb-app-light-mode .chess-page-simple .game-id,
+.lawb-app-light-mode .chess-page-simple .wager,
+.lawb-app-light-mode .chess-page-simple .creator,
+.lawb-app-light-mode .chess-page-simple .no-games,
+.lawb-app-light-mode .chess-page-simple .no-games > div {
+  color: #223046 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .actions > button,
+.lawb-app-light-mode .chess-page-simple .pvp-lobby-howto-btn,
+.lawb-app-light-mode .chess-page-simple .join-btn,
+.lawb-app-light-mode .chess-page-simple .create-confirm-btn,
+.lawb-app-light-mode .chess-page-simple .cancel-btn,
+.lawb-app-light-mode .chess-page-simple .wallet-notice button,
+.lawb-app-light-mode .chess-page-simple .create-form button {
+  background: linear-gradient(180deg, #f0f5ff, #d9e4f6) !important;
+  border-color: #9fb2cc !important;
+  color: #1f2f47 !important;
+}
+
+@media (max-width: 768px) {
+  .chess-page-simple .chess-multiplayer-lobby {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .chess-page-simple .wallet-notice,
+  .chess-page-simple .status-bar,
+  .chess-page-simple .pvp-lobby-intro-card,
+  .chess-page-simple .create-form,
+  .chess-page-simple .open-games,
+  .chess-page-simple .pvp-visible-howto {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* ============================================
+   Linux Polish - PvP Overlays + Waiting
+   ============================================ */
+.chess-page-simple .chess-multiplayer-waiting {
+  background: linear-gradient(180deg, #4f5c72, #2f394b) !important;
+  border: 1px solid #1b2330 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.3) !important;
+  text-shadow: none !important;
+  color: #e2e8f0 !important;
+  max-width: 700px;
+  width: 100%;
+  margin: 10px auto 0 auto;
+}
+
+.chess-page-simple .chess-multiplayer-waiting h2,
+.chess-page-simple .chess-multiplayer-waiting .game-code,
+.chess-page-simple .chess-multiplayer-waiting .game-info p,
+.chess-page-simple .chess-multiplayer-waiting .refund-note {
+  color: #e2e8f0 !important;
+  text-shadow: none !important;
+}
+
+.chess-page-simple .chess-multiplayer-waiting .game-info {
+  background: rgba(11, 19, 31, 0.42) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  margin-bottom: 18px !important;
+}
+
+.chess-page-simple .chess-multiplayer-waiting .refund-game-btn {
+  background: linear-gradient(180deg, #5f6d85, #4a5568) !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 8px !important;
+  color: #e2e8f0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.chess-page-simple .chess-multiplayer-waiting .refund-game-btn:hover {
+  filter: brightness(1.08);
+}
+
+.chess-page-simple .chess-multiplayer-waiting .refund-game-btn:disabled {
+  background: #526177 !important;
+  border-color: #3a4558 !important;
+  color: #aebed4 !important;
+}
+
+.chess-page-simple .chat-compact,
+.chess-page-simple .leaderboard-compact,
+.chess-page-simple .move-history-compact {
+  background: rgba(13, 21, 34, 0.56) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 10px !important;
+  color: #dbe6f6 !important;
+}
+
+.chess-page-simple .chat-compact-tab,
+.chess-page-simple .chat-compact-message,
+.chess-page-simple .chat-compact-input-field,
+.chess-page-simple .chat-compact-send-btn {
+  background: rgba(11, 18, 29, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #dbe6f6 !important;
+}
+
+.chess-page-simple .chat-compact-tab.active {
+  border-color: #90cdf4 !important;
+  box-shadow: inset 0 0 0 1px rgba(144, 205, 244, 0.4) !important;
+}
+
+.chess-page-simple .chat-compact-content {
+  color: #e2e8f0 !important;
+}
+
+.chess-page-simple .leaderboard-table-compact th,
+.chess-page-simple .leaderboard-table-compact td,
+.chess-page-simple .move-history-list-compact li {
+  color: #dbe6f6 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  background: rgba(9, 15, 24, 0.38) !important;
+}
+
+.chess-page-simple .victory-overlay,
+.chess-page-simple .defeat-overlay {
+  background: rgba(10, 16, 26, 0.72) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.chess-page-simple .victory-overlay .victory-modal,
+.chess-page-simple .defeat-overlay .victory-modal {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+}
+
+.chess-page-simple .victory-overlay .victory-content,
+.chess-page-simple .defeat-overlay .victory-content {
+  background: linear-gradient(180deg, #4f5c72, #2f394b) !important;
+  border: 1px solid #1b2330 !important;
+  border-radius: 12px !important;
+  color: #e2e8f0 !important;
+  text-shadow: none !important;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.34) !important;
+}
+
+.chess-page-simple .defeat-overlay .victory-content {
+  border-color: #803b44 !important;
+  background: linear-gradient(180deg, #5a3f4a, #33232b) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting,
+.lawb-app-light-mode .chess-page-simple .victory-overlay .victory-content {
+  background: linear-gradient(180deg, #f8fbff, #e7eef8) !important;
+  border-color: #b8c6da !important;
+  color: #223046 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting h2,
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting .game-code,
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting .game-info p,
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting .refund-note,
+.lawb-app-light-mode .chess-page-simple .chat-compact-content {
+  color: #223046 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting .game-info,
+.lawb-app-light-mode .chess-page-simple .chat-compact,
+.lawb-app-light-mode .chess-page-simple .leaderboard-compact,
+.lawb-app-light-mode .chess-page-simple .move-history-compact {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: #c5d2e6 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-multiplayer-waiting .refund-game-btn {
+  background: linear-gradient(180deg, #f0f5ff, #d9e4f6) !important;
+  border-color: #9fb2cc !important;
+  color: #1f2f47 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chat-compact-tab,
+.lawb-app-light-mode .chess-page-simple .chat-compact-message,
+.lawb-app-light-mode .chess-page-simple .chat-compact-input-field,
+.lawb-app-light-mode .chess-page-simple .chat-compact-send-btn,
+.lawb-app-light-mode .chess-page-simple .leaderboard-table-compact th,
+.lawb-app-light-mode .chess-page-simple .leaderboard-table-compact td,
+.lawb-app-light-mode .chess-page-simple .move-history-list-compact li {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: #c5d2e6 !important;
+  color: #223046 !important;
+}

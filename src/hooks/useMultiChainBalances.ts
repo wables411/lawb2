@@ -1,44 +1,55 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchAllSolanaBalances, type SolanaBalances } from '../utils/solanaBalances';
+import { basePublicRpcHttpUrls } from '../utils/baseRpcPublic';
 
 const CLAWB_BASE_ADDRESS = '0x26a43bd8a28a0423afb5725b8242ec0a40947b07';
 const LAWB_ARB_ADDRESS = '0x741f8FbF42485E772D97f1955c31a5B8098aC962';
 
-const BASE_RPC = 'https://mainnet.base.org';
-const ARB_RPC = 'https://arb1.arbitrum.io/rpc';
+const ARB_RPCS = ['https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com'];
 
 const ERC20_BALANCE_SELECTOR = '0x70a08231';
 const RPC_TIMEOUT = 12_000;
 const POLL_INTERVAL = 60_000;
 
 async function fetchErc20Balance(
-  rpcUrl: string,
+  rpcUrls: string[],
   tokenAddress: string,
   walletAddress: string,
   decimals: number,
 ): Promise<number> {
-  try {
-    const paddedWallet = '0x' + walletAddress.replace('0x', '').toLowerCase().padStart(64, '0');
-    const data = ERC20_BALANCE_SELECTOR + paddedWallet.slice(2);
-    const res = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_call',
-        params: [{ to: tokenAddress, data }, 'latest'],
-      }),
-      signal: AbortSignal.timeout(RPC_TIMEOUT),
-    });
-    const json = await res.json();
-    if (!json.result || json.result === '0x') return 0;
-    const raw = BigInt(json.result);
-    return Number(raw) / 10 ** decimals;
-  } catch (err) {
-    console.error(`[EVM] Balance fetch failed (${tokenAddress} on ${rpcUrl}):`, err);
-    return 0;
+  const paddedWallet = '0x' + walletAddress.replace('0x', '').toLowerCase().padStart(64, '0');
+  const data = ERC20_BALANCE_SELECTOR + paddedWallet.slice(2);
+
+  for (const rpcUrl of rpcUrls) {
+    try {
+      const res = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_call',
+          params: [{ to: tokenAddress, data }, 'latest'],
+        }),
+        signal: AbortSignal.timeout(RPC_TIMEOUT),
+      });
+
+      if (!res.ok) {
+        // Try next RPC endpoint on rate limit / transient endpoint failures.
+        continue;
+      }
+
+      const json = await res.json();
+      if (!json.result || json.result === '0x') return 0;
+      const raw = BigInt(json.result);
+      return Number(raw) / 10 ** decimals;
+    } catch {
+      // Swallow and try the next endpoint.
+      continue;
+    }
   }
+
+  return 0;
 }
 
 export interface MultiChainBalances {
@@ -78,10 +89,10 @@ export function useMultiChainBalances(
     try {
       const [clawbBase, lawbArb, solBalances] = await Promise.all([
         evmAddress
-          ? fetchErc20Balance(BASE_RPC, CLAWB_BASE_ADDRESS, evmAddress, 18)
+          ? fetchErc20Balance(basePublicRpcHttpUrls(), CLAWB_BASE_ADDRESS, evmAddress, 18)
           : Promise.resolve(0),
         evmAddress
-          ? fetchErc20Balance(ARB_RPC, LAWB_ARB_ADDRESS, evmAddress, 6)
+          ? fetchErc20Balance(ARB_RPCS, LAWB_ARB_ADDRESS, evmAddress, 6)
           : Promise.resolve(0),
         solanaAddress
           ? fetchAllSolanaBalances(solanaAddress)

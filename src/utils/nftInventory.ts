@@ -18,6 +18,9 @@ const ETHEREUM_RPC_ENDPOINTS = [
 ];
 
 const LOG_CHUNK_BLOCKS = 100_000;
+const LAWB_LORE_404_BACKOFF_MS = 6 * 60 * 60 * 1000;
+const ENABLE_LAWB_LORE_SCATTER_FETCH = false;
+let lawbLoreSkipUntil = 0;
 
 async function getLogsChunked(
   provider: JsonRpcProvider,
@@ -910,28 +913,35 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
     }
   }
 
-  // Lawb Lore (Ethereum) — Scatter collection slug aligned with OpenSea /lawb-lore
-  try {
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Fetching Lawb Lore for', walletAddress, 'from Scatter API');
-    }
-    const response = await getCollectionNFTs('lawb-lore', 1, 200, walletAddress);
-    const ownerLower = walletAddress.toLowerCase();
-    inventory.lawb_lore = response.data
-      .filter((nft) => (nft.owner_of || '').toLowerCase() === ownerLower)
-      .map((nft) => nft.token_id.toString());
-    if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[NFT] Found', inventory.lawb_lore.length, 'Lawb Lore from Scatter API');
-    }
-  } catch (error: unknown) {
-    const st =
-      typeof error === 'object' && error !== null && 'status' in error
-        ? (error as { status: number }).status
-        : undefined;
-    if (st !== 404 && typeof window !== 'undefined' && window.console) {
-      window.console.warn('[NFT] Lawb Lore fetch failed (non-fatal):', error);
-    }
+  // Lawb Lore (Ethereum) — Scatter slug `lawb-lore` currently returns 404 in production.
+  // Back off aggressively to avoid spamming failed network requests every profile refresh.
+  if (!ENABLE_LAWB_LORE_SCATTER_FETCH || Date.now() < lawbLoreSkipUntil) {
     inventory.lawb_lore = [];
+  } else {
+    try {
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] Fetching Lawb Lore for', walletAddress, 'from Scatter API');
+      }
+      const response = await getCollectionNFTs('lawb-lore', 1, 200, walletAddress);
+      const ownerLower = walletAddress.toLowerCase();
+      inventory.lawb_lore = response.data
+        .filter((nft) => (nft.owner_of || '').toLowerCase() === ownerLower)
+        .map((nft) => nft.token_id.toString());
+      if (typeof window !== 'undefined' && window.console) {
+        window.console.log('[NFT] Found', inventory.lawb_lore.length, 'Lawb Lore from Scatter API');
+      }
+    } catch (error: unknown) {
+      const st =
+        typeof error === 'object' && error !== null && 'status' in error
+          ? (error as { status: number }).status
+          : undefined;
+      if (st === 404) {
+        lawbLoreSkipUntil = Date.now() + LAWB_LORE_404_BACKOFF_MS;
+      } else if (typeof window !== 'undefined' && window.console) {
+        window.console.warn('[NFT] Lawb Lore fetch failed (non-fatal):', error);
+      }
+      inventory.lawb_lore = [];
+    }
   }
 
   return inventory;

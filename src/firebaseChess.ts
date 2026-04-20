@@ -221,7 +221,7 @@ export const firebaseChess = {
         .filter((game: any) => {
           const isPublic = game.is_public !== false;
           const noRedPlayer = !game.red_player || game.red_player === '0x0000000000000000000000000000000000000000';
-          const matchesChain = !filterChain || !game.chain || game.chain === filterChain;
+          const matchesChain = !filterChain || game.chain === filterChain;
           return isPublic && noRedPlayer && matchesChain;
         });
       openGames.sort((a: any, b: any) =>

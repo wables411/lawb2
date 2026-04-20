@@ -24,7 +24,7 @@ export const ChainSelector: React.FC<ChainSelectorProps> = ({
   }
 
   const chains = [
-    { id: 'sanko' as const, name: 'Sanko', icon: '🎮', chainId: NETWORKS.mainnet.chainId },
+    { id: 'sanko' as const, name: 'Sanko (Sunset)', icon: '🎮', chainId: NETWORKS.mainnet.chainId, comingSoon: true },
     { id: 'base' as const, name: 'Base', icon: '🔵', chainId: NETWORKS.base.chainId },
     { id: 'arbitrum' as const, name: 'Arbitrum', icon: '🔷', chainId: NETWORKS.arbitrum.chainId, comingSoon: true },
   ];

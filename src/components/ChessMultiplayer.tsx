@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useSwitchChain } from 'wagmi';
 import { 
   updateLeaderboardEntry, 
@@ -17,14 +17,18 @@ import './ChessMultiplayer.css';
 import './ChessGameModern.css';
 import { BrowserProvider, Contract } from 'ethers';
 import { TokenSelector } from './TokenSelector';
-import { ChainSelector } from './ChainSelector';
 import { useTokenBalance, useTokenAllowance, useApproveToken } from '../hooks/useTokens';
 import { useMobileCapabilities } from '../hooks/useMediaQuery';
 import { SUPPORTED_TOKENS, CONTRACT_ADDRESSES, NETWORKS, TOKEN_ADDRESSES_BY_CHAIN, type TokenSymbol, getTokenAddressForChain, getDefaultTokenForChain } from '../config/tokens';
 import { CHESS_CONTRACT_ABI, ERC20_ABI } from '../config/abis';
-import { getDefaultPieceSet, getPixelawbsPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
+import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
-import { checkPixelawbsNFTOwnership, type NFTVerificationResult } from '../utils/nftVerification';
+import { checkPixelawbsNFTOwnership } from '../utils/nftVerification';
+import {
+  EMPTY_NFT_INVENTORY,
+  buildChessCollectionPerks,
+  normalizeChessCollectionInventory,
+} from '../utils/chessCollectionPerks';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
@@ -513,19 +517,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       
       if (!winnerAddress) {
-        console.log('[CLAIM] Trying fallback winner determination...');
-        
-        // Fallback: If game is finished but no winner in Firebase, determine from game state
-        if (gameData.game_state === 'finished' && gameData.blue_player && gameData.red_player) {
-          // If current player is claiming and game is finished, they are likely the winner
-          // This is a reasonable fallback for cases where Firebase update failed
-          winnerAddress = address;
-          console.log('[CLAIM] Using fallback winner determination:', winnerAddress);
-        } else {
-          console.error('[CLAIM] Could not determine winner address');
-          alert('Failed to verify winner. Please try again.');
-          return;
-        }
+        console.error('[CLAIM] Could not determine winner address');
+        alert('Failed to verify winner. Please try again.');
+        return;
       }
       
       console.log('[CLAIM] Winner verification details:', {
@@ -693,8 +687,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   console.log('[PIECE_IMAGES_INIT] Initialized immediately with', Object.keys(pieceImages).length, 'pieces:', Object.keys(pieceImages));
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
-  const [nftVerificationResult, setNftVerificationResult] = useState<NFTVerificationResult | null>(null);
-  const [isCheckingNFT, setIsCheckingNFT] = useState(false);
+  const [collectionInventory, setCollectionInventory] = useState(EMPTY_NFT_INVENTORY);
+  const [isLoadingCollectionPerks, setIsLoadingCollectionPerks] = useState(false);
+  const [collectionPerksError, setCollectionPerksError] = useState<string | null>(null);
+  const collectionPerks = useMemo(
+    () => buildChessCollectionPerks(collectionInventory),
+    [collectionInventory],
+  );
   
   // Multiplayer state
   const [playerColor, setPlayerColor] = useState<'blue' | 'red' | null>(null);
@@ -730,14 +729,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // Determine current chain from chainId and set default token
   useEffect(() => {
     if (chainId === NETWORKS.mainnet.chainId) {
-      setSelectedChain('sanko');
-      // Reset to token wager on Sanko (NFT not supported)
+      // Sanko has sunsetted for PvP chess. Keep UI aligned with Base-only flow.
+      setSelectedChain('base');
       if (wagerType === 'nft') {
         setWagerType('token');
       }
-      // Set default token for Sanko
-      if (selectedToken === 'NATIVE_DMT' || selectedToken === 'ETH') {
-        setSelectedToken('NATIVE_DMT');
+      if (selectedToken === 'NATIVE_DMT') {
+        setSelectedToken('ETH');
       }
     } else if (chainId === NETWORKS.base.chainId) {
       setSelectedChain('base');
@@ -1299,31 +1297,73 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   useEffect(() => {
   }, [showPieceSetSelector]);
 
-  // Check NFT ownership when piece set selector is shown
+  // Load profile-backed collection perks when piece-set selector opens.
   useEffect(() => {
-    if (showPieceSetSelector && address) {
-      const checkNFT = async () => {
-        setIsCheckingNFT(true);
-        try {
-          // Use cross-chain verification - works regardless of current network
-          const result = await checkPixelawbsNFTOwnership(address);
-          setNftVerificationResult(result);
-          console.log('[NFT_VERIFICATION] Result:', result);
-        } catch (error) {
-          console.error('[NFT_VERIFICATION] Error:', error);
-          setNftVerificationResult({
-            hasPixelawbsNFT: false,
-            balance: 0,
-            error: 'Failed to check NFT ownership'
-          });
-        } finally {
-          setIsCheckingNFT(false);
-        }
-      };
-      
-      checkNFT();
+    if (!showPieceSetSelector) return;
+    if (!address) {
+      setCollectionInventory(EMPTY_NFT_INVENTORY);
+      setCollectionPerksError(null);
+      return;
     }
+
+    let cancelled = false;
+    void (async () => {
+      setIsLoadingCollectionPerks(true);
+      setCollectionPerksError(null);
+      try {
+        const primary = await firebaseProfiles.getPrimaryWallet(address);
+        let profile = await firebaseProfiles.getProfile(primary);
+        if (!profile && primary !== address) {
+          profile = await firebaseProfiles.getProfile(address);
+        }
+
+        let resolvedInventory = normalizeChessCollectionInventory(profile?.nft_inventory);
+
+        // Safety fallback for stale profile inventory: verify Pixelawbs ownership directly.
+        if (resolvedInventory.pixelawbs.length === 0) {
+          try {
+            const pixelawbsCheck = await checkPixelawbsNFTOwnership(address);
+            if (pixelawbsCheck.hasPixelawbsNFT && pixelawbsCheck.balance > 0) {
+              resolvedInventory = {
+                ...resolvedInventory,
+                pixelawbs: Array.from(
+                  { length: pixelawbsCheck.balance },
+                  (_, i) => `pixelawbs-fallback-${i}`,
+                ),
+              };
+            }
+          } catch (error) {
+            console.warn('[CHESS_PERKS] Pixelawbs fallback check failed:', error);
+          }
+        }
+
+        if (!cancelled) {
+          setCollectionInventory(resolvedInventory);
+        }
+      } catch (error) {
+        console.error('[CHESS_PERKS] Failed to load collection perks:', error);
+        if (!cancelled) {
+          setCollectionInventory(EMPTY_NFT_INVENTORY);
+          setCollectionPerksError('Unable to load collection perks right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingCollectionPerks(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [showPieceSetSelector, address]);
+
+  useEffect(() => {
+    if (!showPieceSetSelector) return;
+    if (!collectionPerks.unlockedPieceSetIds.includes(selectedPieceSet.id)) {
+      setSelectedPieceSet(getDefaultPieceSet());
+    }
+  }, [showPieceSetSelector, collectionPerks.unlockedPieceSetIds, selectedPieceSet.id]);
 
   // Handle transaction receipt for game joining
   useEffect(() => {
@@ -2314,7 +2354,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         
         try {
           console.log('[LOBBY] Loading open games...');
-          const games = await firebaseChess.getOpenGames();
+          const games = await firebaseChess.getOpenGames('base');
           console.log('[LOBBY] Loaded open games:', games);
           console.log('[LOBBY] Number of open games:', games.length);
           
@@ -2559,6 +2599,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     setIsGameCreationInProgress(true);
     
     try {
+      if (chainId !== NETWORKS.base.chainId) {
+        setGameStatus('PvP is currently live on Base only. Please switch to Base.');
+        try {
+          await switchChain({ chainId: NETWORKS.base.chainId });
+        } catch (error) {
+          console.error('[CREATE GAME] Failed to switch to Base:', error);
+        }
+        setIsGameCreationInProgress(false);
+        return;
+      }
+
       // Handle NFT wagering (Base only)
       if (wagerType === 'nft' && selectedNFT) {
         if (chainId !== NETWORKS.base.chainId && chainId !== NETWORKS.arbitrum.chainId) {
@@ -2735,9 +2786,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       console.log('[CREATE GAME] After validation, continuing to game data preparation...');
       
       // Determine chain for Firebase
-      const gameChain = selectedChain || (chainId === NETWORKS.mainnet.chainId ? 'sanko' : 
-                        chainId === NETWORKS.base.chainId ? 'base' : 
-                        chainId === NETWORKS.arbitrum.chainId ? 'arbitrum' : 'sanko');
+      const gameChain: 'base' = 'base';
       
       // Get token symbol for display (for custom tokens, use address or fetched symbol)
       const tokenSymbol = isCustomToken ? (tokenAddress.slice(0, 6) + '...') : 
@@ -2885,11 +2934,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         return;
       }
       
-      // Detect game chain and ensure user is on correct chain
-      const gameChain = gameData.chain || 'sanko';
-      const gameChainId = gameChain === 'base' ? NETWORKS.base.chainId :
-                          gameChain === 'arbitrum' ? NETWORKS.arbitrum.chainId :
-                          NETWORKS.mainnet.chainId;
+      // Base-only PvP for now (Sanko sunset; no new Solana contract path yet).
+      const gameChain = gameData.chain || 'base';
+      if (gameChain !== 'base') {
+        setGameStatus('This match is on a sunsetted/unsupported chain. Base matches only for now.');
+        isJoiningGameRef.current = false;
+        return;
+      }
+      const gameChainId = NETWORKS.base.chainId;
       
       // Check if user is on correct chain
       if (chainId !== gameChainId) {
@@ -2904,9 +2956,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }
       
       // Get contract address for game's chain
-      const gameContractAddress = gameChain === 'base' ? CONTRACT_ADDRESSES.base.chess :
-                                  gameChain === 'arbitrum' ? CONTRACT_ADDRESSES.arbitrum.chess :
-                                  CONTRACT_ADDRESSES.mainnet.chess;
+      const gameContractAddress = CONTRACT_ADDRESSES.base.chess;
       
       // Handle token - could be TokenSymbol (Sanko) or address (Base custom token)
       const tokenSymbolOrAddress = gameData.bet_token_address || gameData.bet_token;
@@ -2985,8 +3035,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         }
       }
       
-      const defaultTokenForGame = gameData.chain === 'base' ? 'ETH' : 
-                                 gameData.chain === 'arbitrum' ? 'ETH' : 'NATIVE_DMT';
+      const defaultTokenForGame = 'ETH';
       const wagerAmountTDMT = convertWagerFromWei(gameData.bet_amount, gameData.bet_token || defaultTokenForGame);
       setInviteCode(inviteCode);
       setIsJoiningFromLobby(true);
@@ -3215,12 +3264,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       // Load piece set from game data if available
       if (gameData.piece_set && gameData.piece_set !== selectedPieceSet.id) {
         console.log('[PIECE_SET] Loading piece set from game data:', gameData.piece_set);
-        if (gameData.piece_set === 'pixelawbs') {
-          setSelectedPieceSet(getPixelawbsPieceSet());
-        } else {
-          // Default to lawbstation pieces
-          setSelectedPieceSet(getDefaultPieceSet());
-        }
+        const nextPieceSet = CHESS_PIECE_SETS.find((set) => set.id === gameData.piece_set) ?? getDefaultPieceSet();
+        setSelectedPieceSet(nextPieceSet);
       }
       
       // Handle player color assignment
@@ -3924,11 +3969,8 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             // Load piece set from game data
             if (gameData.piece_set && gameData.piece_set !== selectedPieceSet.id) {
               console.log('[PERIODIC_CHECK] Loading piece set from game data:', gameData.piece_set);
-              if (gameData.piece_set === 'pixelawbs') {
-                setSelectedPieceSet(getPixelawbsPieceSet());
-              } else {
-                setSelectedPieceSet(getDefaultPieceSet());
-              }
+              const nextPieceSet = CHESS_PIECE_SETS.find((set) => set.id === gameData.piece_set) ?? getDefaultPieceSet();
+              setSelectedPieceSet(nextPieceSet);
             }
             
             // Set board if available
@@ -5897,11 +5939,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       return 'Select Chess Set';
     };
 
-    // Filter available piece sets based on NFT ownership
-    const availablePieceSets = [
-      getDefaultPieceSet(), // LawbStation always available
-      ...(nftVerificationResult?.hasPixelawbsNFT ? [getPixelawbsPieceSet()] : [])
-    ];
+    const availablePieceSets = CHESS_PIECE_SETS.filter((pieceSet) =>
+      collectionPerks.unlockedPieceSetIds.includes(pieceSet.id),
+    );
+    const lockedPieceSets = CHESS_PIECE_SETS.filter(
+      (pieceSet) => !collectionPerks.unlockedPieceSetIds.includes(pieceSet.id),
+    );
 
     return (
       <div className="piece-set-selection-row" style={{ justifyContent: 'center' }}>
@@ -5910,9 +5953,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             <h2 style={{fontWeight:700,letterSpacing:1,fontSize:'2rem',color:'#ff0000',marginBottom:16,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Select Chess Set</h2>
             <p style={{fontSize:'1.1rem',color:'#ff0000',marginBottom:24,textShadow:'0 0 6px #ff0000, 0 0 2px #ff0000'}}>Choose your preferred chess set for this match.</p>
             
-            {isCheckingNFT && (
+            <div style={{marginBottom: '16px', color: '#ffb3b3', fontSize: '0.95rem'}}>
+              <div><strong>Chess Title:</strong> {collectionPerks.playerTitle}</div>
+              <div>
+                <strong>Collection score:</strong> {collectionPerks.weightedHoldingsScore} | <strong>NFTs tracked:</strong> {collectionPerks.totalNfts}
+              </div>
+            </div>
+
+            {isLoadingCollectionPerks && (
               <div style={{marginBottom: '20px', color: '#ff0000', fontSize: '1rem'}}>
-                Checking Pixelawbs NFT ownership...
+                Syncing collection perks...
               </div>
             )}
             
@@ -5965,34 +6015,32 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         onMouseLeave={(e) => e.currentTarget.style.background = '#000000'}
                       >
                         {getPieceSetDisplayName(pieceSet.id)}
-                        {pieceSet.id === 'pixelawbs' && !nftVerificationResult?.hasPixelawbsNFT && (
-                          <span style={{fontSize: '0.8em', color: '#666'}}> (NFT Required)</span>
-                        )}
                       </div>
                     ))}
-                    {!nftVerificationResult?.hasPixelawbsNFT && (
+                    {lockedPieceSets.map((pieceSet) => (
                       <div
+                        key={`locked-${pieceSet.id}`}
                         style={{
                           padding: '12px 16px',
                           borderBottom: '1px solid #333',
-                          fontSize: '1em',
+                          fontSize: '0.9em',
                           color: '#666',
                           background: '#000000',
                           cursor: 'not-allowed',
                           opacity: 0.5
                         }}
                       >
-                        PixeLawbs Chess Set (NFT Required)
+                        {getPieceSetDisplayName(pieceSet.id)} (NFT Required)
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
             </div>
             
-            {nftVerificationResult?.error && (
+            {collectionPerksError && (
               <div style={{marginBottom: '20px', color: '#ff0000', fontSize: '0.9rem'}}>
-                {nftVerificationResult.error}
+                {collectionPerksError}
               </div>
             )}
           </div>
@@ -6547,11 +6595,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   >
                     Connect Wallet
                   </button>
+                  <div className="pvp-visible-howto" style={{ marginTop: '14px' }}>
+                    <HowToContent />
+                  </div>
                 </div>
               ) : (
                 <>
                   <div className="status-bar" style={{ marginBottom: '20px', color: '#ff0000' }}>
                     Connected: {formatAddress(address!)}
+                  </div>
+
+                  <div className="pvp-lobby-intro-card">
+                    <div className="pvp-lobby-intro-title">Base PvP is live now</div>
+                    <div className="pvp-lobby-intro-text">
+                      Create or join Base token wager matches. NFT wagers are listed as coming soon.
+                    </div>
+                    <button
+                      type="button"
+                      className="pvp-lobby-howto-btn"
+                      onClick={openHowToGuide}
+                    >
+                      How To + Piece Key
+                    </button>
                   </div>
                   
                   <div className="lobby-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
@@ -6600,10 +6665,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         🏠 Back to Chess Home
                       </button>
                     </div>
+
+                    <div className="pvp-visible-howto" style={{ order: 2 }}>
+                      <HowToContent />
+                    </div>
                     
                     {isCreatingGame && (
                       <div className="create-form" style={{ 
-                        order: 2, 
+                        order: 3, 
                         marginBottom: '20px',
                         maxHeight: 'none',
                         overflowY: 'visible',
@@ -6627,25 +6696,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           color: '#ff0000'
                         }}>
                           <strong>📋 Game Creation Flow:</strong><br/>
-                          1️⃣ <strong>Select Token</strong> - Choose DMT or other supported Sanko tokens<br/>
-                          2️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
-                          3️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
-                          4️⃣ <strong>Click "Create Game"</strong> - This will trigger two transactions:<br/>
-                          &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your tokens<br/>
+                          1️⃣ <strong>Base Network</strong> - PvP match creation is currently Base-only<br/>
+                          2️⃣ <strong>Select Token</strong> - Choose an available Base token for the wager<br/>
+                          3️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
+                          4️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
+                          5️⃣ <strong>Click "Create Game"</strong> - This can trigger two wallet transactions:<br/>
+                          &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your token<br/>
                           &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
                           <br/>
-                          <strong>💡 Note:</strong> You'll need to confirm both transactions in your wallet. The first approval may be for a higher amount to avoid future approvals.
+                          <strong>💡 Note:</strong> NFT wagers are still coming soon.
                         </div>
                         
-                        {/* Chain Selector - Desktop only */}
-                        {!isMobile && (
-                          <ChainSelector
-                            selectedChain={selectedChain}
-                            onSelect={setSelectedChain}
-                            mode="desktop"
-                            disabled={isGameCreationInProgress}
-                          />
-                        )}
+                        <div style={{ marginBottom: '10px', color: '#ff0000', fontWeight: 'bold' }}>
+                          Network: Base Mainnet (Chain ID 8453)
+                        </div>
                         
                         {/* Wager Type Selector - Base/Arbitrum only */}
                         {(isBase || isArbitrum) && (
@@ -6672,17 +6736,18 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               <button
                                 type="button"
                                 onClick={() => setWagerType('nft')}
-                                disabled={isGameCreationInProgress}
+                                disabled={true}
                                 style={{
                                   padding: '5px 10px',
                                   border: wagerType === 'nft' ? '2px solid #ff0000' : '2px outset #fff',
                                   background: wagerType === 'nft' ? '#333' : '#000000',
                                   color: '#ff0000',
-                                  cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                                  cursor: 'not-allowed',
+                                  opacity: 0.6,
                                   fontSize: '12px'
                                 }}
                               >
-                                NFT
+                                NFT (Soon)
                               </button>
                             </div>
                           </div>
@@ -6820,7 +6885,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     )}
 
                     
-                    <div className="open-games" style={{ order: 3 }}>
+                    <div className="open-games" style={{ order: 4 }}>
                       <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
                       <div className="games-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         {openGames.map(game => {
@@ -6932,7 +6997,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             </div>
                             <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                               Be the first to create a match! Click "Create New Match" above to start.<br/>
-                              Other players will be able to match wage and join your game once it's created.
+                              Other players will be able to match wager and join your game once it is created.
                             </div>
                           </div>
                         )}

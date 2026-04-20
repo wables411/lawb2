@@ -1992,9 +1992,258 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   font-weight: bold;
 }
 
+.how-to-list {
+  margin: 6px 0 10px 0;
+  padding-left: 20px;
+}
+
+.how-to-list li {
+  margin: 4px 0;
+}
+
+.how-to-list-numbered {
+  list-style: decimal;
+}
+
 .how-to-section.mobile {
   max-height: 60vh;
   overflow-y: auto;
+}
+
+.setup-quick-guide {
+  width: 100%;
+  max-width: 560px;
+  margin: 6px auto 14px auto;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px outset #fff;
+  border-radius: 4px;
+}
+
+.setup-quick-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.setup-quick-guide-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #000080;
+}
+
+.setup-guide-btn {
+  border: 2px outset #fff;
+  background: #c0c0c0;
+  color: #000;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.setup-guide-btn:active {
+  border: 2px inset #fff;
+}
+
+.setup-quick-guide p {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: #111;
+}
+
+.visible-howto-panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.single-setup-panel {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  border-radius: 4px;
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.single-setup-title {
+  margin: 0;
+  color: #000080;
+  font-size: 1.7rem;
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+
+.single-setup-subtitle {
+  margin: 8px 0 14px 0;
+  font-size: 13px;
+  text-align: center;
+  color: #111;
+}
+
+.single-setup-perks {
+  margin-bottom: 14px;
+  border: 1px solid #808080;
+  background: #efefef;
+  padding: 10px;
+  text-align: left;
+  font-size: 12px;
+  color: #111;
+}
+
+.single-setup-perks-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #000080;
+  margin-bottom: 4px;
+}
+
+.single-setup-perks-note {
+  margin-top: 6px;
+  color: #a16207;
+}
+
+.single-setup-perks-error {
+  margin-top: 6px;
+  color: #b91c1c;
+}
+
+.single-setup-block {
+  margin-bottom: 14px;
+}
+
+.single-setup-block h3 {
+  margin: 0 0 8px 0;
+  text-align: center;
+  font-size: 14px;
+  color: #000080;
+}
+
+.single-setup-dropdown-btn {
+  width: 100%;
+  text-align: left;
+  border: 2px outset #fff;
+  background: #d8d8d8;
+  color: #000;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.single-setup-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  border: 1px solid #666;
+  background: #efefef;
+  z-index: 10;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.single-setup-dropdown-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #c6c6c6;
+  cursor: pointer;
+  color: #111;
+  font-size: 12px;
+}
+
+.single-setup-dropdown-item:hover {
+  background: #dbeafe;
+}
+
+.single-setup-dropdown-item.locked {
+  background: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.single-setup-difficulty-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.single-setup-difficulty-btn {
+  border: 2px outset #fff;
+  background: #d8d8d8;
+  color: #111;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  min-width: 130px;
+  cursor: pointer;
+}
+
+.single-setup-difficulty-btn.selected {
+  border: 2px inset #fff;
+  background: #2563eb;
+  color: #fff;
+}
+
+.single-setup-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.single-setup-start-btn,
+.single-setup-back-btn,
+.single-setup-howto-btn {
+  border: 2px outset #fff;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.single-setup-start-btn {
+  background: #0b7a0b;
+  color: #fff;
+}
+
+.single-setup-back-btn,
+.single-setup-howto-btn {
+  background: #d8d8d8;
+  color: #111;
+}
+
+.single-setup-start-btn:active,
+.single-setup-back-btn:active,
+.single-setup-howto-btn:active {
+  border: 2px inset #fff;
+}
+
+@media (max-width: 768px) {
+  .setup-quick-guide-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .visible-howto-panel {
+    max-height: 360px;
+  }
+
+  .single-setup-panel {
+    padding: 12px;
+  }
+
+  .single-setup-title {
+    font-size: 1.35rem;
+  }
+
+  .single-setup-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .game-stable-layout.home-view {
@@ -4875,5 +5124,398 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   .chess-page img {
     display: block !important;
   }
+}
+
+/* ============================================
+   Linux Theme Pass - Chess Home + Setup
+   ============================================ */
+.chess-page-simple {
+  --linux-panel-top: #4f5c72;
+  --linux-panel-bottom: #2f394b;
+  --linux-border: #1b2330;
+  --linux-text: #e2e8f0;
+  --linux-muted: #c7d2e1;
+  --linux-accent: #90cdf4;
+  --linux-button-top: #5f6d85;
+  --linux-button-bottom: #4a5568;
+  --linux-button-border: #2d3748;
+}
+
+.chess-page-simple .game-mode-panel-streamlined {
+  background-image: none !important;
+  background: linear-gradient(180deg, var(--linux-panel-top), var(--linux-panel-bottom)) !important;
+  border: 1px solid var(--linux-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.28) !important;
+  color: var(--linux-text) !important;
+  max-width: 760px;
+  padding: 18px !important;
+}
+
+.chess-page-simple .game-mode-panel-streamlined > div:first-child {
+  background: rgba(0, 0, 0, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 8px !important;
+}
+
+.chess-page-simple .game-mode-panel-streamlined > div:first-child > div {
+  color: var(--linux-text) !important;
+  text-shadow: none !important;
+}
+
+.chess-page-simple .setup-quick-guide {
+  background: rgba(16, 24, 38, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 10px !important;
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .setup-quick-guide-header h3,
+.chess-page-simple .setup-quick-guide p {
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .setup-guide-btn,
+.chess-page-simple .mode-btn-compact,
+.chess-page-simple .start-btn-compact,
+.chess-page-simple .single-setup-start-btn,
+.chess-page-simple .single-setup-back-btn,
+.chess-page-simple .single-setup-howto-btn,
+.chess-page-simple .single-setup-difficulty-btn {
+  background: linear-gradient(180deg, var(--linux-button-top), var(--linux-button-bottom)) !important;
+  border: 1px solid var(--linux-button-border) !important;
+  border-radius: 6px !important;
+  color: var(--linux-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  letter-spacing: 0.02em;
+  text-transform: none !important;
+}
+
+.chess-page-simple .setup-guide-btn:hover,
+.chess-page-simple .mode-btn-compact:hover,
+.chess-page-simple .start-btn-compact:hover,
+.chess-page-simple .single-setup-start-btn:hover,
+.chess-page-simple .single-setup-back-btn:hover,
+.chess-page-simple .single-setup-howto-btn:hover,
+.chess-page-simple .single-setup-difficulty-btn:hover {
+  filter: brightness(1.08);
+}
+
+.chess-page-simple .mode-btn-compact.selected,
+.chess-page-simple .single-setup-difficulty-btn.selected {
+  border-color: var(--linux-accent) !important;
+  color: #cfe9ff !important;
+  box-shadow: inset 0 0 0 1px rgba(144, 205, 244, 0.55) !important;
+}
+
+.chess-page-simple .pvp-info {
+  background: rgba(15, 21, 32, 0.48) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 10px !important;
+}
+
+.chess-page-simple .pvp-info p {
+  color: var(--linux-muted) !important;
+}
+
+.chess-page-simple .help-section-compact.visible-howto-panel,
+.chess-page-simple .single-setup-panel {
+  background: rgba(20, 29, 42, 0.62) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 10px !important;
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .single-setup-title,
+.chess-page-simple .single-setup-subtitle,
+.chess-page-simple .single-setup-block h3,
+.chess-page-simple .single-setup-perks-title,
+.chess-page-simple .single-setup-perks-note,
+.chess-page-simple .single-setup-perks-error {
+  color: var(--linux-text) !important;
+  text-shadow: none !important;
+}
+
+.chess-page-simple .single-setup-perks {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.chess-page-simple .single-setup-dropdown-btn,
+.chess-page-simple .single-setup-dropdown-menu {
+  background: #243041 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .single-setup-dropdown-item {
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .single-setup-dropdown-item:hover {
+  background: rgba(144, 205, 244, 0.2) !important;
+}
+
+.chess-page-simple .single-setup-dropdown-item.locked {
+  color: #9ba9bc !important;
+}
+
+.chess-page-simple .how-to-section {
+  background: transparent !important;
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .how-to-section h4,
+.chess-page-simple .how-to-content p,
+.chess-page-simple .how-to-content strong,
+.chess-page-simple .how-to-list li {
+  color: var(--linux-text) !important;
+}
+
+.chess-page-simple .how-to-content a {
+  color: #93d5ff !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .game-mode-panel-streamlined {
+  background: linear-gradient(180deg, #f8fbff, #e8eef7) !important;
+  border-color: #b8c6da !important;
+  color: #223046 !important;
+  box-shadow: 0 12px 22px rgba(10, 22, 40, 0.12) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .game-mode-panel-streamlined > div:first-child,
+.lawb-app-light-mode .chess-page-simple .setup-quick-guide,
+.lawb-app-light-mode .chess-page-simple .pvp-info,
+.lawb-app-light-mode .chess-page-simple .help-section-compact.visible-howto-panel,
+.lawb-app-light-mode .chess-page-simple .single-setup-panel,
+.lawb-app-light-mode .chess-page-simple .single-setup-perks {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: #c5d2e6 !important;
+  color: #223046 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .setup-quick-guide-header h3,
+.lawb-app-light-mode .chess-page-simple .setup-quick-guide p,
+.lawb-app-light-mode .chess-page-simple .pvp-info p,
+.lawb-app-light-mode .chess-page-simple .single-setup-title,
+.lawb-app-light-mode .chess-page-simple .single-setup-subtitle,
+.lawb-app-light-mode .chess-page-simple .single-setup-block h3,
+.lawb-app-light-mode .chess-page-simple .single-setup-perks-title,
+.lawb-app-light-mode .chess-page-simple .single-setup-perks-note,
+.lawb-app-light-mode .chess-page-simple .single-setup-perks-error,
+.lawb-app-light-mode .chess-page-simple .how-to-section h4,
+.lawb-app-light-mode .chess-page-simple .how-to-content p,
+.lawb-app-light-mode .chess-page-simple .how-to-content strong,
+.lawb-app-light-mode .chess-page-simple .how-to-list li {
+  color: #223046 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .setup-guide-btn,
+.lawb-app-light-mode .chess-page-simple .mode-btn-compact,
+.lawb-app-light-mode .chess-page-simple .start-btn-compact,
+.lawb-app-light-mode .chess-page-simple .single-setup-start-btn,
+.lawb-app-light-mode .chess-page-simple .single-setup-back-btn,
+.lawb-app-light-mode .chess-page-simple .single-setup-howto-btn,
+.lawb-app-light-mode .chess-page-simple .single-setup-difficulty-btn {
+  background: linear-gradient(180deg, #f0f5ff, #d9e4f6) !important;
+  border-color: #9fb2cc !important;
+  color: #1f2f47 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .mode-btn-compact.selected,
+.lawb-app-light-mode .chess-page-simple .single-setup-difficulty-btn.selected {
+  border-color: #2b6cb0 !important;
+  color: #164372 !important;
+  box-shadow: inset 0 0 0 1px rgba(43, 108, 176, 0.45) !important;
+}
+
+@media (max-width: 768px) {
+  .chess-page-simple .game-mode-panel-streamlined {
+    border-radius: 10px !important;
+    padding: 12px !important;
+  }
+}
+
+/* ============================================
+   Linux Polish - Menus, Overlays, Popups
+   ============================================ */
+.chess-page-simple .chess-menu-popup-overlay {
+  background: rgba(9, 14, 24, 0.56) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.chess-page-simple .chess-menu-popup {
+  background: linear-gradient(180deg, #4f5c72, #2f394b) !important;
+  border: 1px solid #1b2330 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.3) !important;
+  color: #e2e8f0 !important;
+}
+
+.chess-page-simple .chess-menu-popup button {
+  background: linear-gradient(180deg, #5f6d85, #4a5568) !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 6px !important;
+  color: #e2e8f0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.chess-page-simple .chess-menu-popup button:hover {
+  filter: brightness(1.08);
+}
+
+.chess-page-simple .sidebar-popup-overlay,
+.chess-page-simple .mobile-content-overlay {
+  background: rgba(9, 14, 24, 0.62) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.chess-page-simple .mobile-menu-popup,
+.chess-page-simple .mobile-content-popup {
+  background: linear-gradient(180deg, #4f5c72, #2f394b) !important;
+  border: 1px solid #1b2330 !important;
+  border-radius: 14px 14px 0 0 !important;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.34) !important;
+}
+
+.chess-page-simple .mobile-menu-btn,
+.chess-page-simple .mobile-content-close-btn,
+.chess-page-simple .mobile-menu-close-btn {
+  background: linear-gradient(180deg, #5f6d85, #4a5568) !important;
+  border: 1px solid #2d3748 !important;
+  color: #e2e8f0 !important;
+  border-radius: 6px !important;
+}
+
+.chess-page-simple .mobile-content-view {
+  color: #e2e8f0 !important;
+}
+
+.chess-page-simple .mobile-content-view .leaderboard-title,
+.chess-page-simple .mobile-content-view .move-history-title,
+.chess-page-simple .mobile-content-view .gallery-title {
+  color: #e2e8f0 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.chess-page-simple .mobile-content-popup .leaderboard-compact,
+.chess-page-simple .mobile-content-popup .move-history-compact,
+.chess-page-simple .mobile-content-popup .chat-compact,
+.chess-page-simple .mobile-content-popup .profile-compact,
+.chess-page-simple .mobile-content-popup .how-to-compact {
+  background: rgba(13, 21, 34, 0.56) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 10px !important;
+  color: #e2e8f0 !important;
+}
+
+.chess-page-simple .mobile-content-popup .leaderboard-table-compact table,
+.chess-page-simple .mobile-content-popup .leaderboard-table-compact th,
+.chess-page-simple .mobile-content-popup .leaderboard-table-compact td {
+  color: #dbe6f6 !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(10, 17, 27, 0.44) !important;
+}
+
+.chess-page-simple .mobile-content-popup .move-history-list-compact li {
+  color: #dbe6f6 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.chess-page-simple .mobile-content-popup .chat-compact-tab,
+.chess-page-simple .mobile-content-popup .chat-compact-message,
+.chess-page-simple .mobile-content-popup .chat-compact-input-field,
+.chess-page-simple .mobile-content-popup .chat-compact-send-btn {
+  background: rgba(11, 18, 29, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #dbe6f6 !important;
+}
+
+.chess-page-simple .mobile-content-popup .chat-compact-tab.active {
+  border-color: #90cdf4 !important;
+  box-shadow: inset 0 0 0 1px rgba(144, 205, 244, 0.4) !important;
+}
+
+.chess-page-simple .promotion-dialog {
+  background: linear-gradient(180deg, #4f5c72, #2f394b) !important;
+  border: 1px solid #1b2330 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.32) !important;
+}
+
+.chess-page-simple .promotion-content h3 {
+  color: #e2e8f0 !important;
+  text-shadow: none !important;
+}
+
+.chess-page-simple .promotion-piece {
+  background: linear-gradient(180deg, #5f6d85, #4a5568) !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 8px !important;
+}
+
+.chess-page-simple .promotion-piece:hover {
+  border-color: #90cdf4 !important;
+  box-shadow: inset 0 0 0 1px rgba(144, 205, 244, 0.45), 0 0 0 transparent !important;
+}
+
+.chess-page-simple .victory-overlay,
+.chess-page-simple .defeat-overlay {
+  background: rgba(10, 16, 26, 0.72) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.chess-page-simple .victory-overlay .victory-modal,
+.chess-page-simple .defeat-overlay .victory-modal {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  animation: none !important;
+}
+
+.chess-page-simple .victory-overlay .victory-content,
+.chess-page-simple .defeat-overlay .victory-content {
+  background: linear-gradient(180deg, #4f5c72, #2f394b) !important;
+  border: 1px solid #1b2330 !important;
+  border-radius: 12px !important;
+  color: #e2e8f0 !important;
+  text-shadow: none !important;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.34) !important;
+}
+
+.chess-page-simple .defeat-overlay .victory-content {
+  border-color: #803b44 !important;
+  background: linear-gradient(180deg, #5a3f4a, #33232b) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-menu-popup,
+.lawb-app-light-mode .chess-page-simple .mobile-menu-popup,
+.lawb-app-light-mode .chess-page-simple .mobile-content-popup,
+.lawb-app-light-mode .chess-page-simple .promotion-dialog,
+.lawb-app-light-mode .chess-page-simple .victory-overlay .victory-content {
+  background: linear-gradient(180deg, #f8fbff, #e7eef8) !important;
+  border-color: #b8c6da !important;
+  color: #223046 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-menu-popup button,
+.lawb-app-light-mode .chess-page-simple .mobile-menu-btn,
+.lawb-app-light-mode .chess-page-simple .mobile-content-close-btn,
+.lawb-app-light-mode .chess-page-simple .mobile-menu-close-btn,
+.lawb-app-light-mode .chess-page-simple .promotion-piece {
+  background: linear-gradient(180deg, #f0f5ff, #d9e4f6) !important;
+  border-color: #9fb2cc !important;
+  color: #1f2f47 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .mobile-content-popup .leaderboard-compact,
+.lawb-app-light-mode .chess-page-simple .mobile-content-popup .move-history-compact,
+.lawb-app-light-mode .chess-page-simple .mobile-content-popup .chat-compact,
+.lawb-app-light-mode .chess-page-simple .mobile-content-popup .profile-compact,
+.lawb-app-light-mode .chess-page-simple .mobile-content-popup .how-to-compact {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: #c5d2e6 !important;
+  color: #223046 !important;
 }
 

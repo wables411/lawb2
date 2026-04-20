@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { useAppKitSafe as useAppKit } from '../hooks/useAppKitSafe';
@@ -18,6 +18,12 @@ import { ChessMultiplayer } from './ChessMultiplayer';
 import { firebaseChess } from '../firebaseChess';
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
+import { checkPixelawbsNFTOwnership } from '../utils/nftVerification';
+import {
+  EMPTY_NFT_INVENTORY,
+  buildChessCollectionPerks,
+  normalizeChessCollectionInventory,
+} from '../utils/chessCollectionPerks';
 
 // Clawb's wallet address for vs Clawb games
 const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
@@ -33,10 +39,18 @@ import {
   lawbBoardToFen,
   tryMoveOnChess,
   lawbLegalMoveDestinations,
-  pickEasyPassiveMove,
-  validateEngineUci,
   chessTurnToUi,
 } from '../utils/lawbChessCore';
+import { ipfsToHttp } from '../utils/ipfs';
+import {
+  chooseSinglePlayerAIMove,
+  getSinglePlayerDifficultyProfile,
+  type SinglePlayerDifficulty,
+} from '../utils/singlePlayerEngine';
+import {
+  ENABLE_LICHESS_OPENING_EXPLORER,
+  LICHESS_EXPLORER_PROXY_URL,
+} from '../config/chessFeatureFlags';
 
 import './ChessGame.css';
 import './ChessGameModern.css';
@@ -89,9 +103,6 @@ interface ChessGameProps {
   onMenuToggle?: () => void;
 }
 
-
-// Updated difficulty levels
-type Difficulty = 'easy' | 'hard';
 
 // Stockfish integration for chess AI
 const useStockfish = () => {
@@ -234,16 +245,30 @@ const useStockfish = () => {
 const useLichessAPI = () => {
   const [openingData, setOpeningData] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const lichessUnavailableRef = useRef(false);
+
+  const buildExplorerUrl = useCallback((fen: string, move?: string) => {
+    const params = new URLSearchParams({ fen });
+    if (move) params.set('play', move);
+    if (LICHESS_EXPLORER_PROXY_URL) {
+      return `${LICHESS_EXPLORER_PROXY_URL}?${params.toString()}`;
+    }
+    return `https://explorer.lichess.ovh/lichess?${params.toString()}`;
+  }, []);
 
   const getOpeningData = useCallback(async (fen: string) => {
+    if (!ENABLE_LICHESS_OPENING_EXPLORER || lichessUnavailableRef.current) return null;
     try {
       setIsAnalyzing(true);
-      // Get opening data from Lichess API
-      const response = await fetch(`https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(fen)}`);
+      // Get opening data from Lichess API (or optional proxy endpoint)
+      const response = await fetch(buildExplorerUrl(fen));
       if (response.ok) {
         const data = await response.json();
         setOpeningData(data);
         return data;
+      }
+      if (response.status === 401 || response.status === 403) {
+        lichessUnavailableRef.current = true;
       }
     } catch (error) {
       console.warn('[DEBUG] Lichess API error:', error);
@@ -251,21 +276,25 @@ const useLichessAPI = () => {
       setIsAnalyzing(false);
     }
     return null;
-  }, []);
+  }, [buildExplorerUrl]);
 
   const getMoveAnalysis = useCallback(async (fen: string, move: string) => {
+    if (!ENABLE_LICHESS_OPENING_EXPLORER || lichessUnavailableRef.current) return null;
     try {
-      // Get move analysis from Lichess API
-      const response = await fetch(`https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(fen)}&play=${move}`);
+      // Get move analysis from Lichess API (or optional proxy endpoint)
+      const response = await fetch(buildExplorerUrl(fen, move));
       if (response.ok) {
         const data = await response.json();
         return data;
+      }
+      if (response.status === 401 || response.status === 403) {
+        lichessUnavailableRef.current = true;
       }
     } catch (error) {
       console.warn('[DEBUG] Lichess move analysis error:', error);
     }
     return null;
-  }, []);
+  }, [buildExplorerUrl]);
 
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
@@ -301,7 +330,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [gameState, setGameState] = useState<'active' | 'checkmate' | 'stalemate'>('active');
-  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('hard');
+  const [difficulty, setDifficulty] = useState<SinglePlayerDifficulty>('hard');
   const [status, setStatus] = useState<string>('Connect wallet to play');
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -380,13 +409,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
 
   // Add Stockfish integration
-  const { stockfishReady, getStockfishMove, getCloudflareStockfishMove } = useStockfish();
+  const { stockfishReady, getCloudflareStockfishMove } = useStockfish();
 
   // Add Lichess API integration
   const { openingData, isAnalyzing, getOpeningData, getMoveAnalysis } = useLichessAPI();
 
   // Add state for Stockfish status
   const [stockfishStatus, setStockfishStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [hardEngineHealth, setHardEngineHealth] = useState<'idle' | 'thinking' | 'healthy' | 'degraded' | 'offline'>('idle');
+  const [hardFallbackCount, setHardFallbackCount] = useState(0);
 
   // Add state for opening suggestions
   const [showOpeningSuggestions, setShowOpeningSuggestions] = useState(false);
@@ -449,7 +480,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [selectedPieceSet, setSelectedPieceSet] = useState<ChessPieceSet>(getDefaultPieceSet());
   const [showPieceSetSelector, setShowPieceSetSelector] = useState(false);
   const [showPieceSetDropdown, setShowPieceSetDropdown] = useState(false);
+  const [collectionInventory, setCollectionInventory] = useState(EMPTY_NFT_INVENTORY);
+  const [isLoadingCollectionPerks, setIsLoadingCollectionPerks] = useState(false);
+  const [collectionPerksError, setCollectionPerksError] = useState<string | null>(null);
   const chessboardRef = useRef<HTMLDivElement | null>(null);
+  const collectionPerks = useMemo(
+    () => buildChessCollectionPerks(collectionInventory),
+    [collectionInventory],
+  );
 
   // #region agent log (hypothesis H3: home-view layout/padding or parent flex rules are pushing buttons down)
   useEffect(() => {
@@ -476,6 +514,73 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     setCurrentPieceSet(selectedPieceSet);
   }, [selectedPieceSet, setCurrentPieceSet]);
+
+  useEffect(() => {
+    if (!showPieceSetSelector) return;
+    if (!leaderboardWalletAddress) {
+      setCollectionInventory(EMPTY_NFT_INVENTORY);
+      setCollectionPerksError(null);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      setIsLoadingCollectionPerks(true);
+      setCollectionPerksError(null);
+      try {
+        const primary = await firebaseProfiles.getPrimaryWallet(leaderboardWalletAddress);
+        let profile = await firebaseProfiles.getProfile(primary);
+        if (!profile && primary !== leaderboardWalletAddress) {
+          profile = await firebaseProfiles.getProfile(leaderboardWalletAddress);
+        }
+
+        let resolvedInventory = normalizeChessCollectionInventory(profile?.nft_inventory);
+
+        // Safety fallback for stale profile inventory: verify Pixelawbs ownership directly.
+        if (resolvedInventory.pixelawbs.length === 0) {
+          try {
+            const pixelawbsCheck = await checkPixelawbsNFTOwnership(leaderboardWalletAddress);
+            if (pixelawbsCheck.hasPixelawbsNFT && pixelawbsCheck.balance > 0) {
+              resolvedInventory = {
+                ...resolvedInventory,
+                pixelawbs: Array.from(
+                  { length: pixelawbsCheck.balance },
+                  (_, i) => `pixelawbs-fallback-${i}`,
+                ),
+              };
+            }
+          } catch (error) {
+            console.warn('[CHESS_PERKS] Pixelawbs fallback check failed:', error);
+          }
+        }
+
+        if (!cancelled) {
+          setCollectionInventory(resolvedInventory);
+        }
+      } catch (error) {
+        console.error('[CHESS_PERKS] Failed to load collection perks:', error);
+        if (!cancelled) {
+          setCollectionInventory(EMPTY_NFT_INVENTORY);
+          setCollectionPerksError('Unable to load collection perks right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingCollectionPerks(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showPieceSetSelector, leaderboardWalletAddress]);
+
+  useEffect(() => {
+    if (!showPieceSetSelector) return;
+    if (!collectionPerks.unlockedPieceSetIds.includes(selectedPieceSet.id)) {
+      setSelectedPieceSet(getDefaultPieceSet());
+    }
+  }, [showPieceSetSelector, collectionPerks.unlockedPieceSetIds, selectedPieceSet.id]);
 
   // Wallet is optional for AI play, but required if user wants leaderboard/profile tracking.
   useEffect(() => {
@@ -524,6 +629,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return () => window.clearTimeout(timeoutId);
     }
   }, [stockfishReady]);
+
+  useEffect(() => {
+    if (difficulty !== 'hard') {
+      setHardEngineHealth('idle');
+      setHardFallbackCount(0);
+    }
+  }, [difficulty]);
 
   // Update board ref whenever board state changes
   useEffect(() => {
@@ -1104,7 +1216,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const moveNotation = mv.san;
     setMoveHistory((prev) => {
       const updated = [...prev, moveNotation];
-      if (updated.length <= 10 && !isAIMove) {
+      if (ENABLE_LICHESS_OPENING_EXPLORER && updated.length <= 10 && !isAIMove) {
         void getOpeningData(ch.fen()).then((data) => {
           if (data && data.moves && data.moves.length > 0) {
             setOpeningSuggestions(data.moves.slice(0, 3));
@@ -1208,80 +1320,87 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // When AI moves, setCurrentPlayer is async. The useEffect might run again before
     // currentPlayer updates from 'red' to 'blue'. lastAIMoveRef blocks this.
     if (!isAIMovingRef.current && gameMode === 'ai' && currentPlayer === 'red' && !lastAIMoveRef.current && !isUpdatingBoard) {
-      addMobileDebug(`AI START move (Stockfish)`);
+      const profile = getSinglePlayerDifficultyProfile(difficulty);
+      addMobileDebug(`AI START move (${profile.label})`);
       isAIMovingRef.current = true;
       console.log('[DEBUG] AI useEffect starting AI move', {difficulty,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       debugIngest({location:'ChessGame.tsx:1175',message:'AI useEffect starting AI move',data:{difficulty,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       // #endregion
-      if (difficulty === 'easy') {
-        setTimeout(() => {
-          const m = pickEasyPassiveMove(chessRef.current);
-          if (m) {
-            executeMove(m.from, m.to, (m.promotion || 'q').toLowerCase(), true);
-          } else {
-            isAIMovingRef.current = false;
-          }
-        }, 600);
-      } else {
-        const now = Date.now();
-        if (now < hardAICooldownUntilRef.current) {
-          isAIMovingRef.current = false;
-          return;
-        }
-
-        // Hard mode must remain Stockfish-only. No random fallback.
-        setStatus('Clawb engine thinking...');
-        const fen = chessRef.current.fen();
-        if (apiCallInProgressRef.current) return;
-        apiCallInProgressRef.current = true;
-
-        (async () => {
-          try {
-            let moveObj: { from: { row: number; col: number }; to: { row: number; col: number }; promotion?: string } | null = null;
-            let lastRawMove: string | null = null;
-            let lastErr: unknown = null;
-            const MAX_ATTEMPTS = 3;
-            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-              try {
-                const rawMove = await getCloudflareStockfishMove(fen, 5000);
-                lastRawMove = rawMove;
-                moveObj = rawMove ? validateEngineUci(chessRef.current, rawMove) : null;
-                if (moveObj) break;
-                console.warn('[STOCKFISH] Rejected move from engine', { attempt, rawMove, fen });
-              } catch (err) {
-                lastErr = err;
-                console.warn('[STOCKFISH] Engine request failed', { attempt, err });
-              }
-              await new Promise((resolve) => setTimeout(resolve, 350));
-            }
-
-            if (!moveObj) {
-              hardAICooldownUntilRef.current = Date.now() + 3500;
-              setStatus('Clawb engine unavailable. Retrying... (no fallback moves)');
-              console.error('[STOCKFISH] Hard mode move failed after retries', {
-                lastRawMove,
-                lastError: (lastErr as any)?.message || lastErr || null,
-              });
+      const runAIMove = async () => {
+        const isHardMode = difficulty === 'hard';
+        let didExecuteMove = false;
+        try {
+          if (isHardMode) {
+            const now = Date.now();
+            if (now < hardAICooldownUntilRef.current) {
               isAIMovingRef.current = false;
-              apiCallInProgressRef.current = false;
               return;
             }
+            if (apiCallInProgressRef.current) {
+              isAIMovingRef.current = false;
+              return;
+            }
+            apiCallInProgressRef.current = true;
+            setStatus('Hard mode engine thinking...');
+            setHardEngineHealth('thinking');
+          } else {
+            setStatus('Easy Mode thinking...');
+          }
 
-            hardAICooldownUntilRef.current = 0;
-            executeMove(moveObj.from, moveObj.to, (moveObj.promotion || 'q').toLowerCase(), true);
-          } catch (error) {
-            hardAICooldownUntilRef.current = Date.now() + 3500;
-            setStatus('Clawb engine unavailable. Retrying... (no fallback moves)');
-            addMobileDebug(`ERR: Stockfish strict ${(error as Error)?.message?.slice(0, 30) || 'unknown'}`);
-            console.error('[STOCKFISH] strict hard mode error:', error);
-            isAIMovingRef.current = false;
+          const decision = await chooseSinglePlayerAIMove({
+            chess: chessRef.current,
+            difficulty,
+            requestEngineMove: getCloudflareStockfishMove,
+          });
+
+          setStatus(decision.statusMessage);
+          hardAICooldownUntilRef.current = decision.cooldownUntilMs;
+          if (isHardMode) {
+            if (decision.source === 'stockfish') {
+              setHardEngineHealth('healthy');
+            } else if (decision.source === 'hard-fallback') {
+              setHardEngineHealth('degraded');
+              setHardFallbackCount((prev) => prev + 1);
+            } else {
+              setHardEngineHealth('offline');
+            }
+          }
+
+          if (decision.move) {
+            didExecuteMove = true;
+            executeMove(
+              decision.move.from,
+              decision.move.to,
+              (decision.move.promotion || 'q').toLowerCase(),
+              true,
+            );
+            return;
+          }
+
+          isAIMovingRef.current = false;
+        } catch (error) {
+          addMobileDebug(`ERR: AI move ${(error as Error)?.message?.slice(0, 30) || 'unknown'}`);
+          console.error('[AI] Single-player move failure:', error);
+          setStatus('AI move failed. Please try again.');
+          if (isHardMode) setHardEngineHealth('offline');
+          isAIMovingRef.current = false;
+        } finally {
+          if (isHardMode && !didExecuteMove) {
             apiCallInProgressRef.current = false;
           }
-        })();
+        }
+      };
+
+      if (profile.thinkDelayMs > 0) {
+        window.setTimeout(() => {
+          void runAIMove();
+        }, profile.thinkDelayMs);
+      } else {
+        void runAIMove();
       }
     }
-  }, [currentPlayer, gameMode, difficulty, stockfishReady, getStockfishMove, getCloudflareStockfishMove, addMobileDebug]);
+  }, [currentPlayer, gameMode, difficulty, isUpdatingBoard, getCloudflareStockfishMove, addMobileDebug]);
 
   // Game control functions
   const resetGame = () => {
@@ -1311,6 +1430,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     });
     // Don't select chessboard here - let startGame() handle it
     if (isAIMovingRef.current) isAIMovingRef.current = false;
+    setHardEngineHealth('idle');
+    setHardFallbackCount(0);
   };
 
   // Update startAIGame to show difficulty selection instead of starting the game immediately
@@ -1328,8 +1449,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (loadingAiPic) return; // Prevent multiple simultaneous fetches
     setLoadingAiPic(true);
     try {
-      // Select a random collection from AI_NFT_COLLECTIONS
-      const randomCollection = AI_NFT_COLLECTIONS[Math.floor(Math.random() * AI_NFT_COLLECTIONS.length)];
+      const preferredCollections = AI_NFT_COLLECTIONS.filter((collection) =>
+        collectionPerks.preferredAiCollectionIds.includes(collection.id),
+      );
+      const aiCollectionPool = preferredCollections.length > 0 ? preferredCollections : AI_NFT_COLLECTIONS;
+      const randomCollection = aiCollectionPool[Math.floor(Math.random() * aiCollectionPool.length)];
       console.log('[AI_PROFILE] Fetching random NFT from collection:', randomCollection);
       
       let nfts;
@@ -1347,7 +1471,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       
       if (nfts && nfts.length > 0) {
         const randomNft = nfts[Math.floor(Math.random() * nfts.length)];
-        const imageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
+        const rawImageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
+        const imageUrl = typeof rawImageUrl === 'string' ? ipfsToHttp(rawImageUrl) : '';
         console.log('[AI_PROFILE] Selected NFT:', randomNft);
         console.log('[AI_PROFILE] Image URL:', imageUrl);
         setAiProfilePic(imageUrl);
@@ -1359,7 +1484,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     } finally {
       setLoadingAiPic(false);
     }
-  }, [loadingAiPic]);
+  }, [collectionPerks.preferredAiCollectionIds, loadingAiPic]);
 
   // Fetch player profile picture when game starts in AI mode
   useEffect(() => {
@@ -1372,8 +1497,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             profile = await firebaseProfiles.getProfile(leaderboardWalletAddress);
           }
           if (profile?.profile_picture?.image_url) {
-            setPlayerProfilePic(profile.profile_picture.image_url);
-            console.log('[PROFILE] Loaded player profile picture:', profile.profile_picture.image_url);
+            const normalizedProfileImage = ipfsToHttp(profile.profile_picture.image_url);
+            setPlayerProfilePic(normalizedProfileImage);
+            console.log('[PROFILE] Loaded player profile picture:', normalizedProfileImage);
           } else {
             setPlayerProfilePic(null);
           }
@@ -1432,6 +1558,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setGameStartTime(now); // Track game start time for stats
     setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Initialize countdown to full time
     console.log('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
+    setHardEngineHealth(difficulty === 'hard' ? (stockfishStatus === 'ready' ? 'healthy' : 'idle') : 'idle');
+    setHardFallbackCount(0);
     
     // Create Firebase game for "vs Clawb" mode so Clawb is tracked as a player
     if (difficulty === 'hard' && leaderboardWalletAddress) {
@@ -1515,13 +1643,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
   }, [showGame, gameState, lastMoveTime, currentPlayer, gameMode]);
 
-  // Debug timer display state
-  useEffect(() => {
-    if (showGame && gameState === 'active' && gameMode === 'ai') {
-      console.log('[TIMER DISPLAY]', { showGame, gameState, gameMode, timeoutCountdown, currentPlayer });
-    }
-  }, [showGame, gameState, gameMode, timeoutCountdown, currentPlayer]);
-
   // Multiplayer functionality moved to ChessMultiplayer component
 
   const formatAddress = (address: string) => {
@@ -1542,6 +1663,48 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     };
     const pieceName = nameMap[code];
     return pieceName ? `${color} ${pieceName}` : null;
+  };
+
+  const getHardEngineBadge = () => {
+    if (difficulty !== 'hard' || gameMode !== GameMode.AI) return null;
+    if (stockfishStatus === 'failed') {
+      return {
+        label: 'Engine Offline',
+        color: '#ffd6d6',
+        background: 'rgba(125, 19, 19, 0.8)',
+        border: '1px solid rgba(255, 120, 120, 0.85)',
+      };
+    }
+    if (hardEngineHealth === 'thinking') {
+      return {
+        label: 'Engine Thinking',
+        color: '#fff2bf',
+        background: 'rgba(105, 76, 11, 0.8)',
+        border: '1px solid rgba(242, 213, 113, 0.9)',
+      };
+    }
+    if (hardEngineHealth === 'degraded') {
+      return {
+        label: `Fallback x${hardFallbackCount}`,
+        color: '#fff2c9',
+        background: 'rgba(122, 84, 15, 0.82)',
+        border: '1px solid rgba(248, 205, 95, 0.95)',
+      };
+    }
+    if (hardEngineHealth === 'offline') {
+      return {
+        label: 'Engine Recovering',
+        color: '#ffe2e2',
+        background: 'rgba(134, 28, 28, 0.8)',
+        border: '1px solid rgba(255, 132, 132, 0.9)',
+      };
+    }
+    return {
+      label: 'Engine Ready',
+      color: '#d7ffe5',
+      background: 'rgba(18, 95, 45, 0.8)',
+      border: '1px solid rgba(108, 255, 166, 0.9)',
+    };
   };
 
   // Render functions
@@ -1690,65 +1853,65 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return 'Select Chess Set';
     };
 
+    const availablePieceSets = CHESS_PIECE_SETS.filter((pieceSet) =>
+      collectionPerks.unlockedPieceSetIds.includes(pieceSet.id),
+    );
+    const lockedPieceSets = CHESS_PIECE_SETS.filter(
+      (pieceSet) => !collectionPerks.unlockedPieceSetIds.includes(pieceSet.id),
+    );
+
     return (
       <div className="piece-set-selection-row" style={{ justifyContent: 'center' }}>
         <div className="piece-set-controls-col">
-          <div className="piece-set-selection-panel" style={{background:'#252526',borderRadius:0,padding: isMobile ? '8px 12px' : '32px 24px',paddingTop: isMobile ? '4px' : undefined,marginTop: isMobile ? '0' : undefined,boxShadow:'0 4px 12px rgba(0, 0, 0, 0.4)',textAlign:'center',border:'1px solid #3e3e42',maxWidth: '600px', margin: '0 auto'}}>
-            <h2 style={{fontWeight:700,letterSpacing:1,fontSize: isMobile ? '1.5rem' : '2rem',color:'#00ff00',marginBottom: isMobile ? '8px' : 16,marginTop: isMobile ? '0' : undefined,textShadow:'0 0 8px rgba(0, 255, 0, 0.5)'}}>Game Setup</h2>
-            
-            {/* Piece Set Selection */}
-            <div style={{marginBottom: 24}}>
-              <h3 style={{fontSize:'1.2rem',color:'#e2e8f0',marginBottom:12}}>Select Chess Set</h3>
-              <div style={{display:'flex',justifyContent:'center'}}>
-                <div style={{ position: 'relative', minWidth: '200px' }}>
+          <div className="piece-set-selection-panel single-setup-panel">
+            <h2 className="single-setup-title">Single Player Setup</h2>
+            <p className="single-setup-subtitle">
+              Pick your chess set, choose difficulty, and start your match.
+            </p>
+
+            <div className="single-setup-perks">
+              <div className="single-setup-perks-title">Chess Title: {collectionPerks.playerTitle}</div>
+              <div>
+                Collection score: {collectionPerks.weightedHoldingsScore} | Total NFTs tracked: {collectionPerks.totalNfts}
+              </div>
+              {isLoadingCollectionPerks && (
+                <div className="single-setup-perks-note">Syncing collection perks...</div>
+              )}
+              {collectionPerksError && (
+                <div className="single-setup-perks-error">{collectionPerksError}</div>
+              )}
+            </div>
+
+            <div className="single-setup-block">
+              <h3>Select Chess Set</h3>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <div style={{ position: 'relative', minWidth: '220px', width: '100%', maxWidth: '320px' }}>
                   <button
                     type="button"
                     onClick={() => setShowPieceSetDropdown(!showPieceSetDropdown)}
-                    style={{
-                      padding: '12px 16px',
-                      border: '1px solid #4a5568',
-                      background: '#2d3748',
-                      color: '#e2e8f0',
-                      cursor: 'pointer',
-                      minWidth: '200px',
-                      textAlign: 'left',
-                      fontWeight: 'bold',
-                      fontSize: '1em',
-                      borderRadius: 4
-                    }}
+                    className="single-setup-dropdown-btn"
                   >
                     {getPieceSetDisplayName(selectedPieceSet.id)}
-                    <span style={{ float: 'right' }}>▲</span>
+                    <span style={{ float: 'right' }}>{showPieceSetDropdown ? '▲' : '▼'}</span>
                   </button>
-                  
+
                   {showPieceSetDropdown && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '100%',
-                      left: 0,
-                      background: '#2d3748',
-                      border: '1px solid #4a5568',
-                      borderRadius: 4,
-                      zIndex: 10,
-                      minWidth: '200px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
-                    }}>
-                      {CHESS_PIECE_SETS.map((pieceSet) => (
+                    <div className="single-setup-dropdown-menu">
+                      {availablePieceSets.map((pieceSet) => (
                         <div
                           key={pieceSet.id}
                           onClick={() => handlePieceSetSelect(pieceSet)}
-                          style={{
-                            padding: '12px 16px',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #4a5568',
-                            fontSize: '1em',
-                            color: '#e2e8f0',
-                            background: '#2d3748'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#4a5568'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#2d3748'}
+                          className="single-setup-dropdown-item"
                         >
                           {getPieceSetDisplayName(pieceSet.id)}
+                        </div>
+                      ))}
+                      {lockedPieceSets.map((pieceSet) => (
+                        <div
+                          key={`locked-${pieceSet.id}`}
+                          className="single-setup-dropdown-item locked"
+                        >
+                          {getPieceSetDisplayName(pieceSet.id)} (NFT Required)
                         </div>
                       ))}
                     </div>
@@ -1757,62 +1920,33 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               </div>
             </div>
 
-            {/* Difficulty Selection */}
-            <div style={{marginBottom: 24}}>
-              <h3 style={{fontSize:'1.2rem',color:'#e2e8f0',marginBottom:12}}>Select Difficulty</h3>
-              <div style={{display:'flex',justifyContent:'center',gap:16}}>
+            <div className="single-setup-block">
+              <h3>Select Difficulty</h3>
+              <div className="single-setup-difficulty-row">
                 <button
-                  className={`difficulty-btn${difficulty === 'easy' ? ' selected' : ''}`}
-                  style={{background:difficulty==='easy'?'#4299e1':'#2d3748',color:'#e2e8f0',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:4,border:'1px solid #4a5568',cursor:'pointer',letterSpacing:1}}
-                  onClick={()=>setDifficulty('easy')}
-                >Easy Mode</button>
+                  className={`single-setup-difficulty-btn ${difficulty === 'easy' ? 'selected' : ''}`}
+                  onClick={() => setDifficulty('easy')}
+                >
+                  Easy Mode
+                </button>
                 <button
-                  className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
-                  style={{background:difficulty==='hard'?'#4299e1':'#2d3748',color:'#e2e8f0',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:4,border:'1px solid #4a5568',cursor:'pointer',letterSpacing:1}}
-                  onClick={()=>setDifficulty('hard')}
-                >vs Clawb</button>
+                  className={`single-setup-difficulty-btn ${difficulty === 'hard' ? 'selected' : ''}`}
+                  onClick={() => setDifficulty('hard')}
+                >
+                  Hard Mode
+                </button>
               </div>
             </div>
 
-            <button 
-              className={`difficulty-btn start-btn`}
-              onClick={() => { startGame(); }}
-              style={{ 
-                background: 'linear-gradient(to bottom, #5a6578, #4a5568)',
-                color: '#e2e8f0',
-                fontWeight: 'bold',
-                fontSize: '1.3em',
-                padding: '18px 48px',
-                borderRadius: 4,
-                border: '1px solid #2d3748',
-                cursor: 'pointer',
-                letterSpacing: 1,
-                marginBottom: 8
-              }}
-            >
-              <span role="img" aria-label="chess">♟️</span> Start Match
-            </button>
-
-            {/* Back to Chess Button */}
-            <div style={{marginTop: '16px', display: 'flex', justifyContent: 'center', width: 'auto', maxWidth: '100%'}}>
-              <button
-                onClick={() => { setShowPieceSetSelector(false); }}
-                style={{ 
-                  background: '#2d3748',
-                  color: '#e2e8f0',
-                  fontWeight: 'bold',
-                  fontSize: '1.1em',
-                  padding: '12px 24px',
-                  borderRadius: 4,
-                  border: '1px solid #4a5568',
-                  cursor: 'pointer',
-                  letterSpacing: 1,
-                  width: 'auto',
-                  maxWidth: 'none',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                ← Back to Chess Home
+            <div className="single-setup-actions">
+              <button className="single-setup-start-btn" onClick={() => { startGame(); }}>
+                Start Match
+              </button>
+              <button className="single-setup-back-btn" onClick={() => { setShowPieceSetSelector(false); }}>
+                Back to Chess Home
+              </button>
+              <button className="single-setup-howto-btn" onClick={openHowToGuide}>
+                How To + Piece Key
               </button>
             </div>
           </div>
@@ -1837,7 +1971,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               className={`difficulty-btn${difficulty === 'hard' ? ' selected' : ''}`}
               style={{background:difficulty==='hard'?'#ff0000':'transparent',color:difficulty==='hard'?'#fff':'#ff0000',fontWeight:'bold',fontSize:'1.1em',padding:'12px 32px',borderRadius:0,border:'1px solid #ff0000',cursor:'pointer',letterSpacing:1,boxShadow:difficulty==='hard'?'0 0 6px #ff0000, 0 0 2px #ff0000':'none'}}
               onClick={()=>setDifficulty('hard')}
-            >vs Clawb</button>
+            >Hard Mode</button>
           </div>
           <button 
             className={`difficulty-btn start-btn`}
@@ -2099,7 +2233,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         setShowLeaderboardUpdated(true);
         setTimeout(() => setShowLeaderboardUpdated(false), 3000);
       } else {
-        setStatus(`Checkmate! ${winner === 'red' ? (difficulty === 'hard' ? 'Clawb' : 'AI') : 'Opponent'} wins!`);
+        setStatus(`Checkmate! ${winner === 'red' ? (difficulty === 'hard' ? 'Hard AI' : 'AI') : 'Opponent'} wins!`);
         playSound('loser');
         setDefeatDelayActive(true);
         setTimeout(() => {
@@ -2126,9 +2260,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     const side = chessTurnToUi(chess.turn());
     if (chess.isCheck()) {
       playSound('check');
-      setStatus(`${side === 'blue' ? 'You' : difficulty === 'hard' ? 'Clawb' : 'AI'} are in check!`);
+      setStatus(`${side === 'blue' ? 'You' : difficulty === 'hard' ? 'Hard AI' : 'AI'} are in check!`);
     } else {
-      setStatus(side === 'blue' ? 'Your turn' : `${difficulty === 'hard' ? 'Clawb' : 'AI'} thinking…`);
+      setStatus(side === 'blue' ? 'Your turn' : `${difficulty === 'hard' ? 'Hard AI' : 'AI'} thinking…`);
     }
     return null;
   };
@@ -2172,7 +2306,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Get player names
     const playerName = leaderboardWalletAddress ? `${leaderboardWalletAddress.slice(0, 6)}...${leaderboardWalletAddress.slice(-4)}` : 'Player';
     const opponentName = gameMode === GameMode.AI 
-      ? (difficulty === 'easy' ? 'Easy Mode' : 'Clawb')
+      ? (difficulty === 'easy' ? 'Easy Mode' : 'Hard Mode')
       : 'Opponent';
     
     // Determine winner (the one who didn't lose - red wins when blue loses)
@@ -2389,6 +2523,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {/* Chain switching no longer required for single-player - any EVM chain works */}
             </div>
+
+            <div className="setup-quick-guide">
+              <div className="setup-quick-guide-header">
+                <h3>Lawb Chess Beta 3000 Setup</h3>
+                <button
+                  type="button"
+                  className="setup-guide-btn"
+                  onClick={openHowToGuide}
+                >
+                  Open Full How To
+                </button>
+              </div>
+              <p>Play VS AI immediately, or switch to PvP for Base chain wager matches.</p>
+            </div>
             
             <div className="mode-selection-compact">
               <button 
@@ -2414,10 +2562,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             )}
             {isOnline && (
               <div className="pvp-info">
-                <p>Challenge other players with tDMT wagers</p>
-                <p>Create or join matches instantly</p>
+                <p>Base-only PvP wager lobby</p>
+                <p>Create or join token matches on Base mainnet</p>
               </div>
             )}
+            <div className="help-section-compact visible-howto-panel">
+              <HowToContent />
+            </div>
             {/* Chessboards GIF */}
             <div style={{
               textAlign: 'center', 
@@ -3281,9 +3432,30 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {gameMode === GameMode.AI && (
                 <span className="mode-play">
-                  {difficulty === 'easy' ? 'Easy Mode' : 'Clawb'}
+                  {difficulty === 'easy' ? 'Easy Mode' : 'Hard Mode'}
                 </span>
               )}
+              {(() => {
+                const badge = getHardEngineBadge();
+                if (!badge) return null;
+                return (
+                  <span
+                    style={{
+                      marginLeft: '8px',
+                      padding: isMobile ? '2px 6px' : '3px 7px',
+                      fontSize: isMobile ? '10px' : '11px',
+                      borderRadius: '4px',
+                      color: badge.color,
+                      background: badge.background,
+                      border: badge.border,
+                      fontWeight: 700,
+                      letterSpacing: '0.2px',
+                    }}
+                  >
+                    {badge.label}
+                  </span>
+                );
+              })()}
               {isOnline && (
                 <span className="wager-display">
                   Wager: {wager} tDMT
@@ -3441,8 +3613,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {isOnline && (
                 <div className="pvp-info">
-                  <p>Challenge other players with tDMT wagers</p>
-                  <p>Create or join games instantly</p>
+                  <p>Base-only PvP wager lobby</p>
+                  <p>Create or join token matches on Base mainnet</p>
                 </div>
               )}
               {/* Help Section - Use HowToContent component */}
