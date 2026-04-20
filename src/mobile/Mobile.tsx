@@ -338,6 +338,7 @@ const Mobile = () => {
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
+    { label: 'Lawb Chess', icon: '/assets/chess.svg', action: () => navigate('/chess') },
     { label: 'Lawb Profile', icon: '/assets/wallet.png', action: () => setShowProfilePopup(true) },
     { label: 'Leaderboard', icon: '/images/sticker3.png', action: () => setShowLeaderboardPopup(true) },
   ];
@@ -572,6 +573,17 @@ const Mobile = () => {
       {menuOpen && (
         <div className={classes.menuOverlay} onClick={() => setMenuOpen(false)}>
           <div className={classes.menuModal} onClick={e => e.stopPropagation()}>
+            <a
+              href="/chess"
+              className={classes.menuLink}
+              onClick={(e) => {
+                e.preventDefault();
+                setMenuOpen(false);
+                navigate('/chess');
+              }}
+            >
+              Lawb Chess
+            </a>
             <a href="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>GeckoTerminal</a>
             <a href="https://x.com/lawbstation" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbStation Twitter</a>
             <a href="https://x.com/lawbnexus" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbNexus Twitter</a>
