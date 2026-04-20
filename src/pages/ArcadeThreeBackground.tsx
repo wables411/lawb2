@@ -17,6 +17,8 @@ type Props = {
   onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   /** O₂, armor, collectibles, speed (~7 Hz). */
   onRunHud?: (hud: ArcadeRunHudState) => void;
+  /** Fired once the Three engine finishes bootstrap (scene + assets ready). */
+  onEngineReady?: () => void;
 };
 
 export type ArcadePlayInputHandle = {
@@ -36,6 +38,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   onGameOver,
   onRunDifficulty,
   onRunHud,
+  onEngineReady,
 }: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
@@ -43,17 +46,17 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   const overRef = useRef(onGameOver);
   const diffRef = useRef(onRunDifficulty);
   const hudRef = useRef(onRunHud);
+  const readyRef = useRef(onEngineReady);
   pickRef.current = onPickCharacter;
   overRef.current = onGameOver;
   diffRef.current = onRunDifficulty;
   hudRef.current = onRunHud;
+  readyRef.current = onEngineReady;
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return undefined;
-    }
+    let disposed = false;
 
     const engine = new ArcadeSceneController(container, {
       onPickCharacter: (id) => pickRef.current(id),
@@ -62,9 +65,18 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
       onRunHud: (h) => hudRef.current?.(h),
     });
     engineRef.current = engine;
-    void engine.bootstrap();
+    void engine
+      .bootstrap()
+      .then(() => {
+        if (!disposed) readyRef.current?.();
+      })
+      .catch((err) => {
+        console.warn('[Arcade] bootstrap failed', err);
+        if (!disposed) readyRef.current?.();
+      });
 
     return () => {
+      disposed = true;
       engine.dispose();
       engineRef.current = null;
     };

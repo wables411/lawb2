@@ -22,6 +22,10 @@ const LazyArcadeThree = lazy(async () => {
   const m = await import('./ArcadeThreeBackground');
   return { default: m.ArcadeThreeBackground };
 });
+const LazyArcadeLoadingPeptides = lazy(async () => {
+  const m = await import('./arcade/ArcadeLoadingPeptides');
+  return { default: m.ArcadeLoadingPeptides };
+});
 
 type Phase = 'intro' | 'menu';
 type ModalKind = 'difficulty' | 'wallet' | null;
@@ -67,6 +71,8 @@ export default function ReefArcadeMenu() {
   const navigate = useNavigate();
   const { open } = useAppKitSafe();
   const connection = useConnectionDisplay();
+  const [sceneReady, setSceneReady] = useState(false);
+  const [loadingOverlayVisible, setLoadingOverlayVisible] = useState(true);
   const [phase, setPhase] = useState<Phase>('intro');
   const [modal, setModal] = useState<ModalKind>(null);
   const [gameScreen, setGameScreen] = useState<ArcadeGameScreen>('menu');
@@ -199,6 +205,18 @@ export default function ReefArcadeMenu() {
     setRunHud(payload);
   }, []);
 
+  const onEngineReady = useCallback(() => {
+    setSceneReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!sceneReady) return;
+    const timer = window.setTimeout(() => {
+      setLoadingOverlayVisible(false);
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [sceneReady]);
+
   useEffect(() => {
     if (gameScreen === 'menu' || gameScreen === 'select') {
       setRunHud(null);
@@ -210,13 +228,14 @@ export default function ReefArcadeMenu() {
   };
 
   const beginRun = useCallback(() => {
+    if (!sceneReady) return;
     setLastRunLbNote(null);
     setLastRunEndReason(null);
     setRunStatsHud(null);
     setTouchThrottleMode(0);
     arcadeInputRef.current?.clearVirtualThrottle();
     setGameScreen('play');
-  }, []);
+  }, [sceneReady]);
 
   const goMainMenu = useCallback(() => {
     setGameScreen('menu');
@@ -308,6 +327,13 @@ export default function ReefArcadeMenu() {
     if (phase !== 'menu') return;
     const onShortcutKey = (ev: KeyboardEvent) => {
       const k = ev.key.toLowerCase();
+      if (!sceneReady) {
+        if (k === 'x') {
+          ev.preventDefault();
+          navigate('/');
+        }
+        return;
+      }
       if (modal) {
         if (ev.key === 'Escape') {
           ev.preventDefault();
@@ -397,7 +423,7 @@ export default function ReefArcadeMenu() {
 
     window.addEventListener('keydown', onShortcutKey);
     return () => window.removeEventListener('keydown', onShortcutKey);
-  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate]);
+  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate, sceneReady]);
 
   return (
     <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
@@ -411,12 +437,33 @@ export default function ReefArcadeMenu() {
           onGameOver={onGameOver}
           onRunDifficulty={onRunDifficulty}
           onRunHud={onRunHud}
+          onEngineReady={onEngineReady}
         />
       </Suspense>
       <div className="ra-bg" aria-hidden />
       <div className="ra-scanlines" aria-hidden />
       <div className="ra-vignette" aria-hidden />
       <div className="ra-grain" aria-hidden />
+      {loadingOverlayVisible && (
+        <div
+          className={`ra-loading-overlay${sceneReady ? ' ra-loading-overlay-ready' : ''}`}
+          role="status"
+          aria-live="polite"
+          aria-label="Loading Reef Run assets"
+        >
+          <div className="ra-loading-model-shell">
+            <Suspense fallback={<div className="ra-loading-model-fallback" aria-hidden />}>
+              <LazyArcadeLoadingPeptides />
+            </Suspense>
+            <div className="ra-loading-bubbles" aria-hidden>
+              <span className="ra-loading-bubble ra-loading-bubble-a" />
+              <span className="ra-loading-bubble ra-loading-bubble-b" />
+              <span className="ra-loading-bubble ra-loading-bubble-c" />
+            </div>
+          </div>
+          <p className="ra-loading-text">loading. . .</p>
+        </div>
+      )}
 
       <div className="ra-inner">
         {phase === 'intro' && (
@@ -437,10 +484,18 @@ export default function ReefArcadeMenu() {
             </div>
 
             <div className="ra-btn-stack">
-              <button type="button" className="ra-btn" onClick={beginRun}>
+              <button type="button" className="ra-btn" onClick={beginRun} disabled={!sceneReady}>
                 START RUN
               </button>
-              <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('select')}>
+              <button
+                type="button"
+                className="ra-btn ra-btn-secondary"
+                onClick={() => {
+                  if (!sceneReady) return;
+                  setGameScreen('select');
+                }}
+                disabled={!sceneReady}
+              >
                 PLAYER SELECT
               </button>
               <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setModal('wallet')}>
