@@ -11,6 +11,7 @@ interface TokenSelectorProps {
   wagerAmount: number;
   onWagerChange: (amount: number) => void;
   disabled?: boolean;
+  networkMode?: 'auto' | 'base-only';
 }
 
 // Quick-select tokens for Base
@@ -26,7 +27,8 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   onTokenSelect,
   wagerAmount,
   onWagerChange,
-  disabled = false
+  disabled = false,
+  networkMode = 'auto',
 }) => {
   const { address } = useAccount();
   const chainId = useChainId();
@@ -35,8 +37,9 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
   // Check if we're on Base/Arbitrum (supports custom tokens)
   const isBase = chainId === NETWORKS.base.chainId;
   const isArbitrum = chainId === NETWORKS.arbitrum.chainId;
-  const supportsCustomTokens = isBase || isArbitrum;
-  const isSanko = chainId === NETWORKS.mainnet.chainId || chainId === NETWORKS.testnet.chainId;
+  const supportsCustomTokens = networkMode === 'base-only' ? true : (isBase || isArbitrum);
+  const isSanko = networkMode === 'auto' && (chainId === NETWORKS.mainnet.chainId || chainId === NETWORKS.testnet.chainId);
+  const isBaseContext = networkMode === 'base-only' || isBase;
   
   // For Sanko: use existing token balance hook
   // For Base: handle custom token addresses
@@ -46,6 +49,11 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
     isCustomToken ? 'USDC' : (selectedToken as TokenSymbol), // Fallback for custom tokens
     address
   );
+
+  const requiredNetworkName = networkMode === 'base-only'
+    ? NETWORKS.base.name
+    : (isOnBase ? NETWORKS.base.name : isOnArbitrum ? NETWORKS.arbitrum.name : NETWORKS.mainnet.name);
+  const isOnRequiredNetwork = networkMode === 'base-only' ? isOnBase : isOnSupportedNetwork;
   
   // Custom token state
   const [customTokenAddress, setCustomTokenAddress] = useState<string>('');
@@ -358,7 +366,7 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
           </div>
           {customTokenValidation && !customTokenValidation.valid && customTokenAddress && !isValidating && (
             <div style={{ color: '#ff0000', fontSize: '11px', marginLeft: '90px', marginTop: '-5px', marginBottom: '5px' }}>
-              💡 Make sure you're entering a valid ERC20 token address on {isBase ? 'Base' : 'Arbitrum'}
+              💡 Make sure you're entering a valid ERC20 token address on {isBaseContext ? 'Base' : 'Arbitrum'}
             </div>
           )}
           
@@ -389,35 +397,35 @@ export const TokenSelector: React.FC<TokenSelectorProps> = ({
           }}
         />
         <span style={{ color: '#ff0000', fontSize: '12px' }}>
-          Balance: {isOnSupportedNetwork && (tokenAvailable || (isCustomToken && customTokenValidation?.valid)) 
+          Balance: {isOnRequiredNetwork && (tokenAvailable || (isCustomToken && customTokenValidation?.valid))
             ? `${currentTokenInfo.balance.toFixed(2)} ${currentTokenInfo.symbol}` 
-            : `Connect to ${NETWORKS.mainnet.name}, ${NETWORKS.base.name}, or ${NETWORKS.arbitrum.name}`}
+            : `Connect to ${requiredNetworkName}`}
           {currentTokenInfo.isNative && <span style={{ color: '#ff0000', fontWeight: 'bold' }}> (Native)</span>}
         </span>
       </div>
 
-      {isOnSankoTestnet && (
+      {networkMode === 'auto' && isOnSankoTestnet && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           ⚠️ Switch to Sanko Mainnet - tokens are not available on testnet
         </div>
       )}
-      {!isOnSupportedNetwork && !isOnSankoTestnet && (
+      {!isOnRequiredNetwork && !(networkMode === 'auto' && isOnSankoTestnet) && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
-          ⚠️ Switch to {NETWORKS.mainnet.name}, {NETWORKS.base.name}, or {NETWORKS.arbitrum.name} to see token balances
+          ⚠️ Switch to {requiredNetworkName} to see token balances
         </div>
       )}
-      {!tokenAvailable && !isCustomToken && isOnSupportedNetwork && (
+      {!tokenAvailable && !isCustomToken && isOnRequiredNetwork && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           ⚠️ {Object.keys(SUPPORTED_TOKENS).includes(selectedToken as string) ? SUPPORTED_TOKENS[selectedToken as TokenSymbol].symbol : 'Token'} is not available on this network
         </div>
       )}
-      {wagerAmount > currentTokenInfo.balance && isOnSupportedNetwork && (tokenAvailable || (isCustomToken && customTokenValidation?.valid)) && (
+      {wagerAmount > currentTokenInfo.balance && isOnRequiredNetwork && (tokenAvailable || (isCustomToken && customTokenValidation?.valid)) && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           Insufficient balance. You have {currentTokenInfo.balance.toFixed(2)} {currentTokenInfo.symbol}
           {currentTokenInfo.isNative && <span> (Native)</span>}
         </div>
       )}
-      {currentTokenInfo.balance === 0 && isOnSupportedNetwork && (tokenAvailable || (isCustomToken && customTokenValidation?.valid)) && (
+      {currentTokenInfo.balance === 0 && isOnRequiredNetwork && (tokenAvailable || (isCustomToken && customTokenValidation?.valid)) && (
         <div style={{ color: '#ff0000', fontSize: '12px', marginTop: '5px' }}>
           💡 You have 0 {currentTokenInfo.symbol}
           {currentTokenInfo.isNative && <span> (Native)</span>}

@@ -4342,3 +4342,52 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   border-color: #c5d2e6 !important;
   color: #223046 !important;
 }
+
+@media (max-width: 768px) {
+  .chess-game.mobile .game-info-compact,
+  .chess-game.mobile-device .game-info-compact {
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding: 4px 6px !important;
+    gap: 6px !important;
+  }
+
+  .chess-game.mobile .game-info-compact span,
+  .chess-game.mobile-device .game-info-compact span {
+    font-size: 11px !important;
+  }
+
+  .chess-game.mobile .game-info-compact .opponent-info,
+  .chess-game.mobile-device .game-info-compact .opponent-info {
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chess-game.mobile .game-info-compact button,
+  .chess-game.mobile-device .game-info-compact button {
+    font-size: 10px !important;
+    padding: 2px 5px !important;
+    margin-left: 2px !important;
+  }
+
+  .chess-page-simple .create-form {
+    padding: 10px !important;
+  }
+
+  .chess-page-simple .create-form div[style*="rgba(255, 0, 0, 0.1)"] {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    padding: 10px !important;
+  }
+
+  .chess-page-simple .create-form button {
+    min-height: 40px !important;
+  }
+
+  .chess-page-simple .chess-multiplayer-waiting {
+    padding: 14px !important;
+    margin-top: 6px !important;
+  }
+}

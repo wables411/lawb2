@@ -1,19 +1,45 @@
 import React from 'react';
 import { WALLET_CONNECT_LEADERBOARD_BONUS } from '../firebaseLeaderboard';
+import { getDefaultPieceSet } from '../config/chessPieceSets';
 
 interface HowToContentProps {
   variant?: 'default' | 'mobile';
 }
 
 export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
+  const defaultPieceSet = getDefaultPieceSet();
   const pieceKey = [
-    'Pawn: Moves forward 1 (or 2 from start), captures diagonally, promotes on last rank.',
-    'Knight: Moves in an L shape (2 + 1) and can jump over pieces.',
-    'Bishop: Moves any number of squares diagonally.',
-    'Rook: Moves any number of squares horizontally or vertically.',
-    'Queen: Moves any number of squares in any one direction.',
-    'King: Moves 1 square in any direction. Keep this piece safe.',
-  ];
+    {
+      code: 'p',
+      name: 'Pawn',
+      description: 'Moves forward 1 (or 2 from start), captures diagonally, promotes on last rank.',
+    },
+    {
+      code: 'n',
+      name: 'Knight',
+      description: 'Moves in an L shape (2 + 1) and can jump over pieces.',
+    },
+    {
+      code: 'b',
+      name: 'Bishop',
+      description: 'Moves any number of squares diagonally.',
+    },
+    {
+      code: 'r',
+      name: 'Rook',
+      description: 'Moves any number of squares horizontally or vertically.',
+    },
+    {
+      code: 'q',
+      name: 'Queen',
+      description: 'Moves any number of squares in any one direction.',
+    },
+    {
+      code: 'k',
+      name: 'King',
+      description: 'Moves 1 square in any direction. Keep this piece safe.',
+    },
+  ] as const;
 
   const singlePlayerFlow = [
     'From Chess Home, keep VS AI selected and click Start Match.',
@@ -56,9 +82,19 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
         </ol>
 
         <p><strong>Chess Piece Key:</strong></p>
-        <ul className="how-to-list">
+        <ul className="how-to-list how-to-piece-list">
           {pieceKey.map((piece) => (
-            <li key={piece}>{piece}</li>
+            <li key={piece.code} className="how-to-piece-item">
+              <img
+                src={defaultPieceSet.pieceImages[piece.code]}
+                alt={`${piece.name} piece`}
+                className="how-to-piece-icon"
+                loading="lazy"
+              />
+              <span>
+                <strong>{piece.name}:</strong> {piece.description}
+              </span>
+            </li>
           ))}
         </ul>
 
@@ -80,17 +116,28 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
             href="https://basescan.org/address/0x06b6aae693cf1af27d5a5df0d0ac88af3fac9e11"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: '#32CD32' }}
+            className="how-to-contract-link"
           >
             0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11
           </a>
         </p>
+        <p>
+          <strong>Legacy Sanko Contract (sunsetted):</strong>{' '}
+          <a
+            href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="how-to-contract-link"
+          >
+            0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56
+          </a>
+        </p>
 
-        <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#000000', borderRadius: '4px', fontSize: '12px' }}>
-          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Network Name:</strong> Base Mainnet</p>
-          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>RPC URL:</strong> https://mainnet.base.org</p>
-          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Chain ID:</strong> 8453</p>
-          <p style={{ margin: '2px 0', color: '#32CD32' }}><strong>Currency Symbol:</strong> ETH</p>
+        <div className="how-to-network-card">
+          <p><strong>Network Name:</strong> Base Mainnet</p>
+          <p><strong>RPC URL:</strong> https://mainnet.base.org</p>
+          <p><strong>Chain ID:</strong> 8453</p>
+          <p><strong>Currency Symbol:</strong> ETH</p>
         </div>
       </div>
     </div>

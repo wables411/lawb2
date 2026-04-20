@@ -2005,6 +2005,44 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   list-style: decimal;
 }
 
+.how-to-piece-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.how-to-piece-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.how-to-piece-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex: 0 0 26px;
+}
+
+.how-to-contract-link {
+  color: #2f8f4d;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.how-to-network-card {
+  margin-top: 15px;
+  padding: 10px;
+  background: #0f1a2d;
+  border: 1px solid rgba(134, 181, 255, 0.45);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.how-to-network-card p {
+  margin: 2px 0;
+  color: #d8ecff;
+}
+
 .how-to-section.mobile {
   max-height: 60vh;
   overflow-y: auto;
@@ -3073,6 +3111,32 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 
 .game-info-compact span {
   margin: 0 4px;
+}
+
+.engine-health-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  min-height: 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.engine-health-dot.thinking {
+  animation: engine-dot-pulse 1s ease-in-out infinite;
+}
+
+@keyframes engine-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 1;
+  }
 }
 
 /* Compact Game Controls */
@@ -5276,6 +5340,16 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   color: #93d5ff !important;
 }
 
+.chess-page-simple .how-to-network-card {
+  background: rgba(10, 20, 34, 0.92) !important;
+  border-color: rgba(147, 194, 255, 0.5) !important;
+}
+
+.chess-page-simple .how-to-network-card p,
+.chess-page-simple .how-to-network-card strong {
+  color: #d9edff !important;
+}
+
 .lawb-app-light-mode .chess-page-simple .game-mode-panel-streamlined {
   background: linear-gradient(180deg, #f8fbff, #e8eef7) !important;
   border-color: #b8c6da !important;
@@ -5327,6 +5401,20 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   border-color: #2b6cb0 !important;
   color: #164372 !important;
   box-shadow: inset 0 0 0 1px rgba(43, 108, 176, 0.45) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .how-to-contract-link {
+  color: #256b8f !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .how-to-network-card {
+  background: rgba(225, 236, 252, 0.95) !important;
+  border-color: rgba(97, 127, 179, 0.45) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .how-to-network-card p,
+.lawb-app-light-mode .chess-page-simple .how-to-network-card strong {
+  color: #1f2f47 !important;
 }
 
 @media (max-width: 768px) {
@@ -5517,5 +5605,53 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   background: rgba(255, 255, 255, 0.85) !important;
   border-color: #c5d2e6 !important;
   color: #223046 !important;
+}
+
+@media (max-width: 768px) {
+  .chess-game.mobile .game-info-compact {
+    padding: 4px 6px !important;
+    gap: 4px !important;
+  }
+
+  .chess-game.mobile .game-info-compact .move-history-display {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chess-game.mobile .game-info-compact button {
+    padding: 2px 5px !important;
+    font-size: 10px !important;
+  }
+
+  .chess-game.mobile .engine-health-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    min-height: 8px;
+  }
+
+  .chess-page-simple .how-to-piece-item {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .chess-page-simple .how-to-piece-icon {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    margin-top: 1px;
+  }
+
+  .chess-page-simple .how-to-network-card {
+    font-size: 11px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .chess-game.mobile .game-info-compact .move-history-display {
+    max-width: 34vw;
+  }
 }
 

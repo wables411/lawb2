@@ -1665,45 +1665,40 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     return pieceName ? `${color} ${pieceName}` : null;
   };
 
-  const getHardEngineBadge = () => {
+  const getHardEngineIndicator = () => {
     if (difficulty !== 'hard' || gameMode !== GameMode.AI) return null;
     if (stockfishStatus === 'failed') {
       return {
         label: 'Engine Offline',
-        color: '#ffd6d6',
-        background: 'rgba(125, 19, 19, 0.8)',
-        border: '1px solid rgba(255, 120, 120, 0.85)',
+        dotColor: '#ff8c8c',
+        glow: 'rgba(255, 103, 103, 0.7)',
       };
     }
     if (hardEngineHealth === 'thinking') {
       return {
         label: 'Engine Thinking',
-        color: '#fff2bf',
-        background: 'rgba(105, 76, 11, 0.8)',
-        border: '1px solid rgba(242, 213, 113, 0.9)',
+        dotColor: '#f4d27a',
+        glow: 'rgba(244, 210, 122, 0.72)',
       };
     }
     if (hardEngineHealth === 'degraded') {
       return {
-        label: `Fallback x${hardFallbackCount}`,
-        color: '#fff2c9',
-        background: 'rgba(122, 84, 15, 0.82)',
-        border: '1px solid rgba(248, 205, 95, 0.95)',
+        label: `Engine Fallback x${hardFallbackCount}`,
+        dotColor: '#ffd08a',
+        glow: 'rgba(255, 181, 71, 0.7)',
       };
     }
     if (hardEngineHealth === 'offline') {
       return {
         label: 'Engine Recovering',
-        color: '#ffe2e2',
-        background: 'rgba(134, 28, 28, 0.8)',
-        border: '1px solid rgba(255, 132, 132, 0.9)',
+        dotColor: '#ff9aa0',
+        glow: 'rgba(255, 110, 128, 0.7)',
       };
     }
     return {
       label: 'Engine Ready',
-      color: '#d7ffe5',
-      background: 'rgba(18, 95, 45, 0.8)',
-      border: '1px solid rgba(108, 255, 166, 0.9)',
+      dotColor: '#83efae',
+      glow: 'rgba(93, 255, 161, 0.72)',
     };
   };
 
@@ -3365,8 +3360,21 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         <div className="center-area" style={{ paddingTop: 0, marginTop: 0 }}>
           {/* Game Info Bar - Compact */}
           {showGame && (
-            <div className="game-info-compact" style={{ marginTop: '0px', marginBottom: '4px', position: 'sticky', top: 0, zIndex: 10 }}>
-              {playerProfilePic && gameMode === GameMode.AI && (
+            <div
+              className="game-info-compact"
+              style={{
+                marginTop: '0px',
+                marginBottom: '4px',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
+                justifyContent: 'flex-start',
+                flexWrap: 'nowrap',
+                overflowX: 'auto',
+                gap: isMobile ? '4px' : '6px',
+              }}
+            >
+              {playerProfilePic && gameMode === GameMode.AI && !isMobile && (
                 <img 
                   src={playerProfilePic} 
                   alt="Player" 
@@ -3386,11 +3394,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 />
               )}
               <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
-                {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
+                {currentPlayer === 'blue' ? 'Blue' : 'Red'}
               </span>
               {moveHistory.length >= 1 && (
                 <span className="move-history-display">
-                  {moveHistory.length >= 2 
+                  {isMobile
+                    ? `Last: ${moveHistory[moveHistory.length - 1]}`
+                    : moveHistory.length >= 2
                     ? `Last: ${moveHistory[moveHistory.length - 2]} ${moveHistory[moveHistory.length - 1]}`
                     : `Last: ${moveHistory[moveHistory.length - 1]}`
                   }
@@ -3406,7 +3416,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   aria-pressed={showPieceHoverLabels}
                   aria-label={`Piece name labels ${showPieceHoverLabels ? 'enabled' : 'disabled'}. Toggle piece name labels on hover.`}
                   style={{
-                    marginLeft: '8px',
+                    marginLeft: isMobile ? '2px' : '8px',
                     padding: '2px 6px',
                     fontSize: isMobile ? '10px' : '11px',
                     border: '1px solid rgba(255,255,255,0.4)',
@@ -3417,7 +3427,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   }}
                   title="Toggle piece name labels on hover"
                 >
-                  Piece Labels: {showPieceHoverLabels ? 'ON' : 'OFF'}
+                  Labels: {showPieceHoverLabels ? 'ON' : 'OFF'}
                 </button>
               )}
               {showPieceHoverLabels && hoveredPieceLabel && (
@@ -3427,32 +3437,35 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (
                 <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
-                  {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
+                  {isMobile ? `T:${formatCountdown(timeoutCountdown)}` : `Time: ${formatCountdown(timeoutCountdown)}`}
                 </span>
               )}
               {gameMode === GameMode.AI && (
                 <span className="mode-play">
-                  {difficulty === 'easy' ? 'Easy Mode' : 'Hard Mode'}
+                  {difficulty === 'easy' ? 'Easy' : 'Hard'}
                 </span>
               )}
               {(() => {
-                const badge = getHardEngineBadge();
-                if (!badge) return null;
+                const indicator = getHardEngineIndicator();
+                if (!indicator) return null;
                 return (
                   <span
                     style={{
-                      marginLeft: '8px',
-                      padding: isMobile ? '2px 6px' : '3px 7px',
-                      fontSize: isMobile ? '10px' : '11px',
-                      borderRadius: '4px',
-                      color: badge.color,
-                      background: badge.background,
-                      border: badge.border,
-                      fontWeight: 700,
-                      letterSpacing: '0.2px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: '2px',
                     }}
+                    title={indicator.label}
+                    aria-label={indicator.label}
                   >
-                    {badge.label}
+                    <span
+                      className={`engine-health-dot ${hardEngineHealth === 'thinking' ? 'thinking' : ''}`}
+                      style={{
+                        backgroundColor: indicator.dotColor,
+                        boxShadow: `0 0 6px ${indicator.glow}`,
+                      }}
+                    />
                   </span>
                 );
               })()}
@@ -3461,7 +3474,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   Wager: {wager} tDMT
                 </span>
               )}
-              {aiProfilePic && gameMode === GameMode.AI && (
+              {aiProfilePic && gameMode === GameMode.AI && !isMobile && (
                 <img 
                   src={aiProfilePic} 
                   alt="AI" 
@@ -3485,17 +3498,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           {/* Main Game Area */}
           {showGame ? (
             <div className="chess-main-area" style={{ 
-              height: 'calc(100vh - 100px)', 
-              minHeight: 'calc(100vh - 100px)', 
+              height: isMobile ? 'auto' : 'calc(100vh - 100px)', 
+              minHeight: isMobile ? 'auto' : 'calc(100vh - 100px)', 
               paddingTop: '0px', 
-              paddingBottom: '40px',
+              paddingBottom: isMobile ? '16px' : '40px',
               ...(isMobile && gameMode === 'ai' ? { display: 'flex', flexDirection: 'column', overflowY: 'auto', alignItems: 'center' } : {})
             }}>
               <div className="chessboard-container" style={{ 
-                width: 'min(85vh, 85vw, 700px)',
-                height: 'min(85vh, 85vw, 700px)',
-                minWidth: '400px',
-                minHeight: '400px',
+                width: isMobile ? 'min(94vw, 94vh, 520px)' : 'min(85vh, 85vw, 700px)',
+                height: isMobile ? 'min(94vw, 94vh, 520px)' : 'min(85vh, 85vw, 700px)',
+                minWidth: isMobile ? '280px' : '400px',
+                minHeight: isMobile ? '280px' : '400px',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',

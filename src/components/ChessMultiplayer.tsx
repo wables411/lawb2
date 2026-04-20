@@ -6696,13 +6696,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           color: '#ff0000'
                         }}>
                           <strong>📋 Game Creation Flow:</strong><br/>
-                          1️⃣ <strong>Base Network</strong> - PvP match creation is currently Base-only<br/>
-                          2️⃣ <strong>Select Token</strong> - Choose an available Base token for the wager<br/>
-                          3️⃣ <strong>Enter Amount</strong> - Set your wager amount (must be within min/max limits)<br/>
-                          4️⃣ <strong>Select Piece Set</strong> - Choose your preferred chess piece style<br/>
-                          5️⃣ <strong>Click "Create Game"</strong> - This can trigger two wallet transactions:<br/>
-                          &nbsp;&nbsp;&nbsp;• <strong>Approval Transaction</strong> - Allows the contract to spend your token<br/>
-                          &nbsp;&nbsp;&nbsp;• <strong>Create Game Transaction</strong> - Creates the game and locks your wager<br/>
+                          1️⃣ <strong>Switch to Base</strong> (Chain ID 8453).<br/>
+                          2️⃣ <strong>Select token + amount</strong> for your wager.<br/>
+                          3️⃣ <strong>Select Piece Set</strong> for this match.<br/>
+                          4️⃣ <strong>Click "Create Game"</strong> and confirm wallet transaction(s).<br/>
+                          &nbsp;&nbsp;&nbsp;• ERC20 tokens usually need <strong>Approve</strong> + <strong>Create Game</strong><br/>
+                          &nbsp;&nbsp;&nbsp;• Native ETH may only need the <strong>Create Game</strong> transaction<br/>
                           <br/>
                           <strong>💡 Note:</strong> NFT wagers are still coming soon.
                         </div>
@@ -6761,6 +6760,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           wagerAmount={gameWager}
                           onWagerChange={setGameWager}
                           disabled={isGameCreationInProgress}
+                          networkMode="base-only"
                         />
                         )}
                         
@@ -7055,9 +7055,17 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
             return shouldRender;
           })() && (
             <>
-              <div className="game-info-compact">
+              <div
+                className="game-info-compact"
+                style={{
+                  justifyContent: 'flex-start',
+                  flexWrap: 'nowrap',
+                  overflowX: 'auto',
+                  gap: isMobile ? '4px' : '8px',
+                }}
+              >
                 <span className={currentPlayer === 'blue' ? 'current-blue' : 'current-red'}>
-                  {currentPlayer === 'blue' ? 'Blue' : 'Red'} to move
+                  {currentPlayer === 'blue' ? 'Blue' : 'Red'}
                 </span>
                 <button
                   onClick={() => {
@@ -7076,16 +7084,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   }}
                   title="Toggle piece name labels on hover"
                 >
-                  Piece Labels: {showPieceHoverLabels ? 'ON' : 'OFF'}
+                  Labels: {showPieceHoverLabels ? 'ON' : 'OFF'}
                 </button>
-                {showPieceHoverLabels && hoveredPieceLabel && (
+                {!isMobile && showPieceHoverLabels && hoveredPieceLabel && (
                   <span className="move-history-display" style={{ marginLeft: '8px' }}>
                     Hover: {hoveredPieceLabel}
                   </span>
                 )}
                 {gameMode === GameMode.ACTIVE && timeoutCountdown > 0 && (
                   <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
-                    {isMobile ? formatCountdown(timeoutCountdown) : `Time: ${formatCountdown(timeoutCountdown)}`}
+                    {isMobile ? `T:${formatCountdown(timeoutCountdown)}` : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </span>
                 )}
                 <span className="wager-display">
