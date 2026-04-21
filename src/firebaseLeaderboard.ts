@@ -12,6 +12,7 @@ const getDatabaseOrThrow = () => {
 
 export interface PointsBreakdown {
   chess: number;
+  reef_run: number;
   stream: number;
   games: number;
   holdings: number;
@@ -26,6 +27,7 @@ export const WALLET_CONNECT_LEADERBOARD_BONUS = 10;
 function emptyPointsBreakdown(): PointsBreakdown {
   return {
     chess: 0,
+    reef_run: 0,
     stream: 0,
     games: 0,
     holdings: 0,
@@ -199,6 +201,7 @@ export const updateLeaderboardEntry = async (
     // Migrate existing entries: treat all legacy points as chess
     const breakdown: PointsBreakdown = existingEntry?.points_breakdown || {
       chess: existingEntry?.points || 0,
+      reef_run: 0,
       stream: 0,
       games: 0,
       holdings: 0,
@@ -443,6 +446,7 @@ export const addEcosystemPoints = async (
 
     const breakdown: PointsBreakdown = existingEntry?.points_breakdown || {
       chess: existingEntry?.points || 0,
+      reef_run: 0,
       stream: 0,
       games: 0,
       holdings: 0,
@@ -505,6 +509,7 @@ export const setHoldingsPoints = async (
 
     const breakdown: PointsBreakdown = existingEntry?.points_breakdown || {
       chess: existingEntry?.points || 0,
+      reef_run: 0,
       stream: 0,
       games: 0,
       holdings: 0,
@@ -555,6 +560,7 @@ export const getUserPointsBreakdown = async (walletAddress: string): Promise<Poi
     return (
       entry.points_breakdown || {
         chess: entry.points || 0,
+        reef_run: 0,
         stream: 0,
         games: 0,
         holdings: 0,

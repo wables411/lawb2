@@ -66,15 +66,24 @@ function sameProfileToken(stored: unknown, candidate: unknown): boolean {
   return normalizeInventoryEntry(stored) === normalizeInventoryEntry(candidate);
 }
 
-const LB_BREAKDOWN_ORDER = ['chess', 'holdings', 'wallet_connect', 'stream', 'games'] as const;
+const LB_BREAKDOWN_ORDER = ['chess', 'reef_run', 'holdings', 'wallet_connect', 'stream', 'games'] as const;
 
 const LB_BREAKDOWN_LABELS: Record<(typeof LB_BREAKDOWN_ORDER)[number], string> = {
   chess: 'Chess',
-  holdings: 'Holdings (NFTs & tokens)',
+  reef_run: 'Reef Run',
+  holdings: 'Lawb (NFTs & tokens)',
   wallet_connect: 'Wallet connect bonus',
-  stream: 'Stream / other',
+  stream: 'Stream participation',
   games: 'Games',
 };
+
+function formatDurationSec(sec?: number | null): string {
+  if (typeof sec !== 'number' || !Number.isFinite(sec) || sec <= 0) return '—';
+  const s = Math.floor(sec);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
 
 function isProfileDebugVerbose(): boolean {
   try {
@@ -731,6 +740,19 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 last_match_timestamp: null,
                 last_match_invite_code: null
               },
+              chess_stats: {
+                wins: 0,
+                losses: 0,
+                fastest_win_seconds: null,
+              },
+              reef_run_stats: {
+                cheese_collected: 0,
+                peptides_collected: 0,
+                coins_collected: 0,
+                longest_run_seconds: 0,
+                character_runs: {},
+                favored_character: null,
+              },
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             } as PlayerProfileData;
@@ -764,6 +786,23 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               win_rate: 0,
               last_match_timestamp: null,
               last_match_invite_code: null
+            };
+          }
+          if (!profileData.chess_stats) {
+            profileData.chess_stats = {
+              wins: profileData.game_stats?.wins || 0,
+              losses: profileData.game_stats?.losses || 0,
+              fastest_win_seconds: null,
+            };
+          }
+          if (!profileData.reef_run_stats) {
+            profileData.reef_run_stats = {
+              cheese_collected: 0,
+              peptides_collected: 0,
+              coins_collected: 0,
+              longest_run_seconds: 0,
+              character_runs: {},
+              favored_character: null,
             };
           }
         }
@@ -1137,6 +1176,12 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const sectionStyle = linuxNotesSectionStyle(isMobile);
   const buttonStyle = linuxNotesButtonStyle(isMobile);
   const inputStyle = linuxNotesInputStyle(isMobile);
+  const chessStats = profile?.chess_stats;
+  const reefStats = profile?.reef_run_stats;
+  const chessWins = chessStats?.wins ?? leaderboardEntry?.wins ?? 0;
+  const chessLosses = chessStats?.losses ?? leaderboardEntry?.losses ?? 0;
+  const fastestWin = chessStats?.fastest_win_seconds ?? null;
+  const reefFavored = reefStats?.favored_character ? reefStats.favored_character.toUpperCase() : '—';
   const notesTokenChipStyle = (selected: boolean): React.CSSProperties => ({
     padding: isMobile ? '4px 8px' : '3px 8px',
     background: selected ? '#d6b04a' : '#f4f4f1',
@@ -1300,6 +1345,39 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           )}
         </div>
       )}
+
+      <div
+        style={{
+          ...sectionStyle,
+          width: '100%',
+          maxWidth: '600px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 10, color: '#2a2a28' }}>
+          Player game stats
+        </h4>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 6, fontSize: isMobile ? '12px' : '13px' }}>Chess</div>
+            <div style={{ fontSize: isMobile ? '11px' : '12px', lineHeight: 1.65 }}>
+              <div><strong>Wins:</strong> {chessWins}</div>
+              <div><strong>Losses:</strong> {chessLosses}</div>
+              <div><strong>Fastest win:</strong> {formatDurationSec(fastestWin)}</div>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 6, fontSize: isMobile ? '12px' : '13px' }}>Reef Run</div>
+            <div style={{ fontSize: isMobile ? '11px' : '12px', lineHeight: 1.65 }}>
+              <div><strong>Cheese:</strong> {reefStats?.cheese_collected ?? 0}</div>
+              <div><strong>Peptides:</strong> {reefStats?.peptides_collected ?? 0}</div>
+              <div><strong>Coins:</strong> {reefStats?.coins_collected ?? 0}</div>
+              <div><strong>Longest run:</strong> {formatDurationSec(reefStats?.longest_run_seconds ?? 0)}</div>
+              <div><strong>Favored character:</strong> {reefFavored}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Editing Features - Only show when viewing own profile */}
       {isOwnProfile && (

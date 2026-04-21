@@ -400,8 +400,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Add state for leaderboard updated message
   const [showLeaderboardUpdated, setShowLeaderboardUpdated] = useState(false);
 
-  // Timer state for 60-minute move timeout
-  const GAME_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+  // Timer state for per-turn 5-minute move timeout (resets after every move)
+  const GAME_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per turn
   const [timeoutTimer, setTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
   const [timeoutCountdown, setTimeoutCountdown] = useState<number>(0);
   const [lastMoveTime, setLastMoveTime] = useState<number>(Date.now());
@@ -2508,8 +2508,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 {status}
               </div>
               {showGame && gameState === 'active' && gameMode === 'ai' && timeoutCountdown > 0 && (
-                <div className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`} style={{
-                  color: timeoutCountdown < 60 ? '#ff0000' : timeoutCountdown < 300 ? '#ff8800' : '#000080',
+                <div className={`timer-display ${timeoutCountdown < 60 ? 'timer-warning' : ''} ${timeoutCountdown < 15 ? 'timer-critical' : ''}`} style={{
+                  color: timeoutCountdown < 15 ? '#ff0000' : timeoutCountdown < 60 ? '#ff8800' : '#000080',
                   fontSize: '12px',
                   fontWeight: 'bold',
                   fontFamily: 'Courier New, monospace',
@@ -3461,7 +3461,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 </span>
               )}
               {gameMode === GameMode.AI && gameState === 'active' && timeoutCountdown > 0 && (
-                <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
+                <span className={`timer-display ${timeoutCountdown < 60 ? 'timer-warning' : ''} ${timeoutCountdown < 15 ? 'timer-critical' : ''}`}>
                   {isMobile ? `T:${formatCountdown(timeoutCountdown)}` : `Time: ${formatCountdown(timeoutCountdown)}`}
                 </span>
               )}

@@ -37,6 +37,8 @@ export type ArcadeRunHudState = {
   armorMax: number;
   coins: number;
   trash: number;
+  cheeseCollected: number;
+  peptidesCollected: number;
   /** Effective forward intensity vs baseline (W/S + cheese + drag). */
   relativeSpeed: number;
   cheeseSecLeft: number;
@@ -60,6 +62,8 @@ export type RunState = {
   armorMax: number;
   coins: number;
   trash: number;
+  cheeseCollected: number;
+  peptidesCollected: number;
   cheeseUntil: number;
   dragUntil: number;
   /** 0 = coast, 1 = full W, -1 = full S — lerped in controller */
@@ -78,6 +82,8 @@ export function createInitialRunState(characterId: ArcadeCharacterId, _nowSec: n
     armorMax: armMax,
     coins: 0,
     trash: 0,
+    cheeseCollected: 0,
+    peptidesCollected: 0,
     cheeseUntil: 0,
     dragUntil: 0,
     throttle: 0,
@@ -185,6 +191,8 @@ export function applyPickupEffect(
   if (!fx) return {};
 
   if (fx.coins) st.coins += fx.coins;
+  if (kind === 'cheese') st.cheeseCollected += 1;
+  if (kind === 'peptides') st.peptidesCollected += 1;
   if (fx.trash) st.trash += fx.trash;
 
   if (fx.cheeseSec && fx.cheeseSec > 0) {
@@ -232,6 +240,8 @@ export function runStateToHud(
     armorMax: st.armorMax,
     coins: st.coins,
     trash: st.trash,
+    cheeseCollected: st.cheeseCollected,
+    peptidesCollected: st.peptidesCollected,
     relativeSpeed,
     cheeseSecLeft: Math.max(0, st.cheeseUntil - nowSec),
     dragSecLeft: Math.max(0, st.dragUntil - nowSec),

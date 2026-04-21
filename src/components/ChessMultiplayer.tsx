@@ -148,6 +148,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const [isClaimingWinnings, setIsClaimingWinnings] = useState(false);
   const [hasLoadedGame, setHasLoadedGame] = useState(false); // Prevent duplicate game loading
   const isJoiningGameRef = useRef(false); // Prevent duplicate joinGame calls
+  // Tracks invite codes whose end-of-game stats have already been applied.
+  // Prevents double-counting when local checkmate detection AND the Firebase
+  // subscription's `game_state: 'finished'` watcher both fire on the winning client.
+  const finalizedScoresRef = useRef<Set<string>>(new Set());
   
   // Contract write hooks for different operations
   const { writeContract: writeCreateGame, isPending: isCreatingGameContract, data: createGameHash } = useWriteContract();
@@ -871,11 +875,13 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   // UI state - always use dark mode for chess
   const [darkMode] = useState(true);
   
-  // Timeout system (60 minutes = 3600000 ms)
+  // Per-turn timeout system (5 minutes = 300000 ms)
+  // Timer resets each time a move is made; if the player on the clock fails to move
+  // within 5 minutes, the opponent wins by timeout.
   const [timeoutTimer, setTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
   const [timeoutCountdown, setTimeoutCountdown] = useState<number>(0);
   const [lastMoveTime, setLastMoveTime] = useState<number>(Date.now());
-  const GAME_TIMEOUT_MS = 3600000; // 60 minutes
+  const GAME_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per turn
   
 
   const [showPromotion, setShowPromotion] = useState(false);
@@ -1175,8 +1181,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     
     if (winnerAddress && winnerAddress !== '0x0000000000000000000000000000000000000000') {
       console.log('[TIMEOUT] Ending game with winner:', winnerAddress);
-      
-      // Update Firebase FIRST to mark game as finished (will be confirmed when transaction completes)
+
+      // Update Firebase FIRST to mark game as finished — idempotent, so both
+      // clients can race to write this without consequence.
       try {
         await firebaseChess.updateGame(inviteCode, {
           game_state: 'finished',
@@ -1187,15 +1194,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       } catch (error) {
         console.error('[TIMEOUT] Error updating Firebase:', error);
       }
-      
-      // Call contract to end game
-      writeEndGame({
-        address: chessContractAddress as `0x${string}`,
-        abi: CHESS_CONTRACT_ABI,
-        functionName: 'endGame',
-        args: [inviteCode as `0x${string}`, winnerAddress as `0x${string}`],
-      });
-      
+
+      // Only the winner's client submits the on-chain endGame transaction.
+      // The loser's wallet would otherwise be prompted to sign a tx that the
+      // contract will reject, which is confusing UX. The contract itself only
+      // needs one successful call; the loser's client will pick up the
+      // `finished` state via the Firebase subscription.
+      const iAmWinner = !!address && winnerAddress.toLowerCase() === address.toLowerCase();
+      if (iAmWinner) {
+        console.log('[TIMEOUT] I am the winner — submitting on-chain endGame');
+        writeEndGame({
+          address: chessContractAddress as `0x${string}`,
+          abi: CHESS_CONTRACT_ABI,
+          functionName: 'endGame',
+          args: [inviteCode as `0x${string}`, winnerAddress as `0x${string}`],
+        });
+      } else {
+        console.log('[TIMEOUT] I am the loser — skipping on-chain endGame (winner will submit)');
+      }
+
       setGameStatus(`Game ended due to timeout. ${winner === 'red' ? 'Red' : 'Blue'} wins!`);
       setGameMode(GameMode.FINISHED);
     } else {
@@ -1210,7 +1227,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
     
     const timer = setTimeout(() => {
-      console.log('[TIMEOUT] 60-minute timeout reached, ending game');
+      console.log('[TIMEOUT] Per-turn 5-minute timeout reached, ending game');
       handleTimeout();
     }, GAME_TIMEOUT_MS);
     
@@ -2313,10 +2330,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   const updateBothPlayersScoresLocal = async (winner: 'blue' | 'red' | null, bluePlayer: string, redPlayer: string) => {
     try {
       console.log('[SCORE] Updating both players scores:', { winner, bluePlayer, redPlayer });
-      
+
       if (!bluePlayer || !redPlayer) {
         console.error('[SCORE] Missing player addresses from contract');
         return;
+      }
+
+      // Dedupe: a single game can reach the game-over path twice on the winning
+      // client (local checkmate detection + Firebase "finished" subscription).
+      // Apply stats exactly once per inviteCode.
+      if (inviteCode && finalizedScoresRef.current.has(inviteCode)) {
+        console.log('[SCORE] Scores already finalized for', inviteCode, '— skipping duplicate update');
+        return;
+      }
+      if (inviteCode) {
+        finalizedScoresRef.current.add(inviteCode);
       }
 
       // Use Firebase function to update both players
@@ -2324,6 +2352,28 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       if (success) {
         console.log('[SCORE] Successfully updated both players scores');
+        // Update profile-level chess stats (wins/losses + fastest win time).
+        try {
+          let matchDurationSec: number | undefined;
+          if (inviteCode) {
+            const game = await firebaseChess.getGame(inviteCode);
+            const createdAt = game?.created_at ? Date.parse(game.created_at) : NaN;
+            if (Number.isFinite(createdAt)) {
+              const sec = Math.floor((Date.now() - createdAt) / 1000);
+              if (sec > 0) matchDurationSec = sec;
+            }
+          }
+          const blueResult: 'win' | 'loss' | 'draw' =
+            winner === 'blue' ? 'win' : winner === 'red' ? 'loss' : 'draw';
+          const redResult: 'win' | 'loss' | 'draw' =
+            winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
+          await Promise.all([
+            firebaseProfiles.updateChessProfileStats(bluePlayer, blueResult, matchDurationSec),
+            firebaseProfiles.updateChessProfileStats(redPlayer, redResult, matchDurationSec),
+          ]);
+        } catch (profileStatErr) {
+          console.error('[SCORE] Error updating profile chess stats:', profileStatErr);
+        }
         // Reload leaderboard only after both players' scores are updated
         await loadLeaderboard();
       } else {
@@ -2357,10 +2407,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           const games = await firebaseChess.getOpenGames('base');
           console.log('[LOBBY] Loaded open games:', games);
           console.log('[LOBBY] Number of open games:', games.length);
-          
-          // Temporarily disable ghost game cleanup to fix lobby issue
-          // await cleanupGhostGames(games);
-          
+
+          // Ghost-game cleanup is re-enabled with an age gate so we never
+          // delete freshly-created games whose contract tx is still settling.
+          // Runs in the background and never blocks the lobby render.
+          cleanupGhostGames(games).catch(err => {
+            console.warn('[LOBBY] Ghost cleanup pass failed:', err);
+          });
+
           setOpenGames(games);
         } catch (error) {
           console.error('[LOBBY] Error loading open games:', error);
@@ -2368,29 +2422,46 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       }, 1000); // 1 second debounce
   };
 
-  // Clean up ghost games that exist in Firebase but not in the smart contract
+  // Minimum age before a Firebase-only game row is considered a "ghost" and
+  // eligible for deletion. Below this, we assume the contract write is still
+  // in-flight and leave the row alone.
+  const GHOST_GAME_MIN_AGE_MS = 15 * 60 * 1000; // 15 minutes
+  // Cap per-pass cleanup work so we never fan out hundreds of RPC calls.
+  const GHOST_GAME_MAX_CHECKS_PER_PASS = 8;
+
+  // Clean up ghost games that exist in Firebase but not in the smart contract.
+  // Only targets rows older than GHOST_GAME_MIN_AGE_MS and caps RPC fan-out.
   const cleanupGhostGames = async (games: any[]) => {
     if (!publicClient) {
       return;
     }
-    
-    for (const game of games) {
+
+    const now = Date.now();
+    const candidates = games.filter(g => {
+      const createdMs = g?.created_at ? Date.parse(g.created_at) : NaN;
+      if (!Number.isFinite(createdMs)) return false;
+      return (now - createdMs) >= GHOST_GAME_MIN_AGE_MS;
+    }).slice(0, GHOST_GAME_MAX_CHECKS_PER_PASS);
+
+    if (candidates.length === 0) return;
+
+    console.log('[CLEANUP] Checking', candidates.length, 'aged games for ghost state');
+
+    for (const game of candidates) {
       try {
         const bytes6InviteCode = game.invite_code;
         if (!bytes6InviteCode || typeof bytes6InviteCode !== 'string' || !bytes6InviteCode.startsWith('0x') || bytes6InviteCode.length !== 14) {
           continue;
         }
-        // Check if game exists in smart contract
         const contractGame = await publicClient.readContract({
           address: chessContractAddress as `0x${string}`,
           abi: CHESS_CONTRACT_ABI,
           functionName: 'games',
           args: [bytes6InviteCode as `0x${string}`],
         });
-        
+
         if (!contractGame || (Array.isArray(contractGame) && contractGame[0] === '0x0000000000000000000000000000000000000000')) {
-          // Game doesn't exist in contract - it's a ghost game
-          // Remove from Firebase
+          console.log('[CLEANUP] Deleting ghost game (no contract record, age >15m):', game.invite_code);
           await firebaseChess.deleteGame(game.invite_code);
         }
       } catch (error) {
@@ -7163,7 +7234,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                   </span>
                 )}
                 {gameMode === GameMode.ACTIVE && timeoutCountdown > 0 && (
-                  <span className={`timer-display ${timeoutCountdown < 300 ? 'timer-warning' : ''} ${timeoutCountdown < 60 ? 'timer-critical' : ''}`}>
+                  <span className={`timer-display ${timeoutCountdown < 60 ? 'timer-warning' : ''} ${timeoutCountdown < 15 ? 'timer-critical' : ''}`}>
                     {isMobile ? `T:${formatCountdown(timeoutCountdown)}` : `Time: ${formatCountdown(timeoutCountdown)}`}
                   </span>
                 )}

@@ -26,6 +26,21 @@ export interface GameStats {
   last_match_invite_code: string | null;
 }
 
+export interface ChessProfileStats {
+  wins: number;
+  losses: number;
+  fastest_win_seconds: number | null;
+}
+
+export interface ReefRunProfileStats {
+  cheese_collected: number;
+  peptides_collected: number;
+  coins_collected: number;
+  longest_run_seconds: number;
+  character_runs: Record<string, number>;
+  favored_character: string | null;
+}
+
 export interface ProfilePicture {
   collection:
     | 'pixelawbs'
@@ -57,6 +72,8 @@ export interface PlayerProfile {
   profile_picture?: ProfilePicture;
   nft_inventory: NFTInventory;
   game_stats: GameStats;
+  chess_stats?: ChessProfileStats;
+  reef_run_stats?: ReefRunProfileStats;
   claimable?: ClaimableBalance;
   linked_wallets?: LinkedWallet[];
   created_at: string;
@@ -106,6 +123,12 @@ export const firebaseProfiles = {
         if (profileData.profile_picture !== undefined) {
           updateData.profile_picture = profileData.profile_picture;
         }
+        if (profileData.chess_stats !== undefined) {
+          updateData.chess_stats = profileData.chess_stats;
+        }
+        if (profileData.reef_run_stats !== undefined) {
+          updateData.reef_run_stats = profileData.reef_run_stats;
+        }
         
         await update(profileRef, updateData);
         console.log('[FIREBASE] Profile updated:', walletAddress);
@@ -134,6 +157,19 @@ export const firebaseProfiles = {
           win_rate: 0,
           last_match_timestamp: null,
           last_match_invite_code: null
+        },
+        chess_stats: profileData.chess_stats || existingProfile?.chess_stats || {
+          wins: 0,
+          losses: 0,
+          fastest_win_seconds: null,
+        },
+        reef_run_stats: profileData.reef_run_stats || existingProfile?.reef_run_stats || {
+          cheese_collected: 0,
+          peptides_collected: 0,
+          coins_collected: 0,
+          longest_run_seconds: 0,
+          character_runs: {},
+          favored_character: null,
         },
         created_at: existingProfile?.created_at || now,
         updated_at: now
@@ -195,6 +231,102 @@ export const firebaseProfiles = {
     } catch (error) {
       console.error('[FIREBASE] Error updating game stats:', error);
       throw error;
+    }
+  },
+
+  async updateChessProfileStats(
+    walletAddress: string,
+    result: 'win' | 'loss' | 'draw',
+    matchDurationSec?: number,
+  ): Promise<void> {
+    try {
+      const db = getDatabaseOrThrow();
+      const normalized = normalizeWalletAddress(walletAddress);
+      const profileRef = ref(db, `profiles/${normalized}`);
+      const snapshot = await get(profileRef);
+      if (!snapshot.exists()) {
+        await this.upsertProfile(normalized, {});
+        return this.updateChessProfileStats(normalized, result, matchDurationSec);
+      }
+      const profile = snapshot.val() as PlayerProfile;
+      const current: ChessProfileStats = profile.chess_stats || {
+        wins: profile.game_stats?.wins || 0,
+        losses: profile.game_stats?.losses || 0,
+        fastest_win_seconds: null,
+      };
+      const nextWins = current.wins + (result === 'win' ? 1 : 0);
+      const nextLosses = current.losses + (result === 'loss' ? 1 : 0);
+      let fastest = current.fastest_win_seconds;
+      if (result === 'win' && typeof matchDurationSec === 'number' && matchDurationSec > 0) {
+        const d = Math.floor(matchDurationSec);
+        fastest = fastest == null ? d : Math.min(fastest, d);
+      }
+      const updated: ChessProfileStats = {
+        wins: nextWins,
+        losses: nextLosses,
+        fastest_win_seconds: fastest ?? null,
+      };
+      await update(profileRef, {
+        chess_stats: updated,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[FIREBASE] Error updating chess profile stats:', error);
+    }
+  },
+
+  async updateReefRunStats(
+    walletAddress: string,
+    payload: {
+      characterId: string;
+      survivalSec: number;
+      cheeseCollected: number;
+      peptidesCollected: number;
+      coinsCollected: number;
+    },
+  ): Promise<void> {
+    try {
+      const db = getDatabaseOrThrow();
+      const normalized = normalizeWalletAddress(walletAddress);
+      const profileRef = ref(db, `profiles/${normalized}`);
+      const snapshot = await get(profileRef);
+      if (!snapshot.exists()) {
+        await this.upsertProfile(normalized, {});
+        return this.updateReefRunStats(normalized, payload);
+      }
+      const profile = snapshot.val() as PlayerProfile;
+      const current: ReefRunProfileStats = profile.reef_run_stats || {
+        cheese_collected: 0,
+        peptides_collected: 0,
+        coins_collected: 0,
+        longest_run_seconds: 0,
+        character_runs: {},
+        favored_character: null,
+      };
+      const characterRuns = { ...(current.character_runs || {}) };
+      characterRuns[payload.characterId] = (characterRuns[payload.characterId] || 0) + 1;
+      let favored: string | null = current.favored_character || null;
+      let favoredCount = favored ? characterRuns[favored] || 0 : -1;
+      for (const [cid, count] of Object.entries(characterRuns)) {
+        if (count > favoredCount) {
+          favored = cid;
+          favoredCount = count;
+        }
+      }
+      const updated: ReefRunProfileStats = {
+        cheese_collected: current.cheese_collected + Math.max(0, Math.floor(payload.cheeseCollected || 0)),
+        peptides_collected: current.peptides_collected + Math.max(0, Math.floor(payload.peptidesCollected || 0)),
+        coins_collected: current.coins_collected + Math.max(0, Math.floor(payload.coinsCollected || 0)),
+        longest_run_seconds: Math.max(current.longest_run_seconds, Math.floor(Math.max(0, payload.survivalSec))),
+        character_runs: characterRuns,
+        favored_character: favored,
+      };
+      await update(profileRef, {
+        reef_run_stats: updated,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[FIREBASE] Error updating Reef Run stats:', error);
     }
   },
 

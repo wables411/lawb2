@@ -165,9 +165,10 @@ export default function ReefArcadeMenu() {
   }, []);
 
   const onGameOver = useCallback(
-    (survivalSec: number, reason: RunEndReason) => {
+    (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => {
       setRunHud(reefRunHudFromSurvivalSec(survivalSec));
       setLastRunEndReason(reason);
+      if (finalHud) setRunStatsHud(finalHud);
       setGameScreen('gameover');
 
       if (!connection.connected || !connection.address) {
@@ -182,6 +183,7 @@ export default function ReefArcadeMenu() {
       }
 
       const pts = reefRunLeaderboardPointsForRound(survivalSec);
+      const runHud = finalHud ?? runStatsHud;
       // Single leaderboard sync per run (see reefRunLeaderboardPoints.ts) — avoids Firebase write spam.
       void (async () => {
         const primary = await firebaseProfiles.getPrimaryWallet(connection.address!);
@@ -190,15 +192,25 @@ export default function ReefArcadeMenu() {
           setLastRunLbNote('Could not record points for this wallet address.');
           return;
         }
-        const ok = await addEcosystemPoints(key, 'games', pts);
+        const [okPoints] = await Promise.all([
+          addEcosystemPoints(key, 'reef_run', pts),
+          firebaseProfiles.updateReefRunStats(primary, {
+            characterId: selectedCharacterId,
+            survivalSec,
+            coinsCollected: runHud?.coins ?? 0,
+            cheeseCollected: runHud?.cheeseCollected ?? 0,
+            peptidesCollected: runHud?.peptidesCollected ?? 0,
+          }),
+        ]);
+        const ok = okPoints;
         if (ok) {
-          setLastRunLbNote(`+${pts} leaderboard pts (Reef Run → Games). Synced to Firebase.`);
+          setLastRunLbNote(`+${pts} leaderboard pts (Reef Run). Synced to Firebase.`);
         } else {
           setLastRunLbNote('Could not save leaderboard points. Check connection and try again.');
         }
       })();
     },
-    [connection.connected, connection.address],
+    [connection.connected, connection.address, runStatsHud, selectedCharacterId],
   );
 
   const onRunDifficulty = useCallback((payload: ReefRunHudPayload) => {

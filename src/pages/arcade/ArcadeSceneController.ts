@@ -297,7 +297,7 @@ export class ArcadeSceneController {
   private tunnelMaterial!: THREE.MeshStandardMaterial;
   private onPickCharacter: (id: ArcadeCharacterId) => void;
   /** Final survival time + how the run ended (UI + leaderboard). */
-  private onGameOver: (survivalSec: number, reason: RunEndReason) => void;
+  private onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
   private onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   private onRunHud?: (hud: ArcadeRunHudState) => void;
   private pointerBound = false;
@@ -321,7 +321,7 @@ export class ArcadeSceneController {
     container: HTMLElement,
     handlers: {
       onPickCharacter: (id: ArcadeCharacterId) => void;
-      onGameOver: (survivalSec: number, reason: RunEndReason) => void;
+      onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
       onRunHud?: (hud: ArcadeRunHudState) => void;
     },
@@ -1592,7 +1592,10 @@ export class ArcadeSceneController {
     else if (reason === 'oxygen') this.addCameraShake(0.2);
     else this.addCameraShake(0.4);
     this.onRunDifficulty?.(reefRunHudFromSurvivalSec(this.runSurvivalSec));
-    this.onGameOver(this.runSurvivalSec, reason);
+    const finalHud = this.runState
+      ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
+      : undefined;
+    this.onGameOver(this.runSurvivalSec, reason, finalHud);
   }
 
   private tick = (): void => {

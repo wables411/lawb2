@@ -7,6 +7,7 @@ import {
   mergeLeaderboardEntriesForDisplay,
   normalizeLeaderboardPathKey,
   type LeaderboardEntry,
+  type PointsBreakdown,
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
 import {
@@ -38,6 +39,26 @@ const ROW_STYLE: React.CSSProperties = {
   borderBottom: '1px solid #dfdfda',
 };
 
+type LeaderboardFilter = 'total' | 'chess' | 'reef_run' | 'holdings' | 'stream';
+
+function pointsForFilter(entry: LeaderboardEntry, filter: LeaderboardFilter): number {
+  const b = (entry.points_breakdown || {}) as Partial<PointsBreakdown>;
+  switch (filter) {
+    case 'chess':
+      return b.chess || 0;
+    case 'reef_run':
+      // Keep backward compatibility with legacy "games" reef points.
+      return (b.reef_run || 0) + (b.games || 0);
+    case 'holdings':
+      return b.holdings || 0;
+    case 'stream':
+      return b.stream || 0;
+    case 'total':
+    default:
+      return entry.points || 0;
+  }
+}
+
 /**
  * One-shot fetch of top leaderboard rows (indexed query, no realtime listener).
  */
@@ -46,6 +67,7 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nameByKey, setNameByKey] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<LeaderboardFilter>('total');
 
   useEffect(() => {
     let cancelled = false;
@@ -79,11 +101,6 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
             merged.push(m);
           }
         }
-        merged.sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          if (b.wins !== a.wins) return b.wins - a.wins;
-          return a.total_games - b.total_games;
-        });
         const data = merged.slice(0, 25);
         if (!cancelled) {
           setRows(data);
@@ -136,10 +153,32 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
     >
       <div style={{ marginBottom: 10 }}>
         <h3 style={linuxNotesHeaderStyle(isMobile)}>Lawb Leaderboard</h3>
-        <div style={linuxNotesPillStyle(isMobile)}>Top 25 by total points</div>
+        <div style={linuxNotesPillStyle(isMobile)}>Top 25 with score filter</div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {([
+          ['total', 'Total'],
+          ['chess', 'Chess'],
+          ['reef_run', 'Reef Run'],
+          ['holdings', 'Lawb'],
+          ['stream', 'Stream'],
+        ] as [LeaderboardFilter, string][]).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setFilter(id)}
+            style={{
+              ...linuxNotesPillStyle(isMobile),
+              cursor: 'pointer',
+              background: filter === id ? '#d8bf77' : '#efefe9',
+              borderColor: filter === id ? '#a78943' : '#c9c9c2',
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       <p style={{ ...linuxNotesSubtleTextStyle(isMobile), marginBottom: 10 }}>
-        Sorted by total points. Linked wallets under the same Lawb profile are merged into one row (points added
+        Sorted by selected score source. Linked wallets under the same Lawb profile are merged into one row (points added
         together). Open your Lawb Profile for a per-source breakdown.
       </p>
       {loading && <p style={{ margin: 0 }}>Loading…</p>}
@@ -168,7 +207,15 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
             <span>Player</span>
             <span style={{ textAlign: 'right' }}>Pts</span>
           </div>
-          {rows.map((entry, i) => {
+          {[...rows]
+            .sort((a, b) => {
+              const av = pointsForFilter(a, filter);
+              const bv = pointsForFilter(b, filter);
+              if (bv !== av) return bv - av;
+              if (b.wins !== a.wins) return b.wins - a.wins;
+              return a.total_games - b.total_games;
+            })
+            .map((entry, i) => {
             const key = entry.username;
             const resolvedRaw = (nameByKey[key] ?? formatAddress(key)).trim();
             const resolved = resolvedRaw.startsWith('@') ? resolvedRaw.slice(1) : resolvedRaw;
@@ -207,7 +254,9 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                   </div>
                   {sub}
                 </span>
-                <span style={{ textAlign: 'right', fontWeight: 700 }}>{entry.points}</span>
+                <span style={{ textAlign: 'right', fontWeight: 700 }}>
+                  {pointsForFilter(entry, filter)}
+                </span>
               </div>
             );
           })}
