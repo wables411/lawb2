@@ -239,6 +239,8 @@ export class ArcadeSceneController {
   private tunnelFlowTex!: THREE.CanvasTexture;
   /** Mobile / tablet: cheaper renderer, tunnel material, particles, cylinder segments. */
   private lowPowerMode = false;
+  /** Hard cap to prevent runaway obstacle counts on heavy assets/devices. */
+  private maxActiveObstacles = 12;
   private plinthWorld = new THREE.Group();
   private playerWorld = new THREE.Group();
   private obstacleGroup = new THREE.Group();
@@ -614,6 +616,7 @@ export class ArcadeSceneController {
 
   async bootstrap(): Promise<void> {
     this.lowPowerMode = isArcadeLowPowerDevice();
+    this.maxActiveObstacles = this.lowPowerMode ? 8 : 12;
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x020a14, this.reefFogDensityBase);
 
@@ -1070,7 +1073,7 @@ export class ArcadeSceneController {
 
     this.runState = createInitialRunState(playCharacterId, this.clock.elapsedTime);
     this.nextForcedOxyTankSurvival = characterUsesOxygenMechanic(playCharacterId)
-      ? 6.5
+      ? 4.4
       : Number.POSITIVE_INFINITY;
     this.throttleSmoothed = 0;
     this.keyW = false;
@@ -1114,6 +1117,11 @@ export class ArcadeSceneController {
    */
   /** @returns false if spawn was deferred. */
   private trySpawnObstacleRow(): boolean {
+    const activeObstacleCount = this.obstacles.filter((o) => !o.hit && o.root.position.z < OBSTACLE_RECYCLE_Z).length;
+    if (activeObstacleCount >= this.maxActiveObstacles) {
+      return false;
+    }
+
     if (this.lanesBusyInApproachPipe().size >= 2) {
       return false;
     }

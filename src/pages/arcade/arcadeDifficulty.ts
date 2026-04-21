@@ -88,14 +88,24 @@ export function tierIndexFromSurvivalSec(sec: number): number {
  * but stays within sustainable oxygen math (~10–14s at typical drain).
  */
 export function forcedOxyTankIntervalSec(survivalSec: number): number {
-  const u = smoothstep(0, 165, survivalSec);
-  return 10 + u * 4.2;
+  // First 3 tiers (I-III, first 135s): intentionally generous cadence.
+  if (survivalSec < 135) {
+    const earlyU = smoothstep(0, 135, survivalSec);
+    return 5.4 + earlyU * 2.8; // ~5.4s -> ~8.2s
+  }
+  const deepU = smoothstep(135, 260, survivalSec);
+  return 8.2 + deepU * 6.0; // ~8.2s -> ~14.2s
 }
 
 /** Random pickup table: air-tank weight vs survival (never below floor — never “zero air” in the table). */
 export function reefRunAirTankRandomPickupWeight(survivalSec: number): number {
-  const u = smoothstep(0, 200, survivalSec);
-  return Math.max(3.6, 10 * (1 - 0.58 * u));
+  // Extra early sustain so players who lane-swap for tanks can over-cap safely.
+  if (survivalSec < 135) {
+    const earlyU = smoothstep(0, 135, survivalSec);
+    return 13.5 - earlyU * 3.0; // 13.5 -> 10.5 in tiers I-III
+  }
+  const deepU = smoothstep(135, 260, survivalSec);
+  return Math.max(3.6, 10.5 * (1 - 0.66 * deepU));
 }
 
 export function swimSpeedMultiplierForTier(tierIndex: number): number {
