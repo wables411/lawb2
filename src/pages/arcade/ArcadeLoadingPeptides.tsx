@@ -30,17 +30,17 @@ function normalizeModelPlacement(root: THREE.Object3D): void {
   box.getSize(size);
   box.getCenter(center);
   const maxAxis = Math.max(size.x, size.y, size.z, 0.0001);
-  const targetExtent = 1.26;
+  const targetExtent = 1.05;
   const scale = targetExtent / maxAxis;
   root.scale.setScalar(scale);
   root.position.sub(center.multiplyScalar(scale));
   const post = new THREE.Box3().setFromObject(root);
-  root.position.y += -0.5 - post.min.y;
+  root.position.y += -0.44 - post.min.y;
 }
 
 /**
  * Small Three canvas used by the loading overlay.
- * Renders the real in-game `peptides.glb` with a gentle idle spin.
+ * Renders the real in-game `reef-o2-tank.glb` with a gentle idle spin.
  */
 export function ArcadeLoadingPeptides() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -50,8 +50,8 @@ export function ArcadeLoadingPeptides() {
     if (!host) return undefined;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 24);
-    camera.position.set(0, 0.28, 4.2);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 24);
+    camera.position.set(0, 0.22, 4.4);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -73,7 +73,7 @@ export function ArcadeLoadingPeptides() {
     let root: THREE.Object3D | null = null;
 
     loader
-      .loadAsync('/arcade-assets/peptides.glb')
+      .loadAsync('/arcade-assets/reef-o2-tank.glb')
       .then((gltf) => {
         if (disposed) {
           disposeObject3D(gltf.scene);
@@ -84,7 +84,7 @@ export function ArcadeLoadingPeptides() {
         scene.add(root);
       })
       .catch((e) => {
-        console.warn('[Arcade] loading peptides preview failed', e);
+        console.warn('[Arcade] loading O2 tank preview failed', e);
       });
 
     const resize = () => {
@@ -103,9 +103,9 @@ export function ArcadeLoadingPeptides() {
     const tick = () => {
       const t = clock.getElapsedTime();
       if (root) {
-        root.rotation.y = t * 0.9;
-        root.rotation.z = Math.sin(t * 1.1) * 0.08;
-        root.position.y = -0.5 + Math.sin(t * 2.1) * 0.07;
+        root.rotation.y = t * 0.65;
+        root.rotation.z = Math.sin(t * 1.05) * 0.05;
+        root.position.y = -0.44 + Math.sin(t * 1.8) * 0.05;
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);

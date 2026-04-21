@@ -451,16 +451,9 @@ export default function ReefArcadeMenu() {
           aria-live="polite"
           aria-label="Loading Reef Run assets"
         >
-          <div className="ra-loading-model-shell">
-            <Suspense fallback={<div className="ra-loading-model-fallback" aria-hidden />}>
-              <LazyArcadeLoadingPeptides />
-            </Suspense>
-            <div className="ra-loading-bubbles" aria-hidden>
-              <span className="ra-loading-bubble ra-loading-bubble-a" />
-              <span className="ra-loading-bubble ra-loading-bubble-b" />
-              <span className="ra-loading-bubble ra-loading-bubble-c" />
-            </div>
-          </div>
+          <Suspense fallback={<div className="ra-loading-model-fallback" aria-hidden />}>
+            <LazyArcadeLoadingPeptides />
+          </Suspense>
           <p className="ra-loading-text">loading. . .</p>
         </div>
       )}

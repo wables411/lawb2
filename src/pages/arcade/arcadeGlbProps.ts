@@ -24,12 +24,15 @@ const TRASH_CONFIG = [
   { url: `${ARCADE_ASSET_BASE}/trash-cube.glb`, maxExtent: 0.62 },
 ] as const;
 
-const CORAL_GLB = `${ARCADE_ASSET_BASE}/coral1.glb`;
+const CORAL_GLB_VARIANTS = [
+  `${ARCADE_ASSET_BASE}/coral1.glb`,
+  `${ARCADE_ASSET_BASE}/coral2.glb`,
+] as const;
 
 const pickupTemplates: Partial<Record<PickupKind, THREE.Object3D>> = {};
 type TrashProp = { tpl: THREE.Object3D; maxExtent: number };
 let trashProps: TrashProp[] = [];
-let coralTemplate: THREE.Object3D | null = null;
+let coralTemplates: THREE.Object3D[] = [];
 
 let templatesLoadPromise: Promise<void> | null = null;
 
@@ -66,9 +69,10 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
         })(),
       );
       jobs.push(
-        loadSceneQuiet(CORAL_GLB).then((sc) => {
-          coralTemplate = sc;
-        }),
+        (async () => {
+          const loaded = await Promise.all(CORAL_GLB_VARIANTS.map((url) => loadSceneQuiet(url)));
+          coralTemplates = loaded.filter((x): x is THREE.Object3D => x !== null);
+        })(),
       );
       await Promise.all(jobs);
     })();
@@ -126,12 +130,25 @@ export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
   return createPrimitivePickupMesh(kind);
 }
 
-/** Coral obstacle mesh/group, or `null` if `coral1.glb` did not load (caller uses box fallback). */
+/** Coral obstacle mesh/group, or `null` if coral GLBs did not load (caller uses box fallback). */
 export function cloneCoralObstacleVisual(): THREE.Object3D | null {
-  if (!coralTemplate) return null;
-  const root = coralTemplate.clone(true);
+  if (coralTemplates.length === 0) return null;
+  const pick = coralTemplates[Math.floor(Math.random() * coralTemplates.length)]!;
+  const root = pick.clone(true);
   // Coral instances also share template resources; dispose only the Object3D tree.
   root.userData.arcadeKeepSharedResources = true;
+  // Preserve authored albedo/texture look from the source GLB (no runtime tinting).
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const m of mats) {
+      const sm = m as THREE.MeshStandardMaterial | undefined;
+      if (!sm || !sm.isMeshStandardMaterial) continue;
+      sm.color.set(0xffffff);
+      if (sm.map) sm.map.colorSpace = THREE.SRGBColorSpace;
+    }
+  });
   fitReefObstacleVisual(root, { maxExtent: CORAL_MAX_EXTENT });
   return root;
 }
