@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { ARCADE_HERO_TARGET_HEIGHT, type ArcadeCharacterId } from './arcadeAssetConfig';
+import { sanitizeSceneMaterials } from './arcadeGlbProps';
 
 /** Uniform on-screen size: scale root so world AABB height ≈ ARCADE_HERO_TARGET_HEIGHT × multiplier. */
 export function applyArcadeHeroScale(root: THREE.Object3D, sizeMultiplier = 1): void {
@@ -379,6 +380,10 @@ export function prepareArcadeModel(
     flattenRadbroPhysicalMaterials(root);
     toneRadbroForArcade(root);
   }
+  // Strip any texture slot whose image failed to resolve. Without this the
+  // renderer spams `Texture marked for update but no image data found.` every
+  // frame, which burns CPU/GPU and chokes mobile.
+  sanitizeSceneMaterials(root);
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (mesh.isMesh) {

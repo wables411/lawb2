@@ -37,7 +37,7 @@ let coralTemplates: THREE.Object3D[] = [];
 let templatesLoadPromise: Promise<void> | null = null;
 let coralVariantCursor = 0;
 
-function textureHasImage(tex: THREE.Texture | null | undefined): boolean {
+export function textureHasImage(tex: THREE.Texture | null | undefined): boolean {
   if (!tex) return false;
   const img = (tex as THREE.Texture & { image?: unknown }).image as
     | { width?: number; height?: number; data?: ArrayLike<number> }
@@ -51,35 +51,88 @@ function textureHasImage(tex: THREE.Texture | null | undefined): boolean {
   return false;
 }
 
+/**
+ * Texture-slot keys that appear across MeshStandardMaterial / MeshPhysicalMaterial /
+ * MeshPhongMaterial / MeshLambertMaterial / MeshBasicMaterial. Any of these can hold a
+ * broken `Texture` (image missing) that the renderer will warn about every frame.
+ */
+const MATERIAL_TEXTURE_KEYS = [
+  'map',
+  'normalMap',
+  'bumpMap',
+  'displacementMap',
+  'roughnessMap',
+  'metalnessMap',
+  'emissiveMap',
+  'aoMap',
+  'alphaMap',
+  'lightMap',
+  'specularMap',
+  'envMap',
+  'gradientMap',
+  'clearcoatMap',
+  'clearcoatNormalMap',
+  'clearcoatRoughnessMap',
+  'sheenColorMap',
+  'sheenRoughnessMap',
+  'transmissionMap',
+  'thicknessMap',
+  'specularIntensityMap',
+  'specularColorMap',
+  'iridescenceMap',
+  'iridescenceThicknessMap',
+  'anisotropyMap',
+] as const;
+
+const COLOR_TEXTURE_KEYS = new Set([
+  'map',
+  'emissiveMap',
+  'specularColorMap',
+  'sheenColorMap',
+]);
+
+/**
+ * Strip every broken texture reference (texture exists but has no image data) from a
+ * loaded scene graph — regardless of material type. Invoke once, right after the
+ * loader resolves, to prevent `THREE.WebGLRenderer: Texture marked for update but no
+ * image data found.` from firing every frame. Also promotes color textures to sRGB so
+ * the asset reads correctly.
+ */
+export function sanitizeSceneMaterials(root: THREE.Object3D): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      if (!mat) continue;
+      const any = mat as unknown as Record<string, THREE.Texture | null | undefined>;
+      for (const key of MATERIAL_TEXTURE_KEYS) {
+        const tex = any[key];
+        if (!tex) continue;
+        if (!textureHasImage(tex)) {
+          any[key] = null;
+          continue;
+        }
+        if (COLOR_TEXTURE_KEYS.has(key)) {
+          tex.colorSpace = THREE.SRGBColorSpace;
+        }
+      }
+      (mat as THREE.Material).needsUpdate = true;
+    }
+  });
+}
+
+/** Back-compat alias retained for existing GLB template callers. */
 function sanitizeGlbTemplateMaterials(root: THREE.Object3D): void {
+  sanitizeSceneMaterials(root);
+  // GLB templates additionally get a white albedo reset so the scaled scene reads uniformly.
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (!mesh.isMesh) return;
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     for (const mat of mats) {
       const sm = mat as THREE.MeshStandardMaterial | undefined;
-      if (!sm || !sm.isMeshStandardMaterial) continue;
-      sm.color.set(0xffffff);
-      // Remove broken texture references that can spam renderer warnings every frame.
-      for (const key of [
-        'map',
-        'normalMap',
-        'roughnessMap',
-        'metalnessMap',
-        'emissiveMap',
-        'aoMap',
-        'alphaMap',
-        'bumpMap',
-      ] as const) {
-        const tex = sm[key] as THREE.Texture | null | undefined;
-        if (!tex) continue;
-        if (!textureHasImage(tex)) {
-          sm[key] = null;
-          continue;
-        }
-        if (key === 'map' || key === 'emissiveMap') tex.colorSpace = THREE.SRGBColorSpace;
-      }
-      sm.needsUpdate = true;
+      if (sm?.isMeshStandardMaterial) sm.color.set(0xffffff);
     }
   });
 }

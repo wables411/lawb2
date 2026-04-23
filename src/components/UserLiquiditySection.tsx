@@ -42,6 +42,47 @@ function formatUniRpcError(raw: string): string {
   return raw;
 }
 
+/**
+ * Cache Uniswap scan results per wallet to avoid re-running the 220-chunk
+ * eth_getLogs scan on every profile open. Scans are expensive on public Base
+ * RPCs (429/503 flood) and on-chain LP positions change infrequently.
+ */
+const UNI_SCAN_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const UNI_SCAN_CACHE_KEY = (owner: string) => `lawb:uniScan:${owner.toLowerCase()}`;
+
+interface UniScanCache {
+  ts: number;
+  v3: BaseClawbWethPosition[];
+  v4: BaseUniswapV4ClawbPosition[];
+  v4Incomplete: boolean;
+}
+
+function readUniScanCache(owner: string): UniScanCache | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(UNI_SCAN_CACHE_KEY(owner));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as UniScanCache;
+    if (!parsed || typeof parsed.ts !== 'number') return null;
+    if (Date.now() - parsed.ts > UNI_SCAN_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeUniScanCache(owner: string, cache: Omit<UniScanCache, 'ts'>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      UNI_SCAN_CACHE_KEY(owner),
+      JSON.stringify({ ts: Date.now(), ...cache }),
+    );
+  } catch {
+    // localStorage can be quota-full or disabled; caching is best-effort only
+  }
+}
+
 const cardStyle: React.CSSProperties = {
   marginBottom: '20px',
   width: '100%',
@@ -110,6 +151,20 @@ export const UserLiquiditySection: React.FC<UserLiquiditySectionProps> = ({
       setUniV4ScanIncomplete(false);
       return;
     }
+
+    // Serve from per-wallet cache first (15-min TTL). This prevents the
+    // 220-chunk eth_getLogs scan from firing on every profile open and
+    // absolutely destroying the public Base RPCs with 429/503s.
+    const cached = readUniScanCache(evmAddress);
+    if (cached) {
+      setUniV3Positions(cached.v3);
+      setUniV4Positions(cached.v4);
+      setUniV4ScanIncomplete(cached.v4Incomplete);
+      setUniErr(null);
+      setUniLoading(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       setUniLoading(true);
@@ -125,6 +180,11 @@ export const UserLiquiditySection: React.FC<UserLiquiditySectionProps> = ({
           setUniV3Positions(v3);
           setUniV4Positions(v4.positions);
           setUniV4ScanIncomplete(v4.scanIncomplete);
+          writeUniScanCache(evmAddress, {
+            v3,
+            v4: v4.positions,
+            v4Incomplete: v4.scanIncomplete,
+          });
         }
       } catch (e: unknown) {
         if (!cancelled) {
