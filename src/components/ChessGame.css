@@ -6003,3 +6003,157 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
   }
 }
 
+/* ============================================
+   Unified mobile pregame card
+   Flattens home-status-card + quick-guide +
+   mode-selection into ONE visual card with a
+   segmented-control mode switcher.
+   ============================================ */
+
+@media (max-width: 1180px) {
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel {
+    background: linear-gradient(180deg, rgba(14, 24, 40, 0.94) 0%, rgba(10, 18, 30, 0.94) 100%) !important;
+    border: 1px solid rgba(120, 180, 220, 0.28) !important;
+    border-radius: 10px !important;
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* Flatten the status strip: transparent, no border, soft underline separator. */
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .home-status-card {
+    background: transparent !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(120, 180, 220, 0.18) !important;
+    border-radius: 0 !important;
+    padding: 4px 2px 8px !important;
+    margin: 0 0 6px 0 !important;
+    text-align: left !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .home-status-text {
+    color: #ff8a80 !important;
+    letter-spacing: 0.06em;
+  }
+
+  /* Flatten the how-to nudge: transparent, pill button. */
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .setup-quick-guide-mobile {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .setup-quick-guide-mobile p {
+    color: rgba(208, 224, 240, 0.78) !important;
+    margin: 0 !important;
+  }
+
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .setup-quick-guide-mobile .setup-guide-btn {
+    align-self: flex-start;
+    width: auto !important;
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.12em;
+    background: rgba(80, 140, 200, 0.16) !important;
+    border: 1px solid rgba(120, 180, 220, 0.35) !important;
+    border-radius: 999px !important;
+    color: #cfe8ff !important;
+  }
+
+  /* Segmented mode control: horizontal, shared track, pill highlight on the active one. */
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .mode-selection-compact.mobile-stack {
+    flex-direction: row !important;
+    gap: 0 !important;
+    padding: 4px !important;
+    background: rgba(6, 14, 24, 0.65) !important;
+    border: 1px solid rgba(120, 180, 220, 0.22) !important;
+    border-radius: 999px !important;
+    margin: 2px 0 4px 0 !important;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .mode-selection-compact.mobile-stack .mode-btn-compact {
+    flex: 1 1 50% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    color: rgba(200, 222, 240, 0.72) !important;
+    font-size: 12px !important;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: none !important;
+    transition: background 0.16s ease, color 0.16s ease;
+  }
+
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .mode-selection-compact.mobile-stack .mode-btn-compact.selected {
+    background: linear-gradient(180deg, #e8fbff 0%, #7ee787 100%) !important;
+    color: #061018 !important;
+    box-shadow: 0 2px 10px rgba(126, 231, 135, 0.35) !important;
+  }
+
+  /* Primary Start Match button sits below the segmented control. */
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .start-btn-compact {
+    margin: 2px 0 0 !important;
+    border-radius: 6px !important;
+  }
+
+  /* PvP info block: soft inset tint instead of a second card. */
+  .chess-page-simple .chess-game.mobile .mobile-pregame-panel .pvp-info {
+    background: rgba(80, 140, 200, 0.08) !important;
+    border: 1px solid rgba(120, 180, 220, 0.18) !important;
+    border-radius: 6px !important;
+    margin: 2px 0 0 !important;
+  }
+}
+
+/* Light-mode mirror of the unified card so the flat sections don't end up
+   as dark-on-light when the user toggles the theme. */
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel {
+  background: linear-gradient(180deg, #ffffff 0%, #eef4fb 100%) !important;
+  border: 1px solid rgba(20, 50, 90, 0.18) !important;
+  box-shadow:
+    0 8px 22px rgba(20, 40, 70, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .home-status-card {
+  border-bottom: 1px solid rgba(20, 50, 90, 0.12) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .home-status-text {
+  color: #b23a30 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .setup-quick-guide-mobile p {
+  color: #243142 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .mode-selection-compact.mobile-stack {
+  background: rgba(20, 40, 70, 0.06) !important;
+  border: 1px solid rgba(20, 50, 90, 0.14) !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .mode-selection-compact.mobile-stack .mode-btn-compact {
+  color: #243142 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .mode-selection-compact.mobile-stack .mode-btn-compact.selected {
+  background: linear-gradient(180deg, #eefffe 0%, #a8e8c0 100%) !important;
+  color: #0b2030 !important;
+}
+
+.lawb-app-light-mode .chess-page-simple .chess-game.mobile .mobile-pregame-panel .pvp-info {
+  background: rgba(20, 40, 70, 0.04) !important;
+  border: 1px solid rgba(20, 50, 90, 0.14) !important;
+}

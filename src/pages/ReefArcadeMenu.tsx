@@ -14,7 +14,7 @@ import { CHARACTER_STATS, starsRow } from './arcade/arcadeCharacterStats';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
-import type { ArcadeGameScreen } from './arcade/ArcadeSceneController';
+import type { ArcadeBootProgress, ArcadeGameScreen } from './arcade/ArcadeSceneController';
 import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
@@ -73,6 +73,14 @@ export default function ReefArcadeMenu() {
   const connection = useConnectionDisplay();
   const [sceneReady, setSceneReady] = useState(false);
   const [loadingOverlayVisible, setLoadingOverlayVisible] = useState(true);
+  const [bootProgress, setBootProgress] = useState<ArcadeBootProgress>({
+    loaded: 0,
+    total: 5,
+    label: 'Waking the reef',
+  });
+  const [bootError, setBootError] = useState<string | null>(null);
+  /** Increments on Retry so the Three layer can be unmounted+remounted from scratch. */
+  const [bootAttempt, setBootAttempt] = useState(0);
   const [phase, setPhase] = useState<Phase>('intro');
   const [modal, setModal] = useState<ModalKind>(null);
   const [gameScreen, setGameScreen] = useState<ArcadeGameScreen>('menu');
@@ -219,6 +227,23 @@ export default function ReefArcadeMenu() {
 
   const onEngineReady = useCallback(() => {
     setSceneReady(true);
+    setBootProgress({ loaded: 5, total: 5, label: 'Ready' });
+  }, []);
+
+  const onBootProgress = useCallback((p: ArcadeBootProgress) => {
+    setBootProgress(p);
+  }, []);
+
+  const onBootError = useCallback((err: unknown) => {
+    setBootError(err instanceof Error ? err.message : String(err ?? 'Unknown error'));
+  }, []);
+
+  const retryBoot = useCallback(() => {
+    setBootError(null);
+    setSceneReady(false);
+    setLoadingOverlayVisible(true);
+    setBootProgress({ loaded: 0, total: 5, label: 'Retrying' });
+    setBootAttempt((n) => n + 1);
   }, []);
 
   useEffect(() => {
@@ -441,6 +466,7 @@ export default function ReefArcadeMenu() {
     <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
       <Suspense fallback={null}>
         <LazyArcadeThree
+          key={bootAttempt}
           ref={arcadeInputRef}
           phase={phase}
           gameScreen={gameScreen}
@@ -450,6 +476,8 @@ export default function ReefArcadeMenu() {
           onRunDifficulty={onRunDifficulty}
           onRunHud={onRunHud}
           onEngineReady={onEngineReady}
+          onBootProgress={onBootProgress}
+          onBootError={onBootError}
         />
       </Suspense>
       <div className="ra-bg" aria-hidden />
@@ -458,7 +486,7 @@ export default function ReefArcadeMenu() {
       <div className="ra-grain" aria-hidden />
       {loadingOverlayVisible && (
         <div
-          className={`ra-loading-overlay${sceneReady ? ' ra-loading-overlay-ready' : ''}`}
+          className={`ra-loading-overlay${sceneReady ? ' ra-loading-overlay-ready' : ''}${bootError ? ' ra-loading-overlay-error' : ''}`}
           role="status"
           aria-live="polite"
           aria-label="Loading Reef Run assets"
@@ -466,7 +494,35 @@ export default function ReefArcadeMenu() {
           <Suspense fallback={<div className="ra-loading-model-fallback" aria-hidden />}>
             <LazyArcadeLoadingPeptides />
           </Suspense>
-          <p className="ra-loading-text">loading. . .</p>
+          {bootError ? (
+            <div className="ra-loading-error">
+              <p className="ra-loading-error-title">Could not load Reef Run</p>
+              <p className="ra-loading-error-detail">{bootError}</p>
+              <button type="button" className="ra-btn" onClick={retryBoot}>
+                RETRY
+              </button>
+            </div>
+          ) : (
+            <div className="ra-loading-status">
+              <p className="ra-loading-text">
+                {bootProgress.label}
+                {bootProgress.total > 0
+                  ? ` · ${Math.round((bootProgress.loaded / bootProgress.total) * 100)}%`
+                  : ''}
+              </p>
+              <div className="ra-loading-bar" aria-hidden>
+                <div
+                  className="ra-loading-bar-fill"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.round((bootProgress.loaded / Math.max(bootProgress.total, 1)) * 100),
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -488,29 +544,90 @@ export default function ReefArcadeMenu() {
               <p className="ra-logo-tag">Clawb · Radbro · Milady</p>
             </div>
 
-            <div className="ra-btn-stack">
-              <button type="button" className="ra-btn" onClick={beginRun} disabled={!sceneReady}>
-                START RUN
+            <div className="ra-menu-status" aria-label="Session status">
+              <button
+                type="button"
+                className={`ra-status-chip ra-status-chip-wallet${connection.connected ? ' ra-status-chip-on' : ''}`}
+                onClick={() => setModal('wallet')}
+                aria-label={connection.connected ? 'Wallet connected' : 'Connect wallet'}
+              >
+                <span className="ra-status-chip-dot" aria-hidden />
+                <span className="ra-status-chip-label">Wallet</span>
+                <span className="ra-status-chip-value">
+                  {connection.connected
+                    ? connection.ens ?? (connection.address ? shortenAddress(connection.address) : 'Connected')
+                    : 'Not connected'}
+                </span>
               </button>
               <button
                 type="button"
-                className="ra-btn ra-btn-secondary"
+                className="ra-status-chip ra-status-chip-character"
+                onClick={() => {
+                  if (!sceneReady) return;
+                  setGameScreen('select');
+                }}
+                disabled={!sceneReady}
+                aria-label="Change swimmer"
+              >
+                <span
+                  className="ra-status-chip-dot"
+                  style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
+                  aria-hidden
+                />
+                <span className="ra-status-chip-label">Swimmer</span>
+                <span className="ra-status-chip-value">
+                  {CHARACTERS.find((c) => c.id === selectedCharacterId)?.name ?? 'CLAWB'}
+                </span>
+              </button>
+            </div>
+
+            <div className="ra-tile-grid">
+              <button
+                type="button"
+                className="ra-tile ra-tile-primary"
+                onClick={beginRun}
+                disabled={!sceneReady}
+              >
+                <span className="ra-tile-icon" aria-hidden>▶</span>
+                <span className="ra-tile-label">Start run</span>
+                <span className="ra-tile-meta">Space · Enter · 1</span>
+              </button>
+              <button
+                type="button"
+                className="ra-tile"
                 onClick={() => {
                   if (!sceneReady) return;
                   setGameScreen('select');
                 }}
                 disabled={!sceneReady}
               >
-                PLAYER SELECT
+                <span className="ra-tile-icon" aria-hidden>⚙</span>
+                <span className="ra-tile-label">Swimmer</span>
+                <span className="ra-tile-meta">Pick character · 2</span>
               </button>
-              <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setModal('wallet')}>
-                WALLET CONNECT
+              <button
+                type="button"
+                className="ra-tile"
+                onClick={() => setModal('wallet')}
+              >
+                <span className="ra-tile-icon" aria-hidden>◈</span>
+                <span className="ra-tile-label">Wallet</span>
+                <span className="ra-tile-meta">
+                  {connection.connected ? 'Manage · 3' : 'Connect · 3'}
+                </span>
               </button>
-              <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setModal('difficulty')}>
-                DEPTH & SPEED
+              <button
+                type="button"
+                className="ra-tile"
+                onClick={() => setModal('difficulty')}
+              >
+                <span className="ra-tile-icon" aria-hidden>⌁</span>
+                <span className="ra-tile-label">Depth</span>
+                <span className="ra-tile-meta">Tier &amp; speed · 4</span>
               </button>
             </div>
-            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 select · 3 wallet · 4 depth · X exit</p>
+
+            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 swimmer · 3 wallet · 4 depth · X exit</p>
 
             <div className="ra-footer-row">
               <button type="button" className="ra-link-quiet" onClick={() => navigate('/')}>

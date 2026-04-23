@@ -2,7 +2,11 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
-import { ArcadeSceneController, type ArcadeGameScreen } from './arcade/ArcadeSceneController';
+import {
+  ArcadeSceneController,
+  type ArcadeBootProgress,
+  type ArcadeGameScreen,
+} from './arcade/ArcadeSceneController';
 
 export type ArcadeThreePhase = 'intro' | 'menu';
 
@@ -19,6 +23,10 @@ type Props = {
   onRunHud?: (hud: ArcadeRunHudState) => void;
   /** Fired once the Three engine finishes bootstrap (scene + assets ready). */
   onEngineReady?: () => void;
+  /** Fires as bootstrap milestones complete so the loading overlay can show % + label. */
+  onBootProgress?: (p: ArcadeBootProgress) => void;
+  /** Fired when bootstrap throws — engine is unusable and UI should show retry. */
+  onBootError?: (err: unknown) => void;
 };
 
 export type ArcadePlayInputHandle = {
@@ -39,6 +47,8 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   onRunDifficulty,
   onRunHud,
   onEngineReady,
+  onBootProgress,
+  onBootError,
 }: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
@@ -47,11 +57,15 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   const diffRef = useRef(onRunDifficulty);
   const hudRef = useRef(onRunHud);
   const readyRef = useRef(onEngineReady);
+  const bootProgressRef = useRef(onBootProgress);
+  const bootErrorRef = useRef(onBootError);
   pickRef.current = onPickCharacter;
   overRef.current = onGameOver;
   diffRef.current = onRunDifficulty;
   hudRef.current = onRunHud;
   readyRef.current = onEngineReady;
+  bootProgressRef.current = onBootProgress;
+  bootErrorRef.current = onBootError;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -63,6 +77,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
       onGameOver: (sec, reason, finalHud) => overRef.current(sec, reason, finalHud),
       onRunDifficulty: (p) => diffRef.current?.(p),
       onRunHud: (h) => hudRef.current?.(h),
+      onBootProgress: (p) => bootProgressRef.current?.(p),
     });
     engineRef.current = engine;
     void engine
@@ -72,7 +87,12 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
       })
       .catch((err) => {
         console.warn('[Arcade] bootstrap failed', err);
-        if (!disposed) readyRef.current?.();
+        if (!disposed) {
+          // Surface the failure so the UI can show a retry button instead of
+          // silently clearing the loading overlay with nothing behind it.
+          bootErrorRef.current?.(err);
+          readyRef.current?.();
+        }
       });
 
     return () => {

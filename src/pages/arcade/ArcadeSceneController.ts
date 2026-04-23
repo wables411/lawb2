@@ -51,6 +51,16 @@ import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
 
+/** Coarse-grained boot progress for the Reef Run loading overlay. */
+export type ArcadeBootProgress = {
+  /** 1-based count of completed steps. */
+  loaded: number;
+  /** Total expected steps for the current bootstrap run. */
+  total: number;
+  /** Human label for the current milestone (e.g. "Loading Clawb"). */
+  label: string;
+};
+
 export type { ReefRunHudPayload } from './arcadeDifficulty';
 
 /** Matches `arcadeMatBase` stored on materials in `loadArcadeFbx.repairFbxMaterials`. */
@@ -300,6 +310,8 @@ export class ArcadeSceneController {
   private onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
   private onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   private onRunHud?: (hud: ArcadeRunHudState) => void;
+  /** Fires as bootstrap milestones complete so the loading overlay can show % + label. */
+  private onBootProgress?: (p: ArcadeBootProgress) => void;
   private pointerBound = false;
   private keyBound = false;
   private _boxSel = new THREE.Box3();
@@ -324,6 +336,7 @@ export class ArcadeSceneController {
       onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
       onRunHud?: (hud: ArcadeRunHudState) => void;
+      onBootProgress?: (p: ArcadeBootProgress) => void;
     },
   ) {
     this.container = container;
@@ -331,6 +344,15 @@ export class ArcadeSceneController {
     this.onGameOver = handlers.onGameOver;
     this.onRunDifficulty = handlers.onRunDifficulty;
     this.onRunHud = handlers.onRunHud;
+    this.onBootProgress = handlers.onBootProgress;
+  }
+
+  private reportBoot(loaded: number, total: number, label: string): void {
+    try {
+      this.onBootProgress?.({ loaded, total, label });
+    } catch {
+      // Progress listener failures must never break bootstrap.
+    }
   }
 
   getScreen(): ArcadeGameScreen {
@@ -615,6 +637,13 @@ export class ArcadeSceneController {
   }
 
   async bootstrap(): Promise<void> {
+    /**
+     * 5 boot milestones: scene built, props loaded, 3× character FBX idles.
+     * Kept coarse — per-GLB progress would rely on upstream loader events that
+     * aren't uniformly available for both GLTF and FBX paths.
+     */
+    const TOTAL_BOOT_STEPS = 5;
+    let bootStep = 0;
     this.lowPowerMode = isArcadeLowPowerDevice();
     this.maxActiveObstacles = this.lowPowerMode ? 8 : 12;
     this.scene = new THREE.Scene();
@@ -743,11 +772,16 @@ export class ArcadeSceneController {
     this.scene.add(this.obstacleGroup);
     this.playerWorld.visible = false;
 
+    bootStep++;
+    this.reportBoot(bootStep, TOTAL_BOOT_STEPS, 'Building the reef');
+
     try {
       await loadArcadePropGlbTemplates();
     } catch (e) {
       console.warn('[Arcade] Prop GLB preload failed', e);
     }
+    bootStep++;
+    this.reportBoot(bootStep, TOTAL_BOOT_STEPS, 'Stocking the tunnel');
 
     /* Tighter X so all three stay in view on portrait / narrow aspect (was ±4.4). */
     const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R];
@@ -809,6 +843,12 @@ export class ArcadeSceneController {
         });
       }
       this.plinthWorld.add(anchor);
+      bootStep++;
+      this.reportBoot(
+        bootStep,
+        TOTAL_BOOT_STEPS,
+        `Waking ${def.id.charAt(0).toUpperCase()}${def.id.slice(1)}`,
+      );
     }
 
     this.loaded = true;
