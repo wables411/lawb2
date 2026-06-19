@@ -16,7 +16,8 @@
     "claims:compile": "node scripts/claims/compile-distributor.mjs",
     "claims:deploy": "node scripts/claims/deploy-clawb-distributor.mjs",
     "claims:verify": "node scripts/claims/verify-clawb-distributor.mjs",
-    "claims:relayer": "node scripts/claims/generate-relayer-wallet.mjs"
+    "claims:relayer": "node scripts/claims/generate-relayer-wallet.mjs",
+    "assets:optimize": "node scripts/optimize-arcade-assets.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { createArcadeGltfLoader } from './arcadeGltfLoader';
 
-const loader = new GLTFLoader();
+const loader = createArcadeGltfLoader();
 
 function disposeObject3D(root: THREE.Object3D): void {
   root.traverse((obj) => {

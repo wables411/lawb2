@@ -27,6 +27,13 @@
 /world-assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Reef Run arcade 3D models + character FBX animations. Stable filenames, so cache
+# aggressively — without this they fall under the default max-age=0 rule and get
+# re-fetched on every play/reload, burning bandwidth credits. Bust by renaming the
+# file (e.g. coral2_v2.glb), which is already the project's update pattern.
+/arcade-assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # 3D model payloads and static media should cache aggressively.
 /models/*
   Cache-Control: public, max-age=31536000, immutable

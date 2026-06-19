@@ -9,7 +9,9 @@ const ARB_RPCS = ['https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com
 
 const ERC20_BALANCE_SELECTOR = '0x70a08231';
 const RPC_TIMEOUT = 12_000;
-const POLL_INTERVAL = 60_000;
+// Token balances move slowly; a 5-minute cadence is plenty and keeps idle/background
+// tabs from hammering the Solana/EVM RPC proxies 24/7.
+const POLL_INTERVAL = 300_000;
 
 async function fetchErc20Balance(
   rpcUrls: string[],
@@ -121,12 +123,41 @@ export function useMultiChainBalances(
 
   useEffect(() => {
     mountedRef.current = true;
+
+    const startPolling = () => {
+      if (timerRef.current) return;
+      timerRef.current = setInterval(() => void fetchAll(), POLL_INTERVAL);
+    };
+    const stopPolling = () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = undefined;
+      }
+    };
+
+    // Only poll while the tab is visible. A backgrounded/forgotten tab should not
+    // keep hitting the RPC proxies — that drip runs 24/7 even with no real user.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void fetchAll();
+        startPolling();
+      }
+    };
+
     setBalances((prev) => ({ ...prev, loading: true }));
-    fetchAll();
-    timerRef.current = setInterval(fetchAll, POLL_INTERVAL);
+
+    if (!document.hidden) {
+      void fetchAll();
+      startPolling();
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       mountedRef.current = false;
-      if (timerRef.current) clearInterval(timerRef.current);
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [fetchAll]);
 
