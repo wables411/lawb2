@@ -7,6 +7,8 @@ import { Chess } from 'chess.js';
 import { squareToAlgebraic, algebraicToSquare } from '../../utils/lawbChessBoard';
 import { randomChessBoard } from '../../config/chessBoards';
 import { OnchainChessBoard } from './OnchainChessBoard';
+import { OnchainChessSidebar } from './OnchainChessSidebar';
+import type { OnchainMove } from '../../hooks/useOnchainChessMoves';
 
 function boardFromChess(chess: Chess): (string | null)[][] {
   const raw = chess.board(); // raw[0] = rank 8
@@ -31,6 +33,13 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
   const [pendingPromo, setPendingPromo] = useState<{ from: number; to: number } | null>(null);
 
   const board = useMemo(() => boardFromChess(chess), [fen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const moves = useMemo<OnchainMove[]>(() => // eslint-disable-line react-hooks/exhaustive-deps
+    chess.history({ verbose: true }).map((m) => ({
+      san: (m as { san: string }).san,
+      from: algebraicToSquare((m as { from: string }).from),
+      to: algebraicToSquare((m as { to: string }).to),
+    })), [fen]);
+  const lastMove = moves.length ? { from: moves[moves.length - 1].from, to: moves[moves.length - 1].to } : null;
   const clear = () => { setSelected(null); setTargets([]); };
 
   const apply = useCallback((from: number, to: number, promotion?: string) => {
@@ -81,16 +90,22 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
       <div style={{ textAlign: 'center' }}>
         <b>Local sandbox</b> — no wallet, no wager. Play both sides to try the board.
       </div>
-      <OnchainChessBoard
-        board={board}
-        orientation={orientation}
-        selectedSquare={selected}
-        legalTargets={targets}
-        boardImage={boardImage}
-        interactive
-        onSquareClick={handleClick}
-      />
-      <div style={{ minHeight: 20 }}><b>{status}</b></div>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <OnchainChessBoard
+            board={board}
+            orientation={orientation}
+            selectedSquare={selected}
+            legalTargets={targets}
+            lastMove={lastMove}
+            boardImage={boardImage}
+            interactive
+            onSquareClick={handleClick}
+          />
+          <div style={{ minHeight: 20 }}><b>{status}</b></div>
+        </div>
+        <OnchainChessSidebar moves={moves} />
+      </div>
       {pendingPromo && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span>Promote to:</span>

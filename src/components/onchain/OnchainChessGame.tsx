@@ -4,15 +4,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
-import { useAccount, usePublicClient } from 'wagmi';
+import { useAccount, usePublicClient, useReadContract } from 'wagmi';
 import { useOnchainChessGame } from '../../hooks/useOnchainChessGame';
 import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
+import { useOnchainChessMoves } from '../../hooks/useOnchainChessMoves';
 import {
   boardToFen, squareToAlgebraic, algebraicToSquare, GameStatus, Side, WagerKind,
 } from '../../utils/lawbChessBoard';
 import { codeToString, type GameCode } from '../../utils/lawbChessMoves';
 import { chessBoardForCode } from '../../config/chessBoards';
+import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI } from '../../config/lawbChessOnchain';
 import { OnchainChessBoard } from './OnchainChessBoard';
+import { OnchainChessSidebar } from './OnchainChessSidebar';
+
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
 // chess.js promotion letter -> contract piece type
 const PROMO_TYPE: Record<string, number> = { n: 2, b: 3, r: 4, q: 5 };
@@ -45,6 +50,19 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const publicClient = usePublicClient();
   const { game, board, isLoading, contractAddress, refetch } = useOnchainChessGame(code);
   const actions = useOnchainChessActions();
+  const { moves, lastMove } = useOnchainChessMoves(code, undefined, game?.moveNonce?.toString());
+
+  const eloEnabled = ENABLE_ONCHAIN_CHESS && !!contractAddress && !!game;
+  const { data: eloWhiteRaw } = useReadContract({
+    address: contractAddress ?? undefined, abi: LAWB_CHESS_ABI, functionName: 'ratingOf',
+    args: game ? [game.white] : undefined,
+    query: { enabled: eloEnabled && !!game && game.white !== ZERO_ADDR },
+  });
+  const { data: eloBlackRaw } = useReadContract({
+    address: contractAddress ?? undefined, abi: LAWB_CHESS_ABI, functionName: 'ratingOf',
+    args: game ? [game.black] : undefined,
+    query: { enabled: eloEnabled && !!game && game.black !== ZERO_ADDR },
+  });
 
   const [selected, setSelected] = useState<number | null>(null);
   const [targets, setTargets] = useState<number[]>([]);
@@ -208,6 +226,10 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     : game.kind === WagerKind.ERC20 ? `ERC-20 ${game.token.slice(0, 8)}…`
     : `NFT ${game.token.slice(0, 8)}…`;
 
+  const statusText = isFinished ? (result ?? 'Game over')
+    : isOpen ? (isPlayer ? 'Waiting for an opponent to join…' : 'Open — waiting for players')
+    : myTurn ? 'Your move' : isPlayer ? "Opponent's move…" : 'Spectating';
+
   return (
     <div style={panel}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: 'min(92vw, 480px)' }}>
@@ -215,28 +237,28 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
         <span>Wager: {wagerLabel}</span>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', width: 'min(92vw, 480px)' }}>
-        <span>⏱ White {fmtClock(clocks.white)}</span>
-        <span>⏱ Black {fmtClock(clocks.black)}</span>
-      </div>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: 'min(92vw, 480px)' }}>
+            <span>⏱ White {fmtClock(clocks.white)}</span>
+            <span>⏱ Black {fmtClock(clocks.black)}</span>
+          </div>
 
-      <OnchainChessBoard
-        board={board}
-        orientation={orientation}
-        selectedSquare={selected}
-        legalTargets={targets}
-        boardImage={chessBoardForCode(codeToString(code))}
-        interactive={!!myTurn && !busy}
-        onSquareClick={handleSquareClick}
-      />
+          <OnchainChessBoard
+            board={board}
+            orientation={orientation}
+            selectedSquare={selected}
+            legalTargets={targets}
+            lastMove={lastMove}
+            boardImage={chessBoardForCode(codeToString(code))}
+            interactive={!!myTurn && !busy}
+            onSquareClick={handleSquareClick}
+          />
 
-      <div style={{ minHeight: 22, textAlign: 'center' }}>
-        {isFinished ? <b>{result}</b>
-          : isOpen ? (isPlayer ? 'Waiting for an opponent to join…' : 'Open game — waiting for players')
-          : myTurn ? 'Your move' : isPlayer ? "Opponent's move…" : 'Spectating'}
-        {busy && ' • submitting…'}
-      </div>
-      {err && <div style={{ color: '#c0392b', maxWidth: 'min(92vw,480px)', fontSize: 12 }}>{err}</div>}
+          <div style={{ minHeight: 22, textAlign: 'center' }}>
+            <b>{statusText}</b>{busy && ' • submitting…'}
+          </div>
+          {err && <div style={{ color: '#c0392b', maxWidth: 'min(92vw,480px)', fontSize: 12 }}>{err}</div>}
 
       {pendingPromo && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -273,6 +295,21 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
         )}
         <button style={btn} disabled={busy} onClick={() => refetch()}>Refresh</button>
         <button style={btn} onClick={onLeave}>Leave</button>
+      </div>
+        </div>
+
+        <OnchainChessSidebar
+          moves={moves}
+          players={{
+            white: game.white,
+            black: game.black,
+            eloWhite: eloWhiteRaw !== undefined ? Number(eloWhiteRaw) : undefined,
+            eloBlack: eloBlackRaw !== undefined ? Number(eloBlackRaw) : undefined,
+            wagerLabel,
+            statusText,
+            me,
+          }}
+        />
       </div>
     </div>
   );
