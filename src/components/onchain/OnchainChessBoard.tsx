@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { useChessPieceSet } from '../../contexts/ChessPieceSetContext';
+import './onchainChess.css';
 
 export interface OnchainChessBoardProps {
   /** decoded board, [rank][file], rank 0 = white's first rank (from decodeOnchainBoard) */
@@ -17,6 +18,8 @@ export interface OnchainChessBoardProps {
   lastMove?: { from: number; to: number } | null;
   /** custom board background image; when set, squares render transparent over it */
   boardImage?: string | null;
+  /** square (0..63) to play the capture animation on, or null */
+  captureSquare?: number | null;
   interactive?: boolean;
   onSquareClick?: (square: number) => void;
 }
@@ -30,6 +33,7 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
   legalTargets = [],
   lastMove = null,
   boardImage = null,
+  captureSquare = null,
   interactive = false,
   onSquareClick,
 }) => {
@@ -107,6 +111,9 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
                     pointerEvents: 'none',
                   }}
                 />
+              )}
+              {captureSquare === sq && (
+                <img src="/images/capture.gif" alt="capture" className="oc-capture-anim" />
               )}
             </div>
           );

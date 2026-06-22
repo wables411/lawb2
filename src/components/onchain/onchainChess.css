@@ -1,0 +1,55 @@
+/* Animations + overlays for the on-chain chess UI (Phase 4). */
+
+@keyframes oc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes oc-pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes oc-capture-flash {
+  0% { transform: scale(0.4); opacity: 0; }
+  40% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.oc-capture-anim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  animation: oc-capture-flash 0.6s ease-out forwards;
+}
+
+.oc-result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  animation: oc-fade-in 0.25s ease-out;
+}
+.oc-result-overlay.defeat { background: rgba(60, 0, 0, 0.65); }
+
+.oc-result-modal {
+  background: #1b1f2a;
+  border: 2px solid #000080;
+  border-radius: 4px;
+  padding: 24px 28px;
+  text-align: center;
+  color: #fff;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  animation: oc-pop-in 0.4s ease-out;
+  max-width: 90vw;
+}
+.oc-result-modal img { width: 120px; height: auto; margin-bottom: 14px; image-rendering: pixelated; }
+.oc-result-modal .oc-result-title { font-size: 22px; font-weight: bold; margin-bottom: 6px; }
+.oc-result-modal .oc-result-sub { font-size: 13px; color: #b8c0d0; margin-bottom: 16px; }
+.oc-result-modal button {
+  font-family: inherit; font-size: 13px; padding: 8px 16px; cursor: pointer;
+  background: #c0c0c0; border: 2px outset #fff; color: #000;
+}

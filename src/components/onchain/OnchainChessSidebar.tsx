@@ -22,12 +22,14 @@ export interface OnchainChessSidebarProps {
     /** lowercased connected address, to mark "you" */
     me?: string;
   };
+  /** open a player's Lawb ID / profile */
+  onViewProfile?: (address: `0x${string}`) => void;
 }
 
 const short = (a: string) => (a && a !== ZERO ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
 const ZERO = '0x0000000000000000000000000000000000000000';
 
-export const OnchainChessSidebar: React.FC<OnchainChessSidebarProps> = ({ moves, players }) => {
+export const OnchainChessSidebar: React.FC<OnchainChessSidebarProps> = ({ moves, players, onViewProfile }) => {
   const [tab, setTab] = useState<Tab>('moves');
   const { currentPieceSet, setCurrentPieceSet } = useChessPieceSet();
   const tabs: Tab[] = players ? ['moves', 'players', 'pieces'] : ['moves', 'pieces'];
@@ -70,8 +72,18 @@ export const OnchainChessSidebar: React.FC<OnchainChessSidebarProps> = ({ moves,
 
         {tab === 'players' && players && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-            <div><b>White</b>{youTag(players.white)}<br />{short(players.white)} · ELO {players.eloWhite ?? '—'}</div>
-            <div><b>Black</b>{youTag(players.black)}<br />{short(players.black)} · ELO {players.eloBlack ?? '—'}</div>
+            <div>
+              <b>White</b>{youTag(players.white)}<br />{short(players.white)} · ELO {players.eloWhite ?? '—'}
+              {onViewProfile && players.white !== ZERO && (
+                <><br /><button style={linkBtn} onClick={() => onViewProfile(players.white)}>View Lawb ID</button></>
+              )}
+            </div>
+            <div>
+              <b>Black</b>{youTag(players.black)}<br />{short(players.black)} · ELO {players.eloBlack ?? '—'}
+              {onViewProfile && players.black !== ZERO && (
+                <><br /><button style={linkBtn} onClick={() => onViewProfile(players.black)}>View Lawb ID</button></>
+              )}
+            </div>
             <hr style={{ width: '100%', borderColor: '#444' }} />
             <div>Wager: {players.wagerLabel}</div>
             <div>Status: {players.statusText}</div>
@@ -109,3 +121,7 @@ const tabActive: React.CSSProperties = { background: '#000080', color: '#fff', b
 const rowBtn: React.CSSProperties = { fontFamily: 'inherit', fontSize: 12, padding: '6px 8px', cursor: 'pointer', textAlign: 'left', background: '#c0c0c0', border: '2px outset #fff', color: '#000' };
 const cell: React.CSSProperties = { padding: '2px 4px', borderBottom: '1px solid #333' };
 const muted: React.CSSProperties = { color: '#888', fontSize: 12 };
+const linkBtn: React.CSSProperties = {
+  marginTop: 4, fontFamily: 'inherit', fontSize: 11, padding: '3px 6px', cursor: 'pointer',
+  background: '#c0c0c0', border: '2px outset #fff', color: '#000',
+};

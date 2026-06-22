@@ -2,7 +2,7 @@
 // truth), uses chess.js only for client-side legal-move highlighting + promotion detection,
 // and submits moves via the write hook. The contract remains the final arbiter of legality.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useAccount, usePublicClient, useReadContract } from 'wagmi';
 import { useOnchainChessGame } from '../../hooks/useOnchainChessGame';
@@ -14,8 +14,13 @@ import {
 import { codeToString, type GameCode } from '../../utils/lawbChessMoves';
 import { chessBoardForCode } from '../../config/chessBoards';
 import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI } from '../../config/lawbChessOnchain';
+import { playChessSound } from '../../utils/chessSounds';
 import { OnchainChessBoard } from './OnchainChessBoard';
 import { OnchainChessSidebar } from './OnchainChessSidebar';
+import { OnchainChessResult, type GameOutcome } from './OnchainChessResult';
+
+const Popup = lazy(() => import('../Popup'));
+const PlayerProfile = lazy(() => import('../PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
@@ -69,6 +74,11 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const [pendingPromo, setPendingPromo] = useState<{ from: number; to: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [captureSquare, setCaptureSquare] = useState<number | null>(null);
+  const [endOverlay, setEndOverlay] = useState<{ outcome: GameOutcome; detail: string } | null>(null);
+  const [profileAddr, setProfileAddr] = useState<`0x${string}` | null>(null);
+  const seenNonceRef = useRef<bigint | null>(null);
+  const prevCountRef = useRef<number | null>(null);
 
   const me = address?.toLowerCase();
   const myColor =
@@ -201,6 +211,48 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     [publicClient, refetch],
   );
 
+  // capture/move/check sound + capture animation when the move count advances (mine or opponent's)
+  useEffect(() => {
+    if (!game || !board) return;
+    const count = board.reduce((s, row) => s + row.filter(Boolean).length, 0);
+    const nonce = game.moveNonce;
+    if (seenNonceRef.current !== null && nonce > seenNonceRef.current) {
+      const captured = prevCountRef.current !== null && count < prevCountRef.current;
+      if (captured && lastMove) {
+        playChessSound('capture');
+        setCaptureSquare(lastMove.to);
+        window.setTimeout(() => setCaptureSquare(null), 600);
+      } else if (chess?.inCheck()) {
+        playChessSound('check');
+      } else {
+        playChessSound('move');
+      }
+    }
+    seenNonceRef.current = nonce;
+    prevCountRef.current = count;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.moveNonce]);
+
+  // victory/defeat/draw overlay: winner comes from the GameEnded event (handles all end reasons)
+  useEffect(() => {
+    if (!isFinished || !isPlayer || !publicClient || !contractAddress) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const logs = await publicClient.getContractEvents({
+          address: contractAddress, abi: LAWB_CHESS_ABI, eventName: 'GameEnded',
+          args: { code }, fromBlock: 0n, toBlock: 'latest',
+        });
+        if (cancelled || !logs.length) return;
+        const winner = String((logs[logs.length - 1] as { args: { winner?: string } }).args.winner ?? '').toLowerCase();
+        const outcome: GameOutcome = !winner || winner === ZERO_ADDR ? 'draw' : winner === me ? 'win' : 'loss';
+        setEndOverlay({ outcome, detail: result ?? 'Game over' });
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished, isPlayer, publicClient, contractAddress, code, me]);
+
   if (!contractAddress) {
     return (
       <div style={panel}>
@@ -251,6 +303,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
             legalTargets={targets}
             lastMove={lastMove}
             boardImage={chessBoardForCode(codeToString(code))}
+            captureSquare={captureSquare}
             interactive={!!myTurn && !busy}
             onSquareClick={handleSquareClick}
           />
@@ -309,8 +362,32 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
             statusText,
             me,
           }}
+          onViewProfile={(addr) => setProfileAddr(addr)}
         />
       </div>
+
+      {endOverlay && (
+        <OnchainChessResult outcome={endOverlay.outcome} detail={endOverlay.detail} onClose={() => setEndOverlay(null)} />
+      )}
+
+      {profileAddr && (
+        <Suspense fallback={null}>
+          <Popup
+            id="onchain-chess-profile"
+            isOpen
+            onClose={() => setProfileAddr(null)}
+            onMinimize={() => setProfileAddr(null)}
+            title="Lawb ID"
+            initialPosition={{ x: 80, y: 80 }}
+            initialSize={{ width: 420, height: 560 }}
+            zIndex={999999}
+          >
+            <Suspense fallback={<div style={{ padding: 16, color: '#000' }}>Loading…</div>}>
+              <PlayerProfile address={profileAddr} />
+            </Suspense>
+          </Popup>
+        </Suspense>
+      )}
     </div>
   );
 };

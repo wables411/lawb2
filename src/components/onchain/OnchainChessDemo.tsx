@@ -8,6 +8,8 @@ import { squareToAlgebraic, algebraicToSquare } from '../../utils/lawbChessBoard
 import { randomChessBoard } from '../../config/chessBoards';
 import { OnchainChessBoard } from './OnchainChessBoard';
 import { OnchainChessSidebar } from './OnchainChessSidebar';
+import { OnchainChessResult, type GameOutcome } from './OnchainChessResult';
+import { playChessSound } from '../../utils/chessSounds';
 import type { OnchainMove } from '../../hooks/useOnchainChessMoves';
 
 function boardFromChess(chess: Chess): (string | null)[][] {
@@ -31,6 +33,8 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
   const [selected, setSelected] = useState<number | null>(null);
   const [targets, setTargets] = useState<number[]>([]);
   const [pendingPromo, setPendingPromo] = useState<{ from: number; to: number } | null>(null);
+  const [captureSquare, setCaptureSquare] = useState<number | null>(null);
+  const [result, setResult] = useState<{ outcome: GameOutcome; detail: string } | null>(null);
 
   const board = useMemo(() => boardFromChess(chess), [fen]); // eslint-disable-line react-hooks/exhaustive-deps
   const moves = useMemo<OnchainMove[]>(() => // eslint-disable-line react-hooks/exhaustive-deps
@@ -43,10 +47,30 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
   const clear = () => { setSelected(null); setTargets([]); };
 
   const apply = useCallback((from: number, to: number, promotion?: string) => {
+    let res: { captured?: string } | null = null;
     try {
-      chess.move({ from: squareToAlgebraic(from), to: squareToAlgebraic(to), promotion });
+      res = chess.move({ from: squareToAlgebraic(from), to: squareToAlgebraic(to), promotion });
+    } catch { res = null; }
+    if (res) {
+      if (res.captured) {
+        playChessSound('capture');
+        setCaptureSquare(to);
+        window.setTimeout(() => setCaptureSquare(null), 600);
+      } else if (promotion) {
+        playChessSound('promote');
+      } else {
+        playChessSound('move');
+      }
+      if (chess.isCheck()) playChessSound('check');
       setFen(chess.fen());
-    } catch { /* illegal — ignore */ }
+      if (chess.isGameOver()) {
+        if (chess.isCheckmate()) {
+          setResult({ outcome: 'win', detail: `${chess.turn() === 'w' ? 'Black' : 'White'} wins by checkmate` });
+        } else {
+          setResult({ outcome: 'draw', detail: chess.isStalemate() ? 'Stalemate' : 'Draw' });
+        }
+      }
+    }
     clear();
     setPendingPromo(null);
   }, [chess]);
@@ -83,7 +107,7 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
     : chess.inCheck() ? `${chess.turn() === 'w' ? 'White' : 'Black'} in check`
     : `${chess.turn() === 'w' ? 'White' : 'Black'} to move`;
 
-  const reset = () => { chess.reset(); setFen(chess.fen()); clear(); setPendingPromo(null); };
+  const reset = () => { chess.reset(); setFen(chess.fen()); clear(); setPendingPromo(null); setResult(null); setCaptureSquare(null); };
 
   return (
     <div style={panel}>
@@ -99,6 +123,7 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
             legalTargets={targets}
             lastMove={lastMove}
             boardImage={boardImage}
+            captureSquare={captureSquare}
             interactive
             onSquareClick={handleClick}
           />
@@ -119,6 +144,7 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
         <button style={btn} onClick={reset}>Reset</button>
         <button style={btn} onClick={onLeave}>Back to lobby</button>
       </div>
+      {result && <OnchainChessResult outcome={result.outcome} detail={result.detail} onClose={() => setResult(null)} />}
     </div>
   );
 };
