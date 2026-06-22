@@ -51,6 +51,47 @@ export function squareToAlgebraic(sq: number): string {
   return String.fromCharCode(97 + (sq & 7)) + String.fromCharCode(49 + (sq >> 3));
 }
 
+/**
+ * Build a FEN string from decoded contract state, so chess.js can generate legal moves
+ * for client-side highlighting/promotion (the contract remains the final arbiter).
+ * @param board    decoded (string|null)[][] from decodeOnchainBoard
+ * @param side     0 = white to move, 1 = black
+ * @param castling 4-bit mask (CR_WK=1, CR_WQ=2, CR_BK=4, CR_BQ=8)
+ * @param ep       en-passant target square 0..63, or 64 for none
+ * @param halfmove halfmove clock (50-move rule)
+ */
+export function boardToFen(
+  board: ChessBoard,
+  side: number,
+  castling: number,
+  ep: number,
+  halfmove = 0,
+): string {
+  const ranks: string[] = [];
+  for (let r = 7; r >= 0; r--) {
+    let row = '';
+    let empty = 0;
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p) { empty++; continue; }
+      if (empty) { row += empty; empty = 0; }
+      row += p;
+    }
+    if (empty) row += empty;
+    ranks.push(row);
+  }
+  const placement = ranks.join('/');
+  const active = side === Side.BLACK ? 'b' : 'w';
+  let rights = '';
+  if (castling & 1) rights += 'K';
+  if (castling & 2) rights += 'Q';
+  if (castling & 4) rights += 'k';
+  if (castling & 8) rights += 'q';
+  if (!rights) rights = '-';
+  const epStr = ep === NO_EP ? '-' : squareToAlgebraic(ep);
+  return `${placement} ${active} ${rights} ${epStr} ${halfmove} 1`;
+}
+
 // ---- contract enums (mirror onchain-chess/src/LawbChess.sol) ----
 
 export const WagerKind = { NATIVE: 0, ERC20: 1, ERC721: 2, ERC1155: 3 } as const;

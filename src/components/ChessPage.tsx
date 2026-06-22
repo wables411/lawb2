@@ -8,10 +8,13 @@ import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import Popup from './Popup';
 import { ChessPieceSetProvider } from '../contexts/ChessPieceSetContext';
 import { debugIngest } from '../utils/debugIngest';
+import { ENABLE_ONCHAIN_CHESS } from '../config/lawbChessOnchain';
 import './ChessPageSimple.css';
 
 const ChessPieceInfo = lazy(() => import('./ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
 const ChessSpectator = lazy(() => import('./ChessSpectator').then(m => ({ default: m.ChessSpectator })));
+// Flag-gated on-chain path (lazy so it stays a separate chunk, never in the main bundle).
+const OnchainChessEntry = lazy(() => import('./onchain/OnchainChessEntry').then(m => ({ default: m.OnchainChessEntry })));
 
 const isSpectatorMode = (() => {
   if (typeof window === 'undefined') return false;
@@ -167,10 +170,16 @@ const ChessPageConnected: React.FC = () => {
           }}
         />
         <div className="chess-content-simple">
-          <ChessGame 
-            onClose={handleClose} 
-            isMobile={isMobile}
-          />
+          {ENABLE_ONCHAIN_CHESS ? (
+            <Suspense fallback={<div style={{ color: '#eee', padding: 20 }}>Loading on-chain chess…</div>}>
+              <OnchainChessEntry />
+            </Suspense>
+          ) : (
+            <ChessGame
+              onClose={handleClose}
+              isMobile={isMobile}
+            />
+          )}
         </div>
         
         {showChessPieceInfo && (
