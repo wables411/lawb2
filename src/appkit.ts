@@ -1,6 +1,7 @@
 // AppKit initialization for REOWN wallet connections
 
 import { sankoMainnet } from './wagmi';
+import { ENABLE_ONCHAIN_CHESS } from './config/lawbChessOnchain';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
 
@@ -37,21 +38,20 @@ export const initializeAppKit = () => {
     import('@reown/appkit-adapter-solana')
   ]).then(([appkitModule, networksModule, adapterModule, solanaAdapterModule]) => {
     const { createAppKit, getAppKit } = appkitModule;
-    const { mainnet, arbitrum, base, solana } = networksModule;
+    const { mainnet, arbitrum, base, solana, baseSepolia } = networksModule;
     const { WagmiAdapter } = adapterModule;
     const { SolanaAdapter } = solanaAdapterModule;
-    
+
+    // Base Sepolia only when the on-chain chess flag is on (keeps it out of the production wallet UX).
+    const evmNetworks = ENABLE_ONCHAIN_CHESS
+      ? [mainnet, arbitrum, base, sankoMainnet, baseSepolia]
+      : [mainnet, arbitrum, base, sankoMainnet];
+
     console.log('[AppKit] Creating WagmiAdapter and AppKit');
-    
+
     wagmiAdapter = new WagmiAdapter({
       projectId,
-      networks: [
-        // WagmiAdapter is EVM-only. Do not include Solana here.
-        mainnet,
-        arbitrum,
-        base,
-        sankoMainnet
-      ],
+      networks: evmNetworks, // WagmiAdapter is EVM-only. Do not include Solana here.
       pendingTransactionsFilter: {
         enable: true,
         pollingInterval: 1000
@@ -64,13 +64,9 @@ export const initializeAppKit = () => {
       projectId,
       metadata,
       adapters: [wagmiAdapter, solanaAdapter],
-      networks: [
-        mainnet,
-        arbitrum,
-        base,
-        solana,
-        sankoMainnet
-      ],
+      networks: ENABLE_ONCHAIN_CHESS
+        ? [mainnet, arbitrum, base, solana, sankoMainnet, baseSepolia]
+        : [mainnet, arbitrum, base, solana, sankoMainnet],
       features: {
         analytics: false,
       },

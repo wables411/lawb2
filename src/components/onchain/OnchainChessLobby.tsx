@@ -26,9 +26,10 @@ function randomCode(): string {
 
 export interface OnchainChessLobbyProps {
   onEnterGame: (code: GameCode) => void;
+  onPlayDemo: () => void;
 }
 
-export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGame }) => {
+export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGame, onPlayDemo }) => {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -110,6 +111,10 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
       </fieldset>
 
       {err && <div style={{ color: '#c0392b', fontSize: 12, maxWidth: 360 }}>{err}</div>}
+
+      <button style={{ ...btn, marginTop: 4 }} onClick={onPlayDemo}>
+        ▶ Try local sandbox (no wallet)
+      </button>
     </div>
   );
 };

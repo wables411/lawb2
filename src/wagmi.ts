@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi';
 import { fallback } from 'viem';
-import { mainnet, arbitrum, base } from 'wagmi/chains';
+import { mainnet, arbitrum, base, baseSepolia } from 'wagmi/chains';
 import { basePublicRpcHttpUrls } from './utils/baseRpcPublic';
 
 // Custom Sanko networks
@@ -74,9 +74,17 @@ function baseFallbackTransport() {
   return urls.length === 1 ? http(urls[0]!, { batch: false }) : fallback(urls.map((u) => http(u, { batch: false })));
 }
 
+// Base Sepolia (testnet) is included for the on-chain chess path. It is surfaced in the
+// wallet UX only when the flag is on (gated in appkit.ts). VITE_ONCHAIN_CHESS_RPC lets a
+// local dev point its transport at an anvil fork.
+const baseSepoliaTransport = http(
+  viteRpc('VITE_ONCHAIN_CHESS_RPC') ?? 'https://base-sepolia-rpc.publicnode.com',
+  { batch: false },
+);
+
 // Create wagmi config - AppKit's WagmiAdapter will add its own connectors
 export const config = createConfig({
-  chains: [mainnet, arbitrum, base, sankoTestnet, sankoMainnet],
+  chains: [mainnet, arbitrum, base, sankoTestnet, sankoMainnet, baseSepolia],
   connectors: [], // AppKit's WagmiAdapter will add its own connectors
   multiInjectedProviderDiscovery: true, // Enable EIP-6963 wallet discovery
   transports: {
@@ -88,8 +96,9 @@ export const config = createConfig({
     [base.id]: baseFallbackTransport(),
     [sankoTestnet.id]: http('https://sanko-arb-sepolia.rpc.caldera.xyz/http'),
     [sankoMainnet.id]: http('https://mainnet.sanko.xyz'),
+    [baseSepolia.id]: baseSepoliaTransport,
   },
 });
 
 // Export all chains for use in appkit
-export const allChains = [mainnet, arbitrum, base, sankoTestnet, sankoMainnet];
+export const allChains = [mainnet, arbitrum, base, sankoTestnet, sankoMainnet, baseSepolia];
