@@ -5,6 +5,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { squareToAlgebraic, algebraicToSquare } from '../../utils/lawbChessBoard';
+import { randomChessBoard } from '../../config/chessBoards';
 import { OnchainChessBoard } from './OnchainChessBoard';
 
 function boardFromChess(chess: Chess): (string | null)[][] {
@@ -24,6 +25,7 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
   const [chess] = useState(() => new Chess());
   const [fen, setFen] = useState(() => chess.fen());
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
+  const [boardImage] = useState(() => randomChessBoard());
   const [selected, setSelected] = useState<number | null>(null);
   const [targets, setTargets] = useState<number[]>([]);
   const [pendingPromo, setPendingPromo] = useState<{ from: number; to: number } | null>(null);
@@ -84,6 +86,7 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
         orientation={orientation}
         selectedSquare={selected}
         legalTargets={targets}
+        boardImage={boardImage}
         interactive
         onSquareClick={handleClick}
       />

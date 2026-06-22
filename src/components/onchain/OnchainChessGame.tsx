@@ -11,6 +11,7 @@ import {
   boardToFen, squareToAlgebraic, algebraicToSquare, GameStatus, Side, WagerKind,
 } from '../../utils/lawbChessBoard';
 import { codeToString, type GameCode } from '../../utils/lawbChessMoves';
+import { chessBoardForCode } from '../../config/chessBoards';
 import { OnchainChessBoard } from './OnchainChessBoard';
 
 // chess.js promotion letter -> contract piece type
@@ -224,6 +225,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
         orientation={orientation}
         selectedSquare={selected}
         legalTargets={targets}
+        boardImage={chessBoardForCode(codeToString(code))}
         interactive={!!myTurn && !busy}
         onSquareClick={handleSquareClick}
       />

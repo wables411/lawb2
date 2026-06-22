@@ -15,6 +15,8 @@ export interface OnchainChessBoardProps {
   legalTargets?: number[];
   /** last move squares to highlight */
   lastMove?: { from: number; to: number } | null;
+  /** custom board background image; when set, squares render transparent over it */
+  boardImage?: string | null;
   interactive?: boolean;
   onSquareClick?: (square: number) => void;
 }
@@ -27,6 +29,7 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
   selectedSquare = null,
   legalTargets = [],
   lastMove = null,
+  boardImage = null,
   interactive = false,
   onSquareClick,
 }) => {
@@ -49,6 +52,9 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
         boxSizing: 'border-box',
         userSelect: 'none',
         touchAction: 'manipulation',
+        ...(boardImage
+          ? { backgroundImage: `url(${boardImage})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' }
+          : {}),
       }}
     >
       {rows.map((rank) =>
@@ -67,12 +73,14 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
               style={{
                 position: 'relative',
                 background: isSelected
-                  ? '#7eb36a'
+                  ? 'rgba(126,179,106,0.75)'
                   : isLast
-                    ? (isDark ? '#b9a14a' : '#e6d56a')
-                    : isDark
-                      ? '#6a8bb3'
-                      : '#cdd7e6',
+                    ? 'rgba(230,213,106,0.6)'
+                    : boardImage
+                      ? 'transparent'
+                      : isDark
+                        ? '#6a8bb3'
+                        : '#cdd7e6',
                 cursor: interactive && (piece || isTarget) ? 'pointer' : 'default',
                 display: 'flex',
                 alignItems: 'center',
