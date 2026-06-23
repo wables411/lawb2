@@ -594,6 +594,19 @@ export const LAWB_CHESS_ABI = [
   },
   {
     "type": "function",
+    "name": "maxNativeWager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "onERC1155BatchReceived",
     "inputs": [
       {
@@ -902,6 +915,19 @@ export const LAWB_CHESS_ABI = [
         "name": "r",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setMaxNativeWager",
+    "inputs": [
+      {
+        "name": "v",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
