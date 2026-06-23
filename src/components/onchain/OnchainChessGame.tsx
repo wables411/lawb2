@@ -21,6 +21,7 @@ import { OnchainChessResult, type GameOutcome } from './OnchainChessResult';
 
 const Popup = lazy(() => import('../Popup'));
 const PlayerProfile = lazy(() => import('../PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
+const ChessChat = lazy(() => import('../ChessChat').then((m) => ({ default: m.ChessChat })));
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
@@ -77,6 +78,8 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const [captureSquare, setCaptureSquare] = useState<number | null>(null);
   const [endOverlay, setEndOverlay] = useState<{ outcome: GameOutcome; detail: string } | null>(null);
   const [profileAddr, setProfileAddr] = useState<`0x${string}` | null>(null);
+  const [joinTokenId, setJoinTokenId] = useState('');
+  const [showChat, setShowChat] = useState(false);
   const seenNonceRef = useRef<bigint | null>(null);
   const prevCountRef = useRef<number | null>(null);
 
@@ -211,6 +214,35 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     [publicClient, refetch],
   );
 
+  // join an open game — handles native / ERC-20 / NFT (approval then the matching join call)
+  const join = useCallback(async () => {
+    if (!game) return;
+    setErr(null);
+    setBusy(true);
+    const wait = async (h: `0x${string}`) => { if (publicClient) await publicClient.waitForTransactionReceipt({ hash: h }); };
+    try {
+      if (game.kind === WagerKind.NATIVE) {
+        await wait(await actions.joinGame(code, game.wager));
+      } else if (game.kind === WagerKind.ERC20) {
+        await wait(await actions.approveErc20(game.token, game.wager));
+        await wait(await actions.joinGame(code, 0n));
+      } else if (game.kind === WagerKind.ERC721) {
+        const id = BigInt(joinTokenId || '0');
+        await wait(await actions.approveErc721(game.token, id));
+        await wait(await actions.joinGameERC721(code, id));
+      } else {
+        const id = BigInt(joinTokenId || '0');
+        await wait(await actions.setNftApprovalForAll(game.token, true));
+        await wait(await actions.joinGameERC1155(code, id));
+      }
+      refetch();
+    } catch (e) {
+      setErr((e as Error)?.message?.split('\n')[0] ?? 'join failed');
+    } finally {
+      setBusy(false);
+    }
+  }, [actions, code, game, joinTokenId, publicClient, refetch]);
+
   // capture/move/check sound + capture animation when the move count advances (mine or opponent's)
   useEffect(() => {
     if (!game || !board) return;
@@ -328,14 +360,23 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
         {isOpen && !isPlayer && address && (
-          game.kind === WagerKind.NATIVE ? (
-            <button style={btn} disabled={busy}
-              onClick={() => doAction(() => actions.joinGame(code, game.wager))}>
-              Join — stake {Number(game.wager) / 1e18} ETH
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {(game.kind === WagerKind.ERC721 || game.kind === WagerKind.ERC1155) && (
+              <input
+                style={{ fontFamily: 'inherit', fontSize: 12, padding: '4px 6px', width: 110 }}
+                placeholder="your token ID"
+                value={joinTokenId}
+                onChange={(e) => setJoinTokenId(e.target.value)}
+              />
+            )}
+            <button style={btn} disabled={busy} onClick={join}>
+              {game.kind === WagerKind.NATIVE
+                ? `Join — stake ${Number(game.wager) / 1e18} ETH`
+                : game.kind === WagerKind.ERC20
+                  ? 'Join (approve + stake ERC-20)'
+                  : 'Join (stake your NFT)'}
             </button>
-          ) : (
-            <span style={{ fontSize: 12 }}>Joining ERC-20/NFT games isn't in this UI yet.</span>
-          )
+          </div>
         )}
         {isActive && isPlayer && (
           <button style={btn} disabled={busy} onClick={() => doAction(() => actions.resign(code))}>Resign</button>
@@ -346,6 +387,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
         {isOpen && myColor === Side.WHITE && (
           <button style={btn} disabled={busy} onClick={() => doAction(() => actions.cancelGame(code))}>Cancel game</button>
         )}
+        <button style={btn} onClick={() => setShowChat((v) => !v)}>Chat</button>
         <button style={btn} disabled={busy} onClick={() => refetch()}>Refresh</button>
         <button style={btn} onClick={onLeave}>Leave</button>
       </div>
@@ -368,6 +410,12 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
 
       {endOverlay && (
         <OnchainChessResult outcome={endOverlay.outcome} detail={endOverlay.detail} onClose={() => setEndOverlay(null)} />
+      )}
+
+      {showChat && (
+        <Suspense fallback={null}>
+          <ChessChat isOpen onMinimize={() => setShowChat(false)} currentInviteCode={codeToString(code)} />
+        </Suspense>
       )}
 
       {profileAddr && (

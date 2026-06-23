@@ -53,3 +53,22 @@ export const LAWB_CHESS_PROXY_ADDRESS: Record<number, `0x${string}` | null> = {
 export function getLawbChessAddress(chainId: number): `0x${string}` | null {
   return LAWB_CHESS_PROXY_ADDRESS[chainId] ?? null;
 }
+
+/**
+ * Curated NFT collections per chain (must match the contract's on-chain allowlist set via
+ * setAllowedNftCollection). From LAWBCHESS_ONCHAIN_SPEC §16.1. Used to populate the wager UI;
+ * the contract rejects any non-allowlisted collection regardless.
+ */
+export const LAWB_CHESS_NFT_COLLECTIONS: Record<number, { label: string; address: `0x${string}` }[]> = {
+  [LAWB_CHESS_CHAIN_IDS.ethereum]: [
+    { label: 'Lawbsters', address: '0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42' },
+    { label: 'Lawbstarz', address: '0xd7922cd333da5ab3758c95f774b092a7b13a5449' },
+    { label: 'Pixelawbsters', address: '0x2d278e95b2fC67D4b27a276807e24E479D9707F6' },
+  ],
+  [LAWB_CHESS_CHAIN_IDS.base]: [
+    { label: 'A Lawbster Halloween', address: '0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97' },
+    { label: 'ASCII Lawbs', address: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2' },
+  ],
+  [LAWB_CHESS_CHAIN_IDS.baseSepolia]: [],
+  [LAWB_CHESS_CHAIN_IDS.arbitrum]: [],
+};
