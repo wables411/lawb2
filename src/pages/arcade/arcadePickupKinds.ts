@@ -5,6 +5,7 @@ import {
   oxygenCapacityForStars,
 } from './arcadeCharacterStats';
 import { reefRunAirTankRandomPickupWeight } from './arcadeDifficulty';
+import type { Rng } from './arcadeRng';
 
 export type PickupKind =
   | 'air_tank'
@@ -138,6 +139,7 @@ const PICKUP_TUNING: Record<PickupKind, PickupTuning> = {
 export function rollPickupKind(
   survivalSec: number,
   characterId: ArcadeCharacterId,
+  rng: Rng = Math.random,
 ): PickupKind {
   const rows = SPAWN_WEIGHTS_BASE.map((r) => ({ ...r }));
   /**
@@ -173,7 +175,7 @@ export function rollPickupKind(
   }
   const sum = rows.reduce((a, b) => a + Math.max(0, b.w), 0);
   if (sum <= 0) return 'coin';
-  let r = Math.random() * sum;
+  let r = rng() * sum;
   for (const row of rows) {
     if (row.w <= 0) continue;
     r -= row.w;

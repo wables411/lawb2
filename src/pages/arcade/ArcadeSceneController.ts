@@ -48,6 +48,7 @@ import {
 import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
 import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
+import { makeRng, randomSeed, type Rng } from './arcadeRng';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
 
@@ -291,6 +292,12 @@ export class ArcadeSceneController {
    */
   private spawnWaveIndex = -1;
   private playEnded = false;
+  /** Seeded gameplay RNG (spawns/lanes/pickups/difficulty). Cosmetics keep using Math.random. */
+  private gameRng: Rng = Math.random;
+  /** Seed for the current run (for replay/jackpot). Set per run; random for free play. */
+  private runSeed = 0;
+  /** Optional injected seed (jackpot/replay assigns this); null = random free-play seed. */
+  private pendingSeed: number | null = null;
   /** Survival time while swim is active (excludes async load gap). */
   private runSurvivalSec = 0;
   private runClockActive = false;
@@ -1053,6 +1060,10 @@ export class ArcadeSceneController {
     this.playerLane = 1;
     this.playerX = LANES[1];
     this.spawnWaveIndex = -1;
+    // Seed the gameplay RNG for this run: injected seed (jackpot/replay) or random (free play).
+    this.runSeed = this.pendingSeed ?? randomSeed();
+    this.pendingSeed = null;
+    this.gameRng = makeRng(this.runSeed);
     this.spawnAcc = Math.max(0, reefRunSpawnIntervalSec(0) - FIRST_OBSTACLE_AFTER_S);
     this.runSurvivalSec = 0;
     this.runClockActive = false;
@@ -1181,19 +1192,19 @@ export class ArcadeSceneController {
     if (track.size === 1) {
       const busy = [...track][0]!;
       const open = [0, 1, 2].filter((l) => l !== busy);
-      const lane = open[Math.floor(Math.random() * open.length)]!;
+      const lane = open[Math.floor(this.gameRng() * open.length)]!;
       this.spawnObstacleInLane(lane, SPAWN_Z);
       return true;
     }
 
-    const gapLane = Math.floor(Math.random() * 3);
+    const gapLane = Math.floor(this.gameRng() * 3);
     const fillLanes = [0, 1, 2].filter((l) => l !== gapLane);
-    const twoBlockRow = Math.random() < reefRunTwoBlockRowChance(this.runSurvivalSec);
+    const twoBlockRow = this.gameRng() < reefRunTwoBlockRowChance(this.runSurvivalSec);
     if (twoBlockRow) {
       this.spawnObstacleInLane(fillLanes[0]!, SPAWN_Z);
       this.spawnObstacleInLane(fillLanes[1]!, SPAWN_Z + ROW_Z_EPS);
     } else {
-      const lane = fillLanes[Math.floor(Math.random() * 2)]!;
+      const lane = fillLanes[Math.floor(this.gameRng() * 2)]!;
       this.spawnObstacleInLane(lane, SPAWN_Z);
     }
     return true;
@@ -1218,7 +1229,7 @@ export class ArcadeSceneController {
     root.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
     root.visible = z > OBSTACLE_RENDER_START_Z;
     this.obstacleGroup.add(root);
-    const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.94 + Math.random() * 0.12);
+    const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.94 + this.gameRng() * 0.12);
     this.obstacles.push({ root, lane, speed, hit: false });
   }
 
@@ -1239,9 +1250,9 @@ export class ArcadeSceneController {
   private trySpawnPickup(): void {
     const cid = this.runState?.characterId ?? 'clawb';
     for (let tryN = 0; tryN < 3; tryN++) {
-      const lane = (Math.floor(Math.random() * 3) + tryN) % 3;
+      const lane = (Math.floor(this.gameRng() * 3) + tryN) % 3;
       if (!this.laneBlockedForPickup(lane)) {
-        this.spawnPickupInLane(lane, rollPickupKind(this.runSurvivalSec, cid));
+        this.spawnPickupInLane(lane, rollPickupKind(this.runSurvivalSec, cid, this.gameRng));
         return;
       }
     }
@@ -1265,7 +1276,7 @@ export class ArcadeSceneController {
     root.visible = SPAWN_Z > PICKUP_RENDER_START_Z;
     this.obstacleGroup.add(root);
     /** Slightly slower than coral so pickups are easier to read. */
-    const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + Math.random() * 0.12) * 0.74;
+    const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + this.gameRng() * 0.12) * 0.74;
     this.pickups.push({ root, lane, speed, hit: false, kind });
   }
 
@@ -1878,7 +1889,7 @@ export class ArcadeSceneController {
           this.spawnAcc += dt;
           if (this.spawnAcc >= rowInterval) {
             this.spawnWaveIndex++;
-            if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex)) {
+            if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex, this.gameRng)) {
               if (this.trySpawnObstacleRow()) {
                 this.spawnAcc = 0;
               } else {

@@ -1,3 +1,5 @@
+import type { Rng } from './arcadeRng';
+
 /** Each tier spans this many seconds of survival (Roman numeral steps up). */
 export const REEF_RUN_TIER_SECONDS = 45;
 
@@ -53,12 +55,16 @@ export function reefRunSpawnIntervalSec(survivalSec: number): number {
 /**
  * Early: only even-index waves place blocks (every other row). Mid: blend in odd rows; late (~80s+): every wave.
  */
-export function reefRunSpawnRowThisWave(survivalSec: number, waveIndex: number): boolean {
+export function reefRunSpawnRowThisWave(
+  survivalSec: number,
+  waveIndex: number,
+  rng: Rng = Math.random,
+): boolean {
   if (waveIndex % 2 === 0) return true;
   if (survivalSec < 42) return false;
   if (survivalSec >= 82) return true;
   const t = smoothstep(42, 82, survivalSec);
-  return Math.random() < t;
+  return rng() < t;
 }
 
 /**
