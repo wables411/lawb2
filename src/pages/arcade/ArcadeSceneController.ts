@@ -706,7 +706,27 @@ export class ArcadeSceneController {
     this.lowPowerMode = isArcadeLowPowerDevice();
     this.maxActiveObstacles = this.lowPowerMode ? 8 : 12;
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x020a14, this.reefFogDensityBase);
+    // Underwater haze: distant geometry fades into deep-water teal (not black space).
+    this.scene.fog = new THREE.FogExp2(0x0d4763, this.reefFogDensityBase);
+    // Vertical gradient backdrop (sunlit shallows above -> deep below) so the run reads as
+    // ocean depth rather than an empty void.
+    {
+      const c = document.createElement('canvas');
+      c.width = 8;
+      c.height = 256;
+      const g = c.getContext('2d');
+      if (g) {
+        const grad = g.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0, '#1f7d97'); // toward the surface
+        grad.addColorStop(0.5, '#0d4763');
+        grad.addColorStop(1, '#03121d'); // the deep
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 8, 256);
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        this.scene.background = tex;
+      }
+    }
 
     this.camera = new THREE.PerspectiveCamera(
       52,
@@ -756,7 +776,14 @@ export class ArcadeSceneController {
     this.pathRoot.add(this.tunnel);
     this.scene.add(this.pathRoot);
 
-    this.scene.add(new THREE.AmbientLight(0xb8d5e8, this.lowPowerMode ? 0.44 : 0.36));
+    // Underwater ambient: low flat fill + a sky/ground hemisphere (teal above, deep below) +
+    // an overhead "surface sun" directional so lighting feels submerged, not flat studio.
+    this.scene.add(new THREE.AmbientLight(0x6fb8d0, this.lowPowerMode ? 0.3 : 0.22));
+    const hemi = new THREE.HemisphereLight(0x3f97b8, 0x05202e, this.lowPowerMode ? 0.55 : 0.5);
+    hemi.position.set(0, 8, 0);
+    const surfaceSun = new THREE.DirectionalLight(0xdff2ff, this.lowPowerMode ? 0.55 : 0.7);
+    surfaceSun.position.set(0.5, 12, 3);
+    this.scene.add(hemi, surfaceSun);
     const key = new THREE.PointLight(
       0xc8e8ff,
       this.lowPowerMode ? 52 : 64,
@@ -792,10 +819,11 @@ export class ArcadeSceneController {
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const pMat = new THREE.PointsMaterial({
-      color: 0x9ae8ff,
-      size: this.lowPowerMode ? 0.055 : 0.048,
+      // Marine snow: soft suspended particulate, subtler than the old star-like dots.
+      color: 0xcfeaf2,
+      size: this.lowPowerMode ? 0.04 : 0.034,
       transparent: true,
-      opacity: this.lowPowerMode ? 0.48 : 0.52,
+      opacity: this.lowPowerMode ? 0.36 : 0.4,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       sizeAttenuation: true,
