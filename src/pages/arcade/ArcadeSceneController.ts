@@ -1003,8 +1003,13 @@ export class ArcadeSceneController {
       if (slot.danceRoot) {
         slot.danceRoot.visible = false;
       }
+      // Fully stop any dance (incl. dances that share the idle mixer) so no character keeps
+      // dancing / blends on the menu — reads as "a dancer stacked on an idler".
       slot.danceAction?.stop();
       if (slot.idleAction) {
+        slot.idleAction.stop();
+        slot.idleAction.reset();
+        slot.idleAction.setEffectiveWeight(1);
         slot.idleAction.paused = false;
         slot.idleAction.play();
       }
