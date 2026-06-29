@@ -309,6 +309,7 @@ export class ArcadeSceneController {
   private simNow = 0; // gameplay clock (replaces wall clock for gameplay timers)
   private simStep = 0; // fixed-step counter (input log timeline)
   private lastSwimSpd = 1; // computed in the sim; read by cosmetics (warp/tunnel/mixer)
+  private godRays: THREE.Group | null = null; // volumetric light shafts from the surface
   private inputLog: Array<[number, number, number, number]> = []; // [step, lane, w, s]
   private lastInputKey = -1;
   /** Survival time while swim is active (excludes async load gap). */
@@ -755,6 +756,16 @@ export class ArcadeSceneController {
     this.renderer.domElement.style.height = '100%';
     this.container.appendChild(this.renderer.domElement);
 
+    // Cinematic grade: subtle teal wash + vignette over the canvas (cheap DOM "post", no GPU cost).
+    if (getComputedStyle(this.container).position === 'static') this.container.style.position = 'relative';
+    const grade = document.createElement('div');
+    grade.style.cssText =
+      'position:absolute;inset:0;pointer-events:none;z-index:1;' +
+      'background:' +
+      'radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 46%, rgba(2,14,22,0.6) 100%),' +
+      'linear-gradient(180deg, rgba(30,125,151,0.12) 0%, rgba(3,18,30,0.18) 100%);';
+    this.container.appendChild(grade);
+
     const tr = this.lowPowerMode ? 42 : 96;
     const th = this.lowPowerMode ? 14 : 36;
     const tunnelGeo = new THREE.CylinderGeometry(8.5, 9.2, 140, tr, th, true);
@@ -830,6 +841,55 @@ export class ArcadeSceneController {
     });
     this.ambianceParticles = new THREE.Points(pGeo, pMat);
     this.scene.add(this.ambianceParticles);
+
+    // God-rays: additive light shafts angled from the surface (skip on low-power devices).
+    if (!this.lowPowerMode) {
+      const rc = document.createElement('canvas');
+      rc.width = 64;
+      rc.height = 256;
+      const rx = rc.getContext('2d');
+      if (rx) {
+        const v = rx.createLinearGradient(0, 0, 0, 256);
+        v.addColorStop(0, 'rgba(210,240,255,0.7)');
+        v.addColorStop(0.55, 'rgba(170,225,250,0.16)');
+        v.addColorStop(1, 'rgba(170,225,250,0)');
+        rx.fillStyle = v;
+        rx.fillRect(0, 0, 64, 256);
+        rx.globalCompositeOperation = 'destination-in'; // feather the vertical edges
+        const h = rx.createLinearGradient(0, 0, 64, 0);
+        h.addColorStop(0, 'rgba(0,0,0,0)');
+        h.addColorStop(0.5, 'rgba(0,0,0,1)');
+        h.addColorStop(1, 'rgba(0,0,0,0)');
+        rx.fillStyle = h;
+        rx.fillRect(0, 0, 64, 256);
+      }
+      const rayTex = new THREE.CanvasTexture(rc);
+      rayTex.colorSpace = THREE.SRGBColorSpace;
+      const rays = new THREE.Group();
+      const defs: Array<[number, number, number, number, number]> = [
+        // x, z, rotZ, width, height
+        [-5.5, -22, 0.22, 6, 28],
+        [1.5, -34, -0.16, 9, 34],
+        [6, -26, 0.3, 5, 26],
+      ];
+      for (const [x, z, rot, w, hgt] of defs) {
+        const mat = new THREE.MeshBasicMaterial({
+          map: rayTex,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          opacity: 0.45,
+          side: THREE.DoubleSide,
+          fog: false,
+        });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, hgt), mat);
+        plane.position.set(x, 7, z);
+        plane.rotation.z = rot;
+        rays.add(plane);
+      }
+      this.godRays = rays;
+      this.scene.add(rays);
+    }
 
     const ns = this.lowPowerMode ? 150 : 1100;
     const sp = new Float32Array(ns * 3);
@@ -1914,6 +1974,13 @@ export class ArcadeSceneController {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     const t = this.clock.elapsedTime;
     let swimSpd = 1;
+
+    if (this.godRays) {
+      for (let i = 0; i < this.godRays.children.length; i++) {
+        const m = this.godRays.children[i] as THREE.Mesh;
+        (m.material as THREE.MeshBasicMaterial).opacity = 0.34 + Math.sin(t * 0.55 + i * 1.7) * 0.13;
+      }
+    }
 
     const CAM_INTRO = 5.2;
     const CAM_MENU = 11.2;
