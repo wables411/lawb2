@@ -312,6 +312,8 @@ export class ArcadeSceneController {
   private simStep = 0; // fixed-step counter (input log timeline)
   private lastSwimSpd = 1; // computed in the sim; read by cosmetics (warp/tunnel/mixer)
   private godRays: THREE.Group | null = null; // volumetric light shafts from the surface
+  private disposed = false; // set in dispose(); async loads must abort if true (StrictMode/remount safe)
+  private gradeOverlay: HTMLDivElement | null = null; // DOM vignette/grade layer (removed on dispose)
   private inputLog: Array<[number, number, number, number]> = []; // [step, lane, w, s]
   private lastInputKey = -1;
   /** Survival time while swim is active (excludes async load gap). */
@@ -766,6 +768,7 @@ export class ArcadeSceneController {
       'background:' +
       'radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 46%, rgba(2,14,22,0.6) 100%),' +
       'linear-gradient(180deg, rgba(30,125,151,0.12) 0%, rgba(3,18,30,0.18) 100%);';
+    this.gradeOverlay = grade;
     this.container.appendChild(grade);
 
     const tr = this.lowPowerMode ? 42 : 96;
@@ -1005,6 +1008,7 @@ export class ArcadeSceneController {
       anchor.add(base);
       try {
         const { root, clips } = await loadArcadeFbx(def.idle, def.id);
+        if (this.disposed) return; // teardown raced the load — don't add orphan meshes
         root.userData.characterId = def.id;
         root.rotation.y = faces[i]!;
         applyArcadeHeroScale(root, def.heightMul ?? 1);
@@ -1194,7 +1198,7 @@ export class ArcadeSceneController {
         if (!slot.danceAction) {
           try {
             const clips = await loadArcadeFbxClipsOnly(slot.def.dance);
-            if (gen !== this.danceApplyGen) return;
+            if (this.disposed || gen !== this.danceApplyGen) return;
             const clip = buildArcadePlayableClip(clips, slot.idleRoot, { retarget: true });
             if (!clip || clip.tracks.length === 0) {
               console.warn('[Arcade] no usable dance tracks for', slot.def.id);
@@ -1209,7 +1213,7 @@ export class ArcadeSceneController {
             continue;
           }
         }
-        if (gen !== this.danceApplyGen) return;
+        if (this.disposed || gen !== this.danceApplyGen) return;
         slot.idleAction?.fadeOut(0.22);
         slot.danceAction?.reset().fadeIn(0.28).play();
         continue;
@@ -1219,7 +1223,7 @@ export class ArcadeSceneController {
       if (!slot.danceRoot) {
         try {
           const { root, clips } = await loadArcadeFbx(slot.def.dance, slot.def.id);
-          if (gen !== this.danceApplyGen) return;
+          if (this.disposed || gen !== this.danceApplyGen) return;
           root.userData.characterId = slot.def.id;
           root.rotation.copy(slot.idleRoot.rotation);
           applyArcadeHeroScale(root, slot.def.heightMul ?? 1);
@@ -1236,7 +1240,7 @@ export class ArcadeSceneController {
           continue;
         }
       }
-      if (gen !== this.danceApplyGen) return;
+      if (this.disposed || gen !== this.danceApplyGen) return;
       if (slot.danceRoot) {
         slot.danceRoot.visible = true;
         slot.danceAction?.reset().fadeIn(0.2).play();
@@ -1307,6 +1311,7 @@ export class ArcadeSceneController {
         this.mixers.push(mixer);
       } else {
         const { root, clips } = await loadArcadeFbx(slot.def.swim, slot.def.id);
+        if (this.disposed) return; // teardown raced the load
         root.rotation.y = Math.PI;
         root.position.set(0, 0, PLAYER_Z);
         this.playerWorld.add(root);
@@ -2211,7 +2216,12 @@ export class ArcadeSceneController {
   };
 
   dispose(): void {
+    this.disposed = true; // abort any in-flight async asset loads (StrictMode/remount safe)
     cancelAnimationFrame(this.raf);
+    if (this.gradeOverlay && this.gradeOverlay.parentNode === this.container) {
+      this.container.removeChild(this.gradeOverlay);
+    }
+    this.gradeOverlay = null;
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     if (this.pointerBound) {
