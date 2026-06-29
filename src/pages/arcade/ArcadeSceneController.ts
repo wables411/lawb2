@@ -298,6 +298,19 @@ export class ArcadeSceneController {
   private runSeed = 0;
   /** Optional injected seed (jackpot/replay assigns this); null = random free-play seed. */
   private pendingSeed: number | null = null;
+  // --- deterministic (fixed-timestep) mode: used for jackpot/replay; free play stays variable ---
+  private readonly FIXED_DT = 1 / 60;
+  private readonly MAX_SUBSTEPS = 5;
+  /** When true, the play sim runs at a fixed timestep (reproducible). Default false = live loop. */
+  private deterministicMode = false;
+  /** Test toggle: ?reefdet=1 forces deterministic mode in free play so it can be play-tested. */
+  private forceDeterministic = false;
+  private simAcc = 0; // leftover real-time to be consumed by fixed steps
+  private simNow = 0; // gameplay clock (replaces wall clock for gameplay timers)
+  private simStep = 0; // fixed-step counter (input log timeline)
+  private lastSwimSpd = 1; // computed in the sim; read by cosmetics (warp/tunnel/mixer)
+  private inputLog: Array<[number, number, number, number]> = []; // [step, lane, w, s]
+  private lastInputKey = -1;
   /** Survival time while swim is active (excludes async load gap). */
   private runSurvivalSec = 0;
   private runClockActive = false;
@@ -352,6 +365,45 @@ export class ArcadeSceneController {
     this.onRunDifficulty = handlers.onRunDifficulty;
     this.onRunHud = handlers.onRunHud;
     this.onBootProgress = handlers.onBootProgress;
+    // Hidden test toggle so the deterministic loop can be play-tested before it's the default.
+    this.forceDeterministic =
+      typeof window !== 'undefined' && /[?&]reefdet=1/.test(window.location.search);
+  }
+
+  /** Inject a fixed seed + enable deterministic mode for the NEXT run (jackpot/replay). */
+  setDeterministicRun(seed: number): void {
+    this.pendingSeed = seed >>> 0;
+  }
+
+  /** Run proof for off-app replay validation (seed + input timeline + claimed survival). */
+  getRunProof(): {
+    seed: number;
+    characterId: ArcadeCharacterId | null;
+    deterministic: boolean;
+    steps: number;
+    survivalSec: number;
+    inputLog: Array<[number, number, number, number]>;
+  } {
+    return {
+      seed: this.runSeed,
+      characterId: this.runState ? this.runState.characterId : null,
+      deterministic: this.deterministicMode,
+      steps: this.simStep,
+      survivalSec: this.runSurvivalSec,
+      inputLog: this.inputLog,
+    };
+  }
+
+  /** Record the player's input state at a fixed step (only when it changes) for replay. */
+  private captureInput(): void {
+    const lane = this.playerLane;
+    const w = this.keyW || this.virtualW ? 1 : 0;
+    const s = this.keyS || this.virtualS ? 1 : 0;
+    const key = lane * 4 + w * 2 + s;
+    if (key !== this.lastInputKey) {
+      this.inputLog.push([this.simStep, lane, w, s]);
+      this.lastInputKey = key;
+    }
   }
 
   private reportBoot(loaded: number, total: number, label: string): void {
@@ -1061,9 +1113,16 @@ export class ArcadeSceneController {
     this.playerX = LANES[1];
     this.spawnWaveIndex = -1;
     // Seed the gameplay RNG for this run: injected seed (jackpot/replay) or random (free play).
+    this.deterministicMode = this.forceDeterministic || this.pendingSeed !== null;
     this.runSeed = this.pendingSeed ?? randomSeed();
     this.pendingSeed = null;
     this.gameRng = makeRng(this.runSeed);
+    this.simAcc = 0;
+    this.simNow = 0;
+    this.simStep = 0;
+    this.lastSwimSpd = 1;
+    this.inputLog = [];
+    this.lastInputKey = -1;
     this.spawnAcc = Math.max(0, reefRunSpawnIntervalSec(0) - FIRST_OBSTACLE_AFTER_S);
     this.runSurvivalSec = 0;
     this.runClockActive = false;
@@ -1649,6 +1708,174 @@ export class ArcadeSceneController {
     this.onGameOver(this.runSurvivalSec, reason, finalHud);
   }
 
+  /**
+   * One step of gameplay simulation. Called once per frame with real dt (live free play) or
+   * repeatedly with a fixed dt (deterministic mode). Gameplay timers use this.simNow (sim clock),
+   * NOT wall clock, so a run reproduces from seed + inputs. Cosmetics live in tick().
+   */
+  private stepPlaySim(dt: number): void {
+    let swimSpd = 1;
+    if (!this.playEnded) {
+      if (this.runClockActive) {
+        this.runSurvivalSec += dt;
+      }
+    }
+
+    const intensityBase = reefRunPlayIntensityMultiplier(this.runSurvivalSec);
+    let playerMult = 1;
+    const st = this.runState;
+
+    if (!this.playEnded && st) {
+      const now = this.simNow;
+      const forward = this.keyW || this.virtualW;
+      const backward = this.keyS || this.virtualS;
+      const targetT = forward && !backward ? 1 : backward && !forward ? -1 : 0;
+      this.throttleSmoothed += (targetT - this.throttleSmoothed) * Math.min(1, dt * 4.8);
+      const band = speedBandForStars(getCharacterStats(st.characterId).speed);
+      const u = (this.throttleSmoothed + 1) / 2;
+      playerMult = band.min + u * (band.max - band.min);
+      if (now < st.cheeseUntil) playerMult += 0.27;
+      if (now < st.dragUntil) playerMult *= 0.54;
+
+      if (characterHasUnlimitedOxygen(st.characterId)) {
+        st.oxygen = st.oxygenMax;
+      } else {
+        const oxyStars = getCharacterStats(st.characterId).oxygen;
+        const drain =
+          oxygenDrainPerSec(oxyStars) *
+          (0.86 +
+            0.16 *
+              Math.min(1.55, (intensityBase * playerMult) / Math.max(0.001, intensityBase)));
+        st.oxygen -= drain * dt;
+        if (st.oxygen <= 0) {
+          st.oxygen = 0;
+          this.triggerGameOver('oxygen');
+        }
+      }
+    }
+
+    swimSpd = intensityBase * (st && !this.playEnded ? playerMult : st ? playerMult : 1);
+    if (this.playEnded) {
+      swimSpd = intensityBase;
+    }
+    if (this.swimMixer) this.swimMixer.timeScale = swimSpd;
+    this.lastSwimSpd = swimSpd;
+
+    if (!this.playEnded && st) {
+      this.hudRunAcc += dt;
+      if (this.onRunHud && this.hudRunAcc >= 0.14) {
+        this.hudRunAcc = 0;
+        const now = this.simNow;
+        const rel = swimSpd / Math.max(0.001, intensityBase);
+        this.onRunHud(runStateToHud(st, now, rel));
+      }
+    }
+
+    if (!this.playEnded) {
+      const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
+      this.hudEmitAcc += dt;
+      if (
+        this.onRunDifficulty &&
+        (this.hudEmitAcc >= 0.2 || tierNow !== this.lastEmittedTier)
+      ) {
+        this.hudEmitAcc = 0;
+        this.lastEmittedTier = tierNow;
+        this.onRunDifficulty(reefRunHudFromSurvivalSec(this.runSurvivalSec));
+      }
+
+      for (const o of this.obstacles) {
+        if (o.hit) continue;
+        o.root.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+        o.root.visible = o.root.position.z > OBSTACLE_RENDER_START_Z;
+        if (
+          Math.abs(o.root.position.z - HIT_Z) < HIT_HALF_DEPTH &&
+          o.lane === this.playerLane
+        ) {
+          o.hit = true;
+          this.triggerGameOver('crush');
+          break;
+        }
+        if (o.root.position.z > OBSTACLE_RECYCLE_Z) {
+          this.obstacleGroup.remove(o.root);
+          disposeObject3DResources(o.root);
+          o.hit = true;
+        }
+      }
+      this.obstacles = this.obstacles.filter((o) => o.root.parent === this.obstacleGroup);
+
+      if (!this.playEnded) {
+        const pickupHitZ = HIT_HALF_DEPTH * 0.78;
+        for (const p of this.pickups) {
+          if (p.hit) continue;
+          pulsePickupVisual(p.root, this.clock.elapsedTime);
+          spinPickupVisual(p.root, dt);
+          p.root.position.z += p.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
+          p.root.visible = p.root.position.z > PICKUP_RENDER_START_Z;
+          if (
+            this.runState &&
+            Math.abs(p.root.position.z - HIT_Z) < pickupHitZ &&
+            p.lane === this.playerLane
+          ) {
+            p.hit = true;
+            const impactPos = p.root.position.clone();
+            this.triggerPickupImpactFx(p.kind, impactPos);
+            if (isBeneficialPickup(p.kind)) {
+              this.triggerPlayerPulse();
+            }
+            const out = applyPickupEffect(p.kind, this.runState, this.simNow);
+            if (out.cameraShake) this.addCameraShake(out.cameraShake);
+            this.obstacleGroup.remove(p.root);
+            disposeObject3DResources(p.root);
+            if (out.gameOver) {
+              this.triggerGameOver(out.gameOver);
+              break;
+            }
+          }
+          if (p.root.position.z > OBSTACLE_RECYCLE_Z) {
+            this.obstacleGroup.remove(p.root);
+            disposeObject3DResources(p.root);
+            p.hit = true;
+          }
+        }
+        this.pickups = this.pickups.filter((p) => p.root.parent === this.obstacleGroup);
+      }
+
+      if (!this.playEnded && st && characterUsesOxygenMechanic(st.characterId)) {
+        if (this.runSurvivalSec >= this.nextForcedOxyTankSurvival) {
+          if (this.trySpawnForcedOxygenTank()) {
+            this.nextForcedOxyTankSurvival =
+              this.runSurvivalSec + forcedOxyTankIntervalSec(this.runSurvivalSec);
+          } else {
+            this.nextForcedOxyTankSurvival = this.runSurvivalSec + 0.28;
+          }
+        }
+      }
+
+      if (!this.playEnded) {
+        this.pickupSpawnAcc += dt;
+        if (this.pickupSpawnAcc >= this.pickupSpawnIntervalSec()) {
+          this.pickupSpawnAcc = 0;
+          this.trySpawnPickup();
+        }
+
+        const rowInterval = reefRunSpawnIntervalSec(this.runSurvivalSec);
+        this.spawnAcc += dt;
+        if (this.spawnAcc >= rowInterval) {
+          this.spawnWaveIndex++;
+          if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex, this.gameRng)) {
+            if (this.trySpawnObstacleRow()) {
+              this.spawnAcc = 0;
+            } else {
+              this.spawnAcc = Math.max(0, rowInterval - 0.32);
+            }
+          } else {
+            this.spawnAcc = 0;
+          }
+        }
+      }
+    }
+  }
+
   private tick = (): void => {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(this.clock.getDelta(), 0.05);
@@ -1743,164 +1970,24 @@ export class ArcadeSceneController {
     this.updateImpactFx(dt);
 
     if (this.screen === 'play') {
-      if (!this.playEnded) {
-        if (this.runClockActive) {
-          this.runSurvivalSec += dt;
+      if (this.deterministicMode) {
+        // Fixed-timestep: advance the sim in equal slices so the run is reproducible.
+        this.simAcc += dt;
+        let n = 0;
+        while (this.simAcc >= this.FIXED_DT && n < this.MAX_SUBSTEPS) {
+          this.simNow += this.FIXED_DT;
+          this.captureInput();
+          this.stepPlaySim(this.FIXED_DT);
+          this.simStep++;
+          this.simAcc -= this.FIXED_DT;
+          n++;
         }
+      } else {
+        // Live free-play: variable timestep (identical to the original loop).
+        this.simNow = this.clock.elapsedTime;
+        this.stepPlaySim(dt);
       }
-
-      const intensityBase = reefRunPlayIntensityMultiplier(this.runSurvivalSec);
-      let playerMult = 1;
-      const st = this.runState;
-
-      if (!this.playEnded && st) {
-        const now = this.clock.elapsedTime;
-        const forward = this.keyW || this.virtualW;
-        const backward = this.keyS || this.virtualS;
-        const targetT = forward && !backward ? 1 : backward && !forward ? -1 : 0;
-        this.throttleSmoothed += (targetT - this.throttleSmoothed) * Math.min(1, dt * 4.8);
-        const band = speedBandForStars(getCharacterStats(st.characterId).speed);
-        const u = (this.throttleSmoothed + 1) / 2;
-        playerMult = band.min + u * (band.max - band.min);
-        if (now < st.cheeseUntil) playerMult += 0.27;
-        if (now < st.dragUntil) playerMult *= 0.54;
-
-        if (characterHasUnlimitedOxygen(st.characterId)) {
-          st.oxygen = st.oxygenMax;
-        } else {
-          const oxyStars = getCharacterStats(st.characterId).oxygen;
-          const drain =
-            oxygenDrainPerSec(oxyStars) *
-            (0.86 +
-              0.16 *
-                Math.min(1.55, (intensityBase * playerMult) / Math.max(0.001, intensityBase)));
-          st.oxygen -= drain * dt;
-          if (st.oxygen <= 0) {
-            st.oxygen = 0;
-            this.triggerGameOver('oxygen');
-          }
-        }
-      }
-
-      swimSpd = intensityBase * (st && !this.playEnded ? playerMult : st ? playerMult : 1);
-      if (this.playEnded) {
-        swimSpd = intensityBase;
-      }
-      if (this.swimMixer) this.swimMixer.timeScale = swimSpd;
-
-      if (!this.playEnded && st) {
-        this.hudRunAcc += dt;
-        if (this.onRunHud && this.hudRunAcc >= 0.14) {
-          this.hudRunAcc = 0;
-          const now = this.clock.elapsedTime;
-          const rel = swimSpd / Math.max(0.001, intensityBase);
-          this.onRunHud(runStateToHud(st, now, rel));
-        }
-      }
-
-      if (!this.playEnded) {
-        const tierNow = tierIndexFromSurvivalSec(this.runSurvivalSec);
-        this.hudEmitAcc += dt;
-        if (
-          this.onRunDifficulty &&
-          (this.hudEmitAcc >= 0.2 || tierNow !== this.lastEmittedTier)
-        ) {
-          this.hudEmitAcc = 0;
-          this.lastEmittedTier = tierNow;
-          this.onRunDifficulty(reefRunHudFromSurvivalSec(this.runSurvivalSec));
-        }
-
-        for (const o of this.obstacles) {
-          if (o.hit) continue;
-          o.root.position.z += o.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
-          o.root.visible = o.root.position.z > OBSTACLE_RENDER_START_Z;
-          if (
-            Math.abs(o.root.position.z - HIT_Z) < HIT_HALF_DEPTH &&
-            o.lane === this.playerLane
-          ) {
-            o.hit = true;
-            this.triggerGameOver('crush');
-            break;
-          }
-          if (o.root.position.z > OBSTACLE_RECYCLE_Z) {
-            this.obstacleGroup.remove(o.root);
-            disposeObject3DResources(o.root);
-            o.hit = true;
-          }
-        }
-        this.obstacles = this.obstacles.filter((o) => o.root.parent === this.obstacleGroup);
-
-        if (!this.playEnded) {
-          const pickupHitZ = HIT_HALF_DEPTH * 0.78;
-          for (const p of this.pickups) {
-            if (p.hit) continue;
-            pulsePickupVisual(p.root, t);
-            spinPickupVisual(p.root, dt);
-            p.root.position.z += p.speed * swimSpd * dt * REEF_RUN_TICK_Z_SCALE;
-            p.root.visible = p.root.position.z > PICKUP_RENDER_START_Z;
-            if (
-              this.runState &&
-              Math.abs(p.root.position.z - HIT_Z) < pickupHitZ &&
-              p.lane === this.playerLane
-            ) {
-              p.hit = true;
-              const impactPos = p.root.position.clone();
-              this.triggerPickupImpactFx(p.kind, impactPos);
-              if (isBeneficialPickup(p.kind)) {
-                this.triggerPlayerPulse();
-              }
-              const out = applyPickupEffect(p.kind, this.runState, this.clock.elapsedTime);
-              if (out.cameraShake) this.addCameraShake(out.cameraShake);
-              this.obstacleGroup.remove(p.root);
-              disposeObject3DResources(p.root);
-              if (out.gameOver) {
-                this.triggerGameOver(out.gameOver);
-                break;
-              }
-            }
-            if (p.root.position.z > OBSTACLE_RECYCLE_Z) {
-              this.obstacleGroup.remove(p.root);
-              disposeObject3DResources(p.root);
-              p.hit = true;
-            }
-          }
-          this.pickups = this.pickups.filter((p) => p.root.parent === this.obstacleGroup);
-        }
-
-        if (!this.playEnded && st && characterUsesOxygenMechanic(st.characterId)) {
-          if (this.runSurvivalSec >= this.nextForcedOxyTankSurvival) {
-            if (this.trySpawnForcedOxygenTank()) {
-              this.nextForcedOxyTankSurvival =
-                this.runSurvivalSec + forcedOxyTankIntervalSec(this.runSurvivalSec);
-            } else {
-              this.nextForcedOxyTankSurvival = this.runSurvivalSec + 0.28;
-            }
-          }
-        }
-
-        if (!this.playEnded) {
-          this.pickupSpawnAcc += dt;
-          if (this.pickupSpawnAcc >= this.pickupSpawnIntervalSec()) {
-            this.pickupSpawnAcc = 0;
-            this.trySpawnPickup();
-          }
-
-          const rowInterval = reefRunSpawnIntervalSec(this.runSurvivalSec);
-          this.spawnAcc += dt;
-          if (this.spawnAcc >= rowInterval) {
-            this.spawnWaveIndex++;
-            if (reefRunSpawnRowThisWave(this.runSurvivalSec, this.spawnWaveIndex, this.gameRng)) {
-              if (this.trySpawnObstacleRow()) {
-                this.spawnAcc = 0;
-              } else {
-                this.spawnAcc = Math.max(0, rowInterval - 0.32);
-              }
-            } else {
-              this.spawnAcc = 0;
-            }
-          }
-        }
-      }
+      swimSpd = this.lastSwimSpd;
     }
 
     const warp = this.screen === 'play' && !this.playEnded ? swimSpd : 1;
