@@ -248,6 +248,8 @@ export class ArcadeSceneController {
   private pathRoot = new THREE.Group();
   private tunnel!: THREE.Mesh;
   private tunnelFlowTex!: THREE.CanvasTexture;
+  private causticTex: THREE.CanvasTexture | null = null; // procedural caustic veins (scrolls w/ speed)
+  private causticLayer: THREE.Mesh | null = null;
   /** Mobile / tablet: cheaper renderer, tunnel material, particles, cylinder segments. */
   private lowPowerMode = false;
   /** Hard cap to prevent runaway obstacle counts on heavy assets/devices. */
@@ -785,6 +787,58 @@ export class ArcadeSceneController {
     this.tunnel.position.z = -42;
 
     this.pathRoot.add(this.tunnel);
+
+    // Caustics: a procedural vein texture on a second inner cylinder, additively blended and
+    // scrolled (faster on boost = a free speed cue). Procedural = zero download/hosting cost.
+    if (!this.lowPowerMode) {
+      const N = 256;
+      const cc = document.createElement('canvas');
+      cc.width = N;
+      cc.height = N;
+      const cx = cc.getContext('2d');
+      if (cx) {
+        const img = cx.createImageData(N, N);
+        const d = img.data;
+        for (let y = 0; y < N; y++) {
+          for (let x = 0; x < N; x++) {
+            const u = x / N;
+            const v = y / N;
+            const a = Math.sin(2 * Math.PI * (3 * u + 0.5 * Math.sin(2 * Math.PI * 2 * v)));
+            const b = Math.sin(2 * Math.PI * (4 * v + 0.5 * Math.sin(2 * Math.PI * 3 * u)));
+            const c = Math.sin(2 * Math.PI * (2 * (u + v)));
+            let s = Math.max(0, (a + b + c) / 3);
+            s = s * s * s; // sharpen into bright veins
+            const i = (y * N + x) * 4;
+            d[i] = 205;
+            d[i + 1] = 240;
+            d[i + 2] = 255;
+            d[i + 3] = Math.floor(s * 255);
+          }
+        }
+        cx.putImageData(img, 0, 0);
+        const tex = new THREE.CanvasTexture(cc);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(3, 4);
+        this.causticTex = tex;
+        const geo = new THREE.CylinderGeometry(8.2, 8.9, 140, 48, 1, true);
+        const mat = new THREE.MeshBasicMaterial({
+          map: tex,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          opacity: 0.22,
+          side: THREE.BackSide,
+          fog: true,
+        });
+        this.causticLayer = new THREE.Mesh(geo, mat);
+        this.causticLayer.rotation.x = Math.PI / 2;
+        this.causticLayer.position.z = -42;
+        this.pathRoot.add(this.causticLayer);
+      }
+    }
+
     this.scene.add(this.pathRoot);
 
     // Underwater ambient: low flat fill + a sky/ground hemisphere (teal above, deep below) +
@@ -1980,6 +2034,12 @@ export class ArcadeSceneController {
         const m = this.godRays.children[i] as THREE.Mesh;
         (m.material as THREE.MeshBasicMaterial).opacity = 0.34 + Math.sin(t * 0.55 + i * 1.7) * 0.13;
       }
+    }
+    if (this.causticTex) {
+      // scroll the caustic veins; faster while boosting in a run = a free speed cue
+      const spd = this.screen === 'play' && !this.playEnded ? this.lastSwimSpd : 1;
+      this.causticTex.offset.y -= dt * (0.03 + spd * 0.05);
+      this.causticTex.offset.x += dt * 0.012;
     }
 
     const CAM_INTRO = 5.2;
