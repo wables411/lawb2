@@ -311,6 +311,8 @@ export class ArcadeSceneController {
   private simNow = 0; // gameplay clock (replaces wall clock for gameplay timers)
   private simStep = 0; // fixed-step counter (input log timeline)
   private lastSwimSpd = 1; // computed in the sim; read by cosmetics (warp/tunnel/mixer)
+  /** Render interpolation offsets applied to obstacle/pickup Z after fixed-step loop (deterministic only). */
+  private renderZOffsets: Array<{ obj: THREE.Object3D; dz: number }> = [];
   private godRays: THREE.Group | null = null; // volumetric light shafts from the surface
   private disposed = false; // set in dispose(); async loads must abort if true (StrictMode/remount safe)
   private gradeOverlay: HTMLDivElement | null = null; // DOM vignette/grade layer (removed on dispose)
@@ -1354,6 +1356,7 @@ export class ArcadeSceneController {
   }
 
   private clearObstacles(): void {
+    this.renderZOffsets = [];
     for (const o of this.obstacles) {
       this.obstacleGroup.remove(o.root);
       disposeObject3DResources(o.root);
@@ -2136,6 +2139,12 @@ export class ArcadeSceneController {
 
     if (this.screen === 'play') {
       if (this.deterministicMode) {
+        // Undo render interpolation offsets from last frame so the sim reads authoritative Z.
+        for (const { obj, dz } of this.renderZOffsets) {
+          if (obj.parent) obj.position.z -= dz;
+        }
+        this.renderZOffsets = [];
+
         // Fixed-timestep: advance the sim in equal slices so the run is reproducible.
         this.simAcc += dt;
         let n = 0;
@@ -2146,6 +2155,25 @@ export class ArcadeSceneController {
           this.simStep++;
           this.simAcc -= this.FIXED_DT;
           n++;
+        }
+
+        // Render interpolation: forward-project each entity by the leftover accumulator
+        // so positions smoothly advance between fixed steps (eliminates temporal aliasing).
+        if (!this.playEnded && this.simAcc > 0) {
+          const alpha = this.simAcc;
+          const spd = this.lastSwimSpd;
+          for (const o of this.obstacles) {
+            if (o.hit) continue;
+            const dz = o.speed * spd * alpha * REEF_RUN_TICK_Z_SCALE;
+            o.root.position.z += dz;
+            this.renderZOffsets.push({ obj: o.root, dz });
+          }
+          for (const p of this.pickups) {
+            if (p.hit) continue;
+            const dz = p.speed * spd * alpha * REEF_RUN_TICK_Z_SCALE;
+            p.root.position.z += dz;
+            this.renderZOffsets.push({ obj: p.root, dz });
+          }
         }
       } else {
         // Live free-play: variable timestep (identical to the original loop).
