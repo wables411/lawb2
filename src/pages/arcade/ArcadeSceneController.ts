@@ -49,6 +49,16 @@ import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
 import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 import { makeRng, randomSeed, type Rng } from './arcadeRng';
+import {
+  createSimState,
+  stepSim,
+  type ReefRunSimState,
+  type SimInput,
+  type SimEvent,
+  type SimObstacle,
+  type SimPickup,
+  FIXED_DT as SIM_FIXED_DT,
+} from './reefRunSim';
 
 export type ArcadeGameScreen = 'intro' | 'menu' | 'select' | 'play' | 'gameover';
 
@@ -88,6 +98,7 @@ type Obstacle = {
   lane: number;
   speed: number;
   hit: boolean;
+  sim?: SimObstacle;
 };
 
 type PickupEnt = {
@@ -96,6 +107,7 @@ type PickupEnt = {
   speed: number;
   hit: boolean;
   kind: PickupKind;
+  sim?: SimPickup;
 };
 
 type ImpactFx = {
@@ -313,6 +325,8 @@ export class ArcadeSceneController {
   private lastSwimSpd = 1; // computed in the sim; read by cosmetics (warp/tunnel/mixer)
   /** Render interpolation offsets applied to obstacle/pickup Z after fixed-step loop (deterministic only). */
   private renderZOffsets: Array<{ obj: THREE.Object3D; dz: number }> = [];
+  /** Pure sim state — authoritative in deterministic mode; null in free-play. */
+  private simState: ReefRunSimState | null = null;
   private godRays: THREE.Group | null = null; // volumetric light shafts from the surface
   private disposed = false; // set in dispose(); async loads must abort if true (StrictMode/remount safe)
   private gradeOverlay: HTMLDivElement | null = null; // DOM vignette/grade layer (removed on dispose)
@@ -1336,6 +1350,12 @@ export class ArcadeSceneController {
     }
 
     this.runState = createInitialRunState(playCharacterId, this.clock.elapsedTime);
+    if (this.deterministicMode) {
+      this.simState = createSimState(playCharacterId, this.runSeed, this.maxActiveObstacles);
+      this.runState = this.simState.runState;
+    } else {
+      this.simState = null;
+    }
     this.nextForcedOxyTankSurvival = characterUsesOxygenMechanic(playCharacterId)
       ? 4.4
       : Number.POSITIVE_INFINITY;
@@ -1860,6 +1880,7 @@ export class ArcadeSceneController {
     const finalHud = this.runState
       ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
       : undefined;
+    this.runParityCheck();
     this.onGameOver(this.runSurvivalSec, reason, finalHud);
   }
 
@@ -2031,6 +2052,171 @@ export class ArcadeSceneController {
     }
   }
 
+  /**
+   * Step the pure sim core and sync Three.js visuals from it.
+   * Deterministic mode only — replaces stepPlaySim when simState is active.
+   */
+  private stepSimAndSync(dt: number): void {
+    const ss = this.simState;
+    if (!ss) return;
+
+    ss.simNow = this.simNow;
+    const input: SimInput = {
+      lane: this.playerLane,
+      forward: this.keyW || this.virtualW,
+      backward: this.keyS || this.virtualS,
+    };
+
+    const prevObstacles = new Set(ss.obstacles);
+    const prevPickups = new Set(ss.pickups);
+
+    const events = stepSim(ss, dt, input);
+
+    for (const e of events) {
+      switch (e.type) {
+        case 'gameOver':
+          this.triggerGameOver(e.reason);
+          break;
+        case 'pickupHit':
+          this.triggerPickupImpactFx(
+            e.kind,
+            new THREE.Vector3(LANES[e.lane], OBSTACLE_CENTER_Y, e.z),
+          );
+          break;
+        case 'cameraShake':
+          this.addCameraShake(e.peak);
+          break;
+        case 'playerPulse':
+          this.triggerPlayerPulse();
+          break;
+      }
+    }
+
+    this.runSurvivalSec = ss.survivalSec;
+    this.lastSwimSpd = ss.lastSwimSpd;
+    this.playEnded = ss.playEnded;
+    this.throttleSmoothed = ss.throttleSmoothed;
+    if (this.swimMixer) this.swimMixer.timeScale = ss.lastSwimSpd;
+
+    // ── Visual sync: obstacles ──
+    const liveSimObs = new Set(ss.obstacles);
+    this.obstacles = this.obstacles.filter((o) => {
+      if (!o.sim || liveSimObs.has(o.sim)) return true;
+      this.obstacleGroup.remove(o.root);
+      disposeObject3DResources(o.root);
+      return false;
+    });
+    for (const so of ss.obstacles) {
+      if (prevObstacles.has(so)) continue;
+      let root: THREE.Object3D;
+      const coral = cloneCoralObstacleVisual();
+      if (coral) {
+        root = coral;
+      } else {
+        root = new THREE.Mesh(
+          new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z),
+          new THREE.MeshStandardMaterial({
+            color: 0xf25544, emissive: 0x8a2218, emissiveIntensity: 0.48,
+            metalness: 0.14, roughness: 0.55,
+          }),
+        );
+      }
+      root.position.set(LANES[so.lane], OBSTACLE_CENTER_Y, so.z);
+      root.visible = so.z > OBSTACLE_RENDER_START_Z;
+      this.obstacleGroup.add(root);
+      this.obstacles.push({ root, lane: so.lane, speed: so.speed, hit: so.hit, sim: so });
+    }
+    for (const o of this.obstacles) {
+      if (!o.sim) continue;
+      o.root.position.z = o.sim.z;
+      o.root.visible = o.sim.z > OBSTACLE_RENDER_START_Z;
+      o.speed = o.sim.speed;
+      o.hit = o.sim.hit;
+    }
+
+    // ── Visual sync: pickups ──
+    const liveSimPkps = new Set(ss.pickups);
+    this.pickups = this.pickups.filter((p) => {
+      if (!p.sim || liveSimPkps.has(p.sim)) return true;
+      this.obstacleGroup.remove(p.root);
+      disposeObject3DResources(p.root);
+      return false;
+    });
+    for (const sp of ss.pickups) {
+      if (prevPickups.has(sp)) continue;
+      const root = clonePickupVisual(sp.kind);
+      root.position.set(LANES[sp.lane], OBSTACLE_CENTER_Y, sp.z);
+      root.visible = sp.z > PICKUP_RENDER_START_Z;
+      this.obstacleGroup.add(root);
+      this.pickups.push({ root, lane: sp.lane, speed: sp.speed, hit: sp.hit, kind: sp.kind, sim: sp });
+    }
+    for (const p of this.pickups) {
+      if (!p.sim) continue;
+      pulsePickupVisual(p.root, this.clock.elapsedTime);
+      spinPickupVisual(p.root, dt);
+      p.root.position.z = p.sim.z;
+      p.root.visible = p.sim.z > PICKUP_RENDER_START_Z;
+      p.speed = p.sim.speed;
+      p.hit = p.sim.hit;
+    }
+
+    // ── HUD ──
+    if (!this.playEnded && this.runState) {
+      this.hudRunAcc += dt;
+      if (this.onRunHud && this.hudRunAcc >= 0.14) {
+        this.hudRunAcc = 0;
+        const rel = ss.lastSwimSpd / Math.max(0.001, reefRunPlayIntensityMultiplier(ss.survivalSec));
+        this.onRunHud(runStateToHud(this.runState, this.simNow, rel));
+      }
+      const tierNow = tierIndexFromSurvivalSec(ss.survivalSec);
+      this.hudEmitAcc += dt;
+      if (this.onRunDifficulty && (this.hudEmitAcc >= 0.2 || tierNow !== this.lastEmittedTier)) {
+        this.hudEmitAcc = 0;
+        this.lastEmittedTier = tierNow;
+        this.onRunDifficulty(reefRunHudFromSurvivalSec(ss.survivalSec));
+      }
+    }
+  }
+
+  /** Replay the recorded inputs through a fresh pure sim and compare to the live run (deterministic mode). */
+  private runParityCheck(): void {
+    if (!this.simState || !this.deterministicMode) return;
+    const proof = this.getRunProof();
+    if (!proof.characterId || !proof.deterministic) return;
+
+    const replay = createSimState(proof.characterId, proof.seed, this.maxActiveObstacles);
+    let logIdx = 0;
+    let lane = 1;
+    let forward = false;
+    let backward = false;
+
+    for (let step = 0; step < proof.steps; step++) {
+      while (logIdx < proof.inputLog.length && proof.inputLog[logIdx][0] <= step) {
+        const entry = proof.inputLog[logIdx];
+        lane = entry[1];
+        forward = entry[2] === 1;
+        backward = entry[3] === 1;
+        logIdx++;
+      }
+      replay.simNow += SIM_FIXED_DT;
+      stepSim(replay, SIM_FIXED_DT, { lane, forward, backward });
+      if (replay.playEnded) break;
+    }
+
+    const liveSurvival = this.runSurvivalSec;
+    const replaySurvival = replay.survivalSec;
+    const delta = Math.abs(liveSurvival - replaySurvival);
+    if (delta > 0.02) {
+      console.warn(
+        `[ReefRun] PARITY MISMATCH: live=${liveSurvival.toFixed(3)}s replay=${replaySurvival.toFixed(3)}s delta=${delta.toFixed(3)}s`,
+      );
+    } else {
+      console.log(
+        `[ReefRun] Parity OK: ${liveSurvival.toFixed(3)}s (Δ${delta.toFixed(6)}s)`,
+      );
+    }
+  }
+
   private tick = (): void => {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(this.clock.getDelta(), 0.05);
@@ -2151,7 +2337,11 @@ export class ArcadeSceneController {
         while (this.simAcc >= this.FIXED_DT && n < this.MAX_SUBSTEPS) {
           this.simNow += this.FIXED_DT;
           this.captureInput();
-          this.stepPlaySim(this.FIXED_DT);
+          if (this.simState) {
+            this.stepSimAndSync(this.FIXED_DT);
+          } else {
+            this.stepPlaySim(this.FIXED_DT);
+          }
           this.simStep++;
           this.simAcc -= this.FIXED_DT;
           n++;
