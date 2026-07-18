@@ -90,3 +90,4 @@ clawb/run-upgrade-ocean.js
 # Cursor — local/editor only (not for git)
 .cursor/settings.json
 .cursor/rules/
+onchain-chess/
