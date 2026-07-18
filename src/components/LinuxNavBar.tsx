@@ -103,20 +103,48 @@ const useStyles = createUseStyles({
     },
   },
   menu: {
-    position: 'absolute',
-    bottom: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '55px' : '41px',
-    left: '12px',
+    // Fixed (viewport-anchored) so the menu always sits just above the navbar,
+    // even when the page is scrolled — absolute positioning let it drift over
+    // the bar and block the ☰ button that closes it.
+    position: 'fixed',
+    bottom: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '58px' : '44px',
+    left: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '8px' : '12px',
+    right: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '8px' : 'auto',
     background: '#2d3748',
     border: '1px solid #1a202c',
     borderRadius: '6px',
     padding: '4px',
     display: ({ isOpen }: LinuxNavBarStyleProps) => (isOpen ? 'block' : 'none'),
     zIndex: 999999, // Match navbar z-index to ensure menu is also on top
-    maxHeight: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? 'calc(100vh - 120px)' : '500px',
-    maxWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? 'calc(100vw - 20px)' : '280px',
+    maxHeight: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? 'calc(100vh - 130px)' : '500px',
+    maxWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? 'none' : '280px',
     overflowY: 'auto',
-    minWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '240px' : '280px',
+    minWidth: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '0' : '280px',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+  },
+  menuBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0, 0, 0, 0.35)',
+    zIndex: 999998, // Just under the menu/navbar — tap anywhere outside to close
+  },
+  menuCloseRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    borderBottom: '1px solid #4a5568',
+    marginBottom: '4px',
+  },
+  menuCloseButton: {
+    background: 'transparent',
+    border: 'none',
+    color: '#e2e8f0',
+    fontSize: '16px',
+    padding: '10px 16px',
+    minHeight: '44px',
+    minWidth: '44px',
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
   },
   menuItem: {
     padding: ({ isMobile }: LinuxNavBarStyleProps) => isMobile ? '12px 16px' : '10px 14px',
@@ -299,7 +327,22 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
       </div>
       
       {isMenuOpen && (
+        <div className={classes.menuBackdrop} onClick={() => setIsMenuOpen(false)} />
+      )}
+      {isMenuOpen && (
         <div className={classes.menu} onClick={(e) => e.stopPropagation()}>
+          {isMobile && (
+            <div className={classes.menuCloseRow}>
+              <button
+                type="button"
+                className={classes.menuCloseButton}
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Close menu"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <button
             className={classes.menuItem}
             onClick={() => handleMenuLinkClick('/')}

@@ -283,6 +283,7 @@ const Mobile = () => {
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [showMiladychanPopup, setShowMiladychanPopup] = useState(false);
   const [showLeaderboardPopup, setShowLeaderboardPopup] = useState(false);
   const [showUwUPopup, setShowUwUPopup] = useState(false);
   const [mintPopupType, setMintPopupType] = useState<'selection' | 'pixelawbs' | 'asciilawbs'>('selection');
@@ -330,6 +331,7 @@ const Mobile = () => {
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: 'tokens', icon: '/assets/lawbticker.webp', action: () => setShowLawbPopup(true) },
+    { label: 'Miladychan', icon: '/assets/miladychan.png', action: () => setShowMiladychanPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.webp', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
@@ -827,6 +829,34 @@ const Mobile = () => {
       {/* Meme Generator Popup */}
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
+      </MobilePopup98>
+      {/* Miladychan Popup */}
+      <MobilePopup98 isOpen={showMiladychanPopup} onClose={() => setShowMiladychanPopup(false)} title="Miladychan">
+        <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+          miladychan is a realtime imageboard inspired by the early 00's anonymous imageboard and its culture - embracing the loosely organized discussion & light-hearted funposting enabled by anonymity and transciency. Click(button) to be lawbed.
+        </p>
+        <button
+          onClick={() => window.open('https://boards.miladychan.org/milady/33793', '_blank', 'noopener,noreferrer')}
+          style={{
+            background: '#c0c0c0',
+            border: '2px outset #fff',
+            padding: '12px 16px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#000',
+            minHeight: '44px',
+            minWidth: '44px',
+            touchAction: 'manipulation',
+          }}
+        >
+          Click
+        </button>
+        <img
+          src="/assets/miladychanfaq.png"
+          alt="Miladychan FAQ"
+          style={{ width: '100%', marginTop: '10px', height: 'auto' }}
+        />
       </MobilePopup98>
       {/* UwU Popup */}
       <MobilePopup98 isOpen={showUwUPopup} onClose={() => setShowUwUPopup(false)} title="UwU 🦄">
