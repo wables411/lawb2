@@ -401,6 +401,66 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
             <span><img src="/images/lawblore.gif" alt="Lawb Lore" style={{ width: '16px', height: '16px', objectFit: 'contain' }} /></span>
             <span>Lawb Lore</span>
           </a>
+          <a
+            href="https://discord.gg/JdkzUHYmMy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>💬</span>
+            <span>Discord</span>
+          </a>
+          <a
+            href="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>📈</span>
+            <span>GeckoTerminal</span>
+          </a>
+          <a
+            href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/info/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>🦞</span>
+            <span>NFTX - Lawbsters</span>
+          </a>
+          <a
+            href="https://purity.finance/lawb"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>💧</span>
+            <span>Purity</span>
+          </a>
+          <a
+            href="https://uwu.pro/memoji/ulawb"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>🦄</span>
+            <span>UwU LAWB</span>
+          </a>
+          <a
+            href="https://store.fun/lawbshop"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.menuItem}
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span>🛍️</span>
+            <span>Lawb.Shop</span>
+          </a>
           <hr className={classes.menuSeparator} />
           <div style={{ padding: '8px 14px' }}>
             <ThemeToggle />

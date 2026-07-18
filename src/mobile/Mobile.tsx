@@ -172,53 +172,6 @@ const useStyles = createUseStyles({
     cursor: 'pointer',
     boxShadow: '1px 1px 0 #000',
   },
-  menuOverlay: {
-    position: 'fixed',
-    left: 0,
-    top: 0,
-    width: '100vw',
-    height: '100vh',
-    background: 'rgba(0,0,0,0.4)',
-    zIndex: 3000,
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    pointerEvents: 'auto',
-  },
-  menuModal: {
-    width: '100vw',
-    background: '#c0c0c0',
-    borderTopLeftRadius: '16px',
-    borderTopRightRadius: '16px',
-    boxShadow: '0 -4px 24px rgba(0,0,0,0.2)',
-    padding: '15px 0 8px 0',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '6px',
-    zIndex: 3100,
-    marginBottom: '70px',
-    maxHeight: 'calc(70vh - 56px)',
-    overflowY: 'auto',
-    position: 'absolute',
-    left: 0,
-    bottom: '56px',
-  },
-  menuLink: {
-    display: 'block',
-    width: '90%',
-    padding: '6px',
-    color: '#000',
-    textDecoration: 'none',
-    background: '#e0e0e0',
-    borderRadius: '8px',
-    fontWeight: 'bold',
-    fontSize: '1rem',
-    textAlign: 'center',
-    marginBottom: '3px',
-    border: '2px outset #fff',
-    boxShadow: '1px 1px 0 #aaa',
-  },
 });
 
 type ActiveView = 'main' | 'gallery';
@@ -269,7 +222,6 @@ const Mobile = () => {
   const [activeView, setActiveView] = useState<ActiveView>('main');
   const [showPixelawbsPopup, setShowPixelawbsPopup] = useState(false);
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showEvmFolder, setShowEvmFolder] = useState(false);
   const [showSolFolder, setShowSolFolder] = useState(false);
@@ -561,33 +513,6 @@ const Mobile = () => {
             <a href="https://opensea.io/collection/pixelawbsters" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
           </p>
         </MobilePopup98>
-      )}
-      {/* Mobile Menu Modal */}
-      {menuOpen && (
-        <div className={classes.menuOverlay} onClick={() => setMenuOpen(false)}>
-          <div className={classes.menuModal} onClick={e => e.stopPropagation()}>
-            <a
-              href="/chess"
-              className={classes.menuLink}
-              onClick={(e) => {
-                e.preventDefault();
-                setMenuOpen(false);
-                navigate('/chess');
-              }}
-            >
-              Lawb Chess
-            </a>
-            <a href="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>GeckoTerminal</a>
-            <a href="https://x.com/lawbstation" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbStation Twitter</a>
-            <a href="https://x.com/lawbnexus" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>LawbNexus Twitter</a>
-            <a href="https://v2.nftx.io/vault/0xdb98a1ae711d8bf186a8da0e81642d81e0f86a05/info/" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>NFTX - Lawbsters</a>
-            <a href="https://purity.finance/lawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Purity</a>
-            <a href="https://uwu.pro/memoji/ulawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>UwU LAWB</a>
-            <a href="https://t.me/lawblawblawb" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Telegram</a>
-            <a href="https://discord.gg/JdkzUHYmMy" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Discord</a>
-            <a href="https://store.fun/lawbshop" target="_blank" rel="noopener noreferrer" className={classes.menuLink} onClick={() => setMenuOpen(false)}>Lawb.Shop</a>
-          </div>
-        </div>
       )}
       {/* Mobile Mint Popup */}
       {mintPopupType === 'selection' && (
