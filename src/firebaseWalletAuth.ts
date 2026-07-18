@@ -65,7 +65,7 @@ export async function ensureWalletDbAuth(
       const message = buildWalletLoginMessage(pathKey);
       const signature = await signMessage(message);
 
-      const res = await fetch('/api/wallet-auth', {
+      const res = await fetch('/.netlify/functions/wallet-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: pathKey, chain, message, signature }),

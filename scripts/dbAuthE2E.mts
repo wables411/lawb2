@@ -61,7 +61,7 @@ async function scrapeFirebaseConfig(): Promise<{ apiKey: string; dbUrl: string }
 }
 
 async function mintToken(address: string, chain: 'evm' | 'solana', message: string, signature: string) {
-  const res = await fetch(SITE + '/api/wallet-auth', {
+  const res = await fetch(SITE + '/.netlify/functions/wallet-auth', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ address, chain, message, signature }),
