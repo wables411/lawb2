@@ -63,7 +63,7 @@ function App() {
   }, []);
   
   const [showWalletMenu, setShowWalletMenu] = useState(false);
-  const [lawbTab, setLawbTab] = useState<'tokens' | 'lore'>('tokens');
+  const [lawbTab, setLawbTab] = useState<'lawb' | 'clawb' | 'faq'>('lawb');
 
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
@@ -811,7 +811,7 @@ function App() {
         </Suspense>
       </Popup>
 
-      <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000}>
+      <Popup id="lawb-popup" isOpen={activePopup === 'lawb-popup'} onClose={closePopup} onMinimize={minimizePopup} zIndex={2000} title="tokens">
         {/* Tab Bar */}
         <div style={{
           display: 'flex',
@@ -820,46 +820,35 @@ function App() {
           borderBottom: '2px solid #808080',
           paddingBottom: '0',
         }}>
-          <button
-            onClick={() => setLawbTab('tokens')}
-            style={{
-              padding: isMobile ? '8px 16px' : '4px 12px',
-              fontSize: isMobile ? '14px' : '12px',
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-              border: lawbTab === 'tokens' ? '2px outset #dfdfdf' : '2px solid #808080',
-              borderBottom: lawbTab === 'tokens' ? '2px solid #c0c0c0' : '2px solid #808080',
-              background: lawbTab === 'tokens' ? '#c0c0c0' : '#a0a0a0',
-              fontWeight: lawbTab === 'tokens' ? 'bold' : 'normal',
-              position: 'relative',
-              bottom: '-2px',
-              marginBottom: '0',
-            }}
-          >
-            Tokens
-          </button>
-          <button
-            onClick={() => setLawbTab('lore')}
-            style={{
-              padding: isMobile ? '8px 16px' : '4px 12px',
-              fontSize: isMobile ? '14px' : '12px',
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-              border: lawbTab === 'lore' ? '2px outset #dfdfdf' : '2px solid #808080',
-              borderBottom: lawbTab === 'lore' ? '2px solid #c0c0c0' : '2px solid #808080',
-              background: lawbTab === 'lore' ? '#c0c0c0' : '#a0a0a0',
-              fontWeight: lawbTab === 'lore' ? 'bold' : 'normal',
-              position: 'relative',
-              bottom: '-2px',
-              marginBottom: '0',
-            }}
-          >
-            Lore / FAQ
-          </button>
+          {([
+            { key: 'lawb', label: '$LAWB' },
+            { key: 'clawb', label: 'Clawb' },
+            { key: 'faq', label: 'FAQ' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setLawbTab(key)}
+              style={{
+                padding: isMobile ? '8px 16px' : '4px 12px',
+                fontSize: isMobile ? '14px' : '12px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                border: lawbTab === key ? '2px outset #dfdfdf' : '2px solid #808080',
+                borderBottom: lawbTab === key ? '2px solid #c0c0c0' : '2px solid #808080',
+                background: lawbTab === key ? '#c0c0c0' : '#a0a0a0',
+                fontWeight: lawbTab === key ? 'bold' : 'normal',
+                position: 'relative',
+                bottom: '-2px',
+                marginBottom: '0',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Tokens Tab */}
-        {lawbTab === 'tokens' && (
+        {/* $LAWB Tab */}
+        {lawbTab === 'lawb' && (
           <>
             <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>
               <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{
@@ -883,52 +872,16 @@ function App() {
               <p style={{marginBottom: '0'}}><strong>(dmt/sanko)</strong> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
             </div>
 
-            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>
-              <a href="https://dexscreener.com/base/0x26a43bd8a28a0423afb5725b8242ec0a40947b07" target="_blank" rel="noopener noreferrer" style={{
-                color: 'blue',
-                textDecoration: 'underline',
-                touchAction: 'manipulation'
-              }}>$CLAWB</a>
-            </h2>
-            <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
-              $CLAWB is Clawb — the first autonomous Lawbster: a persistent OpenClaw agent running live on{' '}
-              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
-                retake.tv/clawb
-              </a>
-              .
+            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
+              $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
             </p>
-            <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
-              Clawb combines real-time chat behavior, OBS-integrated stream control, world actions, and onchain
-              sponsor/commercial operations. Built by wables411. Motto: there is no meme i lawb you.
-            </p>
-            <div style={{
-              background: '#f0f0f0',
-              border: '2px inset #808080',
-              padding: '8px',
-              marginBottom: '12px',
-              fontSize: isMobile ? '13px' : '11px',
-              fontFamily: 'monospace',
-              wordBreak: 'break-all',
-            }}>
-              <p style={{ marginBottom: '6px', fontWeight: 'bold' }}>CAs</p>
-              <p style={{marginBottom: '4px'}}>
-                <strong>(sol)</strong>{' '}
-                <a href="https://solscan.io/token/A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
-                  A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn
-                </a>
-              </p>
-              <p style={{marginBottom: '0'}}>
-                <strong>(base)</strong>{' '}
-                <a href="https://basescan.org/token/0x26a43bd8a28a0423afb5725b8242ec0a40947b07" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
-                  0x26a43bd8a28a0423afb5725b8242ec0a40947b07
-                </a>
-              </p>
-            </div>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>$lawb airdropped to LawbStation holders 03.19.24. Now multichain across Solana, Base, Arbitrum, and Sanko (DMT).</p>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', fontWeight: 'bold'}}>THERE IS NO MEME WE $LAWB YOU</p>
 
             <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
 
             <div style={{ width: '100%', height: isMobile ? '300px' : '400px', marginTop: isMobile ? '8px' : '6px' }}>
-              {activePopup === 'lawb-popup' ? (
+              {activePopup === 'lawb-popup' && lawbTab === 'lawb' ? (
                 <iframe
                   height="100%"
                   width="100%"
@@ -945,16 +898,76 @@ function App() {
           </>
         )}
 
-        {/* Lore / FAQ Tab */}
-        {lawbTab === 'lore' && (
+        {/* Clawb Tab */}
+        {lawbTab === 'clawb' && (
           <>
-            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>$LAWB</h2>
-            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
+            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>Clawb</h2>
+            <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
+              Clawb is an autonomous agent built on the OpenClaw stack. It runs as long-lived Node.js services under
+              pm2 — a 24/7 stream loop on{' '}
+              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>retake.tv/clawb</a>{' '}
+              driven over the OBS WebSocket, an autonomous decision loop, a 3D world bridge, and a Telegram gateway —
+              all loading one shared identity, so it answers the same on stream, on calls, and in DMs.
             </p>
-            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
-            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', fontWeight: 'bold'}}>THERE IS NO MEME WE $LAWB YOU</p>
+            <p style={{ marginBottom: '14px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
+              It reasons on Claude, renders its token art and memes on{' '}
+              <a href="https://noema.art/referral/lawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>Noema</a>,
+              takes voice calls from viewers, and deploys its own tokens on Base via{' '}
+              <a href="https://app.liquidprotocol.org/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>Liquid Protocol</a>.
+              Watchdog processes restart and re-sync it on failure.
+            </p>
+            <p style={{ marginBottom: '14px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5', fontWeight: 'bold' }}>
+              there is no meme i lawb you.
+            </p>
 
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+              wordBreak: 'break-all',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
+              <p style={{marginBottom: '6px'}}>1. 24/7 onchain Base-native Retake stream loop with live chat/voice and OBS-integrated control.</p>
+              <p style={{marginBottom: '6px'}}>2. Autonomous world-action runtime via local world bridge + responder services.</p>
+              <p style={{marginBottom: '6px'}}>
+                3. Onchain adspace/commercial pipeline (indexing, queueing, paid playback). ClawbAdSpace (Base):{' '}
+                <a href="https://basescan.org/address/0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
+                  0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1
+                </a>
+              </p>
+              <p style={{marginBottom: '0'}}>4. Production hardening via PM2 services, webhook controls, and recovery watchdogs.</p>
+            </div>
+
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+              wordBreak: 'break-all',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Where to find it</p>
+              <p style={{marginBottom: '4px'}}>
+                Stream: <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a>
+              </p>
+              <p style={{marginBottom: '4px'}}>
+                Farcaster: <a href="https://warpcast.com/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>@clawb</a>
+              </p>
+              <p style={{marginBottom: '0'}}>
+                X: <a href="https://x.com/clawblawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>@clawblawb</a>
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* FAQ Tab */}
+        {lawbTab === 'faq' && (
+          <>
+            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>FAQ</h2>
             <div style={{
               background: '#f0f0f0',
               border: '2px inset #808080',
@@ -977,115 +990,6 @@ function App() {
               <p style={{marginBottom: '4px'}}>5. Connect to Sanko chain, select $lawb token on Sanko</p>
               <p style={{marginBottom: '0'}}>6. Select quantity, confirm transactions</p>
             </div>
-
-            <hr style={{ border: 'none', borderTop: '2px inset #808080', margin: '14px 0' }} />
-
-            <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>$CLAWB</h2>
-            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Clawb is the first autonomous Lawbster: a persistent OpenClaw internet agent with memory-backed behavior,
-              live stream operations, world command handling, and onchain sponsor/commercial runtime.
-            </p>
-            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Built by wables411, Clawb launched $CLAWB on Retake in early 2026 and now runs as a production stack
-              centered on{' '}
-              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
-                retake.tv/clawb
-              </a>
-              .
-            </p>
-            <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Motto: there is no meme i lawb you.
-            </p>
-            <div style={{
-              background: '#f0f0f0',
-              border: '2px inset #808080',
-              padding: '8px',
-              marginBottom: '14px',
-              fontSize: isMobile ? '13px' : '12px',
-              lineHeight: '1.6',
-              wordBreak: 'break-all',
-            }}>
-              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>$CLAWB Contract Addresses</p>
-              <p style={{marginBottom: '4px'}}>
-                <strong>(sol)</strong>{' '}
-                <a href="https://solscan.io/token/A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
-                  A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn
-                </a>
-              </p>
-              <p style={{marginBottom: '0'}}>
-                <strong>(base)</strong>{' '}
-                <a href="https://basescan.org/token/0x26a43bd8a28a0423afb5725b8242ec0a40947b07" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
-                  0x26a43bd8a28a0423afb5725b8242ec0a40947b07
-                </a>
-              </p>
-            </div>
-            <div style={{
-              background: '#f0f0f0',
-              border: '2px inset #808080',
-              padding: '8px',
-              marginBottom: '14px',
-              fontSize: isMobile ? '13px' : '12px',
-              lineHeight: '1.6',
-            }}>
-              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
-              <p style={{marginBottom: '4px'}}>1. 24/7 Retake-native stream loop with live chat and OBS-integrated control.</p>
-              <p style={{marginBottom: '4px'}}>2. Dual-chain $CLAWB operations and consistent routing guidance across Solana + Base.</p>
-              <p style={{marginBottom: '4px'}}>3. Autonomous world-action runtime via local world bridge + responder services.</p>
-              <p style={{marginBottom: '4px'}}>4. Onchain adspace/commercial pipeline (indexing, queueing, paid playback).</p>
-              <p style={{marginBottom: '0'}}>5. Production hardening via PM2 services, webhook controls, and recovery watchdogs.</p>
-            </div>
-            <div style={{
-              background: '#f0f0f0',
-              border: '2px inset #808080',
-              padding: '8px',
-              marginBottom: '14px',
-              fontSize: isMobile ? '13px' : '12px',
-              lineHeight: '1.6',
-            }}>
-              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>What Clawb Does Today</p>
-              <p style={{marginBottom: '4px'}}>- Responds in real time on stream using persistent persona + ecosystem context.</p>
-              <p style={{marginBottom: '4px'}}>- Drives stream behavior through OBS automation and runtime scene/media controls.</p>
-              <p style={{marginBottom: '4px'}}>- Executes movement/action/world commands through the local world stack.</p>
-              <p style={{marginBottom: '4px'}}>- Runs paid sponsor/commercial intake-to-playback flows.</p>
-              <p style={{marginBottom: '4px'}}>- Maintains wallet/token-aware context used in live responses.</p>
-              <p style={{marginBottom: '4px'}}>- Supports operator-safe control actions (go live/offline, recovery refreshes).</p>
-              <p style={{marginBottom: '0'}}>- Primary live surface: retake.tv/clawb</p>
-            </div>
-            <div style={{
-              background: '#f0f0f0',
-              border: '2px inset #808080',
-              padding: '8px',
-              marginBottom: '14px',
-              fontSize: isMobile ? '13px' : '12px',
-              lineHeight: '1.6',
-            }}>
-              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Clawb (Operational Truth)</p>
-              <p style={{marginBottom: '8px'}}>
-                Clawb is autonomous in behavior loops, but not "magic." It runs as an operator-maintained OpenClaw
-                system: long-lived processes, controlled credentials, webhook actions, and monitored recovery paths.
-              </p>
-              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>What is autonomous</p>
-              <p style={{marginBottom: '4px'}}>1. Live chat response behavior and persona execution.</p>
-              <p style={{marginBottom: '4px'}}>2. Stream-time command handling and world action routing.</p>
-              <p style={{marginBottom: '4px'}}>3. Ongoing sponsor/commercial queue consumption and playback decisions.</p>
-              <p style={{marginBottom: '8px'}}>4. Runtime watchdog/recovery logic while processes are healthy.</p>
-              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>What is operator-managed</p>
-              <p style={{marginBottom: '4px'}}>1. Infrastructure uptime (host machine, PM2, OBS, network, credentials).</p>
-              <p style={{marginBottom: '4px'}}>2. Deploys, config changes, and runtime restarts.</p>
-              <p style={{marginBottom: '8px'}}>3. Incident response when external systems fail (Retake/OBS/RPC/dev-server issues).</p>
-              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>Why this matters</p>
-              <p style={{marginBottom: '4px'}}>1. Older descriptions from the lawb.xyz/world era can overstate current surfaces.</p>
-              <p style={{marginBottom: '8px'}}>2. Today, Clawb is best understood as a production Retake-first autonomous agent, with explicit operational boundaries and real recovery tooling.</p>
-              <p style={{marginBottom: '4px', fontWeight: 'bold'}}>$CLAWB CAs</p>
-              <p style={{marginBottom: '4px'}}>Solana: A2bt3Mwrn9fxGFLTA3UT7dt8WMcR7tABKih4fyuiMTWn</p>
-              <p style={{marginBottom: '0'}}>Base: 0x26a43bd8a28a0423afb5725b8242ec0a40947b07</p>
-            </div>
-            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
-              Primary live surface:{' '}
-              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>
-                retake.tv/clawb
-              </a>
-            </p>
           </>
         )}
       </Popup>

@@ -333,7 +333,7 @@ const Mobile = () => {
     { label: 'Mint', icon: '/assets/mint.gif', action: () => { setMintPopupType('selection'); setShowMintPopup(true); } },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
-    { label: '$LAWB', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
+    { label: 'tokens', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
     { label: 'Advertise on Clawb TV', icon: '/assets/lawbidle_5s_finalfix_transparent_loop.gif', action: () => setShowSponsorPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
@@ -414,44 +414,108 @@ const Mobile = () => {
   }
 
   function LawbPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const [tab, setTab] = useState<'lawb' | 'clawb' | 'faq'>('lawb');
     if (!open) return null;
     return (
-      <MobilePopup98 isOpen={open} onClose={onClose} title="$LAWB">
-        <h1 style={{marginBottom: '10px'}}>
-          <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>🦞 $LAWB</a>
-        </h1>
-        <p style={{marginBottom: '10px'}}>
-          $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
-        </p>
-        <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24</p>
-        <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
-        <p style={{marginBottom: '10px'}}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
-        <p style={{marginBottom: '10px'}}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
-        <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
-        <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
-        <p style={{marginBottom: '10px'}}>
-          if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://portalbridge.com/</a>
-        </p>
-        <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
-        <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
-        <p style={{marginBottom: '10px'}}>step 3. select token quantity, confirm transactions.</p>
-        <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
-        <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
-        <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
-        <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
-        <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
-        <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
-          <iframe 
-            height="100%" 
-            width="100%" 
-            id="geckoterminal-embed" 
-            title="GeckoTerminal Embed" 
-            src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m" 
-            frameBorder="0" 
-            allow="clipboard-write" 
-            allowFullScreen
-          />
+      <MobilePopup98 isOpen={open} onClose={onClose} title="tokens">
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '12px', borderBottom: '2px solid #808080' }}>
+          {([
+            { key: 'lawb', label: '$LAWB' },
+            { key: 'clawb', label: 'Clawb' },
+            { key: 'faq', label: 'FAQ' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              style={{
+                flex: 1,
+                padding: '8px',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                border: tab === key ? '2px outset #dfdfdf' : '2px solid #808080',
+                borderBottom: tab === key ? '2px solid #c0c0c0' : '2px solid #808080',
+                background: tab === key ? '#c0c0c0' : '#a0a0a0',
+                fontWeight: tab === key ? 'bold' : 'normal',
+                position: 'relative',
+                bottom: '-2px',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+
+        {tab === 'lawb' && (
+          <>
+            <h1 style={{marginBottom: '10px'}}>
+              <a href="https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>🦞 $LAWB</a>
+            </h1>
+            <p style={{marginBottom: '10px'}}>
+              $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
+            </p>
+            <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24. Now multichain across Solana, Base, Arbitrum, and Sanko (DMT).</p>
+            <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
+            <p style={{marginBottom: '10px'}}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
+            <p style={{marginBottom: '10px'}}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
+            <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
+            <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
+            <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
+            <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
+              <iframe
+                height="100%"
+                width="100%"
+                id="geckoterminal-embed"
+                title="GeckoTerminal Embed"
+                src="https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep?embed=1&info=1&swaps=0&grayscale=0&light_chart=0&chart_type=market_cap&resolution=15m"
+                frameBorder="0"
+                allow="clipboard-write"
+                allowFullScreen
+              />
+            </div>
+          </>
+        )}
+
+        {tab === 'clawb' && (
+          <>
+            <h1 style={{marginBottom: '10px'}}>Clawb</h1>
+            <p style={{marginBottom: '10px'}}>
+              Clawb is an autonomous agent built on the OpenClaw stack. It runs as long-lived Node.js services under pm2 — a 24/7 stream loop on <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a> driven over the OBS WebSocket, an autonomous decision loop, a 3D world bridge, and a Telegram gateway — all loading one shared identity, so it answers the same on stream, on calls, and in DMs.
+            </p>
+            <p style={{marginBottom: '14px'}}>
+              It reasons on Claude, renders its token art and memes on <a href="https://noema.art/referral/lawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Noema</a>, takes voice calls from viewers, and deploys its own tokens on Base via <a href="https://app.liquidprotocol.org/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Liquid Protocol</a>. Watchdog processes restart and re-sync it on failure.
+            </p>
+            <p style={{marginBottom: '14px', fontWeight: 'bold'}}>there is no meme i lawb you.</p>
+
+            <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
+            <p style={{marginBottom: '10px'}}>1. 24/7 onchain Base-native Retake stream loop with live chat/voice and OBS-integrated control.</p>
+            <p style={{marginBottom: '10px'}}>2. Autonomous world-action runtime via local world bridge + responder services.</p>
+            <p style={{marginBottom: '10px'}}>3. Onchain adspace/commercial pipeline (indexing, queueing, paid playback). ClawbAdSpace (Base): <a href="https://basescan.org/address/0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1</a></p>
+            <p style={{marginBottom: '14px'}}>4. Production hardening via PM2 services, webhook controls, and recovery watchdogs.</p>
+
+            <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Where to find it</p>
+            <p style={{marginBottom: '10px'}}>Stream: <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a></p>
+            <p style={{marginBottom: '10px'}}>Farcaster: <a href="https://warpcast.com/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>@clawb</a></p>
+            <p style={{marginBottom: '10px'}}>X: <a href="https://x.com/clawblawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>@clawblawb</a></p>
+          </>
+        )}
+
+        {tab === 'faq' && (
+          <>
+            <h1 style={{marginBottom: '10px'}}>FAQ</h1>
+            <p style={{marginBottom: '10px', fontWeight: 'bold'}}>Bridge Guide (SOL → ARB → Sanko)</p>
+            <p style={{marginBottom: '10px'}}>
+              if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://portalbridge.com/</a>
+            </p>
+            <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
+            <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
+            <p style={{marginBottom: '10px'}}>step 3. select token quantity, confirm transactions.</p>
+            <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
+            <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
+            <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
+            <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
+          </>
+        )}
       </MobilePopup98>
     );
   }

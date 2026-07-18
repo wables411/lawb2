@@ -57,16 +57,23 @@ export default defineConfig({
       'wagmi',
       'viem',
       'react-router-dom',
+      // Force-bundle dayjs (and the sub-paths @reown/appkit + @walletconnect/* import)
+      // even though those importers are excluded below — otherwise Vite serves the
+      // UMD/CJS dayjs files untransformed and their missing `default` export blanks
+      // the whole dev page.
+      'dayjs',
+      'dayjs/locale/en',
+      'dayjs/plugin/relativeTime',
+      'dayjs/plugin/updateLocale',
     ],
-    // Explicitly exclude WalletConnect/AppKit from pre-bundling
-    exclude: [
-      '@reown/appkit',
-      '@reown/appkit/react',
-      '@reown/appkit/networks',
-      '@reown/appkit-adapter-wagmi',
-      '@walletconnect/core',
-      '@walletconnect/universal-provider',
-    ],
+    // NOTE: optimizeDeps only affects the dev server (esbuild pre-bundling); it has
+    // no effect on the production build (Rollup). We previously excluded
+    // WalletConnect/AppKit here, but because Vite does NOT rewrite an excluded
+    // package's own imports to optimized deps, AppKit's `import 'dayjs/locale/en'`
+    // (a UMD/CJS file with no `default` export) was served untransformed and blanked
+    // the entire dev page. Letting these be pre-bundled fixes dev; the Base Mini App
+    // runtime exclusion is handled separately via dynamic imports + runtime checks.
+    exclude: [],
   },
   // Note: We can't use resolve.alias to conditionally stub modules at build time
   // Instead, we rely on runtime checks and dynamic imports to prevent loading in Base app

@@ -42,7 +42,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'nexus', image: '/assets/nexus.gif', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
   // Row 4
   { id: 'chat', image: '/assets/miladychan.png', label: 'Miladychan', action: 'popup', popupId: 'miladychan-popup', row: 3, col: 0 },
-  { id: 'lawb', image: '/assets/lawbticker.gif', label: '$LAWB', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
+  { id: 'lawb', image: '/assets/lawbticker.gif', label: 'tokens', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
   { id: 'reef-arcade', image: '/assets/reef-arcade.svg', label: 'Reef Run', action: 'arcade', row: 2, col: 0 },
   { id: 'lawb-chess', image: '/assets/chess.svg', label: 'Lawb Chess', action: 'chess', row: 2, col: 1 },
   { id: 'lawb-profile', image: '/assets/wallet.png', label: 'Lawb Profile', action: 'lawb-profile', row: 2, col: 2 },
