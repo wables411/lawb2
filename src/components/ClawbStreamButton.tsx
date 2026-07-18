@@ -11,11 +11,7 @@ const DANCE_GIF = CLAWB_STREAM_DANCE_GIF;
 const STREAM_URL = 'https://retake.tv/clawb';
 const CTA_MESSAGE = 'choose a clawb tv option';
 
-type ClawbStreamButtonProps = {
-  onAdvertiseClick?: () => void;
-};
-
-const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle, ClawbStreamButtonProps>(({ onAdvertiseClick }, ref) => {
+const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_props, ref) => {
   const [isDanceMode, setIsDanceMode] = useState(false);
   const [typedText, setTypedText] = useState('');
 
@@ -92,22 +88,6 @@ const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle, ClawbStreamButtonP
               bubbleText
             )}
           </div>
-          <button
-            type="button"
-            onClick={onAdvertiseClick}
-            style={{
-              width: '100%',
-              marginBottom: 6,
-              border: '2px outset #fff',
-              background: '#c0c0c0',
-              padding: '8px 8px',
-              minHeight: 40,
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            Advertise on Clawb TV
-          </button>
           <button
             type="button"
             onClick={() => window.open(STREAM_URL, '_blank', 'noopener,noreferrer')}

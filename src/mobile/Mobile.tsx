@@ -13,8 +13,6 @@ import AsciiLawbsterMint from '../components/AsciiLawbsterMint';
 import { playIconClickSound } from '../utils/sound';
 import LinuxNavBar from '../components/LinuxNavBar';
 import PretextLabel from '../components/PretextLabel';
-const ClawbClaimPanel = lazy(() => import('../components/ClawbClaimPanel'));
-const SponsorAdPanel = lazy(() => import('../components/SponsorAdPanel'));
 const PlayerProfile = lazy(() => import('../components/PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
 const LawbLeaderboardPanel = lazy(() =>
   import('../components/LawbLeaderboardPanel').then((m) => ({ default: m.LawbLeaderboardPanel })),
@@ -284,8 +282,6 @@ const Mobile = () => {
   const [showLawbstation, setShowLawbstation] = useState(false);
   const [showNexus, setShowNexus] = useState(false);
   const [showMemeGenerator, setShowMemeGenerator] = useState(false);
-  const [showClaimPopup, setShowClaimPopup] = useState(false);
-  const [showSponsorPopup, setShowSponsorPopup] = useState(false);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showLeaderboardPopup, setShowLeaderboardPopup] = useState(false);
   const [showUwUPopup, setShowUwUPopup] = useState(false);
@@ -334,7 +330,6 @@ const Mobile = () => {
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: 'tokens', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
-    { label: 'Advertise on Clawb TV', icon: '/assets/lawbidle_5s_finalfix_transparent_loop.gif', action: () => setShowSponsorPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
@@ -522,74 +517,6 @@ const Mobile = () => {
 
   return (
     <div className={classes.mobileContainer}>
-      <button
-        onClick={() => {
-          playIconClickSound();
-          setShowClaimPopup(true);
-        }}
-        type="button"
-        title="Open Claim $CLAWB"
-        style={{
-          position: 'fixed',
-          bottom: '58px',
-          right: '10px',
-          width: '96px',
-          border: 'none',
-          background: 'transparent',
-          padding: 0,
-          margin: 0,
-          zIndex: 2200,
-          touchAction: 'manipulation',
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: '6px',
-            left: '50%',
-            transform: 'translateX(-50%) rotate(-10deg)',
-            width: '54px',
-            height: '14px',
-            background:
-              'linear-gradient(180deg, rgba(246, 236, 196, 0.66) 0%, rgba(230, 216, 173, 0.58) 100%), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0px, rgba(255, 255, 255, 0.12) 1px, rgba(0, 0, 0, 0.02) 1px, rgba(0, 0, 0, 0.02) 4px)',
-            border: '1px solid rgba(140, 124, 89, 0.58)',
-            borderRadius: '2px',
-            opacity: 0.95,
-            mixBlendMode: 'multiply',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.24)',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            top: '14px',
-            left: '50%',
-            transform: 'translateX(-50%) rotate(6deg)',
-            width: '36px',
-            height: '10px',
-            background: 'linear-gradient(180deg, rgba(244, 232, 188, 0.54) 0%, rgba(226, 208, 164, 0.48) 100%)',
-            border: '1px solid rgba(136, 120, 86, 0.45)',
-            borderRadius: '2px',
-            opacity: 0.88,
-            mixBlendMode: 'multiply',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        />
-        <img
-          src="/assets/restitution.png"
-          alt="Claim CLAWB"
-          style={{
-            width: '100%',
-            display: 'block',
-            filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25))',
-          }}
-        />
-      </button>
       <header className={classes.header}>
         <h1 className={classes.title}>there is no meme we lawb you</h1>
       </header>
@@ -900,18 +827,6 @@ const Mobile = () => {
       {/* Meme Generator Popup */}
       <MobilePopup98 isOpen={showMemeGenerator} onClose={() => setShowMemeGenerator(false)} title="Meme Generator">
         <MemeGenerator />
-      </MobilePopup98>
-      {/* Claim Popup */}
-      <MobilePopup98 isOpen={showClaimPopup} onClose={() => setShowClaimPopup(false)} title="Claim $CLAWB">
-        <Suspense fallback={<div>Loading claim panel...</div>}>
-          <ClawbClaimPanel />
-        </Suspense>
-      </MobilePopup98>
-      {/* Sponsor Popup */}
-      <MobilePopup98 isOpen={showSponsorPopup} onClose={() => setShowSponsorPopup(false)} title="Advertise on Clawb TV">
-        <Suspense fallback={<div>Loading sponsor panel...</div>}>
-          <SponsorAdPanel />
-        </Suspense>
       </MobilePopup98>
       {/* UwU Popup */}
       <MobilePopup98 isOpen={showUwUPopup} onClose={() => setShowUwUPopup(false)} title="UwU 🦄">

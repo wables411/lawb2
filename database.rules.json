@@ -2,32 +2,7 @@
   "rules": {
     "clawb": {
       ".read": false,
-      ".write": false,
-
-      "ads": {
-        ".read": false,
-        ".write": false,
-
-        "sessions": {
-          ".indexOn": ["status", "wallet", "updated_at"]
-        },
-        "playback_ads": {
-          ".indexOn": ["status", "approved_at_ms", "first_play_pending", "tier"]
-        },
-        "intake_notifications": {
-          ".indexOn": ["status", "updated_at"]
-        },
-        "rotation_auctions": {
-          ".indexOn": ["status", "ends_at_ms"]
-        },
-        "tx_index": {
-          ".read": false,
-          ".write": false
-        },
-        "notify_retry": {
-          ".indexOn": ["created_at"]
-        }
-      }
+      ".write": false
     },
 
     "leaderboard": {
@@ -79,14 +54,6 @@
       "$inviteCode": {
         ".write": true,
         ".validate": "!newData.exists() || (newData.hasChild('game_state') && newData.child('game_state').isString())"
-      }
-    },
-
-    "claims": {
-      ".read": false,
-      "$claimId": {
-        ".write": true,
-        ".validate": "newData.hasChildren(['wallet', 'token', 'amount', 'chain', 'status', 'created_at']) && newData.child('wallet').isString() && newData.child('token').isString() && (newData.child('token').val() === 'clawb' || newData.child('token').val() === 'lawb') && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('chain').isString() && newData.child('status').isString() && newData.child('created_at').isString()"
       }
     },
 

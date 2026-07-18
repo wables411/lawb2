@@ -23,66 +23,6 @@
   status = 200
 
 [[redirects]]
-  from = "/api/sponsor/session"
-  to = "/.netlify/functions/sponsor-create-session"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/verify"
-  to = "/.netlify/functions/sponsor-verify-tx"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/upload"
-  to = "/.netlify/functions/sponsor-upload"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/notify"
-  to = "/.netlify/functions/sponsor-notify-clawb"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/finalize-auctions"
-  to = "/.netlify/functions/sponsor-finalize-auctions"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/session-status"
-  to = "/.netlify/functions/sponsor-session-status"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/resume-session"
-  to = "/.netlify/functions/sponsor-resume-session"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/upload-url"
-  to = "/.netlify/functions/sponsor-upload-url"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/upload-complete"
-  to = "/.netlify/functions/sponsor-upload-complete"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/auction-status"
-  to = "/.netlify/functions/sponsor-auction-status"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/settle-auction"
-  to = "/.netlify/functions/sponsor-settle-auction"
-  status = 200
-
-[[redirects]]
-  from = "/api/sponsor/legacy-cleanup"
-  to = "/.netlify/functions/sponsor-legacy-cleanup"
-  status = 200
-
-[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404
