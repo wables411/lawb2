@@ -261,43 +261,10 @@ export const firebaseChess = {
     }
   },
 
-  async getLeaderboard() {
-    try {
-      const db = getDatabaseOrThrow();
-      const leaderboardRef = ref(db, 'leaderboard');
-      const snapshot = await get(leaderboardRef);
-      
-      if (!snapshot.exists()) return [];
-      
-      const entries = snapshot.val();
-      return Object.values(entries).sort((a: any, b: any) => b.points - a.points);
-    } catch (error) {
-      console.error('[FIREBASE] Error getting leaderboard:', error);
-      return [];
-    }
-  },
-
-  // Subscribe to leaderboard updates
-  subscribeToLeaderboard(callback: (entries: any[]) => void) {
-    try {
-      const db = getDatabaseOrThrow();
-      const leaderboardRef = ref(db, 'leaderboard');
-      
-      const unsubscribe = onValue(leaderboardRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const entries = snapshot.val();
-          const sortedEntries = Object.values(entries).sort((a: any, b: any) => b.points - a.points);
-          console.log('[FIREBASE] Leaderboard update received:', sortedEntries);
-          callback(sortedEntries);
-        }
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error('[FIREBASE] Error subscribing to leaderboard:', error);
-      return () => {}; // Return empty unsubscribe function
-    }
-  },
+  // NOTE: deliberately NO getLeaderboard()/subscribeToLeaderboard()/subscribeToAllGames()
+  // here. Reading or streaming a whole root path (leaderboard, chess_games) per client
+  // is the exact pattern that produced runaway Firebase bandwidth bills. Use the bounded
+  // getTopLeaderboardEntries (limitToLast) and per-game subscribeToGame instead.
 
   async getActiveVsClawbGame() {
     try {
@@ -348,19 +315,6 @@ export const firebaseChess = {
     }
   },
 
-  subscribeToAllGames(callback: (games: Record<string, any>) => void) {
-    try {
-      const db = getDatabaseOrThrow();
-      const gamesRef = ref(db, 'chess_games');
-      return onValue(gamesRef, (snapshot) => {
-        if (snapshot.exists()) callback(snapshot.val());
-        else callback({});
-      });
-    } catch (error) {
-      console.error('[FIREBASE] Error subscribing to all games:', error);
-      return () => {};
-    }
-  }
 };
 
 // Utility to find a game by player address — reuses getActiveGames (query-based, not full tree)

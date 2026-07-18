@@ -109,7 +109,7 @@ html:not(.lawb-app-dark-mode) {
 .lawb-app-light-mode .chess-page,
 .lawb-app-light-mode .chess-content {
   background: transparent !important;
-  background-image: url('/assets/background.gif') !important;
+  background-image: url('/assets/background.webp') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -716,14 +716,14 @@ html.lawb-app-dark-mode {
 
 /* Override Desktop component inline background */
 /* CRITICAL: Exclude chessboard from this rule - it needs its background-image */
-.lawb-app-dark-mode [style*="background.gif"]:not(.chessboard):not([class*="chessboard"]),
+.lawb-app-dark-mode [style*="background.webp"]:not(.chessboard):not([class*="chessboard"]),
 .lawb-app-dark-mode [style*="background: url"]:not(.chessboard):not([class*="chessboard"]) {
   background: #000000 !important;
   background-image: none !important;
 }
 
 /* Override MemeGenerator inline background */
-.lawb-app-dark-mode [style*='backgroundImage: "url("/assets/background.gif")"'] {
+.lawb-app-dark-mode [style*='backgroundImage: "url("/assets/background.webp")"'] {
   background: #000000 !important;
   background-image: none !important;
 }

@@ -32,7 +32,7 @@
 .lawb-app-light-mode .chess-page,
 .lawb-app-light-mode .chess-content {
   background: transparent !important;
-  background-image: url('/assets/background.gif') !important;
+  background-image: url('/assets/background.webp') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;

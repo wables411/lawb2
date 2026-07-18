@@ -1493,6 +1493,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       const interval = setInterval(async () => {
         try {
+          if (typeof document !== 'undefined' && document.hidden) return;
           const gameData = await firebaseChess.getGame(inviteCode);
           console.log('[CONTRACT_STATE_CHECK] Current game state:', gameData?.game_state);
           
@@ -4030,6 +4031,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       const interval = setInterval(async () => {
         try {
+          if (typeof document !== 'undefined' && document.hidden) return;
           const gameData = await firebaseChess.getGame(inviteCode);
           console.log('[PERIODIC_CHECK] Current game state:', gameData?.game_state, 'Current UI mode:', gameMode, 'Blue player:', gameData?.blue_player, 'Red player:', gameData?.red_player);
           
@@ -4104,6 +4106,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       const interval = setInterval(async () => {
         try {
+          if (typeof document !== 'undefined' && document.hidden) return;
           const gameData = await firebaseChess.getGame(inviteCode);
           if (gameData && gameData.game_state === 'finished' && gameMode === GameMode.ACTIVE) {
             console.log('[GAME_END_CHECK] Game finished detected via periodic check:', gameData);
@@ -4178,6 +4181,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
       
       const interval = setInterval(async () => {
         try {
+          if (typeof document !== 'undefined' && document.hidden) return;
           const gameData = await firebaseChess.getGame(inviteCode);
           if (gameData && gameData.board && gameData.game_state === 'active') {
             // Check if board has changed

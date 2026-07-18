@@ -223,6 +223,8 @@ export const ChessSpectator: React.FC = () => {
   }, [cleanup, setCurrentPieceSet, detectCapture]);
 
   const findAndSubscribe = useCallback(async () => {
+    // Backgrounded /chess tabs must not drip Firebase reads 24/7.
+    if (typeof document !== 'undefined' && document.hidden) return;
     const game = await firebaseChess.getActiveClawbGame();
     if (game && game.invite_code) {
       console.log('[SPECTATOR] Found active Clawb game:', game.invite_code, 'type:', game.game_type || 'unknown');

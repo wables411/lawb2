@@ -447,7 +447,7 @@ function App() {
           </blockquote>
         </div>
         <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
-        <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <img src="/assets/tile06-lawbstarz-djset.webp" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </Popup>
 
       <Popup id="lawbstation-popup" isOpen={activePopup === 'lawbstation-popup'} onClose={closePopup} onMinimize={minimizePopup}>
@@ -458,7 +458,7 @@ function App() {
         <p style={{marginBottom: '10px'}}>
           <a href="https://www.tensor.trade/trade/lawbstation" target="_blank" rel="noopener noreferrer">Collect Lawbstations on Secondary</a>
         </p>
-        <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
+        <img src="/assets/lawbstation.webp" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
         <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', marginTop: '10px' }} />
       </Popup>
       
@@ -516,7 +516,7 @@ function App() {
               <p style={{marginBottom: '10px'}}>
                 Collect on <a href="https://opensea.io/collection/pixelawbsters" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
               </p>
-              <img src="/assets/mint.gif" alt="Mint" style={{ maxWidth: '100%' }} />
+              <img src="/assets/mint.webp" alt="Mint" style={{ maxWidth: '100%' }} />
             </>
           );
         })()}
@@ -723,7 +723,7 @@ function App() {
             <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>$lawb airdropped to LawbStation holders 03.19.24. Now multichain across Solana, Base, Arbitrum, and Sanko (DMT).</p>
             <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', fontWeight: 'bold'}}>THERE IS NO MEME WE $LAWB YOU</p>
 
-            <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
+            <img src="/assets/lawbticker.webp" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
 
             <div style={{ width: '100%', height: isMobile ? '300px' : '400px', marginTop: isMobile ? '8px' : '6px' }}>
               {activePopup === 'lawb-popup' && lawbTab === 'lawb' ? (

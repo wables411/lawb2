@@ -25,7 +25,7 @@ const useStyles = createUseStyles({
     width: '100vw',
     height: '100vh',
     // Background will be overridden by dark mode CSS
-    background: "url('/assets/background.gif') no-repeat center center fixed",
+    background: "url('/assets/background.webp') no-repeat center center fixed",
     backgroundSize: 'cover',
     fontFamily: "'Press Start 2P', 'MS Sans Serif', Arial, sans-serif",
     color: '#fff',
@@ -232,7 +232,7 @@ const EVM_NFTS = [
   { id: 'red-vs-blue', name: 'Red VS Blue', image: '/images/racing-flag.svg', description: 'RED vs BLUE: A LAWBSTER RACE TO REMEMBER. ETH.' },
 ];
 const SOL_NFTS = [
-  { id: 'lawbstation', name: 'Lawbstation', image: '/assets/lawbstation.GIF', description: 'Lawbstation. SOL.' },
+  { id: 'lawbstation', name: 'Lawbstation', image: '/assets/lawbstation.webp', description: 'Lawbstation. SOL.' },
   { id: 'nexus', name: 'Nexus', image: '/assets/nexus.webp', description: 'Nexus. SOL.' },
 ];
 
@@ -326,12 +326,12 @@ const Mobile = () => {
   }, [showLawbsters, showLawbstarz]);
 
   const icons = [
-    { label: 'Mint', icon: '/assets/mint.gif', action: () => { setMintPopupType('selection'); setShowMintPopup(true); } },
+    { label: 'Mint', icon: '/assets/mint.webp', action: () => { setMintPopupType('selection'); setShowMintPopup(true); } },
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
-    { label: 'tokens', icon: '/assets/lawbticker.gif', action: () => setShowLawbPopup(true) },
+    { label: 'tokens', icon: '/assets/lawbticker.webp', action: () => setShowLawbPopup(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
-    { label: 'Meme Generator', icon: '/assets/meme.gif', action: () => setShowMemeGenerator(true) },
+    { label: 'Meme Generator', icon: '/assets/meme.webp', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
     { label: 'Lawb Chess', icon: '/assets/chess.svg', action: () => navigate('/chess') },
     { label: 'Lawb Profile', icon: '/assets/wallet.png', action: () => setShowProfilePopup(true) },
@@ -455,7 +455,7 @@ const Mobile = () => {
             <p style={{marginBottom: '10px'}}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
             <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
             <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
-            <img src="/assets/lawbticker.gif" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
+            <img src="/assets/lawbticker.webp" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
             <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
               <iframe
                 height="100%"
@@ -719,7 +719,7 @@ const Mobile = () => {
           </blockquote>
         </div>
         <img src="/assets/lawbstarzhotelroom.png" alt="Lawbstarz Hotel Room" style={{ maxWidth: '100%', marginTop: '10px' }} />
-        <img src="/assets/tile-06-audio-image0-lawbstarz dj set 1.0 copy.png" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <img src="/assets/tile06-lawbstarz-djset.webp" alt="Lawbstarz DJ Set" style={{ maxWidth: '100%', marginTop: '10px' }} />
       </MobilePopup98>
       {/* Pixelawbs Popup */}
       <MobilePopup98 isOpen={showPixelawbs} onClose={() => setShowPixelawbs(false)} title="Pixelawbs">
@@ -813,7 +813,7 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>
           <a href="https://www.tensor.trade/trade/lawbstation" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Collect Lawbstations on Secondary</a>
         </p>
-        <img src="/assets/lawbstation.GIF" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
+        <img src="/assets/lawbstation.webp" alt="Lawbstation" style={{ width: '100%', marginTop: '10px' }} />
         <video controls src="/assets/lawbstation.mp4" style={{ width: '100%', marginTop: '10px' }} />
       </MobilePopup98>
       {/* Nexus Popup */}

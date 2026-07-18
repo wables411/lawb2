@@ -175,7 +175,7 @@ const useStyles = createUseStyles({
     minHeight: 0,
     minWidth: 0,
     // Background will be overridden by dark mode CSS
-    backgroundImage: 'url("/assets/background.gif")',
+    backgroundImage: 'url("/assets/background.webp")',
     backgroundRepeat: 'repeat',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
