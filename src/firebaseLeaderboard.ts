@@ -1,13 +1,15 @@
-import { database } from './firebaseApp';
-import { ref, set, update, get, query, orderByChild, limitToLast, remove } from 'firebase/database';
+import { database, getFirebaseDatabaseForKey } from './firebaseApp';
+import { ref, set, update, get, query, orderByChild, limitToLast } from 'firebase/database';
 import { getAddress } from 'viem';
 
-// Helper function to check if database is available
-const getDatabaseOrThrow = () => {
+// Helper function to check if database is available.
+// Pass the wallet path key for WRITES: rules require auth.uid === key, and
+// Solana keys authenticate on a separate app instance (see firebaseApp).
+const getDatabaseOrThrow = (pathKey?: string) => {
   if (!database) {
     throw new Error('[FIREBASE] Database not initialized');
   }
-  return database;
+  return pathKey ? getFirebaseDatabaseForKey(pathKey) : database;
 };
 
 export interface PointsBreakdown {
@@ -188,9 +190,9 @@ export const updateLeaderboardEntry = async (
     }
 
     const now = new Date().toISOString();
-    const database = getDatabaseOrThrow();
+    const database = getDatabaseOrThrow(key);
     const entryRef = ref(database, `leaderboard/${key}`);
-    
+
     // Get existing entry
     const snapshot = await get(entryRef);
     const existingEntry = snapshot.exists() ? snapshot.val() as LeaderboardEntry : null;
@@ -240,48 +242,10 @@ export const updateLeaderboardEntry = async (
 };
 
 // Update both players' scores when a game ends
-export const updateBothPlayersScores = async (
-  winner: 'blue' | 'red' | null,
-  bluePlayerAddress: string,
-  redPlayerAddress: string
-): Promise<boolean> => {
-  try {
-    if (!bluePlayerAddress || !redPlayerAddress) {
-      console.error('[LEADERBOARD] Missing player addresses');
-      return false;
-    }
-    
-    // Prevent zero addresses from being recorded in leaderboard
-    if (bluePlayerAddress === '0x0000000000000000000000000000000000000000' || 
-        redPlayerAddress === '0x0000000000000000000000000000000000000000') {
-      console.warn('[LEADERBOARD] Skipping leaderboard update - one or both players have zero addresses:', {
-        bluePlayer: bluePlayerAddress,
-        redPlayer: redPlayerAddress
-      });
-      return false;
-    }
-
-    console.log('[LEADERBOARD] Updating both players scores:', {
-      winner,
-      bluePlayer: formatAddress(bluePlayerAddress),
-      redPlayer: formatAddress(redPlayerAddress)
-    });
-
-    // Update blue player
-    const blueResult = winner === 'blue' ? 'win' : winner === 'red' ? 'loss' : 'draw';
-    await updateLeaderboardEntry(bluePlayerAddress, blueResult);
-
-    // Update red player
-    const redResult = winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
-    await updateLeaderboardEntry(redPlayerAddress, redResult);
-
-    console.log('[LEADERBOARD] Successfully updated both players scores');
-    return true;
-  } catch (error) {
-    console.error('[LEADERBOARD] Error updating both players scores:', error);
-    return false;
-  }
-};
+// NOTE: deliberately NO updateBothPlayersScores here. Database rules only let a
+// client write its OWN wallet's entry (auth.uid === key), so each chess client
+// records its own result on game end — one client can no longer write (or forge)
+// its opponent's stats.
 
 const LEADERBOARD_QUERY_CAP = 250;
 
@@ -438,7 +402,7 @@ export const addEcosystemPoints = async (
     if (!key) return false;
 
     const now = new Date().toISOString();
-    const database = getDatabaseOrThrow();
+    const database = getDatabaseOrThrow(key);
     const entryRef = ref(database, `leaderboard/${key}`);
 
     const snapshot = await get(entryRef);
@@ -501,7 +465,7 @@ export const setHoldingsPoints = async (
     if (!key) return false;
 
     const now = new Date().toISOString();
-    const dbRef = getDatabaseOrThrow();
+    const dbRef = getDatabaseOrThrow(key);
     const entryRef = ref(dbRef, `leaderboard/${key}`);
 
     const snapshot = await get(entryRef);
@@ -582,9 +546,9 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
     if (!key) return false;
 
     const now = new Date().toISOString();
-    const database = getDatabaseOrThrow();
+    const database = getDatabaseOrThrow(key);
     const entryRef = ref(database, `leaderboard/${key}`);
-    
+
     const resetEntry: LeaderboardEntry = {
       username: key,
       chain_type: 'sanko',
@@ -607,17 +571,9 @@ export const resetUserLeaderboard = async (walletAddress: string): Promise<boole
   }
 };
 
-// Remove zero address entry from leaderboard
-export const removeZeroAddressEntry = async (): Promise<boolean> => {
-  try {
-    const database = getDatabaseOrThrow();
-    const zeroAddressRef = ref(database, 'leaderboard/0x0000000000000000000000000000000000000000');
-    
-    await remove(zeroAddressRef);
-    console.log('[LEADERBOARD] Removed zero address entry from leaderboard');
-    return true;
-  } catch (error) {
-    console.error('[LEADERBOARD] Error removing zero address entry:', error);
-    return false;
-  }
-}; 
+/**
+ * Legacy janitor, now a no-op: rules reject writes whose auth.uid doesn't match
+ * the entry key, so a zero-address entry can neither be created nor deleted from
+ * the client. The historical entry (if any) was removed once via the admin CLI.
+ */
+export const removeZeroAddressEntry = async (): Promise<boolean> => true;

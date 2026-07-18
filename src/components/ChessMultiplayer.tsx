@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useSwitchChain } from 'wagmi';
-import { 
-  updateLeaderboardEntry, 
-  updateBothPlayersScores, 
+import {
+  updateLeaderboardEntry,
   getTopLeaderboardEntries,
   formatAddress as formatLeaderboardAddress,
   removeZeroAddressEntry,
@@ -2327,19 +2326,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   };
 
-  // Update both players' scores when game ends using Firebase
+  // Record MY result when the game ends. Database rules only accept writes to
+  // the signed-in wallet's own entry (auth.uid === key), so each client records
+  // itself — both clients reach the game-over path via the finished
+  // subscription/polls, and neither can write (or forge) the opponent's stats.
   const updateBothPlayersScoresLocal = async (winner: 'blue' | 'red' | null, bluePlayer: string, redPlayer: string) => {
     try {
-      console.log('[SCORE] Updating both players scores:', { winner, bluePlayer, redPlayer });
-
       if (!bluePlayer || !redPlayer) {
         console.error('[SCORE] Missing player addresses from contract');
         return;
       }
+      const mine = address?.toLowerCase();
+      if (!mine) return;
+      const isBlue = bluePlayer.toLowerCase() === mine;
+      const isRed = redPlayer.toLowerCase() === mine;
+      if (!isBlue && !isRed) return; // spectator — nothing to record
 
-      // Dedupe: a single game can reach the game-over path twice on the winning
-      // client (local checkmate detection + Firebase "finished" subscription).
-      // Apply stats exactly once per inviteCode.
+      // Dedupe: a single game can reach the game-over path twice on this client
+      // (local checkmate detection + Firebase "finished" subscription).
       if (inviteCode && finalizedScoresRef.current.has(inviteCode)) {
         console.log('[SCORE] Scores already finalized for', inviteCode, '— skipping duplicate update');
         return;
@@ -2348,11 +2352,12 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         finalizedScoresRef.current.add(inviteCode);
       }
 
-      // Use Firebase function to update both players
-      const success = await updateBothPlayersScores(winner, bluePlayer, redPlayer);
-      
+      const myResult: 'win' | 'loss' | 'draw' =
+        winner === null ? 'draw' : (winner === 'blue') === isBlue ? 'win' : 'loss';
+
+      const success = await updateLeaderboardEntry(address!, myResult);
       if (success) {
-        console.log('[SCORE] Successfully updated both players scores');
+        console.log('[SCORE] Recorded own result:', myResult);
         // Update profile-level chess stats (wins/losses + fastest win time).
         try {
           let matchDurationSec: number | undefined;
@@ -2364,24 +2369,16 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               if (sec > 0) matchDurationSec = sec;
             }
           }
-          const blueResult: 'win' | 'loss' | 'draw' =
-            winner === 'blue' ? 'win' : winner === 'red' ? 'loss' : 'draw';
-          const redResult: 'win' | 'loss' | 'draw' =
-            winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
-          await Promise.all([
-            firebaseProfiles.updateChessProfileStats(bluePlayer, blueResult, matchDurationSec),
-            firebaseProfiles.updateChessProfileStats(redPlayer, redResult, matchDurationSec),
-          ]);
+          await firebaseProfiles.updateChessProfileStats(address!, myResult, matchDurationSec);
         } catch (profileStatErr) {
           console.error('[SCORE] Error updating profile chess stats:', profileStatErr);
         }
-        // Reload leaderboard only after both players' scores are updated
         await loadLeaderboard();
       } else {
-        console.error('[SCORE] Failed to update both players scores');
+        console.error('[SCORE] Failed to record own result');
       }
     } catch (error) {
-      console.error('[SCORE] Error updating both players scores:', error);
+      console.error('[SCORE] Error updating scores:', error);
     }
   };
 

@@ -9,7 +9,7 @@
       ".read": true,
       ".indexOn": ["points"],
       "$walletAddress": {
-        ".write": true,
+        ".write": "auth != null && auth.uid === $walletAddress",
         ".validate": "newData.hasChildren(['username', 'wins', 'losses', 'draws', 'total_games', 'points']) && newData.child('username').isString() && newData.child('wins').isNumber() && newData.child('losses').isNumber() && newData.child('draws').isNumber() && newData.child('total_games').isNumber() && newData.child('points').isNumber() && newData.child('wins').val() >= 0 && newData.child('losses').val() >= 0 && newData.child('draws').val() >= 0 && newData.child('total_games').val() >= 0 && newData.child('points').val() >= 0 && (!newData.hasChild('chain_type') || newData.child('chain_type').isString()) && (!newData.hasChild('created_at') || newData.child('created_at').isString()) && (!newData.hasChild('updated_at') || newData.child('updated_at').isString())"
       }
     },
@@ -17,14 +17,13 @@
     "profiles": {
       ".read": true,
       "$walletAddress": {
-        ".write": true,
+        ".write": "auth != null && auth.uid === $walletAddress",
         ".validate": "(!newData.hasChild('wallet_address') || (newData.child('wallet_address').isString() && newData.child('wallet_address').val() === $walletAddress)) && (!newData.hasChild('username') || (newData.child('username').isString() && newData.child('username').val().length >= 3 && newData.child('username').val().length <= 20)) && (!newData.hasChild('created_at') || newData.child('created_at').isString()) && (!newData.hasChild('updated_at') || newData.child('updated_at').isString())",
         "game_stats": {
           ".validate": "newData.hasChildren(['total_games', 'wins', 'losses', 'draws', 'total_points', 'win_rate']) && newData.child('total_games').isNumber() && newData.child('wins').isNumber() && newData.child('losses').isNumber() && newData.child('draws').isNumber() && newData.child('total_points').isNumber() && newData.child('win_rate').isNumber() && newData.child('total_games').val() >= 0 && newData.child('wins').val() >= 0 && newData.child('losses').val() >= 0 && newData.child('draws').val() >= 0 && newData.child('total_points').val() >= 0 && newData.child('win_rate').val() >= 0"
         },
         "nft_inventory": {
-          ".read": true,
-          ".write": true
+          ".read": true
         },
         "profile_picture": {
           ".validate": "!newData.exists() || (newData.hasChildren(['collection', 'token_id', 'image_url']) && newData.child('collection').isString() && newData.child('token_id').isString() && newData.child('image_url').isString())"
@@ -34,16 +33,16 @@
 
     "usernames": {
       ".read": true,
-      ".write": true,
       "$username": {
+        ".write": "auth != null && ((newData.exists() && newData.child('wallet_address').val() === auth.uid) || (!newData.exists() && data.child('wallet_address').val() === auth.uid))",
         ".validate": "newData.hasChildren(['wallet_address']) && newData.child('wallet_address').isString() && $username.length >= 3 && $username.length <= 20"
       }
     },
 
     "wallet_links": {
       ".read": true,
-      ".write": true,
       "$address": {
+        ".write": "auth != null && (auth.uid === $address || (newData.exists() && newData.child('primary_wallet').val() === auth.uid) || (!newData.exists() && data.child('primary_wallet').val() === auth.uid))",
         ".validate": "newData.hasChildren(['primary_wallet']) && newData.child('primary_wallet').isString()"
       }
     },

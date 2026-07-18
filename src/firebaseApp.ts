@@ -61,4 +61,30 @@ export function getFirebaseDatabase(): Database {
   return database;
 }
 
+/**
+ * Firebase Auth allows ONE signed-in user per app instance, but a visitor can
+ * have an EVM wallet AND a Solana wallet connected at once — and database
+ * rules require writes to a wallet's entry to carry that wallet's auth uid.
+ * So Solana-keyed writes go through a second app instance (same project)
+ * with its own auth session.
+ */
+let solanaApp: FirebaseApp | null = null;
+export function getFirebaseAppForKey(pathKey: string): FirebaseApp {
+  if (!app) {
+    throw new Error('[firebaseApp] Firebase not configured (set VITE_FIREBASE_* env vars).');
+  }
+  if (pathKey.startsWith('0x')) return app;
+  if (!solanaApp) {
+    solanaApp =
+      getApps().find((a) => a.name === 'solana-auth') ??
+      initializeApp(app.options, 'solana-auth');
+  }
+  return solanaApp;
+}
+
+/** Database bound to the app instance whose auth session matches this wallet key. */
+export function getFirebaseDatabaseForKey(pathKey: string): Database {
+  return getDatabase(getFirebaseAppForKey(pathKey));
+}
+
 export { app, database };

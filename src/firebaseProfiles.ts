@@ -1,14 +1,16 @@
-import { database } from './firebaseApp';
+import { database, getFirebaseDatabaseForKey } from './firebaseApp';
 import { ref, set, get, update, remove } from 'firebase/database';
 import type { NFTInventory } from './utils/nftInventory';
 import { setHoldingsPoints } from './firebaseLeaderboard';
 import { computeHoldingsLeaderboardScore } from './utils/leaderboardHoldingsScore';
 
-const getDatabaseOrThrow = () => {
+// Pass the normalized wallet key for WRITES: rules require auth.uid === key,
+// and Solana keys authenticate on a separate app instance (see firebaseApp).
+const getDatabaseOrThrow = (pathKey?: string) => {
   if (!database) {
     throw new Error('[FIREBASE] Database not initialized');
   }
-  return database;
+  return pathKey ? getFirebaseDatabaseForKey(pathKey) : database;
 };
 
 const normalizeWalletAddress = (walletAddress: string): string => {
@@ -84,7 +86,7 @@ export const firebaseProfiles = {
   // Get profile by wallet address
   async getProfile(walletAddress: string): Promise<PlayerProfile | null> {
     try {
-      const db = getDatabaseOrThrow();
+      const db = getDatabaseOrThrow(normalizeWalletAddress(walletAddress));
       const profileRef = ref(db, `profiles/${normalizeWalletAddress(walletAddress)}`);
       const snapshot = await get(profileRef);
       return snapshot.exists() ? snapshot.val() : null;
@@ -97,8 +99,8 @@ export const firebaseProfiles = {
   // Create or update profile
   async upsertProfile(walletAddress: string, profileData: Partial<PlayerProfile>): Promise<void> {
     try {
-      const db = getDatabaseOrThrow();
       const normalizedWallet = normalizeWalletAddress(walletAddress);
+      const db = getDatabaseOrThrow(normalizedWallet);
       const profileRef = ref(db, `profiles/${normalizedWallet}`);
       const existing = await get(profileRef);
       const existingProfile = existing.exists() ? existing.val() as PlayerProfile : null;
@@ -198,7 +200,7 @@ export const firebaseProfiles = {
   // Update game stats after a match
   async updateGameStats(walletAddress: string, result: 'win' | 'loss' | 'draw', inviteCode: string): Promise<void> {
     try {
-      const db = getDatabaseOrThrow();
+      const db = getDatabaseOrThrow(normalizeWalletAddress(walletAddress));
       const profileRef = ref(db, `profiles/${normalizeWalletAddress(walletAddress)}`);
       const snapshot = await get(profileRef);
       
@@ -240,8 +242,8 @@ export const firebaseProfiles = {
     matchDurationSec?: number,
   ): Promise<void> {
     try {
-      const db = getDatabaseOrThrow();
       const normalized = normalizeWalletAddress(walletAddress);
+      const db = getDatabaseOrThrow(normalized);
       const profileRef = ref(db, `profiles/${normalized}`);
       const snapshot = await get(profileRef);
       if (!snapshot.exists()) {
@@ -286,8 +288,8 @@ export const firebaseProfiles = {
     },
   ): Promise<void> {
     try {
-      const db = getDatabaseOrThrow();
       const normalized = normalizeWalletAddress(walletAddress);
+      const db = getDatabaseOrThrow(normalized);
       const profileRef = ref(db, `profiles/${normalized}`);
       const snapshot = await get(profileRef);
       if (!snapshot.exists()) {
@@ -337,7 +339,7 @@ export const firebaseProfiles = {
     opts?: { tokenBonusPoints?: number },
   ): Promise<void> {
     try {
-      const db = getDatabaseOrThrow();
+      const db = getDatabaseOrThrow(normalizeWalletAddress(walletAddress));
       const profileRef = ref(db, `profiles/${normalizeWalletAddress(walletAddress)}`);
       
       // Ensure profile exists first
@@ -370,8 +372,8 @@ export const firebaseProfiles = {
   // Update profile picture (pass null to clear)
   async updateProfilePicture(walletAddress: string, picture: ProfilePicture | null): Promise<void> {
     try {
-      const db = getDatabaseOrThrow();
       const normalized = normalizeWalletAddress(walletAddress);
+      const db = getDatabaseOrThrow(normalized);
       const profileRef = ref(db, `profiles/${normalized}`);
       const existing = await get(profileRef);
       if (!existing.exists()) {
@@ -423,7 +425,7 @@ export const firebaseProfiles = {
         return { success: false, error: 'Username must be between 3 and 20 characters' };
       }
 
-      const db = getDatabaseOrThrow();
+      const db = getDatabaseOrThrow(normalizeWalletAddress(walletAddress));
       const usernameLower = username.toLowerCase();
       const usernameRef = ref(db, `usernames/${usernameLower}`);
       
@@ -485,38 +487,8 @@ export const firebaseProfiles = {
   },
 
   // Submit a claim request (backend will process the actual token transfer)
-  async submitClaimRequest(walletAddress: string, token: 'clawb' | 'lawb'): Promise<{ success: boolean; error?: string }> {
-    try {
-      const balance = await this.getClaimableBalance(walletAddress);
-      const amount = balance[token] || 0;
-      if (amount <= 0) {
-        return { success: false, error: `No ${token.toUpperCase()} to claim` };
-      }
-
-      const db = getDatabaseOrThrow();
-      const normalizedWallet = normalizeWalletAddress(walletAddress);
-      const claimRef = ref(db, 'claims');
-      const newClaimRef = ref(db, `claims/${Date.now()}_${walletAddress.slice(0, 8)}`);
-      await set(newClaimRef, {
-        wallet: normalizedWallet,
-        token,
-        amount,
-        chain: token === 'clawb' ? 'base' : 'base',
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      });
-
-      // Zero out the claimable balance for this token
-      const claimableRef = ref(db, `profiles/${normalizedWallet}/claimable`);
-      await update(claimableRef, { [token]: 0, updated_at: Date.now() });
-
-      console.log(`[FIREBASE] Claim submitted: ${amount} $${token.toUpperCase()} for ${walletAddress}`);
-      return { success: true };
-    } catch (error) {
-      console.error('[FIREBASE] Error submitting claim:', error);
-      return { success: false, error: 'Failed to submit claim' };
-    }
-  },
+  // NOTE: submitClaimRequest was removed with the CLAWB claim system — the
+  // `claims` database node and its rules no longer exist.
 
   // Get profile by username
   async getProfileByUsername(username: string): Promise<PlayerProfile | null> {
@@ -540,8 +512,8 @@ export const firebaseProfiles = {
 
   async getPrimaryWallet(address: string): Promise<string> {
     try {
-      const db = getDatabaseOrThrow();
       const normalized = normalizeWalletAddress(address);
+      const db = getDatabaseOrThrow(normalized);
       const linkRef = ref(db, `wallet_links/${encodeWalletKey(normalized)}`);
       const snap = await get(linkRef);
       if (snap.exists()) {
@@ -557,8 +529,8 @@ export const firebaseProfiles = {
 
   async getLinkedWallets(primaryWallet: string): Promise<LinkedWallet[]> {
     try {
-      const db = getDatabaseOrThrow();
       const normalized = normalizeWalletAddress(primaryWallet);
+      const db = getDatabaseOrThrow(normalized);
       const lwRef = ref(db, `profiles/${normalized}/linked_wallets`);
       const snap = await get(lwRef);
       if (!snap.exists()) return [];
@@ -577,8 +549,8 @@ export const firebaseProfiles = {
     chain: 'evm' | 'solana',
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const db = getDatabaseOrThrow();
       const normalizedPrimary = normalizeWalletAddress(primaryWallet);
+      const db = getDatabaseOrThrow(normalizedPrimary);
       const normalizedSecondary = normalizeWalletAddress(secondaryAddress);
 
       if (normalizedPrimary === normalizedSecondary) {
@@ -629,8 +601,8 @@ export const firebaseProfiles = {
     secondaryAddress: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const db = getDatabaseOrThrow();
       const normalizedPrimary = normalizeWalletAddress(primaryWallet);
+      const db = getDatabaseOrThrow(normalizedPrimary);
       const normalizedSecondary = normalizeWalletAddress(secondaryAddress);
 
       const existing = await this.getLinkedWallets(normalizedPrimary);
