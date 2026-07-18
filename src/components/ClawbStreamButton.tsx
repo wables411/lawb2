@@ -9,7 +9,7 @@ export interface ClawbStreamButtonHandle {
 const IDLE_GIF = CLAWB_STREAM_IDLE_GIF;
 const DANCE_GIF = CLAWB_STREAM_DANCE_GIF;
 const STREAM_URL = 'https://retake.tv/clawb';
-const CTA_MESSAGE = 'choose a clawb tv option';
+const CTA_MESSAGE = 'tune in to clawb tv';
 
 const ClawbStreamButton = forwardRef<ClawbStreamButtonHandle>((_props, ref) => {
   const [isDanceMode, setIsDanceMode] = useState(false);

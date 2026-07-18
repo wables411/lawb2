@@ -225,15 +225,15 @@ type ActiveView = 'main' | 'gallery';
 
 const EVM_NFTS = [
   { id: 'lawbsters', name: 'Lawbsters', image: '/assets/lawbsters.gif', description: '420 Lawbsters. ETH.' },
-  { id: 'lawbstarz', name: 'Lawbstarz', image: '/assets/lawbstarz.gif', description: '666 Lawbstarz. ETH.' },
-  { id: 'halloween', name: 'Halloween', image: '/assets/lawbsterhalloween.gif', description: 'Halloween Lawbsters. BASE.' },
+  { id: 'lawbstarz', name: 'Lawbstarz', image: '/assets/lawbstarz.webp', description: '666 Lawbstarz. ETH.' },
+  { id: 'halloween', name: 'Halloween', image: '/assets/lawbsterhalloween.webp', description: 'Halloween Lawbsters. BASE.' },
   { id: 'pixelawbs', name: 'Pixelawbs', image: '/assets/pixelawb.png', description: '2222 Pixelawbs. ETH.' },
   { id: 'asciilawbs', name: 'ASCII Lawbsters', image: '/assets/asciilawb.GIF', description: '420 ASCII Lawbsters. BASE.' },
   { id: 'red-vs-blue', name: 'Red VS Blue', image: '/images/racing-flag.svg', description: 'RED vs BLUE: A LAWBSTER RACE TO REMEMBER. ETH.' },
 ];
 const SOL_NFTS = [
   { id: 'lawbstation', name: 'Lawbstation', image: '/assets/lawbstation.GIF', description: 'Lawbstation. SOL.' },
-  { id: 'nexus', name: 'Nexus', image: '/assets/nexus.gif', description: 'Nexus. SOL.' },
+  { id: 'nexus', name: 'Nexus', image: '/assets/nexus.webp', description: 'Nexus. SOL.' },
 ];
 
 interface FolderNFT {
@@ -550,7 +550,7 @@ const Mobile = () => {
             src="/assets/pixelawbs.mp4"
             style={{ width: '100%', marginBottom: '10px' }}
             preload="auto"
-            poster="/assets/pixelawbsintro.png"
+            poster="/assets/pixelawbsintro.webp"
           />
           <p style={{marginBottom: '10px'}}>
             2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
@@ -712,7 +712,7 @@ const Mobile = () => {
         <p>
           Collect on <a href="https://opensea.io/collection/lawbstarz" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
-        <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <img src="/assets/lawbstarz.webp" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
         <div id="twitter-embed-lawbstarz-mobile" style={{ marginTop: '10px', width: '100%', minHeight: '200px' }}>
           <blockquote className="twitter-tweet" data-media-max-width="560">
             <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
@@ -735,7 +735,7 @@ const Mobile = () => {
           src="/assets/pixelawbs.mp4"
           style={{ width: '100%', marginBottom: '10px' }}
           preload="auto"
-          poster="/assets/pixelawbsintro.png"
+          poster="/assets/pixelawbsintro.webp"
         />
         <p style={{marginBottom: '10px'}}>
           2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
@@ -751,7 +751,7 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>
           Collect on <a href="https://opensea.io/collection/a-lawbster-halloween" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
-        <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
+        <img src="/assets/lawbsterhalloween.webp" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
       </MobilePopup98>
       {/* ASCII Lawbsters Popup */}
       <MobilePopup98 isOpen={showAsciilawbs} onClose={() => setShowAsciilawbs(false)} title="ASCII Lawbsters">
@@ -821,7 +821,7 @@ const Mobile = () => {
         <p style={{marginBottom: '10px'}}>
           1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://www.tensor.trade/trade/lawbnexus" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
-        <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
+        <img src="/assets/nexus.webp" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
         <video controls src="/assets/nexusminting.mp4" style={{ width: '100%' }} />
       </MobilePopup98>
       {/* Meme Generator Popup */}

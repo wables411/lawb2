@@ -440,7 +440,7 @@ function App() {
         <p>
           Collect on <a href="https://opensea.io/collection/lawbstarz" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
-        <img src="/assets/lawbstarz.gif" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
+        <img src="/assets/lawbstarz.webp" alt="Lawbstarz" style={{ maxWidth: '100%', marginTop: '10px' }} />
         <div id="twitter-embed-lawbstarz">
           <blockquote className="twitter-tweet" data-media-max-width="560">
             <p lang="en" dir="ltr">The following 🧵 has been transcripted from a live news broadcast:<br/><br/>Anchor: &ldquo;Good evening, viewers. Tonight, we embark on an extraordinary journey that defies rational explanation. It all began with February&apos;s Cigawrette Packs cargo ship hijacking, little did we know that the.. <a href="https://t.co/BWgLOk59N4">pic.twitter.com/BWgLOk59N4</a></p>&mdash; wables (@wables411) <a href="https://twitter.com/wables411/status/1669009492007354369?ref_src=twsrc%5Etfw">June 14, 2023</a>
@@ -466,7 +466,7 @@ function App() {
         <p style={{marginBottom: '10px'}}>
           1000 Xtra Ultra High Definition Lawbsters, packaged and distributed on Solana. Collect on <a href="https://www.tensor.trade/trade/lawbnexus" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
-        <img src="/assets/nexus.gif" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
+        <img src="/assets/nexus.webp" alt="Nexus" style={{ width: '100%', marginBottom: '10px' }} />
         <video controls src="/assets/nexusminting.mp4" style={{ width: '100%' }} />
       </Popup>
 
@@ -507,7 +507,7 @@ function App() {
                 src="/assets/pixelawbs.mp4"
                 style={{ width: '100%', marginBottom: '10px' }}
                 preload="auto"
-                poster="/assets/pixelawbsintro.png"
+                poster="/assets/pixelawbsintro.webp"
               />
               <p style={{marginBottom: '10px'}}>
                 2222 Pixelated Lawbsters inspired by <a href="https://pixeladymaker.net/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>PixeladyMaker</a>
@@ -601,7 +601,7 @@ function App() {
         <p style={{marginBottom: '10px'}}>
           Collect on <a href="https://opensea.io/collection/a-lawbster-halloween" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Secondary</a>
         </p>
-        <img src="/assets/lawbsterhalloween.gif" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
+        <img src="/assets/lawbsterhalloween.webp" alt="Lawbster Halloween" style={{ width: '100%', marginBottom: '10px' }} />
         <div ref={tiktokRef} style={{ maxWidth: '400px', margin: '0 auto' }}>
           <blockquote 
             className="tiktok-embed" 

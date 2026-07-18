@@ -12,7 +12,7 @@ interface Clawb2DProps {
   onClawbClick?: () => void;
 }
 
-const IMAGES = ['/assets/lawbticker.gif', '/assets/lawbstarz.gif', '/assets/lawbsterhalloween.gif'];
+const IMAGES = ['/assets/lawbticker.gif', '/assets/lawbstarz.webp', '/assets/lawbsterhalloween.webp'];
 
 const Clawb2D = forwardRef<ClawbHandle, Clawb2DProps>(({ onClawbClick }, ref) => {
   const [imgIndex, setImgIndex] = useState(0);

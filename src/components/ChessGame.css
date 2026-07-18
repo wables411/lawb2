@@ -3196,7 +3196,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   justify-content: flex-start;
   padding: 20px;
   background-color: transparent;
-  background-image: url('/assets/lawbstationprint.png');
+  background-image: url('/assets/lawbstationprint.webp');
   background-position: center center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -3341,7 +3341,7 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
 
 /* Theme-aware styling for game mode panel */
 .lawb-app-light-mode .game-mode-panel-streamlined {
-  background-image: url('/assets/lawbstationprint.png');
+  background-image: url('/assets/lawbstationprint.webp');
   background-color: transparent;
   color: #000000;
 }

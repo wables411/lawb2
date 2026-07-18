@@ -25,21 +25,21 @@ const ICONS: DesktopIcon[] = [
   { id: 'sol-folder', image: '/assets/solfolder.png', label: 'SOL NFTs', action: 'folder', folderId: 'sol-folder', row: 1, col: 3 },
   // Row 1
   { id: 'mint', image: '/assets/mint.gif', label: 'Mint', action: 'mint', row: 0, col: 0 },
-  { id: 'gallery', image: '/assets/lawbstarz.gif', label: 'LAWB Gallery', action: 'nft-gallery', row: 0, col: 2 },
+  { id: 'gallery', image: '/assets/lawbstarz.webp', label: 'LAWB Gallery', action: 'nft-gallery', row: 0, col: 2 },
   { id: 'meme-generator', image: '/assets/meme.gif', label: 'Meme Generator', action: 'meme-generator', row: 0, col: 4 },
 
   // Row 2
   { id: 'purity', image: '/assets/purityfinance.png', label: 'Purity', action: 'popup', popupId: 'purity-popup', row: 1, col: 0 },
   { id: 'lawbshop', image: '/assets/lawbshop.png', label: 'Lawb.Shop', action: 'url', url: 'https://store.fun/lawbshop', row: 1, col: 1 },
   // NFT icons for folders (not shown on desktop)
-  { id: 'lawbstarz', image: '/assets/lawbstarz.gif', label: 'Lawbstarz', action: 'popup', popupId: 'lawbstarz-popup', row: -1, col: -1 },
+  { id: 'lawbstarz', image: '/assets/lawbstarz.webp', label: 'Lawbstarz', action: 'popup', popupId: 'lawbstarz-popup', row: -1, col: -1 },
   { id: 'lawbsters', image: '/assets/lawbsters.gif', label: 'Lawbsters', action: 'popup', popupId: 'lawbsters-popup', row: -1, col: -1 },
-  { id: 'halloween', image: '/assets/lawbsterhalloween.gif', label: 'Halloween', action: 'popup', popupId: 'halloween-popup', row: -1, col: -1 },
+  { id: 'halloween', image: '/assets/lawbsterhalloween.webp', label: 'Halloween', action: 'popup', popupId: 'halloween-popup', row: -1, col: -1 },
   { id: 'pixelawbs', image: '/assets/pixelawb.png', label: 'Pixelawbs', action: 'popup', popupId: 'pixelawbs-popup', row: -1, col: -1 },
   { id: 'asciilawbs', image: '/assets/asciilawb.GIF', label: 'ASCII Lawbsters', action: 'popup', popupId: 'asciilawbs-popup', row: -1, col: -1 },
   { id: 'red-vs-blue', image: '/images/racing-flag.svg', label: 'Red VS Blue', action: 'url', url: 'https://opensea.io/item/ethereum/0x46353e0b6b4d9723d253c00acd29adefc05083bb/2', row: -1, col: -1 },
   { id: 'lawbstation', image: '/assets/lawbstation.GIF', label: 'Lawbstation', action: 'popup', popupId: 'lawbstation-popup', row: -1, col: -1 },
-  { id: 'nexus', image: '/assets/nexus.gif', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
+  { id: 'nexus', image: '/assets/nexus.webp', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
   // Row 4
   { id: 'chat', image: '/assets/miladychan.png', label: 'Miladychan', action: 'popup', popupId: 'miladychan-popup', row: 3, col: 0 },
   { id: 'lawb', image: '/assets/lawbticker.gif', label: 'tokens', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
