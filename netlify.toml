@@ -3,7 +3,7 @@
   functions = "functions"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   # Exclude ClawbWorld from Netlify: no world bundle, no world-only assets — saves build credits
   VITE_EXCLUDE_WORLD = "true"
 
