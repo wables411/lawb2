@@ -1,5 +1,25 @@
 # lawb2 Session Handoff — 2026-07-18
 
+## ⚠️ READ THIS BEFORE YOU TOUCH ANYTHING
+Rules earned by wasting the owner's time and money last session:
+
+1. **A build failed? Get the real log before changing one line.** Netlify's API and CLI log endpoints
+   return 404 — the log lives only in the Netlify UI. **Ask the owner to paste it.** Last session I
+   guessed (Node version → build cache → case-sensitivity) and burned **3 real builds** on their
+   account; the log said `Could not resolve "tweetnacl"` the whole time. Builds cost this owner money
+   and goodwill — they have been billed $50/day before.
+2. **Grep for an existing example before inventing a pattern.** `/api/*` redirects do NOT resolve on
+   this site. Every function call uses the direct `/.netlify/functions/<name>` path. I shipped
+   `/api/wallet-auth`; it 404'd in production.
+3. **Reproduce the exact failing step locally, not a nearby one.** `npm run build` proved nothing when
+   the failure was function bundling. `npx esbuild functions/<fn>.js --bundle` proved it in seconds
+   with zero remote builds.
+4. **Netlify does NOT install a function's own `package.json` deps.** Function dependencies go in the
+   **root** `package.json`. `functions/package.json` has been deleted — keep it that way.
+5. **Don't half-ship security, and don't lecture instead of building.** Owner's words: *"Talking about
+   the fix isn't the fix."* Keep explanations short; they often ask for plain-language answers.
+
+
 Everything below is **DONE, committed, pushed to `origin/main`, and live on lawb.xyz** unless marked TODO.
 Last deployed commit at handoff: `9c256dda5` (frontend) + Firebase rules released separately (see §4).
 
