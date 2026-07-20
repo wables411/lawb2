@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Draggable from 'react-draggable';
 import { getEligibleInviteLists, mintNFT, getCollectionStats, getCollectionData, getRecentlyMintedNFTsGlobal, type NFT, type CollectionData } from '../mint';
 import { clearFetchCache } from '../utils/fetchCache';
+import { getRequiredErc20s, ensureErc20Approvals, friendlyMintError } from '../utils/mintErc20Approvals';
 import { createUseStyles } from 'react-jss';
 import { useChainId, useSwitchChain, useWalletClient, useReadContract, usePublicClient } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
@@ -472,8 +473,37 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
       
       if (result.success && result.mintTransaction) {
         console.log('Got mint transaction:', result.mintTransaction);
+
+        // Token-priced lists (e.g. MS2) need an ERC-20 approval before the
+        // mint contract can pull payment — without it the mint reverts.
+        const requiredErc20s = getRequiredErc20s(
+          result.erc20s,
+          selectedLists.map(({ id, quantity }) => {
+            const list = inviteLists.find(l => l.id === id);
+            return {
+              currency_address: list?.currency_address,
+              token_price: list?.token_price,
+              decimals: list?.decimals,
+              quantity
+            };
+          })
+        );
+        if (requiredErc20s.length > 0) {
+          if (!publicClient) {
+            throw new Error('Network connection unavailable — please try again.');
+          }
+          await ensureErc20Approvals({
+            walletClient,
+            publicClient,
+            owner: walletAddress as `0x${string}`,
+            spender: result.mintTransaction.to as `0x${string}`,
+            required: requiredErc20s,
+            onStatus: (message) => alert(message)
+          });
+        }
+
         alert('Please confirm the transaction in your wallet.');
-        
+
         try {
           console.log('Sending transaction to wallet...');
           console.log('Transaction details:', {
@@ -645,14 +675,14 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           }
         } catch (txError) {
           console.error('Transaction sending failed:', txError);
-          setError('Transaction failed: ' + (txError as Error).message);
+          setError('Transaction failed: ' + friendlyMintError(txError));
         }
       } else {
         throw new Error(result.message || 'Could not retrieve minting transaction.');
       }
     } catch (err) {
       console.error('Minting failed:', err);
-      setError('Minting failed: ' + (err as Error).message);
+      setError('Minting failed: ' + friendlyMintError(err));
     } finally {
       setMinting(false);
     }
@@ -688,6 +718,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
     const totalAvailable = list.list_limit;
     const minted = listMinted ? Number(listMinted) : 0;
     const remaining = Math.max(0, totalAvailable - minted);
+    const maxMintable = Math.min(walletLimit === 4294967295 ? 999 : walletLimit, remaining);
 
     return (
       <div style={{
@@ -714,9 +745,9 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
           <input
             type="number"
             min="0"
-            max={walletLimit === 4294967295 ? 999 : walletLimit}
+            max={maxMintable}
             value={selectedQuantity}
-            onChange={(e) => onQuantityChange(parseInt(e.target.value) || 0)}
+            onChange={(e) => onQuantityChange(Math.min(maxMintable, parseInt(e.target.value) || 0))}
             style={{
               width: isMobile ? '80px' : '60px',
               padding: isMobile ? '8px 5px' : '2px 5px',
