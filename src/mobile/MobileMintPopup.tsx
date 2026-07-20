@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getEligibleInviteLists, mintNFT, getCollectionStats, getCollectionData, getRecentlyMintedNFTsGlobal, type NFT, type CollectionData } from '../mint';
 import { getRequiredErc20s, ensureErc20Approvals, friendlyMintError } from '../utils/mintErc20Approvals';
+import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { useWalletClient, useChainId, useSwitchChain, useReadContract, usePublicClient, useWaitForTransactionReceipt } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import MobilePopup98 from './MobilePopup98';
@@ -209,7 +210,7 @@ const MobileMintPopup: React.FC<MobileMintPopupProps> = ({ isOpen, onClose, wall
               console.log('Transaction confirmed:', receipt);
               
               // Check for Transfer events (ERC-721 mint)
-              const COLLECTION_ADDRESS = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
+              const COLLECTION_ADDRESS = NFT_COLLECTIONS.pixelawbs.address;
               const transferEvents = (receipt.logs || []).filter(log => {
                 // Check if this is a Transfer event to the user's address
                 return log.address.toLowerCase() === COLLECTION_ADDRESS.toLowerCase() &&

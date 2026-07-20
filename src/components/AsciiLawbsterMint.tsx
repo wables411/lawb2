@@ -8,6 +8,7 @@ import { useMediaQuery, useMobileCapabilities } from '../hooks/useMediaQuery';
 import { ASCII_LAWBSTER_CONTRACT_ADDRESS, ASCII_LAWBSTER_CONTRACT_ABI } from '../utils/asciiLawbsterContract';
 import { getAlchemyNFTsForCollection, type NFT } from '../mint';
 import { clearFetchCache } from '../utils/fetchCache';
+import { friendlyTxError } from '../utils/friendlyTxError';
 
 const useStyles = createUseStyles({
   container: {
@@ -514,7 +515,7 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
         value: call.value,
       });
     } catch (err: any) {
-      setError(err.message || 'Transaction failed');
+      setError(friendlyTxError(err) || 'Transaction failed');
       console.error('Mint error:', err);
     }
   }
@@ -630,7 +631,7 @@ const AsciiLawbsterMint: React.FC<AsciiLawbsterMintProps> = ({ walletAddress, on
 
               {(writeError || error) && (
                 <div className={classes.error}>
-                  {writeError?.message || error}
+                  {writeError ? friendlyTxError(writeError) : error}
                 </div>
               )}
 

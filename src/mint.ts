@@ -1,5 +1,6 @@
 import { ipfsToHttp } from './utils/ipfs';
 import { cachedFetch } from './utils/fetchCache';
+import { NFT_COLLECTIONS } from './config/nftCollections';
 
 interface MintNFTResponse {
   success: boolean;
@@ -251,8 +252,8 @@ export async function getRecentlyMintedNFTsGlobal(collectionSlug: string, limit:
 
 export async function mintNFT(walletAddress: string, selectedLists: Array<{id: string, quantity: number}>): Promise<MintNFTResponse> {
   const SCATTER_API_URL = 'https://api.scatter.art/v1';
-  const COLLECTION_ADDRESS = '0x2d278e95b2fC67D4b27a276807e24E479D9707F6';
-  const CHAIN_ID = 1;
+  const COLLECTION_ADDRESS = NFT_COLLECTIONS.pixelawbs.address;
+  const CHAIN_ID = NFT_COLLECTIONS.pixelawbs.chainId;
 
   console.log('Minting request:', {
     collectionAddress: COLLECTION_ADDRESS,

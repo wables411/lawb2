@@ -8,6 +8,7 @@ import {
   type LeaderboardEntry 
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
+import { friendlyTxError } from '../utils/friendlyTxError';
 import { firebaseChess } from '../firebaseChess';
 import { firebaseProfiles } from '../firebaseProfiles';
 import { database, getFirebaseDatabase } from '../firebaseApp';
@@ -239,11 +240,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     }
   }, [cancelGameHash, isWaitingForCancelReceipt]);
 
-  // Check if current chain is supported for chess contract
-  const isSupportedChain = chainId === NETWORKS.base.chainId || 
-                          chainId === NETWORKS.mainnet.chainId || 
-                          chainId === NETWORKS.testnet.chainId || 
-                          chainId === NETWORKS.arbitrum.chainId;
+  // Check if current chain is supported for chess contract.
+  // The address check keeps chains whose contract is not deployed yet (config
+  // still holds the zero address, e.g. Arbitrum) from firing reads at 0x0.
+  const isSupportedChain = (chainId === NETWORKS.base.chainId ||
+                          chainId === NETWORKS.mainnet.chainId ||
+                          chainId === NETWORKS.testnet.chainId ||
+                          chainId === NETWORKS.arbitrum.chainId) &&
+                          chessContractAddress !== '0x0000000000000000000000000000000000000000';
   
   // Contract read hook for checking player's game state
   // Only enable on supported chains to avoid errors on unsupported chains (like Ethereum mainnet)
@@ -2956,7 +2960,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         stack: error instanceof Error ? error.stack : undefined,
         error
       });
-      setGameStatus(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setGameStatus(`Failed to create game: ${friendlyTxError(error)}`);
       setIsGameCreationInProgress(false);
     }
     // Note: Don't set isGameCreationInProgress to false in finally block
@@ -4457,7 +4461,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   useEffect(() => {
     if (joinGameError) {
       console.error('[ERROR] Join transaction failed:', joinGameError);
-      setGameStatus(`Failed to join game: ${joinGameError.message || 'Transaction rejected'}`);
+      setGameStatus(`Failed to join game: ${friendlyTxError(joinGameError)}`);
       debugSetInviteCode('', 'join game error effect');
       setPlayerColor(null);
       debugSetWager(0, 'join game error effect');

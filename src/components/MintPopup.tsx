@@ -3,6 +3,7 @@ import Draggable from 'react-draggable';
 import { getEligibleInviteLists, mintNFT, getCollectionStats, getCollectionData, getRecentlyMintedNFTsGlobal, type NFT, type CollectionData } from '../mint';
 import { clearFetchCache } from '../utils/fetchCache';
 import { getRequiredErc20s, ensureErc20Approvals, friendlyMintError } from '../utils/mintErc20Approvals';
+import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { createUseStyles } from 'react-jss';
 import { useChainId, useSwitchChain, useWalletClient, useReadContract, usePublicClient } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
@@ -531,7 +532,7 @@ const MintPopup: React.FC<MintPopupProps> = ({ isOpen, onClose, onMinimize, wall
               console.log('Transaction confirmed:', receipt);
               clearFetchCache(); // So polling fetches fresh NFT data
               // Check for Transfer events (ERC-721 mint)
-              const COLLECTION_ADDRESS = '0x2d278e95b2fc67d4b27a276807e24e479d9707f6';
+              const COLLECTION_ADDRESS = NFT_COLLECTIONS.pixelawbs.address;
               const transferEvents = (receipt.logs || []).filter(log => {
                 // Check if this is a Transfer event to the user's address
                 return log.address.toLowerCase() === COLLECTION_ADDRESS.toLowerCase() &&
