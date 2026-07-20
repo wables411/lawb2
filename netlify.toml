@@ -8,21 +8,6 @@
   VITE_EXCLUDE_WORLD = "true"
 
 [[redirects]]
-  from = "/api/game-monitor"
-  to = "/.netlify/functions/game-monitor"
-  status = 200
-
-[[redirects]]
-  from = "/api/alchemy-nft"
-  to = "/.netlify/functions/alchemy-nft"
-  status = 200
-
-[[redirects]]
-  from = "/api/game-monitor-simple"
-  to = "/.netlify/functions/game-monitor-simple"
-  status = 200
-
-[[redirects]]
   from = "/.env"
   to = "/404.html"
   status = 404
