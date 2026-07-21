@@ -1,0 +1,361 @@
+.lawb-gallery {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, #0b1030 0%, #05081a 45%, #000005 100%);
+  overflow: hidden;
+  font-family: 'MS Sans Serif', 'Pixelated MS Sans Serif', Arial, sans-serif;
+  cursor: url('/assets/lawbpointer.png'), auto;
+  color: #fff;
+}
+
+.lawb-gallery__stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lawb-gallery__stars span {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #fff;
+  border-radius: 50%;
+  animation: gal-twinkle 3s ease-in-out infinite;
+}
+
+@keyframes gal-twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+
+.lawb-gallery__topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #000080;
+  border-bottom: 2px solid #c0c0c0;
+  z-index: 30;
+}
+
+.lawb-gallery__title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lawb-gallery__topbar-buttons {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.win98-btn {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  color: #000;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 10px;
+  cursor: inherit;
+}
+
+.win98-btn:active {
+  border-style: inset;
+}
+
+.lawb-gallery__system {
+  position: absolute;
+  inset: 34px 0 0 0;
+  width: 100%;
+  height: calc(100% - 34px);
+}
+
+.lawb-gallery__system svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gal-orbit-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-dasharray: 3 5;
+}
+
+.gal-orbit {
+  animation: gal-revolve linear infinite;
+  transform-origin: 0 0;
+}
+
+.gal-orbit:hover,
+.gal-orbit:hover .gal-sprite {
+  animation-play-state: paused;
+}
+
+.gal-paused .gal-orbit,
+.gal-paused .gal-sprite {
+  animation-play-state: paused;
+}
+
+.gal-sprite {
+  animation: gal-counter linear infinite;
+  transform-origin: center;
+  cursor: inherit;
+}
+
+@keyframes gal-revolve {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gal-counter {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.gal-planet-label {
+  fill: #fff;
+  font-size: 15px;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: #000;
+  stroke-width: 3px;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+.gal-sun-img {
+  filter: drop-shadow(0 0 28px rgba(255, 200, 80, 0.85));
+}
+
+.gal-planet-img {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+}
+
+.gal-sprite:hover .gal-planet-img {
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.9));
+}
+
+/* ---------- detail window ---------- */
+
+.gal-window {
+  position: absolute;
+  z-index: 40;
+  top: 48px;
+  right: 12px;
+  width: min(430px, calc(100vw - 24px));
+  max-height: calc(100% - 70px);
+  display: flex;
+  flex-direction: column;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  color: #000;
+}
+
+.gal-window__titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #000080;
+  color: #fff;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.gal-window__controls {
+  display: flex;
+  gap: 4px;
+}
+
+.gal-window__body {
+  overflow-y: auto;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gal-window__hero {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.gal-window__hero img {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #000;
+  border: 2px inset #fff;
+  flex-shrink: 0;
+}
+
+.gal-meta {
+  font-size: 11px;
+  margin: 0;
+}
+
+.gal-meta dt {
+  float: left;
+  clear: left;
+  width: 70px;
+  font-weight: bold;
+}
+
+.gal-meta dd {
+  margin: 0 0 2px 76px;
+  word-break: break-all;
+}
+
+.gal-section {
+  margin-top: 10px;
+  border-top: 1px solid #808080;
+  padding-top: 6px;
+}
+
+.gal-section > h3 {
+  font-size: 11px;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #000080;
+}
+
+.gal-section ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.gal-section li {
+  margin-bottom: 3px;
+}
+
+.gal-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gal-moon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: inherit;
+}
+
+.gal-moon-chip--active {
+  border-style: inset;
+  background: #dcdcdc;
+}
+
+.gal-moon-card {
+  margin-top: 6px;
+  border: 2px inset #fff;
+  background: #fff;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.gal-link {
+  color: #000080;
+  text-decoration: underline;
+  word-break: break-word;
+  cursor: inherit;
+}
+
+.gal-timeline-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.gal-timeline-date {
+  flex-shrink: 0;
+  width: 78px;
+  font-weight: bold;
+}
+
+.gal-tweet-wrap {
+  margin-top: 6px;
+}
+
+.gal-tweet-wrap .react-tweet-theme {
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* ---------- index bar (mobile navigation aid) ---------- */
+
+.lawb-gallery__index {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 8px;
+  background: rgba(0, 0, 32, 0.8);
+  border-top: 2px solid #c0c0c0;
+  z-index: 30;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lawb-gallery__index button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: inherit;
+  white-space: nowrap;
+}
+
+.lawb-gallery__index button img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.lawb-gallery__index button.active {
+  border-style: inset;
+  background: #dcdcdc;
+}
+
+@media (max-width: 768px) {
+  .gal-window {
+    top: auto;
+    bottom: 44px;
+    right: 6px;
+    left: 6px;
+    width: auto;
+    max-height: 62vh;
+  }
+
+  .gal-planet-label {
+    font-size: 22px;
+  }
+}

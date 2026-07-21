@@ -26,6 +26,12 @@ community-curated encyclopedia of Remilia culture. Being in the canon = the alig
 - Git history — launch/feature chronology.
 - External evidence to archive: scatter.art collection pages, OpenSea, Miladychan threads.
 
+## Framing reference
+networkspirits.net ("Spirit98OS", est. 2024) is a Win98-styled portal/directory for the
+Remilia network — proof the retro-desktop portal is an established genre. Frame lawb.xyz
+in that lineage (New Net Art / Network Spirituality), with the distinction that lawb.xyz
+natively runs its games/mint/generator rather than linking out.
+
 ## Wiki house style (from their editorial standards)
 Encyclopedic neutral tone, chronological clarity, archival references for every claim.
 No promo language. Write like a historian, not a marketer.

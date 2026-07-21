@@ -192,6 +192,7 @@ const REMILIA_LINKS = [
   { id: 'miladychan', name: 'Miladychan', image: '/assets/miladychan.png', description: 'Realtime anonymous imageboard.' },
   { id: 'remilia-net', name: 'Remilia.net', image: '/assets/remilia-net-icon.png', description: 'RemiliaNET social network.' },
   { id: 'remilia-wiki', name: 'Remilia Wiki', image: '/assets/remilia-wiki-icon.png', description: 'Remilia culture encyclopedia.' },
+  { id: 'network-spirits', name: 'Network Spirits', image: '/assets/networkspirits-icon.png', description: 'Spirit98OS portal & directory.' },
 ];
 
 interface FolderNFT {
@@ -290,7 +291,7 @@ const Mobile = () => {
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: 'tokens', icon: '/assets/lawbticker.webp', action: () => setShowLawbPopup(true) },
     { label: 'Remilia', icon: '/assets/remilia-folder.webp', action: () => setShowRemiliaFolder(true) },
-    { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
+    { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => navigate('/gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.webp', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
     { label: 'Lawb Chess', icon: '/assets/chess.svg', action: () => navigate('/chess') },
@@ -349,6 +350,9 @@ const Mobile = () => {
           break;
         case 'remilia-wiki':
           window.open('https://wiki.remilia.org', '_blank', 'noopener,noreferrer');
+          break;
+        case 'network-spirits':
+          window.open('https://networkspirits.net', '_blank', 'noopener,noreferrer');
           break;
         default: break;
       }

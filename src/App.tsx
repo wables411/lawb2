@@ -204,7 +204,7 @@ function App() {
       }
       setShowMintPopup(true);
     } else if (action === 'nft-gallery') {
-      setShowNFTGallery(true);
+      navigate('/gallery');
     } else if (action === 'meme-generator') {
       setShowMemeGenerator(true);
     } else if (action === 'lawb-profile') {

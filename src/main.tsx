@@ -6,6 +6,7 @@ import Mobile from './mobile/Mobile.tsx';
 
 const ReefArcadeMenu = lazy(() => import('./pages/ReefArcadeMenu'));
 const ChessPage = lazy(() => import('./components/ChessPage'));
+const GalleryPage = lazy(() => import('./pages/gallery/GalleryPage'));
 import { useMediaQuery } from './hooks/useMediaQuery.ts';
 import './index.css';
 import './walletModal.css';
@@ -116,6 +117,31 @@ const AppWithWagmi = () => {
                     }
                   >
                     <ReefArcadeMenu />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/gallery"
+                element={
+                  <Suspense
+                    fallback={
+                      <div
+                        style={{
+                          minHeight: '100vh',
+                          background: '#000005',
+                          color: '#c0c0c0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontFamily: 'MS Sans Serif, Arial, sans-serif',
+                          fontSize: 14,
+                        }}
+                      >
+                        Loading the lawbverse…
+                      </div>
+                    }
+                  >
+                    <GalleryPage />
                   </Suspense>
                 }
               />
