@@ -1,5 +1,16 @@
 # Reef Run — On-Chain Play-to-Earn Spec (DRAFT for review)
 
+> ## ⚡ LOCKED 2026-07-20 — token & chain decision (owner call, overrides §4–§9 where they conflict)
+> - **Jackpot/economy token: $CULT (Milady Cult Coin, ETH mainnet `0x0000000000c5dc95539589fbD24BE07c6C14eCa4`).**
+>   Verified: all CULT liquidity is L1 (~$3.36M Uniswap CULT/WETH); **no bridged CULT exists on
+>   Base/Arb** (checked 2026-07-20). Reef Run tolerates L1 because it's ONE tx per jackpot entry +
+>   one per payout — not per-action like chess.
+> - **Jackpot entry denominated in CULT** (amount TBD at deploy; also show gwei-style meme framing
+>   in UI). Pot = entries, winner-takes-pot −5% fee → **self-funding, house never buys prize tokens**.
+> - **$CLAWB RewardPool emissions: PARKED.** No inflationary reward token. $LAWB/$CLAWB become the
+>   identity/cosmetics/perks layer only (no liquidity required).
+> - Rationale + chess counterpart: see LAWBCHESS_ONCHAIN_SPEC.md addendum ($DMT on Arbitrum).
+
 > Status: **design only — no code written.** Companion to `LAWBCHESS_ONCHAIN_SPEC.md`; reuses its
 > proven patterns (EIP-712 signed claims, non-drainable escrow, UUPS+pause+multisig, off-app
 > services instead of Netlify functions, small-caps de-risking).

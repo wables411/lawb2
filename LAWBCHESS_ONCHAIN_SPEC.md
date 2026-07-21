@@ -1,5 +1,19 @@
 # LAWB Chess — Fully On-Chain Redesign Spec (DRAFT for review)
 
+> ## ⚡ LOCKED 2026-07-20 — token & chain rollout (owner call; contract needs NO changes, it already takes any ERC-20 + allowlisted NFTs)
+> - **Ship order: Arbitrum first, featured wager token $DMT** (Dream Machine Token,
+>   `0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8`). Arb gas ≈ cents/move → casual play works.
+>   DMT/Arb liquidity is thin (~$29K Camelot, checked 2026-07-20) but wagering is peer-to-peer —
+>   players hold DMT, nothing needs swapping; thin liquidity is acceptable.
+> - **$CULT chess = the ETH-mainnet high-stakes tier** (CULT has no L2 bridge; all ~$3.36M liquidity
+>   is L1). Per-move L1 gas is the cost of the big-money table; L1 players pay own gas (spec §locked).
+> - **NFT wagers follow the collections' chains:** ETH deploy allowlists Lawbsters/Lawbstarz/
+>   Pixelawbs; Base deploy allowlists Halloween/ASCII Lawbsters.
+> - **Frontend curation:** feature $CULT/$DMT prominently per chain; keep the existing custom-token
+>   input as the subtle "wager any ERC-20" option (already built in the lobby UI).
+> - **$LAWB/$CLAWB are NOT wager tokens** (no liquidity) — identity/cosmetics/perks layer only.
+> - Reef Run counterpart (CULT-on-ETH jackpot): see REEFRUN_ONCHAIN_SPEC.md addendum.
+
 > Status: **design only — no code written.** This is the artifact to review before any implementation.
 > Goal: PvP chess that is functionally airtight, settlement-trustless, multichain (ETH / Base / Arb),
 > with connect-once UX, on-chain ELO, and NFT-collection wagers — without breaking the live site,
