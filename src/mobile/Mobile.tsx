@@ -188,6 +188,11 @@ const SOL_NFTS = [
   { id: 'lawbstation', name: 'Lawbstation', image: '/assets/lawbstation.webp', description: 'Lawbstation. SOL.' },
   { id: 'nexus', name: 'Nexus', image: '/assets/nexus.webp', description: 'Nexus. SOL.' },
 ];
+const REMILIA_LINKS = [
+  { id: 'miladychan', name: 'Miladychan', image: '/assets/miladychan.png', description: 'Realtime anonymous imageboard.' },
+  { id: 'remilia-net', name: 'Remilia.net', image: '/assets/remilia-net-icon.png', description: 'RemiliaNET social network.' },
+  { id: 'remilia-wiki', name: 'Remilia Wiki', image: '/assets/remilia-wiki-icon.png', description: 'Remilia culture encyclopedia.' },
+];
 
 interface FolderNFT {
   id: string;
@@ -224,6 +229,7 @@ const Mobile = () => {
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [showMintPopup, setShowMintPopup] = useState(false);
   const [showEvmFolder, setShowEvmFolder] = useState(false);
+  const [showRemiliaFolder, setShowRemiliaFolder] = useState(false);
   const [showSolFolder, setShowSolFolder] = useState(false);
   const [showLawbPopup, setShowLawbPopup] = useState(false);
   const [showLawbsters, setShowLawbsters] = useState(false);
@@ -283,7 +289,7 @@ const Mobile = () => {
     { label: `EVM NFT'S FOLDER`, icon: '/assets/evmfolder.png', action: () => setShowEvmFolder(true) },
     { label: `SOL NFTS FOLDER`, icon: '/assets/solfolder.png', action: () => setShowSolFolder(true) },
     { label: 'tokens', icon: '/assets/lawbticker.webp', action: () => setShowLawbPopup(true) },
-    { label: 'Miladychan', icon: '/assets/miladychan.png', action: () => setShowMiladychanPopup(true) },
+    { label: 'Remilia', icon: '/assets/remilia-folder.webp', action: () => setShowRemiliaFolder(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => setActiveView('gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.webp', action: () => setShowMemeGenerator(true) },
     { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
@@ -334,8 +340,15 @@ const Mobile = () => {
         case 'asciilawbs': setShowAsciilawbs(true); break;
         case 'lawbstation': setShowLawbstation(true); break;
         case 'nexus': setShowNexus(true); break;
-        case 'red-vs-blue': 
+        case 'red-vs-blue':
           window.open('https://opensea.io/item/ethereum/0x46353e0b6b4d9723d253c00acd29adefc05083bb/2', '_blank', 'noopener,noreferrer');
+          break;
+        case 'miladychan': setShowMiladychanPopup(true); break;
+        case 'remilia-net':
+          window.open('https://remilia.net', '_blank', 'noopener,noreferrer');
+          break;
+        case 'remilia-wiki':
+          window.open('https://wiki.remilia.org', '_blank', 'noopener,noreferrer');
           break;
         default: break;
       }
@@ -610,6 +623,7 @@ const Mobile = () => {
       
       {/* EVM Folder Popup */}
       <FolderPopup open={showEvmFolder} onClose={() => setShowEvmFolder(false)} title="EVM NFT'S FOLDER" nfts={EVM_NFTS} />
+      <FolderPopup open={showRemiliaFolder} onClose={() => setShowRemiliaFolder(false)} title="Remilia" nfts={REMILIA_LINKS} />
       {/* SOL Folder Popup */}
       <FolderPopup open={showSolFolder} onClose={() => setShowSolFolder(false)} title="SOL NFTS FOLDER" nfts={SOL_NFTS} />
       {/* $LAWB Popup */}

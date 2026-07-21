@@ -23,6 +23,7 @@ const ICONS: DesktopIcon[] = [
   // Folders
   { id: 'evm-folder', image: '/assets/evmfolder.png', label: 'EVM NFTs', action: 'folder', folderId: 'evm-folder', row: 0, col: 3 },
   { id: 'sol-folder', image: '/assets/solfolder.png', label: 'SOL NFTs', action: 'folder', folderId: 'sol-folder', row: 1, col: 3 },
+  { id: 'remilia-folder', image: '/assets/remilia-folder.webp', label: 'Remilia', action: 'folder', folderId: 'remilia-folder', row: 2, col: 3 },
   // Row 1
   { id: 'mint', image: '/assets/mint.webp', label: 'Mint', action: 'mint', row: 0, col: 0 },
   { id: 'gallery', image: '/assets/lawbstarz.webp', label: 'LAWB Gallery', action: 'nft-gallery', row: 0, col: 2 },
@@ -40,8 +41,11 @@ const ICONS: DesktopIcon[] = [
   { id: 'red-vs-blue', image: '/images/racing-flag.svg', label: 'Red VS Blue', action: 'url', url: 'https://opensea.io/item/ethereum/0x46353e0b6b4d9723d253c00acd29adefc05083bb/2', row: -1, col: -1 },
   { id: 'lawbstation', image: '/assets/lawbstation.webp', label: 'Lawbstation', action: 'popup', popupId: 'lawbstation-popup', row: -1, col: -1 },
   { id: 'nexus', image: '/assets/nexus.webp', label: 'Nexus', action: 'popup', popupId: 'nexus-popup', row: -1, col: -1 },
+  // Remilia folder contents (not shown on desktop)
+  { id: 'chat', image: '/assets/miladychan.png', label: 'Miladychan', action: 'popup', popupId: 'miladychan-popup', row: -1, col: -1 },
+  { id: 'remilia-net', image: '/assets/remilia-net-icon.png', label: 'Remilia.net', action: 'url', url: 'https://remilia.net', row: -1, col: -1 },
+  { id: 'remilia-wiki', image: '/assets/remilia-wiki-icon.png', label: 'Remilia Wiki', action: 'url', url: 'https://wiki.remilia.org', row: -1, col: -1 },
   // Row 4
-  { id: 'chat', image: '/assets/miladychan.png', label: 'Miladychan', action: 'popup', popupId: 'miladychan-popup', row: 3, col: 0 },
   { id: 'lawb', image: '/assets/lawbticker.webp', label: 'tokens', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
   { id: 'reef-arcade', image: '/assets/reef-arcade.svg', label: 'Reef Run', action: 'arcade', row: 2, col: 0 },
   { id: 'lawb-chess', image: '/assets/chess.svg', label: 'Lawb Chess', action: 'chess', row: 2, col: 1 },
@@ -215,6 +219,44 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
                   image={icon.image}
                   label={icon.label}
                   action={icon.action}
+                  popupId={icon.popupId}
+                  folderId={icon.folderId}
+                  onClick={handleIconClick}
+                  isInFolder={true}
+                />
+              ))}
+            </div>
+          </Popup>
+        )}
+        {openFolders['remilia-folder'] && (
+          <Popup
+            id="remilia-folder"
+            title="Remilia"
+            isOpen={true}
+            onClose={() => setOpenFolders(prev => ({ ...prev, ['remilia-folder']: false }))}
+            onMinimize={() => setOpenFolders(prev => ({ ...prev, ['remilia-folder']: false }))}
+            zIndex={3001}
+          >
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(96px, 1fr))',
+              gap: isMobile ? '16px' : '24px',
+              padding: isMobile ? '16px' : '32px',
+              justifyItems: 'center',
+              alignItems: 'center',
+              minHeight: '100%',
+              width: '100%',
+              height: '100%',
+              overflow: 'auto',
+              boxSizing: 'border-box',
+            }}>
+              {ICONS.filter(icon => ['chat', 'remilia-net', 'remilia-wiki'].includes(icon.id)).map(icon => (
+                <Icon
+                  key={icon.id}
+                  image={icon.image}
+                  label={icon.label}
+                  action={icon.action}
+                  url={icon.url}
                   popupId={icon.popupId}
                   folderId={icon.folderId}
                   onClick={handleIconClick}
