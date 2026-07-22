@@ -40,6 +40,22 @@ export async function isWalletDbAuthed(pathKey: string): Promise<boolean> {
 }
 
 /**
+ * Wait for this wallet's auth session to appear (the sign-in prompt may still be
+ * open when a caller wants to write). Resolves false on timeout — callers should
+ * then degrade to read-only behavior rather than attempt a write the rules reject.
+ */
+export async function waitForWalletDbAuth(address: string, timeoutMs = 8000): Promise<boolean> {
+  const pathKey = normalizeLeaderboardPathKey(address);
+  if (!pathKey) return false;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await isWalletDbAuthed(pathKey)) return true;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return isWalletDbAuthed(pathKey);
+}
+
+/**
  * Ensure this wallet has a Firebase auth session, prompting a signature if needed.
  * Resolves true when signed in, false when unavailable/declined (writes will then
  * be rejected by database rules and callers' existing error paths handle it).

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
+import { waitForWalletDbAuth } from '../firebaseWalletAuth';
 import {
   getUserLeaderboardEntry,
   mergeLeaderboardEntriesForDisplay,
@@ -713,11 +714,24 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         if (!profileData) {
           // Only create profile if it's the user's own profile
           if (isOwnProfile) {
-            profileDebugLog('[PROFILE] Creating new profile for own account...');
-            await firebaseProfiles.upsertProfile(profileAddress, {});
-            profileData = await firebaseProfiles.getProfile(profileAddress);
-          } else {
-            // For viewing other users, create a minimal profile object with default values
+            // First visit races the wallet-auth sign-in (the login-signature prompt may
+            // still be open) — the locked DB rules reject writes until it completes.
+            // Wait for auth; on timeout skip the write and show defaults instead of erroring.
+            const authed = await waitForWalletDbAuth(profileAddress);
+            if (authed) {
+              profileDebugLog('[PROFILE] Creating new profile for own account...');
+              try {
+                await firebaseProfiles.upsertProfile(profileAddress, {});
+                profileData = await firebaseProfiles.getProfile(profileAddress);
+              } catch (createErr) {
+                profileDebugLog('[PROFILE] Profile create failed, showing defaults:', createErr);
+              }
+            } else {
+              profileDebugLog('[PROFILE] Wallet auth not ready — showing defaults without creating');
+            }
+          }
+          if (!profileData) {
+            // Minimal in-memory profile: viewing another user, or own profile before auth lands
             profileData = {
               wallet_address: normalizeAddress(address),
               nft_inventory: {
