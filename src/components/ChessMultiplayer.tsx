@@ -1128,6 +1128,40 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
   };
   
   const [captureAnimation, setCaptureAnimation] = useState<{ row: number; col: number; show: boolean } | null>(null);
+  // PvP identity cards: username (wallet fallback) + PFP for both players, shown during a match.
+  const [matchCards, setMatchCards] = useState<{ me: { name: string; pfp: string } | null; opp: { name: string; pfp: string } | null }>({ me: null, opp: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCard = async (addr: string): Promise<{ name: string; pfp: string }> => {
+      const [name, profile] = await Promise.all([
+        getDisplayName(addr).catch(() => ''),
+        (async () => {
+          try {
+            const primary = await firebaseProfiles.getPrimaryWallet(addr);
+            return await firebaseProfiles.getProfile(primary);
+          } catch {
+            return null;
+          }
+        })(),
+      ]);
+      return {
+        name: (name && name.trim()) || formatAddress(addr),
+        pfp: profile?.profile_picture?.image_url || '/images/sticker4.png',
+      };
+    };
+    if (gameMode === GameMode.ACTIVE && address && opponent) {
+      void (async () => {
+        const [me, opp] = await Promise.all([loadCard(address), loadCard(opponent)]);
+        if (!cancelled) setMatchCards({ me, opp });
+      })();
+    } else {
+      setMatchCards({ me: null, opp: null });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [gameMode, address, opponent]);
   const [gameJustFinished, setGameJustFinished] = useState(false);
   const [isGameLoading, setIsGameLoading] = useState(false);
 
@@ -7252,13 +7286,43 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 <span className="wager-display">
                   {isMobile ? `${wager.toFixed(2)} ${currentGameToken}` : `Wager: ${wager.toFixed(6)} ${currentGameToken}`}
                 </span>
-                {opponent && (
+                {opponent && !matchCards.opp && (
                   <span className="opponent-info">
                     {isMobile ? `vs ${formatAddress(opponent).slice(0, 6)}...` : `vs ${formatAddress(opponent)}`}
                   </span>
                 )}
               </div>
-              <div 
+              {matchCards.me && matchCards.opp && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 8 : 14, padding: '4px 0', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <img
+                      src={matchCards.me.pfp}
+                      alt=""
+                      style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, objectFit: 'cover', border: '1px solid #ff0000' }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/images/sticker4.png'; }}
+                    />
+                    <span style={{ color: '#ff0000', fontSize: isMobile ? 11 : 13, fontWeight: 'bold', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {matchCards.me.name}
+                    </span>
+                  </div>
+                  <span style={{ color: '#ff0000', fontSize: isMobile ? 10 : 12 }}>vs</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <img
+                      src={matchCards.opp.pfp}
+                      alt=""
+                      style={{ width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, objectFit: 'cover', border: '1px solid #ff0000' }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/images/sticker4.png'; }}
+                    />
+                    <span style={{ color: '#ff0000', fontSize: isMobile ? 11 : 13, fontWeight: 'bold', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {matchCards.opp.name}
+                    </span>
+                  </div>
+                  <span style={{ color: '#ffd700', fontSize: isMobile ? 10 : 12, fontWeight: 'bold' }}>
+                    {wager.toFixed(isMobile ? 2 : 4)} {currentGameToken} each
+                  </span>
+                </div>
+              )}
+              <div
                 className="chess-main-area"
                 ref={(el) => {
                   // Chess main area ref callback - no debug logging needed
