@@ -2005,26 +2005,32 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   list-style: decimal;
 }
 
-.how-to-piece-list {
+/*
+ * Piece key classes MUST NOT contain the substrings "piece", "square",
+ * "chessboard", or "board-row": theme catch-alls like
+ * `body:not(.lawb-app-dark-mode) [class*="piece"]` (ChessGame.css ~1699)
+ * force display:block/position:absolute/width:100%/height:100% !important
+ * on any match, which is what shattered the old .how-to-piece-* key.
+ */
+.how-to-key-list {
   list-style: none;
   padding-left: 0;
 }
 
-.how-to-piece-item {
-  display: flex !important;
-  flex-direction: row !important;
+.how-to-key-row {
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   margin: 6px 0;
 }
 
 /*
- * Chess piece icons: locked to 26px with !important so the Popup's global
+ * Icons stay locked to 26px with !important so the Popup's global
  * `& img { maxWidth: 100%; height: auto; display: block }` rule cannot
- * stretch them to the full popup width (which caused all 6 piece images
- * to stack as a floor-to-ceiling pile at the bottom of "How to Play").
+ * stretch them to the full popup width.
  */
-.how-to-piece-icon {
+.how-to-key-icon {
   width: 26px !important;
   height: 26px !important;
   max-width: 26px !important;
@@ -2034,6 +2040,25 @@ body:not(.chess-dark-mode), html:not(.chess-dark-mode) {
   display: inline-block !important;
   margin: 0 !important;
   vertical-align: middle;
+}
+
+.how-to-school-btn {
+  display: block;
+  width: 100%;
+  border: 1px solid #b8860b;
+  border-radius: 6px;
+  background: #fff3d6;
+  color: #7a5200;
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.how-to-school-btn:hover,
+.how-to-school-btn:focus-visible {
+  background: #ffe9b3;
 }
 
 .how-to-contract-link {
@@ -5680,12 +5705,12 @@ div.chess-game.baseapp div.game-stable-layout.home-view.baseapp div.center-area 
     min-height: 8px;
   }
 
-  .chess-page-simple .how-to-piece-item {
+  .chess-page-simple .how-to-key-row {
     align-items: flex-start;
     gap: 8px;
   }
 
-  .chess-page-simple .how-to-piece-icon {
+  .chess-page-simple .how-to-key-icon {
     width: 22px !important;
     height: 22px !important;
     max-width: 22px !important;

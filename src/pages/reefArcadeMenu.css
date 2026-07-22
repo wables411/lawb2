@@ -1178,6 +1178,30 @@
   font-family: system-ui, sans-serif;
 }
 
+.ra-howto-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ra-howto-card {
+  border: 1px solid rgba(46, 230, 255, 0.22);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: rgba(10, 28, 46, 0.55);
+}
+
+.ra-howto-card p {
+  margin: 0;
+}
+
+.ra-howto-card-title {
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  color: rgba(46, 230, 255, 0.85);
+  margin: 0 0 4px !important;
+}
+
 .ra-panel-actions {
   margin-top: 20px;
   display: flex;

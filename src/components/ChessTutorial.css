@@ -1,0 +1,279 @@
+/*
+ * Lawbster Chess School (ChessTutorial.tsx) — layout & animation only.
+ * All colors/backgrounds that must survive theming are set INLINE in the
+ * component (the .lawb-app-dark-mode universal rules override any
+ * stylesheet background/color that lacks an inline style).
+ * Class names must not contain "piece", "square", "chessboard" or
+ * "board-row" — see the .how-to-key-* comment in ChessGame.css.
+ */
+
+.cschool-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.cschool-panel {
+  width: 100%;
+  max-width: 440px;
+  max-height: 92vh;
+  overflow-y: auto;
+  border: 1px solid rgba(147, 194, 255, 0.4);
+  border-radius: 12px;
+  padding: 16px 18px 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.cschool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cschool-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cschool-close {
+  border: 1px solid rgba(147, 194, 255, 0.35);
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+/* ---------- lesson map ---------- */
+
+.cschool-map-intro {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.cschool-map {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cschool-map-item,
+.cschool-boss {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(147, 194, 255, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.cschool-map-item {
+  cursor: pointer;
+  font: inherit;
+}
+
+.cschool-map-item:hover,
+.cschool-map-item:focus-visible {
+  border-color: rgba(255, 212, 120, 0.7);
+  outline: none;
+}
+
+.cschool-map-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex: 0 0 30px;
+}
+
+.cschool-boss-emoji {
+  font-size: 24px;
+  flex: 0 0 30px;
+  text-align: center;
+}
+
+.cschool-map-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.cschool-map-num {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.cschool-map-check {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cschool-boss-btn {
+  border: 0;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.cschool-boss-btn:hover,
+.cschool-boss-btn:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* ---------- active lesson ---------- */
+
+.cschool-lesson-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.cschool-linkbtn {
+  border: 0;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.cschool-pips {
+  display: flex;
+  gap: 6px;
+}
+
+.cschool-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.cschool-lesson-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.cschool-title-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.cschool-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: min(320px, 78vw);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border: 3px solid #2b3a55;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cschool-cell {
+  position: relative;
+  border: 0;
+  padding: 0;
+  aspect-ratio: 1;
+  font: inherit;
+}
+
+.cschool-fig {
+  position: absolute;
+  inset: 8%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+}
+
+.cschool-fig-hero {
+  animation: cschool-bob 1.6s ease-in-out infinite;
+}
+
+.cschool-star {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  pointer-events: none;
+}
+
+.cschool-dot {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cschool-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: cschool-fadein 0.25s ease-out;
+}
+
+.cschool-feedback {
+  min-height: 42px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  text-align: center;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+
+.cschool-shake {
+  animation: cschool-shake 0.45s ease-in-out;
+}
+
+@keyframes cschool-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4%); }
+}
+
+@keyframes cschool-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  55% { transform: translateX(5px); }
+  80% { transform: translateX(-3px); }
+}
+
+@keyframes cschool-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cschool-fig-hero,
+  .cschool-shake,
+  .cschool-flash {
+    animation: none;
+  }
+  .cschool-boss-btn:hover {
+    transform: none;
+  }
+}

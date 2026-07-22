@@ -4,9 +4,11 @@ import { getDefaultPieceSet } from '../config/chessPieceSets';
 
 interface HowToContentProps {
   variant?: 'default' | 'mobile';
+  /** When provided, shows a "Learn by playing" button that opens the Lawbster Chess School. */
+  onStartTutorial?: () => void;
 }
 
-export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' }) => {
+export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default', onStartTutorial }) => {
   const defaultPieceSet = getDefaultPieceSet();
   const pieceKey = [
     {
@@ -66,8 +68,15 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
     <div className={`how-to-section ${variant === 'mobile' ? 'mobile' : ''}`}>
       <h4>How to Play Lawb Chess</h4>
       <div className="how-to-content">
+        {onStartTutorial && (
+          <p>
+            <button type="button" className="how-to-school-btn" onClick={onStartTutorial}>
+              🎓 New to chess? Learn by playing — open the Lawbster Chess School
+            </button>
+          </p>
+        )}
         <p>
-          <strong>What is Lawb Chess?</strong> Chess, but lobsters. Your Blue army starts at the
+          <strong>What is Lawb Chess?</strong> Chess, but lawbsters. Your Blue army starts at the
           bottom, the Red army at the top. Blue always moves first. The goal: trap the other
           team&apos;s King.
         </p>
@@ -86,7 +95,7 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
           ))}
         </ol>
 
-        <p><strong>Play vs Clawb (the robot lobster):</strong></p>
+        <p><strong>Play vs Clawb (the robot lawbster):</strong></p>
         <ol className="how-to-list how-to-list-numbered">
           {vsClawbFlow.map((step) => (
             <li key={step}>{step}</li>
@@ -107,13 +116,15 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
         </p>
 
         <p><strong>Meet the pieces:</strong></p>
-        <ul className="how-to-list how-to-piece-list">
+        {/* Class names deliberately avoid the "piece" substring — see ChessGame.css
+            .how-to-key-* comment (theme catch-alls hijack [class*="piece"]). */}
+        <ul className="how-to-list how-to-key-list">
           {pieceKey.map((piece) => (
-            <li key={piece.code} className="how-to-piece-item">
+            <li key={piece.code} className="how-to-key-row">
               <img
                 src={defaultPieceSet.pieceImages[piece.code]}
                 alt={`${piece.name} piece`}
-                className="how-to-piece-icon"
+                className="how-to-key-icon"
                 loading="lazy"
               />
               <span>

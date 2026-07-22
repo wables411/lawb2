@@ -28,7 +28,7 @@ const LazyArcadeLoadingPeptides = lazy(async () => {
 });
 
 type Phase = 'intro' | 'menu';
-type ModalKind = 'difficulty' | 'wallet' | null;
+type ModalKind = 'difficulty' | 'wallet' | 'howto' | null;
 type TouchGesture = { pointerId: number; startY: number };
 
 const CHARACTERS: { id: ArcadeCharacterId; name: string; color: string }[] = [
@@ -377,7 +377,7 @@ export default function ReefArcadeMenu() {
           setModal(null);
           return;
         }
-        if (modal === 'difficulty' && (ev.key === 'Enter' || ev.key === ' ')) {
+        if ((modal === 'difficulty' || modal === 'howto') && (ev.key === 'Enter' || ev.key === ' ')) {
           ev.preventDefault();
           setModal(null);
           return;
@@ -408,6 +408,11 @@ export default function ReefArcadeMenu() {
         if (k === '4' || k === 'd') {
           ev.preventDefault();
           setModal('difficulty');
+          return;
+        }
+        if (k === '5' || k === 'h') {
+          ev.preventDefault();
+          setModal('howto');
           return;
         }
         if (k === 'x') {
@@ -625,9 +630,18 @@ export default function ReefArcadeMenu() {
                 <span className="ra-tile-label">Depth</span>
                 <span className="ra-tile-meta">Tier &amp; speed · 4</span>
               </button>
+              <button
+                type="button"
+                className="ra-tile"
+                onClick={() => setModal('howto')}
+              >
+                <span className="ra-tile-icon" aria-hidden>?</span>
+                <span className="ra-tile-label">How to play</span>
+                <span className="ra-tile-meta">30-second guide · 5</span>
+              </button>
             </div>
 
-            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 swimmer · 3 wallet · 4 depth · X exit</p>
+            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 swimmer · 3 wallet · 4 depth · 5 how to · X exit</p>
 
             <div className="ra-footer-row">
               <button type="button" className="ra-link-quiet" onClick={() => navigate('/')}>
@@ -907,7 +921,47 @@ export default function ReefArcadeMenu() {
               </>
             )}
 
-            {modal === 'difficulty' && (
+            {modal === 'howto' && (
+              <>
+                <h2>HOW TO PLAY</h2>
+                <div className="ra-howto-cards">
+                  <div className="ra-howto-card">
+                    <p className="ra-howto-card-title">🕹 STEER</p>
+                    <p>
+                      Three lanes. <strong>A / D</strong> or <strong>← / →</strong> switch lanes ·{' '}
+                      <strong>W</strong> swim faster · <strong>S</strong> ease off. Touch:{' '}
+                      <strong>tap left/right</strong> to lane shift, <strong>hold + swipe up/down</strong> for speed.
+                    </p>
+                  </div>
+                  <div className="ra-howto-card">
+                    <p className="ra-howto-card-title">🫧 SURVIVE</p>
+                    <p>
+                      Score = <strong>seconds survived</strong>. Watch two meters: <strong>Armor</strong> and{' '}
+                      <strong>O₂</strong>. Jellyfish and pufferfish sting armor + breath and slow you down; mines hit
+                      hard. The deeper you go, the meaner the reef gets.
+                    </p>
+                  </div>
+                  <div className="ra-howto-card">
+                    <p className="ra-howto-card-title">🧀 GRAB</p>
+                    <p>
+                      <strong>Air tank</strong> refills O₂ · <strong>Peptides</strong> restore armor (both cleanse
+                      slow) · <strong>Cheese</strong> = nitro burst · <strong>Trash</strong> a little armor ·{' '}
+                      <strong>Coin</strong> +1 and a sip of O₂.
+                    </p>
+                  </div>
+                  <div className="ra-howto-card">
+                    <p className="ra-howto-card-title">🦞 SWIMMERS</p>
+                    <p>
+                      <strong>Clawb</strong> — lawbster lungs, never runs out of breath, extra loot ·{' '}
+                      <strong>Milady</strong> — fastest fins · <strong>Radbro</strong> — toughest armor. Connect a
+                      wallet to save your best run and earn Games points.
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {(modal === 'difficulty' || modal === 'howto') && (
               <div className="ra-panel-actions">
                 <button type="button" className="ra-btn" onClick={() => setModal(null)}>
                   OK

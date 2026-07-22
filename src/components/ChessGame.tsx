@@ -30,6 +30,7 @@ const CLAWB_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429';
 import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
+import { ChessTutorial } from './ChessTutorial';
 import { ThemeToggle } from './ThemeToggle';
 import { ChessChat } from './ChessChat';
 import { debugIngest } from '../utils/debugIngest';
@@ -2451,6 +2452,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [sidebarView, setSidebarView] = useState<'leaderboard' | 'moves' | 'chat' | 'profile' | 'howto' | null>(isMobile ? null : null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Lawbster Chess School (interactive tutorial) overlay
+  const [showTutorial, setShowTutorial] = useState(false);
+
   // Debug menu state
   useEffect(() => {
     if (isMobile) {
@@ -2486,6 +2490,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   if (!showGame && !showDifficulty && !showPieceSetSelector) {
     return (
       <div className={`chess-game ${isMobile ? 'mobile mobile-device' : 'desktop'}`}>
+        {showTutorial && (
+          <ChessTutorial
+            onClose={() => setShowTutorial(false)}
+            onPlayClawb={() => {
+              setShowTutorial(false);
+              setGameMode('ai');
+              setDifficulty('easy');
+              setShowPieceSetSelector(true);
+            }}
+          />
+        )}
         <div className={`game-stable-layout home-view ${isMobile ? 'mobile' : 'desktop'}`}>
           {/* Desktop sidebar removed - using menu popup and windows instead */}
           <div className="center-area">
@@ -2533,6 +2548,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 <button
                   type="button"
                   className="setup-guide-btn"
+                  onClick={() => setShowTutorial(true)}
+                >
+                  🎓 Learn Chess
+                </button>
+                <button
+                  type="button"
+                  className="setup-guide-btn"
                   onClick={openHowToGuide}
                 >
                   How To + Piece Key
@@ -2542,6 +2564,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               <div className="setup-quick-guide">
                 <div className="setup-quick-guide-header">
                   <h3>Lawb Chess Beta 3000 Setup</h3>
+                  <button
+                    type="button"
+                    className="setup-guide-btn"
+                    onClick={() => setShowTutorial(true)}
+                  >
+                    🎓 Learn Chess
+                  </button>
                   <button
                     type="button"
                     className="setup-guide-btn"
@@ -2591,7 +2620,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             {!isMobile && (
               <>
                 <div className="help-section-compact visible-howto-panel">
-                  <HowToContent />
+                  <HowToContent onStartTutorial={() => setShowTutorial(true)} />
                 </div>
                 {/* Chessboards GIF */}
                 <div style={{
