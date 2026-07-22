@@ -424,12 +424,12 @@ const Mobile = () => {
             <p style={{marginBottom: '10px'}}>
               $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
             </p>
-            <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24. Now multichain across Solana, Base, Arbitrum, and Sanko (DMT).</p>
+            <p style={{marginBottom: '10px'}}>$lawb airdropped to LawbStation holders 03.19.24. Now multichain across Solana, Base, and Arbitrum. (A Sanko deployment exists, but that chain has sunset.)</p>
             <p style={{marginBottom: '10px'}}>THERE IS NO MEME WE $LAWB YOU</p>
             <p style={{marginBottom: '10px'}}>(sol) ca: 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
             <p style={{marginBottom: '10px'}}>(base) ca: 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
             <p style={{marginBottom: '10px'}}>(arb) ca: 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
-            <p style={{marginBottom: '10px'}}>(dmt) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
+            <p style={{marginBottom: '10px'}}>(sanko — chain sunset, legacy) ca: 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
             <img src="/assets/lawbticker.webp" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '10px' }} />
             <div style={{ width: '100%', height: '400px', marginTop: '10px' }}>
               <iframe
@@ -450,18 +450,17 @@ const Mobile = () => {
           <>
             <h1 style={{marginBottom: '10px'}}>Clawb</h1>
             <p style={{marginBottom: '10px'}}>
-              Clawb is an autonomous agent built on the OpenClaw stack. It runs as long-lived Node.js services under pm2 — a 24/7 stream loop on <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a> driven over the OBS WebSocket, an autonomous decision loop, a 3D world bridge, and a Telegram gateway — all loading one shared identity, so it answers the same on stream, on calls, and in DMs.
-            </p>
-            <p style={{marginBottom: '14px'}}>
-              It reasons on Claude, renders its token art and memes on <a href="https://noema.art/referral/lawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Noema</a>, takes voice calls from viewers, and deploys its own tokens on Base via <a href="https://app.liquidprotocol.org/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Liquid Protocol</a>. Watchdog processes restart and re-sync it on failure.
+              Clawb is an autonomous agent built on the OpenClaw stack, streaming 24/7 on <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a> with live chat and viewer voice calls. It reasons on Claude and runs as long-lived services with watchdogs that restart and re-sync it on failure — one shared identity on stream, on calls, and in DMs.
             </p>
             <p style={{marginBottom: '14px', fontWeight: 'bold'}}>there is no meme i lawb you.</p>
 
-            <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Current Milestones</p>
-            <p style={{marginBottom: '10px'}}>1. 24/7 onchain Base-native Retake stream loop with live chat/voice and OBS-integrated control.</p>
-            <p style={{marginBottom: '10px'}}>2. Autonomous world-action runtime via local world bridge + responder services.</p>
-            <p style={{marginBottom: '10px'}}>3. Onchain adspace/commercial pipeline (indexing, queueing, paid playback). ClawbAdSpace (Base): <a href="https://basescan.org/address/0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x4152D2A4283663bb5B677dfC9d0d8924Dd46C3D1</a></p>
-            <p style={{marginBottom: '14px'}}>4. Production hardening via PM2 services, webhook controls, and recovery watchdogs.</p>
+            <p style={{marginBottom: '6px', fontWeight: 'bold'}}>On lawb.xyz</p>
+            <p style={{marginBottom: '10px'}}>Watch the stream and join live chat from the Clawb button on the taskbar.</p>
+            <p style={{marginBottom: '14px'}}>Clawb is also the single-player chess opponent and a playable Reef Run character.</p>
+
+            <p style={{marginBottom: '6px', fontWeight: 'bold'}}>The short history</p>
+            <p style={{marginBottom: '10px'}}>Earlier eras experimented with on-chain commercials/adspace on the stream and a claimable $CLAWB token.</p>
+            <p style={{marginBottom: '14px'}}>Both were retired in July 2026 — Clawb now focuses on the stream and the games; $CLAWB is no longer part of the site economy.</p>
 
             <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Where to find it</p>
             <p style={{marginBottom: '10px'}}>Stream: <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>retake.tv/clawb</a></p>
@@ -473,17 +472,19 @@ const Mobile = () => {
         {tab === 'faq' && (
           <>
             <h1 style={{marginBottom: '10px'}}>FAQ</h1>
-            <p style={{marginBottom: '10px', fontWeight: 'bold'}}>Bridge Guide (SOL → ARB → Sanko)</p>
+            <p style={{marginBottom: '10px', fontWeight: 'bold'}}>Bridge Guide (SOL → ARB)</p>
             <p style={{marginBottom: '10px'}}>
-              if you wish to bridge your $lawb token from solana to arbitrum to sanko, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://portalbridge.com/</a>
+              if you wish to bridge your $lawb token from solana to arbitrum, visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://portalbridge.com/</a>
             </p>
             <p style={{marginBottom: '10px'}}>step 1. connect solana wallet and select $lawb token (65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6)</p>
             <p style={{marginBottom: '10px'}}>step 2. connect arbitrum wallet and select $lawb token (0x741f8FbF42485E772D97f1955c31a5B8098aC962)</p>
             <p style={{marginBottom: '10px'}}>step 3. select token quantity, confirm transactions.</p>
-            <p style={{marginBottom: '10px'}}>step 4. now that you have $lawb on arbitrum, visit <a href="https://sanko.xyz/bridge" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>https://sanko.xyz/bridge</a> and connect your arb wallet.</p>
-            <p style={{marginBottom: '10px'}}>step 5. from arb wallet, select $lawb token.</p>
-            <p style={{marginBottom: '10px'}}>step 6. connect to sanko chain. if not already selected, select $lawb token on sanko (0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F)</p>
-            <p style={{marginBottom: '10px'}}>step 7. select quantity and confirm transactions.</p>
+            <p style={{marginBottom: '14px'}}>note: the Sanko chain has sunset — the old Sanko $lawb deployment is legacy and there is no active bridge path to it.</p>
+
+            <p style={{marginBottom: '10px', fontWeight: 'bold'}}>Game tokens ($DMT &amp; $CULT)</p>
+            <p style={{marginBottom: '10px'}}><strong>$DMT</strong> (Dream Machine Token, Arbitrum) — the featured wager token for on-chain Lawb Chess, live on Arbitrum One. CA: 0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8</p>
+            <p style={{marginBottom: '10px'}}><strong>$CULT</strong> (Milady Cult Coin, Ethereum) — Remilia&apos;s token, planned as the entry token for Reef Run&apos;s upcoming on-chain jackpot. CA: 0x0000000000c5dc95539589fbD24BE07c6C14eCa4</p>
+            <p style={{marginBottom: '10px'}}>neither token is issued by lawb — they are third-party tokens used in the games.</p>
           </>
         )}
       </MobilePopup98>
