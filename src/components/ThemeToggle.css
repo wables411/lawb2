@@ -47,10 +47,13 @@ body:not(.lawb-app-dark-mode) .square,
 body:not(.lawb-app-dark-mode) [class*="square"],
 body:not(.lawb-app-dark-mode) .board-row,
 body:not(.lawb-app-dark-mode) [class*="board-row"] {
-  /* CRITICAL: Preserve inline background-image styles - don't override them */
-  /* Use inherit to preserve inline styles */
-  background-image: inherit !important;
-  background: inherit !important;
+  /*
+   * Do NOT set background/background-image here. `inherit !important` copies
+   * the PARENT's background (not the element's inline style), so it erased the
+   * chessboard's inline background-image whenever this stylesheet was loaded —
+   * i.e. entering chess via the desktop icon (SPA nav) showed no board art,
+   * while a direct /chess load (stylesheet absent) did.
+   */
   filter: none !important;
   -webkit-filter: none !important;
   opacity: 1 !important;
