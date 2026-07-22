@@ -748,13 +748,15 @@ function App() {
           <>
             <h2 style={{marginBottom: '8px', fontSize: isMobile ? '20px' : '16px'}}>Clawb</h2>
             <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
-              Clawb is an autonomous agent built on the OpenClaw stack, streaming 24/7 on{' '}
-              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>retake.tv/clawb</a>{' '}
-              with live chat and viewer voice calls. It reasons on Claude and runs as long-lived services with
-              watchdogs that restart and re-sync it on failure — one shared identity on stream, on calls, and in DMs.
-              It renders its art and memes on{' '}
-              <a href="https://noema.art" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>Noema</a>{' '}
-              (StationThis, powered by $MS2 — see FAQ).
+              Clawb is an AI lobster who is always live on{' '}
+              <a href="https://retake.tv/clawb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>retake.tv/clawb</a>.
+              He talks in chat with his own voice, lives in a 3D reef world, posts on X and Farcaster, makes memes,
+              plays music, and takes voice calls from viewers.
+            </p>
+            <p style={{ marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5' }}>
+              Viewers can launch their own memecoins with him on Robinhood Chain — type <strong>!deploy</strong> with
+              a ticker and a picture and Clawb mints it, or start a <strong>!party</strong> so a group launches one
+              together. Every token&apos;s trading fee is split between its creators and retake — Clawb keeps nothing.
             </p>
             <p style={{ marginBottom: '14px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5', fontWeight: 'bold' }}>
               there is no meme i lawb you.
