@@ -674,13 +674,21 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             const tokenBonus = await fetchBaseLawbClawbHoldingsBonus(
               allWallets.filter((w) => w.chain === 'evm').map((w) => w.address),
             );
-            await firebaseProfiles.updateNFTInventory(profileAddress, inventory, {
-              tokenBonusPoints: tokenBonus,
-            });
-            const updated = await firebaseProfiles.getProfile(profileAddress);
-            if (updated) {
-              profileData = updated;
-              setProfile(updated);
+            // Same auth race as profile creation: the login signature may still be
+            // pending, and the locked rules reject the write until it lands.
+            const invAuthed = await waitForWalletDbAuth(profileAddress);
+            if (invAuthed) {
+              await firebaseProfiles.updateNFTInventory(profileAddress, inventory, {
+                tokenBonusPoints: tokenBonus,
+              });
+              const updated = await firebaseProfiles.getProfile(profileAddress);
+              if (updated) {
+                profileData = updated;
+                setProfile(updated);
+              }
+            } else {
+              profileDebugLog('[PROFILE] Wallet auth not ready — showing fetched inventory without saving');
+              profileData = { ...profileData, nft_inventory: inventory };
             }
           } catch (invError) {
             if (typeof window !== 'undefined' && window.console) {

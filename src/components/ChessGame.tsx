@@ -1755,6 +1755,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           />
         )}
         {isLegalMove && <div className="legal-move-indicator" />}
+        {captureAnimation?.show && captureAnimation.row === row && captureAnimation.col === col && (
+          // Rendered inside the square itself so it can only ever appear on the capture square
+          <div className="capture-animation" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1000 }}>
+            <img src="/images/capture.gif" alt="capture" style={{ width: '100%', height: '100%' }} />
+          </div>
+        )}
       </div>
     );
   };
@@ -3566,26 +3572,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   {Array.from({ length: 8 }, (_, row) => (
                     Array.from({ length: 8 }, (_, col) => renderSquare(row, col))
                   ))}
-                  {/* Capture Animation Overlay */}
-                  {captureAnimation && captureAnimation.show && (
-                    <div 
-                      className="capture-animation"
-                      style={{
-                        position: 'absolute',
-                        top: `${captureAnimation.row * 12.5}%`,
-                        left: `${captureAnimation.col * 12.5}%`,
-                        width: '12.5%',
-                        height: '12.5%',
-                        zIndex: 1000
-                      }}
-                    >
-                      <img 
-                        src="/images/capture.gif" 
-                        alt="capture" 
-                        style={{ width: '100%', height: '100%' }}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
               {/* Debug Log - Mobile Only, below chessboard, zero overlap */}
