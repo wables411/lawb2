@@ -46,13 +46,29 @@ export const LAWB_CHESS_PROXY_ADDRESS: Record<number, `0x${string}` | null> = {
   [LAWB_CHESS_CHAIN_IDS.baseSepolia]: '0xCF4131302Ed9685309F2c1Ca01b282409D1fBCE4',
   [LAWB_CHESS_CHAIN_IDS.base]: null,
   [LAWB_CHESS_CHAIN_IDS.ethereum]: null,
-  [LAWB_CHESS_CHAIN_IDS.arbitrum]: null,
+  // Deployed 2026-07-20 ($DMT launch, 0.01 ETH native cap, DMT allowlisted; verified on Arbiscan)
+  [LAWB_CHESS_CHAIN_IDS.arbitrum]: '0x3112AF5728520F52FD1C6710dD7bD52285a68e47',
 };
 
 /** Returns the LawbChess proxy address for a chain, or null if not deployed there. */
 export function getLawbChessAddress(chainId: number): `0x${string}` | null {
   return LAWB_CHESS_PROXY_ADDRESS[chainId] ?? null;
 }
+
+/**
+ * Featured ERC-20 wager tokens per chain (must match the contract's on-chain allowlist set via
+ * setAllowedToken). Locked 2026-07-20: $DMT is the featured Arbitrum token; $CULT joins the
+ * Ethereum deploy. The lobby's custom-token input stays as the subtle any-ERC-20 option — the
+ * contract rejects non-allowlisted tokens regardless.
+ */
+export const LAWB_CHESS_WAGER_TOKENS: Record<number, { label: string; address: `0x${string}`; decimals: number }[]> = {
+  [LAWB_CHESS_CHAIN_IDS.arbitrum]: [
+    { label: 'DMT (Dream Machine Token)', address: '0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8', decimals: 18 },
+  ],
+  [LAWB_CHESS_CHAIN_IDS.ethereum]: [],
+  [LAWB_CHESS_CHAIN_IDS.base]: [],
+  [LAWB_CHESS_CHAIN_IDS.baseSepolia]: [],
+};
 
 /**
  * Curated NFT collections per chain (must match the contract's on-chain allowlist set via

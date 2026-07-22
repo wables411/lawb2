@@ -25,6 +25,8 @@ const isSpectatorMode = (() => {
 /** Wallet-connected chess page — the normal player experience. */
 const ChessPageConnected: React.FC = () => {
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
+  // On-chain wager chess is opt-in per visit; classic (AI + Firebase PvP) stays the default view.
+  const [onchainMode, setOnchainMode] = useState(false);
 
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
@@ -170,7 +172,31 @@ const ChessPageConnected: React.FC = () => {
           }}
         />
         <div className="chess-content-simple">
-          {ENABLE_ONCHAIN_CHESS ? (
+          {ENABLE_ONCHAIN_CHESS && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
+              <button
+                onClick={() => setOnchainMode(false)}
+                style={{
+                  padding: '6px 14px', cursor: 'pointer', fontWeight: 'bold', fontSize: 13,
+                  background: onchainMode ? '#000' : '#c0c0c0', color: onchainMode ? '#ff0000' : '#000',
+                  border: onchainMode ? '2px outset #fff' : '2px inset #fff',
+                }}
+              >
+                ♟ Classic (AI + PvP)
+              </button>
+              <button
+                onClick={() => setOnchainMode(true)}
+                style={{
+                  padding: '6px 14px', cursor: 'pointer', fontWeight: 'bold', fontSize: 13,
+                  background: onchainMode ? '#c0c0c0' : '#000', color: onchainMode ? '#000' : '#ff0000',
+                  border: onchainMode ? '2px inset #fff' : '2px outset #fff',
+                }}
+              >
+                ⛓ On-Chain Wagers ($DMT · beta)
+              </button>
+            </div>
+          )}
+          {ENABLE_ONCHAIN_CHESS && onchainMode ? (
             <Suspense fallback={<div style={{ color: '#eee', padding: 20 }}>Loading on-chain chess…</div>}>
               <OnchainChessEntry />
             </Suspense>

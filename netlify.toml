@@ -6,6 +6,8 @@
   NODE_VERSION = "20"
   # Exclude ClawbWorld from Netlify: no world bundle, no world-only assets — saves build credits
   VITE_EXCLUDE_WORLD = "true"
+  # On-chain wager chess (Arbitrum/$DMT launch 2026-07-20) — adds the opt-in tab on /chess
+  VITE_ONCHAIN_CHESS = "true"
 
 [[redirects]]
   from = "/.env"

@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { parseEther, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useChainId, usePublicClient, useSwitchChain } from 'wagmi';
 import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
-import { LAWB_CHESS_CHAIN_IDS, LAWB_CHESS_NFT_COLLECTIONS, getLawbChessAddress } from '../../config/lawbChessOnchain';
+import { LAWB_CHESS_CHAIN_IDS, LAWB_CHESS_NFT_COLLECTIONS, LAWB_CHESS_WAGER_TOKENS, getLawbChessAddress } from '../../config/lawbChessOnchain';
 import { WagerKind } from '../../utils/lawbChessBoard';
 import { stringToCode, type GameCode } from '../../utils/lawbChessMoves';
 
@@ -54,6 +54,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
 
   const deployedHere = !!getLawbChessAddress(chainId);
   const nftCollections = LAWB_CHESS_NFT_COLLECTIONS[chainId] ?? [];
+  const featuredTokens = LAWB_CHESS_WAGER_TOKENS[chainId] ?? [];
   const isNft = wagerType === 'erc721' || wagerType === 'erc1155';
 
   const waitFor = async (hash: `0x${string}`) => {
@@ -135,7 +136,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
 
       {!isConnected && <div style={{ color: '#e0a000' }}>Connect your wallet to create or join.</div>}
       {isConnected && !deployedHere && (
-        <div style={{ color: '#e0a000' }}>Not deployed on this network — switch to Base Sepolia.</div>
+        <div style={{ color: '#e0a000' }}>Not deployed on this network — switch to Arbitrum.</div>
       )}
 
       <fieldset style={box} disabled={!isConnected || !deployedHere || busy}>
@@ -155,6 +156,22 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
         )}
         {wagerType === 'erc20' && (
           <>
+            {featuredTokens.length > 0 && (
+              <label style={row}>
+                Token:
+                <select
+                  style={input}
+                  value={featuredTokens.find((t) => t.address.toLowerCase() === tokenAddr.toLowerCase())?.address ?? ''}
+                  onChange={(e) => {
+                    const t = featuredTokens.find((ft) => ft.address === e.target.value);
+                    if (t) { setTokenAddr(t.address); setDecimals(String(t.decimals)); }
+                  }}
+                >
+                  <option value="">— custom (paste address) —</option>
+                  {featuredTokens.map((t) => <option key={t.address} value={t.address}>{t.label}</option>)}
+                </select>
+              </label>
+            )}
             <label style={row}>Token addr: <input style={input} value={tokenAddr} placeholder="0x…" onChange={(e) => setTokenAddr(e.target.value)} /></label>
             <label style={row}>Amount: <input style={input} value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
             <label style={row}>Decimals: <input style={input} value={decimals} onChange={(e) => setDecimals(e.target.value)} /></label>
