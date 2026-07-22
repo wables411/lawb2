@@ -12,76 +12,101 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
     {
       code: 'p',
       name: 'Pawn',
-      description: 'Moves forward 1 (or 2 from start), captures diagonally, promotes on last rank.',
+      description: 'Walks 1 step forward (2 on its first move) and captures diagonally. Reach the far side and it becomes a Queen!',
     },
     {
       code: 'n',
       name: 'Knight',
-      description: 'Moves in an L shape (2 + 1) and can jump over pieces.',
+      description: 'Jumps in an L shape — the only piece that can hop over others.',
     },
     {
       code: 'b',
       name: 'Bishop',
-      description: 'Moves any number of squares diagonally.',
+      description: 'Slides diagonally, as far as it wants.',
     },
     {
       code: 'r',
       name: 'Rook',
-      description: 'Moves any number of squares horizontally or vertically.',
+      description: 'Slides in straight lines — up, down, left, right.',
     },
     {
       code: 'q',
       name: 'Queen',
-      description: 'Moves any number of squares in any one direction.',
+      description: 'The strongest piece — slides any direction, any distance.',
     },
     {
       code: 'k',
       name: 'King',
-      description: 'Moves 1 square in any direction. Keep this piece safe.',
+      description: 'Takes 1 step in any direction. Protect him — if he is trapped, you lose!',
     },
   ] as const;
 
-  const singlePlayerFlow = [
-    'From Chess Home, keep VS AI selected and click Start Match.',
-    'Choose your piece set and difficulty (Easy or Hard).',
-    'Blue starts first from the bottom. Red starts at the top.',
-    'Click a piece, then click a highlighted legal square to move.',
+  const howToMove = [
+    'Tap one of your Blue pieces. Dots light up on every square it can go.',
+    'Tap a lit square — your piece moves there.',
+    'Land on a Red piece to capture it.',
+    'Trap the Red King so it cannot escape — that is checkmate, and you win!',
   ];
 
-  const basePvpFlow = [
-    'Connect your wallet and switch to Base mainnet (Chain ID 8453).',
-    'Open PvP and create a token wager match, or join an open one.',
-    'When creating, confirm required wallet transaction(s).',
-    'When an opponent joins, match starts automatically and Blue moves first.',
-    'Winner claims payout from the contract after game end.',
+  const vsClawbFlow = [
+    'From Chess Home, keep VS AI selected and press Start Match.',
+    'Pick your chess set, then Easy or Hard.',
+    'Easy is great for learning. Hard is a serious chess engine — good luck.',
+    'No wallet needed to play. Connect one if you want your wins saved to the leaderboard.',
+  ];
+
+  const pvpFlow = [
+    'Connect your wallet (wagers use real tokens — this part is for grown-ups).',
+    'Open PvP, create a match with your wager, or join someone else’s.',
+    'When an opponent joins, the game starts — Blue always moves first.',
+    'Win the game, win the pot.',
   ];
 
   return (
     <div className={`how-to-section ${variant === 'mobile' ? 'mobile' : ''}`}>
-      <h4>How to Play Lawb Chess Beta 3000</h4>
+      <h4>How to Play Lawb Chess</h4>
       <div className="how-to-content">
         <p>
-          <strong>Current Live Scope:</strong> Lawb Chess PvP wagering is Base-first right now. Sanko has sunsetted for new matches. Solana contract play is not active in this client.
+          <strong>What is Lawb Chess?</strong> Chess, but lobsters. Your Blue army starts at the
+          bottom, the Red army at the top. Blue always moves first. The goal: trap the other
+          team&apos;s King.
         </p>
+
+        <p><strong>Never played chess? Three things to know:</strong></p>
+        <ul className="how-to-list">
+          <li>You and your opponent take turns moving one piece at a time.</li>
+          <li>Every piece moves its own special way (see the piece key below).</li>
+          <li>You win by checkmate — trapping the enemy King with no escape.</li>
+        </ul>
+
+        <p><strong>How to move:</strong></p>
+        <ol className="how-to-list how-to-list-numbered">
+          {howToMove.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+
+        <p><strong>Play vs Clawb (the robot lobster):</strong></p>
+        <ol className="how-to-list how-to-list-numbered">
+          {vsClawbFlow.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+
+        <p><strong>Play vs real people (PvP wagers):</strong></p>
+        <ol className="how-to-list how-to-list-numbered">
+          {pvpFlow.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
         <p>
-          <strong>Objective:</strong> Checkmate the opponent king. Blue starts at the bottom and always moves first. Red starts at the top.
+          <strong>New — On-Chain Wagers (beta):</strong> the ⛓ tab on the chess page plays wager
+          chess where the blockchain itself is the referee and the bank: it checks every move,
+          holds both stakes, and pays the winner automatically. Live on Arbitrum with $DMT
+          (and ETH) wagers.
         </p>
 
-        <p><strong>Single Player (VS AI):</strong></p>
-        <ol className="how-to-list how-to-list-numbered">
-          {singlePlayerFlow.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-
-        <p><strong>PvP on Base:</strong></p>
-        <ol className="how-to-list how-to-list-numbered">
-          {basePvpFlow.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-
-        <p><strong>Chess Piece Key:</strong></p>
+        <p><strong>Meet the pieces:</strong></p>
         <ul className="how-to-list how-to-piece-list">
           {pieceKey.map((piece) => (
             <li key={piece.code} className="how-to-piece-item">
@@ -98,49 +123,41 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default' 
           ))}
         </ul>
 
-        <p><strong>Special Rules:</strong></p>
+        <p><strong>Words you will hear:</strong></p>
         <ul className="how-to-list">
-          <li>Check: Your king is under attack and must be defended immediately.</li>
-          <li>Checkmate: King is under attack with no legal escape, game over.</li>
-          <li>Stalemate: No legal move but not in check, game ends in draw.</li>
-          <li>Castling and en passant are supported where legal.</li>
+          <li><strong>Check:</strong> your King is being attacked — you must save him right now.</li>
+          <li><strong>Checkmate:</strong> the King cannot be saved. Game over.</li>
+          <li><strong>Stalemate:</strong> no legal moves but the King is safe — the game is a tie.</li>
+          <li><strong>Castling</strong> and <strong>en passant</strong> (two fancy chess moves) both work here.</li>
         </ul>
 
         <p>
-          <strong>Leaderboard:</strong> Win = 3 points, Draw = 1, Loss = 0. First WalletConnect/Reown connection adds {WALLET_CONNECT_LEADERBOARD_BONUS} bonus points. Holdings score and collection perks come from your Lawb profile inventory.
+          <strong>Leaderboard:</strong> Win = 3 points, tie = 1, loss = 0. Connecting a wallet for
+          the first time adds {WALLET_CONNECT_LEADERBOARD_BONUS} bonus points, and your wins only
+          save while a wallet is connected.
         </p>
 
         <p>
-          <strong>Base Contract:</strong>{' '}
+          <strong>For the curious — the contracts:</strong>{' '}
           <a
             href="https://basescan.org/address/0x06b6aae693cf1af27d5a5df0d0ac88af3fac9e11"
             target="_blank"
             rel="noopener noreferrer"
             className="how-to-contract-link"
           >
-            0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11
+            Base PvP contract
           </a>
-        </p>
-        <p>
-          <strong>Legacy Sanko Contract (sunsetted):</strong>{' '}
+          {' · '}
           <a
-            href="https://explorer.sanko.xyz/address/0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56"
+            href="https://arbiscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47"
             target="_blank"
             rel="noopener noreferrer"
             className="how-to-contract-link"
           >
-            0x4a8A3BC091c33eCC1440b6734B0324f8d0457C56
+            Arbitrum on-chain contract
           </a>
         </p>
-
-        <div className="how-to-network-card">
-          <p><strong>Network Name:</strong> Base Mainnet</p>
-          <p><strong>RPC URL:</strong> https://mainnet.base.org</p>
-          <p><strong>Chain ID:</strong> 8453</p>
-          <p><strong>Currency Symbol:</strong> ETH</p>
-        </div>
       </div>
     </div>
   );
 };
-
