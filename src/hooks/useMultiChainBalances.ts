@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchAllSolanaBalances, type SolanaBalances } from '../utils/solanaBalances';
-import { basePublicRpcHttpUrls } from '../utils/baseRpcPublic';
 
-const CLAWB_BASE_ADDRESS = '0x26a43bd8a28a0423afb5725b8242ec0a40947b07';
 const LAWB_ARB_ADDRESS = '0x741f8FbF42485E772D97f1955c31a5B8098aC962';
 
 const ARB_RPCS = ['https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com'];
@@ -55,8 +53,6 @@ async function fetchErc20Balance(
 }
 
 export interface MultiChainBalances {
-  clawbBase: number;
-  clawbSol: number;
   lawbSol: number;
   lawbArb: number;
   sol: number;
@@ -65,8 +61,6 @@ export interface MultiChainBalances {
 }
 
 const EMPTY: MultiChainBalances = {
-  clawbBase: 0,
-  clawbSol: 0,
   lawbSol: 0,
   lawbArb: 0,
   sol: 0,
@@ -89,10 +83,7 @@ export function useMultiChainBalances(
     }
 
     try {
-      const [clawbBase, lawbArb, solBalances] = await Promise.all([
-        evmAddress
-          ? fetchErc20Balance(basePublicRpcHttpUrls(), CLAWB_BASE_ADDRESS, evmAddress, 18)
-          : Promise.resolve(0),
+      const [lawbArb, solBalances] = await Promise.all([
         evmAddress
           ? fetchErc20Balance(ARB_RPCS, LAWB_ARB_ADDRESS, evmAddress, 6)
           : Promise.resolve(0),
@@ -103,8 +94,6 @@ export function useMultiChainBalances(
 
       if (!mountedRef.current) return;
       setBalances({
-        clawbBase,
-        clawbSol: solBalances.clawb,
         lawbSol: solBalances.lawb,
         lawbArb,
         sol: solBalances.sol,

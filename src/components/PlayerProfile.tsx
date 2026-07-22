@@ -9,9 +9,6 @@ import {
   type LeaderboardEntry,
   type PointsBreakdown,
 } from '../firebaseLeaderboard';
-import { UserLiquiditySection } from './UserLiquiditySection';
-import { METEORA_CLAWB_LAWB_POOL } from '../config/lpPools';
-import { meteoraProxyUrl } from '../utils/meteoraDlmm';
 import { fetchNFTInventory, fetchAggregatedNFTInventory, type WalletDescriptor } from '../utils/nftInventory';
 import { fetchBaseLawbClawbHoldingsBonus } from '../utils/leaderboardTokenBonus';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
@@ -392,8 +389,6 @@ const TokenBalancesSection: React.FC<{
   };
 
   const tokens = [
-    { label: '$CLAWB', chain: 'Base', value: balances.clawbBase, color: '#E74C3C', chainColor: '#627EEA', hasWallet: !!evmAddress },
-    { label: '$CLAWB', chain: 'Solana', value: balances.clawbSol, color: '#E74C3C', chainColor: '#9945FF', hasWallet: !!solanaAddress },
     { label: '$LAWB', chain: 'Solana', value: balances.lawbSol, color: '#8B4513', chainColor: '#9945FF', hasWallet: !!solanaAddress },
     { label: '$LAWB', chain: 'Arbitrum', value: balances.lawbArb, color: '#8B4513', chainColor: '#28A0F0', hasWallet: !!evmAddress },
   ];
@@ -465,162 +460,6 @@ const TokenBalancesSection: React.FC<{
       {balances.error && (
         <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#c0392b', marginTop: '6px' }}>
           {balances.error}
-        </div>
-      )}
-    </div>
-  );
-};
-
-/** Clawb only — LP widget must not appear on other users' profiles (data is his position, not the viewer's). */
-const CLAWB_EVM_WALLET = '0x5bBA58218914F2e9b6b5434e0306fa2c6CA0E429'.toLowerCase();
-const CLAWB_SOLANA_WALLET = 'FveSNArbJsdx5JTmGE8cti9pBt5gH8NVTrUvcp1C2Mbp';
-const METEORA_POSITION = '13N61SZdGVFgM24t6mtYbAhV7T2nD67QmzEqsaT1DEeg';
-
-function isClawbProfileWallet(profileAddress: string): boolean {
-  if (!profileAddress) return false;
-  if (profileAddress.startsWith('0x')) {
-    return profileAddress.toLowerCase() === CLAWB_EVM_WALLET;
-  }
-  return profileAddress === CLAWB_SOLANA_WALLET;
-}
-
-interface LpPositionData {
-  pairName: string;
-  currentPrice: number;
-  feesClaimedUsd: number;
-  feePerTvl24h: number;
-  volume24h: number;
-  fees24h: number;
-  poolApr: number;
-  reserveX: number;
-  reserveY: number;
-  positionPnlUsd?: number;
-}
-
-/** Meteora datapi (2025): pool + positions PnL — old dlmm-api /pair and /position URLs are 404. */
-function useMeteorLpPosition() {
-  const [data, setData] = useState<LpPositionData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const loadJson = async (pathAndQuery: string) => {
-          const r = await fetch(meteoraProxyUrl(pathAndQuery), { signal: AbortSignal.timeout(20000) });
-          if (!r.ok) throw new Error(`Meteora proxy HTTP ${r.status}`);
-          return r.json();
-        };
-        const pnlQuery = `?user=${encodeURIComponent(CLAWB_SOLANA_WALLET)}&status=open`;
-        const [pool, pnl] = await Promise.all([
-          loadJson(`/pools/${METEORA_CLAWB_LAWB_POOL}`),
-          loadJson(`/positions/${METEORA_CLAWB_LAWB_POOL}/pnl${pnlQuery}`),
-        ]);
-        if (cancelled) return;
-
-        const positions = Array.isArray(pnl?.positions) ? pnl.positions : [];
-        const myPos = positions.find(
-          (p: { positionAddress?: string }) => p.positionAddress === METEORA_POSITION,
-        );
-        const feesClaimed = myPos?.allTimeFees?.total?.usd != null ? Number(myPos.allTimeFees.total.usd) : 0;
-        const feePerTvl =
-          myPos?.feePerTvl24h != null ? Number(String(myPos.feePerTvl24h).replace(/,/g, '')) : 0;
-        const pnlUsd = myPos?.pnlUsd != null ? Number(String(myPos.pnlUsd).replace(/,/g, '')) : undefined;
-
-        const vol = pool?.volume && typeof pool.volume === 'object' ? pool.volume['24h'] : undefined;
-        const fees = pool?.fees && typeof pool.fees === 'object' ? pool.fees['24h'] : undefined;
-
-        setData({
-          pairName: pool?.name || 'CLAWB-LAWB',
-          currentPrice: Number(pool?.current_price ?? 0),
-          feesClaimedUsd: Number.isFinite(feesClaimed) ? feesClaimed : 0,
-          feePerTvl24h: Number.isFinite(feePerTvl) ? feePerTvl : 0,
-          volume24h: vol != null ? Number(vol) : 0,
-          fees24h: fees != null ? Number(fees) : 0,
-          poolApr: Number(pool?.apr ?? 0),
-          reserveX: Number(pool?.token_x_amount ?? 0),
-          reserveY: Number(pool?.token_y_amount ?? 0),
-          positionPnlUsd: pnlUsd,
-        });
-      } catch (e: unknown) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load LP data');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return { data, loading, error };
-}
-
-const ClawbLpSection: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
-  const { data, loading, error } = useMeteorLpPosition();
-
-  const fmtNum = (v: number, dec = 2): string => {
-    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(dec)}M`;
-    if (v >= 1_000) return `${(v / 1_000).toFixed(dec)}K`;
-    return v.toFixed(dec);
-  };
-
-  return (
-    <div style={{
-      ...linuxNotesSectionStyle(isMobile),
-      marginBottom: '20px',
-      maxWidth: '600px',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <h4 style={{ ...linuxNotesHeaderStyle(isMobile), margin: 0 }}>
-          Clawb Meteora LP (CLAWB / LAWB)
-          {loading && <span style={{ fontWeight: 400, fontSize: '11px', color: '#888', marginLeft: '6px' }}>(loading...)</span>}
-        </h4>
-        <a
-          href={`https://www.meteora.ag/dlmm/${METEORA_CLAWB_LAWB_POOL}?referrer=portfolio&position=${METEORA_POSITION}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: isMobile ? '9px' : '10px', color: '#6f6f6a', textDecoration: 'none' }}
-        >
-          Meteora ↗
-        </a>
-      </div>
-
-      {error && <div style={{ fontSize: '11px', color: '#c0392b' }}>{error}</div>}
-
-      {data && (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '8px' }}>
-          {[
-            { label: 'Pool', value: data.pairName, sub: 'Meteora DLMM' },
-            { label: 'Price', value: `${data.currentPrice.toFixed(4)}`, sub: 'CLAWB/LAWB' },
-            { label: 'Pool APR', value: `${data.poolApr.toFixed(1)}%`, sub: 'pool' },
-            { label: '24h Volume', value: `$${fmtNum(data.volume24h)}`, sub: '' },
-            { label: '24h Fees', value: `$${fmtNum(data.fees24h)}`, sub: 'pool' },
-            { label: 'Fee / TVL 24h', value: `${data.feePerTvl24h.toFixed(2)}%`, sub: 'position' },
-            { label: 'Fees Claimed', value: `$${fmtNum(data.feesClaimedUsd)}`, sub: 'position total' },
-            ...(data.positionPnlUsd != null && Number.isFinite(data.positionPnlUsd)
-              ? [{ label: 'Position PnL', value: `$${fmtNum(data.positionPnlUsd)}`, sub: 'USD' }]
-              : []),
-          ].map((cell) => (
-            <div key={cell.label} style={{
-              padding: '8px',
-              background: '#ffffff',
-              borderRadius: '4px',
-              border: '1px solid #d8d8d3',
-            }}>
-              <div style={{ fontSize: isMobile ? '9px' : '10px', color: '#6f6f6a', fontWeight: 600, marginBottom: '2px' }}>
-                {cell.label}
-              </div>
-              <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#2c2c2c' }}>
-                {cell.value}
-              </div>
-              {cell.sub && (
-                <div style={{ fontSize: isMobile ? '8px' : '9px', color: '#888' }}>{cell.sub}</div>
-              )}
-            </div>
-          ))}
         </div>
       )}
     </div>
@@ -1518,23 +1357,6 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
                 primaryWallet={primaryWallet}
                 linkedWallets={linkedWallets}
               />
-
-              {isOwnProfile && (
-                <UserLiquiditySection
-                  isMobile={isMobile}
-                  solanaAddress={
-                    connectedSolana ||
-                    linkedWallets.find((w) => w.chain === 'solana')?.address ||
-                    (!address.startsWith('0x') ? address : undefined)
-                  }
-                  evmAddress={
-                    connectedEvm ||
-                    (address.startsWith('0x') ? address : linkedWallets.find((w) => w.chain === 'evm')?.address)
-                  }
-                />
-              )}
-
-              {isClawbProfileWallet(address) && <ClawbLpSection isMobile={isMobile} />}
 
               <div style={{ ...sectionStyle, marginBottom: '20px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
