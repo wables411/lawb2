@@ -40,7 +40,14 @@ The live lawb.xyz site is **untouched** — all of this is in an isolated repo (
 
 ## 3. Deployed addresses
 
-**Base Sepolia (chain 84532) — current:**
+**Arbitrum One (chain 42161) — LIVE MAINNET, deployed 2026-07-20 ($DMT launch):**
+- Proxy (USE THIS): `0x3112AF5728520F52FD1C6710dD7bD52285a68e47`
+- Impl: `0x06b6aAe693cf1Af27d5a5df0d0AC88aF3faC9E11` · ChessEngine lib: `0x4A328B8065979DBD8BAA7E27710b1f5B2d365556`
+- Owner + feeRecipient: `0x13031dC2dC848A985cCb6532956f7B8f3487772A`; fee 500 bps.
+- Launch config: maxNativeWager 0.01 ETH; allowedToken $DMT `0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8`; NFT allowlist EMPTY (per spec addendum).
+- All three contracts verified on Arbiscan. Frontend: flag ON in netlify.toml, opt-in tab on /chess.
+
+**Base Sepolia (chain 84532) — testnet:**
 - Proxy (USE THIS, unchanged through all upgrades): `0xCF4131302Ed9685309F2c1Ca01b282409D1fBCE4`
 - Current impl (Phase 3): `0x5051B8d9a0f236F892CaBc4bC01AB7de87dc8160`
 - ChessEngine library (linked): `0x4a328b8065979dbd8baa7e27710b1f5b2d365556`
