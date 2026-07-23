@@ -9,11 +9,11 @@ const ERC721_ABI = [
   "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
 ];
 
-// RPC endpoints for Ethereum mainnet (ankr/blockscout before llamarpc — fewer 429s in the wild)
+// RPC endpoints for Ethereum mainnet. eth.llamarpc.com dropped — it fails the
+// browser CORS preflight (net::ERR_FAILED), so it only ever burned a retry slot.
 const ETHEREUM_RPC_ENDPOINTS = [
   'https://rpc.ankr.com/eth',
   'https://eth.blockscout.com/api/eth-rpc',
-  'https://eth.llamarpc.com',
   'https://eth-mainnet.public.blastapi.io',
 ];
 

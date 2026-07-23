@@ -12,7 +12,7 @@ import {
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
 import { firebaseProfiles } from '../firebaseProfiles';
-import { getOpenSeaNFTs, getCollectionNFTs } from '../mint';
+import { getCollectionNFTs } from '../mint';
 // Removed blocking connection test - loading data directly with timeout
 import { ChessMultiplayer } from './ChessMultiplayer';
 import { firebaseChess } from '../firebaseChess';
@@ -68,14 +68,21 @@ const SANKO_CHAIN_ID = 1996;
 
 // LeaderboardEntry interface is now imported from firebaseLeaderboard
 
-// AI NFT collections for random profile picture (matching MemeGenerator logic)
+// Dev-only logger. In production (`import.meta.env.DEV === false`) this no-ops,
+// so the hundreds of per-move/per-render debug lines stop flooding the console.
+// Uses console.info internally so a blanket console.log→dlog sweep can't recurse.
+const dlog = (...args: unknown[]): void => { if (import.meta.env.DEV) console.info(...args); };
+
+// AI NFT collections for a random opponent profile picture.
+// NB: the OpenSea-backed collections (lawbsters, lawbstarz, halloween, asciilawbs)
+// were removed — the OpenSea key returns 401 on the ethereum collections and the
+// base slugs 404, so every AI match spammed the console with failed requests and
+// never produced an image. Scatter (pixelawbs) works; a local sticker is the
+// fallback if even that fails. Restore the OpenSea entries once the key/slugs are fixed.
 const AI_NFT_COLLECTIONS = [
-  { id: 'lawbsters', name: 'Lawbsters', api: 'opensea', slug: 'lawbsters', chain: 'ethereum' },
-  { id: 'lawbstarz', name: 'Lawbstarz', api: 'opensea', slug: 'lawbstarz', chain: 'ethereum' },
   { id: 'pixelawbs', name: 'Pixelawbsters', api: 'scatter', slug: 'pixelawbs' },
-  { id: 'halloween', name: 'Halloween Lawbsters', api: 'opensea', slug: 'a-lawbster-halloween', chain: 'base' },
-  { id: 'asciilawbs', name: 'ASCII Lawbsters', api: 'opensea', slug: 'asciilawbs', chain: 'base' },
 ];
+const AI_PROFILE_FALLBACK = '/images/sticker4.png';
 
 // Chess piece images - will be set dynamically based on selected piece set
 let pieceImages: { [key: string]: string } = {};
@@ -116,7 +123,7 @@ const useStockfish = () => {
     // Stockfish WASM worker is no longer used - we use the API endpoint instead
     // This avoids SharedArrayBuffer/COEP issues and works more reliably
     // Keeping this hook for API compatibility but not initializing WASM
-    console.log('[STOCKFISH] Using API endpoint (chess.lawb.xyz) - WASM worker disabled');
+    dlog('[STOCKFISH] Using API endpoint (chess.lawb.xyz) - WASM worker disabled');
     setStockfishReady(true); // Mark as ready since API doesn't need initialization
     
     return () => {
@@ -132,7 +139,7 @@ const useStockfish = () => {
         return;
       }
 
-      console.log('[STOCKFISH] Starting calculation for FEN:', fen, 'timeLimit:', timeLimit);
+      dlog('[STOCKFISH] Starting calculation for FEN:', fen, 'timeLimit:', timeLimit);
       let bestMove: string | null = null;
       let isResolved = false;
 
@@ -141,7 +148,7 @@ const useStockfish = () => {
         if (typeof message === 'string' && message.startsWith('bestmove ')) {
           const parts = message.split(' ');
           bestMove = parts[1] || null;
-          console.log('[STOCKFISH] Bestmove found:', bestMove);
+          dlog('[STOCKFISH] Bestmove found:', bestMove);
           if (!isResolved) {
             isResolved = true;
             stockfishEngineRef.current?.removeEventListener('message', messageHandler);
@@ -214,7 +221,7 @@ const useStockfish = () => {
 
       if (response.ok) {
         const data = await response.json() as { bestmove?: string; move?: string };
-        console.log(`[STOCKFISH] API call successful:`, data);
+        dlog(`[STOCKFISH] API call successful:`, data);
         // Handle both 'bestmove' and 'move' response formats
         return data.bestmove || data.move || null;
       } else {
@@ -344,7 +351,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Debug: log when viewingProfileAddress changes
   useEffect(() => {
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[LEADERBOARD] viewingProfileAddress changed to:', viewingProfileAddress);
+      dlog('[LEADERBOARD] viewingProfileAddress changed to:', viewingProfileAddress);
     }
   }, [viewingProfileAddress]);
 
@@ -447,7 +454,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     ];
     const randomIndex = Math.floor(Math.random() * chessboards.length);
     const selected = chessboards[randomIndex];
-    console.log('[DEBUG] Initial random chessboard selected:', selected, '(index:', randomIndex, ')');
+    dlog('[DEBUG] Initial random chessboard selected:', selected, '(index:', randomIndex, ')');
     return selected;
   });
 
@@ -609,7 +616,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     ];
     const randomIndex = Math.floor(Math.random() * chessboards.length);
     const selected = chessboards[randomIndex];
-    console.log('[DEBUG] Random chessboard selected:', selected, '(index:', randomIndex, ')');
+    dlog('[DEBUG] Random chessboard selected:', selected, '(index:', randomIndex, ')');
     return selected;
   };
 
@@ -648,15 +655,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (!aiWorkerRef.current && typeof Worker !== 'undefined') {
       aiWorkerRef.current = new Worker('/aiWorker.js');
       aiWorkerRef.current.onmessage = (e: MessageEvent) => {
-        console.log('[DEBUG] AI worker response received:', e.data);
+        dlog('[DEBUG] AI worker response received:', e.data);
         const { move, nodes } = e.data as {
           move?: { from: { row: number; col: number }; to: { row: number; col: number } };
           nodes?: number;
         };
         // Only apply if it's still AI's turn and game is active
         if (move && isAIMovingRef.current && gameState === 'active') {
-          console.log('[DEBUG] AI worker move is valid, executing:', move);
-          console.log('[DEBUG] AI searched', nodes, 'nodes');
+          dlog('[DEBUG] AI worker move is valid, executing:', move);
+          dlog('[DEBUG] AI searched', nodes, 'nodes');
           isAIMovingRef.current = false;
           // Clear any pending timeout
           if (aiTimeoutRef.current) { 
@@ -667,7 +674,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             makeMoveRef.current(move.from, move.to, true);
           }
         } else {
-          console.log('[DEBUG] AI worker response ignored - not AI turn or game not active');
+          dlog('[DEBUG] AI worker response ignored - not AI turn or game not active');
         }
       };
       aiWorkerRef.current.onerror = (error: ErrorEvent) => {
@@ -763,20 +770,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Update score using Firebase
   const updateScore = async (gameResult: 'win' | 'loss' | 'draw') => {
-    console.log('[DEBUG] updateScore called with:', gameResult);
+    dlog('[DEBUG] updateScore called with:', gameResult);
     if (!leaderboardWalletAddress) {
-      console.log('[DEBUG] No wallet address, returning');
+      dlog('[DEBUG] No wallet address, returning');
       return;
     }
 
     try {
-      console.log('[DEBUG] Updating score for address:', formatLeaderboardAddress(leaderboardWalletAddress));
+      dlog('[DEBUG] Updating score for address:', formatLeaderboardAddress(leaderboardWalletAddress));
       
       // Update leaderboard entry using Firebase
       const success = await updateLeaderboardEntry(leaderboardWalletAddress, gameResult);
       
       if (success) {
-        console.log('[DEBUG] Successfully updated score for:', formatLeaderboardAddress(leaderboardWalletAddress));
+        dlog('[DEBUG] Successfully updated score for:', formatLeaderboardAddress(leaderboardWalletAddress));
         // Reload leaderboard after score update
         await loadLeaderboard();
       } else {
@@ -818,13 +825,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     }
     
     if (!kingPos) {
-      console.log(`King not found for ${player}`);
+      dlog(`King not found for ${player}`);
       return false;
     }
     
     const attackingColor = player === 'blue' ? 'red' : 'blue';
     const isUnderAttack = isSquareUnderAttack(kingPos.row, kingPos.col, attackingColor, board);
-    console.log(`${player} king at ${kingPos.row},${kingPos.col} under attack: ${isUnderAttack}`);
+    dlog(`${player} king at ${kingPos.row},${kingPos.col} under attack: ${isUnderAttack}`);
     return isUnderAttack;
   };
 
@@ -878,7 +885,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     
     // Further reduce logging - only log in development mode
     if (isValidPattern && rowDiff <= 2 && colDiff <= 1 && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      console.log('[DEBUG] Pawn move check:', { color, from: `${startRow},${startCol}`, to: `${endRow},${endCol}` });
+      dlog('[DEBUG] Pawn move check:', { color, from: `${startRow},${startCol}`, to: `${endRow},${endCol}` });
     }
     
     // Forward move (1 square)
@@ -904,7 +911,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         if (pieceState.lastPawnDoubleMove && 
             pieceState.lastPawnDoubleMove.row === startRow && 
             pieceState.lastPawnDoubleMove.col === endCol) {
-          console.log('[DEBUG] Pawn en passant move');
+          dlog('[DEBUG] Pawn en passant move');
           return true;
         }
       }
@@ -1022,12 +1029,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const canPieceMove = (piece: string, startRow: number, startCol: number, endRow: number, endCol: number, checkForCheck = true, playerColor = getPieceColor(piece), boardState = board, silent = false): boolean => {
     if (!isWithinBoard(endRow, endCol)) {
-      if (!silent) console.log('[ILLEGAL MOVE] Out of board:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) dlog('[ILLEGAL MOVE] Out of board:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     const targetPiece = boardState[endRow][endCol];
     if (targetPiece && getPieceColor(targetPiece) === playerColor) {
-      if (!silent) console.log('[ILLEGAL MOVE] Capturing own piece:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) dlog('[ILLEGAL MOVE] Capturing own piece:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     const pieceType = piece.toLowerCase();
@@ -1053,7 +1060,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         break;
     }
     if (!isValid) {
-      if (!silent) console.log('[ILLEGAL MOVE] Piece cannot move that way:', { 
+      if (!silent) dlog('[ILLEGAL MOVE] Piece cannot move that way:', { 
         piece, startRow, startCol, endRow, endCol, playerColor, pieceType,
         targetPiece: boardState[endRow][endCol],
         targetPieceColor: boardState[endRow][endCol] ? getPieceColor(boardState[endRow][endCol]) : null
@@ -1061,7 +1068,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return false;
     }
     if (isValid && checkForCheck && wouldMoveExposeCheck(startRow, startCol, endRow, endCol, playerColor, boardState)) {
-      if (!silent) console.log('[ILLEGAL MOVE] Move exposes king to check:', { piece, startRow, startCol, endRow, endCol });
+      if (!silent) dlog('[ILLEGAL MOVE] Move exposes king to check:', { piece, startRow, startCol, endRow, endCol });
       return false;
     }
     return isValid;
@@ -1118,13 +1125,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const handleSquareClick = (row: number, col: number) => {
     addMobileDebug(`click r${row}c${col} cp=${currentPlayer} aiM=${isAIMovingRef.current} lastAI=${lastAIMoveRef.current}`);
     const logData = {row,col,gameState,isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current,lastAIMoveRef:lastAIMoveRef.current};
-    console.log('[DEBUG] handleSquareClick entry', logData);
+    dlog('[DEBUG] handleSquareClick entry', logData);
     // #region agent log
     debugIngest({location:'ChessGame.tsx:1007',message:'handleSquareClick entry',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
     // #endregion
     if (gameState !== 'active' || isAIMovingRef.current || playerMoveInProgressRef.current) {
       addMobileDebug(`BLOCKED: gs=${gameState} aiM=${isAIMovingRef.current} playerM=${playerMoveInProgressRef.current}`);
-      console.log('[DEBUG] handleSquareClick BLOCKED: gameState or isAIMovingRef', {gameState,isAIMovingRef:isAIMovingRef.current});
+      dlog('[DEBUG] handleSquareClick BLOCKED: gameState or isAIMovingRef', {gameState,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       debugIngest({location:'ChessGame.tsx:1008',message:'handleSquareClick blocked: gameState or isAIMovingRef',data:{gameState,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
       // #endregion
@@ -1135,7 +1142,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // Prevent player from clicking when it's AI's turn (red)
     if (gameMode === 'ai' && currentPlayer !== 'blue') {
       addMobileDebug(`BLOCKED: not blue turn cp=${currentPlayer}`);
-      console.log('[DEBUG] handleSquareClick BLOCKED: currentPlayer not blue', {gameMode,currentPlayer});
+      dlog('[DEBUG] handleSquareClick BLOCKED: currentPlayer not blue', {gameMode,currentPlayer});
       // #region agent log
       debugIngest({location:'ChessGame.tsx:1012',message:'handleSquareClick blocked: currentPlayer not blue',data:{gameMode,currentPlayer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
       // #endregion
@@ -1170,7 +1177,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Make a move
   const makeMove = (from: { row: number; col: number }, to: { row: number; col: number }, isAIMove = false) => {
     const piece = board[from.row][from.col];
-    console.log('[MOVE ATTEMPT]', { from, to, piece, isAIMove, board: JSON.parse(JSON.stringify(board)), moveHistory });
+    dlog('[MOVE ATTEMPT]', { from, to, piece, isAIMove, board: JSON.parse(JSON.stringify(board)), moveHistory });
     if (!piece) return;
     
     // Check for pawn promotion
@@ -1233,7 +1240,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     setLegalMoves([]);
 
     const flagDataBefore = { isAIMove, isAIMovingRef: isAIMovingRef.current, lastAIMoveRef: lastAIMoveRef.current, apiCallInProgress: apiCallInProgressRef.current, isUpdatingBoard, currentPlayer };
-    console.log('[DEBUG] executeMoveAfterAnimation before flag update', flagDataBefore);
+    dlog('[DEBUG] executeMoveAfterAnimation before flag update', flagDataBefore);
     debugIngest({ location: 'ChessGame.tsx:1121', message: 'executeMoveAfterAnimation before flag update', data: flagDataBefore, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' });
     if (isAIMove) {
       lastAIMoveRef.current = true;
@@ -1286,7 +1293,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     addMobileDebug(`lastAI effect cp=${currentPlayer} lastAI=${lastAIMoveRef.current}`);
     const resetData = {gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isAIMovingRef:isAIMovingRef.current};
-    console.log('[DEBUG] lastAIMoveRef reset useEffect', resetData);
+    dlog('[DEBUG] lastAIMoveRef reset useEffect', resetData);
     // #region agent log
     debugIngest({location:'ChessGame.tsx:1162',message:'lastAIMoveRef reset useEffect',data:resetData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'});
     // #endregion
@@ -1294,7 +1301,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       addMobileDebug(`lastAI RESET->false (blue turn)`);
       // Player's turn now - reset the flag that was blocking double AI moves
       lastAIMoveRef.current = false;
-      console.log('[DEBUG] lastAIMoveRef reset to false', {lastAIMoveRef:lastAIMoveRef.current});
+      dlog('[DEBUG] lastAIMoveRef reset to false', {lastAIMoveRef:lastAIMoveRef.current});
       // #region agent log
       debugIngest({location:'ChessGame.tsx:1165',message:'lastAIMoveRef reset to false',data:{lastAIMoveRef:lastAIMoveRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'});
       // #endregion
@@ -1313,7 +1320,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   useEffect(() => {
     addMobileDebug(`AI effect cp=${currentPlayer} lastAI=${lastAIMoveRef.current} aiM=${isAIMovingRef.current}`);
     const aiEffectData = {isAIMovingRef:isAIMovingRef.current,gameMode,currentPlayer,lastAIMoveRef:lastAIMoveRef.current,isUpdatingBoard,apiCallInProgress:apiCallInProgressRef.current};
-    console.log('[DEBUG] AI useEffect triggered', aiEffectData);
+    dlog('[DEBUG] AI useEffect triggered', aiEffectData);
     // #region agent log
     debugIngest({location:'ChessGame.tsx:1170',message:'AI useEffect triggered',data:aiEffectData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
     // #endregion
@@ -1324,7 +1331,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       const profile = getSinglePlayerDifficultyProfile(difficulty);
       addMobileDebug(`AI START move (${profile.label})`);
       isAIMovingRef.current = true;
-      console.log('[DEBUG] AI useEffect starting AI move', {difficulty,isAIMovingRef:isAIMovingRef.current});
+      dlog('[DEBUG] AI useEffect starting AI move', {difficulty,isAIMovingRef:isAIMovingRef.current});
       // #region agent log
       debugIngest({location:'ChessGame.tsx:1175',message:'AI useEffect starting AI move',data:{difficulty,isAIMovingRef:isAIMovingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       // #endregion
@@ -1455,33 +1462,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       );
       const aiCollectionPool = preferredCollections.length > 0 ? preferredCollections : AI_NFT_COLLECTIONS;
       const randomCollection = aiCollectionPool[Math.floor(Math.random() * aiCollectionPool.length)];
-      console.log('[AI_PROFILE] Fetching random NFT from collection:', randomCollection);
+      dlog('[AI_PROFILE] Fetching random NFT from collection:', randomCollection);
       
-      let nfts;
-      if (randomCollection.api === 'opensea') {
-        console.log('[AI_PROFILE] Using OpenSea API for:', randomCollection.slug);
-        const resp = await getOpenSeaNFTs(randomCollection.slug, 50, undefined, randomCollection.chain as 'ethereum' | 'base');
-        nfts = resp.data;
-        console.log('[AI_PROFILE] OpenSea response:', resp);
-      } else {
-        console.log('[AI_PROFILE] Using Scatter API for:', randomCollection.slug);
-        const resp = await getCollectionNFTs(randomCollection.slug, 1, 50);
-        nfts = resp.data;
-        console.log('[AI_PROFILE] Scatter response:', resp);
-      }
+      // Scatter is the only working AI-avatar source (see AI_NFT_COLLECTIONS note).
+      const resp = await getCollectionNFTs(randomCollection.slug, 1, 50);
+      const nfts = resp.data;
       
       if (nfts && nfts.length > 0) {
         const randomNft = nfts[Math.floor(Math.random() * nfts.length)];
         const rawImageUrl = randomNft.image || randomNft.image_url || randomNft.image_url_shrunk;
         const imageUrl = typeof rawImageUrl === 'string' ? ipfsToHttp(rawImageUrl) : '';
-        console.log('[AI_PROFILE] Selected NFT:', randomNft);
-        console.log('[AI_PROFILE] Image URL:', imageUrl);
-        setAiProfilePic(imageUrl);
+        setAiProfilePic(imageUrl || AI_PROFILE_FALLBACK);
       } else {
-        console.log('[AI_PROFILE] No NFTs found in collection');
+        setAiProfilePic(AI_PROFILE_FALLBACK);
       }
-    } catch (err) {
-      console.error('[AI_PROFILE] Error fetching NFTs:', err);
+    } catch {
+      // Avatar is cosmetic — fall back to the local sticker, no console noise.
+      setAiProfilePic(AI_PROFILE_FALLBACK);
     } finally {
       setLoadingAiPic(false);
     }
@@ -1500,7 +1497,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           if (profile?.profile_picture?.image_url) {
             const normalizedProfileImage = ipfsToHttp(profile.profile_picture.image_url);
             setPlayerProfilePic(normalizedProfileImage);
-            console.log('[PROFILE] Loaded player profile picture:', normalizedProfileImage);
+            dlog('[PROFILE] Loaded player profile picture:', normalizedProfileImage);
           } else {
             setPlayerProfilePic(null);
           }
@@ -1523,7 +1520,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   const startGame = () => {
     playStartSound();
-    console.log('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
+    dlog('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
 
     if (gameMode === 'online') {
       // Wallet connection is only required for online/PvP flows.
@@ -1552,13 +1549,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     addMobileDebug(`GAME START AI ${difficulty}`);
     const newChessboard = selectRandomChessboard();
     setSelectedChessboard(newChessboard);
-    console.log('[DEBUG] Match started with chessboard:', newChessboard);
+    dlog('[DEBUG] Match started with chessboard:', newChessboard);
     // Start timer when game starts
     const now = Date.now();
     setLastMoveTime(now);
     setGameStartTime(now); // Track game start time for stats
     setTimeoutCountdown(GAME_TIMEOUT_MS / 1000); // Initialize countdown to full time
-    console.log('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
+    dlog('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
     setHardEngineHealth(difficulty === 'hard' ? (stockfishStatus === 'ready' ? 'healthy' : 'idle') : 'idle');
     setHardFallbackCount(0);
     
@@ -1566,7 +1563,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (difficulty === 'hard' && leaderboardWalletAddress) {
       const inviteCode = generateVsClawbInviteCode();
       setVsClawbInviteCode(inviteCode);
-      console.log('[VS-CLAWB] Creating Firebase game:', inviteCode);
+      dlog('[VS-CLAWB] Creating Firebase game:', inviteCode);
       firebaseChess.createGame({
         invite_code: inviteCode,
         game_title: `vs Clawb — ${inviteCode.slice(-6)}`,
@@ -2207,7 +2204,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (difficulty !== 'hard') return;
     const clawbResult = winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
     void updateLeaderboardEntry(CLAWB_WALLET, clawbResult as 'win' | 'loss' | 'draw');
-    console.log('[VS-CLAWB] Updated Clawb leaderboard:', clawbResult);
+    dlog('[VS-CLAWB] Updated Clawb leaderboard:', clawbResult);
     if (vsClawbInviteCode) {
       firebaseChess
         .updateGame(vsClawbInviteCode, {
@@ -2223,7 +2220,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     if (chess.isCheckmate()) {
       const loser = chess.turn() === 'w' ? 'blue' : 'red';
       const winner = loser === 'blue' ? 'red' : 'blue';
-      console.log('[GAME END] CHECKMATE', { loser, winner });
+      dlog('[GAME END] CHECKMATE', { loser, winner });
       setGameState('checkmate');
       const isPlayerWin = winner === 'blue';
       if (isPlayerWin) {
@@ -2252,7 +2249,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       return 'checkmate';
     }
     if (chess.isStalemate() || chess.isDraw()) {
-      console.log('[GAME END] DRAW', { stalemate: chess.isStalemate(), draw: chess.isDraw() });
+      dlog('[GAME END] DRAW', { stalemate: chess.isStalemate(), draw: chess.isDraw() });
       setGameState('stalemate');
       setStatus('Draw.');
       void updateScore('draw');
@@ -2340,7 +2337,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Helper functions for window management
   const openWindow = (windowType: 'leaderboard' | 'chat' | 'moves' | 'profile' | 'howto') => {
     if (typeof window !== 'undefined' && window.console) {
-      window.console.log('[OPEN WINDOW] Opening window:', windowType, 'isMobile:', isMobile);
+      dlog('[OPEN WINDOW] Opening window:', windowType, 'isMobile:', isMobile);
     }
     setIsMenuOpen(false);
     
@@ -2391,7 +2388,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const newSet = new Set(prev);
         newSet.add(windowType);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[OPEN WINDOW] Added window to set:', windowType, 'New set:', Array.from(newSet));
+          dlog('[OPEN WINDOW] Added window to set:', windowType, 'New set:', Array.from(newSet));
         }
         return newSet;
       });
@@ -2401,7 +2398,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
         const newSet = new Set(prev);
         newSet.add(windowType);
         if (typeof window !== 'undefined' && window.console) {
-          window.console.log('[OPEN WINDOW] Added window to set (existing position):', windowType, 'New set:', Array.from(newSet));
+          dlog('[OPEN WINDOW] Added window to set (existing position):', windowType, 'New set:', Array.from(newSet));
         }
         return newSet;
       });
@@ -2458,12 +2455,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Debug menu state
   useEffect(() => {
     if (isMobile) {
-      console.log('[MENU] Menu state', { isSidebarOpen, sidebarView, isMobile });
+      dlog('[MENU] Menu state', { isSidebarOpen, sidebarView, isMobile });
       if (isSidebarOpen) {
-        console.log('[MENU RENDER] Menu is open, rendering buttons');
+        dlog('[MENU RENDER] Menu is open, rendering buttons');
       }
       if (sidebarView) {
-        console.log('[POPUP] SidebarView is set, should render popup:', sidebarView);
+        dlog('[POPUP] SidebarView is set, should render popup:', sidebarView);
       }
     }
   }, [isMobile, isSidebarOpen, sidebarView]);
@@ -2868,7 +2865,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           className="chess-menu-popup-overlay"
           onClick={() => {
             if (typeof window !== 'undefined' && window.console) {
-              window.console.log('Menu overlay clicked, closing menu');
+              dlog('Menu overlay clicked, closing menu');
             }
             setIsMenuOpen(false);
           }}
@@ -2968,7 +2965,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 e.preventDefault();
                 e.stopPropagation();
                 if (typeof window !== 'undefined' && window.console) {
-                  window.console.log('[MENU] Profile button clicked (home view)');
+                  dlog('[MENU] Profile button clicked (home view)');
                 }
                 openWindow('profile');
                 setIsMenuOpen(false);
@@ -3059,7 +3056,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                                 e.preventDefault();
                                 e.stopPropagation();
                                 if (typeof window !== 'undefined' && window.console) {
-                                  window.console.log('[LEADERBOARD] Clicked profile:', typedEntry.username);
+                                  dlog('[LEADERBOARD] Clicked profile:', typedEntry.username);
                                 }
                                 setViewingProfileAddress(typedEntry.username);
                               }}
@@ -3120,7 +3117,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
             isOpen={true}
             onClose={() => {
               if (typeof window !== 'undefined' && window.console) {
-                window.console.log('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
+                dlog('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
               }
               setViewingProfileAddress(null);
             }}
@@ -3264,7 +3261,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[POPUP] Overlay clicked, closing popup');
+                dlog('[POPUP] Overlay clicked, closing popup');
                 setSidebarView(null);
               }}
             />
@@ -3835,7 +3832,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           className="chess-menu-popup-overlay"
           onClick={() => {
             if (typeof window !== 'undefined' && window.console) {
-              window.console.log('Menu overlay clicked, closing menu');
+              dlog('Menu overlay clicked, closing menu');
             }
             setIsMenuOpen(false);
           }}
@@ -3908,7 +3905,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 e.preventDefault();
                 e.stopPropagation();
                 if (typeof window !== 'undefined' && window.console) {
-                  window.console.log('[MENU] Profile button clicked (game view)');
+                  dlog('[MENU] Profile button clicked (game view)');
                 }
                 openWindow('profile');
                 setIsMenuOpen(false);
@@ -4015,7 +4012,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                                   e.preventDefault();
                                   e.stopPropagation();
                                   if (typeof window !== 'undefined' && window.console) {
-                                    window.console.log('[LEADERBOARD] Clicked profile:', typedEntry.username);
+                                    dlog('[LEADERBOARD] Clicked profile:', typedEntry.username);
                                   }
                                   setViewingProfileAddress(typedEntry.username);
                                 }}
@@ -4071,7 +4068,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           isOpen={true}
           onClose={() => {
             if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[PROFILE WINDOW] Closing profile window');
+              dlog('[PROFILE WINDOW] Closing profile window');
             }
             closeWindow('profile');
           }}
@@ -4134,7 +4131,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           isOpen={true}
           onClose={() => {
             if (typeof window !== 'undefined' && window.console) {
-              window.console.log('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
+              dlog('[LEADERBOARD] Closing profile popup for:', viewingProfileAddress);
             }
             setViewingProfileAddress(null);
           }}

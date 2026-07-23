@@ -1,6 +1,13 @@
 // NFT verification utilities for Pixelawbs collection
 const PIXELAWBS_CONTRACT_ADDRESS = '0x2d278e95b2fC67D4b27a276807e24E479D9707F6';
 
+// Browser-safe Ethereum RPC. eth.llamarpc.com was removed here — it fails the
+// CORS preflight from the browser, so every piece-set ownership check logged a
+// net::ERR_FAILED. Prefer the configured mainnet RPC, else a CORS-enabled public one.
+const ETH_RPC_URL =
+  (import.meta.env.VITE_MAINNET_RPC_URL as string | undefined)?.trim() ||
+  'https://rpc.ankr.com/eth';
+
 // ERC-721 balanceOf function ABI
 const ERC721_BALANCE_ABI = [
   {
@@ -30,8 +37,8 @@ export const checkPixelawbsNFTOwnership = async (
   try {
     // Use a public Ethereum RPC endpoint to check NFT ownership
     // This allows us to verify Ethereum NFTs while user is on Sanko
-    const ethereumRpcUrl = 'https://eth.llamarpc.com'; // Public RPC endpoint
-    
+    const ethereumRpcUrl = ETH_RPC_URL;
+
     // Call balanceOf function on the Pixelawbs contract via Ethereum RPC
     const response = await fetch(ethereumRpcUrl, {
       method: 'POST',
@@ -85,7 +92,7 @@ export const checkPixelawbsNFTOwnershipWithEthers = async (
   try {
     // Create a custom provider for Ethereum mainnet
     const { JsonRpcProvider } = await import('ethers');
-    const ethereumProvider = new JsonRpcProvider('https://eth.llamarpc.com');
+    const ethereumProvider = new JsonRpcProvider(ETH_RPC_URL);
 
     // Create contract instance
     const { Contract } = await import('ethers');

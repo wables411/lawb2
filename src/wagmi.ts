@@ -64,7 +64,8 @@ function mainnetFallbackTransport() {
     viteRpc('VITE_MAINNET_RPC_URL'),
     'https://rpc.ankr.com/eth',
     'https://eth.blockscout.com/api/eth-rpc',
-    'https://eth.llamarpc.com',
+    // NB: eth.llamarpc.com removed — it rejects browser requests with a CORS
+    // preflight failure, spamming the console with net::ERR_FAILED on every call.
   ].filter(Boolean) as string[];
   return urls.length === 1 ? http(urls[0]!, { batch: false }) : fallback(urls.map((u) => http(u, { batch: false })));
 }
