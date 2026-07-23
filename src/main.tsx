@@ -1,3 +1,4 @@
+import { dlog } from './utils/devLog';
 // Firebase disabled — lawb.xyz runs without Firebase
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -33,7 +34,7 @@ const AppWithWagmi = () => {
   
   // Initialize AppKit for wallet connections
   React.useEffect(() => {
-    console.log('[AppWithWagmi] Initializing AppKit for web users');
+    dlog('[AppWithWagmi] Initializing AppKit for web users');
     initializeAppKit();
     
     // Poll for AppKit loading
@@ -43,7 +44,7 @@ const AppWithWagmi = () => {
       attempts++;
       if (wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
         const adapterConfig = (wagmiAdapter as any).wagmiConfig;
-        console.log('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
+        dlog('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
         setCurrentConfig(adapterConfig);
         setConfigKey(prev => prev + 1); // Force WagmiProvider to re-initialize
         clearInterval(interval);
@@ -64,7 +65,7 @@ const AppWithWagmi = () => {
       attempts++;
       if (wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
         const adapterConfig = (wagmiAdapter as any).wagmiConfig;
-        console.log('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
+        dlog('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
         setCurrentConfig(adapterConfig);
         setConfigKey(prev => prev + 1); // Force WagmiProvider to re-initialize
         clearInterval(interval);

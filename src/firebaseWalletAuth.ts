@@ -1,3 +1,4 @@
+import { dlog } from './utils/devLog';
 /**
  * Wallet -> Firebase Auth sign-in (client side).
  *
@@ -93,7 +94,7 @@ export async function ensureWalletDbAuth(
       }
       const { token } = await res.json();
       await signInWithCustomToken(auth, token);
-      console.log('[walletAuth] signed in for', pathKey.slice(0, 8) + '…');
+      dlog('[walletAuth] signed in for', pathKey.slice(0, 8) + '…');
       return true;
     } catch (err) {
       // User declined the signature or network hiccup — writes stay read-only.

@@ -1,3 +1,4 @@
+import { dlog } from '../utils/devLog';
 import React, { useRef } from 'react';
 import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
 import { createUseStyles } from 'react-jss';
@@ -108,13 +109,13 @@ function Icon({ image, label, action, url, popupId, folderId, isInFolder = false
     // If we didn't drag, treat it as a click (with small delay to ensure drag is complete)
     if (!hasDragged.current) {
       clickTimeoutRef.current = setTimeout(() => {
-        console.log('[ICON] Click detected, calling onClick with:', { action, popupId, url, folderId });
+        dlog('[ICON] Click detected, calling onClick with:', { action, popupId, url, folderId });
         playIconClickSound();
         onClick(action, popupId, url, folderId);
         clickTimeoutRef.current = null;
       }, 50);
     } else {
-      console.log('[ICON] Drag detected, skipping click');
+      dlog('[ICON] Drag detected, skipping click');
     }
     hasDragged.current = false;
     dragStartPos.current = null;

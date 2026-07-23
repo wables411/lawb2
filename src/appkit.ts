@@ -1,3 +1,4 @@
+import { dlog } from './utils/devLog';
 // AppKit initialization for REOWN wallet connections
 
 import { sankoMainnet } from './wagmi';
@@ -24,11 +25,11 @@ let appKit: any = null;
 export const initializeAppKit = () => {
   // Check if already initialized
   if (appKit || wagmiAdapter) {
-    console.log('[AppKit] Already initialized, skipping');
+    dlog('[AppKit] Already initialized, skipping');
     return;
   }
   
-  console.log('[AppKit] Loading AppKit modules');
+  dlog('[AppKit] Loading AppKit modules');
   
   // Use dynamic imports to load AppKit modules
   Promise.all([
@@ -47,7 +48,7 @@ export const initializeAppKit = () => {
       ? [mainnet, arbitrum, base, sankoMainnet, baseSepolia]
       : [mainnet, arbitrum, base, sankoMainnet];
 
-    console.log('[AppKit] Creating WagmiAdapter and AppKit');
+    dlog('[AppKit] Creating WagmiAdapter and AppKit');
 
     wagmiAdapter = new WagmiAdapter({
       projectId,
@@ -85,10 +86,10 @@ export const initializeAppKit = () => {
     // Register AppKit with React component
     if (appKit && getAppKit) {
       getAppKit(appKit);
-      console.log('[AppKit] AppKit registered with React');
+      dlog('[AppKit] AppKit registered with React');
     }
     
-    console.log('[AppKit] AppKit initialized successfully');
+    dlog('[AppKit] AppKit initialized successfully');
   }).catch((error) => {
     console.error('[AppKit] Failed to load AppKit modules:', error);
   });

@@ -1,3 +1,4 @@
+import { dlog } from '../utils/devLog';
 /**
  * Safe wrapper for useAppKit that handles loading and initialization
  */
@@ -59,7 +60,7 @@ export const useAppKitSafe = (): AppKitReturn => {
     import('@reown/appkit/react')
       .then((module) => {
         setAppKitModule(module);
-        console.log('[useAppKitSafe] AppKit module loaded successfully');
+        dlog('[useAppKitSafe] AppKit module loaded successfully');
       })
       .catch((error) => {
         console.warn('[useAppKitSafe] Failed to load AppKit module:', error);
@@ -72,7 +73,7 @@ export const useAppKitSafe = (): AppKitReturn => {
       open: (options?: any) => {
         // Retry loading if not ready
         if (!appKitReady) {
-          console.log('[AppKit] AppKit instance not ready yet, retrying...');
+          dlog('[AppKit] AppKit instance not ready yet, retrying...');
           // Trigger re-check
           setTimeout(() => {
             if (appKit && typeof appKit === 'object') {
@@ -80,7 +81,7 @@ export const useAppKitSafe = (): AppKitReturn => {
             }
           }, 100);
         } else if (!appKitModule) {
-          console.log('[AppKit] AppKit module not loaded yet, retrying...');
+          dlog('[AppKit] AppKit module not loaded yet, retrying...');
           import('@reown/appkit/react')
             .then((module) => {
               setAppKitModule(module);

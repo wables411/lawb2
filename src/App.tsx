@@ -1,3 +1,4 @@
+import { dlog } from './utils/devLog';
 import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
 import Desktop from './components/Desktop';
 import LinuxNavBar from './components/LinuxNavBar';
@@ -165,13 +166,13 @@ function App() {
   }, [activePopup]);
 
   const handleIconClick = (action: string, popupId?: string, url?: string) => {
-    console.log('[APP] handleIconClick called with:', { action, popupId, url });
+    dlog('[APP] handleIconClick called with:', { action, popupId, url });
     if (action === 'url' && url) {
       window.open(url, '_blank');
     } else if (action === 'popup' && popupId) {
       if (popupId === 'miladychan-popup') {
         // Miladychan window - open as a popup
-        console.log('[APP] Opening Miladychan window');
+        dlog('[APP] Opening Miladychan window');
         setActivePopup(popupId);
         setMinimizedPopups(prev => {
           const newSet = new Set(prev);
@@ -180,7 +181,7 @@ function App() {
         });
         void document.body.offsetWidth;
       } else {
-        console.log('[APP] Setting active popup to:', popupId);
+        dlog('[APP] Setting active popup to:', popupId);
         setActivePopup(popupId);
         setMinimizedPopups(prev => {
           const newSet = new Set(prev);
