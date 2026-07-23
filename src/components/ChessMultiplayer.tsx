@@ -35,6 +35,7 @@ import Popup from './Popup';
 import { PlayerProfile } from './PlayerProfile';
 import { HowToContent } from './HowToContent';
 import { ThemeToggle } from './ThemeToggle';
+import { oc as OC, solid as ocSolidLocal, ocBtnPrimary as OC_BTN_PRIMARY, ocBtnSecondary as OC_BTN_SECONDARY, ocBtnGhost as OC_BTN_GHOST } from './onchain/onchainUi';
 import { ChessChat } from './ChessChat';
 import ClawbDanceLoop from './ClawbDanceLoop2D';
 import { debugIngest } from '../utils/debugIngest';
@@ -6691,34 +6692,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
               paddingRight: isMobile ? '12px' : undefined
             }}>
               <h2 style={{
-                color: '#ff0000',
-                fontFamily: 'Impact, Charcoal, sans-serif',
-                fontSize: isMobile ? '22px' : '48px',
-                fontWeight: 'bold',
-                textShadow: isMobile ? '0 0 8px #ff0000, 0 0 16px #ff0000' : '0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000',
+                color: OC.ink,
+                fontFamily: "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif",
+                fontSize: isMobile ? '22px' : '40px',
+                fontWeight: 800,
+                letterSpacing: '.12em',
                 marginBottom: isMobile ? '4px' : '10px',
                 marginTop: isMobile ? '0' : undefined,
                 paddingTop: isMobile ? '0' : undefined,
                 textTransform: 'uppercase'
-              }}>{isMobile ? 'Base PvP Lobby' : 'PVP CHESS LAWBY'}</h2>
+              }}>Lawbster <span style={{ color: OC.cyan }}>Chess</span> · <span style={{ color: OC.muted2, fontSize: isMobile ? '13px' : '20px' }}>Base PvP</span></h2>
               
               {!isConnected ? (
-                <div className="wallet-notice" style={{ marginBottom: '20px', color: '#ff0000' }}>
+                <div className="wallet-notice" style={{ marginBottom: '20px', color: OC.muted }}>
                   Please connect your wallet to play multiplayer chess
-                  <button 
+                  <button
                     onClick={() => {
                       alert('Please connect your wallet using the wallet connection button in the main interface.');
                     }}
-                    style={{
-                      display: 'block',
-                      margin: '10px auto',
-                      padding: '10px 20px',
-                      backgroundColor: '#000080',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
+                    style={{ ...OC_BTN_PRIMARY, display: 'block', margin: '12px auto' }}
                   >
                     Connect Wallet
                   </button>
@@ -6739,19 +6731,20 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                 </div>
               ) : (
                 <>
-                  <div className="status-bar" style={{ marginBottom: '20px', color: '#ff0000' }}>
+                  <div className="status-bar" style={{ marginBottom: '20px', color: OC.muted, fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}>
                     Connected: {formatAddress(address!)}
                   </div>
 
-                  <div className="pvp-lobby-intro-card">
-                    <div className="pvp-lobby-intro-title">Base PvP is live now</div>
-                    <div className="pvp-lobby-intro-text">
+                  <div className="pvp-lobby-intro-card" style={{ backgroundImage: OC.card, border: `1px solid ${OC.line}`, borderRadius: 14, color: OC.ink }}>
+                    <div className="pvp-lobby-intro-title" style={{ color: OC.ink }}>Base PvP is live now</div>
+                    <div className="pvp-lobby-intro-text" style={{ color: OC.muted }}>
                       Create or join Base token wager matches. NFT wagers are listed as coming soon.
                     </div>
                     <button
                       type="button"
                       className="pvp-lobby-howto-btn"
                       onClick={openHowToGuide}
+                      style={{ ...OC_BTN_GHOST }}
                     >
                       How To + Piece Key
                     </button>
@@ -6780,48 +6773,25 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         maxWidth: isMobile ? '420px' : undefined,
                       }}
                     >
-                      <button 
+                      <button
                         className="create-btn"
                         onClick={() => setIsCreatingGame(true)}
                         disabled={isCreatingGame || isGameCreationInProgress}
-                        style={{ color: '#ff0000', width: isMobile ? '100%' : undefined }}
+                        style={{ ...OC_BTN_PRIMARY, width: isMobile ? '100%' : undefined }}
                       >
                         Create New Match
                       </button>
-                      <button 
+                      <button
                         onClick={loadOpenGames}
-                        style={{ 
-                          background: 'rgba(255, 0, 0, 0.1)',
-                          border: '2px solid #ff0000',
-                          color: '#ff0000',
-                          padding: '8px 16px',
-                          borderRadius: '0px',
-                          cursor: 'pointer',
-                          fontFamily: 'Courier New, monospace',
-                          fontSize: isMobile ? '13px' : '14px',
-                          fontWeight: 'bold',
-                          transition: 'all 0.3s ease',
-                          width: isMobile ? '100%' : undefined
-                        }}
+                        style={{ ...OC_BTN_GHOST, width: isMobile ? '100%' : undefined }}
                       >
                         🔄 Refresh Lobby
                       </button>
 
                       {!isMobile && (
-                        <button 
+                        <button
                           onClick={() => window.location.href = '/chess'}
-                          style={{ 
-                            background: 'rgba(255, 0, 0, 0.1)',
-                            border: '2px solid #ff0000',
-                            color: '#ff0000',
-                            padding: '12px 24px',
-                            borderRadius: '0px',
-                            cursor: 'pointer',
-                            fontFamily: 'Courier New, monospace',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            transition: 'all 0.3s ease'
-                          }}
+                          style={{ ...OC_BTN_GHOST }}
                         >
                           🏠 Back to Chess Home
                         </button>
@@ -6835,15 +6805,21 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                     )}
                     
                     {isCreatingGame && (
-                      <div className="create-form" style={{ 
-                        order: 3, 
+                      <div className="create-form" style={{
+                        order: 3,
                         marginBottom: '20px',
                         maxHeight: isMobile ? '34dvh' : 'none',
                         overflowY: isMobile ? 'auto' : 'visible',
-                        padding: undefined
+                        padding: isMobile ? '14px' : '18px',
+                        backgroundImage: OC.card,
+                        border: `1px solid ${OC.line}`,
+                        borderRadius: 14,
                       }}>
-                        <h3 style={{ 
-                          color: '#ff0000',
+                        <h3 style={{
+                          color: OC.ink,
+                          fontWeight: 800,
+                          letterSpacing: '.06em',
+                          textTransform: 'uppercase',
                           fontSize: undefined,
                           marginBottom: undefined
                         }}>Create New Match</h3>
@@ -6852,63 +6828,62 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         {isMobile ? (
                           <div
                             style={{
-                              background: 'rgba(255, 0, 0, 0.1)',
-                              border: '1px solid #ff0000',
+                              backgroundImage: ocSolidLocal('rgba(63,224,214,.06)'),
+                              border: `1px solid ${OC.line}`,
                               padding: '8px 10px',
                               marginBottom: '12px',
-                              borderRadius: '4px',
+                              borderRadius: 10,
                               fontSize: '12px',
                               lineHeight: '1.35',
-                              color: '#ff0000',
+                              color: OC.muted,
                             }}
                           >
-                            <strong>Flow:</strong> Base network, token + amount, piece set, confirm wallet tx.
+                            <strong style={{ color: OC.cyan }}>Flow:</strong> Base network, token + amount, piece set, confirm wallet tx.
                           </div>
                         ) : (
-                          <div style={{ 
-                            background: 'rgba(255, 0, 0, 0.1)', 
-                            border: '1px solid #ff0000', 
-                            padding: '12px', 
+                          <div style={{
+                            backgroundImage: ocSolidLocal('rgba(63,224,214,.06)'),
+                            border: `1px solid ${OC.line}`,
+                            padding: '12px',
                             marginBottom: '15px',
-                            borderRadius: '4px',
+                            borderRadius: 10,
                             fontSize: '13px',
-                            lineHeight: '1.4',
-                            color: '#ff0000'
+                            lineHeight: '1.5',
+                            color: OC.muted
                           }}>
-                            <strong>📋 Game Creation Flow:</strong><br/>
-                            1️⃣ <strong>Switch to Base</strong> (Chain ID 8453).<br/>
-                            2️⃣ <strong>Select token + amount</strong> for your wager.<br/>
-                            3️⃣ <strong>Select Piece Set</strong> for this match.<br/>
-                            4️⃣ <strong>Click "Create Game"</strong> and confirm wallet transaction(s).<br/>
-                            &nbsp;&nbsp;&nbsp;• ERC20 tokens usually need <strong>Approve</strong> + <strong>Create Game</strong><br/>
-                            &nbsp;&nbsp;&nbsp;• Native ETH may only need the <strong>Create Game</strong> transaction<br/>
+                            <strong style={{ color: OC.cyan }}>📋 Game Creation Flow:</strong><br/>
+                            1️⃣ <strong style={{ color: OC.ink }}>Switch to Base</strong> (Chain ID 8453).<br/>
+                            2️⃣ <strong style={{ color: OC.ink }}>Select token + amount</strong> for your wager.<br/>
+                            3️⃣ <strong style={{ color: OC.ink }}>Select Piece Set</strong> for this match.<br/>
+                            4️⃣ <strong style={{ color: OC.ink }}>Click "Create Game"</strong> and confirm wallet transaction(s).<br/>
+                            &nbsp;&nbsp;&nbsp;• ERC20 tokens usually need <strong style={{ color: OC.ink }}>Approve</strong> + <strong style={{ color: OC.ink }}>Create Game</strong><br/>
+                            &nbsp;&nbsp;&nbsp;• Native ETH may only need the <strong style={{ color: OC.ink }}>Create Game</strong> transaction<br/>
                             <br/>
-                            <strong>💡 Note:</strong> NFT wagers are still coming soon.
+                            <strong style={{ color: OC.gold }}>💡 Note:</strong> NFT wagers are still coming soon.
                           </div>
                         )}
-                        
-                        <div style={{ marginBottom: '10px', color: '#ff0000', fontWeight: 'bold' }}>
+
+                        <div style={{ marginBottom: '10px', color: OC.gold, fontWeight: 'bold', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}>
                           Network: Base Mainnet (Chain ID 8453)
                         </div>
                         
                         {/* Wager Type Selector - Base/Arbitrum only */}
                         {(isBase || isArbitrum) && (
                           <div style={{ marginBottom: '10px' }}>
-                            <label style={{ fontWeight: 'bold', minWidth: '80px', color: '#ff0000', marginRight: '10px' }}>
+                            <label style={{ fontWeight: 700, minWidth: '80px', color: OC.muted2, marginRight: '10px', fontFamily: 'ui-monospace, monospace', fontSize: '11px', letterSpacing: '.1em', textTransform: 'uppercase' }}>
                               Wager Type:
                             </label>
-                            <div style={{ display: 'flex', gap: '5px' }}>
+                            <div style={{ display: 'flex', gap: '6px' }}>
                               <button
                                 type="button"
                                 onClick={() => setWagerType('token')}
                                 disabled={isGameCreationInProgress}
                                 style={{
-                                  padding: '5px 10px',
-                                  border: wagerType === 'token' ? '2px solid #ff0000' : '2px outset #fff',
-                                  background: wagerType === 'token' ? '#333' : '#000000',
-                                  color: '#ff0000',
-                                  cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
+                                  padding: '8px 13px', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
+                                  color: wagerType === 'token' ? OC.ink : OC.muted,
+                                  backgroundImage: wagerType === 'token' ? ocSolidLocal('rgba(63,224,214,.10)') : OC.chipOff,
+                                  border: `1px solid ${wagerType === 'token' ? OC.line2 : OC.line}`,
+                                  boxShadow: wagerType === 'token' ? `0 0 0 1px ${OC.line2}` : 'none',
                                 }}
                               >
                                 Token
@@ -6918,13 +6893,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                 onClick={() => setWagerType('nft')}
                                 disabled={true}
                                 style={{
-                                  padding: '5px 10px',
-                                  border: wagerType === 'nft' ? '2px solid #ff0000' : '2px outset #fff',
-                                  background: wagerType === 'nft' ? '#333' : '#000000',
-                                  color: '#ff0000',
-                                  cursor: 'not-allowed',
-                                  opacity: 0.6,
-                                  fontSize: '12px'
+                                  padding: '8px 13px', borderRadius: 10, fontSize: 12.5, fontWeight: 700,
+                                  color: OC.muted2, backgroundImage: OC.chipOff, border: `1px solid ${OC.line}`,
+                                  cursor: 'not-allowed', opacity: 0.6,
                                 }}
                               >
                                 NFT (Soon)
@@ -7005,13 +6976,9 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               }}
                               disabled={(wagerType === 'token' && gameWager <= 0) || (wagerType === 'nft' && !selectedNFT) || isGameCreationInProgress}
                               style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#ff0000',
-                                color: '#000000',
-                                border: 'none',
-                                borderRadius: '0px',
+                                ...OC_BTN_PRIMARY,
                                 cursor: gameWager <= 0 || isGameCreationInProgress ? 'not-allowed' : 'pointer',
-                                fontWeight: 'bold'
+                                opacity: (wagerType === 'token' && gameWager <= 0) || isGameCreationInProgress ? 0.6 : 1,
                               }}
                             >
                               Continue to Piece Selection
@@ -7029,19 +6996,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               }}
                               disabled={isGameCreationInProgress}
                               style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#ff0000',
-                                color: '#000000',
-                                border: 'none',
-                                borderRadius: '0px',
+                                ...OC_BTN_PRIMARY,
                                 cursor: isGameCreationInProgress ? 'not-allowed' : 'pointer',
-                                fontWeight: 'bold'
+                                opacity: isGameCreationInProgress ? 0.6 : 1,
                               }}
                             >
                               {isGameCreationInProgress ? 'Creating...' : 'Create Game'}
                             </button>
                           )}
-                          <button 
+                          <button
                             className="cancel-btn"
                             onClick={() => {
                               setIsCreatingGame(false);
@@ -7049,15 +7012,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                               setShowPieceSetSelector(false);
                               setShowPieceSetDropdown(false);
                             }}
-                            style={{
-                              padding: '8px 16px',
-                              backgroundColor: '#ff0000',
-                              color: '#000000',
-                              border: 'none',
-                              borderRadius: '0px',
-                              cursor: 'pointer',
-                              fontWeight: 'bold'
-                            }}
+                            style={{ ...OC_BTN_GHOST }}
                           >
                             Cancel
                           </button>
@@ -7075,7 +7030,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                         width: isMobile ? '100%' : undefined,
                       }}
                     >
-                      <h3 style={{ color: '#ff0000' }}>Open Games ({openGames.length})</h3>
+                      <h3 style={{ color: OC.ink, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>Open Games ({openGames.length})</h3>
                       <div
                         className="games-list"
                         style={{
@@ -7129,24 +7084,24 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                             : (tokenConfig?.symbol || 'DMT');
                           
                           return (
-                          <div key={game.invite_code} className="game-item" style={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
+                          <div key={game.invite_code} className="game-item" style={{
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '5px',
-                            padding: isMobile ? '6px' : '8px',
-                            border: '1px solid #333',
-                            borderRadius: '3px',
-                            backgroundColor: '#000000'
+                            gap: '8px',
+                            padding: isMobile ? '10px' : '12px',
+                            border: `1px solid ${OC.line}`,
+                            borderRadius: 12,
+                            backgroundImage: OC.card,
                           }}>
-                            <div className="game-details" style={{ textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px', color: '#ff0000' }}>
-                              <div className="game-id" style={{ fontWeight: 'bold', color: '#ff0000' }}>{game.game_title || 'Untitled Game'}</div>
-                              <div className="wager" style={{ color: '#ff0000' }}>
-                                Wager: {(parseFloat(game.bet_amount) / Math.pow(10, tokenDecimals)).toFixed(2)} {displaySymbol}
+                            <div className="game-details" style={{ textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px', color: OC.muted }}>
+                              <div className="game-id" style={{ fontWeight: 700, color: OC.ink }}>{game.game_title || 'Untitled Game'}</div>
+                              <div className="wager" style={{ color: OC.gold, fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>
+                                {(parseFloat(game.bet_amount) / Math.pow(10, tokenDecimals)).toFixed(2)} {displaySymbol}
                               </div>
-                              <div className="creator" style={{ fontSize: '0.8rem', color: '#ff0000' }}>Created by: {formatAddress(game.blue_player)}</div>
+                              <div className="creator" style={{ fontSize: '0.78rem', color: OC.muted2, fontFamily: 'ui-monospace, monospace' }}>by {formatAddress(game.blue_player)}</div>
                             </div>
-                            <button 
+                            <button
                               className="join-btn"
                               onClick={() => {
                                 dlog('[JOIN BUTTON] ========== CLICKED ==========');
@@ -7166,15 +7121,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                                   console.error('[JOIN BUTTON] Error calling joinGame():', error);
                                 }
                               }}
-                              style={{
-                                padding: '4px 12px',
-                                fontSize: '0.8rem',
-                                backgroundColor: '#ff0000',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '0px',
-                                cursor: 'pointer'
-                              }}
+                              style={{ ...OC_BTN_PRIMARY, padding: '9px 18px', fontSize: 11.5 }}
                             >
                               Join Game
                             </button>
@@ -7182,15 +7129,15 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
                           );
                         })}
                         {openGames.length === 0 && (
-                          <div className="no-games" style={{ 
-                            color: '#ff0000', 
-                            textAlign: 'center', 
+                          <div className="no-games" style={{
+                            color: OC.muted,
+                            textAlign: 'center',
                             padding: '20px',
-                            background: 'rgba(255, 0, 0, 0.05)',
-                            border: '1px solid rgba(255, 0, 0, 0.2)',
-                            borderRadius: '4px'
+                            backgroundImage: ocSolidLocal('rgba(63,224,214,.04)'),
+                            border: `1px dashed ${OC.line}`,
+                            borderRadius: 12
                           }}>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', color: OC.ink }}>
                               🦞♟ No Open Games Available
                             </div>
                             <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
@@ -7210,22 +7157,23 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
           {/* Waiting Mode */}
           {gameMode === GameMode.WAITING && (
             <div className="chess-multiplayer-waiting">
-              <h2>Waiting for Opponent</h2>
-              <div className="game-code">
-                Invite Code: <strong>{inviteCode}</strong>
+              <h2 style={{ color: OC.ink, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>Waiting for Opponent</h2>
+              <div className="game-code" style={{ color: OC.muted, fontFamily: 'ui-monospace, monospace' }}>
+                Invite Code: <strong style={{ color: OC.cyan }}>{inviteCode}</strong>
               </div>
               <div className="game-info">
-                <p>Wager: {wager.toFixed(6)} {currentGameToken}</p>
+                <p style={{ color: OC.gold, fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>Wager: {wager.toFixed(6)} {currentGameToken}</p>
               </div>
               <div className="waiting-actions">
-                <button 
+                <button
                   onClick={refundGame}
                   disabled={isCancellingGame || isWaitingForCancelReceipt}
                   className="refund-game-btn"
+                  style={{ ...OC_BTN_SECONDARY, opacity: (isCancellingGame || isWaitingForCancelReceipt) ? 0.6 : 1 }}
                 >
                   {isCancellingGame || isWaitingForCancelReceipt ? '⏳ Refunding...' : '💰 Refund Game'}
                 </button>
-                <p className="refund-note">
+                <p className="refund-note" style={{ color: OC.muted2, fontSize: 12 }}>
                   You can refund your wager anytime before an opponent joins
                 </p>
                 <div className="waiting-gif-container" style={{

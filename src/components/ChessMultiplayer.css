@@ -4292,6 +4292,10 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
   text-shadow: none !important;
 }
 
+/* Classic PvP buttons are now styled inline via the shared deep-sea tokens
+   (OC_BTN_* in ChessMultiplayer.tsx). This block used to force a "linux button"
+   gradient with !important, which beat those inline styles — neutered to only a
+   clean font reset so nothing leaks Courier/Impact. */
 .chess-page-simple .actions > button,
 .chess-page-simple .pvp-lobby-howto-btn,
 .chess-page-simple .join-btn,
@@ -4299,14 +4303,7 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
 .chess-page-simple .cancel-btn,
 .chess-page-simple .wallet-notice button,
 .chess-page-simple .create-form button {
-  background: linear-gradient(180deg, var(--linux-button-top), var(--linux-button-bottom)) !important;
-  border: 1px solid var(--linux-button-border) !important;
-  border-radius: 6px !important;
-  color: var(--linux-text) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
   font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif !important;
-  text-transform: none !important;
-  letter-spacing: 0.01em !important;
 }
 
 .chess-page-simple .actions > button:hover,
@@ -4317,11 +4314,6 @@ html:not(.lawb-app-dark-mode):not([class*="lawb-app-dark-mode"]) {
 .chess-page-simple .wallet-notice button:hover,
 .chess-page-simple .create-form button:hover {
   filter: brightness(1.08);
-}
-
-.chess-page-simple .create-btn,
-.chess-page-simple .create-confirm-btn {
-  border-color: var(--linux-accent) !important;
 }
 
 .chess-page-simple .create-form > div[style*="Game Creation Flow"],
