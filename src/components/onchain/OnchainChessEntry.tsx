@@ -14,7 +14,14 @@ export const OnchainChessEntry: React.FC = () => {
   const [view, setView] = useState<View>({ kind: 'lobby' });
 
   return (
-    <div style={{ width: '100%', minHeight: '60vh', display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+    // Own scroll region: the parent .chess-content-simple is overflow:hidden with a
+    // bounded height, so this must be flex:1 + min-height:0 + overflow-y:auto or the
+    // (tall) lobby gets clipped with no way to reach the open-games / sandbox below.
+    <div style={{
+      flex: '1 1 auto', minHeight: 0, width: '100%', overflowY: 'auto', overflowX: 'hidden',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '12px 12px 32px', WebkitOverflowScrolling: 'touch',
+    }}>
       {view.kind === 'game' ? (
         <OnchainChessGame code={view.code} onLeave={() => setView({ kind: 'lobby' })} />
       ) : view.kind === 'demo' ? (

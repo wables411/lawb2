@@ -175,27 +175,28 @@ const ChessPageConnected: React.FC = () => {
         />
         <div className="chess-content-simple">
           {ENABLE_ONCHAIN_CHESS && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
-              <button
-                onClick={() => setOnchainMode(false)}
-                style={{
-                  padding: '6px 14px', cursor: 'pointer', fontWeight: 'bold', fontSize: 13,
-                  background: onchainMode ? '#000' : '#c0c0c0', color: onchainMode ? '#ff0000' : '#000',
-                  border: onchainMode ? '2px outset #fff' : '2px inset #fff',
-                }}
-              >
-                ♟ Classic (AI + PvP)
-              </button>
-              <button
-                onClick={() => setOnchainMode(true)}
-                style={{
-                  padding: '6px 14px', cursor: 'pointer', fontWeight: 'bold', fontSize: 13,
-                  background: onchainMode ? '#c0c0c0' : '#000', color: onchainMode ? '#000' : '#ff0000',
-                  border: onchainMode ? '2px inset #fff' : '2px outset #fff',
-                }}
-              >
-                ⛓ On-Chain Wagers ($DMT · beta)
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '10px 8px', flexWrap: 'wrap' }}>
+              {([
+                { on: onchainMode, label: '⛓ On-Chain $DMT', go: () => setOnchainMode(true) },
+                { on: !onchainMode, label: '♟ Classic (AI + PvP)', go: () => setOnchainMode(false) },
+              ]).map((t) => (
+                <button
+                  key={t.label}
+                  onClick={t.go}
+                  style={{
+                    padding: '9px 15px', cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                    letterSpacing: '.04em', borderRadius: 10, transition: 'all .15s ease',
+                    color: t.on ? '#dbe6f5' : '#8298b8',
+                    backgroundImage: t.on
+                      ? 'linear-gradient(rgba(63,224,214,.10), rgba(63,224,214,.10))'
+                      : 'linear-gradient(#0e1a2e, #0c1728)',
+                    border: `1px solid ${t.on ? 'rgba(86,196,214,.34)' : 'rgba(86,196,214,.18)'}`,
+                    boxShadow: t.on ? '0 0 0 1px rgba(86,196,214,.34)' : 'none',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
           )}
           {ENABLE_ONCHAIN_CHESS && onchainMode ? (

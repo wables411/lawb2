@@ -146,7 +146,8 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', gap: 16, padding: 18, maxWidth: 440, margin: '0 auto',
+      display: 'flex', flexDirection: 'column', gap: 16, padding: 18,
+      width: '100%', maxWidth: 440, margin: '0 auto', flexShrink: 0, boxSizing: 'border-box',
       fontFamily: "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif",
       color: C.ink, backgroundImage: C.panel, border: `1px solid ${C.line}`, borderRadius: 16,
       boxShadow: '0 24px 60px rgba(0,0,0,.45)',
@@ -270,25 +271,19 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
             </div>
           )}
 
-          {/* time control */}
+          {/* time control — labels sit ABOVE the inputs so they can't overflow the box */}
           <FieldLabel>Time control</FieldLabel>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, backgroundImage: C.inset,
-                border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 10px' }}>
-                <input value={minutes} onChange={(e) => setMinutes(e.target.value)} inputMode="decimal"
-                  style={{ flex: 1, minWidth: 0, background: 'transparent', border: 0, outline: 'none',
-                    color: C.ink, fontFamily: 'ui-monospace, monospace', fontSize: 15, fontWeight: 700 }} />
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10.5, color: C.muted2, textTransform: 'uppercase', letterSpacing: '.1em' }}>min each</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={timeSubLabel}>Minutes each</div>
+              <div style={timeInputBox}>
+                <input value={minutes} onChange={(e) => setMinutes(e.target.value)} inputMode="decimal" style={timeInput} />
               </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, backgroundImage: C.inset,
-                border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 10px' }}>
-                <input value={increment} onChange={(e) => setIncrement(e.target.value)} inputMode="numeric"
-                  style={{ flex: 1, minWidth: 0, background: 'transparent', border: 0, outline: 'none',
-                    color: C.ink, fontFamily: 'ui-monospace, monospace', fontSize: 15, fontWeight: 700 }} />
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10.5, color: C.muted2, textTransform: 'uppercase', letterSpacing: '.1em' }}>+sec inc</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={timeSubLabel}>+ Increment&nbsp;(s)</div>
+              <div style={timeInputBox}>
+                <input value={increment} onChange={(e) => setIncrement(e.target.value)} inputMode="numeric" style={timeInput} />
               </div>
             </div>
           </div>
@@ -336,4 +331,17 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
       </button>
     </div>
   );
+};
+
+const timeSubLabel: React.CSSProperties = {
+  fontFamily: 'ui-monospace, monospace', fontSize: 9.5, letterSpacing: '.08em', textTransform: 'uppercase',
+  color: C.muted2, marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+};
+const timeInputBox: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', backgroundImage: C.inset, border: `1px solid ${C.line}`,
+  borderRadius: 10, padding: '9px 11px',
+};
+const timeInput: React.CSSProperties = {
+  flex: 1, minWidth: 0, width: '100%', background: 'transparent', border: 0, outline: 'none',
+  color: C.ink, fontFamily: 'ui-monospace, monospace', fontSize: 15, fontWeight: 700,
 };
