@@ -26,6 +26,10 @@ function randomCode(): string {
 }
 const isAddr = (a: string): a is `0x${string}` => /^0x[0-9a-fA-F]{40}$/.test(a.trim());
 
+// Featured Arbitrum wager token ($DMT) — the default wager so the lobby opens ready to bet DMT.
+const ARBITRUM_ID = LAWB_CHESS_CHAIN_IDS.arbitrum;
+const DEFAULT_TOKEN = LAWB_CHESS_WAGER_TOKENS[ARBITRUM_ID]?.[0];
+
 export interface OnchainChessLobbyProps {
   onEnterGame: (code: GameCode) => void;
   onPlayDemo: () => void;
@@ -38,10 +42,11 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
   const publicClient = usePublicClient();
   const actions = useOnchainChessActions();
 
-  const [wagerType, setWagerType] = useState<WagerType>('native');
-  const [amount, setAmount] = useState('0.01');
-  const [decimals, setDecimals] = useState('18');
-  const [tokenAddr, setTokenAddr] = useState('');
+  // Default to a $DMT (ERC-20) wager on Arbitrum rather than native ETH.
+  const [wagerType, setWagerType] = useState<WagerType>('erc20');
+  const [amount, setAmount] = useState('1000');
+  const [decimals, setDecimals] = useState(DEFAULT_TOKEN ? String(DEFAULT_TOKEN.decimals) : '18');
+  const [tokenAddr, setTokenAddr] = useState<string>(DEFAULT_TOKEN?.address ?? '');
   const [nftAddr, setNftAddr] = useState('');
   const [tokenId, setTokenId] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -136,7 +141,16 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
 
       {!isConnected && <div style={{ color: '#e0a000' }}>Connect your wallet to create or join.</div>}
       {isConnected && !deployedHere && (
-        <div style={{ color: '#e0a000' }}>Not deployed on this network — switch to Arbitrum.</div>
+        <div style={{ color: '#e0a000', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span>On-chain chess runs on Arbitrum ($DMT).</span>
+          <button
+            type="button"
+            style={{ ...btn, margin: 0, padding: '4px 10px' }}
+            onClick={() => switchChain?.({ chainId: ARBITRUM_ID })}
+          >
+            Switch to Arbitrum
+          </button>
+        </div>
       )}
 
       <fieldset style={box} disabled={!isConnected || !deployedHere || busy}>

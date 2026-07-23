@@ -25,8 +25,10 @@ const isSpectatorMode = (() => {
 /** Wallet-connected chess page — the normal player experience. */
 const ChessPageConnected: React.FC = () => {
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
-  // On-chain wager chess is opt-in per visit; classic (AI + Firebase PvP) stays the default view.
-  const [onchainMode, setOnchainMode] = useState(false);
+  // On-chain $DMT wager chess (Arbitrum) is the featured/default view; classic (AI + Firebase
+  // PvP on Base) stays one click away via the tab. When the flag is off, this state is unused
+  // (the tabs don't render) and the classic view shows regardless.
+  const [onchainMode, setOnchainMode] = useState(ENABLE_ONCHAIN_CHESS);
 
   // Scroll to top on mount and whenever component updates
   useEffect(() => {
