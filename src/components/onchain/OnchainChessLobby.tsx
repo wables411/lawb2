@@ -12,6 +12,7 @@ import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
 import { LAWB_CHESS_CHAIN_IDS, LAWB_CHESS_NFT_COLLECTIONS, LAWB_CHESS_WAGER_TOKENS, getLawbChessAddress } from '../../config/lawbChessOnchain';
 import { WagerKind } from '../../utils/lawbChessBoard';
 import { stringToCode, type GameCode } from '../../utils/lawbChessMoves';
+import { oc as C, solid, ocInput, ocBtnPrimary, ocBtnSecondary, ocChip, FieldLabel, TokenGlyph } from './onchainUi';
 
 type WagerType = 'native' | 'erc20' | 'erc721' | 'erc1155';
 
@@ -32,17 +33,6 @@ function randomCode(): string {
   return s;
 }
 const isAddr = (a: string): a is `0x${string}` => /^0x[0-9a-fA-F]{40}$/.test(a.trim());
-
-/* ---- deep-sea palette (inline so the theme-nuke can't blank it) ---- */
-const C = {
-  panel: 'linear-gradient(180deg, #0e1a2e, #0a1322)',
-  card: 'linear-gradient(180deg, #101d33, #0b1626)',
-  inset: 'linear-gradient(180deg, #081019, #0a1322)',
-  chipOff: 'linear-gradient(180deg, #0e1a2e, #0c1728)',
-  cyan: '#3fe0d6', gold: '#f2b73c', ink: '#dbe6f5', muted: '#8298b8', muted2: '#5f728f',
-  line: 'rgba(86,196,214,.18)', line2: 'rgba(86,196,214,.34)', goldline: 'rgba(242,183,60,.42)',
-};
-const solid = (c: string) => `linear-gradient(${c}, ${c})`;
 
 export interface OnchainChessLobbyProps {
   onEnterGame: (code: GameCode) => void;
@@ -152,15 +142,6 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
     onEnterGame(stringToCode(trimmed));
   };
 
-  const chipStyle = (on: boolean, accent = C.line2): React.CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 13px', borderRadius: 10,
-    cursor: 'pointer', fontSize: 12.5, fontWeight: 700, letterSpacing: '.02em',
-    color: on ? C.ink : C.muted,
-    backgroundImage: on ? solid('rgba(63,224,214,.10)') : C.chipOff,
-    border: `1px solid ${on ? accent : C.line}`,
-    boxShadow: on ? `0 0 0 1px ${accent}` : 'none',
-  });
-
   const createDisabled = !isConnected || !deployedHere || busy;
 
   return (
@@ -210,7 +191,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
           fontSize: 12.5, color: C.ink, backgroundImage: solid('rgba(242,183,60,.08)'),
           border: `1px solid ${C.goldline}`, borderRadius: 11, padding: '11px 13px' }}>
           <span>On-chain chess runs on <strong style={{ color: C.gold }}>Arbitrum</strong> ($DMT).</span>
-          <button type="button" onClick={() => switchChain?.({ chainId: ARBITRUM_ID })} style={primaryBtn(false)}>
+          <button type="button" onClick={() => switchChain?.({ chainId: ARBITRUM_ID })} style={ocBtnSecondary}>
             Switch to Arbitrum
           </button>
         </div>
@@ -230,16 +211,16 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
           {/* wager token chips */}
           <FieldLabel>Wager token</FieldLabel>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
-            <button type="button" onClick={pickDmt} style={chipStyle(activeChip === 'dmt', C.goldline)}>
+            <button type="button" onClick={pickDmt} style={ocChip(activeChip === 'dmt', C.goldline)}>
               <TokenGlyph on={activeChip === 'dmt'} char="◆" /> DMT
             </button>
-            <button type="button" onClick={pickEth} style={chipStyle(activeChip === 'eth')}>
+            <button type="button" onClick={pickEth} style={ocChip(activeChip === 'eth')}>
               <TokenGlyph on={activeChip === 'eth'} char="Ξ" /> ETH
             </button>
-            <button type="button" onClick={pickNft} style={chipStyle(activeChip === 'nft')}>
+            <button type="button" onClick={pickNft} style={ocChip(activeChip === 'nft')}>
               <TokenGlyph on={activeChip === 'nft'} char="◇" /> NFT
             </button>
-            <button type="button" onClick={pickCustom} style={chipStyle(activeChip === 'custom')}>
+            <button type="button" onClick={pickCustom} style={ocChip(activeChip === 'custom')}>
               <TokenGlyph on={activeChip === 'custom'} char="+" /> Custom
             </button>
           </div>
@@ -257,8 +238,8 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
               </div>
               {activeChip === 'custom' && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <input value={tokenAddr} onChange={(e) => setTokenAddr(e.target.value)} placeholder="Token address 0x…" style={textInput()} />
-                  <input value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="dec" style={{ ...textInput(), maxWidth: 64, textAlign: 'center' }} />
+                  <input value={tokenAddr} onChange={(e) => setTokenAddr(e.target.value)} placeholder="Token address 0x…" style={ocInput()} />
+                  <input value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="dec" style={{ ...ocInput(), maxWidth: 64, textAlign: 'center' }} />
                 </div>
               )}
             </div>
@@ -269,20 +250,20 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
             <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <FieldLabel>NFT wager</FieldLabel>
               <div style={{ display: 'flex', gap: 7 }}>
-                <button type="button" onClick={() => setWagerType('erc721')} style={chipStyle(wagerType === 'erc721')}>ERC-721</button>
-                <button type="button" onClick={() => setWagerType('erc1155')} style={chipStyle(wagerType === 'erc1155')}>ERC-1155</button>
+                <button type="button" onClick={() => setWagerType('erc721')} style={ocChip(wagerType === 'erc721')}>ERC-721</button>
+                <button type="button" onClick={() => setWagerType('erc1155')} style={ocChip(wagerType === 'erc1155')}>ERC-1155</button>
               </div>
               {nftCollections.length > 0 && (
-                <select value={nftAddr} onChange={(e) => setNftAddr(e.target.value)} style={textInput()}>
+                <select value={nftAddr} onChange={(e) => setNftAddr(e.target.value)} style={ocInput()}>
                   <option value="">— select / custom collection —</option>
                   {nftCollections.map((c) => <option key={c.address} value={c.address}>{c.label}</option>)}
                 </select>
               )}
-              <input value={nftAddr} onChange={(e) => setNftAddr(e.target.value)} placeholder="Collection address 0x…" style={textInput()} />
+              <input value={nftAddr} onChange={(e) => setNftAddr(e.target.value)} placeholder="Collection address 0x…" style={ocInput()} />
               <div style={{ display: 'flex', gap: 8 }}>
-                <input value={tokenId} onChange={(e) => setTokenId(e.target.value)} placeholder="Token ID" style={textInput()} />
+                <input value={tokenId} onChange={(e) => setTokenId(e.target.value)} placeholder="Token ID" style={ocInput()} />
                 {wagerType === 'erc1155' && (
-                  <input value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Qty" style={{ ...textInput(), maxWidth: 72 }} />
+                  <input value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Qty" style={{ ...ocInput(), maxWidth: 72 }} />
                 )}
               </div>
               <div style={{ fontSize: 11, color: C.muted2 }}>Same-collection wager · winner takes both · no house fee.</div>
@@ -312,7 +293,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
             </div>
           </div>
 
-          <button type="button" onClick={create} disabled={busy} style={primaryBtn(true)}>
+          <button type="button" onClick={create} disabled={busy} style={{ ...ocBtnPrimary, width: '100%' }}>
             {busy ? (status ?? 'Working…') : 'Create match & get code'}
           </button>
         </fieldset>
@@ -333,7 +314,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
             style={{ flex: 1, minWidth: 0, backgroundImage: C.inset, border: `1px solid ${C.line}`, borderRadius: 10,
               color: C.ink, fontFamily: 'ui-monospace, monospace', fontSize: 15, letterSpacing: '.25em',
               textAlign: 'center', textTransform: 'uppercase', padding: '11px', outline: 'none' }} />
-          <button type="button" onClick={open} disabled={busy} style={secondaryBtn()}>Open</button>
+          <button type="button" onClick={open} disabled={busy} style={ocBtnSecondary}>Open</button>
         </div>
         <div style={{ fontSize: 11.5, color: C.muted2, marginTop: 8 }}>Join to play, or open any code to spectate a live match.</div>
       </div>
@@ -356,32 +337,3 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
     </div>
   );
 };
-
-/* ---- small presentational helpers ---- */
-const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, letterSpacing: '.14em',
-    textTransform: 'uppercase', color: C.muted2, marginBottom: 7 }}>{children}</div>
-);
-
-const TokenGlyph: React.FC<{ on: boolean; char: string }> = ({ on, char }) => (
-  <span style={{ width: 18, height: 18, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 11,
-    color: on ? '#241701' : C.cyan,
-    backgroundImage: on ? solid(C.gold) : solid('rgba(63,224,214,.12)') }}>{char}</span>
-);
-
-const textInput = (): React.CSSProperties => ({
-  flex: 1, minWidth: 0, backgroundImage: C.inset, border: `1px solid ${C.line}`, borderRadius: 9,
-  color: C.ink, fontFamily: 'ui-monospace, monospace', fontSize: 12.5, padding: '9px 10px', outline: 'none',
-});
-
-const primaryBtn = (full: boolean): React.CSSProperties => ({
-  width: full ? '100%' : undefined, border: 0, cursor: 'pointer', borderRadius: 11, padding: full ? '14px' : '8px 14px',
-  fontWeight: 800, fontSize: full ? 12.5 : 11.5, letterSpacing: '.09em', textTransform: 'uppercase', color: '#04211f',
-  backgroundImage: 'linear-gradient(150deg, #5cf0e4, #25b3a8)', boxShadow: '0 10px 24px rgba(63,224,214,.28)',
-});
-
-const secondaryBtn = (): React.CSSProperties => ({
-  border: `1px solid ${C.line2}`, cursor: 'pointer', borderRadius: 10, padding: '11px 18px',
-  fontWeight: 700, fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: C.cyan,
-  backgroundImage: solid('#12213a'),
-});

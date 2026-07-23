@@ -3,7 +3,12 @@
 
 import React from 'react';
 import { useChessPieceSet } from '../../contexts/ChessPieceSetContext';
+import { oc } from './onchainUi';
 import './onchainChess.css';
+
+// Deep-sea board squares: cool light + steel-blue dark, refined so the lawbster pieces pop.
+const SQ_LIGHT = '#cfe0ef';
+const SQ_DARK = '#5f7ea6';
 
 export interface OnchainChessBoardProps {
   /** decoded board, [rank][file], rank 0 = white's first rank (from decodeOnchainBoard) */
@@ -52,17 +57,21 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
         gridTemplateRows: 'repeat(8, 1fr)',
         width: 'min(92vw, 480px)',
         aspectRatio: '1 / 1',
-        border: '2px solid #000',
+        border: `1px solid ${oc.line2}`,
+        borderRadius: 8,
+        overflow: 'hidden',
         boxSizing: 'border-box',
         userSelect: 'none',
         touchAction: 'manipulation',
-        ...(boardImage
-          ? { backgroundImage: `url(${boardImage})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' }
-          : {}),
+        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.35)',
+        // inline background-image keeps the theme-nuke from blanking the board
+        backgroundImage: boardImage ? `url(${boardImage})` : `linear-gradient(${SQ_DARK}, ${SQ_DARK})`,
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat',
       }}
     >
-      {rows.map((rank) =>
-        cols.map((file) => {
+      {rows.map((rank, rIdx) =>
+        cols.map((file, cIdx) => {
           const sq = sqIndex(rank, file);
           const piece = board?.[rank]?.[file] ?? null;
           const isDark = (rank + file) % 2 === 0;
@@ -70,45 +79,60 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
           const isTarget = legalTargets.includes(sq);
           const isLast = lastMove && (lastMove.from === sq || lastMove.to === sq);
           const img = piece ? pieceImages[piece] : null;
+          // coordinate labels: files on the visual bottom row, ranks on the visual left column
+          const fileLabel = rIdx === 7 ? String.fromCharCode(97 + file) : null;
+          const rankLabel = cIdx === 0 ? String(rank + 1) : null;
+          const labelColor = isDark ? 'rgba(233,241,251,.55)' : 'rgba(20,38,60,.5)';
+          const baseFill = boardImage ? 'transparent' : isDark ? SQ_DARK : SQ_LIGHT;
           return (
             <div
               key={sq}
               onClick={interactive && onSquareClick ? () => onSquareClick(sq) : undefined}
               style={{
                 position: 'relative',
-                background: isSelected
-                  ? 'rgba(126,179,106,0.75)'
+                // inline background-image so it survives the theme-nuke; flat fills via linear-gradient
+                backgroundImage: baseFill === 'transparent' ? 'none' : `linear-gradient(${baseFill}, ${baseFill})`,
+                boxShadow: isSelected
+                  ? `inset 0 0 0 3px ${oc.cyan}`
                   : isLast
-                    ? 'rgba(230,213,106,0.6)'
-                    : boardImage
-                      ? 'transparent'
-                      : isDark
-                        ? '#6a8bb3'
-                        : '#cdd7e6',
+                    ? 'inset 0 0 0 3px rgba(242,183,60,.85)'
+                    : 'none',
                 cursor: interactive && (piece || isTarget) ? 'pointer' : 'default',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
+              {isSelected && (
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(63,224,214,.22), rgba(63,224,214,.22))', pointerEvents: 'none' }} />
+              )}
+              {fileLabel && (
+                <span style={{ position: 'absolute', right: 3, bottom: 1, fontSize: 9, fontFamily: 'ui-monospace, monospace', color: labelColor, pointerEvents: 'none' }}>{fileLabel}</span>
+              )}
+              {rankLabel && (
+                <span style={{ position: 'absolute', left: 2, top: 1, fontSize: 9, fontFamily: 'ui-monospace, monospace', color: labelColor, pointerEvents: 'none' }}>{rankLabel}</span>
+              )}
               {img && (
                 <img
                   src={img}
                   alt={piece ?? ''}
                   draggable={false}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
+                    filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.4))', position: 'relative', zIndex: 1 }}
                 />
               )}
               {isTarget && (
                 <div
                   style={{
                     position: 'absolute',
-                    width: piece ? '88%' : '32%',
-                    height: piece ? '88%' : '32%',
+                    width: piece ? '86%' : '30%',
+                    height: piece ? '86%' : '30%',
                     borderRadius: '50%',
-                    border: piece ? '3px solid rgba(20,80,20,0.55)' : 'none',
-                    background: piece ? 'transparent' : 'rgba(20,80,20,0.45)',
+                    border: piece ? `3px solid ${oc.cyan}` : 'none',
+                    backgroundImage: piece ? 'none' : 'linear-gradient(rgba(63,224,214,.7), rgba(63,224,214,.7))',
+                    boxShadow: piece ? 'none' : '0 0 8px rgba(63,224,214,.5)',
                     pointerEvents: 'none',
+                    zIndex: 2,
                   }}
                 />
               )}

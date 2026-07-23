@@ -18,12 +18,15 @@ import { playChessSound } from '../../utils/chessSounds';
 import { OnchainChessBoard } from './OnchainChessBoard';
 import { OnchainChessSidebar } from './OnchainChessSidebar';
 import { OnchainChessResult, type GameOutcome } from './OnchainChessResult';
+import { useChessPieceSet } from '../../contexts/ChessPieceSetContext';
+import { oc, solid, ocBtnPrimary, ocBtnSecondary, ocBtnGhost, ocBtnDanger, OcArenaHeader, OcPill } from './onchainUi';
 
 const Popup = lazy(() => import('../Popup'));
 const PlayerProfile = lazy(() => import('../PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
 const ChessChat = lazy(() => import('../ChessChat').then((m) => ({ default: m.ChessChat })));
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+type SideT = typeof Side[keyof typeof Side];
 
 // chess.js promotion letter -> contract piece type
 const PROMO_TYPE: Record<string, number> = { n: 2, b: 3, r: 4, q: 5 };
@@ -56,6 +59,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const publicClient = usePublicClient();
   const { game, board, isLoading, contractAddress, refetch } = useOnchainChessGame(code);
   const actions = useOnchainChessActions();
+  const { currentPieceSet } = useChessPieceSet();
   const { moves, lastMove } = useOnchainChessMoves(code, undefined, game?.moveNonce?.toString());
 
   const eloEnabled = ENABLE_ONCHAIN_CHESS && !!contractAddress && !!game;
@@ -288,19 +292,21 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   if (!contractAddress) {
     return (
       <div style={panel}>
-        <p>On-chain chess isn't deployed on the connected network.</p>
-        <button style={btn} onClick={onLeave}>Back</button>
+        <OcArenaHeader />
+        <div style={{ color: oc.muted, fontSize: 13 }}>On-chain chess isn't deployed on the connected network.</div>
+        <button style={ocBtnSecondary} onClick={onLeave}>Back</button>
       </div>
     );
   }
   if (isLoading || !game || !board) {
-    return <div style={panel}><p>Loading game {codeToString(code)}…</p></div>;
+    return <div style={panel}><OcArenaHeader /><div style={{ color: oc.muted }}>Loading game {codeToString(code)}…</div></div>;
   }
   if (game.status === GameStatus.NONE) {
     return (
       <div style={panel}>
-        <p>No game found for code <b>{codeToString(code)}</b>.</p>
-        <button style={btn} onClick={onLeave}>Back to lobby</button>
+        <OcArenaHeader />
+        <div style={{ color: oc.muted, fontSize: 13 }}>No game found for code <b style={{ color: oc.ink }}>{codeToString(code)}</b>.</div>
+        <button style={ocBtnSecondary} onClick={onLeave}>Back to lobby</button>
       </div>
     );
   }
@@ -309,103 +315,128 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     game.kind === WagerKind.NATIVE ? `${Number(game.wager) / 1e18} ETH`
     : game.kind === WagerKind.ERC20 ? `ERC-20 ${game.token.slice(0, 8)}…`
     : `NFT ${game.token.slice(0, 8)}…`;
+  const potLabel = game.kind === WagerKind.NATIVE ? `${(Number(game.wager) / 1e18) * 2} ETH` : 'Both stakes';
 
   const statusText = isFinished ? (result ?? 'Game over')
     : isOpen ? (isPlayer ? 'Waiting for an opponent to join…' : 'Open — waiting for players')
     : myTurn ? 'Your move' : isPlayer ? "Opponent's move…" : 'Spectating';
 
+  // bottom = you (or White for a spectator); top = the other side
+  const bottomSide = myColor ?? Side.WHITE;
+  const topSide = bottomSide === Side.WHITE ? Side.BLACK : Side.WHITE;
+  const kingImg = (side: SideT) => currentPieceSet.pieceImages[side === Side.WHITE ? 'K' : 'k'];
+  const dataFor = (side: SideT) => ({
+    side,
+    addr: side === Side.WHITE ? game.white : game.black,
+    elo: side === Side.WHITE
+      ? (eloWhiteRaw !== undefined ? Number(eloWhiteRaw) : undefined)
+      : (eloBlackRaw !== undefined ? Number(eloBlackRaw) : undefined),
+    clock: side === Side.WHITE ? clocks.white : clocks.black,
+    isYou: myColor === side,
+    turn: isActive && game.side === side,
+  });
+
   return (
     <div style={panel}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: 'min(92vw, 480px)' }}>
-        <span>Code: <b>{codeToString(code)}</b></span>
-        <span>Wager: {wagerLabel}</span>
-      </div>
+      <OcArenaHeader right={<OcPill tone={isFinished ? 'gold' : 'cyan'}>#{codeToString(code)}</OcPill>} />
 
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: 'min(92vw, 480px)' }}>
-            <span>⏱ White {fmtClock(clocks.white)}</span>
-            <span>⏱ Black {fmtClock(clocks.black)}</span>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
+        {/* board column with player cards top + bottom */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(92vw, 480px)' }}>
+          <PlayerCard {...dataFor(topSide)} avatar={kingImg(topSide)} />
+
+          <div style={{ backgroundImage: 'linear-gradient(#0c1728, #0a1220)', border: `1px solid ${oc.line2}`,
+            borderRadius: 16, padding: 12, boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}>
+            <OnchainChessBoard
+              board={board}
+              orientation={orientation}
+              selectedSquare={selected}
+              legalTargets={targets}
+              lastMove={lastMove}
+              boardImage={chessBoardForCode(codeToString(code))}
+              captureSquare={captureSquare}
+              interactive={!!myTurn && !busy}
+              onSquareClick={handleSquareClick}
+            />
           </div>
 
-          <OnchainChessBoard
-            board={board}
-            orientation={orientation}
-            selectedSquare={selected}
-            legalTargets={targets}
-            lastMove={lastMove}
-            boardImage={chessBoardForCode(codeToString(code))}
-            captureSquare={captureSquare}
-            interactive={!!myTurn && !busy}
-            onSquareClick={handleSquareClick}
-          />
+          <PlayerCard {...dataFor(bottomSide)} avatar={kingImg(bottomSide)} />
 
-          <div style={{ minHeight: 22, textAlign: 'center' }}>
-            <b>{statusText}</b>{busy && ' • submitting…'}
+          <div style={{ minHeight: 20, textAlign: 'center', fontSize: 13, fontWeight: 700,
+            color: myTurn ? oc.cyan : oc.muted }}>
+            {statusText}{busy && ' · submitting…'}
           </div>
-          {err && <div style={{ color: '#c0392b', maxWidth: 'min(92vw,480px)', fontSize: 12 }}>{err}</div>}
+          {err && (
+            <div style={{ color: '#ff9d94', fontSize: 12, backgroundImage: solid('rgba(232,86,74,.10)'),
+              border: '1px solid rgba(232,86,74,.35)', borderRadius: 10, padding: '9px 12px' }}>{err}</div>
+          )}
 
-      {pendingPromo && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>Promote to:</span>
-          {(['q', 'r', 'b', 'n'] as const).map((p) => (
-            <button key={p} style={btn} disabled={busy}
-              onClick={() => submitMove(pendingPromo.from, pendingPromo.to, PROMO_TYPE[p])}>
-              {p.toUpperCase()}
-            </button>
-          ))}
-          <button style={btn} onClick={() => setPendingPromo(null)}>Cancel</button>
-        </div>
-      )}
+          {pendingPromo && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <span style={{ color: oc.muted, fontSize: 12 }}>Promote to:</span>
+              {(['q', 'r', 'b', 'n'] as const).map((p) => (
+                <button key={p} style={ocBtnSecondary} disabled={busy}
+                  onClick={() => submitMove(pendingPromo.from, pendingPromo.to, PROMO_TYPE[p])}>{p.toUpperCase()}</button>
+              ))}
+              <button style={ocBtnGhost} onClick={() => setPendingPromo(null)}>Cancel</button>
+            </div>
+          )}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {isOpen && !isPlayer && address && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {(game.kind === WagerKind.ERC721 || game.kind === WagerKind.ERC1155) && (
-              <input
-                style={{ fontFamily: 'inherit', fontSize: 12, padding: '4px 6px', width: 110 }}
-                placeholder="your token ID"
-                value={joinTokenId}
-                onChange={(e) => setJoinTokenId(e.target.value)}
-              />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {isOpen && !isPlayer && address && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                {(game.kind === WagerKind.ERC721 || game.kind === WagerKind.ERC1155) && (
+                  <input style={{ ...ocInputInline, width: 110 }} placeholder="your token ID"
+                    value={joinTokenId} onChange={(e) => setJoinTokenId(e.target.value)} />
+                )}
+                <button style={ocBtnPrimary} disabled={busy} onClick={join}>
+                  {game.kind === WagerKind.NATIVE
+                    ? `Join — stake ${Number(game.wager) / 1e18} ETH`
+                    : game.kind === WagerKind.ERC20 ? 'Join (approve + stake)' : 'Join (stake your NFT)'}
+                </button>
+              </div>
             )}
-            <button style={btn} disabled={busy} onClick={join}>
-              {game.kind === WagerKind.NATIVE
-                ? `Join — stake ${Number(game.wager) / 1e18} ETH`
-                : game.kind === WagerKind.ERC20
-                  ? 'Join (approve + stake ERC-20)'
-                  : 'Join (stake your NFT)'}
-            </button>
+            {isActive && isPlayer && (
+              <button style={ocBtnDanger} disabled={busy} onClick={() => doAction(() => actions.resign(code))}>Resign</button>
+            )}
+            {opponentTimedOut && isPlayer && (
+              <button style={ocBtnPrimary} disabled={busy} onClick={() => doAction(() => actions.claimTimeout(code))}>Claim timeout win</button>
+            )}
+            {isOpen && myColor === Side.WHITE && (
+              <button style={ocBtnGhost} disabled={busy} onClick={() => doAction(() => actions.cancelGame(code))}>Cancel game</button>
+            )}
+            <button style={ocBtnGhost} onClick={() => setShowChat((v) => !v)}>Chat</button>
+            <button style={ocBtnGhost} disabled={busy} onClick={() => refetch()}>Refresh</button>
+            <button style={ocBtnGhost} onClick={onLeave}>Leave</button>
           </div>
-        )}
-        {isActive && isPlayer && (
-          <button style={btn} disabled={busy} onClick={() => doAction(() => actions.resign(code))}>Resign</button>
-        )}
-        {opponentTimedOut && isPlayer && (
-          <button style={btn} disabled={busy} onClick={() => doAction(() => actions.claimTimeout(code))}>Claim timeout win</button>
-        )}
-        {isOpen && myColor === Side.WHITE && (
-          <button style={btn} disabled={busy} onClick={() => doAction(() => actions.cancelGame(code))}>Cancel game</button>
-        )}
-        <button style={btn} onClick={() => setShowChat((v) => !v)}>Chat</button>
-        <button style={btn} disabled={busy} onClick={() => refetch()}>Refresh</button>
-        <button style={btn} onClick={onLeave}>Leave</button>
-      </div>
         </div>
 
-        <OnchainChessSidebar
-          moves={moves}
-          players={{
-            white: game.white,
-            black: game.black,
-            eloWhite: eloWhiteRaw !== undefined ? Number(eloWhiteRaw) : undefined,
-            eloBlack: eloBlackRaw !== undefined ? Number(eloBlackRaw) : undefined,
-            wagerLabel,
-            statusText,
-            me,
-          }}
-          onViewProfile={(addr) => setProfileAddr(addr)}
-        />
+        {/* right rail: pot badge + sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 'min(92vw, 280px)' }}>
+          <div style={{ backgroundImage: solid('rgba(242,183,60,.13)'), border: `1px solid ${oc.goldline}`, borderRadius: 13, padding: '13px 15px' }}>
+            <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: oc.muted2, marginBottom: 2 }}>
+              Pot · winner takes all
+            </div>
+            <div style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, fontSize: 19, color: oc.gold }}>{potLabel}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9, fontSize: 11, color: oc.muted }}>
+              <span style={{ color: oc.cyan }}>⛓</span> Escrowed on-chain · contract validates every move
+            </div>
+          </div>
+
+          <OnchainChessSidebar
+            moves={moves}
+            players={{
+              white: game.white,
+              black: game.black,
+              eloWhite: eloWhiteRaw !== undefined ? Number(eloWhiteRaw) : undefined,
+              eloBlack: eloBlackRaw !== undefined ? Number(eloBlackRaw) : undefined,
+              wagerLabel,
+              statusText,
+              me,
+            }}
+            onViewProfile={(addr) => setProfileAddr(addr)}
+          />
+        </div>
       </div>
 
       {endOverlay && (
@@ -440,11 +471,47 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   );
 };
 
-const panel: React.CSSProperties = {
-  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 12,
-  fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, color: '#eee',
+/** Player identity card with avatar, short address / you tag, ELO, and clock. */
+const PlayerCard: React.FC<{
+  side: SideT; addr: string; elo?: number; clock: number; isYou: boolean; turn: boolean; avatar?: string;
+}> = ({ side, addr, elo, clock, isYou, turn, avatar }) => {
+  const accent = side === Side.WHITE ? oc.red : oc.blue;
+  const zero = '0x0000000000000000000000000000000000000000';
+  const name = addr && addr !== zero ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : 'Waiting…';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, backgroundImage: oc.card,
+      border: `1px solid ${oc.line}`, borderLeft: `3px solid ${accent}`, borderRadius: 13, padding: '9px 12px',
+    }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, backgroundImage: solid('#0b1420'),
+        border: `1px solid ${oc.line2}`, display: 'grid', placeItems: 'center', overflow: 'hidden', flex: '0 0 auto' }}>
+        {avatar && <img src={avatar} alt="" style={{ width: '86%', height: '86%', objectFit: 'contain' }} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 13.5, color: oc.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {name}{isYou && <span style={{ color: oc.muted2, fontWeight: 400, fontSize: 11 }}> · you</span>}
+        </div>
+        <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10.5, color: oc.muted2, letterSpacing: '.06em' }}>
+          {side === Side.WHITE ? 'WHITE' : 'BLACK'} · ELO {elo ?? '—'}{turn ? ' · to move' : ''}
+        </div>
+      </div>
+      <div style={{
+        fontFamily: 'ui-monospace, monospace', fontWeight: 700, fontSize: 20, letterSpacing: '.04em',
+        minWidth: 74, textAlign: 'center', padding: '6px 10px', borderRadius: 10,
+        backgroundImage: solid('#0a1322'), border: `1px solid ${turn ? oc.line2 : oc.line}`,
+        color: turn ? oc.cyan : oc.muted2, boxShadow: turn ? '0 0 16px rgba(63,224,214,.15)' : 'none',
+      }}>{fmtClock(clock)}</div>
+    </div>
+  );
 };
-const btn: React.CSSProperties = {
-  fontFamily: 'inherit', fontSize: 12, padding: '6px 10px', cursor: 'pointer',
-  background: '#c0c0c0', border: '2px outset #fff', color: '#000',
+
+const panel: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 16,
+  fontFamily: "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif", fontSize: 13, color: oc.ink,
+  backgroundImage: oc.panel, border: `1px solid ${oc.line}`, borderRadius: 16,
+  maxWidth: 800, margin: '0 auto', boxShadow: '0 24px 60px rgba(0,0,0,.4)',
+};
+const ocInputInline: React.CSSProperties = {
+  backgroundImage: oc.inset, border: `1px solid ${oc.line}`, borderRadius: 9,
+  color: oc.ink, fontFamily: 'ui-monospace, monospace', fontSize: 12, padding: '9px 10px', outline: 'none',
 };

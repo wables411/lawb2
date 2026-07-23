@@ -11,6 +11,7 @@ import { OnchainChessSidebar } from './OnchainChessSidebar';
 import { OnchainChessResult, type GameOutcome } from './OnchainChessResult';
 import { playChessSound } from '../../utils/chessSounds';
 import type { OnchainMove } from '../../hooks/useOnchainChessMoves';
+import { oc, ocBtnSecondary, ocBtnGhost, OcArenaHeader, OcPill } from './onchainUi';
 
 function boardFromChess(chess: Chess): (string | null)[][] {
   const raw = chess.board(); // raw[0] = rank 8
@@ -111,38 +112,42 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
 
   return (
     <div style={panel}>
-      <div style={{ textAlign: 'center' }}>
-        <b>Local sandbox</b> — no wallet, no wager. Play both sides to try the board.
+      <OcArenaHeader right={<OcPill tone="cyan">Sandbox</OcPill>} />
+      <div style={{ textAlign: 'center', color: oc.muted, fontSize: 12.5 }}>
+        No wallet, no wager — play both sides to try the board.
       </div>
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <OnchainChessBoard
-            board={board}
-            orientation={orientation}
-            selectedSquare={selected}
-            legalTargets={targets}
-            lastMove={lastMove}
-            boardImage={boardImage}
-            captureSquare={captureSquare}
-            interactive
-            onSquareClick={handleClick}
-          />
-          <div style={{ minHeight: 20 }}><b>{status}</b></div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: 'min(92vw, 480px)' }}>
+          <div style={{ backgroundImage: 'linear-gradient(#0c1728, #0a1220)', border: `1px solid ${oc.line2}`,
+            borderRadius: 16, padding: 12, boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}>
+            <OnchainChessBoard
+              board={board}
+              orientation={orientation}
+              selectedSquare={selected}
+              legalTargets={targets}
+              lastMove={lastMove}
+              boardImage={boardImage}
+              captureSquare={captureSquare}
+              interactive
+              onSquareClick={handleClick}
+            />
+          </div>
+          <div style={{ minHeight: 20, fontWeight: 700, color: oc.muted }}>{status}</div>
         </div>
         <OnchainChessSidebar moves={moves} />
       </div>
       {pendingPromo && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>Promote to:</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <span style={{ color: oc.muted, fontSize: 12 }}>Promote to:</span>
           {(['q', 'r', 'b', 'n'] as const).map((p) => (
-            <button key={p} style={btn} onClick={() => apply(pendingPromo.from, pendingPromo.to, p)}>{p.toUpperCase()}</button>
+            <button key={p} style={ocBtnSecondary} onClick={() => apply(pendingPromo.from, pendingPromo.to, p)}>{p.toUpperCase()}</button>
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button style={btn} onClick={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}>Flip board</button>
-        <button style={btn} onClick={reset}>Reset</button>
-        <button style={btn} onClick={onLeave}>Back to lobby</button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button style={ocBtnGhost} onClick={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}>Flip board</button>
+        <button style={ocBtnGhost} onClick={reset}>Reset</button>
+        <button style={ocBtnGhost} onClick={onLeave}>Back to lobby</button>
       </div>
       {result && <OnchainChessResult outcome={result.outcome} detail={result.detail} onClose={() => setResult(null)} />}
     </div>
@@ -150,10 +155,8 @@ export const OnchainChessDemo: React.FC<{ onLeave: () => void }> = ({ onLeave })
 };
 
 const panel: React.CSSProperties = {
-  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 12,
-  fontFamily: "'MS Sans Serif', Arial, sans-serif", fontSize: 13, color: '#eee',
-};
-const btn: React.CSSProperties = {
-  fontFamily: 'inherit', fontSize: 12, padding: '6px 10px', cursor: 'pointer',
-  background: '#c0c0c0', border: '2px outset #fff', color: '#000',
+  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 16,
+  fontFamily: "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif", fontSize: 13, color: oc.ink,
+  backgroundImage: oc.panel, border: `1px solid ${oc.line}`, borderRadius: 16,
+  maxWidth: 800, margin: '0 auto', boxShadow: '0 24px 60px rgba(0,0,0,.4)',
 };
