@@ -5,7 +5,7 @@
 // force background:#000 / color:#00ff00 on any element WITHOUT an inline background-image
 // or color — the same reason ChessTutorial styles inline. Layout-only props may use CSS.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { parseEther, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useChainId, usePublicClient, useSwitchChain } from 'wagmi';
 import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
@@ -63,10 +63,25 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
   const deployedHere = !!getLawbChessAddress(chainId);
   const nftCollections = LAWB_CHESS_NFT_COLLECTIONS[chainId] ?? [];
   const featuredTokens = LAWB_CHESS_WAGER_TOKENS[chainId] ?? [];
+  const featured = featuredTokens[0]; // per-chain featured ERC-20 (DMT on Arb, CULT on ETH, none on Base)
   const isNft = wagerType === 'erc721' || wagerType === 'erc1155';
   const chainName = CHAINS.find((c) => c.id === chainId)?.name ?? `chain ${chainId}`;
 
-  // Which chip is active: DMT (featured erc20) / ETH (native) / NFT / Custom (erc20, no featured match)
+  // Following a chain switch, an auto-filled featured token from the previous chain would be
+  // invalid here (the contract's allowlist is per-chain) — swap it for this chain's featured
+  // token, or fall back to native. Custom user-typed addresses are never any chain's featured
+  // token, so they pass through untouched.
+  useEffect(() => {
+    const isOtherChainsFeatured = Object.values(LAWB_CHESS_WAGER_TOKENS).some((tokens) =>
+      tokens.some((t) => t.address.toLowerCase() === tokenAddr.toLowerCase()));
+    if (!tokenAddr || (isOtherChainsFeatured && !featuredTokens.some((t) => t.address.toLowerCase() === tokenAddr.toLowerCase()))) {
+      if (featured) { setTokenAddr(featured.address); setDecimals(String(featured.decimals)); }
+      else { setTokenAddr(''); setWagerType((w) => (w === 'erc20' ? 'native' : w)); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chainId]);
+
+  // Which chip is active: featured erc20 (DMT/CULT) / ETH (native) / NFT / Custom (erc20, no featured match)
   const featuredMatch = featuredTokens.find((t) => t.address.toLowerCase() === tokenAddr.toLowerCase());
   const activeChip: 'dmt' | 'eth' | 'nft' | 'custom' =
     wagerType === 'native' ? 'eth' : isNft ? 'nft' : featuredMatch ? 'dmt' : 'custom';
@@ -74,7 +89,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
 
   const pickDmt = () => {
     setWagerType('erc20');
-    if (DEFAULT_TOKEN) { setTokenAddr(DEFAULT_TOKEN.address); setDecimals(String(DEFAULT_TOKEN.decimals)); }
+    if (featured) { setTokenAddr(featured.address); setDecimals(String(featured.decimals)); }
   };
   const pickEth = () => setWagerType('native');
   const pickNft = () => setWagerType('erc721');
@@ -191,7 +206,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
           fontSize: 12.5, color: C.ink, backgroundImage: solid('rgba(242,183,60,.08)'),
           border: `1px solid ${C.goldline}`, borderRadius: 11, padding: '11px 13px' }}>
-          <span>On-chain chess runs on <strong style={{ color: C.gold }}>Arbitrum</strong> ($DMT).</span>
+          <span>On-chain chess runs on <strong style={{ color: C.gold }}>Arbitrum</strong> ($DMT), <strong style={{ color: C.gold }}>Ethereum</strong> ($CULT) and <strong style={{ color: C.gold }}>Base</strong>.</span>
           <button type="button" onClick={() => switchChain?.({ chainId: ARBITRUM_ID })} style={ocBtnSecondary}>
             Switch to Arbitrum
           </button>
@@ -208,13 +223,26 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
           The blockchain is referee and bank — it validates every move on-chain, escrows both stakes, and pays the winner automatically.
         </div>
 
+        {/* chain picker — outside the fieldset so it stays usable from an unsupported chain */}
+        <FieldLabel>Chain</FieldLabel>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
+          {CHAINS.filter((c) => c.id !== LAWB_CHESS_CHAIN_IDS.baseSepolia && !!getLawbChessAddress(c.id)).map((c) => (
+            <button key={c.id} type="button" onClick={() => switchChain?.({ chainId: c.id })}
+              style={ocChip(chainId === c.id)}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+
         <fieldset disabled={createDisabled} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           {/* wager token chips */}
           <FieldLabel>Wager token</FieldLabel>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
-            <button type="button" onClick={pickDmt} style={ocChip(activeChip === 'dmt', C.goldline)}>
-              <TokenGlyph on={activeChip === 'dmt'} char="◆" /> DMT
-            </button>
+            {featured && (
+              <button type="button" onClick={pickDmt} style={ocChip(activeChip === 'dmt', C.goldline)}>
+                <TokenGlyph on={activeChip === 'dmt'} char="◆" /> {featured.label.split(' ')[0]}
+              </button>
+            )}
             <button type="button" onClick={pickEth} style={ocChip(activeChip === 'eth')}>
               <TokenGlyph on={activeChip === 'eth'} char="Ξ" /> ETH
             </button>

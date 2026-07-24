@@ -44,8 +44,10 @@ export const LAWB_CHESS_CHAIN_IDS = {
  */
 export const LAWB_CHESS_PROXY_ADDRESS: Record<number, `0x${string}` | null> = {
   [LAWB_CHESS_CHAIN_IDS.baseSepolia]: '0xCF4131302Ed9685309F2c1Ca01b282409D1fBCE4',
-  [LAWB_CHESS_CHAIN_IDS.base]: null,
-  [LAWB_CHESS_CHAIN_IDS.ethereum]: null,
+  // Deployed 2026-07-24 (0.01 ETH native cap, §16.1 NFT allowlist; verified on Basescan)
+  [LAWB_CHESS_CHAIN_IDS.base]: '0xBe0C68afE6f412d052C8fa306e9191D2b6371Aec',
+  // Deployed 2026-07-24 (0.01 ETH native cap, §16.1 NFT allowlist, $CULT; verified on Etherscan)
+  [LAWB_CHESS_CHAIN_IDS.ethereum]: '0x6aa574B21212C6E7436Eb26A27542F1AEFfFad87',
   // Deployed 2026-07-20 ($DMT launch, 0.01 ETH native cap, DMT allowlisted; verified on Arbiscan)
   [LAWB_CHESS_CHAIN_IDS.arbitrum]: '0x3112AF5728520F52FD1C6710dD7bD52285a68e47',
 };
@@ -65,7 +67,10 @@ export const LAWB_CHESS_WAGER_TOKENS: Record<number, { label: string; address: `
   [LAWB_CHESS_CHAIN_IDS.arbitrum]: [
     { label: 'DMT (Dream Machine Token)', address: '0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8', decimals: 18 },
   ],
-  [LAWB_CHESS_CHAIN_IDS.ethereum]: [],
+  [LAWB_CHESS_CHAIN_IDS.ethereum]: [
+    // Verified live 2026-07-24: symbol CULT, "Milady Cult Coin", 18 decimals; allowlisted on the ETH proxy.
+    { label: 'CULT (Milady Cult Coin)', address: '0x0000000000c5dc95539589fbD24BE07c6C14eCa4', decimals: 18 },
+  ],
   [LAWB_CHESS_CHAIN_IDS.base]: [],
   [LAWB_CHESS_CHAIN_IDS.baseSepolia]: [],
 };
@@ -80,10 +85,14 @@ export const LAWB_CHESS_NFT_COLLECTIONS: Record<number, { label: string; address
     { label: 'Lawbsters', address: '0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42' },
     { label: 'Lawbstarz', address: '0xd7922cd333da5ab3758c95f774b092a7b13a5449' },
     { label: 'Pixelawbsters', address: '0x2d278e95b2fC67D4b27a276807e24E479D9707F6' },
+    { label: 'Milady', address: '0x5af0d9827e0c53e4799bb226655a1de152a425a5' },
+    { label: 'Radbro Webring V2', address: '0xabcdb5710b88f456fed1e99025379e2969f29610' },
   ],
   [LAWB_CHESS_CHAIN_IDS.base]: [
     { label: 'A Lawbster Halloween', address: '0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97' },
     { label: 'ASCII Lawbs', address: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2' },
+    { label: 'Kemonokaki', address: '0xee7d1b184be8185adc7052635329152a4d0cdefa' },
+    { label: 'Frequent Flyers', address: '0xf6f260643f5f666c0828cef6b016f9cba3718d4c' },
   ],
   [LAWB_CHESS_CHAIN_IDS.baseSepolia]: [],
   [LAWB_CHESS_CHAIN_IDS.arbitrum]: [],

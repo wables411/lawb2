@@ -171,7 +171,7 @@ const ChessPageConnected: React.FC = () => {
           {ENABLE_ONCHAIN_CHESS && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '10px 8px', flexWrap: 'wrap' }}>
               {([
-                { on: onchainMode, label: '⛓ PvP $DMT (Arbitrum)', go: () => setOnchainMode(true) },
+                { on: onchainMode, label: '⛓ PvP wagers (on-chain)', go: () => setOnchainMode(true) },
                 { on: !onchainMode, label: '♟ VS Clawb (practice)', go: () => setOnchainMode(false) },
               ]).map((t) => (
                 <button
