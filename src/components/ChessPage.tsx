@@ -12,22 +12,16 @@ import { ENABLE_ONCHAIN_CHESS } from '../config/lawbChessOnchain';
 import './ChessPageSimple.css';
 
 const ChessPieceInfo = lazy(() => import('./ChessPieceInfo').then(m => ({ default: m.ChessPieceInfo })));
-const ChessSpectator = lazy(() => import('./ChessSpectator').then(m => ({ default: m.ChessSpectator })));
 // Flag-gated on-chain path (lazy so it stays a separate chunk, never in the main bundle).
 const OnchainChessEntry = lazy(() => import('./onchain/OnchainChessEntry').then(m => ({ default: m.OnchainChessEntry })));
-
-const isSpectatorMode = (() => {
-  if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('stream') === '1' || params.get('spectate') === '1';
-})();
 
 /** Wallet-connected chess page — the normal player experience. */
 const ChessPageConnected: React.FC = () => {
   const [showChessPieceInfo, setShowChessPieceInfo] = useState(false);
-  // On-chain $DMT wager chess (Arbitrum) is the featured/default view; classic (AI + Firebase
-  // PvP on Base) stays one click away via the tab. When the flag is off, this state is unused
-  // (the tabs don't render) and the classic view shows regardless.
+  // On-chain $DMT wager chess (Arbitrum) is the featured/default view; single-player VS AI
+  // stays one click away via the tab. PvP is ON-CHAIN ONLY — the classic Base LAWBCHESS3000
+  // lobby + Firebase move transport were removed 2026-07-23. When the flag is off, this state
+  // is unused (the tabs don't render) and the VS AI view shows regardless.
   const [onchainMode, setOnchainMode] = useState(ENABLE_ONCHAIN_CHESS);
 
   // Scroll to top on mount and whenever component updates
@@ -177,8 +171,8 @@ const ChessPageConnected: React.FC = () => {
           {ENABLE_ONCHAIN_CHESS && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '10px 8px', flexWrap: 'wrap' }}>
               {([
-                { on: onchainMode, label: '⛓ On-Chain $DMT', go: () => setOnchainMode(true) },
-                { on: !onchainMode, label: '♟ Classic (AI + PvP)', go: () => setOnchainMode(false) },
+                { on: onchainMode, label: '⛓ PvP $DMT (Arbitrum)', go: () => setOnchainMode(true) },
+                { on: !onchainMode, label: '♟ VS Clawb (practice)', go: () => setOnchainMode(false) },
               ]).map((t) => (
                 <button
                   key={t.label}
@@ -207,6 +201,7 @@ const ChessPageConnected: React.FC = () => {
             <ChessGame
               onClose={handleClose}
               isMobile={isMobile}
+              onOpenPvp={ENABLE_ONCHAIN_CHESS ? () => setOnchainMode(true) : undefined}
             />
           )}
         </div>
@@ -238,18 +233,10 @@ const ChessPageConnected: React.FC = () => {
   );
 };
 
-/** Top-level route component — routes to spectator or connected player view. */
+/** Top-level route component. (Spectator mode removed with the classic Firebase PvP path —
+ *  on-chain games are publicly readable from the contract; a contract spectator can be built
+ *  against OnchainChessGame's read path if ever wanted.) */
 const ChessPage: React.FC = () => {
-  if (isSpectatorMode) {
-    return (
-      <ChessPieceSetProvider>
-        <Suspense fallback={<div style={{ background: '#0a0a0a', width: '100vw', height: '100vh' }} />}>
-          <ChessSpectator />
-        </Suspense>
-      </ChessPieceSetProvider>
-    );
-  }
-
   return <ChessPageConnected />;
 };
 

@@ -7,7 +7,7 @@
 // Encoding (onchain-chess/src/ChessEngine.sol):
 //   board: one uint256, 64 squares * 4 bits. square index sq = rank*8 + file (a1=0 .. h8=63).
 //   piece nibble: type = code & 7 (1=P,2=N,3=B,4=R,5=Q,6=K, 0=empty); color bit = code & 8 (0=White, 8=Black).
-// The live board representation (ChessMultiplayer.tsx) is (string|null)[][] indexed [rank][file],
+// The live board representation (ChessGame.tsx) is (string|null)[][] indexed [rank][file],
 // rank 0 = white's first rank, FEN chars (UPPERCASE = White, lowercase = Black). We emit exactly that.
 
 /** type code (1..6) -> uppercase FEN letter; index 0 unused (empty). */

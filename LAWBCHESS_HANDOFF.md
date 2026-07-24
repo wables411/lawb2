@@ -1,5 +1,13 @@
 # LAWB Chess On-Chain Rebuild — Session Handoff
 
+> ## ⚡ 2026-07-23 — CLASSIC BASE PVP (LAWBCHESS3000) REMOVED ENTIRELY (owner order: "new chess contract only")
+> - PvP is **on-chain only** now: the LawbChess contract, currently **Arbitrum $DMT only** (Base/ETH pending audit + deploy).
+> - Deleted end to end: `ChessMultiplayer.tsx(.css)`, `ChessSpectator.tsx(.css)` (`?stream=1`/`?spectate=1` now just load the normal page), `firebaseChess.ts`, `TokenSelector.tsx`, `useTokens.ts`, `tokenValidation.ts`, `nftWagering.ts`, `config/abis.ts` (old-contract ABI). ChessGame is single-player-only; its PvP button jumps to the on-chain arena. VS-Clawb hard-mode games no longer write `chess_games` rows (only reader was the deleted spectator).
+> - Safety check before removal: live RTDB had **zero real classic wager games** (3 stale April vs_clawb rows + 1 test row with placeholder address `0x…0001`). The old contract keeps existing on Base; nothing on the site talks to it anymore.
+> - `database.rules.json`: `chess_games` node deleted → world-writable transport door closes ($other deny-all). **DEPLOY ORDER: push the frontend + let Netlify deploy FIRST, then `npx firebase deploy --only database --project chess-220ee`** — locking rules before the new frontend is live breaks any player mid-session on the old build.
+> - Kept untouched: single-player vs Clawb (Stockfish droplet), leaderboard/profiles/usernames (auth-locked 07-18), ChessChat (firebaseClawb, not firebaseChess), cosmetics, the on-chain path.
+> - The §6/"grace window" rollout language below predates this removal — legacy settlement UI is gone per owner order.
+
 > Read this first, then `LAWBCHESS_ONCHAIN_SPEC.md` (full design + every locked decision).
 > Status as of pause: **Contract Phases 1–3 DONE, tested, deployed + verified on Base Sepolia.
 > Phase 4 (frontend integration) NOT started.**

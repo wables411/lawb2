@@ -1,4 +1,4 @@
-// Custom chessboard background images (same set the live ChessMultiplayer uses), with
+// Custom chessboard background images (same set the live chess UI uses), with
 // selection helpers. The board image IS the checkered surface; squares render transparent
 // on top of it (see OnchainChessBoard).
 

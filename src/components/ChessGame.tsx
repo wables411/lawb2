@@ -14,8 +14,8 @@ import { getDisplayName } from '../utils/displayName';
 import { firebaseProfiles } from '../firebaseProfiles';
 import { getCollectionNFTs } from '../mint';
 // Removed blocking connection test - loading data directly with timeout
-import { ChessMultiplayer } from './ChessMultiplayer';
-import { firebaseChess } from '../firebaseChess';
+// Classic Base PvP (ChessMultiplayer + firebaseChess move transport) removed 2026-07-23:
+// PvP is on-chain only (LawbChess contract, Arbitrum) — see src/components/onchain/.
 import { CHESS_PIECE_SETS, getDefaultPieceSet, type ChessPieceSet } from '../config/chessPieceSets';
 import { useChessPieceSet } from '../contexts/ChessPieceSetContext';
 import { checkPixelawbsNFTOwnership } from '../utils/nftVerification';
@@ -57,10 +57,9 @@ import './ChessGame.css';
 import './ChessGameModern.css';
 import './ChessChat.css';
 
-// Game modes
+// Game modes — single-player only; PvP lives in the on-chain path (OnchainChessEntry)
 const GameMode = {
-  AI: 'ai',
-  ONLINE: 'online'
+  AI: 'ai'
 } as const;
 
 // Sanko mainnet chain ID
@@ -109,6 +108,8 @@ interface ChessGameProps {
   isChatMinimized?: boolean;
   isMobile?: boolean;
   onMenuToggle?: () => void;
+  /** Jump to the on-chain PvP arena (rendered by ChessPage). PvP button hides when absent. */
+  onOpenPvp?: () => void;
 }
 
 
@@ -307,7 +308,7 @@ const useLichessAPI = () => {
   return { openingData, isAnalyzing, getOpeningData, getMoveAnalysis };
 };
 
-export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false, onMenuToggle }) => {
+export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fullscreen = false, onBackToModeSelect, onGameStart, onChatToggle, isChatMinimized, isMobile = false, onMenuToggle, onOpenPvp }) => {
   const { address: walletAddress, isConnected } = useAccount();
   const connectionDisplay = useConnectionDisplay();
   const leaderboardWalletAddress = connectionDisplay.address;
@@ -333,7 +334,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   };
   
   // Game state
-  const [gameMode, setGameMode] = useState<'ai' | 'online'>(GameMode.AI);
+  const [gameMode, setGameMode] = useState<'ai'>(GameMode.AI);
   const [board, setBoard] = useState<(string | null)[][]>(() => JSON.parse(JSON.stringify(initialBoard)));
   const [currentPlayer, setCurrentPlayer] = useState<'blue' | 'red'>('blue');
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
@@ -374,7 +375,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   
   // Multiplayer state
   const [inviteCode] = useState<string>('');
-  const [wager] = useState<number>(0.1);
   
   // Piece state tracking
   const [pieceState, setPieceState] = useState({
@@ -402,7 +402,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [showDifficulty, setShowDifficulty] = useState(false);
   
   // vs Clawb Firebase game tracking
-  const [vsClawbInviteCode, setVsClawbInviteCode] = useState<string | null>(null);
 
 
   // Add state for leaderboard updated message
@@ -1275,18 +1274,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     apiCallInProgressRef.current = false;
     setIsUpdatingBoard(false);
 
-    if (vsClawbInviteCode && difficulty === 'hard') {
-      firebaseChess
-        .updateGame(vsClawbInviteCode, {
-          board: { positions: boardToPositions(newBoard), rows: 8, cols: 8 },
-          current_player: chessTurnToUi(ch.turn()),
-          last_move: { from: { row: from.row, col: from.col }, to: { row: to.row, col: to.col } },
-          last_move_timestamp: Date.now(),
-        })
-        .catch((err: any) => console.warn('[VS-CLAWB] Firebase sync failed:', err));
-    }
     debugIngest({ location: 'ChessGame.tsx:1157', message: 'executeMoveAfterAnimation end', data: { isAIMove }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' });
-  }, [board, currentPlayer, getOpeningData, addMobileDebug, vsClawbInviteCode, difficulty]);
+  }, [board, currentPlayer, getOpeningData, addMobileDebug]);
 
   // Reset lastAIMoveRef when it becomes player's turn (blue)
   // This ensures the flag is cleared after the state updates from AI move
@@ -1412,13 +1401,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
   // Game control functions
   const resetGame = () => {
-    // Clean up vs Clawb Firebase game if it was active but not finished
-    if (vsClawbInviteCode && gameState === 'active') {
-      firebaseChess.updateGame(vsClawbInviteCode, {
-        game_state: 'cancelled',
-      }).catch(() => {});
-    }
-    setVsClawbInviteCode(null);
     chessRef.current = new Chess();
     setBoard(boardFromChess(chessRef.current));
     setCurrentPlayer('blue');
@@ -1445,11 +1427,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Update startAIGame to show difficulty selection instead of starting the game immediately
   const startAIGame = () => {
     setShowPieceSetSelector(true);
-  };
-
-  const startMultiplayerGame = () => {
-    setShowGame(true);
-    setStatus('Set wager and create/join match');
   };
 
   // Fetch random AI NFT for profile picture
@@ -1522,20 +1499,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     playStartSound();
     dlog('[DEBUG] startGame called, difficulty:', difficulty, 'gameMode:', gameMode);
 
-    if (gameMode === 'online') {
-      // Wallet connection is only required for online/PvP flows.
-      if (!isConnected || !walletAddress) {
-        setStatus('Connect wallet to play PvP');
-        void open({ view: 'Connect' });
-        return;
-      }
-      // For multiplayer, we'll show the multiplayer component instead
-      setShowGame(false);
-      setShowDifficulty(false);
-      setShowPieceSetSelector(false);
-      return;
-    }
-    
     setShowGame(true);
     setShowDifficulty(false);
     setShowPieceSetSelector(false);
@@ -1558,29 +1521,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     dlog('[TIMER] Game started, setting lastMoveTime to:', now, 'initial countdown:', GAME_TIMEOUT_MS / 1000);
     setHardEngineHealth(difficulty === 'hard' ? (stockfishStatus === 'ready' ? 'healthy' : 'idle') : 'idle');
     setHardFallbackCount(0);
-    
-    // Create Firebase game for "vs Clawb" mode so Clawb is tracked as a player
-    if (difficulty === 'hard' && leaderboardWalletAddress) {
-      const inviteCode = generateVsClawbInviteCode();
-      setVsClawbInviteCode(inviteCode);
-      dlog('[VS-CLAWB] Creating Firebase game:', inviteCode);
-      firebaseChess.createGame({
-        invite_code: inviteCode,
-        game_title: `vs Clawb — ${inviteCode.slice(-6)}`,
-        game_type: 'vs_clawb',
-        game_state: 'active',
-        blue_player: leaderboardWalletAddress,
-        red_player: CLAWB_WALLET,
-        red_is_agent: true,
-        board: {
-          positions: boardToPositions(JSON.parse(JSON.stringify(initialBoard))),
-          rows: 8,
-          cols: 8,
-        },
-        current_player: 'blue',
-        is_public: false,
-      }).catch((err: any) => console.error('[VS-CLAWB] Failed to create Firebase game:', err));
-    }
   };
 
   // Timer functions
@@ -2200,20 +2140,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
   const [defeatDelayActive, setDefeatDelayActive] = useState(false);
 
-  const handleVsClawbGameEnd = (winner: 'blue' | 'red' | 'draw', endReason: string) => {
+  const handleVsClawbGameEnd = (winner: 'blue' | 'red' | 'draw', _endReason: string) => {
     if (difficulty !== 'hard') return;
     const clawbResult = winner === 'red' ? 'win' : winner === 'blue' ? 'loss' : 'draw';
     void updateLeaderboardEntry(CLAWB_WALLET, clawbResult as 'win' | 'loss' | 'draw');
     dlog('[VS-CLAWB] Updated Clawb leaderboard:', clawbResult);
-    if (vsClawbInviteCode) {
-      firebaseChess
-        .updateGame(vsClawbInviteCode, {
-          game_state: 'finished',
-          winner,
-          end_reason: endReason,
-        })
-        .catch((err: any) => console.warn('[VS-CLAWB] Firebase game end update failed:', err));
-    }
   };
 
   checkGameEndFromChessRef.current = (chess: Chess): 'checkmate' | 'stalemate' | 'draw' | null => {
@@ -2292,9 +2223,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     audio.play().catch(() => {});
   };
 
-  // Workaround for TypeScript JSX type error
-  const isOnline = gameMode === 'online';
-
   // Calculate game stats for defeat screen
   const getGameStats = () => {
     if (!gameStartTime) return null;
@@ -2323,7 +2251,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
       winnerColor: winner,
       moves: moveHistory,
       duration: durationText,
-      wager: isOnline ? wager : null
+      wager: null
     };
   };
 
@@ -2471,18 +2399,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
     // ... existing promotion logic ...
   };
 
-  if (isOnline) {
-    return (
-      <ChessMultiplayer 
-        onClose={onClose} 
-        onMinimize={onMinimize} 
-        fullscreen={fullscreen}
-        onChatToggle={onChatToggle}
-        isChatMinimized={isChatMinimized}
-      />
-    );
-  }
-
   // Show home/mode selection UI if not in a game and not picking difficulty or piece set
   if (!showGame && !showDifficulty && !showPieceSetSelector) {
     return (
@@ -2541,7 +2457,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
 
             {isMobile ? (
               <div className="setup-quick-guide setup-quick-guide-mobile">
-                <p>Choose mode, then continue to setup. PvP opens the Base wager lobby.</p>
+                <p>Choose mode, then continue to setup. PvP wagers run fully on-chain.</p>
                 <button
                   type="button"
                   className="setup-guide-btn"
@@ -2576,7 +2492,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     Open Full How To
                   </button>
                 </div>
-                <p>Play VS AI immediately, or switch to PvP for Base chain wager matches.</p>
+                <p>Play VS AI immediately, or jump to PvP for on-chain $DMT wager matches.</p>
               </div>
             )}
             
@@ -2587,12 +2503,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               >
                 VS AI
               </button>
-              <button 
-                className={`mode-btn-compact chess-primary-btn ${isOnline ? 'selected' : ''}`}
-                onClick={() => setGameMode('online')}
-              >
-                PvP
-              </button>
+              {onOpenPvp && (
+                <button
+                  className="mode-btn-compact chess-primary-btn"
+                  onClick={onOpenPvp}
+                >
+                  PvP ⛓
+                </button>
+              )}
             </div>
             {gameMode === GameMode.AI && (
               <button className="start-btn-compact chess-primary-btn" onClick={() => {
@@ -2601,18 +2519,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               }}>
                 Start Match
               </button>
-            )}
-            {isOnline && (
-              <div className="pvp-info">
-                {isMobile ? (
-                  <p>Base-only PvP wager lobby.</p>
-                ) : (
-                  <>
-                    <p>Base-only PvP wager lobby</p>
-                    <p>Create or join token matches on Base mainnet</p>
-                  </>
-                )}
-              </div>
             )}
             {!isMobile && (
               <>
@@ -3526,11 +3432,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   </span>
                 );
               })()}
-              {isOnline && (
-                <span className="wager-display">
-                  Wager: {wager} tDMT
-                </span>
-              )}
               {aiProfilePic && gameMode === GameMode.AI && !isMobile && (
                 <img 
                   src={aiProfilePic} 
@@ -3649,29 +3550,19 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                 >
                   VS AI
                 </button>
-                <button
-                  className={`mode-btn-compact chess-primary-btn ${isOnline ? 'selected' : ''}`}
-                  onClick={() => setGameMode('online')}
-                >
-                  PvP
-                </button>
+                {onOpenPvp && (
+                  <button
+                    className="mode-btn-compact chess-primary-btn"
+                    onClick={onOpenPvp}
+                  >
+                    PvP ⛓
+                  </button>
+                )}
               </div>
               {gameMode === GameMode.AI && (
                 <button className="start-btn-compact chess-primary-btn" onClick={() => setShowPieceSetSelector(true)}>
                   Start Game
                 </button>
-              )}
-              {isOnline && (
-                <div className="pvp-info">
-                  {isMobile ? (
-                    <p>Base-only PvP wager lobby.</p>
-                  ) : (
-                    <>
-                      <p>Base-only PvP wager lobby</p>
-                      <p>Create or join token matches on Base mainnet</p>
-                    </>
-                  )}
-                </div>
               )}
               {!isMobile && (
                 <>
@@ -4116,7 +4007,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
           <ChessChat
             isOpen={true}
             onMinimize={() => closeWindow('chat')}
-            currentInviteCode={vsClawbInviteCode || undefined}
             isDraggable={false}
             isResizable={false}
             isMobile={false}
@@ -4190,24 +4080,4 @@ function boardToFEN(board: (string | null)[][], currentPlayer: 'blue' | 'red'): 
   return fen;
 }
 
-// Convert board array to Firebase positions format
-function boardToPositions(board: (string | null)[][]): Record<string, string> {
-  const positions: Record<string, string> = {};
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const piece = board[row][col];
-      if (piece) {
-        positions[`${row}_${col}`] = piece;
-      }
-    }
-  }
-  return positions;
-}
-
-// Generate a random invite code for vs Clawb games
-function generateVsClawbInviteCode(): string {
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
