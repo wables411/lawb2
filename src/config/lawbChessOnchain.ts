@@ -58,6 +58,17 @@ export function getLawbChessAddress(chainId: number): `0x${string}` | null {
 }
 
 /**
+ * Block each proxy was deployed at (from onchain-chess/broadcast/Deploy.s.sol/<chainid>/
+ * run-latest.json). Lower bound for event scans — e.g. the lobby's open-match browser.
+ */
+export const LAWB_CHESS_DEPLOY_BLOCK: Record<number, bigint> = {
+  [LAWB_CHESS_CHAIN_IDS.arbitrum]: 486028699n,
+  [LAWB_CHESS_CHAIN_IDS.ethereum]: 25605198n,
+  [LAWB_CHESS_CHAIN_IDS.base]: 49073969n,
+  [LAWB_CHESS_CHAIN_IDS.baseSepolia]: 0n,
+};
+
+/**
  * Featured ERC-20 wager tokens per chain (must match the contract's on-chain allowlist set via
  * setAllowedToken). Locked 2026-07-20: $DMT is the featured Arbitrum token; $CULT joins the
  * Ethereum deploy. The lobby's custom-token input stays as the subtle any-ERC-20 option — the

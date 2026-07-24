@@ -5,14 +5,17 @@
 // force background:#000 / color:#00ff00 on any element WITHOUT an inline background-image
 // or color — the same reason ChessTutorial styles inline. Layout-only props may use CSS.
 
-import React, { useEffect, useState } from 'react';
-import { parseEther, parseUnits, zeroAddress } from 'viem';
+import React, { useCallback, useEffect, useState } from 'react';
+import { formatEther, formatUnits, parseEther, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useChainId, usePublicClient, useSwitchChain } from 'wagmi';
 import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
-import { LAWB_CHESS_CHAIN_IDS, LAWB_CHESS_NFT_COLLECTIONS, LAWB_CHESS_WAGER_TOKENS, getLawbChessAddress } from '../../config/lawbChessOnchain';
+import {
+  LAWB_CHESS_ABI, LAWB_CHESS_CHAIN_IDS, LAWB_CHESS_DEPLOY_BLOCK, LAWB_CHESS_NFT_COLLECTIONS,
+  LAWB_CHESS_WAGER_TOKENS, getLawbChessAddress,
+} from '../../config/lawbChessOnchain';
 import { getGlobalElo } from '../../firebaseElo';
-import { WagerKind } from '../../utils/lawbChessBoard';
-import { stringToCode, type GameCode } from '../../utils/lawbChessMoves';
+import { GameStatus, WagerKind, parseGameTuple, type OnchainGame } from '../../utils/lawbChessBoard';
+import { codeToString, stringToCode, type GameCode } from '../../utils/lawbChessMoves';
 import { oc as C, solid, ocInput, ocBtnPrimary, ocBtnSecondary, ocChip, FieldLabel, TokenGlyph } from './onchainUi';
 
 type WagerType = 'native' | 'erc20' | 'erc721' | 'erc1155';
@@ -66,6 +69,56 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
     setMyGlobalElo(null);
     if (address) void getGlobalElo(address).then((e) => setMyGlobalElo(e?.elo ?? null));
   }, [address]);
+
+  // Open matches on the selected chain, straight from the contract: GameCreated events
+  // (one getLogs from the deploy block) → games() status via one multicall → status OPEN.
+  // One-shot per chain visit + manual refresh — NO polling (bandwidth guardrail).
+  const [openMatches, setOpenMatches] = useState<{ code: `0x${string}`; game: OnchainGame }[] | null>(null);
+  const [openScanErr, setOpenScanErr] = useState<string | null>(null);
+  const scanOpenMatches = useCallback(async () => {
+    const proxy = getLawbChessAddress(chainId);
+    const fromBlock = LAWB_CHESS_DEPLOY_BLOCK[chainId];
+    if (!publicClient || !proxy || fromBlock === undefined) { setOpenMatches([]); return; }
+    setOpenMatches(null);
+    setOpenScanErr(null);
+    try {
+      const logs = await publicClient.getContractEvents({
+        address: proxy, abi: LAWB_CHESS_ABI, eventName: 'GameCreated', fromBlock, toBlock: 'latest',
+      });
+      const codes = [...new Set(
+        logs.map((l) => (l as { args?: { code?: `0x${string}` } }).args?.code).filter(Boolean) as `0x${string}`[],
+      )].slice(-50); // bound the status reads; codes are reusable so games() below is the truth
+      const reads = codes.length === 0 ? [] : await publicClient.multicall({
+        contracts: codes.map((code) => ({
+          address: proxy, abi: LAWB_CHESS_ABI, functionName: 'games' as const, args: [code],
+        })),
+        allowFailure: true,
+      });
+      const open: { code: `0x${string}`; game: OnchainGame }[] = [];
+      codes.forEach((code, i) => {
+        const r = reads[i];
+        if (r?.status !== 'success') return;
+        const game = parseGameTuple(r.result as Parameters<typeof parseGameTuple>[0]);
+        if (game.status === GameStatus.OPEN) open.push({ code, game });
+      });
+      setOpenMatches(open.reverse()); // newest first
+    } catch (e) {
+      setOpenScanErr((e as Error)?.message?.split('\n')[0] ?? 'scan failed');
+      setOpenMatches([]);
+    }
+  }, [chainId, publicClient]);
+  useEffect(() => { void scanOpenMatches(); }, [scanOpenMatches]);
+
+  // Human label for a game's stake, matching the create form's featured lists.
+  const stakeLabel = (g: OnchainGame): string => {
+    if (g.kind === WagerKind.NATIVE) return `${formatEther(g.wager)} ETH`;
+    if (g.kind === WagerKind.ERC20) {
+      const t = (LAWB_CHESS_WAGER_TOKENS[chainId] ?? []).find((x) => x.address.toLowerCase() === g.token.toLowerCase());
+      return t ? `${formatUnits(g.wager, t.decimals)} ${t.label.split(' ')[0]}` : `custom token ${g.token.slice(0, 6)}…`;
+    }
+    const c = (LAWB_CHESS_NFT_COLLECTIONS[chainId] ?? []).find((x) => x.address.toLowerCase() === g.token.toLowerCase());
+    return `NFT · ${c ? c.label : `${g.token.slice(0, 6)}…`}`;
+  };
 
   const deployedHere = !!getLawbChessAddress(chainId);
   const nftCollections = LAWB_CHESS_NFT_COLLECTIONS[chainId] ?? [];
@@ -343,6 +396,42 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
           <span style={{ color: C.cyan, flex: '0 0 auto' }}>⛓</span>
           <span>Token wagers take two transactions (approve, then create). The contract escrows both stakes and settles on checkmate, resign, or timeout — no middleman.</span>
         </div>
+      </div>
+
+      {/* open matches (contract-derived, per selected chain) */}
+      <div style={{ backgroundImage: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: C.ink }}>
+            Open matches · {chainName}
+          </div>
+          <button type="button" onClick={() => { void scanOpenMatches(); }} disabled={openMatches === null} style={ocBtnSecondary}>
+            Refresh
+          </button>
+        </div>
+        {openMatches === null && (
+          <div style={{ fontSize: 12, color: C.muted2 }}>Scanning the chain for open wagers…</div>
+        )}
+        {openMatches !== null && openMatches.length === 0 && (
+          <div style={{ fontSize: 12, color: C.muted2 }}>
+            {openScanErr ? `Couldn't scan for open matches (${openScanErr}) — try Refresh.`
+              : 'No open wagers on this chain right now — create one above and share the code.'}
+          </div>
+        )}
+        {openMatches !== null && openMatches.map(({ code, game }) => (
+          <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0',
+            borderTop: `1px solid ${C.line}` }}>
+            <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, fontSize: 13, color: C.cyan,
+              letterSpacing: '.12em', textTransform: 'uppercase' }}>#{codeToString(code as GameCode)}</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden',
+              textOverflow: 'ellipsis' }}>
+              <b style={{ color: C.gold }}>{stakeLabel(game)}</b>
+              <span style={{ color: C.muted2 }}> · {Math.round(game.whiteTime / 60)}m{game.increment > 0 ? `+${game.increment}s` : ''} · by {game.white.slice(0, 6)}…{game.white.slice(-4)}</span>
+            </span>
+            <button type="button" onClick={() => onEnterGame(code as GameCode)} style={ocBtnSecondary}>
+              {address && game.white.toLowerCase() === address.toLowerCase() ? 'Open' : 'Join'}
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* open by code */}
