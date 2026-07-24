@@ -663,7 +663,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
 const PlayerCard: React.FC<{
   side: SideT; addr: string; elo?: number; globalElo?: number; clock: number; isYou: boolean; turn: boolean; avatar?: string;
 }> = ({ side, addr, elo, globalElo, clock, isYou, turn, avatar }) => {
-  const accent = side === Side.WHITE ? oc.red : oc.blue;
+  const accent = side === Side.WHITE ? oc.blue : oc.red;
   const zero = '0x0000000000000000000000000000000000000000';
   const name = addr && addr !== zero ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : 'Waiting…';
   return (

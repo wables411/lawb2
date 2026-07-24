@@ -88,7 +88,7 @@ export const OnchainChessSidebar: React.FC<OnchainChessSidebarProps> = ({ moves,
 
         {tab === 'players' && players && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5 }}>
-            {([['White', players.white, players.eloWhite, oc.red], ['Black', players.black, players.eloBlack, oc.blue]] as const).map(
+            {([['White', players.white, players.eloWhite, oc.blue], ['Black', players.black, players.eloBlack, oc.red]] as const).map(
               ([label, addr, elo, accent]) => (
                 <div key={label} style={{
                   backgroundImage: solid('#0a1322'), border: `1px solid ${oc.line}`, borderLeft: `3px solid ${accent}`,
