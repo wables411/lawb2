@@ -1,7 +1,7 @@
 import { dlog } from './utils/devLog';
 // AppKit initialization for REOWN wallet connections
 
-import { sankoMainnet } from './wagmi';
+import { sankoMainnet, chainTransports } from './wagmi';
 import { ENABLE_ONCHAIN_CHESS } from './config/lawbChessOnchain';
 
 const projectId = '7c65f27254d6ddd24cf7eedf2685c4fb';
@@ -53,6 +53,10 @@ export const initializeAppKit = () => {
     wagmiAdapter = new WagmiAdapter({
       projectId,
       networks: evmNetworks, // WagmiAdapter is EVM-only. Do not include Solana here.
+      // Use OUR per-chain RPCs (adapter falls back to the Reown proxy automatically).
+      // Without this, every read after the config swap went through rpc.walletconnect.org,
+      // whose intermittent 400s froze live chess boards.
+      transports: chainTransports,
       pendingTransactionsFilter: {
         enable: true,
         pollingInterval: 1000

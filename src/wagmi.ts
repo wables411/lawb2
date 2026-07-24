@@ -83,22 +83,29 @@ const baseSepoliaTransport = http(
   { batch: false },
 );
 
+// Per-chain transports. Shared with appkit.ts: the app swaps to AppKit's OWN wagmi config
+// after load (main.tsx), and without an explicit transports map the WagmiAdapter routes every
+// read through Reown's RPC proxy (rpc.walletconnect.org), which intermittently 400s — seen
+// live as chess boards freezing mid-game. Passing these makes our RPCs primary there too
+// (the adapter keeps the Reown proxy as an automatic fallback).
+export const chainTransports = {
+  [mainnet.id]: mainnetFallbackTransport(),
+  [arbitrum.id]: http(
+    viteRpc('VITE_ARBITRUM_RPC_URL') ?? 'https://arb1.arbitrum.io/rpc',
+    { batch: false },
+  ),
+  [base.id]: baseFallbackTransport(),
+  [sankoTestnet.id]: http('https://sanko-arb-sepolia.rpc.caldera.xyz/http'),
+  [sankoMainnet.id]: http('https://mainnet.sanko.xyz'),
+  [baseSepolia.id]: baseSepoliaTransport,
+} as const;
+
 // Create wagmi config - AppKit's WagmiAdapter will add its own connectors
 export const config = createConfig({
   chains: [mainnet, arbitrum, base, sankoTestnet, sankoMainnet, baseSepolia],
   connectors: [], // AppKit's WagmiAdapter will add its own connectors
   multiInjectedProviderDiscovery: true, // Enable EIP-6963 wallet discovery
-  transports: {
-    [mainnet.id]: mainnetFallbackTransport(),
-    [arbitrum.id]: http(
-      viteRpc('VITE_ARBITRUM_RPC_URL') ?? 'https://arb1.arbitrum.io/rpc',
-      { batch: false },
-    ),
-    [base.id]: baseFallbackTransport(),
-    [sankoTestnet.id]: http('https://sanko-arb-sepolia.rpc.caldera.xyz/http'),
-    [sankoMainnet.id]: http('https://mainnet.sanko.xyz'),
-    [baseSepolia.id]: baseSepoliaTransport,
-  },
+  transports: chainTransports,
 });
 
 // Export all chains for use in appkit

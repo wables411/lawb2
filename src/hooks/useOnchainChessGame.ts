@@ -7,7 +7,7 @@
 // guardrails, LAWBCHESS_HANDOFF.md §7). Live updates come later via the write path / relayer.
 // The live Firebase PvP path is untouched.
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useChainId, useReadContract } from 'wagmi';
 import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI, getLawbChessAddress } from '../config/lawbChessOnchain';
 import {
@@ -74,6 +74,11 @@ export function useOnchainChessGame(
     [game],
   );
 
+  // STABLE identity (react-query's refetch already is). The game screen's wait-poll
+  // effect depends on this function; an unstable identity made the clock's 1s re-render
+  // reset the 4s interval forever, so opponents' moves never appeared during a live game.
+  const stableRefetch = useCallback(() => { void refetch(); }, [refetch]);
+
   return {
     game,
     board,
@@ -82,8 +87,6 @@ export function useOnchainChessGame(
     isLoading: isEnabled && isLoading,
     isError,
     error: (error as Error) ?? null,
-    refetch: () => {
-      void refetch();
-    },
+    refetch: stableRefetch,
   };
 }
