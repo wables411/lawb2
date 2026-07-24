@@ -161,7 +161,7 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
           }}>⛓</div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.13em', textTransform: 'uppercase', color: C.ink }}>
-              Lawbster <span style={{ color: C.cyan }}>Chess</span>
+              Lawb <span style={{ color: C.cyan }}>Chess</span>
             </div>
             <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: C.muted2 }}>
               On-Chain Arena
