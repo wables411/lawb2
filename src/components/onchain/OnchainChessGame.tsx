@@ -45,6 +45,10 @@ const PROMO_TYPE: Record<string, number> = { n: 2, b: 3, r: 4, q: 5 };
 // while waiting for the opponent we poll the contract at this interval, and ONLY then
 // (stops on your turn / when finished / when the tab is hidden) — no idle polling.
 const WAIT_POLL_MS = 4000;
+// A read right after creation can hit a lagging RPC replica that answers "no such game".
+// Retry the lookup a few times (bounded — no idle polling) before declaring not-found.
+const NOT_FOUND_MAX_RETRIES = 3;
+const NOT_FOUND_RETRY_MS = 2000;
 
 function useNowSeconds(active: boolean): number {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -102,6 +106,15 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   }, [game?.white, game?.black]);
 
   const [selected, setSelected] = useState<number | null>(null);
+  const [notFoundRetries, setNotFoundRetries] = useState(0);
+  useEffect(() => {
+    if (game && game.status !== GameStatus.NONE) { setNotFoundRetries(0); return; }
+    if (!game || notFoundRetries >= NOT_FOUND_MAX_RETRIES) return;
+    const id = setTimeout(() => { setNotFoundRetries((n) => n + 1); refetch(); }, NOT_FOUND_RETRY_MS);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.status, notFoundRetries]);
+
   const [targets, setTargets] = useState<number[]>([]);
   const [pendingPromo, setPendingPromo] = useState<{ from: number; to: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -172,7 +185,10 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
       const regHash = await actions.registerMoveKey(code, key.address);
       await publicClient.waitForTransactionReceipt({ hash: regHash });
       const funding = await computeSessionFunding(chainId);
-      const fundHash = await sendTransactionAsync({ to: key.address, value: funding });
+      // Pin the gas limit: MetaMask signs plain sends with a flat 21000, which is below
+      // Arbitrum's transfer cost (L1 data fee) and gets rejected. Same 60k headroom as
+      // sweepSessionKey; unused gas is refunded.
+      const fundHash = await sendTransactionAsync({ to: key.address, value: funding, gas: 60_000n });
       await publicClient.waitForTransactionReceipt({ hash: fundHash });
       setSessionKey(key);
       refetch();
@@ -427,8 +443,17 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     return (
       <div style={panel}>
         <OcArenaHeader />
-        <div style={{ color: oc.muted, fontSize: 13 }}>No game found for code <b style={{ color: oc.ink }}>{codeToString(code)}</b>.</div>
-        <button style={ocBtnSecondary} onClick={onLeave}>Back to lobby</button>
+        <div style={{ color: oc.muted, fontSize: 13 }}>
+          {notFoundRetries < NOT_FOUND_MAX_RETRIES
+            ? <>Looking for game <b style={{ color: oc.ink }}>{codeToString(code)}</b>…</>
+            : <>No game found for code <b style={{ color: oc.ink }}>{codeToString(code)}</b>.</>}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {notFoundRetries >= NOT_FOUND_MAX_RETRIES && (
+            <button style={ocBtnPrimary} onClick={() => { setNotFoundRetries(0); refetch(); }}>Retry</button>
+          )}
+          <button style={ocBtnSecondary} onClick={onLeave}>Back to lobby</button>
+        </div>
       </div>
     );
   }
