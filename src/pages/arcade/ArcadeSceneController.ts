@@ -362,6 +362,14 @@ export class ArcadeSceneController {
   private _vCamPos = new THREE.Vector3();
   private _vDir = new THREE.Vector3();
   private _vPlayCenter = new THREE.Vector3();
+  // Swimmer camera-target box is refreshed on a cooldown, not per frame — Box3.setFromObject
+  // traverses the whole skinned rig. Between refreshes the cached center-offset rides the
+  // swimmer's live world position, so the lookAt target stays continuous (no stepping).
+  private _swimBoxScratch = new THREE.Box3();
+  private _swimWorldPos = new THREE.Vector3();
+  private _swimCenterOffset = new THREE.Vector3();
+  private _swimBoxCooldown = 0;
+  private _swimBoxValid = false;
   /** World feet / pivot for yaw toward camera on select screen. */
   private _vFacePivot = new THREE.Vector3();
   private _hslScratch = { h: 0, s: 0, l: 0 };
@@ -1006,6 +1014,15 @@ export class ArcadeSceneController {
     /* Tighter X so all three stay in view on portrait / narrow aspect (was ±4.4). */
     const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R];
     const faces = [FACE_LEFT, FACE_CENTER, FACE_RIGHT];
+    // Kick off all three idle-FBX downloads at once (was a serial await per character);
+    // scene assembly below still runs in order. Rejections are captured per character so
+    // one bad file still falls back to the capsule without failing the others.
+    const idleLoads = ARCADE_CHARACTERS.map((def) =>
+      loadArcadeFbx(def.idle, def.id).then(
+        (r) => ({ ok: true as const, r }),
+        (e) => ({ ok: false as const, e }),
+      ),
+    );
     for (let i = 0; i < ARCADE_CHARACTERS.length; i++) {
       const def = ARCADE_CHARACTERS[i];
       const anchor = new THREE.Group();
@@ -1023,8 +1040,10 @@ export class ArcadeSceneController {
       );
       anchor.add(base);
       try {
-        const { root, clips } = await loadArcadeFbx(def.idle, def.id);
+        const loaded = await idleLoads[i]!;
         if (this.disposed) return; // teardown raced the load — don't add orphan meshes
+        if (!loaded.ok) throw loaded.e;
+        const { root, clips } = loaded.r;
         root.userData.characterId = def.id;
         root.rotation.y = faces[i]!;
         applyArcadeHeroScale(root, def.heightMul ?? 1);
@@ -2282,10 +2301,21 @@ export class ArcadeSceneController {
       let lookY = PLAYER_FEET_Y + 0.42;
       let lookZ = PLAYER_Z - 0.85;
       if (this.swimRoot) {
-        this.swimRoot.updateMatrixWorld(true);
-        const b = new THREE.Box3().setFromObject(this.swimRoot);
-        if (!b.isEmpty()) {
-          b.getCenter(this._vPlayCenter);
+        this._swimBoxCooldown -= dt;
+        if (this._swimBoxCooldown <= 0) {
+          this._swimBoxCooldown = 0.15;
+          this.swimRoot.updateMatrixWorld(true);
+          this._swimBoxScratch.setFromObject(this.swimRoot);
+          this._swimBoxValid = !this._swimBoxScratch.isEmpty();
+          if (this._swimBoxValid) {
+            this._swimBoxScratch.getCenter(this._vPlayCenter);
+            this.swimRoot.getWorldPosition(this._swimWorldPos);
+            this._swimCenterOffset.copy(this._vPlayCenter).sub(this._swimWorldPos);
+          }
+        }
+        if (this._swimBoxValid) {
+          this.swimRoot.getWorldPosition(this._swimWorldPos);
+          this._vPlayCenter.copy(this._swimWorldPos).add(this._swimCenterOffset);
           lookX = THREE.MathUtils.lerp(this.playerX * 0.22, this._vPlayCenter.x, 0.62) + ox * 0.18;
           lookY = THREE.MathUtils.lerp(
             PLAYER_FEET_Y + 0.42,

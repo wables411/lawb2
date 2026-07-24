@@ -4262,7 +4262,10 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
         } catch (error) {
           console.error('[BOARD_SYNC_CHECK] Error syncing board:', error);
         }
-      }, 1000); // Check every 1 second for active games
+      }, 15000); // Fallback sweep only — the realtime subscribeToGame listener is the primary
+                 // move transport; this catches a dropped/missed realtime update. Was 1s, which
+                 // re-downloaded the full game node every second on top of the live subscription
+                 // (the dominant chess_games bandwidth after the 2026-07-18 query scoping).
       
       return () => {
         dlog('[BOARD_SYNC_CHECK] Cleaning up board sync check');
@@ -4652,6 +4655,14 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     if (!loadLawbPositionIntoChess(ch, boardState, player)) return false;
     return ch.isCheck();
   };
+
+  // Check status once per board change — renderSquare must NOT call isKingInCheck directly
+  // (it builds a fresh chess.js engine per call, per king square, on every render).
+  const kingCheckStatus = useMemo(
+    () => ({ blue: isKingInCheck(board, 'blue'), red: isKingInCheck(board, 'red') }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [board],
+  );
 
   const isCheckmate = (player: 'blue' | 'red', boardState = board): boolean => {
     const ch = new Chess();
@@ -5849,7 +5860,7 @@ export const ChessMultiplayer: React.FC<ChessMultiplayerProps> = ({ onClose, onM
     const isValidMove = validMoves.some(move => move.row === row && move.col === col);
     const isLastMove = lastMove && ((lastMove.from.row === row && lastMove.from.col === col) || (lastMove.to.row === row && lastMove.to.col === col));
     const isWinningMoveSquare = isWinningMove && isLastMove;
-    const isInCheck = piece && piece.toUpperCase() === 'K' && isKingInCheck(board, getPieceColor(piece));
+    const isInCheck = piece && piece.toUpperCase() === 'K' && kingCheckStatus[getPieceColor(piece)];
     
     // Debug logging for piece rendering
     if (piece && !pieceImages[piece]) {
