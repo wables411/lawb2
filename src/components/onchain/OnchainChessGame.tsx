@@ -4,14 +4,25 @@
 
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { useAccount, usePublicClient, useReadContract } from 'wagmi';
+import { useAccount, useChainId, usePublicClient, useReadContract, useSendTransaction } from 'wagmi';
+import { formatEther } from 'viem';
 import { useOnchainChessGame } from '../../hooks/useOnchainChessGame';
 import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
 import { useOnchainChessMoves } from '../../hooks/useOnchainChessMoves';
 import {
   boardToFen, squareToAlgebraic, algebraicToSquare, GameStatus, Side, WagerKind,
 } from '../../utils/lawbChessBoard';
-import { codeToString, type GameCode } from '../../utils/lawbChessMoves';
+import { codeToString, type GameCode, type MoveKey } from '../../utils/lawbChessMoves';
+import {
+  clearMoveKey,
+  computeSessionFunding,
+  createAndStoreMoveKey,
+  loadMoveKey,
+  sessionKeyBalance,
+  sessionKeyLowWater,
+  submitMoveBySessionKey,
+  sweepSessionKey,
+} from '../../utils/lawbChessSession';
 import { chessBoardForCode } from '../../config/chessBoards';
 import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI } from '../../config/lawbChessOnchain';
 import { playChessSound } from '../../utils/chessSounds';
@@ -57,6 +68,8 @@ export interface OnchainChessGameProps {
 export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeave }) => {
   const { address } = useAccount();
   const publicClient = usePublicClient();
+  const chainId = useChainId();
+  const { sendTransactionAsync } = useSendTransaction();
   const { game, board, isLoading, contractAddress, refetch } = useOnchainChessGame(code);
   const actions = useOnchainChessActions();
   const { currentPieceSet } = useChessPieceSet();
@@ -87,6 +100,12 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const seenNonceRef = useRef<bigint | null>(null);
   const prevCountRef = useRef<number | null>(null);
 
+  // ---- popup-free moves (session move-key; proven e2e in scripts/proveSessionMoves.mts) ----
+  const [sessionKey, setSessionKey] = useState<MoveKey | null>(null);
+  const [sessionBal, setSessionBal] = useState<bigint | null>(null);
+  const [sessionLow, setSessionLow] = useState<bigint>(80_000_000_000_000n);
+  const [sessionBusy, setSessionBusy] = useState(false);
+
   const me = address?.toLowerCase();
   const myColor =
     game && me === game.white.toLowerCase() ? Side.WHITE
@@ -98,6 +117,81 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const isFinished = game?.status === GameStatus.FINISHED;
   const myTurn = isActive && myColor !== null && game?.side === myColor;
   const orientation = myColor === Side.BLACK ? 'black' : 'white';
+
+  // session key is usable only once the CONTRACT has it registered for my color
+  const myRegisteredKey =
+    myColor === Side.WHITE ? game?.whiteMoveKey : myColor === Side.BLACK ? game?.blackMoveKey : undefined;
+  const sessionReady =
+    !!sessionKey && !!myRegisteredKey && myRegisteredKey.toLowerCase() === sessionKey.address.toLowerCase();
+  const sessionFunded = sessionReady && sessionBal !== null && sessionBal > sessionLow;
+
+  // restore a persisted key for this game on mount / account change
+  useEffect(() => {
+    if (!address || !contractAddress) { setSessionKey(null); return; }
+    setSessionKey(loadMoveKey(chainId, contractAddress, code, address));
+  }, [address, chainId, code, contractAddress]);
+
+  // refresh the key's gas balance when the key appears or a move lands
+  useEffect(() => {
+    if (!sessionKey) { setSessionBal(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [bal, low] = await Promise.all([
+          sessionKeyBalance(chainId, sessionKey.address),
+          sessionKeyLowWater(chainId),
+        ]);
+        if (!cancelled) { setSessionBal(bal); setSessionLow(low); }
+      } catch { /* balance display is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, [chainId, sessionKey, game?.moveNonce]);
+
+  // one-time setup: register the ephemeral key (wallet tx) + front it gas (wallet tx) — the
+  // ONLY confirmations of the whole game; every move after this is signed+sent by the key.
+  const enablePopupFree = useCallback(async () => {
+    if (!address || !contractAddress || !publicClient) return;
+    setErr(null);
+    setSessionBusy(true);
+    try {
+      const key = createAndStoreMoveKey(chainId, contractAddress, code, address);
+      const regHash = await actions.registerMoveKey(code, key.address);
+      await publicClient.waitForTransactionReceipt({ hash: regHash });
+      const funding = await computeSessionFunding(chainId);
+      const fundHash = await sendTransactionAsync({ to: key.address, value: funding });
+      await publicClient.waitForTransactionReceipt({ hash: fundHash });
+      setSessionKey(key);
+      refetch();
+    } catch (e) {
+      clearMoveKey(chainId, contractAddress, code, address);
+      setSessionKey(null);
+      setErr((e as Error)?.message?.split('\n')[0] ?? 'popup-free setup failed');
+    } finally {
+      setSessionBusy(false);
+    }
+  }, [actions, address, chainId, code, contractAddress, publicClient, refetch, sendTransactionAsync]);
+
+  // withdraw leftover gas to the player and forget the key
+  const disablePopupFree = useCallback(async () => {
+    if (!address || !contractAddress || !sessionKey) return;
+    setSessionBusy(true);
+    try { await sweepSessionKey(chainId, sessionKey, address); } catch { /* dust stays */ }
+    clearMoveKey(chainId, contractAddress, code, address);
+    setSessionKey(null);
+    setSessionBal(null);
+    setSessionBusy(false);
+  }, [address, chainId, code, contractAddress, sessionKey]);
+
+  // game over -> auto-sweep the key's remaining gas back to the player (best-effort)
+  useEffect(() => {
+    if (!isFinished || !sessionKey || !address || !contractAddress) return;
+    void (async () => {
+      try { await sweepSessionKey(chainId, sessionKey, address); } catch { /* dust stays */ }
+      clearMoveKey(chainId, contractAddress, code, address);
+      setSessionKey(null);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished]);
 
   const chess = useMemo(() => {
     if (!game || !board) return null;
@@ -117,6 +211,20 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
       setErr(null);
       setBusy(true);
       try {
+        // popup-free path: the session key signs AND submits — no wallet interaction.
+        // Any failure falls through to the direct wallet tx so a game can never brick.
+        if (sessionFunded && sessionKey && contractAddress && game) {
+          try {
+            const hash = await submitMoveBySessionKey(chainId, contractAddress, sessionKey, {
+              code, nonce: game.moveNonce, from, to, promo,
+            });
+            if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+            refetch();
+            return;
+          } catch {
+            setErr('popup-free submit failed — falling back to a wallet confirmation');
+          }
+        }
         const hash = await actions.makeMove(code, from, to, promo);
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
         refetch();
@@ -126,7 +234,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
         setBusy(false);
       }
     },
-    [actions, clear, code, publicClient, refetch],
+    [actions, chainId, clear, code, contractAddress, game, publicClient, refetch, sessionFunded, sessionKey],
   );
 
   const handleSquareClick = useCallback(
@@ -379,6 +487,46 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
                   onClick={() => submitMove(pendingPromo.from, pendingPromo.to, PROMO_TYPE[p])}>{p.toUpperCase()}</button>
               ))}
               <button style={ocBtnGhost} onClick={() => setPendingPromo(null)}>Cancel</button>
+            </div>
+          )}
+
+          {isPlayer && (isOpen || isActive) && (
+            <div style={{
+              display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap',
+              fontSize: 12, color: oc.muted, backgroundImage: solid('rgba(63,224,214,.05)'),
+              border: `1px solid ${sessionFunded ? 'rgba(63,224,214,.35)' : oc.line}`, borderRadius: 10, padding: '8px 12px',
+            }}>
+              {sessionFunded ? (
+                <>
+                  <span style={{ color: oc.cyan, fontWeight: 700 }}>⚡ popup-free ON</span>
+                  <span>gas left: {sessionBal !== null ? Number(formatEther(sessionBal)).toFixed(5) : '…'} ETH</span>
+                  <button style={ocBtnGhost} disabled={sessionBusy} onClick={disablePopupFree}>withdraw & turn off</button>
+                </>
+              ) : sessionReady ? (
+                <>
+                  <span style={{ color: '#f2b73c', fontWeight: 700 }}>⚡ popup-free key low on gas</span>
+                  <button style={ocBtnSecondary} disabled={sessionBusy} onClick={async () => {
+                    if (!sessionKey) return;
+                    setSessionBusy(true);
+                    try {
+                      const funding = await computeSessionFunding(chainId);
+                      const h = await sendTransactionAsync({ to: sessionKey.address, value: funding });
+                      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: h });
+                      setSessionBal(await sessionKeyBalance(chainId, sessionKey.address));
+                    } catch (e) { setErr((e as Error)?.message?.split('\n')[0] ?? 'top-up failed'); }
+                    finally { setSessionBusy(false); }
+                  }}>top up gas</button>
+                  <button style={ocBtnGhost} disabled={sessionBusy} onClick={disablePopupFree}>turn off</button>
+                </>
+              ) : (
+                <>
+                  <span>Tired of confirming every move?</span>
+                  <button style={ocBtnSecondary} disabled={sessionBusy || busy} onClick={enablePopupFree}>
+                    {sessionBusy ? 'setting up…' : '⚡ Enable popup-free moves'}
+                  </button>
+                  <span style={{ color: oc.muted2 }}>2 confirmations once, then zero for the whole game</span>
+                </>
+              )}
             </div>
           )}
 
