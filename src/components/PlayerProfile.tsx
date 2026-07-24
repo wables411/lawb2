@@ -9,7 +9,7 @@ import {
   type LeaderboardEntry,
   type PointsBreakdown,
 } from '../firebaseLeaderboard';
-import { fetchNFTInventory, fetchAggregatedNFTInventory, type WalletDescriptor } from '../utils/nftInventory';
+import { fetchNFTInventory, fetchAggregatedNFTInventory, type NFTInventory, type WalletDescriptor } from '../utils/nftInventory';
 import { fetchBaseLawbClawbHoldingsBonus } from '../utils/leaderboardTokenBonus';
 import { fetchTokenMetadata } from '../utils/nftMetadata';
 import { NFT_COLLECTIONS } from '../config/nftCollections';
@@ -466,6 +466,17 @@ const TokenBalancesSection: React.FC<{
   );
 };
 
+// One in-flight/recent inventory sweep per wallet set. The profile loader re-runs when the
+// connected account hydrates (and the profile can be mounted more than once), which used to
+// fire the full Etherscan/Alchemy/Scatter sweep + Firebase save TWICE back-to-back on every
+// wallet connect. Callers within the TTL share a single sweep; failed/unsaved sweeps clear
+// the entry so the next mount retries.
+const INVENTORY_REFRESH_TTL_MS = 60_000;
+const inventoryRefreshCache = new Map<
+  string,
+  { at: number; promise: Promise<{ saved: boolean; inventory: NFTInventory }> }
+>();
+
 export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, address: viewAddress }) => {
   const connectionDisplay = useConnectionDisplay();
   const { open } = useAppKitSafe();
@@ -667,20 +678,36 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               { address: profileAddress, chain: profileAddress.startsWith('0x') ? 'evm' : 'solana' },
               ...linked.map((lw) => ({ address: lw.address, chain: lw.chain })),
             ];
-            const inventory = allWallets.length > 1
-              ? await fetchAggregatedNFTInventory(allWallets)
-              : await fetchNFTInventory(profileAddress);
+            const refreshKey = allWallets.map((w) => `${w.chain}:${w.address.toLowerCase()}`).sort().join('|');
+            const cachedRefresh = inventoryRefreshCache.get(refreshKey);
+            let refresh =
+              cachedRefresh && Date.now() - cachedRefresh.at < INVENTORY_REFRESH_TTL_MS
+                ? cachedRefresh.promise
+                : null;
+            if (!refresh) {
+              refresh = (async () => {
+                const inventory = allWallets.length > 1
+                  ? await fetchAggregatedNFTInventory(allWallets)
+                  : await fetchNFTInventory(profileAddress);
+                const tokenBonus = await fetchBaseLawbClawbHoldingsBonus(
+                  allWallets.filter((w) => w.chain === 'evm').map((w) => w.address),
+                );
+                // Same auth race as profile creation: the login signature may still be
+                // pending, and the locked rules reject the write until it lands.
+                const authed = await waitForWalletDbAuth(profileAddress);
+                if (authed) {
+                  await firebaseProfiles.updateNFTInventory(profileAddress, inventory, {
+                    tokenBonusPoints: tokenBonus,
+                  });
+                }
+                return { saved: authed, inventory };
+              })();
+              inventoryRefreshCache.set(refreshKey, { at: Date.now(), promise: refresh });
+              refresh.catch(() => inventoryRefreshCache.delete(refreshKey));
+            }
+            const { saved, inventory } = await refresh;
             profileDebugLog('[PROFILE] NFT inventory fetched:', inventory);
-            const tokenBonus = await fetchBaseLawbClawbHoldingsBonus(
-              allWallets.filter((w) => w.chain === 'evm').map((w) => w.address),
-            );
-            // Same auth race as profile creation: the login signature may still be
-            // pending, and the locked rules reject the write until it lands.
-            const invAuthed = await waitForWalletDbAuth(profileAddress);
-            if (invAuthed) {
-              await firebaseProfiles.updateNFTInventory(profileAddress, inventory, {
-                tokenBonusPoints: tokenBonus,
-              });
+            if (saved) {
               const updated = await firebaseProfiles.getProfile(profileAddress);
               if (updated) {
                 profileData = updated;
@@ -689,6 +716,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
             } else {
               profileDebugLog('[PROFILE] Wallet auth not ready — showing fetched inventory without saving');
               profileData = { ...profileData, nft_inventory: inventory };
+              // an unsaved sweep must not suppress the retry on the next mount
+              inventoryRefreshCache.delete(refreshKey);
             }
           } catch (invError) {
             if (typeof window !== 'undefined' && window.console) {

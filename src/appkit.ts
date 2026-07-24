@@ -76,7 +76,10 @@ export const initializeAppKit = () => {
       enableWallets: true,
       themeMode: 'light',
       themeVariables: {
-        '--w3m-z-index': 9999,
+        // Above every site layer — the Reef Run arcade root is fixed at z 2147483000,
+        // which silently swallowed the modal ("Manage Wallet does nothing"). The wallet
+        // modal must always be the topmost thing on the page.
+        '--w3m-z-index': 2147483200,
         '--w3m-accent': '#000080',
         '--w3m-border-radius-master': '0px',
         '--w3m-font-family': 'MS Sans Serif, Arial, sans-serif'
