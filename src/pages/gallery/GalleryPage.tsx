@@ -38,6 +38,29 @@ function starField(count: number): { top: string; left: string; delay: string }[
 
 const STARS = starField(90);
 
+/** react-tweet throws on fetch/render failures; degrade to a plain link so one
+    dead embed can't take down the page. */
+class TweetSafe extends React.Component<
+  { id: string },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (this.state.failed) {
+      const url = `https://x.com/i/status/${this.props.id}`;
+      return (
+        <a className="gal-link" href={url} target="_blank" rel="noopener noreferrer">
+          View post on X ↗
+        </a>
+      );
+    }
+    return <Tweet id={this.props.id} />;
+  }
+}
+
 function MoonChips({ planet }: { planet: Planet }) {
   const [openMoon, setOpenMoon] = useState<Moon | null>(null);
   useEffect(() => setOpenMoon(null), [planet.id]);
@@ -114,6 +137,36 @@ function PlanetWindow({ planet, onClose }: { planet: Planet; onClose: () => void
         <div>{planet.blurb}</div>
 
         <MoonChips planet={planet} />
+
+        {planet.story && planet.story.length > 0 && (
+          <div className="gal-section">
+            <h3>The lore broadcast</h3>
+            {planet.story.map((beat) => (
+              <div className="gal-story-beat" key={beat.postUrl}>
+                <div className="gal-timeline-date">{beat.date}</div>
+                <p>{beat.text}</p>
+                {beat.video ? (
+                  <video
+                    controls
+                    preload="none"
+                    poster={beat.image}
+                    src={beat.video}
+                  />
+                ) : (
+                  beat.image && <img src={beat.image} alt="" loading="lazy" />
+                )}
+                <a
+                  className="gal-link"
+                  href={beat.postUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  original post ↗
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
 
         {planet.inspiredBy && planet.inspiredBy.length > 0 && (
           <div className="gal-section">
@@ -200,7 +253,7 @@ function PlanetWindow({ planet, onClose }: { planet: Planet; onClose: () => void
             <h3>Posts</h3>
             {planet.xPosts.map((id) => (
               <div className="gal-tweet-wrap" key={id}>
-                <Tweet id={id} />
+                <TweetSafe id={id} />
               </div>
             ))}
           </div>
@@ -286,15 +339,15 @@ export default function GalleryPage() {
           ))}
 
           {/* sun */}
+          <defs>
+            <radialGradient id="gal-sun-glow">
+              <stop offset="0%" stopColor="rgba(255,200,80,0.75)" />
+              <stop offset="100%" stopColor="rgba(255,200,80,0)" />
+            </radialGradient>
+          </defs>
           <g onClick={() => selectPlanet(null)} style={{ cursor: 'inherit' }}>
-            <image
-              className="gal-sun-img"
-              href={SUN.image}
-              x={-46}
-              y={-46}
-              width={92}
-              height={92}
-            />
+            <circle r={80} fill="url(#gal-sun-glow)" />
+            <image href={SUN.image} x={-46} y={-46} width={92} height={92} />
             <text className="gal-planet-label" y={70}>
               {SUN.name}
             </text>
@@ -321,7 +374,6 @@ export default function GalleryPage() {
                 >
                   <circle r={p.size + 6} fill={p.color} opacity={0.25} />
                   <image
-                    className="gal-planet-img"
                     href={p.image}
                     x={-p.size}
                     y={-p.size}

@@ -1,0 +1,42 @@
+{{SHORTDESC:Windows 98-styled website of the Lawb lobster ecosystem}}
+{{Article quality|unverified}}
+{{Infobox website
+| name           = lawb.xyz
+| url            = https://lawb.xyz/
+| type           = NFT project site
+| developer      = wables
+| current_status = Active
+}}
+
+'''lawb.xyz''' is the website of the Lawb ecosystem, a family of lobster-themed NFT collections and games made by the artist wables. The site is presented as a Windows 98 desktop: collections, games, and outside links open as draggable windows over an icon grid, under the tagline "there is no meme we $LAWB you", after the Milady meme [[There is No Meme I Love You]].<ref name="lawbxyz">{{Cite web|url=https://lawb.xyz/|title=there is no meme we $LAWB you|website=lawb.xyz|access-date=July 21, 2026}}</ref><ref name="nomeme-archive">{{Cite web|url=https://archive.org/details/thereisnomemeiloveyou|title=There is no meme I love you|website=Internet Archive|access-date=July 21, 2026}}</ref> The premise running through the ecosystem is that lawbsters are "humans controlled by lobsters", described in each collection with a variation of the same sentence: they "seem nice", but will "never amount to anything without a roadmap".<ref name="lawbxyz" />
+
+Archived captures of the site date to May 2024.<ref name="wayback">{{Cite web|url=https://web.archive.org/web/20240517073131/https://lawb.xyz/|title=lawb.xyz (archived capture)|website=Internet Archive|date=May 17, 2024|access-date=July 21, 2026}}</ref> The collections it documents began in February 2023.<ref name="etherscan-lawbsters" />
+
+== Interface ==
+The desktop opens windows for each collection, a mint window, a meme generator, and a profile and leaderboard system. Folders group the Ethereum and Solana collections, and a Remilia folder links to remilia.net, the Remilia Wiki, Miladychan, and networkspirits.net, another Windows 98-styled site of the Remilia sphere.<ref name="lawbxyz" /> Each collection window carries its lore text, marketplace links, and embedded posts from the collections' launches. Minting, the games, and the meme generator run in the page itself rather than linking out to other platforms.<ref name="lawbxyz" />
+
+== Collections ==
+The Lawb collections span four chains and cite their lineage in the Milady derivative scene directly in their descriptions.
+
+Lawbsters, the first lawbster PFP collection, minted 420 tokens on Ethereum in February 2023 at 0.015 ETH, deployed by Portion Club DAO through a Zora drop contract.<ref name="etherscan-lawbsters">{{Cite web|url=https://etherscan.io/address/0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42|title=lawbsters contract|website=Etherscan|access-date=July 21, 2026}}</ref> A Neochibi lobster collection and "a Cigawrette Packs derivative", it began as an art project by wables, modeled off the lobster emoji and compiled with the HashLips engine; the Cigawrette eyes trait pack was leased by Pappachaga.<ref name="lawbxyz" /> The founding line, "Lawbsters seem nice but a human run by a lobster will never achieve anything without a roadmap", was first sent in a Cigawrette Packs group chat on X before becoming the collection's description, and the launch lore is a fictional news story wables told across a four-post thread.<ref name="lawbsters-tweet">{{Cite tweet|user=wables411|number=1620879129850834944|title=Lawbsters fictional news story|date=February 1, 2023}}</ref> Traits reference the Bay Bridge, Sutro Baths, butter, Final Fantasy 7, Nouns DAO, [[Pixelady Maker]], Allstarz outfits, New England lobster rolls, and photographs wables took of subjects and nightlife scenery between 2015 and 2022, among others.<ref name="lawbsters-traits">{{Cite web|url=https://opensea.io/collection/lawbsters/traits|title=lawbsters — traits|website=OpenSea|access-date=July 21, 2026}}</ref>
+
+LawbStation is the Solana collection: 420 "low poly Lawbsters viewed through various cathode-ray tubes built on MiladyStation technology", crediting Milady, Allstarz, Rusty Rollers, Cigawrette Packs, SPX6900, and [[Radbro]] as inspirations, "brought to you in part by PortionClub and Mony Corp Group".<ref name="magiceden">{{Cite web|url=https://magiceden.io/marketplace/lawbstation|title=LawbStation|website=Magic Eden|access-date=July 21, 2026}}</ref> Early LawbStation art was run through [[Stationthisbot]], which gave the collection its low-poly look. It launched on December 23, 2023, with a free-mint window for collected addresses followed by a public mint at 0.5 SOL, and minted out six days later.<ref name="lawbstation-launch">{{Cite tweet|user=wables411|number=1738383630689575406|title=LawbStation mint announcement|date=December 22, 2023}}</ref><ref name="lawbstation-mintout">{{Cite tweet|user=wables411|number=1740853549335273597|title=LawbStation has minted out on Solana|date=December 29, 2023}}</ref>
+
+Lawbstarz minted 666 tokens on Ethereum through [[Scatter]] in June 2023: a free presale on June 15 limited to one per wallet for holders of Allstarz, [[Milady Maker]], Cigawrette Packs, PortionClub69, Lawbsters, and Milady Aura Petz, then a public mint on June 19 at 0.02 ETH.<ref name="lawbstarz-mint">{{Cite tweet|user=wables411|number=1669009675474571265|title=Lawbstarz mint announcement|date=June 14, 2023}}</ref><ref name="scatter-lawbstarz">{{Cite web|url=https://www.scatter.art/collection/lawbstarz|title=Lawbstarz|website=Scatter|access-date=July 21, 2026}}</ref> Its description is an all-caps litany: "666x LOBSTERS DRIPPED IN BUTTER", "LAWBSTARZ IS A MUSIC NFT", "AN ALLSTARZ DERIVATIVE", "INSPIRED BY REMILIA CORP", "LED BY [[Network spirituality|NETWORK SPIRITUALITY]]".<ref name="scatter-lawbstarz" /> The launch lore is an eleven-post mock news broadcast continuing the Lawbsters hijacking story: the Allstarz, driving to [[Milady Raves|Milady Rave Denver]] with sound equipment during Eth Denver, stop at a Red Lobster for its Lobster Burrito, never make it to the rave, and wake up transformed into Lawbstarz — "an Allstar controlled by a lobster" — while suspicion falls on the cook, lobster #57, a veteran of the cargo-ship hijacking.<ref name="lawbstarz-tweet">{{Cite tweet|user=wables411|number=1669009492007354369|title=LAWBSTARZ lore broadcast|date=June 14, 2023}}</ref>
+
+A Lawbster Halloween minted on Base through Zora in October 2023, with lore in which lawbsters hijack a Spirit Halloween Superstore.<ref name="basescan-halloween">{{Cite web|url=https://basescan.org/address/0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97|title=A Lawbster Halloween contract|website=BaseScan|access-date=July 21, 2026}}</ref> ASCII Lawbsters followed on Base in February 2024, "420 ascii lawbsters inspired by ascii milady, milady, cigawrette packs, allstarz and rusty rollers".<ref name="lawbxyz" /> LawbNexus, "1000 Xtra Ultra High Definition Lawbsters", trades on Solana.<ref name="lawbxyz" /> Pixelawbs, 2,222 pixelated lawbsters inspired by Pixelady Maker, began minting on Ethereum through Scatter in June 2025 and mints directly from the site's desktop.<ref name="scatter-pixelawbs">{{Cite web|url=https://www.scatter.art/collection/pixelawbs|title=Pixelawbs|website=Scatter|access-date=July 21, 2026}}</ref>
+
+== Games ==
+Lawb Chess is a chess client in the site's Windows 98 style with player-versus-player wagering escrowed by a smart contract on Base, and a Stockfish engine provides single-player games.<ref name="lawbxyz" /> Reef Run is a browser arcade runner in which a lobster, a Milady, or a Radbro swims through an underwater tunnel dodging jellyfish and mines.<ref name="lawbxyz" />
+
+== See also ==
+* [[Scatter]]
+* [[Stationthisbot]]
+* [[Pixelady Maker]]
+* [[New Net Art]]
+
+== References ==
+{{Reflist}}
+
+[[Category:Derivative Ecosystem]]
+[[Category:Community Projects]]

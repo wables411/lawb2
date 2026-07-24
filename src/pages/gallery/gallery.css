@@ -95,6 +95,7 @@
 .gal-orbit {
   animation: gal-revolve linear infinite;
   transform-origin: 0 0;
+  will-change: transform;
 }
 
 .gal-orbit:hover,
@@ -111,6 +112,7 @@
   animation: gal-counter linear infinite;
   transform-origin: center;
   cursor: inherit;
+  will-change: transform;
 }
 
 @keyframes gal-revolve {
@@ -134,16 +136,10 @@
   font-family: inherit;
 }
 
-.gal-sun-img {
-  filter: drop-shadow(0 0 28px rgba(255, 200, 80, 0.85));
-}
-
-.gal-planet-img {
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
-}
-
-.gal-sprite:hover .gal-planet-img {
-  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.9));
+/* Glows are gradient circles, not CSS filters — drop-shadow on elements that
+   transform every frame forces full repaints and pins weak GPUs. */
+.gal-sprite:hover circle {
+  opacity: 0.55;
 }
 
 /* ---------- detail window ---------- */
@@ -291,6 +287,28 @@
   flex-shrink: 0;
   width: 78px;
   font-weight: bold;
+}
+
+.gal-story-beat {
+  margin-bottom: 10px;
+  border: 2px inset #fff;
+  background: #fff;
+  padding: 6px 8px;
+}
+
+.gal-story-beat p {
+  margin: 2px 0 6px;
+  white-space: pre-line;
+}
+
+.gal-story-beat img,
+.gal-story-beat video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #808080;
+  margin-bottom: 4px;
+  image-rendering: auto;
 }
 
 .gal-tweet-wrap {

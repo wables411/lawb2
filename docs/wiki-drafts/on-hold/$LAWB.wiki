@@ -1,0 +1,29 @@
+{{SHORTDESC:Multichain memecoin of the Lawb lobster ecosystem}}
+{{Article quality|unverified}}
+
+'''$LAWB''' is a cryptocurrency token of the Lawb ecosystem, a family of lobster-themed NFT collections and games in the [[Milady Maker|Milady]] derivative scene made by the artist wables. The token was created on March 15, 2024 through the pump.fun launchpad on the Solana blockchain, and its on-chain name is the lobster emoji "🦞".<ref name="geckoterminal">{{Cite web|url=https://www.geckoterminal.com/solana/pools/DTxVuYphEobWo66afEfP9MfGt2E14C6UfeXnvXWnvep|title=LAWB / SOL pool|website=GeckoTerminal|access-date=July 20, 2026}}</ref><ref name="lawbxyz">{{Cite web|url=https://lawb.xyz/|title=there is no meme we $LAWB you|website=lawb.xyz|access-date=July 20, 2026}}</ref> Its motto is "there is no meme we $lawb you".<ref name="lawbxyz" />
+
+The token description on lawb.xyz keeps the deadpan register of the ecosystem's collections: "$lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap."<ref name="lawbxyz" /> $LAWB has since been bridged from Solana to Base, Arbitrum, and Sanko.<ref name="lawbxyz" />
+
+== Launch and airdrop ==
+$LAWB launched on pump.fun with a supply of roughly 999 million and six decimals.<ref name="geckoterminal" /> On March 19, 2024, four days after creation, the token was airdropped to holders of LawbStation, the ecosystem's Solana NFT collection of low-poly lobsters displayed on cathode-ray tube monitors.<ref name="lawbxyz" /> Early LawbStation art was produced with [[Stationthisbot]], the Milady community image tool, which gave the collection its low-poly look.
+
+The token's primary market is a LAWB/SOL pool on Raydium.<ref name="dexscreener">{{Cite web|url=https://dexscreener.com/solana/dtxvuypheobwo66afefp9mfgt2e14c6ufexnvxwnvep|title=LAWB/SOL on Raydium|website=Dexscreener|access-date=July 20, 2026}}</ref> Purity Finance operates a page that swaps any Solana token in a wallet directly for $LAWB.<ref name="purity">{{Cite web|url=https://purity.finance/lawb|title=Purity Finance — lawb|website=Purity Finance|access-date=July 20, 2026}}</ref>
+
+== Multichain deployments ==
+The original token is the Solana mint 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6.<ref name="geckoterminal" /> Bridged deployments exist on Base at 0x7e18298b46A1F2399617cde083Fe11415A2ad15B, where the contract is a proxy to a CrossChainERC20 implementation,<ref name="basescan">{{Cite web|url=https://basescan.org/token/0x7e18298b46A1F2399617cde083Fe11415A2ad15B|title=LAWB Token|website=BaseScan|access-date=July 20, 2026}}</ref> on Arbitrum at 0x741f8FbF42485E772D97f1955c31a5B8098aC962,<ref name="arbiscan">{{Cite web|url=https://arbiscan.io/token/0x741f8FbF42485E772D97f1955c31a5B8098aC962|title=LAWB Token|website=Arbiscan|access-date=July 20, 2026}}</ref> and on the Sanko chain at 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F.<ref name="lawbxyz" /> All deployments use six decimals.
+
+The lawb.xyz FAQ documents the bridge route: Portal Bridge from Solana to Arbitrum, then the Sanko bridge from Arbitrum to Sanko.<ref name="lawbxyz" />
+
+== Use ==
+$LAWB is one of the wager tokens in Lawb Chess, the chess game on lawb.xyz that escrows player-versus-player stakes in a Base smart contract alongside ETH, USDC, and $CLAWB.<ref name="lawbxyz" />
+
+== References ==
+{{Reflist}}
+
+== External links ==
+* [https://pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6 $LAWB on pump.fun]
+* [https://lawb.xyz/ lawb.xyz]
+
+[[Category:Derivative Ecosystem]]
+[[Category:Internet Culture]]
