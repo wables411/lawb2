@@ -52,6 +52,29 @@
       ".write": false
     },
 
+    "chess_chat": {
+      "public": {
+        "messages": {
+          ".read": true,
+          "$messageId": {
+            ".write": "auth != null && !data.exists()",
+            ".validate": "newData.hasChildren(['walletAddress', 'displayName', 'message', 'timestamp']) && newData.child('walletAddress').isString() && newData.child('displayName').isString() && newData.child('displayName').val().length <= 40 && newData.child('message').isString() && newData.child('message').val().length >= 1 && newData.child('message').val().length <= 500 && newData.child('timestamp').isNumber()"
+          }
+        }
+      },
+      "private": {
+        "$inviteCode": {
+          "messages": {
+            ".read": true,
+            "$messageId": {
+              ".write": "auth != null && !data.exists()",
+              ".validate": "newData.hasChildren(['walletAddress', 'displayName', 'message', 'timestamp']) && newData.child('walletAddress').isString() && newData.child('displayName').isString() && newData.child('displayName').val().length <= 40 && newData.child('message').isString() && newData.child('message').val().length >= 1 && newData.child('message').val().length <= 500 && newData.child('timestamp').isNumber()"
+            }
+          }
+        }
+      }
+    },
+
     "$other": {
       ".read": false,
       ".write": false
