@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
+import { getGlobalElo } from '../firebaseElo';
 import { waitForWalletDbAuth } from '../firebaseWalletAuth';
 import {
   getUserLeaderboardEntry,
@@ -504,6 +505,14 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [leaderboardEntry, setLeaderboardEntry] = useState<LeaderboardEntry | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  // Global cross-chain on-chain chess ELO (indexer-fed /chessElo node); null = unrated.
+  const [globalChessElo, setGlobalChessElo] = useState<{ elo: number; games: number } | null>(null);
+  useEffect(() => {
+    setGlobalChessElo(null);
+    if (address && address.startsWith('0x')) {
+      void getGlobalElo(address).then(setGlobalChessElo);
+    }
+  }, [address]);
   const [leaderboardMergedMultiKey, setLeaderboardMergedMultiKey] = useState(false);
   const [profileCardTitle, setProfileCardTitle] = useState('');
 
@@ -1254,6 +1263,9 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               <div><strong>Wins:</strong> {chessWins}</div>
               <div><strong>Losses:</strong> {chessLosses}</div>
               <div><strong>Fastest win:</strong> {formatDurationSec(fastestWin)}</div>
+              {globalChessElo && (
+                <div><strong>Global ELO:</strong> {globalChessElo.elo} ({globalChessElo.games} on-chain {globalChessElo.games === 1 ? 'game' : 'games'})</div>
+              )}
             </div>
           </div>
           <div>

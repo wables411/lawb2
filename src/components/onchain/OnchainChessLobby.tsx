@@ -10,6 +10,7 @@ import { parseEther, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useChainId, usePublicClient, useSwitchChain } from 'wagmi';
 import { useOnchainChessActions } from '../../hooks/useOnchainChessActions';
 import { LAWB_CHESS_CHAIN_IDS, LAWB_CHESS_NFT_COLLECTIONS, LAWB_CHESS_WAGER_TOKENS, getLawbChessAddress } from '../../config/lawbChessOnchain';
+import { getGlobalElo } from '../../firebaseElo';
 import { WagerKind } from '../../utils/lawbChessBoard';
 import { stringToCode, type GameCode } from '../../utils/lawbChessMoves';
 import { oc as C, solid, ocInput, ocBtnPrimary, ocBtnSecondary, ocChip, FieldLabel, TokenGlyph } from './onchainUi';
@@ -40,7 +41,7 @@ export interface OnchainChessLobbyProps {
 }
 
 export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGame, onPlayDemo }) => {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const publicClient = usePublicClient();
@@ -59,6 +60,12 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Your global cross-chain ELO (indexer-fed read-only node); null = unrated/unavailable.
+  const [myGlobalElo, setMyGlobalElo] = useState<number | null>(null);
+  useEffect(() => {
+    setMyGlobalElo(null);
+    if (address) void getGlobalElo(address).then((e) => setMyGlobalElo(e?.elo ?? null));
+  }, [address]);
 
   const deployedHere = !!getLawbChessAddress(chainId);
   const nftCollections = LAWB_CHESS_NFT_COLLECTIONS[chainId] ?? [];
@@ -183,16 +190,27 @@ export const OnchainChessLobby: React.FC<OnchainChessLobbyProps> = ({ onEnterGam
             </div>
           </div>
         </div>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'ui-monospace, monospace', fontSize: 11,
-          padding: '7px 11px', borderRadius: 999, color: deployedHere ? C.muted : C.gold,
-          backgroundImage: solid('#0a1322'), border: `1px solid ${deployedHere ? C.line : C.goldline}`,
-        }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%',
-            backgroundImage: solid(deployedHere ? C.cyan : C.gold),
-            boxShadow: `0 0 8px ${deployedHere ? C.cyan : C.gold}` }} />
-          {chainName}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          {myGlobalElo !== null && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', fontFamily: 'ui-monospace, monospace', fontSize: 11,
+              padding: '7px 11px', borderRadius: 999, color: C.muted,
+              backgroundImage: solid('#0a1322'), border: `1px solid ${C.line}`,
+            }}>
+              GLOBAL ELO {myGlobalElo}
+            </span>
+          )}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'ui-monospace, monospace', fontSize: 11,
+            padding: '7px 11px', borderRadius: 999, color: deployedHere ? C.muted : C.gold,
+            backgroundImage: solid('#0a1322'), border: `1px solid ${deployedHere ? C.line : C.goldline}`,
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%',
+              backgroundImage: solid(deployedHere ? C.cyan : C.gold),
+              boxShadow: `0 0 8px ${deployedHere ? C.cyan : C.gold}` }} />
+            {chainName}
+          </span>
+        </div>
       </div>
 
       {/* connection / chain gate */}

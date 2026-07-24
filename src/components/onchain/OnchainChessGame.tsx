@@ -25,6 +25,7 @@ import {
 } from '../../utils/lawbChessSession';
 import { chessBoardForCode } from '../../config/chessBoards';
 import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI } from '../../config/lawbChessOnchain';
+import { getGlobalElo, type GlobalEloEntry } from '../../firebaseElo';
 import { playChessSound } from '../../utils/chessSounds';
 import { OnchainChessBoard } from './OnchainChessBoard';
 import { OnchainChessSidebar } from './OnchainChessSidebar';
@@ -86,6 +87,19 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     args: game ? [game.black] : undefined,
     query: { enabled: eloEnabled && !!game && game.black !== ZERO_ADDR },
   });
+
+  // Global cross-chain ELO (indexer-fed, read-only Firebase node). One-shot per address.
+  const [globalElo, setGlobalElo] = useState<Record<string, GlobalEloEntry | null>>({});
+  useEffect(() => {
+    if (!game) return;
+    for (const addr of [game.white, game.black]) {
+      if (!addr || addr === ZERO_ADDR) continue;
+      const key = addr.toLowerCase();
+      if (globalElo[key] !== undefined) continue;
+      void getGlobalElo(key).then((entry) => setGlobalElo((prev) => ({ ...prev, [key]: entry })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.white, game?.black]);
 
   const [selected, setSelected] = useState<number | null>(null);
   const [targets, setTargets] = useState<number[]>([]);
@@ -439,6 +453,7 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     elo: side === Side.WHITE
       ? (eloWhiteRaw !== undefined ? Number(eloWhiteRaw) : undefined)
       : (eloBlackRaw !== undefined ? Number(eloBlackRaw) : undefined),
+    globalElo: globalElo[(side === Side.WHITE ? game.white : game.black)?.toLowerCase() ?? '']?.elo,
     clock: side === Side.WHITE ? clocks.white : clocks.black,
     isYou: myColor === side,
     turn: isActive && game.side === side,
@@ -621,8 +636,8 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
 
 /** Player identity card with avatar, short address / you tag, ELO, and clock. */
 const PlayerCard: React.FC<{
-  side: SideT; addr: string; elo?: number; clock: number; isYou: boolean; turn: boolean; avatar?: string;
-}> = ({ side, addr, elo, clock, isYou, turn, avatar }) => {
+  side: SideT; addr: string; elo?: number; globalElo?: number; clock: number; isYou: boolean; turn: boolean; avatar?: string;
+}> = ({ side, addr, elo, globalElo, clock, isYou, turn, avatar }) => {
   const accent = side === Side.WHITE ? oc.red : oc.blue;
   const zero = '0x0000000000000000000000000000000000000000';
   const name = addr && addr !== zero ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : 'Waiting…';
@@ -640,7 +655,7 @@ const PlayerCard: React.FC<{
           {name}{isYou && <span style={{ color: oc.muted2, fontWeight: 400, fontSize: 11 }}> · you</span>}
         </div>
         <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10.5, color: oc.muted2, letterSpacing: '.06em' }}>
-          {side === Side.WHITE ? 'WHITE' : 'BLACK'} · ELO {elo ?? '—'}{turn ? ' · to move' : ''}
+          {side === Side.WHITE ? 'WHITE' : 'BLACK'} · ELO {elo ?? '—'}{globalElo !== undefined ? ` · GLOBAL ${globalElo}` : ''}{turn ? ' · to move' : ''}
         </div>
       </div>
       <div style={{

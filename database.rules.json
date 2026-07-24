@@ -47,6 +47,11 @@
       }
     },
 
+    "chessElo": {
+      ".read": true,
+      ".write": false
+    },
+
     "$other": {
       ".read": false,
       ".write": false
