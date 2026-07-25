@@ -38,22 +38,39 @@ const DRY_RUN = process.argv.includes('--dry-run');
 
 // ---------------------------------------------------------------- chain config
 // Deploy blocks from onchain-chess/broadcast/Deploy.s.sol/<chainid>/run-latest.json.
+// Several fallback RPCs per chain: the droplet's datacenter IP gets rate-limited harder
+// than residential ones, and some providers answer those blocks with HTML error pages.
 const CHAINS = [
   {
     key: 'arbitrum', chainId: 42161,
-    rpcs: ['https://arb1.arbitrum.io/rpc', 'https://arbitrum-one-rpc.publicnode.com'],
+    rpcs: [
+      'https://arb1.arbitrum.io/rpc',
+      'https://arbitrum-one-rpc.publicnode.com',
+      'https://arbitrum.drpc.org',
+      'https://1rpc.io/arb',
+    ],
     proxy: '0x3112af5728520f52fd1c6710dd7bd52285a68e47',
     deployBlock: 0x1cfd359b, chunk: 50_000, confirmations: 20,
   },
   {
     key: 'ethereum', chainId: 1,
-    rpcs: ['https://ethereum-rpc.publicnode.com', 'https://eth.llamarpc.com'],
+    rpcs: [
+      'https://ethereum-rpc.publicnode.com',
+      'https://eth.drpc.org',
+      'https://1rpc.io/eth',
+      'https://rpc.ankr.com/eth',
+    ],
     proxy: '0x6aa574b21212c6e7436eb26a27542f1aefffad87',
     deployBlock: 0x186b44e, chunk: 5_000, confirmations: 5,
   },
   {
     key: 'base', chainId: 8453,
-    rpcs: ['https://mainnet.base.org', 'https://base-rpc.publicnode.com'],
+    rpcs: [
+      'https://mainnet.base.org',
+      'https://base-rpc.publicnode.com',
+      'https://base.drpc.org',
+      'https://1rpc.io/base',
+    ],
     proxy: '0xbe0c68afe6f412d052c8fa306e9191d2b6371aec',
     deployBlock: 0x2ecbb31, chunk: 10_000, confirmations: 10,
   },
@@ -92,23 +109,31 @@ export function eloUpdate(a, b, sA) {
 }
 
 // --------------------------------------------------------------- JSON-RPC I/O
-async function rpc(chain, method, params) {
+// POST to the first RPC that answers with valid JSON; rate-limit pages (HTML, 429s)
+// just rotate to the next endpoint instead of blowing up the run.
+async function rpcPost(chain, payload) {
   let lastErr;
   for (const url of chain.rpcs) {
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        body: JSON.stringify(payload),
       });
-      const body = await res.json();
-      if (body.error) throw new Error(`${method}: ${body.error.message}`);
-      return body.result;
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}: ${text.slice(0, 80)}`);
+      return JSON.parse(text);
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr;
+}
+
+async function rpc(chain, method, params) {
+  const body = await rpcPost(chain, { jsonrpc: '2.0', id: 1, method, params });
+  if (body.error) throw new Error(`${method}: ${body.error.message}`);
+  return body.result;
 }
 
 // getLogs with adaptive range-halving for public-RPC limits.
@@ -193,10 +218,9 @@ async function scanChain(chain, cursors) {
     const batch = blocks.slice(i, i + 50).map((bn, j) => ({
       jsonrpc: '2.0', id: j, method: 'eth_getBlockByNumber', params: ['0x' + bn.toString(16), false],
     }));
-    const res = await fetch(chain.rpcs[0], {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(batch),
-    });
-    for (const r of await res.json()) {
+    const replies = await rpcPost(chain, batch);
+    // Some providers answer a batch of one (or reject batches) with a bare object.
+    for (const r of Array.isArray(replies) ? replies : [replies]) {
       if (r.result) stamps[parseInt(r.result.number, 16)] = parseInt(r.result.timestamp, 16);
     }
   }
