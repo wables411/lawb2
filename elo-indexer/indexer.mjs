@@ -27,7 +27,7 @@
 // replayHardResults() below. Until then that file simply doesn't exist and the
 // PvP-only global rating ships.
 
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { createSign, createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -363,9 +363,25 @@ async function main() {
 
   if (DRY_RUN) {
     console.log(JSON.stringify(payload, null, 2));
-    console.log('(dry run — no Firebase write)');
-  } else {
-    // Skip the write when nothing changed (bandwidth discipline).
+    console.log('(dry run — nothing published)');
+    return;
+  }
+
+  // Primary output: a static JSON file served by the droplet's nginx at
+  // https://chess.lawb.xyz/elo.json (see deploy-elo-indexer.sh). No credentials anywhere.
+  // Atomic write (tmp + rename) so nginx never serves a half-written file.
+  // ELO_OUT_DIR must be readable by nginx's worker user (default /var/www/elo on the droplet).
+  const publicDir = process.env.ELO_OUT_DIR || join(ROOT, 'public');
+  mkdirSync(publicDir, { recursive: true });
+  const outPath = join(publicDir, 'elo.json');
+  writeFileSync(outPath + '.tmp', JSON.stringify(payload));
+  renameSync(outPath + '.tmp', outPath);
+  console.log(`wrote ${outPath}`);
+
+  // Optional secondary output: the Firebase /chessElo node (legacy fallback the frontend
+  // still reads if the droplet file is unreachable). Only when a service account exists.
+  const saPath = process.env.FIREBASE_SA || join(ROOT, 'service-account.json');
+  if (existsSync(saPath)) {
     const hash = createHash('sha256').update(JSON.stringify({ global, perChain })).digest('hex');
     const hashPath = join(STATE_DIR, 'last-write.hash');
     if (existsSync(hashPath) && readFileSync(hashPath, 'utf8') === hash) {
