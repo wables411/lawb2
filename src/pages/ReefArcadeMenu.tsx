@@ -94,6 +94,9 @@ export default function ReefArcadeMenu() {
   const [touchThrottleMode, setTouchThrottleMode] = useState<-1 | 0 | 1>(0);
   const arcadeInputRef = useRef<ArcadePlayInputHandle | null>(null);
   const touchGestureRef = useRef<TouchGesture | null>(null);
+  /** Brief highlight of the tapped TAP LEFT / TAP RIGHT zone so touch input visibly registers. */
+  const [tapFlash, setTapFlash] = useState<-1 | 0 | 1>(0);
+  const tapFlashTimerRef = useRef<number | null>(null);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -299,7 +302,11 @@ export default function ReefArcadeMenu() {
       ev.preventDefault();
       ev.currentTarget.setPointerCapture?.(ev.pointerId);
       touchGestureRef.current = { pointerId: ev.pointerId, startY: ev.clientY };
-      tapLane(ev.clientX < window.innerWidth * 0.5 ? -1 : 1);
+      const dir: -1 | 1 = ev.clientX < window.innerWidth * 0.5 ? -1 : 1;
+      tapLane(dir);
+      setTapFlash(dir);
+      if (tapFlashTimerRef.current !== null) window.clearTimeout(tapFlashTimerRef.current);
+      tapFlashTimerRef.current = window.setTimeout(() => setTapFlash(0), 190);
       setTouchThrottleMode(0);
     },
     [gameScreen, tapLane, touchUiEnabled],
@@ -777,10 +784,11 @@ export default function ReefArcadeMenu() {
                       </div>
                     </div>
                     <p className="ra-play-stat-line">
-                      <span className="ra-play-stat-chip" title="Coins">
+                      {/* key on the count so a fresh mount replays the pop animation per pickup */}
+                      <span key={`c${runStatsHud.coins}`} className="ra-play-stat-chip ra-chip-pop" title="Coins">
                         {runStatsHud.coins}c
                       </span>
-                      <span className="ra-play-stat-chip" title="Trash">
+                      <span key={`t${runStatsHud.trash}`} className="ra-play-stat-chip ra-chip-pop" title="Trash">
                         {runStatsHud.trash}t
                       </span>
                       <span className="ra-play-stat-chip" title="Swim speed">
@@ -820,10 +828,16 @@ export default function ReefArcadeMenu() {
             onPointerUp={onTouchSurfacePointerEnd}
             onPointerCancel={onTouchSurfacePointerEnd}
           >
-            <div className="ra-touch-side ra-touch-side-left" aria-hidden>
+            <div
+              className={`ra-touch-side ra-touch-side-left${tapFlash === -1 ? ' ra-touch-side-flash' : ''}`}
+              aria-hidden
+            >
               TAP LEFT
             </div>
-            <div className="ra-touch-side ra-touch-side-right" aria-hidden>
+            <div
+              className={`ra-touch-side ra-touch-side-right${tapFlash === 1 ? ' ra-touch-side-flash' : ''}`}
+              aria-hidden
+            >
               TAP RIGHT
             </div>
             <div className="ra-touch-throttle" aria-hidden>

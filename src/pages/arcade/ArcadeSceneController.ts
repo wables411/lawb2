@@ -331,6 +331,21 @@ export class ArcadeSceneController {
   private godRays: THREE.Group | null = null; // volumetric light shafts from the surface
   /** Play-screen reef dressing (seabed/coral/kelp/fish/bubbles) — pure cosmetics, see arcadeReefScenery.ts. */
   private reefScenery: ReefSceneryLayer | null = null;
+  /** Depth-tier water mood: lights promoted to fields so tiers can dim them (base intensities kept). */
+  private hemiLight: THREE.HemisphereLight | null = null;
+  private surfaceSun: THREE.DirectionalLight | null = null;
+  private hemiBaseIntensity = 0.5;
+  private sunBaseIntensity = 0.7;
+  private readonly fogColorShallow = new THREE.Color(0x0d4763);
+  private readonly fogColorDeep = new THREE.Color(0x05202e);
+  private readonly _fogColScratch = new THREE.Color();
+  /** Soft fog backdrop across the tunnel's far opening (kills the hard horizon "arch"). */
+  private horizonWall: THREE.Mesh | null = null;
+  /** Blob shadow under the swimmer — the strongest lane-alignment cue now that there's a floor. */
+  private playerShadow: THREE.Mesh | null = null;
+  private playerShadowTex: THREE.CanvasTexture | null = null;
+  /** Render-clock time of the last lane change (near-miss whoosh needs a recent dodge). */
+  private lastLaneChangeT = -10;
   private disposed = false; // set in dispose(); async loads must abort if true (StrictMode/remount safe)
   private gradeOverlay: HTMLDivElement | null = null; // DOM vignette/grade layer (removed on dispose)
   private inputLog: Array<[number, number, number, number]> = []; // [step, lane, w, s]
@@ -515,7 +530,9 @@ export class ArcadeSceneController {
    */
   nudgeLane(delta: -1 | 1): void {
     if (this.screen !== 'play' || this.playEnded) return;
-    this.playerLane = THREE.MathUtils.clamp(this.playerLane + delta, 0, 2);
+    const next = THREE.MathUtils.clamp(this.playerLane + delta, 0, 2);
+    if (next !== this.playerLane) this.lastLaneChangeT = this.clock.elapsedTime;
+    this.playerLane = next;
   }
 
   /**
@@ -879,6 +896,49 @@ export class ArcadeSceneController {
     const surfaceSun = new THREE.DirectionalLight(0xdff2ff, this.lowPowerMode ? 0.55 : 0.7);
     surfaceSun.position.set(0.5, 12, 3);
     this.scene.add(hemi, surfaceSun);
+    this.hemiLight = hemi;
+    this.surfaceSun = surfaceSun;
+    this.hemiBaseIntensity = hemi.intensity;
+    this.sunBaseIntensity = surfaceSun.intensity;
+
+    // Horizon fog wall: a plane just inside the tunnel's far opening, colored like the fog,
+    // so the run ends in soft haze instead of a hard arch of gradient background.
+    {
+      const mat = new THREE.MeshBasicMaterial({ color: this.fogColorShallow, fog: true });
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), mat);
+      wall.position.z = -106;
+      this.horizonWall = wall;
+      this.pathRoot.add(wall);
+    }
+
+    // Player blob shadow: radial-gradient sprite on the sand under the swimmer.
+    {
+      const c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 64;
+      const g = c.getContext('2d');
+      if (g) {
+        const grad = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+        grad.addColorStop(0, 'rgba(1, 8, 12, 0.6)');
+        grad.addColorStop(0.65, 'rgba(1, 8, 12, 0.28)');
+        grad.addColorStop(1, 'rgba(1, 8, 12, 0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 64, 64);
+      }
+      this.playerShadowTex = new THREE.CanvasTexture(c);
+      const mat = new THREE.MeshBasicMaterial({
+        map: this.playerShadowTex,
+        transparent: true,
+        depthWrite: false,
+      });
+      const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 2.1), mat);
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.position.set(0, -1.0, PLAYER_Z);
+      shadow.renderOrder = 4;
+      shadow.visible = false;
+      this.playerShadow = shadow;
+      this.scene.add(shadow);
+    }
     const key = new THREE.PointLight(
       0xc8e8ff,
       this.lowPowerMode ? 52 : 64,
@@ -1172,9 +1232,13 @@ export class ArcadeSceneController {
   private onKeyDown = (ev: KeyboardEvent): void => {
     if (this.screen !== 'play') return;
     if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') {
-      this.playerLane = Math.max(0, this.playerLane - 1);
+      const next = Math.max(0, this.playerLane - 1);
+      if (next !== this.playerLane) this.lastLaneChangeT = this.clock.elapsedTime;
+      this.playerLane = next;
     } else if (ev.code === 'ArrowRight' || ev.code === 'KeyD') {
-      this.playerLane = Math.min(2, this.playerLane + 1);
+      const next = Math.min(2, this.playerLane + 1);
+      if (next !== this.playerLane) this.lastLaneChangeT = this.clock.elapsedTime;
+      this.playerLane = next;
     } else if (ev.code === 'KeyW') {
       this.keyW = true;
     } else if (ev.code === 'KeyS') {
@@ -1859,6 +1923,111 @@ export class ArcadeSceneController {
     if (kind === 'mine') this.spawnMineExplosion(position);
     else if (kind === 'pufferfish') this.spawnPufferInflate(position);
     else if (kind === 'jellyfish') this.spawnJellyShock(position);
+    else this.spawnCollectBurst(kind, position);
+  }
+
+  /** Small reward pop for good pickups (coin/cheese/peptides/O₂/trash) — hazards keep their big FX. */
+  private spawnCollectBurst(kind: PickupKind, position: THREE.Vector3): void {
+    const COLLECT_COLORS: Partial<Record<PickupKind, number>> = {
+      coin: 0xffd75c,
+      cheese: 0xffe066,
+      peptides: 0x7fe8c8,
+      air_tank: 0x8fd8ff,
+      trash: 0xa8ccb8,
+    };
+    const color = COLLECT_COLORS[kind] ?? 0xbfe8ff;
+    const root = new THREE.Group();
+    root.position.copy(position);
+
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 10, 8),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    root.add(glow);
+
+    const n = 10;
+    const pos = new Float32Array(n * 3);
+    const vel = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const d = this.randomUnitVector3();
+      vel[i * 3] = d.x * 1.4;
+      vel[i * 3 + 1] = Math.abs(d.y) * 1.8 + 0.9; // sparkles rise
+      vel[i * 3 + 2] = d.z * 1.4;
+    }
+    const geo = new THREE.BufferGeometry();
+    const attr = new THREE.BufferAttribute(pos, 3);
+    geo.setAttribute('position', attr);
+    const mat = new THREE.PointsMaterial({
+      color,
+      size: 0.09,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    root.add(new THREE.Points(geo, mat));
+
+    this.addImpactFx(root, 0.5, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      const e = 1 - Math.pow(1 - t, 2.6);
+      glow.scale.setScalar(0.4 + e * 2.1);
+      (glow.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.85);
+      for (let i = 0; i < n; i++) {
+        const ix = i * 3;
+        pos[ix] = vel[ix] * fx.age;
+        pos[ix + 1] = vel[ix + 1] * fx.age;
+        pos[ix + 2] = vel[ix + 2] * fx.age;
+      }
+      attr.needsUpdate = true;
+      mat.opacity = Math.max(0, (1 - t) * 0.95);
+    });
+  }
+
+  /** Streak burst beside the player when an obstacle is cleared by a late dodge. */
+  private spawnNearMissWhoosh(obstaclePos: THREE.Vector3): void {
+    const root = new THREE.Group();
+    root.position.set((obstaclePos.x + this.playerX) / 2, PLAYER_FEET_Y + 0.7, PLAYER_Z + 0.2);
+
+    const n = 7;
+    const pos = new Float32Array(n * 3);
+    const seed = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      seed[i * 2] = (Math.random() - 0.5) * 0.7;
+      seed[i * 2 + 1] = (Math.random() - 0.5) * 0.8;
+    }
+    const geo = new THREE.BufferGeometry();
+    const attr = new THREE.BufferAttribute(pos, 3);
+    geo.setAttribute('position', attr);
+    const mat = new THREE.PointsMaterial({
+      color: 0xaef2ff,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    root.add(new THREE.Points(geo, mat));
+
+    this.addImpactFx(root, 0.38, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      for (let i = 0; i < n; i++) {
+        const ix = i * 3;
+        pos[ix] = seed[i * 2]!;
+        pos[ix + 1] = seed[i * 2 + 1]!;
+        pos[ix + 2] = fx.age * 9; // streak backward past the camera
+      }
+      attr.needsUpdate = true;
+      mat.opacity = Math.max(0, (1 - t) * 0.85);
+    });
+    this.addCameraShake(0.05);
   }
 
   private triggerPlayerPulse(): void {
@@ -2373,8 +2542,24 @@ export class ArcadeSceneController {
     this.playerX += (targetX - this.playerX) * Math.min(1, dt * 11);
     if (this.swimRoot) {
       this.swimRoot.position.x = this.playerX;
+      // Lane-change feel: roll into the strafe, proportional to remaining lateral distance.
+      const bank = THREE.MathUtils.clamp((targetX - this.playerX) / 2.1, -1, 1);
+      const inPlay = this.screen === 'play' && !this.playEnded;
+      const roll = inPlay ? -bank * 0.34 : 0;
+      this.swimRoot.rotation.z += (roll - this.swimRoot.rotation.z) * Math.min(1, dt * 10);
+      this.swimRoot.rotation.y = Math.PI + (inPlay ? bank * 0.14 : 0);
     } else if (this.playerWorld.children[0]) {
       this.playerWorld.children[0].position.x = this.playerX;
+    }
+    if (this.playerShadow) {
+      const showShadow =
+        (this.screen === 'play' || this.screen === 'gameover') && this.swimRoot !== null;
+      this.playerShadow.visible = showShadow;
+      if (showShadow) {
+        this.playerShadow.position.x = this.playerX;
+        const stretch = 1 + Math.max(0, this.lastSwimSpd - 1) * 0.18;
+        this.playerShadow.scale.set(1, stretch, 1); // plane local Y = world Z (run direction)
+      }
     }
     this.updatePlayerPulse(dt);
     this.updateImpactFx(dt);
@@ -2427,6 +2612,22 @@ export class ArcadeSceneController {
         this.stepPlaySim(dt);
       }
       swimSpd = this.lastSwimSpd;
+
+      // Near-miss whoosh (render-side only): an unhit obstacle crossing the player line in an
+      // adjacent lane right after a lane change means you dodged it by a hair.
+      if (!this.playEnded) {
+        for (const o of this.obstacles) {
+          if (o.hit) continue;
+          const ud = o.root.userData as { nearMissChecked?: boolean };
+          if (!ud.nearMissChecked && o.root.position.z > PLAYER_Z) {
+            ud.nearMissChecked = true;
+            const adjacent = Math.abs(o.lane - this.playerLane) === 1;
+            if (adjacent && t - this.lastLaneChangeT < 0.5) {
+              this.spawnNearMissWhoosh(o.root.position);
+            }
+          }
+        }
+      }
     }
 
     const warp = this.screen === 'play' && !this.playEnded ? swimSpd : 1;
@@ -2451,12 +2652,31 @@ export class ArcadeSceneController {
       0.34 + Math.sin(t * 2.4) * 0.14 + (this.screen === 'play' ? Math.min(0.42, (warp - 1) * 0.28) : 0);
     this.tunnelMaterial.emissiveIntensity = pulse;
 
+    // Depth-tier water mood: the deeper the run, the darker/denser the water (visual only —
+    // reads the survival clock, never writes gameplay state).
+    const depthF =
+      this.screen === 'play' || this.screen === 'gameover'
+        ? Math.min(1, this.runSurvivalSec / 135)
+        : 0;
     if (this.scene.fog instanceof THREE.FogExp2) {
       const fd =
         this.screen === 'play' && !this.playEnded
-          ? this.reefFogDensityBase + Math.min(0.95, warp - 1) * 0.024
+          ? this.reefFogDensityBase + Math.min(0.95, warp - 1) * 0.024 + depthF * 0.007
           : this.reefFogDensityBase;
       this.scene.fog.density = THREE.MathUtils.lerp(this.scene.fog.density, fd, 0.08);
+      this._fogColScratch.copy(this.fogColorShallow).lerp(this.fogColorDeep, depthF);
+      this.scene.fog.color.lerp(this._fogColScratch, 0.06);
+      if (this.horizonWall) {
+        (this.horizonWall.material as THREE.MeshBasicMaterial).color.copy(this.scene.fog.color);
+      }
+    }
+    if (this.surfaceSun) {
+      const target = this.sunBaseIntensity * (1 - 0.5 * depthF);
+      this.surfaceSun.intensity += (target - this.surfaceSun.intensity) * 0.06;
+    }
+    if (this.hemiLight) {
+      const target = this.hemiBaseIntensity * (1 - 0.32 * depthF);
+      this.hemiLight.intensity += (target - this.hemiLight.intensity) * 0.06;
     }
     if (this.screen === 'play' || this.screen === 'gameover') {
       const targetFov =
@@ -2515,6 +2735,18 @@ export class ArcadeSceneController {
     this.clearObstacles();
     this.reefScenery?.dispose();
     this.reefScenery = null;
+    if (this.playerShadow) {
+      this.playerShadow.geometry.dispose();
+      (this.playerShadow.material as THREE.Material).dispose();
+      this.playerShadowTex?.dispose();
+      this.playerShadow = null;
+      this.playerShadowTex = null;
+    }
+    if (this.horizonWall) {
+      this.horizonWall.geometry.dispose();
+      (this.horizonWall.material as THREE.Material).dispose();
+      this.horizonWall = null;
+    }
     this.tunnel?.geometry.dispose();
     (this.tunnel?.material as THREE.Material | undefined)?.dispose();
     this.tunnelFlowTex?.dispose();
