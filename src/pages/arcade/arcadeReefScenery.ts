@@ -19,7 +19,8 @@ import { cloneCoralSceneryVisual } from './arcadeGlbProps';
 const WORLD_UNITS_PER_SEC = REEF_RUN_OBSTACLE_BASE_SPEED * REEF_RUN_TICK_Z_SCALE;
 
 /** Seabed sits just under the obstacle bases (box bottom ≈ -1.0). */
-const FLOOR_Y = -1.02;
+export const REEF_FLOOR_Y = -1.02;
+const FLOOR_Y = REEF_FLOOR_Y;
 
 /** Scenery props recycle inside this Z band (fog hides both ends). */
 const PROP_Z_MIN = -64;
@@ -255,7 +256,10 @@ export class ReefSceneryLayer {
         rock.position.set(k * randRange(0.5, 0.9), 0, k * randRange(-0.4, 0.4));
         rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         rock.scale.set(randRange(0.7, 1.9), randRange(0.5, 1.3), randRange(0.7, 1.9));
-        rock.position.y = rock.scale.y * 0.3; // partially buried
+        // Seat by the real rotated/scaled bounds: lowest vertex sinks just under the sand.
+        rock.updateMatrixWorld(true);
+        const bb = new THREE.Box3().setFromObject(rock);
+        rock.position.y = -bb.min.y - 0.12;
         holder.add(rock);
       }
       addProp(holder, () => {

@@ -47,7 +47,7 @@ import {
 } from './arcadePickupKinds';
 import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
-import { ReefSceneryLayer } from './arcadeReefScenery';
+import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
 import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 import { makeRng, randomSeed, type Rng } from './arcadeRng';
 import {
@@ -1472,11 +1472,27 @@ export class ArcadeSceneController {
     return true;
   }
 
+  /**
+   * Wrap a coral obstacle clone so the bbox-centering translation from
+   * `fitReefObstacleVisual` survives (the spawn call overwrites `root.position`),
+   * and record the parent Y that seats the coral's base on the sand instead of
+   * floating at the old box-center height. Purely visual — collision stays lane + Z.
+   */
+  private seatCoralObstacle(coral: THREE.Object3D): { root: THREE.Object3D; centerY: number } {
+    const holder = new THREE.Group();
+    // Children share GLB template resources — never dispose them per instance.
+    holder.userData.arcadeKeepSharedResources = true;
+    holder.add(coral);
+    const size = new THREE.Box3().setFromObject(coral).getSize(new THREE.Vector3());
+    return { root: holder, centerY: REEF_FLOOR_Y + size.y / 2 - 0.1 };
+  }
+
   private spawnObstacleInLane(lane: number, z: number): void {
     let root: THREE.Object3D;
+    let centerY = OBSTACLE_CENTER_Y;
     const coral = cloneCoralObstacleVisual();
     if (coral) {
-      root = coral;
+      ({ root, centerY } = this.seatCoralObstacle(coral));
     } else {
       const geo = new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z);
       const mat = new THREE.MeshStandardMaterial({
@@ -1488,7 +1504,7 @@ export class ArcadeSceneController {
       });
       root = new THREE.Mesh(geo, mat);
     }
-    root.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
+    root.position.set(LANES[lane], centerY, z);
     root.visible = z > OBSTACLE_RENDER_START_Z;
     this.obstacleGroup.add(root);
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.94 + this.gameRng() * 0.12);
@@ -2137,9 +2153,10 @@ export class ArcadeSceneController {
     for (const so of ss.obstacles) {
       if (prevObstacles.has(so)) continue;
       let root: THREE.Object3D;
+      let centerY = OBSTACLE_CENTER_Y;
       const coral = cloneCoralObstacleVisual();
       if (coral) {
-        root = coral;
+        ({ root, centerY } = this.seatCoralObstacle(coral));
       } else {
         root = new THREE.Mesh(
           new THREE.BoxGeometry(OBSTACLE_BOX_WIDTH_X, OBSTACLE_BOX_HEIGHT_Y, OBSTACLE_BOX_DEPTH_Z),
@@ -2149,7 +2166,7 @@ export class ArcadeSceneController {
           }),
         );
       }
-      root.position.set(LANES[so.lane], OBSTACLE_CENTER_Y, so.z);
+      root.position.set(LANES[so.lane], centerY, so.z);
       root.visible = so.z > OBSTACLE_RENDER_START_Z;
       this.obstacleGroup.add(root);
       this.obstacles.push({ root, lane: so.lane, speed: so.speed, hit: so.hit, sim: so });
