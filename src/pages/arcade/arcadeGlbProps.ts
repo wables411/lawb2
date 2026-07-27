@@ -36,6 +36,11 @@ const SCENERY_GLB = {
   reefRock: `${ARCADE_ASSET_BASE}/reef-rock.glb`,
   shipwreck: `${ARCADE_ASSET_BASE}/shipwreck-bow.glb`,
   anchor: `${ARCADE_ASSET_BASE}/anchor.glb`,
+  ruinColumns: `${ARCADE_ASSET_BASE}/ruin-columns.glb`,
+  statueHead: `${ARCADE_ASSET_BASE}/statue-head.glb`,
+  arcadeCabinet: `${ARCADE_ASSET_BASE}/arcade-cabinet.glb`,
+  toriiGate: `${ARCADE_ASSET_BASE}/torii-gate.glb`,
+  treasureChest: `${ARCADE_ASSET_BASE}/treasure-chest.glb`,
 } as const;
 export type SceneryPropKind = keyof typeof SCENERY_GLB;
 

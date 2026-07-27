@@ -346,6 +346,11 @@ export class ArcadeSceneController {
   private playerShadowTex: THREE.CanvasTexture | null = null;
   /** Render-clock time of the last lane change (near-miss whoosh needs a recent dodge). */
   private lastLaneChangeT = -10;
+  /** Death outro: short crush-tumble / suffocation-float cinematic before the game-over panel. */
+  private deathAnimReason: RunEndReason | null = null;
+  private deathAnimT = 0;
+  private deathBaseY: number | null = null;
+  private deathNotifyTimer: number | null = null;
   private disposed = false; // set in dispose(); async loads must abort if true (StrictMode/remount safe)
   private gradeOverlay: HTMLDivElement | null = null; // DOM vignette/grade layer (removed on dispose)
   private inputLog: Array<[number, number, number, number]> = []; // [step, lane, w, s]
@@ -1160,6 +1165,41 @@ export class ArcadeSceneController {
       );
     }
 
+    // Remilia landmarks: stone-statue clones of the already-loaded character rigs, handed to
+    // the scenery layer as rare seabed showpieces. Zero extra downloads — the models are the
+    // same ones idling on the menu plinths (SkeletonUtils.clone keeps skeleton bindings intact).
+    if (this.reefScenery) {
+      const stoneMat = new THREE.MeshStandardMaterial({
+        color: 0x93a9ab,
+        roughness: 0.94,
+        metalness: 0.02,
+      });
+      const statueIds: ArcadeCharacterId[] = this.lowPowerMode
+        ? ['milady']
+        : ['milady', 'radbro'];
+      let statueMatUsed = false;
+      for (const id of statueIds) {
+        const slot = this.slots.get(id);
+        if (!slot?.idleRoot) continue;
+        try {
+          const statue = SkeletonUtils.clone(slot.idleRoot) as THREE.Group;
+          statue.traverse((obj) => {
+            const mesh = obj as THREE.Mesh;
+            if (mesh.isMesh) {
+              mesh.material = stoneMat;
+              // Skinned meshes cull by bind-pose bounds; keep landmarks from popping out.
+              mesh.frustumCulled = false;
+            }
+          });
+          this.reefScenery.addStatue(statue, statueMatUsed ? null : stoneMat);
+          statueMatUsed = true;
+        } catch (e) {
+          console.warn('[Arcade] statue clone failed', id, e);
+        }
+      }
+      if (!statueMatUsed) stoneMat.dispose();
+    }
+
     this.loaded = true;
     if (this.pendingScreen !== null) {
       const q = this.pendingScreen;
@@ -1368,6 +1408,19 @@ export class ArcadeSceneController {
     this.clearObstacles();
     this.clearPickups();
     this.clearImpactFx();
+    // Undo any death-outro state from the previous run (pose, pending panel timer).
+    if (this.deathNotifyTimer !== null) {
+      window.clearTimeout(this.deathNotifyTimer);
+      this.deathNotifyTimer = null;
+    }
+    this.deathAnimReason = null;
+    this.deathAnimT = 0;
+    if (this.swimRoot) {
+      this.swimRoot.rotation.set(0, Math.PI, 0);
+      this.swimRoot.position.z = PLAYER_Z;
+      if (this.deathBaseY !== null) this.swimRoot.position.y = this.deathBaseY;
+    }
+    this.deathBaseY = null;
     this.playerLane = 1;
     this.playerX = LANES[1];
     this.spawnWaveIndex = -1;
@@ -2094,7 +2147,132 @@ export class ArcadeSceneController {
       ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
       : undefined;
     this.runParityCheck();
-    this.onGameOver(this.runSurvivalSec, reason, finalHud);
+
+    // Death outro (render-only): score/proof are already final above; only the React
+    // game-over panel is delayed while the tumble/suffocation plays out.
+    this.deathAnimReason = reason;
+    this.deathAnimT = 0;
+    if (this.swimRoot) {
+      this.deathBaseY = this.swimRoot.position.y;
+      const p = new THREE.Vector3();
+      this.swimRoot.getWorldPosition(p);
+      p.y += 0.35;
+      if (reason === 'oxygen') this.spawnDeathBubbles(p, 1.0);
+      else this.spawnCrushBurst(p);
+    }
+    const delayMs = reason === 'oxygen' ? 2100 : 1500;
+    this.deathNotifyTimer = window.setTimeout(() => {
+      this.deathNotifyTimer = null;
+      if (this.disposed) return;
+      this.onGameOver(this.runSurvivalSec, reason, finalHud);
+    }, delayMs);
+  }
+
+  /** Impact death: bright pop + debris + a rush of bubbles at the collision point. */
+  private spawnCrushBurst(position: THREE.Vector3): void {
+    const root = new THREE.Group();
+    root.position.copy(position);
+
+    const flash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 14, 12),
+      new THREE.MeshBasicMaterial({
+        color: 0xdffaff,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    root.add(flash);
+
+    const n = 26;
+    const pos = new Float32Array(n * 3);
+    const vel = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const d = this.randomUnitVector3();
+      const sp = 1.6 + Math.random() * 3.2;
+      vel[i * 3] = d.x * sp;
+      vel[i * 3 + 1] = d.y * sp * 0.8 + 1.4; // debris + bubbles drift up
+      vel[i * 3 + 2] = d.z * sp + 1.2; // and back toward the camera
+    }
+    const geo = new THREE.BufferGeometry();
+    const attr = new THREE.BufferAttribute(pos, 3);
+    geo.setAttribute('position', attr);
+    const mat = new THREE.PointsMaterial({
+      color: 0xcfeefa,
+      size: 0.12,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    root.add(new THREE.Points(geo, mat));
+
+    this.addImpactFx(root, 1.2, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      const e = 1 - Math.pow(1 - t, 3);
+      flash.scale.setScalar(0.3 + e * 3.4);
+      (flash.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t * 1.6) * 0.95);
+      for (let i = 0; i < n; i++) {
+        const ix = i * 3;
+        pos[ix] = vel[ix] * fx.age;
+        pos[ix + 1] = vel[ix + 1] * fx.age;
+        pos[ix + 2] = vel[ix + 2] * fx.age;
+      }
+      attr.needsUpdate = true;
+      mat.opacity = Math.max(0, (1 - t) * 0.95);
+    });
+  }
+
+  /** Suffocation: a sustained stream of bubbles escaping upward from the diver. */
+  private spawnDeathBubbles(position: THREE.Vector3, scale: number): void {
+    const root = new THREE.Group();
+    root.position.copy(position);
+
+    const n = 22;
+    const pos = new Float32Array(n * 3);
+    const seedX = new Float32Array(n);
+    const seedZ = new Float32Array(n);
+    const delay = new Float32Array(n);
+    const rise = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      seedX[i] = (Math.random() - 0.5) * 0.5 * scale;
+      seedZ[i] = (Math.random() - 0.5) * 0.4 * scale;
+      delay[i] = Math.random() * 1.1;
+      rise[i] = (1.3 + Math.random() * 1.4) * scale;
+      pos[i * 3 + 1] = -999; // hidden until its delay elapses
+    }
+    const geo = new THREE.BufferGeometry();
+    const attr = new THREE.BufferAttribute(pos, 3);
+    geo.setAttribute('position', attr);
+    const mat = new THREE.PointsMaterial({
+      color: 0xd8f2fc,
+      size: 0.09,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    root.add(new THREE.Points(geo, mat));
+
+    this.addImpactFx(root, 2.0, (fx) => {
+      const t = Math.min(1, fx.age / fx.life);
+      for (let i = 0; i < n; i++) {
+        const a = fx.age - delay[i]!;
+        const ix = i * 3;
+        if (a <= 0) {
+          pos[ix + 1] = -999;
+          continue;
+        }
+        pos[ix] = seedX[i]! + Math.sin(a * 5 + i) * 0.06;
+        pos[ix + 1] = a * rise[i]!;
+        pos[ix + 2] = seedZ[i]!;
+      }
+      attr.needsUpdate = true;
+      mat.opacity = Math.max(0, (1 - t) * 0.85);
+    });
   }
 
   /**
@@ -2147,7 +2325,8 @@ export class ArcadeSceneController {
     if (this.playEnded) {
       swimSpd = intensityBase;
     }
-    if (this.swimMixer) this.swimMixer.timeScale = swimSpd;
+    // During the death outro the tick() cinematic owns the mixer speed (winds it to zero).
+    if (this.swimMixer && !this.deathAnimReason) this.swimMixer.timeScale = swimSpd;
     this.lastSwimSpd = swimSpd;
 
     if (!this.playEnded && st) {
@@ -2541,13 +2720,33 @@ export class ArcadeSceneController {
     const targetX = LANES[this.playerLane];
     this.playerX += (targetX - this.playerX) * Math.min(1, dt * 11);
     if (this.swimRoot) {
-      this.swimRoot.position.x = this.playerX;
-      // Lane-change feel: roll into the strafe, proportional to remaining lateral distance.
-      const bank = THREE.MathUtils.clamp((targetX - this.playerX) / 2.1, -1, 1);
-      const inPlay = this.screen === 'play' && !this.playEnded;
-      const roll = inPlay ? -bank * 0.34 : 0;
-      this.swimRoot.rotation.z += (roll - this.swimRoot.rotation.z) * Math.min(1, dt * 10);
-      this.swimRoot.rotation.y = Math.PI + (inPlay ? bank * 0.14 : 0);
+      if (this.deathAnimReason && this.playEnded) {
+        // Death outro owns the body: crush = tumble backward and sink; oxygen = go limp,
+        // drift up briefly, then settle. Winds the swim animation down to a stop.
+        this.deathAnimT += dt;
+        const dtc = this.deathAnimT;
+        if (this.deathAnimReason === 'oxygen') {
+          this.swimRoot.rotation.x += (-Math.PI * 0.5 - this.swimRoot.rotation.x) * Math.min(1, dt * 2.0);
+          const base = this.deathBaseY ?? this.swimRoot.position.y;
+          this.swimRoot.position.y =
+            base + (dtc < 0.9 ? dtc * 0.3 : Math.max(-0.35, 0.27 - (dtc - 0.9) * 0.4));
+        } else {
+          this.swimRoot.rotation.x -= dt * Math.max(0.5, 6.5 - dtc * 4);
+          this.swimRoot.rotation.z += dt * 1.4;
+          const base = this.deathBaseY ?? this.swimRoot.position.y;
+          this.swimRoot.position.y = base - Math.min(0.5, dtc * 0.35);
+          this.swimRoot.position.z = PLAYER_Z + Math.min(1.3, dtc * 1.05);
+        }
+        if (this.swimMixer) this.swimMixer.timeScale = Math.max(0, 1 - dtc * 1.4);
+      } else {
+        this.swimRoot.position.x = this.playerX;
+        // Lane-change feel: roll into the strafe, proportional to remaining lateral distance.
+        const bank = THREE.MathUtils.clamp((targetX - this.playerX) / 2.1, -1, 1);
+        const inPlay = this.screen === 'play' && !this.playEnded;
+        const roll = inPlay ? -bank * 0.34 : 0;
+        this.swimRoot.rotation.z += (roll - this.swimRoot.rotation.z) * Math.min(1, dt * 10);
+        this.swimRoot.rotation.y = Math.PI + (inPlay ? bank * 0.14 : 0);
+      }
     } else if (this.playerWorld.children[0]) {
       this.playerWorld.children[0].position.x = this.playerX;
     }
@@ -2719,6 +2918,10 @@ export class ArcadeSceneController {
   dispose(): void {
     this.disposed = true; // abort any in-flight async asset loads (StrictMode/remount safe)
     cancelAnimationFrame(this.raf);
+    if (this.deathNotifyTimer !== null) {
+      window.clearTimeout(this.deathNotifyTimer);
+      this.deathNotifyTimer = null;
+    }
     if (this.gradeOverlay && this.gradeOverlay.parentNode === this.container) {
       this.container.removeChild(this.gradeOverlay);
     }

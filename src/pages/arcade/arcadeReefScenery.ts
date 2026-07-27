@@ -35,7 +35,15 @@ type SceneryProp = {
   root: THREE.Object3D;
   /** Re-seat (x, rotation, scale jitter) when the prop recycles behind the camera. */
   reseat: () => void;
+  /**
+   * Recycle distance. Common props use PROP_Z_SPAN; showcase landmarks ride a much longer
+   * loop so each one passes rarely instead of the same prop repeating every few seconds.
+   */
+  zSpan?: number;
 };
+
+/** Showcase landmarks recycle over this distance (~43s per lap at base speed). */
+const SHOWCASE_Z_SPAN = 236;
 
 type Fish = {
   y: number;
@@ -198,8 +206,8 @@ export class ReefSceneryLayer {
 
   private buildProps(lowPower: boolean): void {
     const counts = lowPower
-      ? { coral: 3, rock: 1, kelp: 1, seagrass: 2, reefRock: 2, showpiece: 1 }
-      : { coral: 6, rock: 2, kelp: 2, seagrass: 4, reefRock: 4, showpiece: 2 };
+      ? { coral: 3, rock: 1, kelp: 1, seagrass: 2, reefRock: 2 }
+      : { coral: 6, rock: 2, kelp: 2, seagrass: 4, reefRock: 4 };
 
     const rockGeo = new THREE.DodecahedronGeometry(0.5, 0);
     const rockMat = new THREE.MeshStandardMaterial({
@@ -223,7 +231,7 @@ export class ReefSceneryLayer {
     this.ownedMats.push(kelpMat);
 
     const totalProps =
-      counts.coral + counts.rock + counts.kelp + counts.seagrass + counts.reefRock + counts.showpiece;
+      counts.coral + counts.rock + counts.kelp + counts.seagrass + counts.reefRock;
     const addProp = (root: THREE.Object3D, reseat: () => void) => {
       reseat();
       // Spread initial Z through the whole band so the reef starts populated.
@@ -239,6 +247,7 @@ export class ReefSceneryLayer {
       sink: number,
       xInner = PROP_X_INNER,
       xOuter = PROP_X_OUTER,
+      zSpan?: number,
     ): boolean => {
       const clone = cloneSceneryPropVisual(kind, extent);
       if (!clone) return false;
@@ -246,12 +255,21 @@ export class ReefSceneryLayer {
       holder.add(clone);
       const half = new THREE.Box3().setFromObject(clone).getSize(new THREE.Vector3()).y / 2;
       clone.position.y = half - sink;
-      addProp(holder, () => {
+      const entryReseat = () => {
         holder.position.x = randSide() * randRange(xInner, xOuter);
         holder.position.y = FLOOR_Y;
         holder.rotation.y = Math.random() * Math.PI * 2;
         holder.scale.setScalar(randRange(0.85, 1.15));
-      });
+      };
+      if (zSpan) {
+        // Showcase landmark: skip addProp's short-band spacing; spread over the long loop.
+        entryReseat();
+        holder.position.z = PROP_Z_MAX - Math.random() * zSpan;
+        this.group.add(holder);
+        this.props.push({ root: holder, reseat: entryReseat, zSpan });
+      } else {
+        addProp(holder, entryReseat);
+      }
       return true;
     };
 
@@ -316,9 +334,28 @@ export class ReefSceneryLayer {
     // Meshy-generated dressing (each GLB is 80-250 KB, loaded once with the other templates).
     for (let i = 0; i < counts.seagrass; i++) addGlbProp('seagrass', randRange(1.4, 2.2), 0.12);
     for (let i = 0; i < counts.reefRock; i++) addGlbProp('reefRock', randRange(1.0, 2.0), 0.2);
-    // Showpieces: big, rare, pushed a little further out so they read as landmarks.
-    if (counts.showpiece > 0) addGlbProp('shipwreck', randRange(4.2, 5.0), 0.55, 5.2, 8.2);
-    if (counts.showpiece > 1) addGlbProp('anchor', randRange(1.8, 2.3), 0.18, 4.8, 7.6);
+
+    // Showcase landmarks: one of each on the long recycle loop — a slow parade of different
+    // monuments swimming by instead of the same prop every few seconds. Remilia-detail set:
+    // sunken anime statue head, torii gate, ruined columns, arcade cabinet, treasure, wrecks.
+    const showcases: Array<[Parameters<typeof cloneSceneryPropVisual>[0], number, number]> = lowPower
+      ? [
+          ['statueHead', randRange(2.4, 2.9), 0.5],
+          ['toriiGate', randRange(3.0, 3.6), 0.25],
+          ['treasureChest', randRange(1.2, 1.5), 0.15],
+        ]
+      : [
+          ['shipwreck', randRange(4.2, 5.0), 0.55],
+          ['anchor', randRange(1.8, 2.3), 0.18],
+          ['statueHead', randRange(2.6, 3.2), 0.5],
+          ['toriiGate', randRange(3.4, 4.0), 0.25],
+          ['ruinColumns', randRange(2.6, 3.2), 0.35],
+          ['arcadeCabinet', randRange(1.7, 2.0), 0.2],
+          ['treasureChest', randRange(1.2, 1.5), 0.15],
+        ];
+    for (const [kind, extent, sink] of showcases) {
+      addGlbProp(kind, extent, sink, 5.0, 8.2, SHOWCASE_Z_SPAN);
+    }
   }
 
   private buildFish(lowPower: boolean): void {
@@ -376,6 +413,36 @@ export class ReefSceneryLayer {
   }
 
   /**
+   * Add a stone-statue showpiece cloned from an already-loaded character rig. The geometry is
+   * SHARED with the live character (never disposed here); pass its stone material once via
+   * `ownedMat` so it is released on dispose.
+   */
+  addStatue(statue: THREE.Object3D, ownedMat: THREE.Material | null): void {
+    if (ownedMat) this.ownedMats.push(ownedMat);
+    const holder = new THREE.Group();
+    holder.add(statue);
+    statue.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(statue);
+    if (!box.isEmpty()) {
+      const c = box.getCenter(new THREE.Vector3());
+      const half = box.getSize(new THREE.Vector3()).y / 2;
+      statue.position.sub(c); // center on the holder origin...
+      statue.position.y += half - 0.35; // ...then seat the base just under the sand
+    }
+    const tiltZ = (Math.random() - 0.5) * 0.24; // sunken monuments list a little
+    const reseat = () => {
+      holder.position.x = randSide() * randRange(5.0, 7.6);
+      holder.position.y = FLOOR_Y;
+      holder.rotation.set(0, Math.random() * Math.PI * 2, tiltZ);
+      holder.scale.setScalar(randRange(1.35, 1.7)); // larger than life
+    };
+    reseat();
+    holder.position.z = PROP_Z_MAX - Math.random() * SHOWCASE_Z_SPAN;
+    this.group.add(holder);
+    this.props.push({ root: holder, reseat, zSpan: SHOWCASE_Z_SPAN });
+  }
+
+  /**
    * Advance the dressing. `running` = mid-run (scroll at world speed × swimSpd);
    * otherwise (game over screen) the reef drifts almost imperceptibly, matching the
    * frozen hazards.
@@ -397,7 +464,7 @@ export class ReefSceneryLayer {
     for (const p of this.props) {
       p.root.position.z += zVel * dt;
       if (p.root.position.z > PROP_Z_MAX) {
-        p.root.position.z -= PROP_Z_SPAN;
+        p.root.position.z -= p.zSpan ?? PROP_Z_SPAN;
         p.reseat();
       }
     }
