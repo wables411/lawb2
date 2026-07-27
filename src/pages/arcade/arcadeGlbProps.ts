@@ -238,6 +238,49 @@ export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
   return createPrimitivePickupMesh(kind);
 }
 
+/**
+ * Dimmed coral templates for background scenery (lazy-built from the obstacle templates).
+ * Materials are cloned ONCE per template and darkened so passing reef dressing never reads
+ * as a hazard; every scenery clone then shares these materials (module-cached, never disposed —
+ * same lifetime policy as the obstacle templates).
+ */
+let coralSceneryTemplates: THREE.Object3D[] | null = null;
+
+function buildCoralSceneryTemplates(): THREE.Object3D[] {
+  return coralTemplates.map((tpl) => {
+    const dark = tpl.clone(true);
+    dark.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const cloned = mats.map((m) => {
+        const c = (m as THREE.Material).clone() as THREE.MeshStandardMaterial;
+        if (c.isMeshStandardMaterial) {
+          c.color.multiplyScalar(0.52).lerp(new THREE.Color(0x1d4a58), 0.28);
+          if (c.emissive) c.emissive.multiplyScalar(0.3);
+        }
+        return c;
+      });
+      mesh.material = Array.isArray(mesh.material) ? cloned : cloned[0]!;
+    });
+    return dark;
+  });
+}
+
+/**
+ * Background-scenery coral (dimmed), fit to `maxExtent`, or `null` if coral GLBs did not load.
+ * Clones share the darkened template resources — callers must NOT dispose them per instance.
+ */
+export function cloneCoralSceneryVisual(maxExtent: number): THREE.Object3D | null {
+  if (coralTemplates.length === 0) return null;
+  if (!coralSceneryTemplates) coralSceneryTemplates = buildCoralSceneryTemplates();
+  const pick = coralSceneryTemplates[Math.floor(Math.random() * coralSceneryTemplates.length)]!;
+  const root = pick.clone(true);
+  root.userData.arcadeKeepSharedResources = true;
+  fitReefObstacleVisual(root, { maxExtent });
+  return root;
+}
+
 /** Coral obstacle mesh/group, or `null` if coral GLBs did not load (caller uses box fallback). */
 export function cloneCoralObstacleVisual(): THREE.Object3D | null {
   if (coralTemplates.length === 0) return null;

@@ -47,6 +47,7 @@ import {
 } from './arcadePickupKinds';
 import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
+import { ReefSceneryLayer } from './arcadeReefScenery';
 import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 import { makeRng, randomSeed, type Rng } from './arcadeRng';
 import {
@@ -328,6 +329,8 @@ export class ArcadeSceneController {
   /** Pure sim state — authoritative in deterministic mode; null in free-play. */
   private simState: ReefRunSimState | null = null;
   private godRays: THREE.Group | null = null; // volumetric light shafts from the surface
+  /** Play-screen reef dressing (seabed/coral/kelp/fish/bubbles) — pure cosmetics, see arcadeReefScenery.ts. */
+  private reefScenery: ReefSceneryLayer | null = null;
   private disposed = false; // set in dispose(); async loads must abort if true (StrictMode/remount safe)
   private gradeOverlay: HTMLDivElement | null = null; // DOM vignette/grade layer (removed on dispose)
   private inputLog: Array<[number, number, number, number]> = []; // [step, lane, w, s]
@@ -1007,6 +1010,12 @@ export class ArcadeSceneController {
       await loadArcadePropGlbTemplates();
     } catch (e) {
       console.warn('[Arcade] Prop GLB preload failed', e);
+    }
+    // Reef dressing for the run (hidden until play): built AFTER the GLB preload so the
+    // coral scenery clones come from the already-downloaded obstacle templates.
+    if (!this.disposed) {
+      this.reefScenery = new ReefSceneryLayer(this.lowPowerMode);
+      this.scene.add(this.reefScenery.group);
     }
     bootStep++;
     this.reportBoot(bootStep, TOTAL_BOOT_STEPS, 'Stocking the tunnel');
@@ -2446,6 +2455,13 @@ export class ArcadeSceneController {
     if (this.screen === 'play' && !this.playEnded) {
       driftMain *= 1.35 + Math.max(0, warp - 1) * 1.05;
     }
+    if (this.reefScenery) {
+      const inRun = this.screen === 'play' || this.screen === 'gameover';
+      this.reefScenery.setVisible(inRun);
+      if (inRun) {
+        this.reefScenery.update(dt, t, this.screen === 'play' && !this.playEnded, swimSpd);
+      }
+    }
     if (this.ambianceParticles) {
       this.ambianceParticles.position.z += driftMain;
       if (this.ambianceParticles.position.z > 6) this.ambianceParticles.position.z = -4;
@@ -2480,6 +2496,8 @@ export class ArcadeSceneController {
     this.clearImpactFx();
     this.clearPickups();
     this.clearObstacles();
+    this.reefScenery?.dispose();
+    this.reefScenery = null;
     this.tunnel?.geometry.dispose();
     (this.tunnel?.material as THREE.Material | undefined)?.dispose();
     this.tunnelFlowTex?.dispose();
