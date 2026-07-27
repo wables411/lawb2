@@ -733,6 +733,35 @@
   }
 }
 
+/* Mission brief (first run of the session) */
+.ra-brief-panel {
+  max-width: 460px;
+}
+
+.ra-brief-body {
+  margin: 14px 0 4px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(214, 238, 244, 0.88);
+}
+
+.ra-brief-body p {
+  margin: 0 0 10px;
+}
+
+.ra-brief-body strong {
+  color: #8ff2df;
+  font-weight: 600;
+}
+
+.ra-brief-hint {
+  margin: 10px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(190, 220, 228, 0.45);
+}
+
 /* Game over */
 .ra-gameover-layer {
   position: fixed;

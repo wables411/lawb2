@@ -97,6 +97,8 @@ export default function ReefArcadeMenu() {
   /** Brief highlight of the tapped TAP LEFT / TAP RIGHT zone so touch input visibly registers. */
   const [tapFlash, setTapFlash] = useState<-1 | 0 | 1>(0);
   const tapFlashTimerRef = useRef<number | null>(null);
+  /** Mission-brief overlay (shown before the first run of each session). */
+  const [showBrief, setShowBrief] = useState(false);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -267,15 +269,40 @@ export default function ReefArcadeMenu() {
     void open({ view: connection.connected ? 'Account' : 'Connect' });
   };
 
-  const beginRun = useCallback(() => {
-    if (!sceneReady) return;
+  const launchRun = useCallback(() => {
     setLastRunLbNote(null);
     setLastRunEndReason(null);
     setRunStatsHud(null);
     setTouchThrottleMode(0);
     arcadeInputRef.current?.clearVirtualThrottle();
     setGameScreen('play');
-  }, [sceneReady]);
+  }, []);
+
+  /** First run of the session opens the mission brief; after that, straight into the water. */
+  const beginRun = useCallback(() => {
+    if (!sceneReady) return;
+    let briefSeen = false;
+    try {
+      briefSeen = sessionStorage.getItem('reefRunBriefSeen') === '1';
+    } catch {
+      briefSeen = true; // storage unavailable → never gate the run on it
+    }
+    if (!briefSeen) {
+      setShowBrief(true);
+      return;
+    }
+    launchRun();
+  }, [sceneReady, launchRun]);
+
+  const diveFromBrief = useCallback(() => {
+    try {
+      sessionStorage.setItem('reefRunBriefSeen', '1');
+    } catch {
+      /* ignore */
+    }
+    setShowBrief(false);
+    launchRun();
+  }, [launchRun]);
 
   const goMainMenu = useCallback(() => {
     setGameScreen('menu');
@@ -378,6 +405,17 @@ export default function ReefArcadeMenu() {
         }
         return;
       }
+      if (showBrief) {
+        if (ev.key === 'Enter' || ev.key === ' ' || k === '1') {
+          ev.preventDefault();
+          diveFromBrief();
+        } else if (ev.key === 'Escape' || ev.key === 'Backspace') {
+          ev.preventDefault();
+          setShowBrief(false);
+        }
+        return;
+      }
+
       if (modal) {
         if (ev.key === 'Escape') {
           ev.preventDefault();
@@ -472,7 +510,7 @@ export default function ReefArcadeMenu() {
 
     window.addEventListener('keydown', onShortcutKey);
     return () => window.removeEventListener('keydown', onShortcutKey);
-  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate, sceneReady]);
+  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate, sceneReady, showBrief, diveFromBrief]);
 
   return (
     <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
@@ -842,6 +880,40 @@ export default function ReefArcadeMenu() {
             </div>
             <div className="ra-touch-throttle" aria-hidden>
               {touchThrottleMode > 0 ? 'BOOST' : touchThrottleMode < 0 ? 'SLOW' : 'CRUISE'}
+            </div>
+          </div>
+        )}
+
+        {phase === 'menu' && showBrief && (
+          <div className="ra-gameover-layer" role="dialog" aria-label="Mission brief">
+            <div className="ra-gameover-panel ra-brief-panel">
+              <h2 className="ra-gameover-title">MISSION BRIEF</h2>
+              <div className="ra-brief-body">
+                <p>
+                  Divers have been recruited to help save the ocean. Lawbsters have recorded an
+                  increase of trash sightings across all corners of the ocean floor — roughly{' '}
+                  <strong>33 billion pounds</strong> added yearly. While the lawbsters continue to
+                  collect trash on a regular schedule, any and all help is greatly appreciated.
+                </p>
+                <p>
+                  The goal: <strong>collect as much trash as you can</strong> before running out of
+                  air or colliding with something. You&rsquo;re welcome to keep any treasure you
+                  find while on your diving excursion.
+                </p>
+              </div>
+              <div className="ra-gameover-actions">
+                <button type="button" className="ra-btn" onClick={diveFromBrief}>
+                  DIVE ▶
+                </button>
+                <button
+                  type="button"
+                  className="ra-btn ra-btn-secondary"
+                  onClick={() => setShowBrief(false)}
+                >
+                  BACK
+                </button>
+              </div>
+              <p className="ra-brief-hint">ENTER · SPACE · TAP DIVE</p>
             </div>
           </div>
         )}
