@@ -27,12 +27,23 @@ const TRASH_CONFIG = [
 const CORAL_GLB_VARIANTS = [
   `${ARCADE_ASSET_BASE}/coral1.glb`,
   `${ARCADE_ASSET_BASE}/coral2.glb`,
+  `${ARCADE_ASSET_BASE}/coral3.glb`,
 ] as const;
+
+/** Background-only reef dressing GLBs (Meshy-generated, meshopt+webp, ~80-250 KB each). */
+const SCENERY_GLB = {
+  seagrass: `${ARCADE_ASSET_BASE}/seagrass.glb`,
+  reefRock: `${ARCADE_ASSET_BASE}/reef-rock.glb`,
+  shipwreck: `${ARCADE_ASSET_BASE}/shipwreck-bow.glb`,
+  anchor: `${ARCADE_ASSET_BASE}/anchor.glb`,
+} as const;
+export type SceneryPropKind = keyof typeof SCENERY_GLB;
 
 const pickupTemplates: Partial<Record<PickupKind, THREE.Object3D>> = {};
 type TrashProp = { tpl: THREE.Object3D; maxExtent: number };
 let trashProps: TrashProp[] = [];
 let coralTemplates: THREE.Object3D[] = [];
+const sceneryPropTemplates: Partial<Record<SceneryPropKind, THREE.Object3D>> = {};
 
 let templatesLoadPromise: Promise<void> | null = null;
 let coralVariantCursor = 0;
@@ -182,6 +193,15 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
           coralTemplates.forEach((tpl) => sanitizeGlbTemplateMaterials(tpl));
         })(),
       );
+      for (const [kind, url] of Object.entries(SCENERY_GLB) as [SceneryPropKind, string][]) {
+        jobs.push(
+          loadSceneQuiet(url).then((sc) => {
+            if (!sc) return;
+            sanitizeGlbTemplateMaterials(sc);
+            sceneryPropTemplates[kind] = sc;
+          }),
+        );
+      }
       await Promise.all(jobs);
     })();
   }
@@ -276,6 +296,19 @@ export function cloneCoralSceneryVisual(maxExtent: number): THREE.Object3D | nul
   if (!coralSceneryTemplates) coralSceneryTemplates = buildCoralSceneryTemplates();
   const pick = coralSceneryTemplates[Math.floor(Math.random() * coralSceneryTemplates.length)]!;
   const root = pick.clone(true);
+  root.userData.arcadeKeepSharedResources = true;
+  fitReefObstacleVisual(root, { maxExtent });
+  return root;
+}
+
+/**
+ * Background-scenery prop clone (seagrass/reef rock/shipwreck/anchor), fit to `maxExtent`,
+ * or `null` if that GLB did not load. Clones share template resources — never dispose per instance.
+ */
+export function cloneSceneryPropVisual(kind: SceneryPropKind, maxExtent: number): THREE.Object3D | null {
+  const tpl = sceneryPropTemplates[kind];
+  if (!tpl) return null;
+  const root = tpl.clone(true);
   root.userData.arcadeKeepSharedResources = true;
   fitReefObstacleVisual(root, { maxExtent });
   return root;

@@ -3,7 +3,7 @@ import {
   REEF_RUN_OBSTACLE_BASE_SPEED,
   REEF_RUN_TICK_Z_SCALE,
 } from './arcadeDifficulty';
-import { cloneCoralSceneryVisual } from './arcadeGlbProps';
+import { cloneCoralSceneryVisual, cloneSceneryPropVisual } from './arcadeGlbProps';
 
 /**
  * Cosmetic reef dressing for the Reef Run play screen: sandy seabed, passing coral/rock/kelp
@@ -198,8 +198,8 @@ export class ReefSceneryLayer {
 
   private buildProps(lowPower: boolean): void {
     const counts = lowPower
-      ? { coral: 3, rock: 2, kelp: 3 }
-      : { coral: 6, rock: 5, kelp: 5 };
+      ? { coral: 3, rock: 1, kelp: 1, seagrass: 2, reefRock: 2, showpiece: 1 }
+      : { coral: 6, rock: 2, kelp: 2, seagrass: 4, reefRock: 4, showpiece: 2 };
 
     const rockGeo = new THREE.DodecahedronGeometry(0.5, 0);
     const rockMat = new THREE.MeshStandardMaterial({
@@ -222,12 +222,37 @@ export class ReefSceneryLayer {
     this.ownedGeos.push(kelpGeo);
     this.ownedMats.push(kelpMat);
 
+    const totalProps =
+      counts.coral + counts.rock + counts.kelp + counts.seagrass + counts.reefRock + counts.showpiece;
     const addProp = (root: THREE.Object3D, reseat: () => void) => {
       reseat();
       // Spread initial Z through the whole band so the reef starts populated.
-      root.position.z = PROP_Z_MIN + (this.props.length / (counts.coral + counts.rock + counts.kelp)) * PROP_Z_SPAN;
+      root.position.z = PROP_Z_MIN + (this.props.length / totalProps) * PROP_Z_SPAN;
       this.group.add(root);
       this.props.push({ root, reseat });
+    };
+
+    /** Clone a Meshy scenery GLB, seat its base just under the sand, add to the recycle pool. */
+    const addGlbProp = (
+      kind: Parameters<typeof cloneSceneryPropVisual>[0],
+      extent: number,
+      sink: number,
+      xInner = PROP_X_INNER,
+      xOuter = PROP_X_OUTER,
+    ): boolean => {
+      const clone = cloneSceneryPropVisual(kind, extent);
+      if (!clone) return false;
+      const holder = new THREE.Group();
+      holder.add(clone);
+      const half = new THREE.Box3().setFromObject(clone).getSize(new THREE.Vector3()).y / 2;
+      clone.position.y = half - sink;
+      addProp(holder, () => {
+        holder.position.x = randSide() * randRange(xInner, xOuter);
+        holder.position.y = FLOOR_Y;
+        holder.rotation.y = Math.random() * Math.PI * 2;
+        holder.scale.setScalar(randRange(0.85, 1.15));
+      });
+      return true;
     };
 
     for (let i = 0; i < counts.coral; i++) {
@@ -287,6 +312,13 @@ export class ReefSceneryLayer {
         holder.position.y = FLOOR_Y;
       });
     }
+
+    // Meshy-generated dressing (each GLB is 80-250 KB, loaded once with the other templates).
+    for (let i = 0; i < counts.seagrass; i++) addGlbProp('seagrass', randRange(1.4, 2.2), 0.12);
+    for (let i = 0; i < counts.reefRock; i++) addGlbProp('reefRock', randRange(1.0, 2.0), 0.2);
+    // Showpieces: big, rare, pushed a little further out so they read as landmarks.
+    if (counts.showpiece > 0) addGlbProp('shipwreck', randRange(4.2, 5.0), 0.55, 5.2, 8.2);
+    if (counts.showpiece > 1) addGlbProp('anchor', randRange(1.8, 2.3), 0.18, 4.8, 7.6);
   }
 
   private buildFish(lowPower: boolean): void {
