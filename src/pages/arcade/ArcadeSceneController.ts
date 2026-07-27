@@ -2726,10 +2726,10 @@ export class ArcadeSceneController {
         this.deathAnimT += dt;
         const dtc = this.deathAnimT;
         if (this.deathAnimReason === 'oxygen') {
+          // Buoyant: go limp face-up and float steadily toward the surface.
           this.swimRoot.rotation.x += (-Math.PI * 0.5 - this.swimRoot.rotation.x) * Math.min(1, dt * 2.0);
           const base = this.deathBaseY ?? this.swimRoot.position.y;
-          this.swimRoot.position.y =
-            base + (dtc < 0.9 ? dtc * 0.3 : Math.max(-0.35, 0.27 - (dtc - 0.9) * 0.4));
+          this.swimRoot.position.y = Math.min(base + 2.6, base + dtc * 0.22 + dtc * dtc * 0.3);
         } else {
           this.swimRoot.rotation.x -= dt * Math.max(0.5, 6.5 - dtc * 4);
           this.swimRoot.rotation.z += dt * 1.4;

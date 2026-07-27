@@ -33,8 +33,10 @@ const PROP_X_OUTER = 7.4;
 
 type SceneryProp = {
   root: THREE.Object3D;
-  /** Re-seat (x, rotation, scale jitter) when the prop recycles behind the camera. */
-  reseat: () => void;
+  /** Re-seat (x, rotation, scale jitter) on the given coast when the prop recycles. */
+  reseat: (side: 1 | -1) => void;
+  /** Current coast; flipped on every recycle so z-neighbors keep alternating sides. */
+  side: 1 | -1;
   /**
    * Recycle distance. Common props use PROP_Z_SPAN; showcase landmarks ride a much longer
    * loop so each one passes rarely instead of the same prop repeating every few seconds.
@@ -44,6 +46,12 @@ type SceneryProp = {
 
 /** Showcase landmarks recycle over this distance (~43s per lap at base speed). */
 const SHOWCASE_Z_SPAN = 236;
+/**
+ * Fixed z gap between showcase slots. Everything scrolls at the same speed and recycles by
+ * the same span, so this spacing (and the side alternation) is preserved forever — two
+ * landmarks can never drift into each other.
+ */
+const SHOWCASE_SPACING = 25;
 
 type Fish = {
   y: number;
@@ -168,6 +176,9 @@ export class ReefSceneryLayer {
   private fishMesh: THREE.InstancedMesh | null = null;
   private readonly fishDummy = new THREE.Object3D();
 
+  /** Next showcase slot on the long loop (GLB landmarks + character statues share it). */
+  private showcaseIndex = 0;
+
   private seabedTex: THREE.CanvasTexture | null = null;
   private kelpTex: THREE.CanvasTexture | null = null;
   private bubbles: THREE.Points | null = null;
@@ -232,12 +243,15 @@ export class ReefSceneryLayer {
 
     const totalProps =
       counts.coral + counts.rock + counts.kelp + counts.seagrass + counts.reefRock;
-    const addProp = (root: THREE.Object3D, reseat: () => void) => {
-      reseat();
+    const addProp = (root: THREE.Object3D, reseat: (side: 1 | -1) => void) => {
+      // Alternate coasts by slot: adjacent-z props start on opposite sides, and the flip on
+      // every recycle keeps that alternation for the life of the run.
+      const side: 1 | -1 = this.props.length % 2 === 0 ? 1 : -1;
+      reseat(side);
       // Spread initial Z through the whole band so the reef starts populated.
       root.position.z = PROP_Z_MIN + (this.props.length / totalProps) * PROP_Z_SPAN;
       this.group.add(root);
-      this.props.push({ root, reseat });
+      this.props.push({ root, reseat, side });
     };
 
     /** Clone a Meshy scenery GLB, seat its base just under the sand, add to the recycle pool. */
@@ -255,18 +269,14 @@ export class ReefSceneryLayer {
       holder.add(clone);
       const half = new THREE.Box3().setFromObject(clone).getSize(new THREE.Vector3()).y / 2;
       clone.position.y = half - sink;
-      const entryReseat = () => {
-        holder.position.x = randSide() * randRange(xInner, xOuter);
+      const entryReseat = (side: 1 | -1) => {
+        holder.position.x = side * randRange(xInner, xOuter);
         holder.position.y = FLOOR_Y;
         holder.rotation.y = Math.random() * Math.PI * 2;
         holder.scale.setScalar(randRange(0.85, 1.15));
       };
       if (zSpan) {
-        // Showcase landmark: skip addProp's short-band spacing; spread over the long loop.
-        entryReseat();
-        holder.position.z = PROP_Z_MAX - Math.random() * zSpan;
-        this.group.add(holder);
-        this.props.push({ root: holder, reseat: entryReseat, zSpan });
+        this.addShowcaseEntry(holder, entryReseat, zSpan);
       } else {
         addProp(holder, entryReseat);
       }
@@ -282,8 +292,8 @@ export class ReefSceneryLayer {
       // fit centers the bbox at the clone's origin; lift so the base touches the sand.
       const half = new THREE.Box3().setFromObject(coral).getSize(new THREE.Vector3()).y / 2;
       coral.position.y = half - 0.08; // sink slightly so it reads planted
-      addProp(holder, () => {
-        holder.position.x = randSide() * randRange(PROP_X_INNER, PROP_X_OUTER);
+      addProp(holder, (side) => {
+        holder.position.x = side * randRange(PROP_X_INNER, PROP_X_OUTER);
         holder.position.y = FLOOR_Y;
         holder.rotation.y = Math.random() * Math.PI * 2;
         const s = randRange(0.85, 1.15);
@@ -305,8 +315,8 @@ export class ReefSceneryLayer {
         rock.position.y = -bb.min.y - 0.12;
         holder.add(rock);
       }
-      addProp(holder, () => {
-        holder.position.x = randSide() * randRange(PROP_X_INNER, PROP_X_OUTER);
+      addProp(holder, (side) => {
+        holder.position.x = side * randRange(PROP_X_INNER, PROP_X_OUTER);
         holder.position.y = FLOOR_Y;
         holder.rotation.y = Math.random() * Math.PI * 2;
       });
@@ -325,8 +335,8 @@ export class ReefSceneryLayer {
         this.kelpPlanes.push(blade);
         holder.add(blade);
       }
-      addProp(holder, () => {
-        holder.position.x = randSide() * randRange(PROP_X_INNER, PROP_X_OUTER);
+      addProp(holder, (side) => {
+        holder.position.x = side * randRange(PROP_X_INNER, PROP_X_OUTER);
         holder.position.y = FLOOR_Y;
       });
     }
@@ -413,6 +423,25 @@ export class ReefSceneryLayer {
   }
 
   /**
+   * Register a showcase landmark on the long loop at the next fixed z slot. Slots are
+   * SHOWCASE_SPACING apart with alternating starting coasts, so landmarks can never spawn
+   * on top of each other — and since every prop scrolls at the same speed and recycles by
+   * the same span, that separation holds forever.
+   */
+  private addShowcaseEntry(
+    holder: THREE.Object3D,
+    reseat: (side: 1 | -1) => void,
+    zSpan: number,
+  ): void {
+    const slot = this.showcaseIndex++;
+    const side: 1 | -1 = slot % 2 === 0 ? 1 : -1;
+    reseat(side);
+    holder.position.z = PROP_Z_MAX - 12 - slot * SHOWCASE_SPACING - randRange(0, 6);
+    this.group.add(holder);
+    this.props.push({ root: holder, reseat, side, zSpan });
+  }
+
+  /**
    * Add a stone-statue showpiece cloned from an already-loaded character rig. The geometry is
    * SHARED with the live character (never disposed here); pass its stone material once via
    * `ownedMat` so it is released on dispose.
@@ -430,16 +459,16 @@ export class ReefSceneryLayer {
       statue.position.y += half - 0.35; // ...then seat the base just under the sand
     }
     const tiltZ = (Math.random() - 0.5) * 0.24; // sunken monuments list a little
-    const reseat = () => {
-      holder.position.x = randSide() * randRange(5.0, 7.6);
-      holder.position.y = FLOOR_Y;
-      holder.rotation.set(0, Math.random() * Math.PI * 2, tiltZ);
-      holder.scale.setScalar(randRange(1.35, 1.7)); // larger than life
-    };
-    reseat();
-    holder.position.z = PROP_Z_MAX - Math.random() * SHOWCASE_Z_SPAN;
-    this.group.add(holder);
-    this.props.push({ root: holder, reseat, zSpan: SHOWCASE_Z_SPAN });
+    this.addShowcaseEntry(
+      holder,
+      (side) => {
+        holder.position.x = side * randRange(5.0, 7.6);
+        holder.position.y = FLOOR_Y;
+        holder.rotation.set(0, Math.random() * Math.PI * 2, tiltZ);
+        holder.scale.setScalar(randRange(1.35, 1.7)); // larger than life
+      },
+      SHOWCASE_Z_SPAN,
+    );
   }
 
   /**
@@ -465,7 +494,8 @@ export class ReefSceneryLayer {
       p.root.position.z += zVel * dt;
       if (p.root.position.z > PROP_Z_MAX) {
         p.root.position.z -= p.zSpan ?? PROP_Z_SPAN;
-        p.reseat();
+        p.side = (p.side === 1 ? -1 : 1) as 1 | -1;
+        p.reseat(p.side);
       }
     }
 
