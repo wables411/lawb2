@@ -51,7 +51,7 @@ const en = {
   // Mission brief
   briefTitle: 'MISSION BRIEF',
   briefP1:
-    'Divers have been recruited to help save the ocean. Lawbsters have recorded an increase of trash sightings across all corners of the ocean floor — roughly 33 billion pounds added yearly. While the lawbsters continue to collect trash on a regular schedule, any and all help is greatly appreciated.',
+    'Divers have been recruited to help save the ocean. Lawbsters have recorded an increase of trash sightings across all corners of the ocean floor — roughly 33 billion pounds of plastic added yearly. While the lawbsters continue to collect trash on a regular schedule, any and all help is greatly appreciated.',
   briefP2:
     'The goal: collect as much trash as you can before running out of air or colliding with something. You’re welcome to keep any treasure you find while on your diving excursion.',
   dive: 'DIVE ▶',
@@ -62,7 +62,7 @@ const en = {
   howtoTitle: 'HOW TO PLAY',
   howtoMission: '🌊 MISSION',
   howtoMissionBody:
-    'The ocean is drowning in trash — roughly 33 billion pounds added yearly. Dive, dodge the reef, and haul out all the trash you can. Any treasure you spot on the way down is yours to keep.',
+    'The ocean is drowning in trash — roughly 33 billion pounds of plastic added yearly. Dive, dodge the reef, and haul out all the trash you can. Any treasure you spot on the way down is yours to keep.',
   howtoSteer: '🕹 STEER',
   howtoSteerBody:
     'Three lanes. A / D or ← / → switch lanes · W swim faster · S ease off. Touch: tap left/right to lane shift, hold + swipe up/down for speed.',
@@ -109,7 +109,7 @@ const en = {
   confirm: 'CONFIRM',
 
   // Standalone extras
-  presents: 'RADBRO.FUN PRESENTS',
+  presents: 'LAWBSTERS PRESENT',
   saMenuHint: 'ENTER START · C SWAP SWIMMER · H HOW TO · M SOUND',
   blurbRadbro: 'toughest armor',
   blurbClawb: 'never runs out of air',
@@ -144,7 +144,7 @@ const zh: ReefStrings = {
 
   briefTitle: '任务简报',
   briefP1:
-    '潜水员们已被招募来拯救海洋。Lawbsters 观测到海底各处的垃圾持续增多——每年新增约 330 亿磅。虽然 lawbsters 一直按计划清理垃圾，但任何帮助都弥足珍贵。',
+    '潜水员们已被招募来拯救海洋。Lawbsters 观测到海底各处的垃圾持续增多——每年新增约 330 亿磅塑料。虽然 lawbsters 一直按计划清理垃圾，但任何帮助都弥足珍贵。',
   briefP2: '目标：在氧气耗尽或撞上障碍之前，尽可能多地收集垃圾。潜水途中发现的任何宝藏都归你所有。',
   dive: '下潜 ▶',
   back: '返回',
@@ -153,7 +153,7 @@ const zh: ReefStrings = {
   howtoTitle: '玩法说明',
   howtoMission: '🌊 任务',
   howtoMissionBody:
-    '海洋正被垃圾淹没——每年新增约 330 亿磅。下潜、躲避珊瑚礁，尽可能多地打捞垃圾。途中发现的宝藏都归你所有。',
+    '海洋正被垃圾淹没——每年新增约 330 亿磅塑料。下潜、躲避珊瑚礁，尽可能多地打捞垃圾。途中发现的宝藏都归你所有。',
   howtoSteer: '🕹 操作',
   howtoSteerBody:
     '三条泳道。A / D 或 ← / → 切换泳道 · W 加速 · S 减速。触屏：点按左/右半屏切换泳道，按住上下滑动控制速度。',
@@ -193,7 +193,7 @@ const zh: ReefStrings = {
   selectHint: '点击模型、点按标签，或用键盘（←/→ 切换，回车确认）。',
   confirm: '确认',
 
-  presents: 'RADBRO.FUN 出品',
+  presents: 'LAWBSTERS 出品',
   saMenuHint: '回车开始 · C 换泳手 · H 玩法 · M 音效',
   blurbRadbro: '护甲最强',
   blurbClawb: '永不缺氧',
