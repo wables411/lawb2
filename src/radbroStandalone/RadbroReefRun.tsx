@@ -5,6 +5,13 @@ import type { ReefRunHudPayload } from '../pages/arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from '../pages/arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from '../pages/arcade/ArcadeSceneController';
 import { reefSfx } from '../pages/arcade/arcadeSounds';
+import {
+  loadReefLang,
+  saveReefLang,
+  REEF_STRINGS,
+  type ReefLang,
+  type ReefStrings,
+} from '../pages/arcade/reefLang';
 import '../pages/reefArcadeMenu.css';
 import './radbroStandalone.css';
 
@@ -18,11 +25,17 @@ import './radbroStandalone.css';
  */
 
 /** Full trio — radbro leads the bill on radbro.fun, but everyone's playable. */
-const SWIMMERS: { id: ArcadeCharacterId; name: string; color: string; blurb: string }[] = [
-  { id: 'radbro', name: 'RADBRO', color: '#e8a0bf', blurb: 'toughest armor' },
-  { id: 'clawb', name: 'CLAWB', color: '#ff6b35', blurb: 'never runs out of air' },
-  { id: 'milady', name: 'MILADY', color: '#9eddcf', blurb: 'fastest fins' },
+const SWIMMERS: { id: ArcadeCharacterId; name: string; color: string }[] = [
+  { id: 'radbro', name: 'RADBRO', color: '#e8a0bf' },
+  { id: 'clawb', name: 'CLAWB', color: '#ff6b35' },
+  { id: 'milady', name: 'MILADY', color: '#9eddcf' },
 ];
+
+function swimmerBlurb(id: ArcadeCharacterId, t: ReefStrings): string {
+  if (id === 'radbro') return t.blurbRadbro;
+  if (id === 'clawb') return t.blurbClawb;
+  return t.blurbMilady;
+}
 
 const BEST_KEY = 'radbroReefRunBest';
 
@@ -43,16 +56,16 @@ function saveBest(sec: number): void {
   }
 }
 
-function runEndSummary(reason: RunEndReason): string {
+function runEndSummary(reason: RunEndReason, t: ReefStrings): string {
   switch (reason) {
     case 'oxygen':
-      return 'Ran out of oxygen — grab air tanks to keep breathing.';
+      return t.reasonOxygen;
     case 'crush':
-      return 'Coral block collision — change lanes with A/D or tap left/right.';
+      return t.reasonCrush;
     case 'wrecked':
-      return 'Armor depleted — dodge jellyfish, pufferfish, and mines; grab peptides.';
+      return t.reasonWrecked;
     default:
-      return 'Run ended.';
+      return t.swimAgain;
   }
 }
 
@@ -91,6 +104,15 @@ export default function RadbroReefRun() {
       return !prev;
     });
   }, []);
+  const [lang, setLang] = useState<ReefLang>(() => loadReefLang());
+  const toggleLang = useCallback(() => {
+    setLang((prev) => {
+      const next: ReefLang = prev === 'en' ? 'zh' : 'en';
+      saveReefLang(next);
+      return next;
+    });
+  }, []);
+  const t = REEF_STRINGS[lang];
   const [briefSeen, setBriefSeen] = useState(false);
   const [touchUi] = useState<boolean>(prefersTouchInput);
   const [tapFlash, setTapFlash] = useState<-1 | 0 | 1>(0);
@@ -254,11 +276,11 @@ export default function RadbroReefRun() {
       {bootError && (
         <div className="ra-gameover-layer">
           <div className="ra-gameover-panel">
-            <h2 className="ra-gameover-title">LOAD FAILED</h2>
+            <h2 className="ra-gameover-title">{t.loadFailed}</h2>
             <p className="ra-gameover-sub">{bootError}</p>
             <div className="ra-gameover-actions">
               <button type="button" className="ra-btn" onClick={() => window.location.reload()}>
-                RELOAD
+                {t.reload}
               </button>
             </div>
           </div>
@@ -268,10 +290,10 @@ export default function RadbroReefRun() {
       {sceneReady && panel === 'menu' && gameScreen !== 'play' && gameScreen !== 'gameover' && (
         <div className="rr-menu-layer">
           <div className="rr-menu-panel">
-            <p className="rr-menu-kicker">RADBRO.FUN PRESENTS</p>
+            <p className="rr-menu-kicker">{t.presents}</p>
             <h1 className="rr-menu-title">RADBRO REEF RUN</h1>
-            <p className="rr-menu-sub">Endless swim · dodge the reef · haul the trash</p>
-            {best > 0 && <p className="rr-menu-best">BEST DIVE · {best}s</p>}
+            <p className="rr-menu-sub">{t.menuTagline}</p>
+            {best > 0 && <p className="rr-menu-best">{t.bestDive} · {best}s</p>}
             <div className="rr-swimmer-row" role="radiogroup" aria-label="Pick your swimmer">
               {SWIMMERS.map((c) => (
                 <button
@@ -282,66 +304,66 @@ export default function RadbroReefRun() {
                   className={`rr-swimmer-chip${swimmerId === c.id ? ' rr-swimmer-chip-active' : ''}`}
                   style={{ '--chip': c.color } as React.CSSProperties}
                   onClick={() => setSwimmerId(c.id)}
-                  title={c.blurb}
+                  title={swimmerBlurb(c.id, t)}
                 >
                   {c.name}
                 </button>
               ))}
             </div>
-            <p className="rr-swimmer-blurb">
-              {SWIMMERS.find((c) => c.id === swimmerId)?.blurb}
-            </p>
+            <p className="rr-swimmer-blurb">{swimmerBlurb(swimmerId, t)}</p>
             <div className="ra-gameover-actions">
               <button type="button" className="ra-btn" onClick={beginRun} disabled={!sceneReady}>
-                ▶ START RUN
+                ▶ {t.startRun}
               </button>
               <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setPanel('howto')}>
-                HOW TO PLAY
+                {t.howTo}
               </button>
             </div>
-            <p className="ra-brief-hint">ENTER START · C SWAP SWIMMER · H HOW TO · M SOUND</p>
+            <p className="ra-brief-hint">{t.saMenuHint}</p>
           </div>
         </div>
       )}
 
       {sceneReady && (
-        <button
-          type="button"
-          className="rr-sound-btn"
-          onClick={toggleSfx}
-          aria-label={sfxMuted ? 'Unmute sound' : 'Mute sound'}
-          title="Sound (M)"
-        >
-          {sfxMuted ? '🔇' : '🔊'}
-        </button>
+        <>
+          <button
+            type="button"
+            className="rr-sound-btn"
+            onClick={toggleSfx}
+            aria-label={sfxMuted ? 'Unmute sound' : 'Mute sound'}
+            title="Sound (M)"
+          >
+            {sfxMuted ? '🔇' : '🔊'}
+          </button>
+          <button
+            type="button"
+            className="rr-sound-btn rr-lang-btn"
+            onClick={toggleLang}
+            aria-label="Switch language"
+            title="EN / 中文"
+          >
+            {lang === 'en' ? '中' : 'EN'}
+          </button>
+        </>
       )}
 
       {panel === 'brief' && (
         <div className="ra-gameover-layer" role="dialog" aria-label="Mission brief">
           <div className="ra-gameover-panel ra-brief-panel">
-            <h2 className="ra-gameover-title">MISSION BRIEF</h2>
+            <h2 className="ra-gameover-title">{t.briefTitle}</h2>
             <div className="ra-brief-body">
-              <p>
-                Divers have been recruited to help save the ocean. Lawbsters have recorded an
-                increase of trash sightings across all corners of the ocean floor — roughly{' '}
-                <strong>33 billion pounds</strong> added yearly. While the lawbsters continue to
-                collect trash on a regular schedule, any and all help is greatly appreciated.
-              </p>
-              <p>
-                The goal: <strong>collect as much trash as you can</strong> before running out of
-                air or colliding with something. You&rsquo;re welcome to keep any treasure you find
-                while on your diving excursion.
-              </p>
+              <p>{t.briefP1}</p>
+              <p>{t.briefP2}</p>
             </div>
             <div className="ra-gameover-actions">
               <button type="button" className="ra-btn" onClick={diveFromBrief}>
-                DIVE ▶
+                {t.dive}
               </button>
               <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setPanel('menu')}>
-                BACK
+                {t.back}
               </button>
             </div>
-            <p className="ra-brief-hint">ENTER · SPACE · TAP DIVE</p>
+            <p className="ra-brief-hint">{t.briefHint}</p>
           </div>
         </div>
       )}
@@ -349,20 +371,19 @@ export default function RadbroReefRun() {
       {panel === 'howto' && (
         <div className="ra-gameover-layer" role="dialog" aria-label="How to play">
           <div className="ra-gameover-panel ra-brief-panel">
-            <h2 className="ra-gameover-title">HOW TO PLAY</h2>
+            <h2 className="ra-gameover-title">{t.howtoTitle}</h2>
             <div className="ra-brief-body">
               <p>
-                <strong>Steer:</strong> A/D or ←/→ switch lanes · W faster · S slower. Touch: tap
-                left/right to move, hold + swipe up/down for speed.
+                <strong>{t.howtoMission}</strong> — {t.howtoMissionBody}
               </p>
               <p>
-                <strong>Survive:</strong> score is seconds survived. Watch O₂ and armor — jellyfish,
-                pufferfish, and mines hurt. The water darkens the deeper you dive. Statues and
-                wrecks on the sides are scenery: only your three lanes can hurt you.
+                <strong>{t.howtoSteer}</strong> — {t.howtoSteerBody}
               </p>
               <p>
-                <strong>Grab:</strong> air tank refills O₂ · peptides restore armor · cheese = nitro
-                burst · trash = a little armor · coin +1 and a sip of O₂.
+                <strong>{t.howtoSurvive}</strong> — {t.howtoSurviveBody}
+              </p>
+              <p>
+                <strong>{t.howtoGrab}</strong> — {t.howtoGrabBody}
               </p>
             </div>
             <div className="ra-gameover-actions">
@@ -371,7 +392,7 @@ export default function RadbroReefRun() {
                 className="ra-btn"
                 onClick={() => setPanel(gameScreen === 'gameover' ? null : 'menu')}
               >
-                OK
+                {t.ok}
               </button>
             </div>
           </div>
@@ -385,7 +406,7 @@ export default function RadbroReefRun() {
               <p className="ra-play-hud-brand">RADBRO REEF RUN</p>
               {runHud && (
                 <p className="rr-hud-depth">
-                  DEPTH <span className="ra-play-depth-roman">{runHud.roman}</span> ·{' '}
+                  {t.depth} <span className="ra-play-depth-roman">{runHud.roman}</span> ·{' '}
                   {Math.floor(runHud.survivalSec)}s · {runHud.speedMultiplier.toFixed(2)}×
                 </p>
               )}
@@ -395,7 +416,7 @@ export default function RadbroReefRun() {
                 <div className="rr-hud-meter" title="Oxygen">
                   <span>O₂</span>
                   {runStatsHud.oxygenInfinite ? (
-                    <span className="rr-hud-inf">∞ lawbster lungs</span>
+                    <span className="rr-hud-inf">{t.lawbsterLungs}</span>
                   ) : (
                     <div className="rr-hud-bar">
                       <div
@@ -446,16 +467,16 @@ export default function RadbroReefRun() {
             className={`ra-touch-side ra-touch-side-left${tapFlash === -1 ? ' ra-touch-side-flash' : ''}`}
             aria-hidden
           >
-            TAP LEFT
+            {t.tapLeft}
           </div>
           <div
             className={`ra-touch-side ra-touch-side-right${tapFlash === 1 ? ' ra-touch-side-flash' : ''}`}
             aria-hidden
           >
-            TAP RIGHT
+            {t.tapRight}
           </div>
           <div className="ra-touch-throttle" aria-hidden>
-            {throttleMode > 0 ? 'BOOST' : throttleMode < 0 ? 'SLOW' : 'CRUISE'}
+            {throttleMode > 0 ? t.boost : throttleMode < 0 ? t.slow : t.cruise}
           </div>
         </div>
       )}
@@ -463,22 +484,22 @@ export default function RadbroReefRun() {
       {gameScreen === 'gameover' && panel === null && (
         <div className="ra-gameover-layer">
           <div className="ra-gameover-panel">
-            <h2 className="ra-gameover-title">GAME OVER</h2>
+            <h2 className="ra-gameover-title">{t.gameOver}</h2>
             <p className="ra-gameover-depth">
-              {Math.floor(lastSurvival)}s dive
-              {best > 0 && <span className="ra-gameover-time"> · best {best}s</span>}
+              {Math.floor(lastSurvival)}s {t.dived}
+              {best > 0 && <span className="ra-gameover-time"> · {t.best} {best}s</span>}
             </p>
             <p className="ra-gameover-sub">
-              {lastRunEndReason ? runEndSummary(lastRunEndReason) : 'Swim again?'}
+              {lastRunEndReason ? runEndSummary(lastRunEndReason, t) : t.swimAgain}
             </p>
             {runStatsHud && (
               <p className="ra-gameover-sub">
-                🗑 <strong>{runStatsHud.trash} trash hauled</strong> · {runStatsHud.coins} coins
+                🗑 <strong>{runStatsHud.trash} {t.trashHauled}</strong> · {runStatsHud.coins} {t.coins}
               </p>
             )}
             <div className="ra-gameover-actions">
               <button type="button" className="ra-btn" onClick={beginRun}>
-                RETRY
+                {t.retry}
               </button>
               <button
                 type="button"
@@ -488,7 +509,7 @@ export default function RadbroReefRun() {
                   setPanel('menu');
                 }}
               >
-                MAIN MENU
+                {t.mainMenu}
               </button>
             </div>
           </div>

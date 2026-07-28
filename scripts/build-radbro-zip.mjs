@@ -55,6 +55,11 @@ const ASSETS = [
   'arcade-cabinet.glb',
   'torii-gate.glb',
   'treasure-chest.glb',
+  'guardian-lion.glb',
+  'pagoda.glb',
+  'paifang-gate.glb',
+  'junk-ship.glb',
+  'dragon-statue.glb',
 ];
 
 console.log('[radbro] vite build…');

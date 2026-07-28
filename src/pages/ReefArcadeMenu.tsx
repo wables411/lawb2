@@ -16,6 +16,13 @@ import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arca
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from './arcade/ArcadeSceneController';
 import { reefSfx } from './arcade/arcadeSounds';
+import {
+  loadReefLang,
+  saveReefLang,
+  REEF_STRINGS,
+  type ReefLang,
+  type ReefStrings,
+} from './arcade/reefLang';
 import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
@@ -52,16 +59,16 @@ function prefersTouchInput(): boolean {
   return Boolean(narrow || touchCapable);
 }
 
-function runEndSummary(reason: RunEndReason): string {
+function runEndSummary(reason: RunEndReason, t: ReefStrings): string {
   switch (reason) {
     case 'oxygen':
-      return 'Ran out of oxygen — stay on Milady/Radbro’s timed O₂ tanks. Clawb does not run out of breath underwater.';
+      return t.reasonOxygen;
     case 'crush':
-      return 'Coral block collision — change lanes with A/D or touch lane controls.';
+      return t.reasonCrush;
     case 'wrecked':
-      return 'Armor depleted — avoid jellyfish, pufferfish, and mines; grab peptides.';
+      return t.reasonWrecked;
     default:
-      return 'Run ended.';
+      return t.swimAgain;
   }
 }
 
@@ -108,6 +115,16 @@ export default function ReefArcadeMenu() {
       return !prev;
     });
   }, []);
+  /** EN / 简体中文 (persisted; see reefLang.ts). */
+  const [lang, setLang] = useState<ReefLang>(() => loadReefLang());
+  const toggleLang = useCallback(() => {
+    setLang((prev) => {
+      const next: ReefLang = prev === 'en' ? 'zh' : 'en';
+      saveReefLang(next);
+      return next;
+    });
+  }, []);
+  const t = REEF_STRINGS[lang];
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -194,9 +211,7 @@ export default function ReefArcadeMenu() {
       setGameScreen('gameover');
 
       if (!connection.connected || !connection.address) {
-        setLastRunLbNote(
-          'Connect a wallet to earn Lawb leaderboard points (1 pt if under 1 min, then 3 pts per full minute).',
-        );
+        setLastRunLbNote(REEF_STRINGS[loadReefLang()].lbConnectHint);
         return;
       }
       if (!database) {
@@ -598,7 +613,7 @@ export default function ReefArcadeMenu() {
             <p className="ra-intro-eyebrow">LAWB.XYZ</p>
             <h1 className="ra-intro-title">REEF RUN</h1>
             <p className="ra-intro-sub">ENDLESS SWIM · ARCADE EDITION</p>
-            <p className="ra-intro-hint">PRESS ANY KEY · TAP TO CONTINUE</p>
+            <p className="ra-intro-hint">{t.pressAny}</p>
           </div>
         )}
 
@@ -618,11 +633,11 @@ export default function ReefArcadeMenu() {
                 aria-label={connection.connected ? 'Wallet connected' : 'Connect wallet'}
               >
                 <span className="ra-status-chip-dot" aria-hidden />
-                <span className="ra-status-chip-label">Wallet</span>
+                <span className="ra-status-chip-label">{t.wallet}</span>
                 <span className="ra-status-chip-value">
                   {connection.connected
                     ? connection.ens ?? (connection.address ? shortenAddress(connection.address) : 'Connected')
-                    : 'Not connected'}
+                    : t.notConnected}
                 </span>
               </button>
               <button
@@ -640,7 +655,7 @@ export default function ReefArcadeMenu() {
                   style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
                   aria-hidden
                 />
-                <span className="ra-status-chip-label">Swimmer</span>
+                <span className="ra-status-chip-label">{t.swimmer}</span>
                 <span className="ra-status-chip-value">
                   {CHARACTERS.find((c) => c.id === selectedCharacterId)?.name ?? 'CLAWB'}
                 </span>
@@ -655,8 +670,8 @@ export default function ReefArcadeMenu() {
                 disabled={!sceneReady}
               >
                 <span className="ra-tile-icon" aria-hidden>▶</span>
-                <span className="ra-tile-label">Start run</span>
-                <span className="ra-tile-meta">Space · Enter · 1</span>
+                <span className="ra-tile-label">{t.startRun}</span>
+                <span className="ra-tile-meta">{t.startMeta}</span>
               </button>
               <button
                 type="button"
@@ -668,8 +683,8 @@ export default function ReefArcadeMenu() {
                 disabled={!sceneReady}
               >
                 <span className="ra-tile-icon" aria-hidden>⚙</span>
-                <span className="ra-tile-label">Swimmer</span>
-                <span className="ra-tile-meta">Pick character · 2</span>
+                <span className="ra-tile-label">{t.swimmer}</span>
+                <span className="ra-tile-meta">{t.pickCharacter}</span>
               </button>
               <button
                 type="button"
@@ -677,9 +692,9 @@ export default function ReefArcadeMenu() {
                 onClick={() => setModal('wallet')}
               >
                 <span className="ra-tile-icon" aria-hidden>◈</span>
-                <span className="ra-tile-label">Wallet</span>
+                <span className="ra-tile-label">{t.wallet}</span>
                 <span className="ra-tile-meta">
-                  {connection.connected ? 'Manage · 3' : 'Connect · 3'}
+                  {connection.connected ? t.walletManage : t.walletConnect}
                 </span>
               </button>
               <button
@@ -688,8 +703,8 @@ export default function ReefArcadeMenu() {
                 onClick={() => setModal('difficulty')}
               >
                 <span className="ra-tile-icon" aria-hidden>⌁</span>
-                <span className="ra-tile-label">Depth</span>
-                <span className="ra-tile-meta">Tier &amp; speed · 4</span>
+                <span className="ra-tile-label">{t.depth}</span>
+                <span className="ra-tile-meta">{t.depthMeta}</span>
               </button>
               <button
                 type="button"
@@ -697,21 +712,24 @@ export default function ReefArcadeMenu() {
                 onClick={() => setModal('howto')}
               >
                 <span className="ra-tile-icon" aria-hidden>?</span>
-                <span className="ra-tile-label">How to play</span>
-                <span className="ra-tile-meta">30-second guide · 5</span>
+                <span className="ra-tile-label">{t.howTo}</span>
+                <span className="ra-tile-meta">{t.howToMeta}</span>
               </button>
               <button type="button" className="ra-tile" onClick={toggleSfx}>
                 <span className="ra-tile-icon" aria-hidden>{sfxMuted ? '🔇' : '🔊'}</span>
-                <span className="ra-tile-label">Sound</span>
-                <span className="ra-tile-meta">{sfxMuted ? 'Off' : 'On'} · M</span>
+                <span className="ra-tile-label">{t.sound}</span>
+                <span className="ra-tile-meta">{sfxMuted ? t.soundOff : t.soundOn} · M</span>
               </button>
             </div>
 
-            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 swimmer · 3 wallet · 4 depth · 5 how to · M sound · X exit</p>
+            <p className="ra-menu-kbd-hint">{t.kbdHint}</p>
 
             <div className="ra-footer-row">
               <button type="button" className="ra-link-quiet" onClick={() => navigate('/')}>
-                ← EXIT TO DESKTOP
+                {t.exitDesktop}
+              </button>
+              <button type="button" className="ra-link-quiet" onClick={toggleLang}>
+                {lang === 'en' ? '中文' : 'EN'}
               </button>
               <a
                 className="ra-link-quiet"
@@ -729,10 +747,8 @@ export default function ReefArcadeMenu() {
         {phase === 'menu' && gameScreen === 'select' && (
           <div className="ra-select-layer">
             <div className="ra-select-panel">
-              <h2 className="ra-select-title">PICK YOUR SWIMMER</h2>
-              <p className="ra-select-hint">
-                Click models, tap chips, or use keyboard (←/→ to swap, Enter confirm).
-              </p>
+              <h2 className="ra-select-title">{t.selectTitle}</h2>
+              <p className="ra-select-hint">{t.selectHint}</p>
               <div className="ra-stat-block" style={{ marginBottom: 14, fontSize: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.82)' }}>
                 {(() => {
                   const s = CHARACTER_STATS[selectedCharacterId];
@@ -777,7 +793,7 @@ export default function ReefArcadeMenu() {
               </div>
               <div className="ra-select-actions">
                 <button type="button" className="ra-btn" onClick={beginRun}>
-                  CONFIRM
+                  {t.confirm}
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('menu')}>
                   BACK
@@ -819,7 +835,7 @@ export default function ReefArcadeMenu() {
                     <div className="ra-play-stat-row">
                       <span className="ra-play-stat-label">O₂</span>
                       {runStatsHud.oxygenInfinite ? (
-                        <div className="ra-play-stat-lobster">∞ lawbster lungs</div>
+                        <div className="ra-play-stat-lobster">{t.lawbsterLungs}</div>
                       ) : (
                         <div className="ra-play-meter">
                           <div
@@ -868,8 +884,10 @@ export default function ReefArcadeMenu() {
               <p className="ra-play-hud-keys">
                 <span className="ra-play-keys-line">
                   {touchUiEnabled
-                    ? 'Tap left/right half to move · hold + swipe up/down to boost/slow'
-                    : 'A/D lanes · W/S speed · dodge coral · grab pickups'}
+                    ? t.playHint
+                    : lang === 'zh'
+                      ? 'A/D 泳道 · W/S 速度 · 躲珊瑚 · 拾道具'
+                      : 'A/D lanes · W/S speed · dodge coral · grab pickups'}
                   {runStatsHud?.oxygenInfinite ? ' · armor' : ' · O₂ & armor'}
                 </span>
               </p>
@@ -891,16 +909,16 @@ export default function ReefArcadeMenu() {
               className={`ra-touch-side ra-touch-side-left${tapFlash === -1 ? ' ra-touch-side-flash' : ''}`}
               aria-hidden
             >
-              TAP LEFT
+              {t.tapLeft}
             </div>
             <div
               className={`ra-touch-side ra-touch-side-right${tapFlash === 1 ? ' ra-touch-side-flash' : ''}`}
               aria-hidden
             >
-              TAP RIGHT
+              {t.tapRight}
             </div>
             <div className="ra-touch-throttle" aria-hidden>
-              {touchThrottleMode > 0 ? 'BOOST' : touchThrottleMode < 0 ? 'SLOW' : 'CRUISE'}
+              {touchThrottleMode > 0 ? t.boost : touchThrottleMode < 0 ? t.slow : t.cruise}
             </div>
           </div>
         )}
@@ -908,33 +926,24 @@ export default function ReefArcadeMenu() {
         {phase === 'menu' && showBrief && (
           <div className="ra-gameover-layer" role="dialog" aria-label="Mission brief">
             <div className="ra-gameover-panel ra-brief-panel">
-              <h2 className="ra-gameover-title">MISSION BRIEF</h2>
+              <h2 className="ra-gameover-title">{t.briefTitle}</h2>
               <div className="ra-brief-body">
-                <p>
-                  Divers have been recruited to help save the ocean. Lawbsters have recorded an
-                  increase of trash sightings across all corners of the ocean floor — roughly{' '}
-                  <strong>33 billion pounds</strong> added yearly. While the lawbsters continue to
-                  collect trash on a regular schedule, any and all help is greatly appreciated.
-                </p>
-                <p>
-                  The goal: <strong>collect as much trash as you can</strong> before running out of
-                  air or colliding with something. You&rsquo;re welcome to keep any treasure you
-                  find while on your diving excursion.
-                </p>
+                <p>{t.briefP1}</p>
+                <p>{t.briefP2}</p>
               </div>
               <div className="ra-gameover-actions">
                 <button type="button" className="ra-btn" onClick={diveFromBrief}>
-                  DIVE ▶
+                  {t.dive}
                 </button>
                 <button
                   type="button"
                   className="ra-btn ra-btn-secondary"
                   onClick={() => setShowBrief(false)}
                 >
-                  BACK
+                  {t.back}
                 </button>
               </div>
-              <p className="ra-brief-hint">ENTER · SPACE · TAP DIVE</p>
+              <p className="ra-brief-hint">{t.briefHint}</p>
             </div>
           </div>
         )}
@@ -942,20 +951,20 @@ export default function ReefArcadeMenu() {
         {phase === 'menu' && gameScreen === 'gameover' && (
           <div className="ra-gameover-layer">
             <div className="ra-gameover-panel">
-              <h2 className="ra-gameover-title">GAME OVER</h2>
+              <h2 className="ra-gameover-title">{t.gameOver}</h2>
               {runHud && (
                 <p className="ra-gameover-depth">
-                  Depth reached · <span className="ra-gameover-roman">{runHud.roman}</span>
-                  <span className="ra-gameover-time"> · {Math.floor(runHud.survivalSec)}s run</span>
+                  {t.depthReached} · <span className="ra-gameover-roman">{runHud.roman}</span>
+                  <span className="ra-gameover-time"> · {Math.floor(runHud.survivalSec)}s {t.run}</span>
                 </p>
               )}
               <p className="ra-gameover-sub">
-                {lastRunEndReason ? runEndSummary(lastRunEndReason) : 'Swim again?'}
+                {lastRunEndReason ? runEndSummary(lastRunEndReason, t) : t.swimAgain}
               </p>
               {runStatsHud && (
                 <p style={{ margin: '8px 0 0', fontSize: 13 }}>
-                  🗑 <strong>{runStatsHud.trash} trash hauled</strong>
-                  <span style={{ opacity: 0.85 }}> · {runStatsHud.coins} coins</span>
+                  🗑 <strong>{runStatsHud.trash} {t.trashHauled}</strong>
+                  <span style={{ opacity: 0.85 }}> · {runStatsHud.coins} {t.coins}</span>
                 </p>
               )}
               {lastRunLbNote && (
@@ -965,13 +974,13 @@ export default function ReefArcadeMenu() {
               )}
               <div className="ra-gameover-actions">
                 <button type="button" className="ra-btn" onClick={beginRun}>
-                  RETRY
+                  {t.retry}
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('select')}>
-                  PICK CHARACTER
+                  {t.selectTitle}
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('menu')}>
-                  MAIN MENU
+                  {t.mainMenu}
                 </button>
               </div>
             </div>
@@ -1031,40 +1040,23 @@ export default function ReefArcadeMenu() {
 
             {modal === 'howto' && (
               <>
-                <h2>HOW TO PLAY</h2>
+                <h2>{t.howtoTitle}</h2>
                 <div className="ra-howto-cards">
                   <div className="ra-howto-card">
-                    <p className="ra-howto-card-title">🌊 MISSION</p>
-                    <p>
-                      The ocean is drowning in trash — roughly <strong>33 billion pounds</strong>{' '}
-                      added yearly. Dive, dodge the reef, and <strong>haul out all the trash you
-                      can</strong>. Any treasure you spot on the way down is yours to keep.
-                    </p>
+                    <p className="ra-howto-card-title">{t.howtoMission}</p>
+                    <p>{t.howtoMissionBody}</p>
                   </div>
                   <div className="ra-howto-card">
-                    <p className="ra-howto-card-title">🕹 STEER</p>
-                    <p>
-                      Three lanes. <strong>A / D</strong> or <strong>← / →</strong> switch lanes ·{' '}
-                      <strong>W</strong> swim faster · <strong>S</strong> ease off. Touch:{' '}
-                      <strong>tap left/right</strong> to lane shift, <strong>hold + swipe up/down</strong> for speed.
-                    </p>
+                    <p className="ra-howto-card-title">{t.howtoSteer}</p>
+                    <p>{t.howtoSteerBody}</p>
                   </div>
                   <div className="ra-howto-card">
-                    <p className="ra-howto-card-title">🫧 SURVIVE</p>
-                    <p>
-                      Score = <strong>seconds survived</strong>. Watch two meters: <strong>Armor</strong> and{' '}
-                      <strong>O₂</strong>. Jellyfish and pufferfish sting armor + breath and slow you down; mines hit
-                      hard. The water <strong>darkens as you dive deeper</strong> — and the reef gets meaner. The
-                      statues and wrecks on the sides are scenery: only your <strong>three lanes</strong> can hurt you.
-                    </p>
+                    <p className="ra-howto-card-title">{t.howtoSurvive}</p>
+                    <p>{t.howtoSurviveBody}</p>
                   </div>
                   <div className="ra-howto-card">
-                    <p className="ra-howto-card-title">🧀 GRAB</p>
-                    <p>
-                      <strong>Air tank</strong> refills O₂ · <strong>Peptides</strong> restore armor (both cleanse
-                      slow) · <strong>Cheese</strong> = nitro burst · <strong>Trash</strong> a little armor ·{' '}
-                      <strong>Coin</strong> +1 and a sip of O₂.
-                    </p>
+                    <p className="ra-howto-card-title">{t.howtoGrab}</p>
+                    <p>{t.howtoGrabBody}</p>
                   </div>
                   <div className="ra-howto-card">
                     <p className="ra-howto-card-title">🦞 SWIMMERS</p>

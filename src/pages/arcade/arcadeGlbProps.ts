@@ -47,6 +47,12 @@ const SCENERY_GLB = {
   arcadeCabinet: `${ARCADE_ASSET_BASE}/arcade-cabinet.glb`,
   toriiGate: `${ARCADE_ASSET_BASE}/torii-gate.glb`,
   treasureChest: `${ARCADE_ASSET_BASE}/treasure-chest.glb`,
+  // Chinese showcase set (owner: "more stylized" — sunken Chinese ruins among the landmarks).
+  guardianLion: `${ARCADE_ASSET_BASE}/guardian-lion.glb`,
+  pagoda: `${ARCADE_ASSET_BASE}/pagoda.glb`,
+  paifangGate: `${ARCADE_ASSET_BASE}/paifang-gate.glb`,
+  junkShip: `${ARCADE_ASSET_BASE}/junk-ship.glb`,
+  dragonStatue: `${ARCADE_ASSET_BASE}/dragon-statue.glb`,
 } as const;
 export type SceneryPropKind = keyof typeof SCENERY_GLB;
 

@@ -44,8 +44,12 @@ type SceneryProp = {
   zSpan?: number;
 };
 
-/** Showcase landmarks recycle over this distance (~43s per lap at base speed). */
-const SHOWCASE_Z_SPAN = 236;
+/**
+ * Showcase landmarks recycle over this distance (~70s per lap at base speed). Must exceed
+ * 12 + (slots × SHOWCASE_SPACING) — currently 14 slots (12 GLB landmarks + 2 statues) — or
+ * slot positions alias mod the span and two landmarks can end up near-neighbors.
+ */
+const SHOWCASE_Z_SPAN = 380;
 /**
  * Fixed z gap between showcase slots. Everything scrolls at the same speed and recycles by
  * the same span, so this spacing (and the side alternation) is preserved forever — two
@@ -356,7 +360,8 @@ export class ReefSceneryLayer {
     const showcases: Array<[Parameters<typeof cloneSceneryPropVisual>[0], number, number]> = lowPower
       ? [
           ['statueHead', randRange(2.4, 2.9), 0.5],
-          ['toriiGate', randRange(3.0, 3.6), 0.25],
+          ['pagoda', randRange(3.2, 3.8), 0.35],
+          ['guardianLion', randRange(1.8, 2.2), 0.25],
           ['treasureChest', randRange(1.2, 1.5), 0.15],
         ]
       : [
@@ -367,6 +372,11 @@ export class ReefSceneryLayer {
           ['ruinColumns', randRange(2.6, 3.2), 0.35],
           ['arcadeCabinet', randRange(1.7, 2.0), 0.2],
           ['treasureChest', randRange(1.2, 1.5), 0.15],
+          ['guardianLion', randRange(1.9, 2.4), 0.25],
+          ['pagoda', randRange(3.6, 4.2), 0.4],
+          ['paifangGate', randRange(3.4, 4.0), 0.3],
+          ['junkShip', randRange(4.0, 4.8), 0.5],
+          ['dragonStatue', randRange(2.4, 3.0), 0.3],
         ];
     for (const [kind, extent, sink] of showcases) {
       addGlbProp(kind, extent, sink, 5.0, 8.2, SHOWCASE_Z_SPAN);
