@@ -1271,6 +1271,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
           <div>
             <div style={{ fontWeight: 700, marginBottom: 6, fontSize: isMobile ? '12px' : '13px' }}>Reef Run</div>
             <div style={{ fontSize: isMobile ? '11px' : '12px', lineHeight: 1.65 }}>
+              <div><strong>Trash hauled:</strong> {reefStats?.trash_collected ?? 0}</div>
+              <div><strong>Best haul:</strong> {reefStats?.best_trash_run ?? 0} in one dive</div>
               <div><strong>Cheese:</strong> {reefStats?.cheese_collected ?? 0}</div>
               <div><strong>Peptides:</strong> {reefStats?.peptides_collected ?? 0}</div>
               <div><strong>Coins:</strong> {reefStats?.coins_collected ?? 0}</div>

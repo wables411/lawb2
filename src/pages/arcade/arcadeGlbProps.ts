@@ -22,6 +22,12 @@ const TRASH_CONFIG = [
   { url: `${ARCADE_ASSET_BASE}/trash1.glb`, maxExtent: 0.72 },
   { url: `${ARCADE_ASSET_BASE}/trash2.glb`, maxExtent: 0.72 },
   { url: `${ARCADE_ASSET_BASE}/trash-cube.glb`, maxExtent: 0.62 },
+  // Remilia-flavored ocean trash (Meshy round 3, ~70-165 KB each) — trash is the mission.
+  { url: `${ARCADE_ASSET_BASE}/trash-cigpack.glb`, maxExtent: 0.64 },
+  { url: `${ARCADE_ASSET_BASE}/trash-energycan.glb`, maxExtent: 0.58 },
+  { url: `${ARCADE_ASSET_BASE}/trash-vape.glb`, maxExtent: 0.66 },
+  { url: `${ARCADE_ASSET_BASE}/trash-bag.glb`, maxExtent: 0.76 },
+  { url: `${ARCADE_ASSET_BASE}/trash-crt.glb`, maxExtent: 0.74 },
 ] as const;
 
 const CORAL_GLB_VARIANTS = [

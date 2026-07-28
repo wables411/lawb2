@@ -97,8 +97,9 @@ export function createInitialRunState(characterId: ArcadeCharacterId, _nowSec: n
  * (see also guaranteed tank cadence in `ArcadeSceneController`).
  */
 const SPAWN_WEIGHTS_BASE: { kind: PickupKind; w: number }[] = [
-  { kind: 'coin', w: 24 },
-  { kind: 'trash', w: 11 },
+  // Trash hauling is the mission (see the brief) — trash spawns nearly as often as coins.
+  { kind: 'coin', w: 20 },
+  { kind: 'trash', w: 18 },
   { kind: 'air_tank', w: 10 },
   { kind: 'cheese', w: 8 },
   { kind: 'peptides', w: 10 },
@@ -166,8 +167,8 @@ export function rollPickupKind(
       const row = rows.find((r) => r.kind === kind);
       if (row) row.w += d;
     };
-    add('coin', 5);
-    add('trash', 3);
+    add('coin', 3);
+    add('trash', 5);
     add('cheese', 2);
   } else {
     const air = rows.find((r) => r.kind === 'air_tank');

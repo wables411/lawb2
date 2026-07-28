@@ -272,7 +272,12 @@ export class ReefSceneryLayer {
       const entryReseat = (side: 1 | -1) => {
         holder.position.x = side * randRange(xInner, xOuter);
         holder.position.y = FLOOR_Y;
-        holder.rotation.y = Math.random() * Math.PI * 2;
+        // Showcase landmarks face IN toward the swimmer (glTF fronts are +Z at yaw 0, so the
+        // right coast turns -90° and the left +90°, with a little natural variance); ordinary
+        // reef dressing (corals/rocks/grass) is radial and just gets a random yaw.
+        holder.rotation.y = zSpan
+          ? -side * (Math.PI / 2) + randRange(-0.35, 0.35)
+          : Math.random() * Math.PI * 2;
         holder.scale.setScalar(randRange(0.85, 1.15));
       };
       if (zSpan) {
@@ -464,7 +469,8 @@ export class ReefSceneryLayer {
       (side) => {
         holder.position.x = side * randRange(5.0, 7.6);
         holder.position.y = FLOOR_Y;
-        holder.rotation.set(0, Math.random() * Math.PI * 2, tiltZ);
+        // Statues watch the swimmer go by: character rigs face +Z at yaw 0, so turn inward.
+        holder.rotation.set(0, -side * (Math.PI / 2) + randRange(-0.3, 0.3), tiltZ);
         holder.scale.setScalar(randRange(1.35, 1.7)); // larger than life
       },
       SHOWCASE_Z_SPAN,

@@ -213,6 +213,7 @@ export default function ReefArcadeMenu() {
             coinsCollected: runHud?.coins ?? 0,
             cheeseCollected: runHud?.cheeseCollected ?? 0,
             peptidesCollected: runHud?.peptidesCollected ?? 0,
+            trashCollected: runHud?.trash ?? 0,
           }),
         ]);
         const ok = okPoints;
@@ -932,8 +933,9 @@ export default function ReefArcadeMenu() {
                 {lastRunEndReason ? runEndSummary(lastRunEndReason) : 'Swim again?'}
               </p>
               {runStatsHud && (
-                <p style={{ margin: '8px 0 0', fontSize: 12, opacity: 0.9 }}>
-                  Loot: {runStatsHud.coins} coins · {runStatsHud.trash} trash hauled
+                <p style={{ margin: '8px 0 0', fontSize: 13 }}>
+                  🗑 <strong>{runStatsHud.trash} trash hauled</strong>
+                  <span style={{ opacity: 0.85 }}> · {runStatsHud.coins} coins</span>
                 </p>
               )}
               {lastRunLbNote && (

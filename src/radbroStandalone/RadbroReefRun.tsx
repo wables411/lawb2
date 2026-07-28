@@ -413,7 +413,7 @@ export default function RadbroReefRun() {
             </p>
             {runStatsHud && (
               <p className="ra-gameover-sub">
-                Loot: {runStatsHud.coins} coins · {runStatsHud.trash} trash hauled
+                🗑 <strong>{runStatsHud.trash} trash hauled</strong> · {runStatsHud.coins} coins
               </p>
             )}
             <div className="ra-gameover-actions">

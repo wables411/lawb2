@@ -35,6 +35,11 @@ const ASSETS = [
   'reef-o2-tank.glb',
   'trash1.glb',
   'trash2.glb',
+  'trash-cigpack.glb',
+  'trash-energycan.glb',
+  'trash-vape.glb',
+  'trash-bag.glb',
+  'trash-crt.glb',
   // scenery + showcases (all small)
   'seagrass.glb',
   'reef-rock.glb',

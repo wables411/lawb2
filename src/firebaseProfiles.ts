@@ -38,6 +38,10 @@ export interface ReefRunProfileStats {
   cheese_collected: number;
   peptides_collected: number;
   coins_collected: number;
+  /** Lifetime trash hauled — the mission stat. Optional: pre-trash profiles lack it. */
+  trash_collected?: number;
+  /** Most trash hauled in a single run. */
+  best_trash_run?: number;
   longest_run_seconds: number;
   character_runs: Record<string, number>;
   favored_character: string | null;
@@ -285,6 +289,7 @@ export const firebaseProfiles = {
       cheeseCollected: number;
       peptidesCollected: number;
       coinsCollected: number;
+      trashCollected: number;
     },
   ): Promise<void> {
     try {
@@ -315,10 +320,13 @@ export const firebaseProfiles = {
           favoredCount = count;
         }
       }
+      const trashThisRun = Math.max(0, Math.floor(payload.trashCollected || 0));
       const updated: ReefRunProfileStats = {
         cheese_collected: current.cheese_collected + Math.max(0, Math.floor(payload.cheeseCollected || 0)),
         peptides_collected: current.peptides_collected + Math.max(0, Math.floor(payload.peptidesCollected || 0)),
         coins_collected: current.coins_collected + Math.max(0, Math.floor(payload.coinsCollected || 0)),
+        trash_collected: (current.trash_collected ?? 0) + trashThisRun,
+        best_trash_run: Math.max(current.best_trash_run ?? 0, trashThisRun),
         longest_run_seconds: Math.max(current.longest_run_seconds, Math.floor(Math.max(0, payload.survivalSec))),
         character_runs: characterRuns,
         favored_character: favored,
