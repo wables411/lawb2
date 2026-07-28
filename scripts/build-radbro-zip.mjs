@@ -20,9 +20,14 @@ const ASSET_DST = path.join(DIST, 'arcade-assets');
 const ZIP = path.join(ROOT, 'reefrun-radbro.zip');
 
 const ASSETS = [
-  // characters (radbro only; swimming is clips-only via swimUsesIdleMesh)
+  // full trio (owner call 2026-07-27: no radbro.fun size limit found, player select is worth it);
+  // dance FBXs stay excluded — the menu skips the dance gracefully.
   'radbrotreading.fbx',
   'radbroswimming.fbx',
+  'lawbidle.fbx',
+  'lawbswim.fbx',
+  'milady11treading.fbx',
+  'milady11swimming.fbx',
   // obstacles + pickups (minus coral2 / trash-cube heavyweights)
   'coral1.glb',
   'coral3.glb',

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArcadeThreeBackground, type ArcadePlayInputHandle } from '../pages/ArcadeThreeBackground';
-import { ARCADE_CHARACTERS } from '../pages/arcade/arcadeAssetConfig';
+import { ARCADE_CHARACTERS, type ArcadeCharacterId } from '../pages/arcade/arcadeAssetConfig';
 import type { ReefRunHudPayload } from '../pages/arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from '../pages/arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from '../pages/arcade/ArcadeSceneController';
@@ -16,7 +16,12 @@ import './radbroStandalone.css';
  * paths, so it runs from any static path.
  */
 
-const RADBRO = ARCADE_CHARACTERS.filter((c) => c.id === 'radbro');
+/** Full trio — radbro leads the bill on radbro.fun, but everyone's playable. */
+const SWIMMERS: { id: ArcadeCharacterId; name: string; color: string; blurb: string }[] = [
+  { id: 'radbro', name: 'RADBRO', color: '#e8a0bf', blurb: 'toughest armor' },
+  { id: 'clawb', name: 'CLAWB', color: '#ff6b35', blurb: 'never runs out of air' },
+  { id: 'milady', name: 'MILADY', color: '#9eddcf', blurb: 'fastest fins' },
+];
 
 const BEST_KEY = 'radbroReefRunBest';
 
@@ -77,6 +82,7 @@ export default function RadbroReefRun() {
   const [lastRunEndReason, setLastRunEndReason] = useState<RunEndReason | null>(null);
   const [lastSurvival, setLastSurvival] = useState(0);
   const [best, setBest] = useState<number>(() => loadBest());
+  const [swimmerId, setSwimmerId] = useState<ArcadeCharacterId>('radbro');
   const [briefSeen, setBriefSeen] = useState(false);
   const [touchUi] = useState<boolean>(prefersTouchInput);
   const [tapFlash, setTapFlash] = useState<-1 | 0 | 1>(0);
@@ -149,9 +155,15 @@ export default function RadbroReefRun() {
         if (ev.key === 'Enter' || ev.key === ' ' || k === '1') {
           ev.preventDefault();
           beginRun();
-        } else if (k === 'h' || k === '2') {
+        } else if (k === 'h' || k === '3') {
           ev.preventDefault();
           setPanel('howto');
+        } else if (k === 'c' || k === '2') {
+          ev.preventDefault();
+          setSwimmerId((prev) => {
+            const i = SWIMMERS.findIndex((c) => c.id === prev);
+            return SWIMMERS[(i + 1) % SWIMMERS.length]!.id;
+          });
         }
       }
     };
@@ -206,9 +218,9 @@ export default function RadbroReefRun() {
         ref={inputRef}
         phase="menu"
         gameScreen={gameScreen}
-        selectedCharacterId="radbro"
-        characters={RADBRO}
-        onPickCharacter={() => undefined}
+        selectedCharacterId={swimmerId}
+        characters={ARCADE_CHARACTERS}
+        onPickCharacter={setSwimmerId}
         onGameOver={onGameOver}
         onRunDifficulty={setRunHud}
         onRunHud={setRunStatsHud}
@@ -247,6 +259,25 @@ export default function RadbroReefRun() {
             <h1 className="rr-menu-title">RADBRO REEF RUN</h1>
             <p className="rr-menu-sub">Endless swim · dodge the reef · haul the trash</p>
             {best > 0 && <p className="rr-menu-best">BEST DIVE · {best}s</p>}
+            <div className="rr-swimmer-row" role="radiogroup" aria-label="Pick your swimmer">
+              {SWIMMERS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={swimmerId === c.id}
+                  className={`rr-swimmer-chip${swimmerId === c.id ? ' rr-swimmer-chip-active' : ''}`}
+                  style={{ '--chip': c.color } as React.CSSProperties}
+                  onClick={() => setSwimmerId(c.id)}
+                  title={c.blurb}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+            <p className="rr-swimmer-blurb">
+              {SWIMMERS.find((c) => c.id === swimmerId)?.blurb}
+            </p>
             <div className="ra-gameover-actions">
               <button type="button" className="ra-btn" onClick={beginRun} disabled={!sceneReady}>
                 ▶ START RUN
@@ -255,7 +286,7 @@ export default function RadbroReefRun() {
                 HOW TO PLAY
               </button>
             </div>
-            <p className="ra-brief-hint">ENTER · SPACE · TAP</p>
+            <p className="ra-brief-hint">ENTER START · C SWAP SWIMMER · H HOW TO</p>
           </div>
         </div>
       )}
@@ -338,14 +369,18 @@ export default function RadbroReefRun() {
               <div className="rr-hud-stats">
                 <div className="rr-hud-meter" title="Oxygen">
                   <span>O₂</span>
-                  <div className="rr-hud-bar">
-                    <div
-                      className="rr-hud-fill rr-hud-fill-o2"
-                      style={{
-                        width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
-                      }}
-                    />
-                  </div>
+                  {runStatsHud.oxygenInfinite ? (
+                    <span className="rr-hud-inf">∞ lawbster lungs</span>
+                  ) : (
+                    <div className="rr-hud-bar">
+                      <div
+                        className="rr-hud-fill rr-hud-fill-o2"
+                        style={{
+                          width: `${Math.min(100, (100 * runStatsHud.oxygen) / Math.max(1, runStatsHud.oxygenMax))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="rr-hud-meter" title="Armor">
                   <span>ARM</span>

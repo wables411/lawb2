@@ -110,6 +110,45 @@
   color: #ffe066;
 }
 
+/* Swimmer select */
+.rr-swimmer-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 6px;
+}
+
+.rr-swimmer-chip {
+  padding: 8px 12px;
+  min-height: 38px;
+  border-radius: 6px;
+  border: 1px solid rgba(120, 220, 210, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(214, 238, 244, 0.7);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: border-color 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.rr-swimmer-chip:hover {
+  color: #eafffc;
+}
+
+.rr-swimmer-chip-active {
+  border-color: var(--chip);
+  color: var(--chip);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chip) 45%, transparent);
+}
+
+.rr-swimmer-blurb {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(214, 238, 244, 0.55);
+  text-transform: uppercase;
+}
+
 /* HUD extras */
 .rr-hud-depth {
   margin: 4px 0 0;
@@ -154,6 +193,12 @@
 
 .rr-hud-fill-arm {
   background: linear-gradient(90deg, #2fb17c, #8ff2df);
+}
+
+.rr-hud-inf {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #8fd8ff;
 }
 
 @media (max-width: 520px) {
