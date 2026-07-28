@@ -15,6 +15,7 @@ import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from './arcade/ArcadeSceneController';
+import { reefSfx } from './arcade/arcadeSounds';
 import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
@@ -99,6 +100,14 @@ export default function ReefArcadeMenu() {
   const tapFlashTimerRef = useRef<number | null>(null);
   /** Mission-brief overlay (shown before the first run of each session). */
   const [showBrief, setShowBrief] = useState(false);
+  /** Synthesized SFX mute (persisted by arcadeSounds; M key or the Sound tile toggles). */
+  const [sfxMuted, setSfxMuted] = useState<boolean>(() => reefSfx.isMuted());
+  const toggleSfx = useCallback(() => {
+    setSfxMuted((prev) => {
+      reefSfx.setMuted(!prev);
+      return !prev;
+    });
+  }, []);
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
 
@@ -406,6 +415,12 @@ export default function ReefArcadeMenu() {
         }
         return;
       }
+      if (k === 'm' && !modal) {
+        ev.preventDefault();
+        toggleSfx();
+        return;
+      }
+
       if (showBrief) {
         if (ev.key === 'Enter' || ev.key === ' ' || k === '1') {
           ev.preventDefault();
@@ -511,7 +526,7 @@ export default function ReefArcadeMenu() {
 
     window.addEventListener('keydown', onShortcutKey);
     return () => window.removeEventListener('keydown', onShortcutKey);
-  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate, sceneReady, showBrief, diveFromBrief]);
+  }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate, sceneReady, showBrief, diveFromBrief, toggleSfx]);
 
   return (
     <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
@@ -685,9 +700,14 @@ export default function ReefArcadeMenu() {
                 <span className="ra-tile-label">How to play</span>
                 <span className="ra-tile-meta">30-second guide · 5</span>
               </button>
+              <button type="button" className="ra-tile" onClick={toggleSfx}>
+                <span className="ra-tile-icon" aria-hidden>{sfxMuted ? '🔇' : '🔊'}</span>
+                <span className="ra-tile-label">Sound</span>
+                <span className="ra-tile-meta">{sfxMuted ? 'Off' : 'On'} · M</span>
+              </button>
             </div>
 
-            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 swimmer · 3 wallet · 4 depth · 5 how to · X exit</p>
+            <p className="ra-menu-kbd-hint">Keyboard: 1 start · 2 swimmer · 3 wallet · 4 depth · 5 how to · M sound · X exit</p>
 
             <div className="ra-footer-row">
               <button type="button" className="ra-link-quiet" onClick={() => navigate('/')}>

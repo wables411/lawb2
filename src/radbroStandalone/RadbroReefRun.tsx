@@ -4,6 +4,7 @@ import { ARCADE_CHARACTERS, type ArcadeCharacterId } from '../pages/arcade/arcad
 import type { ReefRunHudPayload } from '../pages/arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from '../pages/arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from '../pages/arcade/ArcadeSceneController';
+import { reefSfx } from '../pages/arcade/arcadeSounds';
 import '../pages/reefArcadeMenu.css';
 import './radbroStandalone.css';
 
@@ -83,6 +84,13 @@ export default function RadbroReefRun() {
   const [lastSurvival, setLastSurvival] = useState(0);
   const [best, setBest] = useState<number>(() => loadBest());
   const [swimmerId, setSwimmerId] = useState<ArcadeCharacterId>('radbro');
+  const [sfxMuted, setSfxMuted] = useState<boolean>(() => reefSfx.isMuted());
+  const toggleSfx = useCallback(() => {
+    setSfxMuted((prev) => {
+      reefSfx.setMuted(!prev);
+      return !prev;
+    });
+  }, []);
   const [briefSeen, setBriefSeen] = useState(false);
   const [touchUi] = useState<boolean>(prefersTouchInput);
   const [tapFlash, setTapFlash] = useState<-1 | 0 | 1>(0);
@@ -134,6 +142,11 @@ export default function RadbroReefRun() {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const k = ev.key.toLowerCase();
+      if (k === 'm') {
+        ev.preventDefault();
+        toggleSfx();
+        return;
+      }
       if (panel === 'brief') {
         if (ev.key === 'Enter' || ev.key === ' ' || k === '1') {
           ev.preventDefault();
@@ -169,7 +182,7 @@ export default function RadbroReefRun() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [panel, gameScreen, beginRun, diveFromBrief]);
+  }, [panel, gameScreen, beginRun, diveFromBrief, toggleSfx]);
 
   const onTouchDown = useCallback(
     (ev: React.PointerEvent<HTMLDivElement>) => {
@@ -286,9 +299,21 @@ export default function RadbroReefRun() {
                 HOW TO PLAY
               </button>
             </div>
-            <p className="ra-brief-hint">ENTER START · C SWAP SWIMMER · H HOW TO</p>
+            <p className="ra-brief-hint">ENTER START · C SWAP SWIMMER · H HOW TO · M SOUND</p>
           </div>
         </div>
+      )}
+
+      {sceneReady && (
+        <button
+          type="button"
+          className="rr-sound-btn"
+          onClick={toggleSfx}
+          aria-label={sfxMuted ? 'Unmute sound' : 'Mute sound'}
+          title="Sound (M)"
+        >
+          {sfxMuted ? '🔇' : '🔊'}
+        </button>
       )}
 
       {panel === 'brief' && (

@@ -48,6 +48,7 @@ import {
 import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
 import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
+import { reefSfx } from './arcadeSounds';
 import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 import { makeRng, randomSeed, type Rng } from './arcadeRng';
 import {
@@ -488,6 +489,8 @@ export class ArcadeSceneController {
   private applyScreen(next: ArcadeGameScreen): void {
     this.screen = next;
     if (next !== 'play') this.clearVirtualThrottle();
+    // Underwater ambience only while diving (kept through the game-over panel).
+    if (next !== 'play' && next !== 'gameover') reefSfx.stopAmbience();
     this.updatePointerCapture();
     if (next === 'play') {
       this.playEnded = false;
@@ -543,7 +546,10 @@ export class ArcadeSceneController {
   nudgeLane(delta: -1 | 1): void {
     if (this.screen !== 'play' || this.playEnded) return;
     const next = THREE.MathUtils.clamp(this.playerLane + delta, 0, 2);
-    if (next !== this.playerLane) this.lastLaneChangeT = this.clock.elapsedTime;
+    if (next !== this.playerLane) {
+      this.lastLaneChangeT = this.clock.elapsedTime;
+      reefSfx.play('lane');
+    }
     this.playerLane = next;
   }
 
@@ -1282,11 +1288,17 @@ export class ArcadeSceneController {
     if (this.screen !== 'play') return;
     if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') {
       const next = Math.max(0, this.playerLane - 1);
-      if (next !== this.playerLane) this.lastLaneChangeT = this.clock.elapsedTime;
+      if (next !== this.playerLane) {
+        this.lastLaneChangeT = this.clock.elapsedTime;
+        reefSfx.play('lane');
+      }
       this.playerLane = next;
     } else if (ev.code === 'ArrowRight' || ev.code === 'KeyD') {
       const next = Math.min(2, this.playerLane + 1);
-      if (next !== this.playerLane) this.lastLaneChangeT = this.clock.elapsedTime;
+      if (next !== this.playerLane) {
+        this.lastLaneChangeT = this.clock.elapsedTime;
+        reefSfx.play('lane');
+      }
       this.playerLane = next;
     } else if (ev.code === 'KeyW') {
       this.keyW = true;
@@ -1409,6 +1421,10 @@ export class ArcadeSceneController {
     if (!this.selectedId) return;
     const slot = this.slots.get(this.selectedId);
     if (!slot) return;
+    // Run start is always user-gesture-adjacent — unlock audio + start the underwater bed.
+    reefSfx.resume();
+    reefSfx.startAmbience();
+    reefSfx.play('ui');
     this.pathRoot.position.z = 0;
     /** Must match run stats after async loads — do not re-read `selectedId` after `await`. */
     const playCharacterId = slot.def.id;
@@ -1986,6 +2002,17 @@ export class ArcadeSceneController {
     else if (kind === 'pufferfish') this.spawnPufferInflate(position);
     else if (kind === 'jellyfish') this.spawnJellyShock(position);
     else this.spawnCollectBurst(kind, position);
+    const SFX: Record<PickupKind, Parameters<typeof reefSfx.play>[0]> = {
+      coin: 'coin',
+      trash: 'trash',
+      cheese: 'cheese',
+      air_tank: 'air',
+      peptides: 'peptides',
+      jellyfish: 'jelly',
+      pufferfish: 'puffer',
+      mine: 'mine',
+    };
+    reefSfx.play(SFX[kind]);
   }
 
   /** Small reward pop for good pickups (coin/cheese/peptides/O₂/trash) — hazards keep their big FX. */
@@ -2090,6 +2117,7 @@ export class ArcadeSceneController {
       mat.opacity = Math.max(0, (1 - t) * 0.85);
     });
     this.addCameraShake(0.05);
+    reefSfx.play('whoosh');
   }
 
   private triggerPlayerPulse(): void {
@@ -2157,6 +2185,7 @@ export class ArcadeSceneController {
       : undefined;
     this.runParityCheck();
 
+    reefSfx.play(reason === 'oxygen' ? 'suffocate' : 'crash');
     // Death outro (render-only): score/proof are already final above; only the React
     // game-over panel is delayed while the tumble/suffocation plays out.
     this.deathAnimReason = reason;
@@ -2927,6 +2956,7 @@ export class ArcadeSceneController {
   dispose(): void {
     this.disposed = true; // abort any in-flight async asset loads (StrictMode/remount safe)
     cancelAnimationFrame(this.raf);
+    reefSfx.stopAmbience();
     if (this.deathNotifyTimer !== null) {
       window.clearTimeout(this.deathNotifyTimer);
       this.deathNotifyTimer = null;
