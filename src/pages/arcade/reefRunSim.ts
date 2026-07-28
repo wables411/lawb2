@@ -106,7 +106,7 @@ export function createSimState(
   seed: number,
   maxActiveObstacles = 12,
 ): ReefRunSimState {
-  return {
+  const state: ReefRunSimState = {
     runState: createInitialRunState(characterId, 0),
     playEnded: false,
     runClockActive: true,
@@ -126,6 +126,29 @@ export function createSimState(
     lastSwimSpd: 1,
     maxActiveObstacles,
   };
+  seedInitialPickups(state);
+  return state;
+}
+
+/**
+ * Opening loot already on the track at run start — the nearest slot is ALWAYS trash (it's the
+ * mission), the rest re-map hazards to coins. Without this, pickups (26% slower than
+ * obstacles, first spawn at ~2s) never reached the player before short runs ended.
+ * RNG draws per slot: 1 (lane) + [1 roll, slots after the first] + 1 (speed) —
+ * the controller's free-play seeding MUST match this order exactly.
+ */
+const INITIAL_PICKUP_ZS = [-16, -30, -44] as const;
+
+function seedInitialPickups(state: ReefRunSimState): void {
+  for (let i = 0; i < INITIAL_PICKUP_ZS.length; i++) {
+    const lane = Math.floor(state.gameRng() * 3);
+    let kind: PickupKind = 'trash';
+    if (i > 0) {
+      const rolled = rollPickupKind(0, state.runState.characterId, state.gameRng);
+      kind = isBeneficialPickup(rolled) ? rolled : 'coin';
+    }
+    spawnPickupInLane(state, lane, kind, INITIAL_PICKUP_ZS[i]!);
+  }
 }
 
 // ── Helpers (Three-free equivalents of controller methods) ───────────────────
@@ -202,9 +225,14 @@ function trySpawnObstacleRow(state: ReefRunSimState): boolean {
 }
 
 // RNG draw: 1 call (speed jitter)
-function spawnPickupInLane(state: ReefRunSimState, lane: number, kind: PickupKind): void {
+function spawnPickupInLane(
+  state: ReefRunSimState,
+  lane: number,
+  kind: PickupKind,
+  z: number = SPAWN_Z,
+): void {
   const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + state.gameRng() * 0.12) * 0.74;
-  state.pickups.push({ lane, z: SPAWN_Z, speed, hit: false, kind });
+  state.pickups.push({ lane, z, speed, hit: false, kind });
 }
 
 // RNG draws: up to 3 (lane) + 1 (rollPickupKind) + 1 (spawnPickupInLane speed)
@@ -238,7 +266,8 @@ function trySpawnForcedOxygenTank(state: ReefRunSimState): boolean {
 function pickupSpawnIntervalSec(survivalSec: number): number {
   const x = Math.min(1, Math.max(0, survivalSec / 95));
   const s = x * x * (3 - 2 * x);
-  return 2.18 + s * 0.62;
+  // Trash-mission tuning: pickups land every ~1.4s early (was 2.18s — loot felt absent).
+  return 1.35 + s * 0.75;
 }
 
 // ── Main step function ──────────────────────────────────────────────────────

@@ -1525,6 +1525,8 @@ export class ArcadeSceneController {
       this.runState = this.simState.runState;
     } else {
       this.simState = null;
+      // Deterministic runs seed opening loot inside createSimState; free play seeds here.
+      this.seedInitialPickups();
     }
     this.nextForcedOxyTankSurvival = characterUsesOxygenMechanic(playCharacterId)
       ? 4.4
@@ -1690,21 +1692,42 @@ export class ArcadeSceneController {
     return false;
   }
 
-  private spawnPickupInLane(lane: number, kind: PickupKind): void {
+  private spawnPickupInLane(lane: number, kind: PickupKind, z: number = SPAWN_Z): void {
     const root = clonePickupVisual(kind);
-    root.position.set(LANES[lane], OBSTACLE_CENTER_Y, SPAWN_Z);
-    root.visible = SPAWN_Z > PICKUP_RENDER_START_Z;
+    root.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
+    root.visible = z > PICKUP_RENDER_START_Z;
     this.obstacleGroup.add(root);
     /** Slightly slower than coral so pickups are easier to read. */
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + this.gameRng() * 0.12) * 0.74;
     this.pickups.push({ root, lane, speed, hit: false, kind });
   }
 
+  /**
+   * Free-play opening loot: nearest slot always trash, hazards re-map to coins.
+   * MUST match reefRunSim.seedInitialPickups draw-for-draw (deterministic runs seed
+   * inside createSimState instead — never both).
+   */
+  private seedInitialPickups(): void {
+    const zs = [-16, -30, -44] as const;
+    const cid = this.runState?.characterId ?? 'clawb';
+    for (let i = 0; i < zs.length; i++) {
+      const lane = Math.floor(this.gameRng() * 3);
+      let kind: PickupKind = 'trash';
+      if (i > 0) {
+        const rolled = rollPickupKind(0, cid, this.gameRng);
+        kind = isBeneficialPickup(rolled) ? rolled : 'coin';
+      }
+      this.spawnPickupInLane(lane, kind, zs[i]!);
+    }
+  }
+
   /** Longer runs = slightly longer between pickup spawns (focus on dodging). */
   private pickupSpawnIntervalSec(): number {
     const x = Math.min(1, Math.max(0, this.runSurvivalSec / 95));
     const s = x * x * (3 - 2 * x);
-    return 2.18 + s * 0.62;
+    // Trash-mission tuning: pickups land every ~1.4s early (was 2.18s — loot felt absent).
+    // Keep in lockstep with reefRunSim.pickupSpawnIntervalSec.
+    return 1.35 + s * 0.75;
   }
 
   private addCameraShake(peak: number): void {
