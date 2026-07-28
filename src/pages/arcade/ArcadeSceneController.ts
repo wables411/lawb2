@@ -204,6 +204,20 @@ function isArcadeLowPowerDevice(): boolean {
   return false;
 }
 
+/**
+ * Frame-rate-independent exponential smoothing.
+ *
+ * `k` is the per-frame lerp factor these camera/fog/FOV filters were originally tuned at
+ * (i.e. what felt right at 60fps). Applying a fixed `k` every frame makes the smoothing speed
+ * depend on FRAME COUNT while the world moves on dt (per second): any wobble in frame timing
+ * slides the camera out of sync with the scene, which reads as choppiness even at high fps —
+ * and on a 120Hz+ display the camera chased ~2× too fast. This converts `k` to the equivalent
+ * time-based rate, so the feel is identical at 60fps and correct everywhere else.
+ */
+function damp60(current: number, target: number, k: number, dt: number): number {
+  return current + (target - current) * (1 - Math.pow(1 - k, dt * 60));
+}
+
 /** Procedural streaks for the reef tunnel interior (UV-scrolled = hyperspeed / warp motion). */
 function createReefHyperspeedTunnelTexture(compact: boolean): THREE.CanvasTexture {
   const w = compact ? 96 : 128;
@@ -809,11 +823,15 @@ export class ArcadeSceneController {
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: !this.lowPowerMode,
-      alpha: true,
+      // OPAQUE canvas: `scene.background` always paints a full-screen gradient, so an alpha
+      // channel bought nothing but forced the browser to blend the canvas against the page
+      // every single frame. Opaque lets the compositor skip that blend entirely.
+      alpha: false,
       powerPreference: 'high-performance',
       stencil: false,
+      depth: true,
     });
-    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.setClearColor(0x03121d, 1);
     if (this.lowPowerMode) {
       this.renderer.toneMapping = THREE.LinearToneMapping;
       this.renderer.toneMappingExposure = 1;
@@ -2739,9 +2757,9 @@ export class ArcadeSceneController {
         this.cameraShakeT -= dt;
         if (this.cameraShakeT <= 0) this.cameraShakePeak = 0;
       }
-      this.camera.position.x += (targetCamX - this.camera.position.x) * 0.085;
-      this.camera.position.y += (targetCamY - this.camera.position.y) * 0.07;
-      this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.06;
+      this.camera.position.x = damp60(this.camera.position.x, targetCamX, 0.085, dt);
+      this.camera.position.y = damp60(this.camera.position.y, targetCamY, 0.07, dt);
+      this.camera.position.z = damp60(this.camera.position.z, targetCamZ, 0.06, dt);
       let lookX = this.playerX * 0.26 + ox * 0.2;
       let lookY = PLAYER_FEET_Y + 0.42;
       let lookZ = PLAYER_Z - 0.85;
@@ -2779,7 +2797,7 @@ export class ArcadeSceneController {
       let targetZ = CAM_MENU;
       if (this.screen === 'intro') targetZ = CAM_INTRO;
 
-      this.camera.position.z += (targetZ - this.camera.position.z) * 0.065;
+      this.camera.position.z = damp60(this.camera.position.z, targetZ, 0.065, dt);
       this.camera.position.x = Math.sin(t * 0.11) * 0.42;
       this.camera.position.y = Math.cos(t * 0.085) * 0.22;
       this.camera.lookAt(0, -0.15, -32);
@@ -2933,7 +2951,7 @@ export class ArcadeSceneController {
         this.screen === 'play' && !this.playEnded
           ? this.reefFogDensityBase + Math.min(0.95, warp - 1) * 0.024 + depthF * 0.007
           : this.reefFogDensityBase;
-      this.scene.fog.density = THREE.MathUtils.lerp(this.scene.fog.density, fd, 0.08);
+      this.scene.fog.density = damp60(this.scene.fog.density, fd, 0.08, dt);
       this._fogColScratch.copy(this.fogColorShallow).lerp(this.fogColorDeep, depthF);
       this.scene.fog.color.lerp(this._fogColScratch, 0.06);
       if (this.horizonWall) {
@@ -2951,14 +2969,16 @@ export class ArcadeSceneController {
     if (this.screen === 'play' || this.screen === 'gameover') {
       const targetFov =
         52 + (this.screen === 'play' && !this.playEnded ? Math.min(9.2, (swimSpd - 1) * 6.2) : 0);
-      this.camera.fov += (targetFov - this.camera.fov) * 0.06;
+      this.camera.fov = damp60(this.camera.fov, targetFov, 0.06, dt);
       this.camera.updateProjectionMatrix();
     } else {
-      this.camera.fov += (52 - this.camera.fov) * 0.05;
+      this.camera.fov = damp60(this.camera.fov, 52, 0.05, dt);
       this.camera.updateProjectionMatrix();
     }
 
-    let driftMain = 0.062 * warp;
+    // Per-second drift (the 0.062 was tuned per frame at 60fps) so marine snow streaks past at
+    // a steady rate instead of speeding up/slowing down with the frame rate.
+    let driftMain = 0.062 * warp * dt * 60;
     if (this.screen === 'play' && !this.playEnded) {
       driftMain *= 1.35 + Math.max(0, warp - 1) * 1.05;
     }

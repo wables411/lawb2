@@ -525,13 +525,18 @@
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+/*
+ * NOTE: no `backdrop-filter` on anything layered over the WebGL canvas. Blurring a backdrop
+ * that repaints every frame forces the compositor to re-blur that region every frame, which
+ * showed up as choppiness during play and when the game-over panel appeared. Slightly more
+ * opaque backgrounds read the same and cost nothing.
+ */
 .ra-play-depth {
   margin: 0;
   padding: 8px 12px 10px;
   border-radius: 6px;
-  background: rgba(4, 22, 26, 0.62);
+  background: rgba(4, 22, 26, 0.76);
   box-shadow: 0 0 0 1px rgba(90, 180, 170, 0.2);
-  backdrop-filter: blur(6px);
 }
 
 .ra-play-depth-label {
@@ -583,9 +588,8 @@
   margin-left: auto;
   padding: 8px 12px 10px;
   border-radius: 6px;
-  background: rgba(4, 18, 28, 0.62);
+  background: rgba(4, 18, 28, 0.76);
   box-shadow: 0 0 0 1px rgba(80, 160, 200, 0.18);
-  backdrop-filter: blur(6px);
   box-sizing: border-box;
 }
 
@@ -771,8 +775,8 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(2, 8, 16, 0.72);
-  backdrop-filter: blur(6px);
+  /* Opaque instead of blurred: the death outro is still animating behind this. */
+  background: rgba(2, 8, 16, 0.84);
   pointer-events: auto;
 }
 
@@ -1134,8 +1138,7 @@
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(2, 8, 16, 0.82);
-  backdrop-filter: blur(8px);
+  background: rgba(2, 8, 16, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
