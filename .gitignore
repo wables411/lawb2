@@ -94,3 +94,5 @@ onchain-chess/
 
 # Local tooling (wikitool etc.) - never commit binaries/databases
 tools/
+dist-radbro
+reefrun-radbro.zip

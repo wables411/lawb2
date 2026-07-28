@@ -401,6 +401,9 @@ export class ArcadeSceneController {
   /** Invalidates in-flight async dance loads when selection changes quickly. */
   private danceApplyGen = 0;
 
+  /** Roster this instance boots (defaults to the full lawb.xyz cast; standalone builds inject a subset). */
+  private readonly characters: ArcadeCharacterDef[];
+
   constructor(
     container: HTMLElement,
     handlers: {
@@ -409,6 +412,8 @@ export class ArcadeSceneController {
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
       onRunHud?: (hud: ArcadeRunHudState) => void;
       onBootProgress?: (p: ArcadeBootProgress) => void;
+      /** Optional roster override (e.g. the radbro.fun build ships radbro only). */
+      characters?: ArcadeCharacterDef[];
     },
   ) {
     this.container = container;
@@ -417,6 +422,8 @@ export class ArcadeSceneController {
     this.onRunDifficulty = handlers.onRunDifficulty;
     this.onRunHud = handlers.onRunHud;
     this.onBootProgress = handlers.onBootProgress;
+    this.characters = handlers.characters ?? ARCADE_CHARACTERS;
+    if (handlers.characters?.length) this.selectedId = handlers.characters[0]!.id;
     // Hidden test toggle so the deterministic loop can be play-tested before it's the default.
     this.forceDeterministic =
       typeof window !== 'undefined' && /[?&]reefdet=1/.test(window.location.search);
@@ -553,11 +560,18 @@ export class ArcadeSceneController {
     this.virtualS = false;
   }
 
-  /** Linear order: Clawb · Radbro · Milady (main menu). */
+  /** Podium X/face-yaw layout for the active roster (3 = classic trio; 1-2 = centered). */
+  private podiumLayout(): { xs: number[]; faces: number[] } {
+    const n = this.characters.length;
+    if (n === 1) return { xs: [PODIUM_X.C], faces: [FACE_CENTER] };
+    if (n === 2) return { xs: [-1.6, 1.6], faces: [FACE_LEFT, FACE_RIGHT] };
+    return { xs: [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R], faces: [FACE_LEFT, FACE_CENTER, FACE_RIGHT] };
+  }
+
+  /** Linear roster order on the main menu. */
   private layoutMenuPodiums(): void {
-    const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R] as const;
-    const faces = [FACE_LEFT, FACE_CENTER, FACE_RIGHT] as const;
-    ARCADE_CHARACTERS.forEach((def, i) => {
+    const { xs, faces } = this.podiumLayout();
+    this.characters.forEach((def, i) => {
       const slot = this.slots.get(def.id);
       if (!slot) return;
       slot.anchor.position.set(xs[i]!, PODIUM_Y, PODIUM_Z);
@@ -732,16 +746,12 @@ export class ArcadeSceneController {
 
   /** Selected character always on center podium; others split left/right by roster order. */
   private layoutSelectionPodiums(): void {
-    const sel = this.selectedId ?? 'clawb';
-    const ordered = ARCADE_CHARACTERS.map((c) => c.id);
+    const sel = this.selectedId ?? this.characters[0]?.id ?? 'clawb';
+    const ordered = this.characters.map((c) => c.id);
     const others = ordered.filter((id) => id !== sel);
-    const leftId = others[0]!;
-    const rightId = others[1]!;
-    const plan = new Map<ArcadeCharacterId, number>([
-      [leftId, PODIUM_X.L],
-      [sel, PODIUM_X.C],
-      [rightId, PODIUM_X.R],
-    ]);
+    const plan = new Map<ArcadeCharacterId, number>([[sel, PODIUM_X.C]]);
+    if (others[0]) plan.set(others[0], PODIUM_X.L);
+    if (others[1]) plan.set(others[1], PODIUM_X.R);
     for (const [id, slot] of this.slots) {
       const x = plan.get(id);
       if (x === undefined) continue;
@@ -751,11 +761,11 @@ export class ArcadeSceneController {
 
   async bootstrap(): Promise<void> {
     /**
-     * 5 boot milestones: scene built, props loaded, 3× character FBX idles.
+     * Boot milestones: scene built, props loaded, one FBX idle per roster character.
      * Kept coarse — per-GLB progress would rely on upstream loader events that
      * aren't uniformly available for both GLTF and FBX paths.
      */
-    const TOTAL_BOOT_STEPS = 5;
+    const TOTAL_BOOT_STEPS = 2 + this.characters.length;
     let bootStep = 0;
     this.lowPowerMode = isArcadeLowPowerDevice();
     this.maxActiveObstacles = this.lowPowerMode ? 8 : 12;
@@ -1085,20 +1095,19 @@ export class ArcadeSceneController {
     bootStep++;
     this.reportBoot(bootStep, TOTAL_BOOT_STEPS, 'Stocking the tunnel');
 
-    /* Tighter X so all three stay in view on portrait / narrow aspect (was ±4.4). */
-    const xs = [PODIUM_X.L, PODIUM_X.C, PODIUM_X.R];
-    const faces = [FACE_LEFT, FACE_CENTER, FACE_RIGHT];
-    // Kick off all three idle-FBX downloads at once (was a serial await per character);
+    /* Tighter X so the roster stays in view on portrait / narrow aspect (was ±4.4). */
+    const { xs, faces } = this.podiumLayout();
+    // Kick off all idle-FBX downloads at once (was a serial await per character);
     // scene assembly below still runs in order. Rejections are captured per character so
     // one bad file still falls back to the capsule without failing the others.
-    const idleLoads = ARCADE_CHARACTERS.map((def) =>
+    const idleLoads = this.characters.map((def) =>
       loadArcadeFbx(def.idle, def.id).then(
         (r) => ({ ok: true as const, r }),
         (e) => ({ ok: false as const, e }),
       ),
     );
-    for (let i = 0; i < ARCADE_CHARACTERS.length; i++) {
-      const def = ARCADE_CHARACTERS[i];
+    for (let i = 0; i < this.characters.length; i++) {
+      const def = this.characters[i];
       const anchor = new THREE.Group();
       anchor.position.set(xs[i]!, PODIUM_Y, PODIUM_Z);
       anchor.userData.characterId = def.id;
@@ -1174,9 +1183,9 @@ export class ArcadeSceneController {
         roughness: 0.94,
         metalness: 0.02,
       });
-      const statueIds: ArcadeCharacterId[] = this.lowPowerMode
-        ? ['milady']
-        : ['milady', 'radbro'];
+      const statueWishlist: ArcadeCharacterId[] = ['milady', 'radbro'];
+      const statueAvailable = statueWishlist.filter((id) => this.slots.get(id)?.idleRoot);
+      const statueIds = this.lowPowerMode ? statueAvailable.slice(0, 1) : statueAvailable;
       let statueMatUsed = false;
       for (const id of statueIds) {
         const slot = this.slots.get(id);

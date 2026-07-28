@@ -1,6 +1,12 @@
 /** Static paths — character FBX + reef prop GLBs in `public/arcade-assets/` (see `arcadeGlbProps.ts`). */
 
-export const ARCADE_ASSET_BASE = '/arcade-assets';
+/**
+ * Site builds serve from the absolute `/arcade-assets`. Portable builds (the radbro.fun ZIP,
+ * served from an arbitrary blob path inside a sandboxed iframe) override this with a RELATIVE
+ * path via `VITE_ARCADE_ASSET_BASE` so assets resolve next to index.html.
+ */
+export const ARCADE_ASSET_BASE =
+  (import.meta.env?.VITE_ARCADE_ASSET_BASE as string | undefined) ?? '/arcade-assets';
 
 /** World-space height after FBX load (each rig is scaled to match — fixes tiny/huge heroes). */
 export const ARCADE_HERO_TARGET_HEIGHT = 2.08;

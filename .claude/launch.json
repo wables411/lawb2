@@ -13,6 +13,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "3213", "--strictPort"],
       "port": 3213
+    },
+    {
+      "name": "radbro-dist-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--config", "vite.radbro.config.ts", "--port", "3401", "--strictPort"],
+      "port": 3401
     }
   ]
 }

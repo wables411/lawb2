@@ -13,6 +13,8 @@
     "test": "node --test tests/*.test.cjs",
     "test:reef": "npx esbuild src/pages/arcade/reefRunSim.ts --bundle --platform=node --format=cjs --outfile=tests/_reefRunSim.cjs && node --test tests/reefRunSim.test.cjs",
     "preview": "vite preview --port 4173 --strictPort",
+    "build:radbro": "node scripts/build-radbro-zip.mjs",
+    "preview:radbro": "vite preview --config vite.radbro.config.ts --port 3401 --strictPort",
     "claims:build": "node scripts/claims/build-clawb-merkle.mjs",
     "claims:compile": "node scripts/claims/compile-distributor.mjs",
     "claims:deploy": "node scripts/claims/deploy-clawb-distributor.mjs",

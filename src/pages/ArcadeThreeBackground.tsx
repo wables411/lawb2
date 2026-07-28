@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
+import type { ArcadeCharacterDef, ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import type { ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
 import {
@@ -27,6 +27,8 @@ type Props = {
   onBootProgress?: (p: ArcadeBootProgress) => void;
   /** Fired when bootstrap throws — engine is unusable and UI should show retry. */
   onBootError?: (err: unknown) => void;
+  /** Optional roster override (standalone builds ship a subset; default = full cast). */
+  characters?: ArcadeCharacterDef[];
 };
 
 export type ArcadePlayInputHandle = {
@@ -49,6 +51,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   onEngineReady,
   onBootProgress,
   onBootError,
+  characters,
 }: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
@@ -78,6 +81,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
       onRunDifficulty: (p) => diffRef.current?.(p),
       onRunHud: (h) => hudRef.current?.(h),
       onBootProgress: (p) => bootProgressRef.current?.(p),
+      characters,
     });
     engineRef.current = engine;
     void engine
