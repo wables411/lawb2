@@ -9,9 +9,10 @@
 // Usage: npm run build:radbro   → dist-radbro/ (test locally) + reefrun-radbro.zip (upload)
 
 import { execSync } from 'node:child_process';
-import { cpSync, mkdirSync, rmSync, statSync, readdirSync, existsSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, statSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { RADBRO_OMITTED_ASSETS } from './radbro-omit.mjs';
 
 const ROOT = process.cwd();
 const DIST = path.join(ROOT, 'dist-radbro');
@@ -19,65 +20,27 @@ const ASSET_SRC = path.join(ROOT, 'public', 'arcade-assets');
 const ASSET_DST = path.join(DIST, 'arcade-assets');
 const ZIP = path.join(ROOT, 'reefrun-radbro.zip');
 
-const ASSETS = [
-  // full trio (owner call 2026-07-27: no radbro.fun size limit found, player select is worth it);
-  // dance FBXs stay excluded — the menu skips the dance gracefully.
-  'radbrotreading.fbx',
-  'radbroswimming.fbx',
-  'lawbidle.fbx',
-  'lawbswim.fbx',
-  'milady11treading.fbx',
-  'milady11swimming.fbx',
-  // obstacles + pickups (minus coral2 / trash-cube heavyweights)
-  'coral1.glb',
-  'coral3.glb',
-  'cheese.glb',
-  'coin.glb',
-  'jellyfish.glb',
-  'peptides.glb',
-  'puffer-fish.glb',
-  'reef-mine.glb',
-  'reef-o2-tank.glb',
-  'trash1.glb',
-  'trash2.glb',
-  'trash-cigpack.glb',
-  'trash-energycan.glb',
-  'trash-vape.glb',
-  'trash-bag.glb',
-  'trash-crt.glb',
-  // scenery + showcases (all small)
-  'seagrass.glb',
-  'reef-rock.glb',
-  'shipwreck-bow.glb',
-  'anchor.glb',
-  'ruin-columns.glb',
-  'statue-head.glb',
-  'arcade-cabinet.glb',
-  'torii-gate.glb',
-  'treasure-chest.glb',
-  'guardian-lion.glb',
-  'pagoda.glb',
-  'paifang-gate.glb',
-  'junk-ship.glb',
-  'dragon-statue.glb',
-];
+// Ship EVERYTHING in public/arcade-assets except the omit list. Derived rather than
+// hand-listed so new art is picked up automatically — an include list silently dropped
+// each new asset until someone noticed the 404s in the console.
+const OMIT = new Set(RADBRO_OMITTED_ASSETS);
 
 console.log('[radbro] vite build…');
 execSync('npx vite build --config vite.radbro.config.ts', { stdio: 'inherit' });
 
 console.log('[radbro] copying assets…');
 mkdirSync(ASSET_DST, { recursive: true });
+const assets = readdirSync(ASSET_SRC).filter((f) => !OMIT.has(f));
 let total = 0;
-for (const name of ASSETS) {
+for (const name of assets) {
   const src = path.join(ASSET_SRC, name);
-  if (!existsSync(src)) {
-    console.error(`[radbro] MISSING asset: ${name}`);
-    process.exit(1);
-  }
   cpSync(src, path.join(ASSET_DST, name));
   total += statSync(src).size;
 }
-console.log(`[radbro] ${ASSETS.length} assets, ${(total / 1024 / 1024).toFixed(1)} MB raw`);
+console.log(
+  `[radbro] ${assets.length} assets, ${(total / 1024 / 1024).toFixed(1)} MB raw ` +
+    `(omitted ${RADBRO_OMITTED_ASSETS.length}: ${RADBRO_OMITTED_ASSETS.join(', ')})`,
+);
 
 console.log('[radbro] zipping…');
 rmSync(ZIP, { force: true });

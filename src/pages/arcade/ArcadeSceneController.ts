@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
+  isArcadeAssetOmitted,
   ARCADE_CHARACTERS,
   type ArcadeCharacterDef,
   type ArcadeCharacterId,
@@ -1357,6 +1358,15 @@ export class ArcadeSceneController {
       if (!isSel) {
         if (slot.danceRoot) slot.danceRoot.visible = false;
         slot.danceAction?.stop();
+        slot.idleRoot.visible = true;
+        slot.idleAction?.reset().fadeIn(0.12).play();
+        continue;
+      }
+
+      // Builds that don't ship the dance FBX (radbro.fun ZIP) keep the idle loop. Without
+      // this the failed load leaves `danceAction` null, so EVERY selection change retried
+      // the fetch for every character — a 404 + FBX parse attempt per menu interaction.
+      if (isArcadeAssetOmitted(slot.def.dance)) {
         slot.idleRoot.visible = true;
         slot.idleAction?.reset().fadeIn(0.12).play();
         continue;

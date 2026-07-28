@@ -8,6 +8,26 @@
 export const ARCADE_ASSET_BASE =
   (import.meta.env?.VITE_ARCADE_ASSET_BASE as string | undefined) ?? '/arcade-assets';
 
+/**
+ * Basenames this build does NOT ship (radbro.fun ZIP trims the heaviest files — see
+ * `scripts/radbro-omit.mjs`). Loaders must SKIP these rather than request them: a missing
+ * asset returns the SPA's index.html, which fails to parse and — for retried loads like the
+ * menu dance — re-fetches on every interaction.
+ */
+const OMITTED = new Set(
+  ((import.meta.env?.VITE_ARCADE_OMIT as string | undefined) ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+
+/** True when `url`'s basename is excluded from this build. */
+export function isArcadeAssetOmitted(url: string | undefined | null): boolean {
+  if (!url) return false;
+  if (OMITTED.size === 0) return false;
+  return OMITTED.has(url.slice(url.lastIndexOf('/') + 1));
+}
+
 /** World-space height after FBX load (each rig is scaled to match — fixes tiny/huge heroes). */
 export const ARCADE_HERO_TARGET_HEIGHT = 2.08;
 

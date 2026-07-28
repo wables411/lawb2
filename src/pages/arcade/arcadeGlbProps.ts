@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ARCADE_ASSET_BASE } from './arcadeAssetConfig';
+import { ARCADE_ASSET_BASE, isArcadeAssetOmitted } from './arcadeAssetConfig';
 import { createArcadeGltfLoader } from './arcadeGltfLoader';
 import { createPrimitivePickupMesh, PICKUP_VISUAL_SCALE } from './arcadePickupMesh';
 import type { PickupKind } from './arcadePickupKinds';
@@ -192,7 +192,7 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
       jobs.push(
         (async () => {
           const loaded = await Promise.all(
-            TRASH_CONFIG.map(({ url, maxExtent }) =>
+            TRASH_CONFIG.filter(({ url }) => !isArcadeAssetOmitted(url)).map(({ url, maxExtent }) =>
               loadSceneQuiet(url).then((sc) => {
                 if (!sc) return null;
                 sanitizeGlbTemplateMaterials(sc);
@@ -205,12 +205,17 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
       );
       jobs.push(
         (async () => {
-          const loaded = await Promise.all(CORAL_GLB_VARIANTS.map((url) => loadSceneQuiet(url)));
+          const loaded = await Promise.all(
+            CORAL_GLB_VARIANTS.filter((url) => !isArcadeAssetOmitted(url)).map((url) =>
+              loadSceneQuiet(url),
+            ),
+          );
           coralTemplates = loaded.filter((x): x is THREE.Object3D => x !== null);
           coralTemplates.forEach((tpl) => sanitizeGlbTemplateMaterials(tpl));
         })(),
       );
       for (const [kind, url] of Object.entries(SCENERY_GLB) as [SceneryPropKind, string][]) {
+        if (isArcadeAssetOmitted(url)) continue;
         jobs.push(
           loadSceneQuiet(url).then((sc) => {
             if (!sc) return;
