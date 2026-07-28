@@ -81,6 +81,8 @@ const en = {
   best: 'best',
   dived: 'dive',
   trashHauled: 'trash hauled',
+  /** {n} is replaced with the run's trash count (phrasing avoids singular/plural forms). */
+  thankYou: 'Trash collected: {n} — thank you for your service.',
   coins: 'coins',
   retry: 'RETRY',
   mainMenu: 'MAIN MENU',
@@ -169,6 +171,7 @@ const zh: ReefStrings = {
   best: '最佳',
   dived: '潜水',
   trashHauled: '件垃圾打捞',
+  thankYou: '本次共收集 {n} 件垃圾——感谢您的服务。',
   coins: '金币',
   retry: '再试一次',
   mainMenu: '主菜单',

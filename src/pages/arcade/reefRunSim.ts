@@ -142,8 +142,8 @@ const INITIAL_PICKUP_ZS = [-16, -30, -44] as const;
 function seedInitialPickups(state: ReefRunSimState): void {
   for (let i = 0; i < INITIAL_PICKUP_ZS.length; i++) {
     const lane = Math.floor(state.gameRng() * 3);
-    let kind: PickupKind = 'trash';
-    if (i > 0) {
+    let kind: PickupKind = 'trash'; // first TWO slots are trash — it's the mission
+    if (i > 1) {
       const rolled = rollPickupKind(0, state.runState.characterId, state.gameRng);
       kind = isBeneficialPickup(rolled) ? rolled : 'coin';
     }

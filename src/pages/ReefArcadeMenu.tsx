@@ -963,8 +963,10 @@ export default function ReefArcadeMenu() {
               </p>
               {runStatsHud && (
                 <p style={{ margin: '8px 0 0', fontSize: 13 }}>
-                  🗑 <strong>{runStatsHud.trash} {t.trashHauled}</strong>
-                  <span style={{ opacity: 0.85 }}> · {runStatsHud.coins} {t.coins}</span>
+                  🗑 <strong>{t.thankYou.replace('{n}', String(runStatsHud.trash))}</strong>
+                  <span style={{ opacity: 0.85, display: 'block', marginTop: 2 }}>
+                    {runStatsHud.coins} {t.coins}
+                  </span>
                 </p>
               )}
               {lastRunLbNote && (

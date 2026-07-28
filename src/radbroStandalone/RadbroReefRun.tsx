@@ -494,7 +494,9 @@ export default function RadbroReefRun() {
             </p>
             {runStatsHud && (
               <p className="ra-gameover-sub">
-                🗑 <strong>{runStatsHud.trash} {t.trashHauled}</strong> · {runStatsHud.coins} {t.coins}
+                🗑 <strong>{t.thankYou.replace('{n}', String(runStatsHud.trash))}</strong>
+                <br />
+                <span style={{ opacity: 0.85 }}>{runStatsHud.coins} {t.coins}</span>
               </p>
             )}
             <div className="ra-gameover-actions">

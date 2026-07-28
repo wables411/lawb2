@@ -1712,8 +1712,8 @@ export class ArcadeSceneController {
     const cid = this.runState?.characterId ?? 'clawb';
     for (let i = 0; i < zs.length; i++) {
       const lane = Math.floor(this.gameRng() * 3);
-      let kind: PickupKind = 'trash';
-      if (i > 0) {
+      let kind: PickupKind = 'trash'; // first TWO slots are trash — it's the mission
+      if (i > 1) {
         const rolled = rollPickupKind(0, cid, this.gameRng);
         kind = isBeneficialPickup(rolled) ? rolled : 'coin';
       }

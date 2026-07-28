@@ -97,9 +97,9 @@ export function createInitialRunState(characterId: ArcadeCharacterId, _nowSec: n
  * (see also guaranteed tank cadence in `ArcadeSceneController`).
  */
 const SPAWN_WEIGHTS_BASE: { kind: PickupKind; w: number }[] = [
-  // Trash hauling is the mission (see the brief) — trash spawns nearly as often as coins.
-  { kind: 'coin', w: 20 },
-  { kind: 'trash', w: 18 },
+  // Trash hauling is the mission (see the brief) — trash is the most common pickup, period.
+  { kind: 'coin', w: 18 },
+  { kind: 'trash', w: 26 },
   { kind: 'air_tank', w: 10 },
   { kind: 'cheese', w: 8 },
   { kind: 'peptides', w: 10 },
