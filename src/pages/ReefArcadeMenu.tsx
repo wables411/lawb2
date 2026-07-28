@@ -1012,6 +1012,14 @@ export default function ReefArcadeMenu() {
                 <h2>HOW TO PLAY</h2>
                 <div className="ra-howto-cards">
                   <div className="ra-howto-card">
+                    <p className="ra-howto-card-title">🌊 MISSION</p>
+                    <p>
+                      The ocean is drowning in trash — roughly <strong>33 billion pounds</strong>{' '}
+                      added yearly. Dive, dodge the reef, and <strong>haul out all the trash you
+                      can</strong>. Any treasure you spot on the way down is yours to keep.
+                    </p>
+                  </div>
+                  <div className="ra-howto-card">
                     <p className="ra-howto-card-title">🕹 STEER</p>
                     <p>
                       Three lanes. <strong>A / D</strong> or <strong>← / →</strong> switch lanes ·{' '}
@@ -1024,7 +1032,8 @@ export default function ReefArcadeMenu() {
                     <p>
                       Score = <strong>seconds survived</strong>. Watch two meters: <strong>Armor</strong> and{' '}
                       <strong>O₂</strong>. Jellyfish and pufferfish sting armor + breath and slow you down; mines hit
-                      hard. The deeper you go, the meaner the reef gets.
+                      hard. The water <strong>darkens as you dive deeper</strong> — and the reef gets meaner. The
+                      statues and wrecks on the sides are scenery: only your <strong>three lanes</strong> can hurt you.
                     </p>
                   </div>
                   <div className="ra-howto-card">
