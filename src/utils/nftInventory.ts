@@ -608,26 +608,26 @@ export async function fetchNFTInventory(walletAddress: string): Promise<NFTInven
           window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from contract enumeration');
         }
       } else {
-        // Contract doesn't support enumeration - last resort: OpenSea
+        // Contract doesn't support enumeration — last resort: the alchemy-nft proxy
+        // (owner mode). The old direct OpenSea call used a hardcoded key that expired.
         if (typeof window !== 'undefined' && window.console) {
-          window.console.warn('[NFT] Contract enumeration not supported, trying OpenSea API');
+          window.console.warn('[NFT] Contract enumeration not supported, trying alchemy-nft proxy');
         }
-        const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
         const lawbstersAddress = NFT_COLLECTIONS.lawbsters.address;
         const response = await fetch(
-          `https://api.opensea.io/api/v2/chain/ethereum/account/${walletAddress}/nfts?contract_address=${lawbstersAddress}&limit=100`,
-          { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+          `/.netlify/functions/alchemy-nft?owner=${encodeURIComponent(walletAddress)}` +
+          `&contractAddress=${encodeURIComponent(lawbstersAddress)}&chain=ethereum&pageSize=100`,
         );
         if (response.ok) {
           const data = await response.json();
-          const nfts = data.nfts || [];
+          const nfts = data.ownedNfts || data.nfts || [];
           const lawbstersAddressLower = lawbstersAddress.toLowerCase();
-          const filteredNFTs = nfts.filter((nft: any) => 
-            nft.contract?.toLowerCase() === lawbstersAddressLower
+          const filteredNFTs = nfts.filter((nft: any) =>
+            (nft.contract?.address ?? nft.contract)?.toLowerCase() === lawbstersAddressLower
           );
-          inventory.lawbsters = filteredNFTs.map((nft: any) => nft.identifier);
+          inventory.lawbsters = filteredNFTs.map((nft: any) => nft.tokenId ?? nft.identifier);
           if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from OpenSea API (last resort)');
+            window.console.log('[NFT] Found', inventory.lawbsters.length, 'Lawbsters from alchemy-nft proxy (last resort)');
           }
         } else {
           inventory.lawbsters = [];

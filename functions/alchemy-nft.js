@@ -41,7 +41,7 @@ exports.handler = async (event, context) => {
   }
 
   // Get query parameters
-  const { owner, contractAddress, chain, pageSize = '100', pageKey } = event.queryStringParameters || {};
+  const { owner, contractAddress, chain, pageSize = '100', pageKey, tokenId } = event.queryStringParameters || {};
   
   // Support both getNFTsForOwner (requires owner) and getNFTsForContract (requires contractAddress only)
   if (!contractAddress) {
@@ -60,8 +60,10 @@ exports.handler = async (event, context) => {
       : `https://eth-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
     
     let alchemyUrl;
-    // If owner is provided, use getNFTsForOwner, otherwise use getNFTsForContract
-    if (owner) {
+    // tokenId -> getNFTMetadata (single NFT); owner -> getNFTsForOwner; else getNFTsForContract
+    if (tokenId !== undefined && tokenId !== '') {
+      alchemyUrl = `${baseUrl}/getNFTMetadata?contractAddress=${encodeURIComponent(contractAddress)}&tokenId=${encodeURIComponent(tokenId)}&refreshCache=false`;
+    } else if (owner) {
       alchemyUrl = `${baseUrl}/getNFTsForOwner?owner=${encodeURIComponent(owner)}&contractAddresses[]=${encodeURIComponent(contractAddress)}&withMetadata=true&pageSize=${pageSize}`;
     } else {
       // Get NFTs for collection (recent mints)

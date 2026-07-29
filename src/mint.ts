@@ -487,84 +487,36 @@ export async function getAlchemyNFTsForOwner(contractAddress: string, ownerAddre
   }
 }
 
+// The public OpenSea path died when its hardcoded API key expired (2026-07). These
+// "OpenSea" collections are now served by the existing alchemy-nft Netlify proxy
+// (key stays server-side) via a slug -> contract map; the function keeps its name and
+// shape so the meme generator and both NFT galleries need no changes.
+const OPENSEA_SLUG_CONTRACTS: Record<string, { address: string; chainId: number }> = {
+  lawbsters: { address: '0x0ef7ba09c38624b8e9cc4985790a2f5dbfc1dc42', chainId: 1 },
+  lawbstarz: { address: '0xd7922cd333da5ab3758c95f774b092a7b13a5449', chainId: 1 },
+  'a-lawbster-halloween': { address: '0x8ab6733f8f8702c233f3582ec2a2750d3fc63a97', chainId: 8453 },
+  asciilawbs: { address: '0x13c33121f8a73e22ac6aa4a135132f5ac7f221b2', chainId: 8453 },
+};
+
 export async function getOpenSeaNFTs(collectionSlug: string, pageSize: number = 50, ownerAddress?: string, chain?: 'ethereum' | 'base'): Promise<NFTResponse> {
-  const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-  // For Base chain, use the chain-specific endpoint
-  let url = chain === 'base' 
-    ? `https://api.opensea.io/api/v2/chain/base/collection/${collectionSlug}/nfts?limit=${pageSize}`
-    : `https://api.opensea.io/api/v2/collection/${collectionSlug}/nfts?limit=${pageSize}`;
-  
-  if (ownerAddress) {
-    console.warn("Owner filtering is not supported for OpenSea collections in this view.");
-  }
-
-  try {
-    const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
-    if (!response.ok) {
-      throw new Error(`Failed to get OpenSea NFTs: ${response.statusText}`);
-    }
-
-    const data = await response.json() as OpenSeaApiResponse;
-    
-    const transformedNfts: NFT[] = await Promise.all(data.nfts.map(async (nft): Promise<NFT> => {
-      // Convert IPFS URLs to HTTP gateway URLs
-      let imageUrl = nft.image_url || '';
-      if (imageUrl && (imageUrl.startsWith('ipfs://') || !imageUrl.startsWith('http'))) {
-        imageUrl = ipfsToHttp(imageUrl);
-      }
-      
-      return {
-        id: nft.identifier,
-        address: nft.contract,
-        token_id: parseInt(nft.identifier, 10),
-        attributes: JSON.stringify(nft.traits || []),
-        name: nft.name || `#${nft.identifier}`,
-        image_url: imageUrl,
-        owner_of: nft.owners?.[0]?.address || '',
-        block_minted: 0,
-        contract_type: 'ERC721',
-        description: nft.description || '',
-        image: imageUrl,
-        image_url_shrunk: imageUrl,
-        animation_url: nft.animation_url ? ipfsToHttp(nft.animation_url) : '',
-        metadata: '',
-        chain_id: 1,
-        old_image_url: '',
-        old_token_uri: '',
-        token_uri: '',
-        log_index: 0,
-        transaction_index: 0,
-        collection_id: collectionSlug,
-        num_items: 1,
-        created_at: nft.updated_at || new Date().toISOString(),
-        updated_at: nft.updated_at || new Date().toISOString(),
-        owners: nft.owners?.map((o) => ({ owner_of: o.address, quantity: o.quantity })) || []
-      };
-    }));
-
-    return {
-      page: 1,
-      pageSize: pageSize,
-      totalCount: transformedNfts.length,
-      totalPages: 1,
-      data: transformedNfts
-    };
-
-  } catch (error) {
-    console.error('Error getting OpenSea NFTs:', error);
-    throw error;
-  }
+  const mapped = OPENSEA_SLUG_CONTRACTS[collectionSlug];
+  if (!mapped) throw new Error(`Unknown collection slug: ${collectionSlug}`);
+  const chainId = chain === 'base' ? 8453 : chain === 'ethereum' ? 1 : mapped.chainId;
+  // Alchemy actually supports owner filtering (the OpenSea path never did).
+  if (ownerAddress) return getAlchemyNFTsForOwner(mapped.address, ownerAddress, pageSize, chainId);
+  return getAlchemyNFTsForCollection(mapped.address, pageSize, chainId);
 }
 
 export async function getOpenSeaSingleNFT(chain: string, contractAddress: string, identifier: string): Promise<{ traits: { trait_type: string; value: string }[] }> {
-  const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-  const url = `https://api.opensea.io/api/v2/chain/${chain}/contract/${contractAddress}/nfts/${identifier}`;
+  // Single-NFT traits via the alchemy-nft proxy's tokenId mode (getNFTMetadata) — the
+  // direct OpenSea call died with the expired key. Shape is kept: { traits: [...] }.
+  const url = `/.netlify/functions/alchemy-nft?contractAddress=${encodeURIComponent(contractAddress)}&chain=${chain === 'base' ? 'base' : 'ethereum'}&tokenId=${encodeURIComponent(identifier)}`;
   try {
-    const response = await fetch(url, { headers: { 'X-API-KEY': OPENSEA_API_KEY } });
-    if (!response.ok) throw new Error(`Failed to get single OpenSea NFT: ${response.statusText}`);
-    const data = await response.json() as { nft: { traits: { trait_type: string; value: string }[] } };
-    return data.nft;
-  } catch (error) { console.error('Error getting single OpenSea NFT:', error); throw error; }
+    const response = await cachedFetch(url);
+    if (!response.ok) throw new Error(`Failed to get single NFT metadata: ${response.status}`);
+    const data = await response.json() as { raw?: { metadata?: { attributes?: { trait_type: string; value: string }[] } } };
+    return { traits: data.raw?.metadata?.attributes ?? [] };
+  } catch (error) { console.error('Error getting single NFT metadata:', error); throw error; }
 }
 
 // Function to fetch Solana NFTs using Helius DAS API

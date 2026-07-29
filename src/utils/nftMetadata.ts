@@ -2,8 +2,6 @@ import { NFT_COLLECTIONS } from '../config/nftCollections';
 import { getCollectionNFTs, getOpenSeaSolanaNFTs, getOpenSeaSolanaNFTsByOwner } from '../mint';
 import { cachedFetch } from './fetchCache';
 
-const OPENSEA_API_KEY = "030a5ee582f64b8ab3a598ab2b97d85f";
-
 function pickMagicEdenMintImage(data: Record<string, unknown> | null): string {
   if (!data || typeof data !== 'object') return '';
   const d = data as Record<string, any>;
@@ -123,24 +121,20 @@ export async function fetchTokenMetadata(
       }
     }
     
-    // Use OpenSea API for Lawbsters and Halloween Lawbsters
+    // Lawbsters / Halloween Lawbsters: single-NFT metadata via the alchemy-nft proxy's
+    // tokenId mode (the direct OpenSea call died with the expired hardcoded key).
     if (collectionConfig.api === 'opensea') {
       try {
         const chain = collectionConfig.chainId === 8453 ? 'base' : 'ethereum';
-        const response = await fetch(
-          `https://api.opensea.io/api/v2/chain/${chain}/contract/${collectionConfig.address}/nfts/${tokenId}`,
-          { headers: { 'X-API-KEY': OPENSEA_API_KEY } }
+        const response = await cachedFetch(
+          `/.netlify/functions/alchemy-nft?contractAddress=${encodeURIComponent(collectionConfig.address)}&chain=${chain}&tokenId=${encodeURIComponent(tokenId)}`
         );
-        
+
         if (response.ok) {
           const data = await response.json();
-          if (typeof window !== 'undefined' && window.console) {
-            window.console.log('[NFT METADATA] OpenSea API response:', data);
-          }
-          
-          const imageUrl = data.nft?.image_url || data.image_url || '';
-          const name = data.nft?.name || data.name;
-          
+          const imageUrl = data.image?.cachedUrl || data.image?.originalUrl || data.raw?.metadata?.image || '';
+          const name = data.name || data.raw?.metadata?.name;
+
           if (imageUrl) {
             return {
               image_url: imageUrl,
@@ -149,12 +143,12 @@ export async function fetchTokenMetadata(
           }
         } else {
           if (typeof window !== 'undefined' && window.console) {
-            window.console.error('[NFT METADATA] OpenSea API error:', response.status, response.statusText);
+            window.console.error('[NFT METADATA] alchemy-nft proxy error:', response.status, response.statusText);
           }
         }
-      } catch (openseaError) {
+      } catch (proxyError) {
         if (typeof window !== 'undefined' && window.console) {
-          window.console.error('[NFT METADATA] Error fetching from OpenSea API:', openseaError);
+          window.console.error('[NFT METADATA] Error fetching from alchemy-nft proxy:', proxyError);
         }
       }
     }
