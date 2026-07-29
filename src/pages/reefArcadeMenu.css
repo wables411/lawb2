@@ -748,6 +748,11 @@
   font-size: 13px;
   line-height: 1.6;
   color: rgba(214, 238, 244, 0.88);
+  /* The only scrolling region: `min-height: 0` lets a flex child actually shrink and scroll. */
+  overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .ra-brief-body p {
@@ -792,6 +797,19 @@
   width: 100%;
   max-width: 400px;
   margin: auto;
+  /*
+   * Cap to the viewport and lay out as a column so the title and buttons stay PINNED while
+   * only the body text scrolls (see .ra-brief-body). Scrolling the whole panel instead made
+   * the how-to look broken on phones — the heading and OK button slid off with the text.
+   * dvh so mobile browser chrome doesn't cause a cut-off; vh first as the fallback.
+   */
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  /* Without this, max-height clamps the CONTENT box and the panel's own padding pushes the
+     rendered height past the viewport anyway (the buttons ended up off-screen). */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   padding: clamp(24px, 5vw, 36px);
   border-radius: 6px;
   text-align: center;
