@@ -5,6 +5,7 @@ import type { ReefRunHudPayload } from '../pages/arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from '../pages/arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from '../pages/arcade/ArcadeSceneController';
 import { reefSfx } from '../pages/arcade/arcadeSounds';
+import { announceGameReady, reportRunResult } from './radbroPortal';
 import {
   loadReefLang,
   saveReefLang,
@@ -159,8 +160,12 @@ export default function RadbroReefRun() {
     launchRun();
   }, [launchRun]);
 
+  // Tell the radbro.fun portal page who we are (framed inside their iframe).
+  useEffect(() => announceGameReady(), []);
+
   const onGameOver = useCallback(
     (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => {
+      reportRunResult(survivalSec);
       setLastSurvival(survivalSec);
       setLastRunEndReason(reason);
       if (finalHud) setRunStatsHud(finalHud);
