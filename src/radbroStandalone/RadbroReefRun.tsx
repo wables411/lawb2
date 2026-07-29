@@ -69,6 +69,12 @@ function runEndSummary(reason: RunEndReason, t: ReefStrings): string {
   }
 }
 
+/** Menu click blip — the menus were silent before. Also nudges the mobile audio unlock. */
+function uiClick(): void {
+  reefSfx.resume();
+  reefSfx.play('ui');
+}
+
 function prefersTouchInput(): boolean {
   if (typeof window === 'undefined') return false;
   const narrow = Math.min(window.innerWidth, window.innerHeight) <= 900;
@@ -101,6 +107,11 @@ export default function RadbroReefRun() {
   const toggleSfx = useCallback(() => {
     setSfxMuted((prev) => {
       reefSfx.setMuted(!prev);
+      // Unmuting should confirm itself audibly.
+      if (prev) {
+        reefSfx.resume();
+        reefSfx.play('ui');
+      }
       return !prev;
     });
   }, []);
@@ -134,6 +145,7 @@ export default function RadbroReefRun() {
 
   const beginRun = useCallback(() => {
     if (!sceneReady) return;
+    uiClick();
     if (!briefSeen) {
       setPanel('brief');
       return;
@@ -142,6 +154,7 @@ export default function RadbroReefRun() {
   }, [sceneReady, briefSeen, launchRun]);
 
   const diveFromBrief = useCallback(() => {
+    uiClick();
     setBriefSeen(true);
     launchRun();
   }, [launchRun]);
@@ -303,7 +316,10 @@ export default function RadbroReefRun() {
                   aria-checked={swimmerId === c.id}
                   className={`rr-swimmer-chip${swimmerId === c.id ? ' rr-swimmer-chip-active' : ''}`}
                   style={{ '--chip': c.color } as React.CSSProperties}
-                  onClick={() => setSwimmerId(c.id)}
+                  onClick={() => {
+                    uiClick();
+                    setSwimmerId(c.id);
+                  }}
                   title={swimmerBlurb(c.id, t)}
                 >
                   {c.name}
@@ -315,7 +331,14 @@ export default function RadbroReefRun() {
               <button type="button" className="ra-btn" onClick={beginRun} disabled={!sceneReady}>
                 ▶ {t.startRun}
               </button>
-              <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setPanel('howto')}>
+              <button
+                type="button"
+                className="ra-btn ra-btn-secondary"
+                onClick={() => {
+                  uiClick();
+                  setPanel('howto');
+                }}
+              >
                 {t.howTo}
               </button>
             </div>
@@ -359,7 +382,14 @@ export default function RadbroReefRun() {
               <button type="button" className="ra-btn" onClick={diveFromBrief}>
                 {t.dive}
               </button>
-              <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setPanel('menu')}>
+              <button
+                type="button"
+                className="ra-btn ra-btn-secondary"
+                onClick={() => {
+                  uiClick();
+                  setPanel('menu');
+                }}
+              >
                 {t.back}
               </button>
             </div>
@@ -390,7 +420,10 @@ export default function RadbroReefRun() {
               <button
                 type="button"
                 className="ra-btn"
-                onClick={() => setPanel(gameScreen === 'gameover' ? null : 'menu')}
+                onClick={() => {
+                  uiClick();
+                  setPanel(gameScreen === 'gameover' ? null : 'menu');
+                }}
               >
                 {t.ok}
               </button>
@@ -507,6 +540,7 @@ export default function RadbroReefRun() {
                 type="button"
                 className="ra-btn ra-btn-secondary"
                 onClick={() => {
+                  uiClick();
                   setGameScreen('menu');
                   setPanel('menu');
                 }}

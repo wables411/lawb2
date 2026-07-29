@@ -49,6 +49,12 @@ function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+/** Menu click blip — the menus were silent before. Also nudges the mobile audio unlock. */
+function uiClick(): void {
+  reefSfx.resume();
+  reefSfx.play('ui');
+}
+
 function prefersTouchInput(): boolean {
   if (typeof window === 'undefined') return false;
   const narrow = Math.min(window.innerWidth, window.innerHeight) <= 900;
@@ -112,6 +118,11 @@ export default function ReefArcadeMenu() {
   const toggleSfx = useCallback(() => {
     setSfxMuted((prev) => {
       reefSfx.setMuted(!prev);
+      // Unmuting should confirm itself audibly.
+      if (prev) {
+        reefSfx.resume();
+        reefSfx.play('ui');
+      }
       return !prev;
     });
   }, []);
@@ -306,6 +317,7 @@ export default function ReefArcadeMenu() {
   /** First run of the session opens the mission brief; after that, straight into the water. */
   const beginRun = useCallback(() => {
     if (!sceneReady) return;
+    uiClick();
     let briefSeen = false;
     try {
       briefSeen = sessionStorage.getItem('reefRunBriefSeen') === '1';
@@ -320,6 +332,7 @@ export default function ReefArcadeMenu() {
   }, [sceneReady, launchRun]);
 
   const diveFromBrief = useCallback(() => {
+    uiClick();
     try {
       sessionStorage.setItem('reefRunBriefSeen', '1');
     } catch {
@@ -629,7 +642,7 @@ export default function ReefArcadeMenu() {
               <button
                 type="button"
                 className={`ra-status-chip ra-status-chip-wallet${connection.connected ? ' ra-status-chip-on' : ''}`}
-                onClick={() => setModal('wallet')}
+                onClick={() => { uiClick(); setModal('wallet'); }}
                 aria-label={connection.connected ? 'Wallet connected' : 'Connect wallet'}
               >
                 <span className="ra-status-chip-dot" aria-hidden />
@@ -689,7 +702,7 @@ export default function ReefArcadeMenu() {
               <button
                 type="button"
                 className="ra-tile"
-                onClick={() => setModal('wallet')}
+                onClick={() => { uiClick(); setModal('wallet'); }}
               >
                 <span className="ra-tile-icon" aria-hidden>◈</span>
                 <span className="ra-tile-label">{t.wallet}</span>
@@ -700,7 +713,7 @@ export default function ReefArcadeMenu() {
               <button
                 type="button"
                 className="ra-tile"
-                onClick={() => setModal('difficulty')}
+                onClick={() => { uiClick(); setModal('difficulty'); }}
               >
                 <span className="ra-tile-icon" aria-hidden>⌁</span>
                 <span className="ra-tile-label">{t.depth}</span>
@@ -709,7 +722,7 @@ export default function ReefArcadeMenu() {
               <button
                 type="button"
                 className="ra-tile"
-                onClick={() => setModal('howto')}
+                onClick={() => { uiClick(); setModal('howto'); }}
               >
                 <span className="ra-tile-icon" aria-hidden>?</span>
                 <span className="ra-tile-label">{t.howTo}</span>
@@ -795,7 +808,7 @@ export default function ReefArcadeMenu() {
                 <button type="button" className="ra-btn" onClick={beginRun}>
                   {t.confirm}
                 </button>
-                <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('menu')}>
+                <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setGameScreen('menu'); }}>
                   BACK
                 </button>
               </div>
@@ -978,10 +991,10 @@ export default function ReefArcadeMenu() {
                 <button type="button" className="ra-btn" onClick={beginRun}>
                   {t.retry}
                 </button>
-                <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('select')}>
+                <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setGameScreen('select'); }}>
                   {t.selectTitle}
                 </button>
-                <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setGameScreen('menu')}>
+                <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setGameScreen('menu'); }}>
                   {t.mainMenu}
                 </button>
               </div>
@@ -991,7 +1004,7 @@ export default function ReefArcadeMenu() {
       </div>
 
       {modal && (
-        <div className="ra-overlay" role="dialog" aria-modal="true" onClick={() => setModal(null)}>
+        <div className="ra-overlay" role="dialog" aria-modal="true" onClick={() => { uiClick(); setModal(null); }}>
           <div className="ra-panel" onClick={(e) => e.stopPropagation()}>
             {modal === 'difficulty' && (
               <>
@@ -1033,7 +1046,7 @@ export default function ReefArcadeMenu() {
                   <button type="button" className="ra-btn" onClick={goConnect}>
                     {connection.connected ? 'MANAGE WALLET' : 'CONNECT'}
                   </button>
-                  <button type="button" className="ra-btn ra-btn-secondary" onClick={() => setModal(null)}>
+                  <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setModal(null); }}>
                     BACK
                   </button>
                 </div>
@@ -1074,7 +1087,7 @@ export default function ReefArcadeMenu() {
 
             {(modal === 'difficulty' || modal === 'howto') && (
               <div className="ra-panel-actions">
-                <button type="button" className="ra-btn" onClick={() => setModal(null)}>
+                <button type="button" className="ra-btn" onClick={() => { uiClick(); setModal(null); }}>
                   OK
                 </button>
               </div>

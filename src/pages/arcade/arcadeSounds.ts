@@ -26,7 +26,12 @@ type SfxName =
 const MUTE_KEY = 'reefSfxMuted';
 
 let ctx: AudioContext | null = null;
+/** SFX bus (heavily low-passed = underwater). */
 let master: GainNode | null = null;
+/** Music bus — gentler filtering so the score stays audible under the SFX muffle. */
+let musicBus: GainNode | null = null;
+/** Final output; mute lives here so it silences SFX and music together. */
+let outGain: GainNode | null = null;
 let muted = false;
 let ambienceNodes: { src: AudioBufferSourceNode; gain: GainNode; lfo: OscillatorNode } | null = null;
 let noiseBuf: AudioBuffer | null = null;
@@ -45,14 +50,30 @@ function getCtx(): AudioContext | null {
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
+
+    outGain = ctx.createGain();
+    outGain.gain.value = muted ? 0 : 1;
+    outGain.connect(ctx.destination);
+
+    // SFX: underwater character — everything muffled through one low-pass.
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.5;
-    // Underwater character: everything muffled through one low-pass.
+    master.gain.value = 0.5;
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
     lowpass.frequency.value = 2600;
     master.connect(lowpass);
-    lowpass.connect(ctx.destination);
+    lowpass.connect(outGain);
+
+    // Music: sits under the SFX and keeps more top end, so melodies read as "submerged"
+    // rather than smothered.
+    musicBus = ctx.createGain();
+    musicBus.gain.value = 0.34;
+    const musicLp = ctx.createBiquadFilter();
+    musicLp.type = 'lowpass';
+    musicLp.frequency.value = 5200;
+    musicBus.connect(musicLp);
+    musicLp.connect(outGain);
+
     return ctx;
   } catch {
     return null;
@@ -209,6 +230,17 @@ function installUnlock(): void {
 
 installUnlock();
 
+/**
+ * Shared audio bus for the music sequencer (`arcadeMusic.ts`). One AudioContext for the whole
+ * game: mobile browsers are unreliable with several, and the gesture unlock above only ever
+ * unlocks this one. Returns null until audio is available/unlocked.
+ */
+export function getAudioBus(): { ctx: AudioContext; music: GainNode; noise: AudioBuffer } | null {
+  const c = getCtx();
+  if (!c || !musicBus) return null;
+  return { ctx: c, music: musicBus, noise: getNoiseBuffer(c) };
+}
+
 export const reefSfx = {
   /** Call from a user-gesture path (run start) so autoplay policy unlocks the context. */
   resume(): void {
@@ -219,7 +251,7 @@ export const reefSfx = {
 
   setMuted(m: boolean): void {
     muted = m;
-    if (master) master.gain.value = m ? 0 : 0.5;
+    if (outGain) outGain.gain.value = m ? 0 : 1;
     try {
       window.localStorage.setItem(MUTE_KEY, m ? '1' : '0');
     } catch {

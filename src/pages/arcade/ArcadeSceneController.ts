@@ -50,6 +50,7 @@ import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
 import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
 import { reefSfx } from './arcadeSounds';
+import { reefMusic } from './arcadeMusic';
 import { pulsePickupVisual, spinPickupVisual } from './arcadePickupMesh';
 import { makeRng, randomSeed, type Rng } from './arcadeRng';
 import {
@@ -506,6 +507,8 @@ export class ArcadeSceneController {
     if (next !== 'play') this.clearVirtualThrottle();
     // Underwater ambience only while diving (kept through the game-over panel).
     if (next !== 'play' && next !== 'gameover') reefSfx.stopAmbience();
+    // Driving track for the run, the slow one everywhere else (incl. game over).
+    reefMusic.setTrack(next === 'play' ? 'play' : 'menu');
     this.updatePointerCapture();
     if (next === 'play') {
       this.playEnded = false;
@@ -3010,6 +3013,7 @@ export class ArcadeSceneController {
     this.disposed = true; // abort any in-flight async asset loads (StrictMode/remount safe)
     cancelAnimationFrame(this.raf);
     reefSfx.stopAmbience();
+    reefMusic.stop();
     if (this.deathNotifyTimer !== null) {
       window.clearTimeout(this.deathNotifyTimer);
       this.deathNotifyTimer = null;
