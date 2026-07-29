@@ -24,7 +24,7 @@ import {
   sweepSessionKey,
 } from '../../utils/lawbChessSession';
 import { chessBoardForCode } from '../../config/chessBoards';
-import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI } from '../../config/lawbChessOnchain';
+import { ENABLE_ONCHAIN_CHESS, LAWB_CHESS_ABI, LAWB_CHESS_DEPLOY_BLOCK } from '../../config/lawbChessOnchain';
 import { getGlobalElo, type GlobalEloEntry } from '../../firebaseElo';
 import { playChessSound } from '../../utils/chessSounds';
 import { OnchainChessBoard } from './OnchainChessBoard';
@@ -118,6 +118,10 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   const [targets, setTargets] = useState<number[]>([]);
   const [pendingPromo, setPendingPromo] = useState<{ from: number; to: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  // Monotonic token guarding `busy`: "Stop waiting" bumps it so a wallet request that never
+  // resolves (WalletConnect glitch, wallet app killed mid-prompt) can't hold the UI hostage,
+  // and the stale promise's finally() can't clobber a newer submission's state.
+  const busySeqRef = useRef(0);
   const [err, setErr] = useState<string | null>(null);
   const [captureSquare, setCaptureSquare] = useState<number | null>(null);
   const [endOverlay, setEndOverlay] = useState<{ outcome: GameOutcome; detail: string } | null>(null);
@@ -234,12 +238,35 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
 
   const clear = useCallback(() => { setSelected(null); setTargets([]); }, []);
 
+  // A failed/denied move tx does NOT pause the game — the on-chain clock keeps running.
+  // Say so explicitly, or a player who runs out of gas ETH thinks the match froze.
+  const moveErrText = (e: unknown): string => {
+    const raw = (e as Error)?.message ?? '';
+    const first = raw.split('\n')[0] || 'move failed';
+    if (/insufficient funds|exceeds the balance|gas required/i.test(raw)) {
+      return 'Not enough ETH for gas — the move was NOT sent and your clock is still running. Top up gas ETH in your wallet, then move again.';
+    }
+    if (/user rejected|user denied|rejected the request/i.test(raw)) {
+      return 'Transaction rejected in your wallet — the move was NOT sent and your clock is still running. Move again when ready.';
+    }
+    return first;
+  };
+
+  /** Escape hatch for a wallet prompt that never resolves: unlock the board, keep the game. */
+  const stopWaiting = useCallback(() => {
+    busySeqRef.current++;
+    setBusy(false);
+    setErr('Stopped waiting on the wallet — the move was NOT sent and your clock is still running. Try the move again.');
+  }, []);
+
   const submitMove = useCallback(
     async (from: number, to: number, promo: number) => {
       clear();
       setPendingPromo(null);
       setErr(null);
       setBusy(true);
+      const seq = ++busySeqRef.current;
+      const settle = (fn: () => void) => { if (busySeqRef.current === seq) fn(); };
       try {
         // popup-free path: the session key signs AND submits — no wallet interaction.
         // Any failure falls through to the direct wallet tx so a game can never brick.
@@ -252,16 +279,16 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
             refetch();
             return;
           } catch {
-            setErr('popup-free submit failed — falling back to a wallet confirmation');
+            settle(() => setErr('popup-free submit failed — falling back to a wallet confirmation'));
           }
         }
         const hash = await actions.makeMove(code, from, to, promo);
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
         refetch();
       } catch (e) {
-        setErr((e as Error)?.message?.split('\n')[0] ?? 'move failed');
+        settle(() => setErr(moveErrText(e)));
       } finally {
-        setBusy(false);
+        settle(() => setBusy(false));
       }
     },
     [actions, chainId, clear, code, contractAddress, game, publicClient, refetch, sessionFunded, sessionKey],
@@ -305,15 +332,6 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     [board, busy, chess, clear, myColor, myTurn, selected, submitMove],
   );
 
-  // bounded refresh: only while OPEN (waiting for a join) or ACTIVE-and-not-my-turn, tab visible
-  useEffect(() => {
-    const shouldWatch = isOpen || (isActive && !myTurn);
-    if (!shouldWatch) return;
-    const tick = () => { if (!document.hidden) refetch(); };
-    const id = setInterval(tick, WAIT_POLL_MS);
-    return () => clearInterval(id);
-  }, [isOpen, isActive, myTurn, refetch]);
-
   const now = useNowSeconds(!!isActive);
   const clocks = useMemo(() => {
     if (!game) return { white: 0, black: 0 };
@@ -327,6 +345,27 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
   }, [game, isActive, now]);
 
   const opponentTimedOut = isActive && ((game!.side === Side.WHITE && clocks.white <= 0) || (game!.side === Side.BLACK && clocks.black <= 0));
+  const myClockFlagged = isActive && myColor !== null && (myColor === Side.WHITE ? clocks.white : clocks.black) <= 0;
+
+  // bounded refresh, tab visible only: while OPEN (waiting for a join), while it's the
+  // opponent's move, AND while a game could end around us on our own turn — mid-submission
+  // (busy) or once our clock is flagged (the opponent can claim the win any moment). Without
+  // those last two, a player stuck on a failed move never learns the game ended.
+  useEffect(() => {
+    const shouldWatch = isOpen || (isActive && (!myTurn || busy || myClockFlagged));
+    if (!shouldWatch) return;
+    const tick = () => { if (!document.hidden) refetch(); };
+    const id = setInterval(tick, WAIT_POLL_MS);
+    return () => clearInterval(id);
+  }, [isOpen, isActive, myTurn, busy, myClockFlagged, refetch]);
+
+  // Which side lost on time, judged from the frozen struct after FINISHED (claimTimeout
+  // doesn't zero the loser's clock — it checks elapsed > remaining, so re-derive that here).
+  const timedOutSide = useMemo<SideT | null>(() => {
+    if (!isFinished || !game || game.lastMoveAt === 0n) return null;
+    const remaining = game.side === Side.WHITE ? game.whiteTime : game.blackTime;
+    return Math.floor(Date.now() / 1000) - Number(game.lastMoveAt) > remaining ? (game.side as SideT) : null;
+  }, [isFinished, game]);
 
   const result = useMemo(() => {
     if (!isFinished || !chess) return null;
@@ -336,16 +375,20 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     }
     if (chess.isStalemate()) return 'Stalemate — draw';
     if (chess.isInsufficientMaterial()) return 'Draw — insufficient material';
+    if (timedOutSide !== null) {
+      return timedOutSide === Side.WHITE ? 'Timeout — Black wins' : 'Timeout — White wins';
+    }
     return 'Game over';
-  }, [chess, game, isFinished]);
+  }, [chess, game, isFinished, timedOutSide]);
 
   const doAction = useCallback(
-    async (fn: () => Promise<`0x${string}`>) => {
+    async (fn: () => Promise<`0x${string}`>, onConfirmed?: () => void) => {
       setErr(null);
       setBusy(true);
       try {
         const hash = await fn();
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+        onConfirmed?.();
         refetch();
       } catch (e) {
         setErr((e as Error)?.message?.split('\n')[0] ?? 'action failed');
@@ -407,21 +450,35 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.moveNonce]);
 
-  // victory/defeat/draw overlay: winner comes from the GameEnded event (handles all end reasons)
+  // victory/defeat/draw overlay. Primary source: the GameEnded event (covers every end
+  // reason). fromBlock MUST be the deploy block — fromBlock 0 on a mainnet public RPC gets
+  // the getLogs rejected, the catch ate it, and NOBODY saw a victory/defeat screen. If the
+  // log query still fails, fall back to deriving the outcome from the frozen game struct
+  // (checkmate/stalemate/insufficient from the board, timeout from clock arithmetic).
   useEffect(() => {
     if (!isFinished || !isPlayer || !publicClient || !contractAddress) return;
+    if (endOverlay) return; // resign/claim already set it locally
     let cancelled = false;
+    const structFallback = (): void => {
+      if (cancelled || !chess) return;
+      let outcome: GameOutcome | null = null;
+      if (chess.isCheckmate()) outcome = (game!.side === myColor) ? 'loss' : 'win';
+      else if (chess.isStalemate() || chess.isInsufficientMaterial()) outcome = 'draw';
+      else if (timedOutSide !== null) outcome = timedOutSide === myColor ? 'loss' : 'win';
+      if (outcome) setEndOverlay({ outcome, detail: result ?? 'Game over' });
+    };
     (async () => {
       try {
         const logs = await publicClient.getContractEvents({
           address: contractAddress, abi: LAWB_CHESS_ABI, eventName: 'GameEnded',
-          args: { code }, fromBlock: 0n, toBlock: 'latest',
+          args: { code }, fromBlock: LAWB_CHESS_DEPLOY_BLOCK[chainId] ?? 0n, toBlock: 'latest',
         });
-        if (cancelled || !logs.length) return;
+        if (cancelled) return;
+        if (!logs.length) { structFallback(); return; }
         const winner = String((logs[logs.length - 1] as { args: { winner?: string } }).args.winner ?? '').toLowerCase();
         const outcome: GameOutcome = !winner || winner === ZERO_ADDR ? 'draw' : winner === me ? 'win' : 'loss';
         setEndOverlay({ outcome, detail: result ?? 'Game over' });
-      } catch { /* ignore */ }
+      } catch { structFallback(); }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -513,6 +570,10 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
           <div style={{ minHeight: 20, textAlign: 'center', fontSize: 13, fontWeight: 700,
             color: myTurn ? oc.cyan : oc.muted }}>
             {statusText}{busy && ' · submitting…'}
+            {busy && (
+              <button style={{ ...ocBtnGhost, marginLeft: 8, padding: '3px 9px', fontSize: 11 }}
+                onClick={stopWaiting}>stop waiting</button>
+            )}
           </div>
           {err && (
             <div style={{ color: '#ff9d94', fontSize: 12, backgroundImage: solid('rgba(232,86,74,.10)'),
@@ -585,10 +646,20 @@ export const OnchainChessGame: React.FC<OnchainChessGameProps> = ({ code, onLeav
               </div>
             )}
             {isActive && isPlayer && (
-              <button style={ocBtnDanger} disabled={busy} onClick={() => doAction(() => actions.resign(code))}>Resign</button>
+              <button style={ocBtnDanger} disabled={busy} onClick={() => doAction(
+                () => actions.resign(code),
+                // outcome is known locally — don't depend on a log query to show the screen
+                () => setEndOverlay({ outcome: 'loss', detail: 'Resignation' }),
+              )}>Resign</button>
             )}
             {opponentTimedOut && isPlayer && (
-              <button style={ocBtnPrimary} disabled={busy} onClick={() => doAction(() => actions.claimTimeout(code))}>Claim timeout win</button>
+              <button style={ocBtnPrimary} disabled={busy} onClick={() => doAction(
+                () => actions.claimTimeout(code),
+                () => setEndOverlay({
+                  outcome: 'win',
+                  detail: myColor === Side.WHITE ? 'Timeout — White wins' : 'Timeout — Black wins',
+                }),
+              )}>Claim timeout win</button>
             )}
             {isOpen && myColor === Side.WHITE && (
               <button style={ocBtnGhost} disabled={busy} onClick={() => doAction(() => actions.cancelGame(code))}>Cancel game</button>

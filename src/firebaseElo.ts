@@ -35,6 +35,15 @@ function loadFeed(): Promise<Record<string, GlobalEloEntry> | null> {
 const cache = new Map<string, GlobalEloEntry | null>();
 
 /**
+ * The whole global-ELO feed (lowercased wallet -> entry), one fetch per session.
+ * Null when the droplet feed is unreachable — callers should degrade gracefully
+ * (e.g. the leaderboard just omits its ELO badges).
+ */
+export function getGlobalEloFeed(): Promise<Record<string, GlobalEloEntry> | null> {
+  return loadFeed();
+}
+
+/**
  * Global cross-chain PvP ELO for a player (initial 1200, K=32 — same math as the
  * on-chain per-chain rating). Returns null when the player has no finished
  * on-chain games anywhere (unrated) or no source is reachable.

@@ -10,6 +10,7 @@ import {
   type PointsBreakdown,
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
+import { getGlobalEloFeed, type GlobalEloEntry } from '../firebaseElo';
 import {
   linuxNotesHeaderStyle,
   linuxNotesPillStyle,
@@ -67,6 +68,10 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nameByKey, setNameByKey] = useState<Record<string, string>>({});
+  // On-chain chess ELO badge per merged row (keyed by the row's primary wallet). A profile's
+  // rating lives under whichever linked wallet actually played, so the group's wallets are
+  // all checked against the indexer feed and the most-played one wins.
+  const [eloByKey, setEloByKey] = useState<Record<string, GlobalEloEntry>>({});
   const [filter, setFilter] = useState<LeaderboardFilter>('total');
 
   useEffect(() => {
@@ -102,8 +107,24 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
           }
         }
         const data = merged.slice(0, 25);
+        // ELO badges: one feed fetch per session; silently absent when unreachable.
+        const feed = await getGlobalEloFeed();
+        const elos: Record<string, GlobalEloEntry> = {};
+        if (feed) {
+          for (const [primary, list] of groups) {
+            let best: GlobalEloEntry | null = null;
+            for (const e of list) {
+              const hit = feed[e.username.toLowerCase()];
+              if (hit && (!best || hit.games > best.games || (hit.games === best.games && hit.elo > best.elo))) {
+                best = hit;
+              }
+            }
+            if (best) elos[primary] = best;
+          }
+        }
         if (!cancelled) {
           setRows(data);
+          setEloByKey(elos);
           if (data.length === 0) {
             setError(null);
           }
@@ -253,6 +274,11 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                     {mainLabel}
                   </div>
                   {sub}
+                  {eloByKey[key] && (
+                    <div style={{ fontSize: 10, color: '#6a5a24', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                      ♟ ELO {eloByKey[key].elo} · {eloByKey[key].games} on-chain {eloByKey[key].games === 1 ? 'game' : 'games'}
+                    </div>
+                  )}
                 </span>
                 <span style={{ textAlign: 'right', fontWeight: 700 }}>
                   {pointsForFilter(entry, filter)}

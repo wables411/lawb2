@@ -55,7 +55,9 @@ export const OnchainChessBoard: React.FC<OnchainChessBoardProps> = ({
         display: 'grid',
         gridTemplateColumns: 'repeat(8, 1fr)',
         gridTemplateRows: 'repeat(8, 1fr)',
-        width: 'min(92vw, 480px)',
+        // Fill the parent card. Sizing itself to the viewport (min(92vw, 480px)) ignored the
+        // card's padding, so the board overflowed its container and clipped the h-file on phones.
+        width: '100%',
         aspectRatio: '1 / 1',
         border: `1px solid ${oc.line2}`,
         borderRadius: 8,
