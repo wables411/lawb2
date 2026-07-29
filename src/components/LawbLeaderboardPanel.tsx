@@ -10,7 +10,11 @@ import {
   type PointsBreakdown,
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
-import { getGlobalEloFeed, type GlobalEloEntry } from '../firebaseElo';
+import { getGlobalEloFeed, getWagedMatches, type GlobalEloEntry, type WagedMatch } from '../firebaseElo';
+import {
+  LAWB_CHESS_NFT_COLLECTIONS,
+  LAWB_CHESS_WAGER_TOKENS,
+} from '../config/lawbChessOnchain';
 import {
   linuxNotesHeaderStyle,
   linuxNotesPillStyle,
@@ -41,6 +45,25 @@ const ROW_STYLE: React.CSSProperties = {
 };
 
 type LeaderboardFilter = 'total' | 'chess' | 'reef_run' | 'holdings' | 'stream';
+
+const CHAIN_NAMES: Record<string, string> = { ethereum: 'Ethereum', arbitrum: 'Arbitrum', base: 'Base' };
+const END_REASONS: Record<number, string> = {
+  1: 'checkmate', 2: 'stalemate', 3: '50-move', 4: 'insufficient material', 5: 'threefold', 6: 'timeout', 7: 'resignation',
+};
+
+/** Human stake label from the frontend's own per-chain token/collection tables (no extra RPC). */
+function matchStakeLabel(m: WagedMatch): string {
+  if (m.kind === 0) return `${Number(m.wager) / 1e18} ETH each`;
+  if (m.kind === 1) {
+    const t = (LAWB_CHESS_WAGER_TOKENS[m.chainId] ?? []).find((x) => x.address.toLowerCase() === m.token.toLowerCase());
+    if (t) return `${Number(m.wager) / 10 ** t.decimals} ${t.label.split(' ')[0]} each`;
+    return `${m.token.slice(0, 6)}…${m.token.slice(-4)} tokens`;
+  }
+  const c = (LAWB_CHESS_NFT_COLLECTIONS[m.chainId] ?? []).find((x) => x.address.toLowerCase() === m.token.toLowerCase());
+  const name = c ? c.label : `${m.token.slice(0, 6)}…${m.token.slice(-4)}`;
+  const ids = m.nfts?.map((n) => `#${n.tokenId}`).join(' vs ');
+  return `${name}${ids ? ` ${ids}` : ''} · winner takes both`;
+}
 
 function pointsForFilter(entry: LeaderboardEntry, filter: LeaderboardFilter): number {
   const b = (entry.points_breakdown || {}) as Partial<PointsBreakdown>;
@@ -73,6 +96,20 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
   // all checked against the indexer feed and the most-played one wins.
   const [eloByKey, setEloByKey] = useState<Record<string, GlobalEloEntry>>({});
   const [filter, setFilter] = useState<LeaderboardFilter>('total');
+  // Completed on-chain wager matches (indexer feed; same single fetch as the ELO badges).
+  const [matches, setMatches] = useState<WagedMatch[]>([]);
+  const [matchNames, setMatchNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    void getWagedMatches().then(async (list) => {
+      if (cancelled) return;
+      setMatches(list);
+      const addrs = [...new Set(list.flatMap((m) => [m.white, m.black]))];
+      const pairs = await Promise.all(addrs.map(async (a) => [a, await getDisplayName(a)] as const));
+      if (!cancelled) setMatchNames(Object.fromEntries(pairs));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -283,6 +320,63 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                 <span style={{ textAlign: 'right', fontWeight: 700 }}>
                   {pointsForFilter(entry, filter)}
                 </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {matches.length > 0 && (
+        <div style={{ ...linuxNotesSectionStyle(isMobile), marginTop: 12, paddingTop: 8, paddingBottom: 8 }}>
+          <h3 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 4 }}>⚔ Waged Matches</h3>
+          <p style={{ ...linuxNotesSubtleTextStyle(isMobile), marginBottom: 8 }}>
+            Every completed on-chain wager match — escrow, moves, and payout all settled by the contract.
+          </p>
+          {matches.map((m) => {
+            const nameOf = (a: string) => {
+              const n = (matchNames[a] ?? '').trim();
+              return n && !/\.\.\./.test(n) ? `@${n.replace(/^@/, '')}` : formatAddress(a);
+            };
+            const isDraw = !m.winner;
+            const winner = isDraw ? null : m.winner!;
+            const loser = isDraw ? null : winner === m.white ? m.black : m.white;
+            const when = new Date(m.endedAt * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            return (
+              <div key={`${m.chain}:${m.code}:${m.endedAt}`} style={{ padding: '10px 0', borderBottom: '1px solid #dfdfda', fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                  {isDraw ? (
+                    <span style={{ fontWeight: 700 }}>{nameOf(m.white)} ½–½ {nameOf(m.black)}</span>
+                  ) : (
+                    <>
+                      <span style={{ fontWeight: 700, color: '#6a5a24' }} title={winner!}>🏆 {nameOf(winner!)}</span>
+                      <span style={{ color: '#8a8a83' }}>def.</span>
+                      <span title={loser!}>{nameOf(loser!)}</span>
+                    </>
+                  )}
+                  <span style={{ color: '#8a8a83' }}>
+                    by {END_REASONS[m.reason] ?? 'game over'} · {CHAIN_NAMES[m.chain] ?? m.chain} · {when}
+                  </span>
+                </div>
+                <div style={{ marginTop: 3, fontWeight: 600 }}>{matchStakeLabel(m)}</div>
+                {m.nfts && m.nfts.some((n) => n.image) && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    {m.nfts.map((n) => (
+                      <figure key={n.tokenId} style={{ margin: 0, textAlign: 'center' }}>
+                        {n.image && (
+                          <img
+                            src={n.image}
+                            alt={`Staked NFT #${n.tokenId}`}
+                            loading="lazy"
+                            style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #c9c9c2', display: 'block' }}
+                          />
+                        )}
+                        <figcaption style={{ fontSize: 10, color: '#666761', marginTop: 2 }}>
+                          #{n.tokenId}{!isDraw && ' → ' + nameOf(winner!)}
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

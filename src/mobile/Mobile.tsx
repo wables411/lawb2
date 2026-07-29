@@ -194,6 +194,7 @@ const REMILIA_LINKS = [
   { id: 'remilia-wiki', name: 'Remilia Wiki', image: '/assets/remilia-wiki-icon.png', description: 'Remilia culture encyclopedia.' },
   { id: 'network-spirits', name: 'Network Spirits', image: '/assets/networkspirits-icon.png', description: 'Spirit98OS portal & directory.' },
   { id: 'radbro', name: 'Radbro', image: '/assets/radbro-icon.png', description: 'Radbro Webring. Playable in Reef Run.' },
+  { id: 'nonon', name: 'NONON', image: '/assets/nonon-icon.png', description: 'NONON house.' },
 ];
 
 interface FolderNFT {
@@ -357,6 +358,9 @@ const Mobile = () => {
           break;
         case 'radbro':
           window.open('https://radbro.xyz', '_blank', 'noopener,noreferrer');
+          break;
+        case 'nonon':
+          window.open('https://nonon.house', '_blank', 'noopener,noreferrer');
           break;
         default: break;
       }

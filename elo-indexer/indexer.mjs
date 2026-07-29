@@ -27,7 +27,7 @@
 // replayHardResults() below. Until then that file simply doesn't exist and the
 // PvP-only global rating ships.
 
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { createSign, createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -165,12 +165,20 @@ function decodeLog(log) {
   };
   switch (log.topics[0]) {
     case TOPIC_CREATED:
-      return { ...base, type: 'created', white: topicAddr(log.topics[2]) };
+      // kind/token/wager feed the waged-matches feed (cache schema v2 — see loadEvents)
+      return {
+        ...base, type: 'created', white: topicAddr(log.topics[2]),
+        kind: parseInt(word(log.data, 0), 16),
+        token: '0x' + word(log.data, 1).slice(24).toLowerCase(),
+        wager: BigInt('0x' + word(log.data, 2)).toString(),
+      };
     case TOPIC_JOINED:
       return { ...base, type: 'joined', black: topicAddr(log.topics[2]) };
     case TOPIC_ENDED:
       return {
         ...base, type: 'ended', winner: topicAddr(log.topics[2]),
+        reason: parseInt(word(log.data, 0), 16),
+        payout: BigInt('0x' + word(log.data, 1)).toString(),
         whiteElo: parseInt(word(log.data, 3), 16),
         blackElo: parseInt(word(log.data, 4), 16),
       };
@@ -198,6 +206,19 @@ function loadEvents(chainKey) {
     seen.add(k);
     return true;
   });
+}
+
+/**
+ * Cache schema v2 added kind/token/wager to 'created' (and reason/payout to 'ended').
+ * A v1 cache can't feed the matches list — wipe it and the cursor so the chain rescans
+ * from its deploy block (cheap: these contracts are days old with a handful of events).
+ */
+function resetStaleCache(chainKey, cursors) {
+  const events = loadEvents(chainKey);
+  if (!events.some((e) => (e.type === 'created' && e.kind === undefined) || (e.type === 'ended' && e.reason === undefined))) return;
+  console.log(`${chainKey}: v1 event cache detected — rescanning from deploy block`);
+  rmSync(join(STATE_DIR, `events-${chainKey}.jsonl`), { force: true });
+  delete cursors[chainKey];
 }
 
 async function scanChain(chain, cursors) {
@@ -278,6 +299,124 @@ export function replay(eventsByChain) {
   return { global, perChain, mismatches };
 }
 
+// ------------------------------------------------------------- waged matches
+// Every completed wager match (any kind), newest first, for the site's leaderboard
+// "waged matches" feed. Built from the same merged timeline as the ELO replay.
+export function buildMatches(eventsByChain, chainIdByKey) {
+  const merged = [];
+  for (const [chainKey, events] of Object.entries(eventsByChain)) {
+    for (const ev of events) merged.push({ ...ev, chainKey });
+  }
+  merged.sort((x, y) =>
+    x.ts - y.ts || x.chainKey.localeCompare(y.chainKey) || x.blockNumber - y.blockNumber || x.logIndex - y.logIndex);
+
+  const open = {}; // `${chain}:${code}` -> pending match (codes are reusable; latest create wins)
+  const matches = [];
+  for (const ev of merged) {
+    const gameKey = `${ev.chainKey}:${ev.code}`;
+    if (ev.type === 'created') {
+      open[gameKey] = {
+        chain: ev.chainKey, chainId: chainIdByKey[ev.chainKey], code: ev.code,
+        white: ev.white, black: null, kind: ev.kind, token: ev.token, wager: ev.wager,
+      };
+    } else if (ev.type === 'joined') {
+      if (open[gameKey]) open[gameKey].black = ev.black;
+    } else if (ev.type === 'ended') {
+      const m = open[gameKey];
+      delete open[gameKey];
+      if (!m || !m.black) continue;
+      matches.push({
+        ...m,
+        winner: ev.winner === '0x' + '0'.repeat(40) ? null : ev.winner,
+        reason: ev.reason, payout: ev.payout,
+        whiteElo: ev.whiteElo, blackElo: ev.blackElo,
+        endedAt: ev.ts,
+      });
+    }
+  }
+  return matches.reverse(); // newest first
+}
+
+// NFT showcase enrichment: for ERC721/1155 matches, read the (persisted) game struct for
+// the two staked tokenIds, then resolve each token's image via tokenURI/uri metadata.
+// Results cache in state/nft-meta.json — each token is fetched once, ever.
+const SEL_GAMES = '0x919e5e9c'; // games(bytes6)
+const SEL_TOKENURI = '0xc87b56dd'; // tokenURI(uint256)
+const SEL_URI = '0x0e89341c'; // uri(uint256) — ERC-1155
+
+function ipfsToHttp(u) {
+  return typeof u === 'string' ? u.replace(/^ipfs:\/\/(ipfs\/)?/, 'https://ipfs.io/ipfs/') : u;
+}
+
+function decodeAbiString(hex) {
+  // (offset, len, bytes) ABI encoding of a single string return value
+  const data = hex.slice(2);
+  const len = parseInt(data.slice(64, 128), 16);
+  return Buffer.from(data.slice(128, 128 + len * 2), 'hex').toString('utf8');
+}
+
+async function fetchTokenImage(chain, token, tokenId, cache) {
+  const cacheKey = `${chain.key}:${token}:${tokenId}`;
+  if (cacheKey in cache) return cache[cacheKey];
+  let image = null;
+  try {
+    const idHex = BigInt(tokenId).toString(16).padStart(64, '0');
+    let uri = null;
+    for (const sel of [SEL_TOKENURI, SEL_URI]) {
+      try {
+        const r = await rpc(chain, 'eth_call', [{ to: token, data: sel + idHex }, 'latest']);
+        if (r && r !== '0x') { uri = decodeAbiString(r); break; }
+      } catch { /* try next selector */ }
+    }
+    if (uri) {
+      uri = uri.replace('{id}', idHex); // ERC-1155 substitution
+      let meta;
+      if (uri.startsWith('data:application/json;base64,')) {
+        meta = JSON.parse(Buffer.from(uri.slice(29), 'base64').toString('utf8'));
+      } else {
+        const res = await fetch(ipfsToHttp(uri), { signal: AbortSignal.timeout(15_000) });
+        if (res.ok) meta = await res.json();
+      }
+      if (meta?.image) image = ipfsToHttp(meta.image);
+    }
+  } catch (e) {
+    console.error(`nft image ${cacheKey}: ${e.message}`);
+    return null; // NOT cached — retry next run
+  }
+  cache[cacheKey] = image; // cache even null-with-uri-missing: token resolved, just no image
+  return image;
+}
+
+async function enrichNftMatches(matches) {
+  const cachePath = join(STATE_DIR, 'nft-meta.json');
+  const cache = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf8')) : {};
+  const byKey = Object.fromEntries(CHAINS.map((c) => [c.key, c]));
+  for (const m of matches) {
+    if (m.kind !== 2 && m.kind !== 3) continue; // ERC721 / ERC1155 only
+    const chain = byKey[m.chain];
+    if (!chain) continue;
+    try {
+      // games(code) persists after FINISHED — but codes are reusable, so only trust the
+      // struct when it still describes THIS match's players.
+      const r = await rpc(chain, 'eth_call', [
+        { to: chain.proxy, data: SEL_GAMES + m.code.slice(2).padEnd(64, '0') }, 'latest',
+      ]);
+      const w = (i) => r.slice(2 + i * 64, 2 + (i + 1) * 64);
+      const addr = (i) => '0x' + w(i).slice(24).toLowerCase();
+      if (addr(0) !== m.white || addr(1) !== m.black) continue;
+      const whiteTokenId = BigInt('0x' + w(15)).toString();
+      const blackTokenId = BigInt('0x' + w(16)).toString();
+      m.nfts = [
+        { staker: 'white', tokenId: whiteTokenId, image: await fetchTokenImage(chain, m.token, whiteTokenId, cache) },
+        { staker: 'black', tokenId: blackTokenId, image: await fetchTokenImage(chain, m.token, blackTokenId, cache) },
+      ];
+    } catch (e) {
+      console.error(`nft enrich ${m.chain}:${m.code}: ${e.message}`);
+    }
+  }
+  writeFileSync(cachePath, JSON.stringify(cache, null, 2));
+}
+
 // Hard-mode ingestion (spec §8b phase 2 — inert until the Stockfish service signs
 // results). Expected file: state/hard-results.jsonl, one JSON per line:
 //   {player, result: "win"|"loss"|"draw", ts, sig}
@@ -340,6 +479,7 @@ async function main() {
 
   const eventsByChain = {};
   for (const chain of CHAINS) {
+    resetStaleCache(chain.key, cursors);
     const n = await scanChain(chain, cursors);
     eventsByChain[chain.key] = loadEvents(chain.key);
     console.log(`${chain.key}: +${n} new events, ${eventsByChain[chain.key].length} total, cursor ${cursors[chain.key]}`);
@@ -352,14 +492,20 @@ async function main() {
   if (mismatches > 0) throw new Error(`${mismatches} replay/contract ELO mismatches — NOT writing (port drifted from Elo.sol?)`);
   replayHardResults(global);
 
+  // Waged-matches feed (site leaderboard section). Cap bounds the file size forever.
+  const chainIdByKey = Object.fromEntries(CHAINS.map((c) => [c.key, c.chainId]));
+  const matches = buildMatches(eventsByChain, chainIdByKey).slice(0, 200);
+  await enrichNftMatches(matches);
+
   const payload = {
     global,
     perChain,
+    matches,
     updatedAt: Date.now(),
     source: 'elo-indexer (PvP GameEnded replay; spec 8b)',
   };
   const players = Object.keys(global).length;
-  console.log(`replayed OK: ${players} rated players, chains: ${Object.keys(perChain).join(', ') || 'none yet'}`);
+  console.log(`replayed OK: ${players} rated players, ${matches.length} completed matches, chains: ${Object.keys(perChain).join(', ') || 'none yet'}`);
 
   if (DRY_RUN) {
     console.log(JSON.stringify(payload, null, 2));

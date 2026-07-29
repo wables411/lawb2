@@ -14,17 +14,48 @@ export interface GlobalEloEntry {
   games: number;
 }
 
-const ELO_FEED_URL = 'https://chess.lawb.xyz/elo.json';
+/** One completed wager match from the indexer's cross-chain feed (newest first). */
+export interface WagedMatch {
+  chain: string;
+  chainId: number;
+  code: `0x${string}`;
+  white: string;
+  black: string;
+  /** null = draw */
+  winner: string | null;
+  /** WagerKind: 0 native, 1 ERC-20, 2 ERC-721, 3 ERC-1155 */
+  kind: number;
+  token: `0x${string}`;
+  /** stake per player as a decimal string (wei/base units; 721: 1) */
+  wager: string;
+  /** EndReason enum from the contract (6 = timeout, 7 = resign, 1 = checkmate, …) */
+  reason: number;
+  payout: string;
+  whiteElo: number;
+  blackElo: number;
+  endedAt: number;
+  /** staked NFTs with resolved images (721/1155 matches only) */
+  nfts?: { staker: 'white' | 'black'; tokenId: string; image: string | null }[];
+}
 
-let feedPromise: Promise<Record<string, GlobalEloEntry> | null> | null = null;
+interface EloFeed {
+  global?: Record<string, GlobalEloEntry>;
+  matches?: WagedMatch[];
+}
 
-function loadFeed(): Promise<Record<string, GlobalEloEntry> | null> {
+// Overridable for local dev (point VITE_ELO_FEED_URL at a fixture) — prod uses the droplet.
+const ELO_FEED_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ELO_FEED_URL) ||
+  'https://chess.lawb.xyz/elo.json';
+
+let feedPromise: Promise<EloFeed | null> | null = null;
+
+function loadFeed(): Promise<EloFeed | null> {
   feedPromise ??= (async () => {
     try {
       const res = await fetch(ELO_FEED_URL);
       if (!res.ok) return null;
-      const payload = (await res.json()) as { global?: Record<string, GlobalEloEntry> };
-      return payload.global ?? null;
+      return (await res.json()) as EloFeed;
     } catch {
       return null;
     }
@@ -32,15 +63,21 @@ function loadFeed(): Promise<Record<string, GlobalEloEntry> | null> {
   return feedPromise;
 }
 
+/** All completed wager matches (cross-chain, newest first); [] when the feed is unreachable. */
+export async function getWagedMatches(): Promise<WagedMatch[]> {
+  const feed = await loadFeed();
+  return feed?.matches ?? [];
+}
+
 const cache = new Map<string, GlobalEloEntry | null>();
 
 /**
- * The whole global-ELO feed (lowercased wallet -> entry), one fetch per session.
+ * The whole global-ELO table (lowercased wallet -> entry), one fetch per session.
  * Null when the droplet feed is unreachable — callers should degrade gracefully
  * (e.g. the leaderboard just omits its ELO badges).
  */
-export function getGlobalEloFeed(): Promise<Record<string, GlobalEloEntry> | null> {
-  return loadFeed();
+export async function getGlobalEloFeed(): Promise<Record<string, GlobalEloEntry> | null> {
+  return (await loadFeed())?.global ?? null;
 }
 
 /**
@@ -52,7 +89,7 @@ export async function getGlobalElo(walletAddress: string): Promise<GlobalEloEntr
   const key = walletAddress.toLowerCase();
   if (cache.has(key)) return cache.get(key) ?? null;
 
-  const feed = await loadFeed();
+  const feed = (await loadFeed())?.global;
   if (feed) {
     const value = feed[key] ?? null;
     cache.set(key, value);

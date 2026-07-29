@@ -20,7 +20,7 @@ import {
   type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { arbitrum, baseSepolia, foundry } from 'viem/chains';
+import { arbitrum, base, baseSepolia, foundry, mainnet } from 'viem/chains';
 import { LAWB_CHESS_ABI } from '../config/lawbChessAbi';
 import {
   generateMoveKey,
@@ -33,6 +33,10 @@ import {
 /** Chains the LawbChess contract is deployed on (see config/lawbChessOnchain.ts). */
 const SESSION_CHAINS: Record<number, Chain> = {
   [arbitrum.id]: arbitrum,
+  // ETH + Base mainnet: same mechanism, the key just pays that chain's gas. Funding is sized
+  // from the LIVE gas price (computeSessionFunding), so L1 fronts more and sweeps back the rest.
+  [mainnet.id]: mainnet,
+  [base.id]: base,
   [baseSepolia.id]: baseSepolia,
   // local anvil — proof harness only (scripts/proveSessionMoves.mts); unreachable in the app
   // because getLawbChessAddress(31337) is null, so no UI path ever selects this chain.
