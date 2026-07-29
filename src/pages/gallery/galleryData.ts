@@ -720,14 +720,22 @@ export const PLANETS: Planet[] = [
     category: 'game',
     image: '/assets/chessicon.png',
     color: '#c0c0c0',
-    chain: 'Arbitrum',
+    chain: 'Ethereum · Arbitrum · Base',
     blurb:
-      'Lawb Chess Beta 3000 — Win98-styled chess, fully on-chain PvP: the contract validates every move, escrows both $DMT stakes on Arbitrum, and pays the winner automatically. Plus a Stockfish AI to practice against. Blue moves first.',
+      'Fully on-chain wager chess on three chains: the contract validates every move, keeps the chess clock, escrows both stakes, and pays the winner automatically — checkmate, resign, or timeout. Wager ETH, $DMT (Arbitrum), $CULT (Ethereum), or NFTs (same collection, winner takes both — Lawbsters, Milady, Radbro and more). On-chain ELO per chain plus a global cross-chain rating, popup-free moves via session keys, and a Stockfish AI to practice against. Blue moves first.',
     links: [
       { label: 'Play', url: 'https://lawb.xyz/chess' },
       {
-        label: 'LawbChess contract (Arbitrum)',
+        label: 'Contract (Ethereum)',
+        url: 'https://etherscan.io/address/0x6aa574B21212C6E7436Eb26A27542F1AEFfFad87',
+      },
+      {
+        label: 'Contract (Arbitrum)',
         url: 'https://arbiscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47',
+      },
+      {
+        label: 'Contract (Base)',
+        url: 'https://basescan.org/address/0xBe0C68afE6f412d052C8fa306e9191D2b6371Aec',
       },
     ],
     contributors: [
@@ -736,7 +744,9 @@ export const PLANETS: Planet[] = [
     timeline: [
       { date: '2024', label: 'Lawb Chess launches with Sanko wagers' },
       { date: '2025', label: 'Base becomes the primary wager chain' },
-      { date: '2026-07', label: 'Fully on-chain rebuild ships on Arbitrum — $DMT wagers, the contract is referee and bank' },
+      { date: '2026-07', label: 'Fully on-chain rebuild ships — the contract is referee, clock, and bank' },
+      { date: '2026-07', label: 'Live on Ethereum ($CULT + NFT wagers), Arbitrum ($DMT), and Base; global ELO indexer' },
+      { date: '2026-07', label: 'First NFT wager match settles on Ethereum — two Pixelawbsters, winner took both' },
     ],
     moons: [
       {
@@ -744,6 +754,12 @@ export const PLANETS: Planet[] = [
         name: 'Piece sets',
         kind: 'art',
         blurb: 'Boards and pieces skinned with LawbStation and Pixelawbs art.',
+      },
+      {
+        id: 'chess-elo',
+        name: 'Global ELO',
+        kind: 'tech',
+        blurb: 'Cross-chain rating replayed from GameEnded events by a credential-free droplet indexer.',
       },
     ],
     orbit: 570,
@@ -758,8 +774,11 @@ export const PLANETS: Planet[] = [
     image: '/assets/reef-arcade.svg',
     color: '#2ee6ff',
     blurb:
-      'Endless underwater runner in Three.js: pick Clawb, Milady, or Radbro, dodge jellyfish and mines, chase peptides, and survive the reef. Score is survival time.',
-    links: [{ label: 'Play', url: 'https://lawb.xyz/arcade' }],
+      'Endless underwater runner in Three.js: pick Clawb, Milady, or Radbro, dodge the reef, and haul as much ocean trash as you can before your air runs out. Synthesized 80s soundtrack, EN/中文, and a standalone Radbro build at radreefrun.lawb.xyz.',
+    links: [
+      { label: 'Play', url: 'https://lawb.xyz/arcade' },
+      { label: 'Radbro build', url: 'https://radreefrun.lawb.xyz' },
+    ],
     contributors: [
       { name: 'wables411', url: 'https://x.com/wables411', role: 'dev / art direction' },
     ],
