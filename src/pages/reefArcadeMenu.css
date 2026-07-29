@@ -772,8 +772,16 @@
   inset: 0;
   z-index: 7;
   display: flex;
-  align-items: center;
+  /*
+   * `align-items: center` + a panel taller than the viewport clips the TOP unreachably —
+   * overflow spills off both ends and no scrolling can reach it (the mission brief hit this
+   * on phones). `flex-start` + `margin: auto` on the panel centers it when it fits and
+   * scrolls it normally when it doesn't.
+   */
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 24px;
   /* Opaque instead of blurred: the death outro is still animating behind this. */
   background: rgba(2, 8, 16, 0.84);
@@ -783,6 +791,7 @@
 .ra-gameover-panel {
   width: 100%;
   max-width: 400px;
+  margin: auto;
   padding: clamp(24px, 5vw, 36px);
   border-radius: 6px;
   text-align: center;
@@ -790,6 +799,27 @@
   box-shadow:
     0 0 0 1px rgba(255, 51, 85, 0.35),
     0 24px 80px rgba(0, 0, 0, 0.65);
+}
+
+/* Short viewports (phone landscape, small tablets): tighten the longest panels so the
+   mission brief and how-to usually fit without needing to scroll at all. */
+@media (max-height: 780px) {
+  .ra-gameover-layer {
+    padding: 12px;
+  }
+
+  .ra-gameover-panel {
+    padding: clamp(16px, 3.5vw, 24px);
+  }
+
+  .ra-brief-body {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .ra-brief-body p {
+    margin-bottom: 7px;
+  }
 }
 
 .ra-gameover-title {
