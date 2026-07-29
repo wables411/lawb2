@@ -153,9 +153,66 @@ function bubbles(
   }
 }
 
+/**
+ * Mobile autoplay unlock.
+ *
+ * iOS/Android only let an AudioContext start from inside a real user gesture, and the check is
+ * SYNCHRONOUS — it must happen in the event handler itself. Calling `resume()` from run start
+ * was too late: that path runs button click → React state → effect → engine, by which point the
+ * gesture no longer counts, so the context stayed suspended and `play()` silently no-opped
+ * (mobile had no sound at all). So: latch onto the very first gesture anywhere on the document,
+ * create + resume the context there, and kick a silent one-sample buffer, which is what actually
+ * flips iOS out of the blocked state. Listeners remove themselves once it's running.
+ */
+let unlockInstalled = false;
+
+function installUnlock(): void {
+  if (unlockInstalled || typeof window === 'undefined') return;
+  unlockInstalled = true;
+
+  const unlock = (): void => {
+    const c = getCtx();
+    if (!c) return teardown();
+    // Silent blip inside the gesture — required by iOS; resume() alone is not enough there.
+    try {
+      const b = c.createBuffer(1, 1, 22050);
+      const s = c.createBufferSource();
+      s.buffer = b;
+      s.connect(c.destination);
+      s.start(0);
+    } catch {
+      /* ignore */
+    }
+    if (c.state === 'suspended') {
+      void c.resume().then(
+        () => {
+          if (c.state === 'running') teardown();
+        },
+        () => {},
+      );
+    } else if (c.state === 'running') {
+      teardown();
+    }
+  };
+
+  const teardown = (): void => {
+    for (const ev of ['pointerdown', 'touchend', 'mousedown', 'keydown'] as const) {
+      window.removeEventListener(ev, unlock, true);
+    }
+  };
+
+  for (const ev of ['pointerdown', 'touchend', 'mousedown', 'keydown'] as const) {
+    // Capture phase so it fires even when the game stops propagation on its own controls.
+    window.addEventListener(ev, unlock, true);
+  }
+}
+
+installUnlock();
+
 export const reefSfx = {
   /** Call from a user-gesture path (run start) so autoplay policy unlocks the context. */
   resume(): void {
+    installUnlock();
     const c = getCtx();
     if (c && c.state === 'suspended') void c.resume().catch(() => {});
   },
