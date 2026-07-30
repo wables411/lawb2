@@ -56,7 +56,12 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [currentRoom, setCurrentRoom] = useState<'public' | 'private' | 'clawb'>('public');
+  // Start in the room we already know we want: mounting in 'public' and letting the
+  // auto-switch effect flip to 'private' costs a wasted 100-message public read and
+  // leaves a half-finished load behind.
+  const [currentRoom, setCurrentRoom] = useState<'public' | 'private' | 'clawb'>(
+    () => (initialTab === 'clawb' ? 'clawb' : currentInviteCode ? 'private' : 'public')
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
@@ -107,7 +112,25 @@ export const ChessChat: React.FC<ChessChatProps> = ({
   
   // Store unsubscribe function for cleanup
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  
+  // Pending connection-timeout timer + id of the load it belongs to. Every load must be
+  // able to kill the previous load's timer, otherwise an orphaned timer fires later and
+  // reports a "connection timeout" on a listener that is actually connected.
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRunRef = useRef(0);
+
+  // Tear down whatever the previous load left behind and invalidate its callbacks.
+  const teardownLoad = useCallback(() => {
+    loadRunRef.current += 1;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+  }, []);
+
   // Load messages from Firebase
   const loadMessages = useCallback(async () => {
     if (!isOpen) {
@@ -122,22 +145,28 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       return;
     }
     
-    // Cleanup previous listener
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-    
+    // Cleanup previous listener + its pending timeout
+    teardownLoad();
+    const runId = loadRunRef.current;
+    const isStale = () => loadRunRef.current !== runId;
+    const clearLoadTimeout = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+
     setIsLoading(true);
     setError(null);
     setConnectionStatus('checking');
-    
+
     // Set timeout - if loading takes more than 15 seconds on mobile, 8 seconds on desktop
     // Mobile may need more time for WebSocket connection to establish
     const timeoutDuration = isMobile ? 15000 : 8000;
-    let timeoutFired = false;
     const timeout = setTimeout(() => {
-      timeoutFired = true;
+      // A newer load (or unmount) superseded this one — say nothing, touch nothing.
+      if (isStale()) return;
+      timeoutRef.current = null;
       setIsLoading(false);
       const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
       const protocol = typeof window !== 'undefined' ? window.location.protocol : 'unknown';
@@ -149,20 +178,21 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         unsubscribeRef.current = null;
       }
     }, timeoutDuration);
-    
+    timeoutRef.current = timeout;
+
     try {
       // Double-check database is available (mobile-specific check)
       if (!database) {
-        clearTimeout(timeout);
+        clearLoadTimeout();
         setIsLoading(false);
         setError('Firebase database not initialized. Please refresh the page.');
         setConnectionStatus('disconnected');
         return;
       }
-      
+
       // Check if site is accessed over HTTP (Firebase WebSocket requires HTTPS)
       if (typeof window !== 'undefined' && window.location.protocol === 'http:') {
-        clearTimeout(timeout);
+        clearLoadTimeout();
         setIsLoading(false);
         setError('Firebase requires HTTPS for WebSocket connections. Please access the site via https://lawb.xyz (not http://).');
         setConnectionStatus('disconnected');
@@ -179,14 +209,14 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       
       // Set up real-time listener (works on both desktop and mobile)
       unsubscribeRef.current = onValue(messagesQuery, (snapshot) => {
-        // Only process if timeout hasn't fired
-        if (timeoutFired) {
+        // Only process if this load is still the current one
+        if (isStale()) {
           return;
         }
-        
+
         // Clear timeout on success
-        clearTimeout(timeout);
-        
+        clearLoadTimeout();
+
         const messagesData: ChatMessage[] = [];
         
         if (snapshot.exists()) {
@@ -208,13 +238,13 @@ export const ChessChat: React.FC<ChessChatProps> = ({
         // Scroll to bottom after messages load
         setTimeout(scrollToBottom, 100);
       }, (error) => {
-        // Only process if timeout hasn't fired
-        if (timeoutFired) {
+        // Only process if this load is still the current one
+        if (isStale()) {
           return;
         }
-        
+
         // Clear timeout on error
-        clearTimeout(timeout);
+        clearLoadTimeout();
         const errorMsg = error.message || 'Connection error';
         const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
         const errorCode = (error as any)?.code || 'unknown';
@@ -224,21 +254,21 @@ export const ChessChat: React.FC<ChessChatProps> = ({
       });
       
     } catch (err: any) {
-      // Only process if timeout hasn't fired
-      if (timeoutFired) {
+      // Only process if this load is still the current one
+      if (isStale()) {
         return;
       }
-      
+
       // Clear timeout on exception
-      clearTimeout(timeout);
+      clearLoadTimeout();
       const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
       const errorCode = err?.code || 'unknown';
       setError(`Exception: ${err.message || 'Unknown error'} (Code: ${errorCode}). Current domain: ${currentDomain}. Check Firebase Console authorized domains. Tap "Retry".`);
       setIsLoading(false);
       setConnectionStatus('disconnected');
     }
-  }, [isOpen, currentRoom, currentInviteCode, isMobile]);
-  
+  }, [isOpen, currentRoom, currentInviteCode, isMobile, teardownLoad]);
+
   // --- Clawb tab: Firebase subscriptions ---
   // Always subscribe to status when chat is open (for the tab status dot)
   useEffect(() => {
@@ -471,13 +501,10 @@ export const ChessChat: React.FC<ChessChatProps> = ({
     }
     
     return () => {
-      // Cleanup Firebase listener properly
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
+      // Cleanup Firebase listener AND the pending connection timeout
+      teardownLoad();
     };
-  }, [isOpen, currentRoom, currentInviteCode, loadMessages]);
+  }, [isOpen, currentRoom, currentInviteCode, loadMessages, teardownLoad]);
   
   useEffect(() => {
     if (isDragging || isResizing) {
