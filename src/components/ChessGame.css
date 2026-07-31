@@ -1726,6 +1726,30 @@ body:not(.lawb-app-dark-mode) [class*="piece"],
   opacity: 1 !important;
   visibility: visible !important;
 }
+
+/* The [class*="piece"] catch-all above also matches the Game Setup layout wrappers
+   (.piece-set-selection-*), forcing them position:absolute/height:100% — which
+   collapses the mobile setup screen to 0 height and hides it entirely (panel ends
+   up above the viewport inside overflow:hidden). Undo it for those wrappers in
+   every theme context the catch-all covers. Same trap as the piece-key bug —
+   see the warning comment near the piece-key classes below. */
+.piece-set-selection-row,
+body:not(.lawb-app-dark-mode) .piece-set-selection-row,
+.lawb-app-dark-mode .piece-set-selection-row,
+.lawb-app-light-mode .piece-set-selection-row,
+.piece-set-controls-col,
+body:not(.lawb-app-dark-mode) .piece-set-controls-col,
+.lawb-app-dark-mode .piece-set-controls-col,
+.lawb-app-light-mode .piece-set-controls-col,
+.piece-set-selection-panel,
+body:not(.lawb-app-dark-mode) .piece-set-selection-panel,
+.lawb-app-dark-mode .piece-set-selection-panel,
+.lawb-app-light-mode .piece-set-selection-panel {
+  position: relative !important;
+  display: flex !important;
+  height: auto !important;
+  z-index: auto !important;
+}
 .chess-dark-mode .close-modal-btn {
   background: #222 !important;
   color: #00ff00 !important;
@@ -3322,6 +3346,35 @@ div.chess-game.baseapp div.game-stable-layout.home-view {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
+}
+
+/* Mobile Game Setup: without an explicit flex chain the wrappers collapse to 0 height
+   (mobile-layout has no grow rule), which centers the panel at negative y inside
+   overflow:hidden ancestors — invisible and unscrollable on real phones. Give the
+   setup view a real height and let it scroll. `.setup-view` is set by ChessGame.tsx
+   only on the pre-game piece-set/difficulty screen, so the in-game board layout
+   (which works) is untouched. */
+.chess-game.mobile .game-stable-layout.setup-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.chess-game.mobile .game-stable-layout.setup-view .center-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chess-game.mobile .game-stable-layout.setup-view .center-area > .piece-set-selection-row {
+  align-items: flex-start !important;
+  min-height: 100%;
+  height: auto;
+}
+
+.chess-game.mobile .game-stable-layout.setup-view .single-setup-panel {
+  max-height: none;
 }
 
 /* Desktop-specific centering for Game Setup */

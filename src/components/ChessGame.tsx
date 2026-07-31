@@ -3042,7 +3042,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
   // Single player game UI
   return (
     <div className={`chess-game${fullscreen ? ' fullscreen' : ''}${showGame ? ' game-active' : ''}${isMobile ? ' mobile' : ' desktop'}`}>
-      <div className={`game-stable-layout ${isMobile ? 'mobile-layout' : 'desktop-layout'}`}>
+      <div className={`game-stable-layout ${isMobile ? 'mobile-layout' : 'desktop-layout'}${!showGame && showPieceSetSelector ? ' setup-view' : ''}`}>
         {/* Mobile Sidebar Popup - Always available on mobile via menu button */}
         {isMobile && (
           <>
@@ -3501,8 +3501,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                   ))}
                 </div>
               </div>
-              {/* Debug Log - Mobile Only, below chessboard, zero overlap */}
-              {isMobile && gameMode === 'ai' && (
+              {/* Debug Log - Mobile Only, dev builds only (was leaking into production) */}
+              {import.meta.env.DEV && isMobile && gameMode === 'ai' && (
                 <div style={{
                   width: '100%',
                   maxWidth: 'min(85vh, 85vw, 700px)',
