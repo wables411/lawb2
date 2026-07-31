@@ -920,6 +920,43 @@ div.chessboard > .square {
   opacity: 1 !important;
 }
 
+/* Mobile in-game: the desktop 100vh calc above (with !important) beats the
+   component's intended mobile inline height:auto, making chess-main-area
+   TALLER than its centered parent — it overflowed 36px past both ends, hiding
+   the top board rank under the tab bar and floating the HUD mid-board. On
+   mobile the game column must be normal top-down flow that fits its parent. */
+.chess-game.mobile .chess-main-area {
+  height: auto !important;
+  min-height: 0 !important;
+  flex: 0 1 auto !important;
+  justify-content: flex-start !important;
+}
+
+.chess-game.mobile.game-active .center-area {
+  justify-content: flex-start !important;
+  overflow-y: auto !important;
+}
+
+/* Mobile board must stay square and un-squeezed: the desktop container sizing
+   (min(85vh,85vw,700px) + min-width 400px, all !important) and assorted media
+   rules fight over it and were compressing height to ~2/3 of width. Pin it. */
+.chess-game.mobile .chessboard-container {
+  width: min(94vw, 58dvh, 520px) !important;
+  height: min(94vw, 58dvh, 520px) !important;
+  max-width: min(94vw, 58dvh, 520px) !important;
+  max-height: min(94vw, 58dvh, 520px) !important;
+  min-width: 280px !important;
+  min-height: 280px !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+}
+
+.chess-game.mobile .chessboard {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+}
+
 .chessboard-container {
   width: min(85vh, 85vw, 700px) !important;
   height: min(85vh, 85vw, 700px) !important;
