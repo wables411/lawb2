@@ -111,8 +111,8 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default',
         <p>
           <strong>New — On-Chain Wagers (beta):</strong> the ⛓ tab on the chess page plays wager
           chess where the blockchain itself is the referee and the bank: it checks every move,
-          holds both stakes, and pays the winner automatically. Live on Arbitrum with $DMT
-          (and ETH) wagers.
+          holds both stakes, and pays the winner automatically. Live on Arbitrum ($DMT),
+          Ethereum ($CULT), and Base — plus ETH and NFT wagers.
         </p>
 
         <p><strong>Meet the pieces:</strong></p>
@@ -151,21 +151,30 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default',
         <p>
           <strong>For the curious — the contracts:</strong>{' '}
           <a
-            href="https://basescan.org/address/0x06b6aae693cf1af27d5a5df0d0ac88af3fac9e11"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="how-to-contract-link"
-          >
-            Base PvP contract
-          </a>
-          {' · '}
-          <a
             href="https://arbiscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47"
             target="_blank"
             rel="noopener noreferrer"
             className="how-to-contract-link"
           >
-            Arbitrum on-chain contract
+            Arbitrum
+          </a>
+          {' · '}
+          <a
+            href="https://etherscan.io/address/0x6aa574B21212C6E7436Eb26A27542F1AEFfFad87"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="how-to-contract-link"
+          >
+            Ethereum
+          </a>
+          {' · '}
+          <a
+            href="https://basescan.org/address/0xBe0C68afE6f412d052C8fa306e9191D2b6371Aec"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="how-to-contract-link"
+          >
+            Base
           </a>
         </p>
       </div>

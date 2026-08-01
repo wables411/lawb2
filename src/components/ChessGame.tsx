@@ -2492,7 +2492,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
                     Open Full How To
                   </button>
                 </div>
-                <p>Play VS AI immediately, or jump to PvP for on-chain $DMT wager matches.</p>
+                <p>Play VS AI immediately, or jump to PvP for on-chain wager matches on Arbitrum, Ethereum &amp; Base.</p>
               </div>
             )}
             
