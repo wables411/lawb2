@@ -957,6 +957,30 @@ div.chessboard > .square {
   aspect-ratio: 1 / 1 !important;
 }
 
+/* Mobile in-game HUD: the legacy grey Windows-style bar clashed with the
+   deep-sea theme once it sat directly under the arena tabs. Match the tab/
+   arena styling (same palette as the on-chain UI and the /chess tab row). */
+.chess-game.mobile.game-active .game-info-compact {
+  background: linear-gradient(rgba(14, 26, 46, 0.92), rgba(12, 23, 40, 0.92)) !important;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(86, 196, 214, 0.24) !important;
+  border-bottom: 1px solid rgba(86, 196, 214, 0.24) !important;
+  border-radius: 10px;
+  color: #dbe6f5 !important;
+  padding: 8px 12px !important;
+  margin: 8px 4px 10px !important;
+  width: calc(100% - 8px) !important;
+  min-height: 34px;
+  font-size: 12px;
+}
+
+.chess-game.mobile.game-active .game-info-compact button {
+  background: rgba(63, 224, 214, 0.10) !important;
+  border: 1px solid rgba(86, 196, 214, 0.28) !important;
+  color: #dbe6f5 !important;
+  border-radius: 8px !important;
+}
+
 .chessboard-container {
   width: min(85vh, 85vw, 700px) !important;
   height: min(85vh, 85vw, 700px) !important;
