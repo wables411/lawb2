@@ -845,13 +845,13 @@ function App() {
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Ecosystem tokens ($DMT, $CULT &amp; $MS2)</p>
               <p style={{marginBottom: '6px'}}>
-                <strong>$DMT</strong> (Dream Machine Token, Arbitrum) — the featured wager token for on-chain Lawb Chess, live on Arbitrum One. CA: 0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8
+                <strong>$DMT</strong> (Dream Machine Token, Arbitrum) — Arbitrum One. CA: 0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8
               </p>
               <p style={{marginBottom: '6px'}}>
-                <strong>$CULT</strong> (Milady Cult Coin, Ethereum) — Remilia&apos;s token, the featured wager token for on-chain Lawb Chess on Ethereum. CA: 0x0000000000c5dc95539589fbD24BE07c6C14eCa4
+                <strong>$CULT</strong> (Milady Cult Coin, Ethereum) — CA: 0x0000000000c5dc95539589fbD24BE07c6C14eCa4
               </p>
               <p style={{marginBottom: '6px'}}>
-                <strong>$MS2</strong> (Station This, Ethereum) — powers StationThis / <a href="https://noema.art" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>Noema</a>, the Milady-community AI art platform Clawb uses to render its art and memes. Also the payment token for the Pixelawbs MS2 mint list (35,000 MS2 per mint). CA: 0x98Ed411B8cf8536657c660Db8aA55D9D4bAAf820
+                <strong>$MS2</strong> (Station This, Ethereum) — CA: 0x98Ed411B8cf8536657c660Db8aA55D9D4bAAf820
               </p>
               <p style={{marginBottom: '0'}}>None of these tokens are issued by lawb — they are third-party tokens used in the ecosystem.</p>
             </div>
