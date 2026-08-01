@@ -3273,26 +3273,15 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, onMinimize, fulls
               )}
               
               {sidebarView === 'chat' && (
-                <div className="chat-compact mobile-content-view">
-                  <div className="mobile-empty-state">
-                    {onChatToggle ? (
-                      <div>
-                        <div style={{ marginBottom: '16px', fontSize: '14px' }}>Chat is available in the main chat window</div>
-                        <button 
-                          className="mobile-menu-btn"
-                          onClick={() => {
-                            setSidebarView(null);
-                            if (onChatToggle) onChatToggle();
-                          }}
-                          style={{ marginTop: '16px' }}
-                        >
-                          Open Chat Window
-                        </button>
-                      </div>
-                    ) : (
-                      'Chat is available in the main chat window'
-                    )}
-                  </div>
+                <div className="chat-compact mobile-content-view" style={{ height: '60vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  {/* Real chat, embedded (was a "see the main chat window" stub since Nov 2025) */}
+                  <ChessChat
+                    isOpen={true}
+                    onMinimize={() => setSidebarView(null)}
+                    isDraggable={false}
+                    isResizable={false}
+                    isMobile={true}
+                  />
                 </div>
               )}
               

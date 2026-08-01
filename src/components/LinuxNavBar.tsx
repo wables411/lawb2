@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createUseStyles } from 'react-jss';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
+
+// Lazy: the chat (and its Firebase listeners) must cost nothing until the user
+// actually opens it — see the hosting-cost guardrail. Same pattern as
+// OnchainChessGame's chat.
+const ChessChat = lazy(() => import('./ChessChat').then((m) => ({ default: m.ChessChat })));
 
 interface LinuxNavBarStyleProps {
   isOpen: boolean;
@@ -236,6 +241,7 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
   const connectionStatus = connectionDisplay;
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
   const location = useLocation();
@@ -294,6 +300,14 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
           >
             Home
           </button>
+          <button
+            className={classes.navButton}
+            onClick={() => setIsChatOpen((open) => !open)}
+            type="button"
+            aria-label="Toggle chat"
+          >
+            Chat
+          </button>
           {onClawbClick && (
             <button
               className={classes.navButton}
@@ -326,6 +340,12 @@ const LinuxNavBar: React.FC<LinuxNavBarProps> = ({
         </div>
       </div>
       
+      {isChatOpen && (
+        <Suspense fallback={null}>
+          <ChessChat isOpen onMinimize={() => setIsChatOpen(false)} isMobile={isMobile} />
+        </Suspense>
+      )}
+
       {isMenuOpen && (
         <div className={classes.menuBackdrop} onClick={() => setIsMenuOpen(false)} />
       )}
