@@ -2,14 +2,31 @@
   "rules": {
     "clawb": {
       ".read": false,
-      ".write": false
+      ".write": false,
+      "status": {
+        ".read": true
+      },
+      "chat": {
+        "messages": {
+          ".read": true,
+          ".indexOn": "timestamp"
+        },
+        "visitor_messages": {
+          ".read": true,
+          ".indexOn": "timestamp",
+          "$messageId": {
+            ".write": "!data.exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['author', 'message', 'page', 'timestamp']) && newData.child('author').isString() && newData.child('author').val().length <= 64 && newData.child('message').isString() && newData.child('message').val().length >= 1 && newData.child('message').val().length <= 500 && newData.child('page').isString() && newData.child('page').val().length <= 200 && newData.child('timestamp').isNumber()"
+          }
+        }
+      }
     },
 
     "leaderboard": {
       ".read": true,
       ".indexOn": ["points"],
       "$walletAddress": {
-        ".write": "auth != null && auth.uid === $walletAddress",
+        ".write": "auth != null && (auth.uid === $walletAddress || $walletAddress === '0x5bba58218914f2e9b6b5434e0306fa2c6ca0e429')",
         ".validate": "newData.hasChildren(['username', 'wins', 'losses', 'draws', 'total_games', 'points']) && newData.child('username').isString() && newData.child('wins').isNumber() && newData.child('losses').isNumber() && newData.child('draws').isNumber() && newData.child('total_games').isNumber() && newData.child('points').isNumber() && newData.child('wins').val() >= 0 && newData.child('losses').val() >= 0 && newData.child('draws').val() >= 0 && newData.child('total_games').val() >= 0 && newData.child('points').val() >= 0 && (!newData.hasChild('chain_type') || newData.child('chain_type').isString()) && (!newData.hasChild('created_at') || newData.child('created_at').isString()) && (!newData.hasChild('updated_at') || newData.child('updated_at').isString())"
       }
     },
@@ -61,16 +78,33 @@
             ".write": "auth != null && !data.exists()",
             ".validate": "newData.hasChildren(['walletAddress', 'displayName', 'message', 'timestamp']) && newData.child('walletAddress').isString() && newData.child('displayName').isString() && newData.child('displayName').val().length <= 40 && newData.child('message').isString() && newData.child('message').val().length >= 1 && newData.child('message').val().length <= 500 && newData.child('timestamp').isNumber()"
           }
+        },
+        "lastMessage": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
         }
       },
       "private": {
         "$inviteCode": {
+          ".write": "auth != null && !data.exists()",
+          ".validate": "newData.hasChildren(['participants'])",
           "messages": {
             ".read": true,
             ".indexOn": "timestamp",
             "$messageId": {
               ".write": "auth != null && !data.exists()",
               ".validate": "newData.hasChildren(['walletAddress', 'displayName', 'message', 'timestamp']) && newData.child('walletAddress').isString() && newData.child('displayName').isString() && newData.child('displayName').val().length <= 40 && newData.child('message').isString() && newData.child('message').val().length >= 1 && newData.child('message').val().length <= 500 && newData.child('timestamp').isNumber()"
+            }
+          },
+          "lastMessage": {
+            ".write": "auth != null",
+            ".validate": "newData.isNumber()"
+          },
+          "participants": {
+            ".read": true,
+            "$wallet": {
+              ".write": "auth != null",
+              ".validate": "newData.isBoolean()"
             }
           }
         }
