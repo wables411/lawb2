@@ -459,6 +459,7 @@ export class ArcadeSceneController {
     steps: number;
     survivalSec: number;
     inputLog: Array<[number, number, number, number]>;
+    maxActiveObstacles: number;
   } {
     return {
       seed: this.runSeed,
@@ -467,7 +468,37 @@ export class ArcadeSceneController {
       steps: this.simStep,
       survivalSec: this.runSurvivalSec,
       inputLog: this.inputLog,
+      // Gameplay-affecting (8 on lowPowerMode) — the validator must replay with it.
+      maxActiveObstacles: this.maxActiveObstacles,
     };
+  }
+
+  /**
+   * Fire-and-forget the run proof to the replay validator, if one is
+   * configured (VITE_REEF_VALIDATOR_URL). Inert by default: no URL → no
+   * request, and free play (non-deterministic) never submits.
+   */
+  private submitRunProof(): void {
+    if (!this.deterministicMode) return;
+    const base = import.meta.env.VITE_REEF_VALIDATOR_URL as string | undefined;
+    if (!base) return;
+    const proof = this.getRunProof();
+    if (!proof.characterId) return;
+    try {
+      void fetch(`${base.replace(/\/+$/, '')}/validate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(proof),
+        keepalive: true,
+      })
+        .then(async (res) => {
+          const verdict = (await res.json()) as { valid?: boolean; reason?: string };
+          console.info('[REEF VALIDATOR]', verdict.valid ? 'run verified' : `rejected: ${verdict.reason}`);
+        })
+        .catch(() => {});
+    } catch {
+      // Proof submission must never break game over.
+    }
   }
 
   /** Record the player's input state at a fixed step (only when it changes) for replay. */
@@ -2238,6 +2269,7 @@ export class ArcadeSceneController {
       ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
       : undefined;
     this.runParityCheck();
+    this.submitRunProof();
 
     reefSfx.play(reason === 'oxygen' ? 'suffocate' : 'crash');
     // Death outro (render-only): score/proof are already final above; only the React
