@@ -102,7 +102,7 @@ Pay-to-play, single growing pot, beat-the-high-score. Async (no matchmaking, no 
 deterministic engine (§3) makes scores verifiable.
 
 **Rules**
-- **Entry:** **0.001 Base ETH** per run → added to the pot.
+- **Entry:** denominated in **$CULT** (ETH mainnet; amount TBD at deploy — owner locked 2026-08-02) per run → added to the pot.
 - **Winner metric:** longest **survival time** (ms precision). Coins/cheese/peptides are NOT the
   jackpot score — they're soft currency for upgrades later (§4/§6).
 - **Seed assigned at entry** (VRF / validator-committed) — players can't shop seeds or precompute an
@@ -175,11 +175,12 @@ rollout, NFT-gated cosmetics, and the fork-test harness pattern.
 ## 11. Decisions
 
 **Locked**
-- **PvP first slice = the Jackpot (§7):** 0.001 Base ETH entry, single pot, beat-the-high-score,
-  instant payout minus **5% house fee** (gas), record **resets if unbeaten 7 days** (jackpot score
-  only — never the persistent Lawb leaderboard), plus a free no-reward play mode.
+- **PvP first slice = the Jackpot (§7):** $CULT entry (amount TBD at deploy), single pot,
+  beat-the-high-score, instant payout minus **5% house fee** (gas), record **resets if unbeaten
+  7 days** (jackpot score only — never the persistent Lawb leaderboard), plus a free no-reward
+  play mode.
 - **Winner metric = survival time only** (coins/pickups → upgrade use-cases later).
-- **Entry currency = Base ETH.**
+- **Entry currency = $CULT (owner re-confirmed 2026-08-02; supersedes the earlier Base ETH note).**
 
 **Still open (for the play-to-earn loop, not the jackpot)**
 1. **Claim model:** continuous **signed claims** (recommended) vs **Merkle epochs** (extend
