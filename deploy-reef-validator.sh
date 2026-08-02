@@ -98,11 +98,42 @@ else
     echo "!! no chess.lawb.xyz nginx config found — validator is up but not public"
 fi
 
-echo -n "public check: "
+# Dedicated hostname: reef.lawb.xyz (A record in Netlify DNS -> this droplet,
+# added 2026-08-02). Own server block + Let's Encrypt cert; the
+# chess.lawb.xyz/reef/ path above keeps working as a fallback.
+if [ ! -f /etc/nginx/sites-available/reef-validator ]; then
+    cat > /etc/nginx/sites-available/reef-validator << 'EOF'
+server {
+    listen 80;
+    server_name reef.lawb.xyz;
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_set_header Host $host;
+        client_max_body_size 1m;
+    }
+}
+EOF
+    ln -sf /etc/nginx/sites-available/reef-validator /etc/nginx/sites-enabled/reef-validator
+    if nginx -t 2>/dev/null; then
+        systemctl reload nginx
+        echo "nginx: reef.lawb.xyz vhost added"
+    else
+        rm -f /etc/nginx/sites-enabled/reef-validator /etc/nginx/sites-available/reef-validator
+        echo "!! nginx config test FAILED for reef.lawb.xyz vhost — removed"
+    fi
+fi
+if ! certbot certificates 2>/dev/null | grep -q "reef.lawb.xyz"; then
+    certbot --nginx -d reef.lawb.xyz --non-interactive --agree-tos \
+        || echo "!! certbot failed for reef.lawb.xyz (DNS not propagated yet? re-run this script)"
+fi
+
+echo -n "public check (path): "
 curl -s -o /dev/null -w "https://chess.lawb.xyz/reef/health -> HTTP %{http_code}\n" https://chess.lawb.xyz/reef/health || true
+echo -n "public check (host): "
+curl -s -o /dev/null -w "https://reef.lawb.xyz/health -> HTTP %{http_code}\n" https://reef.lawb.xyz/health || true
 
 echo ""
 echo "== DONE =="
-echo "Validator: https://chess.lawb.xyz/reef/validate (POST run proof -> verdict)"
-echo "Point the site at it: VITE_REEF_VALIDATOR_URL=https://chess.lawb.xyz/reef in Netlify env."
+echo "Validator: https://reef.lawb.xyz/validate (POST run proof -> verdict)"
+echo "Point the site at it: VITE_REEF_VALIDATOR_URL=https://reef.lawb.xyz in Netlify env."
 echo "Logs: journalctl -u reef-validator -f"
