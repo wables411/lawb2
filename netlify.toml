@@ -4,7 +4,7 @@
   # Skip the build (exit 0 = skip) when the push touched nothing the site is built from.
   # Saves build credits on pushes that only change docs, the ELO indexer, droplet
   # scripts, contract runbooks, etc.
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src/ public/ functions/ scripts/ index.html package.json package-lock.json vite.config.ts tsconfig.json netlify.toml"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src/ public/ functions/ scripts/ index.html package.json package-lock.json vite.config.ts tsconfig.json netlify.toml _headers _redirects"
 
 [build.environment]
   NODE_VERSION = "20"
