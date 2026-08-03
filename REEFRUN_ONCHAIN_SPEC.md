@@ -102,7 +102,7 @@ Pay-to-play, single growing pot, beat-the-high-score. Async (no matchmaking, no 
 deterministic engine (§3) makes scores verifiable.
 
 **Rules**
-- **Entry:** denominated in **$CULT** (ETH mainnet; amount TBD at deploy — owner locked 2026-08-02) per run → added to the pot.
+- **Entry:** **10,000 $CULT** (ETH mainnet; owner locked 2026-08-02) per run → added to the pot.
 - **Winner metric:** longest **survival time** (ms precision). Coins/cheese/peptides are NOT the
   jackpot score — they're soft currency for upgrades later (§4/§6).
 - **Seed assigned at entry** (VRF / validator-committed) — players can't shop seeds or precompute an
@@ -114,8 +114,10 @@ deterministic engine (§3) makes scores verifiable.
 - **Safety valve:** if the high score goes **unbeaten for 7 days, the jackpot score resets** (bar
   drops so the standing pot becomes winnable again). This resets **only the jackpot record** — it does
   **NOT** touch the persistent Lawb leaderboard / profile stats.
-- **Free "play for fun" mode:** no entry, no seed assignment, no validator, no reward; kept on a
-  separate board so it never muddies the jackpot ranking.
+- **Free "play for fun" mode (owner locked 2026-08-02):** always available, no entry — but free
+  runs count toward **NOTHING**: no jackpot, no leaderboard stats, no points. Only paid
+  (10k $CULT) runs touch any board. (Implementation note: the current free-run leaderboard
+  point award in ReefArcadeMenu goes away when the jackpot ships.)
 
 **Two distinct boards (don't conflate):**
 1. **Jackpot board** — current champion + high score to beat; resettable (7-day valve; on a win the
@@ -175,12 +177,15 @@ rollout, NFT-gated cosmetics, and the fork-test harness pattern.
 ## 11. Decisions
 
 **Locked**
-- **PvP first slice = the Jackpot (§7):** $CULT entry (amount TBD at deploy), single pot,
+- **PvP first slice = the Jackpot (§7):** **10,000 $CULT** entry, single pot,
   beat-the-high-score, instant payout minus **5% house fee** (gas), record **resets if unbeaten
   7 days** (jackpot score only — never the persistent Lawb leaderboard), plus a free no-reward
   play mode.
 - **Winner metric = survival time only** (coins/pickups → upgrade use-cases later).
 - **Entry currency = $CULT (owner re-confirmed 2026-08-02; supersedes the earlier Base ETH note).**
+- **Entry amount = 10,000 $CULT (owner locked 2026-08-02).**
+- **Free play counts toward NOTHING (owner locked 2026-08-02):** no jackpot, no leaderboard
+  stats, no points — only paid runs are scored anywhere.
 
 **Still open (for the play-to-earn loop, not the jackpot)**
 1. **Claim model:** continuous **signed claims** (recommended) vs **Merkle epochs** (extend
