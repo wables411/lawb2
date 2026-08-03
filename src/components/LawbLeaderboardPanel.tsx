@@ -11,6 +11,7 @@ import {
 } from '../firebaseLeaderboard';
 import { getDisplayName } from '../utils/displayName';
 import { getGlobalEloFeed, getWagedMatches, type GlobalEloEntry, type WagedMatch } from '../firebaseElo';
+import { getReefVerifiedFeed, type ReefVerifiedEntry } from '../reefVerified';
 import {
   LAWB_CHESS_NFT_COLLECTIONS,
   LAWB_CHESS_WAGER_TOKENS,
@@ -65,6 +66,12 @@ function matchStakeLabel(m: WagedMatch): string {
   return `${name}${ids ? ` ${ids}` : ''} · winner takes both`;
 }
 
+/** m:ss for verified survival badges. */
+function formatSurvival(sec: number): string {
+  const s = Math.floor(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 function pointsForFilter(entry: LeaderboardEntry, filter: LeaderboardFilter): number {
   const b = (entry.points_breakdown || {}) as Partial<PointsBreakdown>;
   switch (filter) {
@@ -95,6 +102,9 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
   // rating lives under whichever linked wallet actually played, so the group's wallets are
   // all checked against the indexer feed and the most-played one wins.
   const [eloByKey, setEloByKey] = useState<Record<string, GlobalEloEntry>>({});
+  // Replay-verified Reef Run bests per merged row (validator feed, one fetch per
+  // session — see reefVerified.ts). Same wallet-group resolution as the ELO badge.
+  const [reefByKey, setReefByKey] = useState<Record<string, ReefVerifiedEntry>>({});
   const [filter, setFilter] = useState<LeaderboardFilter>('total');
   // Completed on-chain wager matches (indexer feed; same single fetch as the ELO badges).
   const [matches, setMatches] = useState<WagedMatch[]>([]);
@@ -144,8 +154,9 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
           }
         }
         const data = merged.slice(0, 25);
-        // ELO badges: one feed fetch per session; silently absent when unreachable.
-        const feed = await getGlobalEloFeed();
+        // ELO + verified-reef badges: one feed fetch each per session; silently
+        // absent when unreachable.
+        const [feed, reefFeed] = await Promise.all([getGlobalEloFeed(), getReefVerifiedFeed()]);
         const elos: Record<string, GlobalEloEntry> = {};
         if (feed) {
           for (const [primary, list] of groups) {
@@ -159,9 +170,28 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
             if (best) elos[primary] = best;
           }
         }
+        const reefs: Record<string, ReefVerifiedEntry> = {};
+        if (reefFeed) {
+          for (const [primary, list] of groups) {
+            let best: ReefVerifiedEntry | null = null;
+            for (const e of list) {
+              const hit = reefFeed[e.username.toLowerCase()];
+              if (
+                hit &&
+                (!best ||
+                  hit.best_survival_sec > best.best_survival_sec ||
+                  (hit.best_survival_sec === best.best_survival_sec && hit.runs > best.runs))
+              ) {
+                best = hit;
+              }
+            }
+            if (best) reefs[primary] = best;
+          }
+        }
         if (!cancelled) {
           setRows(data);
           setEloByKey(elos);
+          setReefByKey(reefs);
           if (data.length === 0) {
             setError(null);
           }
@@ -314,6 +344,15 @@ export const LawbLeaderboardPanel: React.FC<{ isMobile?: boolean }> = ({ isMobil
                   {eloByKey[key] && (
                     <div style={{ fontSize: 10, color: '#6a5a24', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       ♟ ELO {eloByKey[key].elo} · {eloByKey[key].games} on-chain {eloByKey[key].games === 1 ? 'game' : 'games'}
+                    </div>
+                  )}
+                  {reefByKey[key] && (
+                    <div
+                      style={{ fontSize: 10, color: '#1f6f3f', fontWeight: 700, whiteSpace: 'nowrap' }}
+                      title="Replay-verified by the Reef Run validator (reef.lawb.xyz) — every run is publicly recomputable"
+                    >
+                      ✓ Verified reef best {formatSurvival(reefByKey[key].best_survival_sec)} ·{' '}
+                      {reefByKey[key].runs} {reefByKey[key].runs === 1 ? 'run' : 'runs'}
                     </div>
                   )}
                 </span>

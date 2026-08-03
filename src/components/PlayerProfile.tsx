@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type PlayerProfile as PlayerProfileData, type LinkedWallet } from '../firebaseProfiles';
 import { getGlobalElo } from '../firebaseElo';
+import { getBestReefVerified, type ReefVerifiedEntry } from '../reefVerified';
 import { waitForWalletDbAuth } from '../firebaseWalletAuth';
 import {
   getUserLeaderboardEntry,
@@ -522,6 +523,24 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
     () => linkedWallets.map((w) => `${w.chain}:${w.address}`).join('|'),
     [linkedWallets],
   );
+
+  // Replay-verified Reef Run best across this profile's wallets (validator feed
+  // at reef.lawb.xyz, one fetch per session — see reefVerified.ts). Null = no
+  // verified runs yet or feed unreachable; the ✓ line is simply omitted.
+  const [reefVerified, setReefVerified] = useState<ReefVerifiedEntry | null>(null);
+  useEffect(() => {
+    setReefVerified(null);
+    const keys = collectProfileLeaderboardKeys(primaryWallet, address, linkedWallets);
+    if (keys.length === 0) return;
+    let cancelled = false;
+    void getBestReefVerified(keys).then((v) => {
+      if (!cancelled) setReefVerified(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primaryWallet, address, linkedWalletKeysDep]);
 
   useEffect(() => {
     if (!address) {
@@ -1277,6 +1296,15 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
               <div><strong>Peptides:</strong> {reefStats?.peptides_collected ?? 0}</div>
               <div><strong>Coins:</strong> {reefStats?.coins_collected ?? 0}</div>
               <div><strong>Longest run:</strong> {formatDurationSec(reefStats?.longest_run_seconds ?? 0)}</div>
+              {reefVerified && (
+                <div
+                  style={{ color: '#1f6f3f' }}
+                  title="Replay-verified by the Reef Run validator (reef.lawb.xyz) — every run is publicly recomputable"
+                >
+                  <strong>✓ Verified best:</strong> {formatDurationSec(reefVerified.best_survival_sec)} ·{' '}
+                  {reefVerified.runs} verified {reefVerified.runs === 1 ? 'run' : 'runs'}
+                </div>
+              )}
               <div><strong>Favored character:</strong> {reefFavored}</div>
             </div>
           </div>
