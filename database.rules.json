@@ -69,6 +69,11 @@
       ".write": false
     },
 
+    "reef_verified": {
+      ".read": true,
+      ".write": false
+    },
+
     "chess_chat": {
       "public": {
         "messages": {

@@ -29,6 +29,8 @@ type Props = {
   onBootError?: (err: unknown) => void;
   /** Optional roster override (standalone builds ship a subset; default = full cast). */
   characters?: ArcadeCharacterDef[];
+  /** Wallet identity attached to run proofs (null when not connected). */
+  walletAddress?: string | null;
 };
 
 export type ArcadePlayInputHandle = {
@@ -52,6 +54,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   onBootProgress,
   onBootError,
   characters,
+  walletAddress,
 }: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
@@ -119,6 +122,10 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
     eng.setSelectedId(selectedCharacterId);
     eng.setScreen(engineScreen);
   }, [engineScreen, selectedCharacterId]);
+
+  useEffect(() => {
+    engineRef.current?.setWalletAddress(walletAddress ?? null);
+  }, [walletAddress]);
 
   useImperativeHandle(
     ref,

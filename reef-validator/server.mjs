@@ -3,19 +3,83 @@
  * chess ELO indexer (droplet + nginx proxy or local dev).
  *
  *   POST /validate  ← run proof JSON (getRunProof() output) → verdict JSON
+ *   GET  /proofs    → last 100 accepted proofs (public transparency feed —
+ *                     anyone can re-run any of them through the open-source sim)
  *   GET  /health    → {ok:true}
  *
  * Run locally: `npm run validator:serve` (builds the sim bundle first).
  * Binds 127.0.0.1 by default — put nginx in front on the droplet.
- * Score persistence (Firebase write of validated scores) is intentionally NOT
- * here yet; this service only judges proofs, so it needs no credentials.
+ * Accepted proofs append to accepted.jsonl next to this file; verified results
+ * also write to Firebase `reef_verified/<wallet>` IF a service-account key is
+ * present (see firebaseWrite.cjs — graceful no-op without one).
  */
 
 import http from 'node:http';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { validateRunProof } = require('./replayProof.cjs');
+const { recordVerifiedRun } = require('./firebaseWrite.cjs');
+
+const ACCEPTED_PATH =
+  process.env.REEF_ACCEPTED_PATH ||
+  join(dirname(fileURLToPath(import.meta.url)), 'accepted.jsonl');
+const FEED_MAX = 100;
+
+// Transparency feed: ring buffer of accepted proofs, warm-started from disk.
+const recentAccepted = [];
+if (existsSync(ACCEPTED_PATH)) {
+  try {
+    const lines = readFileSync(ACCEPTED_PATH, 'utf8').trim().split('\n');
+    for (const line of lines.slice(-FEED_MAX)) {
+      try {
+        recentAccepted.push(JSON.parse(line));
+      } catch {
+        // skip torn line
+      }
+    }
+  } catch {
+    // unreadable log — feed starts empty, judging still works
+  }
+}
+
+function recordAccepted(proof, verdict) {
+  const entry = {
+    at: new Date().toISOString(),
+    wallet: verdict.walletAddress,
+    characterId: proof.characterId,
+    seed: proof.seed,
+    steps: proof.steps,
+    maxActiveObstacles: proof.maxActiveObstacles ?? 12,
+    survivalSec: verdict.survivalSec,
+    points: verdict.points,
+    endReason: verdict.endReason,
+    pickups: verdict.pickups,
+    // The full input log IS the proof — with seed + character it makes the run
+    // publicly recomputable by anyone running the open-source sim.
+    inputLog: proof.inputLog,
+  };
+  recentAccepted.push(entry);
+  if (recentAccepted.length > FEED_MAX) recentAccepted.shift();
+  try {
+    appendFileSync(ACCEPTED_PATH, `${JSON.stringify(entry)}\n`);
+  } catch (err) {
+    console.error('[reef-validator] accepted.jsonl append failed:', err.message);
+  }
+  void recordVerifiedRun({
+    walletAddress: entry.wallet,
+    seed: entry.seed,
+    characterId: entry.characterId,
+    survivalSec: entry.survivalSec,
+    points: entry.points,
+    endReason: entry.endReason,
+  }).then((status) => {
+    if (status !== 'no-wallet') console.log(`[reef-validator] firebase: ${status}`);
+  });
+}
 
 const PORT = Number(process.env.REEF_VALIDATOR_PORT || 8787);
 const HOST = process.env.REEF_VALIDATOR_HOST || '127.0.0.1';
@@ -39,6 +103,10 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && req.url === '/health') {
     sendJson(res, 200, { ok: true });
+    return;
+  }
+  if (req.method === 'GET' && req.url === '/proofs') {
+    sendJson(res, 200, { count: recentAccepted.length, proofs: recentAccepted });
     return;
   }
   if (req.method !== 'POST' || req.url !== '/validate') {
@@ -70,6 +138,7 @@ const server = http.createServer((req, res) => {
     }
     try {
       const verdict = validateRunProof(proof);
+      if (verdict.valid) recordAccepted(proof, verdict);
       sendJson(res, 200, verdict);
     } catch (err) {
       console.error('[reef-validator] replay crashed:', err);

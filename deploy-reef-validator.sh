@@ -31,7 +31,12 @@ echo "fetching validator from lawb2@main..."
 RAW=https://raw.githubusercontent.com/wables411/lawb2/main/reef-validator
 curl -fsS -o server.mjs "$RAW/server.mjs"
 curl -fsS -o replayProof.cjs "$RAW/replayProof.cjs"
+curl -fsS -o firebaseWrite.cjs "$RAW/firebaseWrite.cjs"
 curl -fsS -o _reefRunSim.cjs "$RAW/_reefRunSim.cjs"
+# Optional: a Firebase service-account key at
+# /root/reef-validator/service-account.json lets the validator write verified
+# results to reef_verified/<wallet> (clients are read-only there). Without it,
+# judging + the /proofs feed still work.
 
 # Smoke test: judge a garbage proof (must come back invalid, not crash).
 node -e '

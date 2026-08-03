@@ -77,6 +77,8 @@ tests/_reefRunSim.cjs
 # NOTE: reef-validator/_reefRunSim.cjs IS committed — the droplet deploy script
 # curls it from GitHub raw. Rebuild (npm run validator:build) + commit whenever
 # reefRunSim.ts changes, or the deployed validator rejects honest runs.
+reef-validator/accepted.jsonl
+reef-validator/service-account.json
 
 # Local-only world assets (keep heavy files off git/netlify)
 public/local-world-assets/*

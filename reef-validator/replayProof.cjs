@@ -55,6 +55,12 @@ function checkShape(proof) {
   const maxActive = proof.maxActiveObstacles ?? 12;
   // 8 = lowPowerMode, 12 = default — the only values the game ever runs with.
   if (maxActive !== 8 && maxActive !== 12) return 'bad-max-obstacles';
+  // Wallet is optional identity (null when not connected) — bound but not required.
+  if (proof.walletAddress != null) {
+    if (typeof proof.walletAddress !== 'string' || proof.walletAddress.length > 64) {
+      return 'bad-wallet';
+    }
+  }
   return null;
 }
 
@@ -104,6 +110,9 @@ function validateRunProof(proof) {
     points: sim.reefRunLeaderboardPointsForRound(survivalSec),
     endReason,
     pickups,
+    walletAddress: typeof proof.walletAddress === 'string' ? proof.walletAddress : null,
+    seed: proof.seed,
+    characterId: proof.characterId,
   };
 
   if (!state.playEnded) {

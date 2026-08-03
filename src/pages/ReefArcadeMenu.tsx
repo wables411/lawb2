@@ -572,6 +572,7 @@ export default function ReefArcadeMenu() {
           onEngineReady={onEngineReady}
           onBootProgress={onBootProgress}
           onBootError={onBootError}
+          walletAddress={connection.connected ? connection.address ?? null : null}
         />
       </Suspense>
       <div className="ra-bg" aria-hidden />

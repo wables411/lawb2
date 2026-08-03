@@ -126,6 +126,22 @@ test('tampered input log changes the outcome and is REJECTED', () => {
   }
 });
 
+test('wallet identity passes through to the verdict', () => {
+  const proof = playHonestRun(2468);
+  proof.walletAddress = '0x9387bbf0f7bd3f9a10ea1c4ca6b1a1cc0398a090';
+  const verdict = validateRunProof(proof);
+  assert.equal(verdict.valid, true);
+  assert.equal(verdict.walletAddress, proof.walletAddress);
+  // No wallet is fine too (anonymous runs still get judged).
+  const anon = playHonestRun(2468);
+  assert.equal(validateRunProof(anon).valid, true);
+  // Absurd wallet strings are rejected before replay.
+  assert.equal(
+    validateRunProof({ ...proof, walletAddress: 'x'.repeat(100) }).reason,
+    'bad-wallet',
+  );
+});
+
 test('garbage proofs are rejected cheaply', () => {
   assert.equal(validateRunProof(null).valid, false);
   assert.equal(validateRunProof({}).valid, false);
@@ -142,8 +158,16 @@ test('HTTP server judges proofs end to end', async () => {
   const { spawn } = require('node:child_process');
   const serverPath = path.join(__dirname, '..', 'reef-validator', 'server.mjs');
   const port = 18787;
+  const acceptedLog = path.join(
+    require('node:os').tmpdir(),
+    `reef-accepted-test-${process.pid}.jsonl`,
+  );
   const child = spawn(process.execPath, [serverPath], {
-    env: { ...process.env, REEF_VALIDATOR_PORT: String(port) },
+    env: {
+      ...process.env,
+      REEF_VALIDATOR_PORT: String(port),
+      REEF_ACCEPTED_PATH: acceptedLog,
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   try {
@@ -177,7 +201,19 @@ test('HTTP server judges proofs end to end', async () => {
       body: JSON.stringify(proof),
     });
     assert.equal((await res2.json()).valid, false);
+
+    // Transparency feed: the ACCEPTED run is in /proofs, the forged one is not.
+    const feed = await (await fetch(`http://127.0.0.1:${port}/proofs`)).json();
+    assert.ok(feed.count >= 1);
+    const mine = feed.proofs.filter((p) => p.seed === 31337);
+    assert.equal(mine.length, 1);
+    assert.ok(Array.isArray(mine[0].inputLog), 'feed entries carry the replayable input log');
   } finally {
     child.kill();
+    try {
+      require('node:fs').unlinkSync(acceptedLog);
+    } catch {
+      // best-effort cleanup
+    }
   }
 });

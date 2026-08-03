@@ -335,6 +335,8 @@ export class ArcadeSceneController {
   private readonly MAX_SUBSTEPS = 5;
   /** When true, the play sim runs at a fixed timestep (reproducible). Default false = live loop. */
   private deterministicMode = false;
+
+  private walletAddress: string | null = null;
   /** Test toggle: ?reefdet=1 forces deterministic mode in free play so it can be play-tested. */
   private forceDeterministic = false;
   private simAcc = 0; // leftover real-time to be consumed by fixed steps
@@ -441,14 +443,21 @@ export class ArcadeSceneController {
     this.onBootProgress = handlers.onBootProgress;
     this.characters = handlers.characters ?? ARCADE_CHARACTERS;
     if (handlers.characters?.length) this.selectedId = handlers.characters[0]!.id;
-    // Hidden test toggle so the deterministic loop can be play-tested before it's the default.
+    // Deterministic (replay-provable) runs are the DEFAULT since 2026-08-02 —
+    // every run produces a proof the validator can verify. `?reefdet=0` opts
+    // back into the legacy free-running loop for debugging/feel comparison.
     this.forceDeterministic =
-      typeof window !== 'undefined' && /[?&]reefdet=1/.test(window.location.search);
+      typeof window === 'undefined' || !/[?&]reefdet=0/.test(window.location.search);
   }
 
   /** Inject a fixed seed + enable deterministic mode for the NEXT run (jackpot/replay). */
   setDeterministicRun(seed: number): void {
     this.pendingSeed = seed >>> 0;
+  }
+
+  /** Wallet identity to attach to run proofs (null when not connected). */
+  setWalletAddress(address: string | null): void {
+    this.walletAddress = address;
   }
 
   /** Run proof for off-app replay validation (seed + input timeline + claimed survival). */
@@ -460,6 +469,7 @@ export class ArcadeSceneController {
     survivalSec: number;
     inputLog: Array<[number, number, number, number]>;
     maxActiveObstacles: number;
+    walletAddress: string | null;
   } {
     return {
       seed: this.runSeed,
@@ -470,6 +480,7 @@ export class ArcadeSceneController {
       inputLog: this.inputLog,
       // Gameplay-affecting (8 on lowPowerMode) — the validator must replay with it.
       maxActiveObstacles: this.maxActiveObstacles,
+      walletAddress: this.walletAddress,
     };
   }
 
