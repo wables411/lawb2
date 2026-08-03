@@ -5,6 +5,9 @@
  *   POST /validate  ← run proof JSON (getRunProof() output) → verdict JSON
  *   GET  /proofs    → last 100 accepted proofs (public transparency feed —
  *                     anyone can re-run any of them through the open-source sim)
+ *   GET  /verified  → per-wallet verified aggregates (best survival, runs,
+ *                     points) — the credential-free score store, same pattern
+ *                     as chess elo.json: frontend reads THIS, no Firebase needed
  *   GET  /health    → {ok:true}
  *
  * Run locally: `npm run validator:serve` (builds the sim bundle first).
@@ -30,13 +33,37 @@ const ACCEPTED_PATH =
 const FEED_MAX = 100;
 
 // Transparency feed: ring buffer of accepted proofs, warm-started from disk.
+// Verified aggregates: per-wallet running totals rebuilt from the FULL log at
+// boot — accepted.jsonl is the source of truth, so a restart loses nothing.
 const recentAccepted = [];
+const verifiedByWallet = {};
+
+function applyToAggregates(entry) {
+  if (!entry.wallet) return;
+  const key = String(entry.wallet).toLowerCase();
+  const agg = (verifiedByWallet[key] ??= {
+    best_survival_sec: 0,
+    best_points: 0,
+    total_points: 0,
+    runs: 0,
+    last_at: null,
+  });
+  agg.best_survival_sec = Math.max(agg.best_survival_sec, entry.survivalSec);
+  agg.best_points = Math.max(agg.best_points, entry.points);
+  agg.total_points += entry.points;
+  agg.runs += 1;
+  agg.last_at = entry.at;
+}
+
 if (existsSync(ACCEPTED_PATH)) {
   try {
     const lines = readFileSync(ACCEPTED_PATH, 'utf8').trim().split('\n');
-    for (const line of lines.slice(-FEED_MAX)) {
+    for (const line of lines) {
       try {
-        recentAccepted.push(JSON.parse(line));
+        const entry = JSON.parse(line);
+        applyToAggregates(entry);
+        recentAccepted.push(entry);
+        if (recentAccepted.length > FEED_MAX) recentAccepted.shift();
       } catch {
         // skip torn line
       }
@@ -64,6 +91,7 @@ function recordAccepted(proof, verdict) {
   };
   recentAccepted.push(entry);
   if (recentAccepted.length > FEED_MAX) recentAccepted.shift();
+  applyToAggregates(entry);
   try {
     appendFileSync(ACCEPTED_PATH, `${JSON.stringify(entry)}\n`);
   } catch (err) {
@@ -107,6 +135,10 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && req.url === '/proofs') {
     sendJson(res, 200, { count: recentAccepted.length, proofs: recentAccepted });
+    return;
+  }
+  if (req.method === 'GET' && (req.url === '/verified' || req.url === '/verified.json')) {
+    sendJson(res, 200, { wallets: verifiedByWallet });
     return;
   }
   if (req.method !== 'POST' || req.url !== '/validate') {

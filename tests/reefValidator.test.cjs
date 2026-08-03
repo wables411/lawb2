@@ -208,6 +208,20 @@ test('HTTP server judges proofs end to end', async () => {
     const mine = feed.proofs.filter((p) => p.seed === 31337);
     assert.equal(mine.length, 1);
     assert.ok(Array.isArray(mine[0].inputLog), 'feed entries carry the replayable input log');
+
+    // Credential-free score store: a walleted run lands in /verified aggregates.
+    const wallet = '0xabcdef0123456789abcdef0123456789abcdef01';
+    const walleted = { ...playHonestRun(424242), walletAddress: wallet };
+    await fetch(`http://127.0.0.1:${port}/validate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(walleted),
+    });
+    const verified = await (await fetch(`http://127.0.0.1:${port}/verified`)).json();
+    const agg = verified.wallets[wallet];
+    assert.ok(agg, 'wallet has verified aggregates');
+    assert.equal(agg.runs, 1);
+    assert.ok(Math.abs(agg.best_survival_sec - walleted.survivalSec) <= 0.05);
   } finally {
     child.kill();
     try {
