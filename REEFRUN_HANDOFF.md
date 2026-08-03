@@ -33,10 +33,12 @@
   (jackpot record only). See spec §7.
 
 ## Next tasks, in order
-1. **Verified scores in the UI.** Leaderboard/profile surfaces read
-   `https://reef.lawb.xyz/verified` (memoized fetch like `src/firebaseElo.ts` reads elo.json)
-   and show a ✓ verified badge / verified-best column. Keep Firebase reads OUT of the hot
-   path (hosting-cost guardrail).
+1. **Verified scores in the UI — DONE, committed 635e91d53 (unpushed, awaiting owner push).**
+   `src/reefVerified.ts` reads `https://reef.lawb.xyz/verified` (one memoized fetch/session,
+   zero Firebase reads); leaderboard rows show a green "✓ Verified reef best m:ss · N runs"
+   badge (linked-wallet group resolution like the ELO badge) and the profile Reef Run stats
+   show a "✓ Verified best" line. Local dev has no Firebase keys so rows don't populate
+   there — final visual check happens on prod after the push.
 2. **ReefRunJackpot contract** (spec §7): 10k $CULT entry, seed assigned at entry,
    `submitScore` takes a validator EIP-712 signature, pot −5% instant payout, 7-day
    `resetIfStale`. Reuse the chess escrow/UUPS/pause/small-caps patterns
