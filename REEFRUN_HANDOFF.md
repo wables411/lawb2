@@ -45,6 +45,30 @@
    (LAWBCHESS_ONCHAIN_SPEC.md). Testnet first behind a flag. Validator gains a signing key
    for score attestations at that point (droplet env, like the chess relayer).
 
+## OPEN BUG — long-run replay divergence (owner-reported 2026-08-03, TOP PRIORITY)
+Owner's real 166s prod run logged `[ReefRun] PARITY MISMATCH: live=166.567s replay=62.767s
+delta=103.800s` — the in-game self-check replayed the proof and died at ~63s. So the
+validator would REJECT honest long runs; short runs (≤~19s) verified fine. Cause NOT yet
+identified — do not guess; instrument. Leads to check (in order): (1) anything that changes
+gameplay state mid-run in the controller but not in reefRunSim (difficulty/speed ramps,
+depth tiers); (2) input-application timing — inputLog `[step,lane,w,s]` applied at a
+different step in live vs replay; (3) duplicated spawn/cadence logic drift (memory warning:
+ArcadeSceneController and reefRunSim must stay RNG-draw lockstep); (4) mid-run
+lowPower/maxActiveObstacles change (set at boot L836, proof reports one value L482, replay
+uses it L2715). Repro path: capture a real long-run proof (window/console) and replay it
+headlessly through reefRunSim.
+
+## FIXED 2026-08-03 (this session, all pushed):
+- CSP `connect-src` never included reef.lawb.xyz → prod NEVER submitted proofs and the
+  /verified feed was blocked (proven via securitypolicyviolation event). Fixed in _headers
+  (322bd040d).
+- netlify.toml build-ignore rule didn't watch `_headers`/`_redirects`, so the CSP fix
+  deploy was silently canceled ("no content change"). Fixed (44b9c144f). Both verified
+  live: lawb.xyz page can now fetch reef.lawb.xyz/verified.
+- Note: the single verified wallet (0x9387bbf0…a090) has NO leaderboard row and NO
+  wallet_links entry (checked RTDB REST) — test wallet. Badge appears once a leaderboard
+  wallet gets a verified run (blocked on the parity bug for long runs).
+
 ## Guardrails
 - Do NOT break live free-play; both modes must run (start → collide → game over) in browser.
 - Browser pane can't composite when hidden → rAF frozen; the proven workaround is installing
