@@ -195,6 +195,7 @@ const REMILIA_LINKS = [
   { id: 'network-spirits', name: 'Network Spirits', image: '/assets/networkspirits-icon.png', description: 'Spirit98OS portal & directory.' },
   { id: 'radbro', name: 'Radbro', image: '/assets/radbro-icon.png', description: 'Radbro Webring. Playable in Reef Run.' },
   { id: 'nonon', name: 'NONON', image: '/assets/nonon-icon.png', description: 'NONON house.' },
+  { id: 'vrmilady', name: 'VRMilady', image: '/assets/vrmilady-icon.png', description: 'Stream or record clips as milady.' },
 ];
 
 interface FolderNFT {
@@ -361,6 +362,9 @@ const Mobile = () => {
           break;
         case 'nonon':
           window.open('https://nonon.house', '_blank', 'noopener,noreferrer');
+          break;
+        case 'vrmilady':
+          window.open('https://vrmilady.net', '_blank', 'noopener,noreferrer');
           break;
         default: break;
       }

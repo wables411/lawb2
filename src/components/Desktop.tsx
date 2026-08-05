@@ -48,6 +48,7 @@ const ICONS: DesktopIcon[] = [
   { id: 'network-spirits', image: '/assets/networkspirits-icon.png', label: 'Network Spirits', action: 'url', url: 'https://networkspirits.net', row: -1, col: -1 },
   { id: 'radbro', image: '/assets/radbro-icon.png', label: 'Radbro', action: 'url', url: 'https://radbro.xyz', row: -1, col: -1 },
   { id: 'nonon', image: '/assets/nonon-icon.png', label: 'NONON', action: 'url', url: 'https://nonon.house', row: -1, col: -1 },
+  { id: 'vrmilady', image: '/assets/vrmilady-icon.png', label: 'VRMilady', action: 'url', url: 'https://vrmilady.net', row: -1, col: -1 },
   // Row 4
   { id: 'lawb', image: '/assets/lawbticker.webp', label: 'tokens', action: 'popup', popupId: 'lawb-popup', row: 3, col: 2 },
   { id: 'reef-arcade', image: '/assets/reef-arcade.svg', label: 'Reef Run', action: 'arcade', row: 2, col: 0 },
@@ -253,7 +254,7 @@ const Desktop: React.FC<DesktopProps> = ({ onIconClick }) => {
               overflow: 'auto',
               boxSizing: 'border-box',
             }}>
-              {ICONS.filter(icon => ['chat', 'remilia-net', 'remilia-wiki', 'network-spirits', 'radbro', 'nonon'].includes(icon.id)).map(icon => (
+              {ICONS.filter(icon => ['chat', 'remilia-net', 'remilia-wiki', 'network-spirits', 'radbro', 'nonon', 'vrmilady'].includes(icon.id)).map(icon => (
                 <Icon
                   key={icon.id}
                   image={icon.image}
