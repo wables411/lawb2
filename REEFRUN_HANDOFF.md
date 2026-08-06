@@ -47,9 +47,15 @@
    Uniswap-v4 fee hooks. EIP-712: domain "ReefRunJackpot"/"1",
    `Score(address player,uint64 entryNonce,uint32 seed,uint64 survivalMs,uint256 deadline)`.
    Remaining to ship, in order:
-   a. Droplet: validator gains the signing key + a `/sign-score` step — after replay
-      validation AND reading the player's on-chain `pendingEntry` (seed must match), sign
-      the Score struct. Key in droplet env like the chess relayer.
+   a. **DONE (2026-08-06, commit 176d2bd21, local):** validator signs scores. Accepted
+      proofs with an `entryNonce` get `verdict.jackpot = {player, entryNonce, seed,
+      survivalMs, deadline, signature, signer}` — signed over the REPLAYED survival.
+      Inert without env; enable on droplet via `/root/reef-validator/env`
+      (REEF_SCORE_SIGNER_KEY / REEF_JACKPOT_ADDRESS / REEF_JACKPOT_CHAIN_ID; unit now has
+      EnvironmentFile). Signer bundle `_scoreSigner.cjs` committed (validator:build-signer);
+      cross-encoding test `npm run test:signer` (digest == Solidity byte-for-byte);
+      e2e-verified locally against the real 104.8s proof. Generate a FRESH key for the
+      droplet (jackpot-only, not the deployer key).
    b. Testnet deploy (Base Sepolia like chess; mock CULT + throwaway signer from .env).
    c. Frontend behind a flag: approve+`enter()` → run with assigned seed (the game already
       supports injected seeds via `setDeterministicRun(seed)`) → `submitScore` → jackpot
