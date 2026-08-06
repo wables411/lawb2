@@ -339,6 +339,16 @@ export class ArcadeSceneController {
   private walletAddress: string | null = null;
   /** Test toggle: ?reefdet=1 forces deterministic mode in free play so it can be play-tested. */
   private forceDeterministic = false;
+  /**
+   * True while enterPlay() is (re)building a run across async asset loads. The
+   * deterministic fixed-step loop must not run then: on retry it would step the
+   * PREVIOUS run's simState, advancing simStep/inputLog before the new sim
+   * exists — offsetting every recorded input and desyncing the replay proof
+   * (the long-run parity bug: honest runs rejected after a retry).
+   */
+  private runBooting = false;
+  /** DEV-only parity debugging: per-step fingerprints of the live deterministic run. */
+  private devTrace: number[][] | null = null;
   private simAcc = 0; // leftover real-time to be consumed by fixed steps
   private simNow = 0; // gameplay clock (replaces wall clock for gameplay timers)
   private simStep = 0; // fixed-step counter (input log timeline)
@@ -448,6 +458,9 @@ export class ArcadeSceneController {
     // back into the legacy free-running loop for debugging/feel comparison.
     this.forceDeterministic =
       typeof window === 'undefined' || !/[?&]reefdet=0/.test(window.location.search);
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      (window as unknown as { __reefCtl?: ArcadeSceneController }).__reefCtl = this;
+    }
   }
 
   /** Inject a fixed seed + enable deterministic mode for the NEXT run (jackpot/replay). */
@@ -1494,6 +1507,7 @@ export class ArcadeSceneController {
     if (!this.selectedId) return;
     const slot = this.slots.get(this.selectedId);
     if (!slot) return;
+    this.runBooting = true;
     // Run start is always user-gesture-adjacent — unlock audio + start the underwater bed.
     reefSfx.resume();
     reefSfx.startAmbience();
@@ -1533,6 +1547,7 @@ export class ArcadeSceneController {
     this.lastSwimSpd = 1;
     this.inputLog = [];
     this.lastInputKey = -1;
+    this.devTrace = import.meta.env.DEV && this.deterministicMode ? [] : null;
     this.spawnAcc = Math.max(0, reefRunSpawnIntervalSec(0) - FIRST_OBSTACLE_AFTER_S);
     this.runSurvivalSec = 0;
     this.runClockActive = false;
@@ -1618,6 +1633,7 @@ export class ArcadeSceneController {
         runStateToHud(this.runState, this.clock.elapsedTime, 1),
       );
     }
+    this.runBooting = false;
   }
 
   private clearObstacles(): void {
@@ -2598,6 +2614,16 @@ export class ArcadeSceneController {
     const prevPickups = new Set(ss.pickups);
 
     const events = stepSim(ss, dt, input);
+    if (this.devTrace) this.devTrace.push(this.simFingerprint(ss));
+
+    // Count the executed step and sync survival BEFORE dispatching events: on a
+    // fatal step, triggerGameOver snapshots the proof synchronously, and the
+    // validator replays exactly `steps` steps and requires the death to happen
+    // within them — a proof whose steps exclude the fatal step is rejected
+    // with `run-never-ended`. (playEnded must stay unsynced until after the
+    // dispatch: triggerGameOver no-ops if it is already true.)
+    this.simStep++;
+    this.runSurvivalSec = ss.survivalSec;
 
     for (const e of events) {
       switch (e.type) {
@@ -2619,7 +2645,6 @@ export class ArcadeSceneController {
       }
     }
 
-    this.runSurvivalSec = ss.survivalSec;
     this.lastSwimSpd = ss.lastSwimSpd;
     this.playEnded = ss.playEnded;
     this.throttleSmoothed = ss.throttleSmoothed;
@@ -2704,6 +2729,64 @@ export class ArcadeSceneController {
         this.onRunDifficulty(reefRunHudFromSurvivalSec(ss.survivalSec));
       }
     }
+  }
+
+  /** DEV parity debugging: compact numeric fingerprint of sim state after a step. */
+  private simFingerprint(ss: ReefRunSimState): number[] {
+    let obsZ = 0;
+    for (const o of ss.obstacles) if (!o.hit) obsZ += o.z;
+    let pkpZ = 0;
+    for (const p of ss.pickups) if (!p.hit) pkpZ += p.z;
+    return [
+      ss.survivalSec,
+      ss.runState.oxygen,
+      ss.runState.armor,
+      ss.obstacles.length,
+      obsZ,
+      ss.pickups.length,
+      pkpZ,
+      ss.spawnWaveIndex,
+      ss.spawnAcc,
+      ss.throttleSmoothed,
+      ss.playerLane,
+    ];
+  }
+
+  /**
+   * DEV-only: replay the current proof and report the first step whose state
+   * diverges from the recorded live trace (call from console after game over).
+   */
+  debugFindDivergence():
+    | { step: number; live: number[]; replay: number[]; lastInput: [number, number, number, number] | null }
+    | string {
+    if (!import.meta.env.DEV) return 'dev only';
+    if (!this.devTrace || !this.devTrace.length) return 'no live trace (deterministic run required)';
+    const proof = this.getRunProof();
+    if (!proof.characterId || !proof.deterministic) return 'no deterministic proof';
+    const replay = createSimState(proof.characterId, proof.seed, proof.maxActiveObstacles);
+    let logIdx = 0;
+    let lane = 1;
+    let forward = false;
+    let backward = false;
+    for (let step = 0; step < proof.steps; step++) {
+      while (logIdx < proof.inputLog.length && proof.inputLog[logIdx][0] <= step) {
+        const e = proof.inputLog[logIdx];
+        lane = e[1];
+        forward = e[2] === 1;
+        backward = e[3] === 1;
+        logIdx++;
+      }
+      replay.simNow += SIM_FIXED_DT;
+      stepSim(replay, SIM_FIXED_DT, { lane, forward, backward });
+      const live = this.devTrace[step];
+      const rep = this.simFingerprint(replay);
+      if (!live) return { step, live: [], replay: rep, lastInput: proof.inputLog[logIdx - 1] ?? null };
+      if (live.length !== rep.length || live.some((v, i) => v !== rep[i])) {
+        return { step, live, replay: rep, lastInput: proof.inputLog[logIdx - 1] ?? null };
+      }
+      if (replay.playEnded) break;
+    }
+    return 'no divergence found';
   }
 
   /** Replay the recorded inputs through a fresh pure sim and compare to the live run (deterministic mode). */
@@ -2899,7 +2982,9 @@ export class ArcadeSceneController {
     this.updateImpactFx(dt);
 
     if (this.screen === 'play') {
-      if (this.deterministicMode) {
+      if (this.deterministicMode && this.runBooting) {
+        // Run assets still loading — no sim stepping (see runBooting).
+      } else if (this.deterministicMode) {
         // Undo render interpolation offsets from last frame so the sim reads authoritative Z.
         for (const { obj, dz } of this.renderZOffsets) {
           if (obj.parent) obj.position.z -= dz;
@@ -2913,11 +2998,13 @@ export class ArcadeSceneController {
           this.simNow += this.FIXED_DT;
           this.captureInput();
           if (this.simState) {
+            // stepSimAndSync counts simStep itself (before game-over dispatch,
+            // so the fatal step is included in the run proof).
             this.stepSimAndSync(this.FIXED_DT);
           } else {
             this.stepPlaySim(this.FIXED_DT);
+            this.simStep++;
           }
-          this.simStep++;
           this.simAcc -= this.FIXED_DT;
           n++;
         }

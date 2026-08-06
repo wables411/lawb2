@@ -45,18 +45,46 @@
    (LAWBCHESS_ONCHAIN_SPEC.md). Testnet first behind a flag. Validator gains a signing key
    for score attestations at that point (droplet env, like the chess relayer).
 
-## OPEN BUG — long-run replay divergence (owner-reported 2026-08-03, TOP PRIORITY)
-Owner's real 166s prod run logged `[ReefRun] PARITY MISMATCH: live=166.567s replay=62.767s
-delta=103.800s` — the in-game self-check replayed the proof and died at ~63s. So the
-validator would REJECT honest long runs; short runs (≤~19s) verified fine. Cause NOT yet
-identified — do not guess; instrument. Leads to check (in order): (1) anything that changes
-gameplay state mid-run in the controller but not in reefRunSim (difficulty/speed ramps,
-depth tiers); (2) input-application timing — inputLog `[step,lane,w,s]` applied at a
-different step in live vs replay; (3) duplicated spawn/cadence logic drift (memory warning:
-ArcadeSceneController and reefRunSim must stay RNG-draw lockstep); (4) mid-run
-lowPower/maxActiveObstacles change (set at boot L836, proof reports one value L482, replay
-uses it L2715). Repro path: capture a real long-run proof (window/console) and replay it
-headlessly through reefRunSim.
+## FIXED 2026-08-06 — long-run replay divergence (was TOP PRIORITY) + proof off-by-one
+Root causes found by instrumentation (per-step live-vs-replay fingerprint trace), both in
+`ArcadeSceneController.ts`, both fixed, both verified live against the prod validator.
+**Committed locally — NOT pushed (awaiting owner instruction).**
+
+1. **Retry stale-step offset (the owner's 166s→63s parity mismatch).** `applyScreen('play')`
+   sets `screen='play'` synchronously, then `enterPlay()` awaits the swimmer-model load. On a
+   RETRY, the fixed-step loop kept running during that await with the PREVIOUS run's
+   simState: `simStep` advanced and `inputLog` recorded against the stale sim before
+   `createSimState` built the new one. Every proof input was then offset by the load
+   duration, so the replay applied all dodges late and died at the first tight dodge.
+   Dose–response reproduced exactly: shifting a captured 100.2s proof's inputs by K steps
+   kills the replay at 94s (K=30), 72s (K=60), **62.4s (K=120 ≈ 2s load)** — the owner saw
+   62.767s. First-run-of-session and cached loads have tiny/no gap → short runs "verified
+   fine". Fix: `runBooting` flag — enterPlay sets it around the async build; the
+   deterministic block in the tick skips stepping entirely while it's true.
+
+2. **Proof off-by-one → validator rejected EVERY in-game submission (`run-never-ended`).**
+   On the fatal step, stepSimAndSync dispatched the gameOver event (→ triggerGameOver →
+   getRunProof + submit) BEFORE the loop's `simStep++` and before `runSurvivalSec` sync. So
+   every submitted proof's `steps` EXCLUDED the fatal step; replayProof.cjs replays exactly
+   `steps` steps and requires the death to occur within them → `run-never-ended`, always.
+   (In-page parity printed Δ0.000000 because BOTH its numbers were stale by one step —
+   false confidence.) Prod never accepted an in-game proof: pre-08-03 CSP blocked
+   submissions entirely; after the CSP fix, this rejected them all. Fix: stepSimAndSync now
+   increments `simStep` and syncs `runSurvivalSec` after `stepSim()` but before event
+   dispatch (`playEnded` stays post-dispatch — triggerGameOver no-ops if already true); the
+   tick-loop increment now applies only to the free-play branch.
+
+**Live evidence (2026-08-06, local dev vs REAL prod validator reef.lawb.xyz):** autopiloted
+19.2s first run AND 103.6s RETRY run both log `Parity OK (Δ0.000000s)` and
+`[REEF VALIDATOR] run verified` — a 100s+ retry run verifying was impossible before. Direct
+POST of a captured 104.8s proof: `{"valid":true,...,"endReason":"crush"}`. Droplet bundle is
+NOT stale (verified — same verdict local vs prod).
+
+**DEV parity tooling added (all `import.meta.env.DEV`-gated, zero prod impact):**
+`window.__reefCtl` (controller handle), per-step `devTrace` fingerprints of live
+deterministic runs, and `__reefCtl.debugFindDivergence()` — replays the current proof and
+returns the first divergent step with both states. Use these before guessing on any future
+parity issue.
 
 ## FIXED 2026-08-03 (this session, all pushed):
 - CSP `connect-src` never included reef.lawb.xyz → prod NEVER submitted proofs and the
