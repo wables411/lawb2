@@ -39,11 +39,22 @@
    badge (linked-wallet group resolution like the ELO badge) and the profile Reef Run stats
    show a "✓ Verified best" line. Local dev has no Firebase keys so rows don't populate
    there — final visual check happens on prod after the push.
-2. **ReefRunJackpot contract** (spec §7): 10k $CULT entry, seed assigned at entry,
-   `submitScore` takes a validator EIP-712 signature, pot −5% instant payout, 7-day
-   `resetIfStale`. Reuse the chess escrow/UUPS/pause/small-caps patterns
-   (LAWBCHESS_ONCHAIN_SPEC.md). Testnet first behind a flag. Validator gains a signing key
-   for score attestations at that point (droplet env, like the chess relayer).
+2. **ReefRunJackpot contract — WRITTEN + TESTED (2026-08-06), commit a1ad456 in
+   `onchain-chess/` (local, unpushed).** `src/ReefRunJackpot.sol` (7.4KB, UUPS/pause/
+   reentrancy/fee-pot separation), 18 tests green (57 total suite), `script/DeployJackpot.s.sol`
+   (env: ENTRY_TOKEN, SCORE_SIGNER; ENTRY_AMOUNT defaults 10k e18, owner-settable for
+   small-caps launch). Design per locked spec §7 + open `fundPot()` for sponsors/future
+   Uniswap-v4 fee hooks. EIP-712: domain "ReefRunJackpot"/"1",
+   `Score(address player,uint64 entryNonce,uint32 seed,uint64 survivalMs,uint256 deadline)`.
+   Remaining to ship, in order:
+   a. Droplet: validator gains the signing key + a `/sign-score` step — after replay
+      validation AND reading the player's on-chain `pendingEntry` (seed must match), sign
+      the Score struct. Key in droplet env like the chess relayer.
+   b. Testnet deploy (Base Sepolia like chess; mock CULT + throwaway signer from .env).
+   c. Frontend behind a flag: approve+`enter()` → run with assigned seed (the game already
+      supports injected seeds via `setDeterministicRun(seed)`) → `submitScore` → jackpot
+      board UI. On ship: remove the free-run point award (locked decision).
+   d. Mainnet: ETH ($CULT), start with low ENTRY_AMOUNT, raise to 10k as confidence grows.
 
 ## FIXED 2026-08-06 — long-run replay divergence (was TOP PRIORITY) + proof off-by-one
 Root causes found by instrumentation (per-step live-vs-replay fingerprint trace), both in
