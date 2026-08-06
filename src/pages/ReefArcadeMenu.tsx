@@ -9,6 +9,12 @@ import { database } from '../firebaseApp';
 import { firebaseProfiles } from '../firebaseProfiles';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
+import { useReefJackpot } from '../hooks/useReefJackpot';
+import {
+  entryTokenLabel,
+  formatSurvivalMs,
+  type ReefJackpotVerdict,
+} from '../config/reefJackpotOnchain';
 import { reefRunLeaderboardPointsForRound } from '../utils/reefRunLeaderboardPoints';
 import { CHARACTER_STATS, starsRow } from './arcade/arcadeCharacterStats';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
@@ -36,7 +42,15 @@ const LazyArcadeLoadingPeptides = lazy(async () => {
 });
 
 type Phase = 'intro' | 'menu';
-type ModalKind = 'difficulty' | 'wallet' | 'howto' | null;
+type ModalKind = 'difficulty' | 'wallet' | 'howto' | 'jackpot' | null;
+
+function formatTokenAmount(raw: bigint, decimals = 18): string {
+  const whole = raw / 10n ** BigInt(decimals);
+  const frac = raw % 10n ** BigInt(decimals);
+  if (frac === 0n) return whole.toLocaleString();
+  const fracStr = frac.toString().padStart(decimals, '0').slice(0, 2).replace(/0+$/, '');
+  return fracStr ? `${whole.toLocaleString()}.${fracStr}` : whole.toLocaleString();
+}
 type TouchGesture = { pointerId: number; startY: number };
 
 const CHARACTERS: { id: ArcadeCharacterId; name: string; color: string }[] = [
@@ -128,6 +142,16 @@ export default function ReefArcadeMenu() {
   }, []);
   /** EN / 简体中文 (persisted; see reefLang.ts). */
   const [lang, setLang] = useState<ReefLang>(() => loadReefLang());
+
+  // ── Jackpot (VITE_REEF_JACKPOT, spec §7) ──────────────────────────────────
+  const jackpot = useReefJackpot();
+  /** Paid entry not yet run: dive uses its seed; cleared when a run consumes it. */
+  const [jackpotEntry, setJackpotEntry] = useState<{ nonce: number; seed: number } | null>(null);
+  /** Validator signature block for the last jackpot run (submit on-chain from game over). */
+  const [jackpotVerdict, setJackpotVerdict] = useState<ReefJackpotVerdict | null>(null);
+  /** Step label while a jackpot tx / flow is in flight (also disables buttons). */
+  const [jackpotBusy, setJackpotBusy] = useState<string | null>(null);
+  const [jackpotNote, setJackpotNote] = useState<string | null>(null);
   const toggleLang = useCallback(() => {
     setLang((prev) => {
       const next: ReefLang = prev === 'en' ? 'zh' : 'en';
@@ -313,6 +337,74 @@ export default function ReefArcadeMenu() {
     arcadeInputRef.current?.clearVirtualThrottle();
     setGameScreen('play');
   }, []);
+
+  /** Validator verdict for the last run — the jackpot block carries the submitScore() sig. */
+  const onRunVerdict = useCallback((verdict: Record<string, unknown>) => {
+    const j = verdict.jackpot as (ReefJackpotVerdict & { alreadySigned?: boolean }) | undefined;
+    if (!j) return;
+    if (j.alreadySigned) {
+      setJackpotNote('This entry was already signed once — one submitted attempt per entry.');
+      return;
+    }
+    if (typeof j.signature === 'string') {
+      setJackpotVerdict(j);
+      setJackpotNote(null);
+      setJackpotEntry(null); // the paid entry has been run; what remains is the signed score
+    }
+  }, []);
+
+  /** Pay the entry (approve if needed), then dive immediately on the assigned seed. */
+  const enterJackpotAndDive = useCallback(async () => {
+    if (jackpotBusy) return;
+    setJackpotNote(null);
+    setJackpotVerdict(null);
+    try {
+      setJackpotBusy('Confirm in wallet…');
+      const entry = await jackpot.enterJackpot();
+      setJackpotEntry(entry);
+      setJackpotBusy(null);
+      arcadeInputRef.current?.setJackpotRun(entry.seed, entry.nonce);
+      setModal(null);
+      launchRun();
+    } catch (err) {
+      setJackpotBusy(null);
+      const msg = err instanceof Error ? err.message : String(err);
+      setJackpotNote(msg.length > 160 ? `${msg.slice(0, 160)}…` : msg);
+    }
+  }, [jackpot, jackpotBusy, launchRun]);
+
+  /** Dive on an already-paid entry (e.g. the modal was closed between pay and dive). */
+  const diveWithPaidEntry = useCallback(() => {
+    if (!jackpotEntry) return;
+    arcadeInputRef.current?.setJackpotRun(jackpotEntry.seed, jackpotEntry.nonce);
+    setModal(null);
+    launchRun();
+  }, [jackpotEntry, launchRun]);
+
+  /** Submit the validator-signed score on-chain (win → instant payout). */
+  const submitJackpotScore = useCallback(async () => {
+    if (!jackpotVerdict || jackpotBusy) return;
+    try {
+      setJackpotBusy('Submitting score…');
+      const { won, payout } = await jackpot.submitJackpotScore(jackpotVerdict);
+      setJackpotBusy(null);
+      setJackpotVerdict(null);
+      setJackpotEntry(null);
+      if (won && payout !== null) {
+        setJackpotNote(
+          `🏆 JACKPOT! ${formatSurvivalMs(jackpotVerdict.survivalMs)} takes the pot — ${formatTokenAmount(payout)} ${entryTokenLabel(jackpot.chainId)} paid out.`,
+        );
+      } else {
+        setJackpotNote(
+          `Score ${formatSurvivalMs(jackpotVerdict.survivalMs)} submitted — bar not beaten, your entry stays in the pot.`,
+        );
+      }
+    } catch (err) {
+      setJackpotBusy(null);
+      const msg = err instanceof Error ? err.message : String(err);
+      setJackpotNote(msg.length > 160 ? `${msg.slice(0, 160)}…` : msg);
+    }
+  }, [jackpot, jackpotVerdict, jackpotBusy]);
 
   /** First run of the session opens the mission brief; after that, straight into the water. */
   const beginRun = useCallback(() => {
@@ -573,6 +665,7 @@ export default function ReefArcadeMenu() {
           onBootProgress={onBootProgress}
           onBootError={onBootError}
           walletAddress={connection.connected ? connection.address ?? null : null}
+          onRunVerdict={onRunVerdict}
         />
       </Suspense>
       <div className="ra-bg" aria-hidden />
@@ -687,6 +780,22 @@ export default function ReefArcadeMenu() {
                 <span className="ra-tile-label">{t.startRun}</span>
                 <span className="ra-tile-meta">{t.startMeta}</span>
               </button>
+              {jackpot.enabled && (
+                <button
+                  type="button"
+                  className="ra-tile"
+                  onClick={() => { uiClick(); setModal('jackpot'); }}
+                  disabled={!sceneReady}
+                >
+                  <span className="ra-tile-icon" aria-hidden>💰</span>
+                  <span className="ra-tile-label">JACKPOT</span>
+                  <span className="ra-tile-meta">
+                    {jackpot.board
+                      ? `${formatTokenAmount(jackpot.board.pot)} ${entryTokenLabel(jackpot.chainId)} POT`
+                      : 'PAID RUNS · BEAT THE BAR'}
+                  </span>
+                </button>
+              )}
               <button
                 type="button"
                 className="ra-tile"
@@ -988,7 +1097,23 @@ export default function ReefArcadeMenu() {
                   {lastRunLbNote}
                 </p>
               )}
+              {jackpot.enabled && jackpotVerdict && (
+                <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>
+                  💰 Jackpot run verified: <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
+                  {jackpot.board && jackpot.board.highScoreMs > 0 && (
+                    <> · bar {formatSurvivalMs(jackpot.board.highScoreMs)}</>
+                  )}
+                </p>
+              )}
+              {jackpot.enabled && jackpotNote && !jackpotVerdict && (
+                <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>
+              )}
               <div className="ra-gameover-actions">
+                {jackpot.enabled && jackpotVerdict && (
+                  <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
+                    {jackpotBusy ?? '💰 SUBMIT TO JACKPOT'}
+                  </button>
+                )}
                 <button type="button" className="ra-btn" onClick={beginRun}>
                   {t.retry}
                 </button>
@@ -1051,6 +1176,89 @@ export default function ReefArcadeMenu() {
                     BACK
                   </button>
                 </div>
+              </>
+            )}
+
+            {modal === 'jackpot' && (
+              <>
+                <h2>💰 REEF JACKPOT</h2>
+                {!jackpot.contract ? (
+                  <p>
+                    The jackpot contract is not deployed on this chain. Switch your wallet network
+                    and try again.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      Pay <strong>
+                        {jackpot.board ? formatTokenAmount(jackpot.board.entryAmount) : '…'}{' '}
+                        {entryTokenLabel(jackpot.chainId)}
+                      </strong>{' '}
+                      for one seeded run. Beat the survival bar and the whole pot pays out instantly
+                      (minus 5%). Lose and your entry grows the pot. Your run seed is assigned
+                      on-chain at entry — dive right away, entries expire after ~15 minutes.
+                    </p>
+                    <p className="ra-wallet-status">
+                      POT:{' '}
+                      <strong>
+                        {jackpot.board ? formatTokenAmount(jackpot.board.pot) : '…'}{' '}
+                        {entryTokenLabel(jackpot.chainId)}
+                      </strong>
+                      {' · '}BAR:{' '}
+                      <strong>
+                        {jackpot.board
+                          ? jackpot.board.highScoreMs > 0
+                            ? formatSurvivalMs(jackpot.board.highScoreMs)
+                            : 'OPEN (any run wins)'
+                          : '…'}
+                      </strong>
+                      {jackpot.board && jackpot.board.champion !== '0x0000000000000000000000000000000000000000' && (
+                        <> {' · '}CHAMPION: <strong>{shortenAddress(jackpot.board.champion)}</strong></>
+                      )}
+                    </p>
+                    {!connection.connected && (
+                      <p className="ra-wallet-status" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                        CONNECT A WALLET TO ENTER
+                      </p>
+                    )}
+                    {jackpotVerdict && (
+                      <p className="ra-wallet-status">
+                        UNSUBMITTED SCORE: <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
+                      </p>
+                    )}
+                    {jackpotEntry && !jackpotVerdict && (
+                      <p className="ra-wallet-status">ENTRY PAID · SEED ASSIGNED — DIVE BEFORE IT EXPIRES</p>
+                    )}
+                    {jackpotNote && <p style={{ fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>}
+                    <div className="ra-panel-actions">
+                      {jackpotVerdict ? (
+                        <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
+                          {jackpotBusy ?? 'SUBMIT SCORE ON-CHAIN'}
+                        </button>
+                      ) : jackpotEntry ? (
+                        <button type="button" className="ra-btn" onClick={diveWithPaidEntry} disabled={!sceneReady}>
+                          DIVE (ENTRY PAID)
+                        </button>
+                      ) : connection.connected ? (
+                        <button
+                          type="button"
+                          className="ra-btn"
+                          onClick={enterJackpotAndDive}
+                          disabled={Boolean(jackpotBusy) || !sceneReady || !jackpot.board}
+                        >
+                          {jackpotBusy ?? 'PAY ENTRY & DIVE'}
+                        </button>
+                      ) : (
+                        <button type="button" className="ra-btn" onClick={goConnect}>
+                          CONNECT
+                        </button>
+                      )}
+                      <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setModal(null); }}>
+                        BACK
+                      </button>
+                    </div>
+                  </>
+                )}
               </>
             )}
 

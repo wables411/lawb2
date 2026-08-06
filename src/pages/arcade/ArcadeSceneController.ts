@@ -330,6 +330,10 @@ export class ArcadeSceneController {
   private runSeed = 0;
   /** Optional injected seed (jackpot/replay assigns this); null = random free-play seed. */
   private pendingSeed: number | null = null;
+  /** Jackpot entry nonce armed for the NEXT run (consumed at run start, like pendingSeed). */
+  private pendingJackpotNonce: number | null = null;
+  /** Jackpot entry nonce of the CURRENT run (null = free/deterministic-only run). */
+  private runEntryNonce: number | null = null;
   // --- deterministic (fixed-timestep) mode: used for jackpot/replay; free play stays variable ---
   private readonly FIXED_DT = 1 / 60;
   private readonly MAX_SUBSTEPS = 5;
@@ -405,6 +409,8 @@ export class ArcadeSceneController {
   private onRunHud?: (hud: ArcadeRunHudState) => void;
   /** Fires as bootstrap milestones complete so the loading overlay can show % + label. */
   private onBootProgress?: (p: ArcadeBootProgress) => void;
+  /** Validator verdict for the last submitted run proof (incl. jackpot signature block). */
+  private onRunVerdict?: (verdict: Record<string, unknown>) => void;
   private pointerBound = false;
   private keyBound = false;
   private _boxSel = new THREE.Box3();
@@ -441,6 +447,8 @@ export class ArcadeSceneController {
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
       onRunHud?: (hud: ArcadeRunHudState) => void;
       onBootProgress?: (p: ArcadeBootProgress) => void;
+      /** Validator verdict for the last submitted run proof (incl. jackpot signature block). */
+      onRunVerdict?: (verdict: Record<string, unknown>) => void;
       /** Optional roster override (e.g. the radbro.fun build ships radbro only). */
       characters?: ArcadeCharacterDef[];
     },
@@ -451,6 +459,7 @@ export class ArcadeSceneController {
     this.onRunDifficulty = handlers.onRunDifficulty;
     this.onRunHud = handlers.onRunHud;
     this.onBootProgress = handlers.onBootProgress;
+    this.onRunVerdict = handlers.onRunVerdict;
     this.characters = handlers.characters ?? ARCADE_CHARACTERS;
     if (handlers.characters?.length) this.selectedId = handlers.characters[0]!.id;
     // Deterministic (replay-provable) runs are the DEFAULT since 2026-08-02 —
@@ -468,6 +477,17 @@ export class ArcadeSceneController {
     this.pendingSeed = seed >>> 0;
   }
 
+  /**
+   * Arm the NEXT run as a paid jackpot run: the contract-assigned seed plus the
+   * on-chain entry nonce. The nonce rides in the run proof so the validator can
+   * attach a submitScore() signature. One-shot — a retry after the jackpot run
+   * is a normal free run again.
+   */
+  setJackpotRun(seed: number, entryNonce: number): void {
+    this.pendingSeed = seed >>> 0;
+    this.pendingJackpotNonce = entryNonce;
+  }
+
   /** Wallet identity to attach to run proofs (null when not connected). */
   setWalletAddress(address: string | null): void {
     this.walletAddress = address;
@@ -483,6 +503,7 @@ export class ArcadeSceneController {
     inputLog: Array<[number, number, number, number]>;
     maxActiveObstacles: number;
     walletAddress: string | null;
+    entryNonce: number | null;
   } {
     return {
       seed: this.runSeed,
@@ -494,6 +515,8 @@ export class ArcadeSceneController {
       // Gameplay-affecting (8 on lowPowerMode) — the validator must replay with it.
       maxActiveObstacles: this.maxActiveObstacles,
       walletAddress: this.walletAddress,
+      // Jackpot runs only: on-chain entry nonce -> validator returns a submitScore() sig.
+      entryNonce: this.runEntryNonce,
     };
   }
 
@@ -518,6 +541,11 @@ export class ArcadeSceneController {
         .then(async (res) => {
           const verdict = (await res.json()) as { valid?: boolean; reason?: string };
           console.info('[REEF VALIDATOR]', verdict.valid ? 'run verified' : `rejected: ${verdict.reason}`);
+          try {
+            this.onRunVerdict?.(verdict as Record<string, unknown>);
+          } catch {
+            // Verdict listeners must never break game over.
+          }
         })
         .catch(() => {});
     } catch {
@@ -1540,6 +1568,8 @@ export class ArcadeSceneController {
     this.deterministicMode = this.forceDeterministic || this.pendingSeed !== null;
     this.runSeed = this.pendingSeed ?? randomSeed();
     this.pendingSeed = null;
+    this.runEntryNonce = this.pendingJackpotNonce;
+    this.pendingJackpotNonce = null;
     this.gameRng = makeRng(this.runSeed);
     this.simAcc = 0;
     this.simNow = 0;

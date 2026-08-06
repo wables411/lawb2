@@ -53,11 +53,33 @@ if (SCORE_SIGNER_KEY && JACKPOT_ADDRESS && JACKPOT_CHAIN_ID > 0) {
   console.log('[reef-validator] jackpot score signing disabled (no signer env)');
 }
 
+// One signature per (player, entryNonce), persisted across restarts: an entry buys ONE
+// submitted attempt — without this a player could validate many runs of their assigned
+// seed and pick the best signature. (The contract's entry TTL bounds the window too.)
+const SIGNED_NONCES_PATH =
+  process.env.REEF_SIGNED_NONCES_PATH ||
+  join(dirname(fileURLToPath(import.meta.url)), 'signed-nonces.jsonl');
+const signedNonces = new Set();
+if (existsSync(SIGNED_NONCES_PATH)) {
+  try {
+    for (const line of readFileSync(SIGNED_NONCES_PATH, 'utf8').trim().split('\n')) {
+      if (line) signedNonces.add(line.trim());
+    }
+  } catch {
+    // unreadable — start empty (worst case: one extra signature per old nonce)
+  }
+}
+
 /** Attach a jackpot Score signature to an accepted verdict, if signing is on. */
 function maybeSignScore(proof, verdict) {
   if (!scoreSigner || !verdict.valid || !verdict.walletAddress) return null;
   const nonce = proof.entryNonce;
   if (!Number.isInteger(nonce) || nonce <= 0 || nonce > Number.MAX_SAFE_INTEGER) return null;
+  const nonceKey = `${String(verdict.walletAddress).toLowerCase()}:${nonce}`;
+  if (signedNonces.has(nonceKey)) {
+    console.log(`[reef-validator] refusing second signature for ${nonceKey}`);
+    return { alreadySigned: true };
+  }
   const value = {
     player: verdict.walletAddress,
     entryNonce: nonce,
@@ -68,6 +90,12 @@ function maybeSignScore(proof, verdict) {
   try {
     const domain = scoreSigner.scoreDomain(JACKPOT_CHAIN_ID, JACKPOT_ADDRESS);
     const signature = scoreSigner.signScore(SCORE_SIGNER_KEY, domain, value);
+    signedNonces.add(nonceKey);
+    try {
+      appendFileSync(SIGNED_NONCES_PATH, `${nonceKey}\n`);
+    } catch (err) {
+      console.error('[reef-validator] signed-nonces append failed:', err.message);
+    }
     return { ...value, signature, signer: scoreSigner.signerAddress(SCORE_SIGNER_KEY) };
   } catch (err) {
     console.error('[reef-validator] score signing failed:', err.message);

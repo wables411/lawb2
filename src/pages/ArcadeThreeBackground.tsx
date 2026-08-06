@@ -31,12 +31,16 @@ type Props = {
   characters?: ArcadeCharacterDef[];
   /** Wallet identity attached to run proofs (null when not connected). */
   walletAddress?: string | null;
+  /** Validator verdict for the last run proof (jackpot flow reads verdict.jackpot). */
+  onRunVerdict?: (verdict: Record<string, unknown>) => void;
 };
 
 export type ArcadePlayInputHandle = {
   nudgeLane: (delta: -1 | 1) => void;
   setVirtualThrottle: (opts: { forward: boolean; backward: boolean }) => void;
   clearVirtualThrottle: () => void;
+  /** Arm the NEXT run as a paid jackpot run (contract-assigned seed + entry nonce). */
+  setJackpotRun: (seed: number, entryNonce: number) => void;
 };
 
 /**
@@ -55,6 +59,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   onBootError,
   characters,
   walletAddress,
+  onRunVerdict,
 }: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ArcadeSceneController | null>(null);
@@ -65,6 +70,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   const readyRef = useRef(onEngineReady);
   const bootProgressRef = useRef(onBootProgress);
   const bootErrorRef = useRef(onBootError);
+  const verdictRef = useRef(onRunVerdict);
   pickRef.current = onPickCharacter;
   overRef.current = onGameOver;
   diffRef.current = onRunDifficulty;
@@ -72,6 +78,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
   readyRef.current = onEngineReady;
   bootProgressRef.current = onBootProgress;
   bootErrorRef.current = onBootError;
+  verdictRef.current = onRunVerdict;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -84,6 +91,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
       onRunDifficulty: (p) => diffRef.current?.(p),
       onRunHud: (h) => hudRef.current?.(h),
       onBootProgress: (p) => bootProgressRef.current?.(p),
+      onRunVerdict: (v) => verdictRef.current?.(v),
       characters,
     });
     engineRef.current = engine;
@@ -138,6 +146,9 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
       },
       clearVirtualThrottle: () => {
         engineRef.current?.clearVirtualThrottle();
+      },
+      setJackpotRun: (seed, entryNonce) => {
+        engineRef.current?.setJackpotRun(seed, entryNonce);
       },
     }),
     [],
