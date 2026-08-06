@@ -27,7 +27,8 @@ export const ENABLE_REEF_JACKPOT = readBooleanFlag('VITE_REEF_JACKPOT', false);
  */
 const PROXY_ADDRESS: Record<number, `0x${string}` | null> = {
   1: null, // ETH mainnet ($CULT) — post-testnet
-  84532: null, // Base Sepolia — fill in after deploy
+  // Deployed 2026-08-06 (MockCult 0xb1639eEef9D669b9f01cd1d7C076495915522961, entry 10 mCULT)
+  84532: '0x24724b3977De2Af6D287097B14e5bE8f4759a06B',
 };
 
 const DEV_ADDRESS = readViteEnv('VITE_REEF_JACKPOT_ADDRESS');
