@@ -56,11 +56,21 @@
       cross-encoding test `npm run test:signer` (digest == Solidity byte-for-byte);
       e2e-verified locally against the real 104.8s proof. Generate a FRESH key for the
       droplet (jackpot-only, not the deployer key).
-   b. Testnet deploy (Base Sepolia like chess; mock CULT + throwaway signer from .env).
-   c. Frontend behind a flag: approve+`enter()` → run with assigned seed (the game already
-      supports injected seeds via `setDeterministicRun(seed)`) → `submitScore` → jackpot
-      board UI. On ship: remove the free-run point award (locked decision).
-   d. Mainnet: ETH ($CULT), start with low ENTRY_AMOUNT, raise to 10k as confidence grows.
+   b. **Anvil loop PROVEN (a207517): enter→seed→sim run→sig→submitScore→payout 9.5/10,
+      119k gas.** Base Sepolia deploy BLOCKED on gas: the old testnet key is lost (.env now
+      holds only the mainnet key, 0 ETH on Base Sepolia; old funded addr 0x170FA…735Ad key
+      gone). Owner: fund a key via faucet, then
+      `PRIVATE_KEY=… SCORE_SIGNER=… forge script script/DeployJackpotTestnet.s.sol --rpc-url base_sepolia --broadcast`
+      and put the address into VITE_REEF_JACKPOT_ADDRESS(+_CHAIN_ID=84532) + droplet env.
+   c. **Frontend DONE (a3aa623da, flag default OFF — VITE_REEF_JACKPOT=true to enable).**
+      Tile+panel (pot/bar/champion), approve+enter → setJackpotRun(seed,nonce) → entryNonce
+      in proof → verdict.jackpot sig → submit from game over or panel; paid-entry recovery.
+      Contract hardening ed72b67: entry TTL 15 min (seed is client-visible → caps practice
+      window); validator signs each entry ONCE (signed-nonces.jsonl). Flag-off verified: no
+      tile, zero RPC, free play regression-checked. On ship: remove free-run point award
+      (locked decision) + redeploy droplet (fetches _scoreSigner.cjs + EnvironmentFile unit).
+   d. Live testing = owner on Base Sepolia after (b): connect wallet, PAY ENTRY & DIVE,
+      submit score, watch payout. Then mainnet: ETH ($CULT), low ENTRY_AMOUNT first.
 
 ## FIXED 2026-08-06 — long-run replay divergence (was TOP PRIORITY) + proof off-by-one
 Root causes found by instrumentation (per-step live-vs-replay fingerprint trace), both in
