@@ -33,6 +33,13 @@ curl -fsS -o server.mjs "$RAW/server.mjs"
 curl -fsS -o replayProof.cjs "$RAW/replayProof.cjs"
 curl -fsS -o firebaseWrite.cjs "$RAW/firebaseWrite.cjs"
 curl -fsS -o _reefRunSim.cjs "$RAW/_reefRunSim.cjs"
+curl -fsS -o _scoreSigner.cjs "$RAW/_scoreSigner.cjs"
+# Optional: jackpot score signing. Put the signer env in /root/reef-validator/env
+# (survives redeploys — the systemd unit reads it via EnvironmentFile):
+#   REEF_SCORE_SIGNER_KEY=0x<validator signing key — jackpot-only, NOT the deployer>
+#   REEF_JACKPOT_ADDRESS=0x<ReefRunJackpot proxy>
+#   REEF_JACKPOT_CHAIN_ID=<chain id>
+# Without it the validator judges + feeds exactly as before (signing stays off).
 # Optional: a Firebase service-account key at
 # /root/reef-validator/service-account.json lets the validator write verified
 # results to reef_verified/<wallet> (clients are read-only there). Without it,
@@ -57,6 +64,7 @@ After=network.target
 ExecStart=/usr/bin/node /root/reef-validator/server.mjs
 Environment=REEF_VALIDATOR_PORT=8787
 Environment=REEF_VALIDATOR_HOST=127.0.0.1
+EnvironmentFile=-/root/reef-validator/env
 Restart=always
 RestartSec=5
 

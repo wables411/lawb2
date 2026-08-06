@@ -27,6 +27,54 @@ const require = createRequire(import.meta.url);
 const { validateRunProof } = require('./replayProof.cjs');
 const { recordVerifiedRun } = require('./firebaseWrite.cjs');
 
+// ── Jackpot score signing (OPTIONAL — inert without env) ────────────────────
+// With REEF_SCORE_SIGNER_KEY + REEF_JACKPOT_ADDRESS + REEF_JACKPOT_CHAIN_ID set
+// (droplet: /root/reef-validator/env), an accepted proof that carries an
+// `entryNonce` also gets an EIP-712 signature the ReefRunJackpot contract
+// accepts in submitScore(). The signature binds (player, entryNonce, seed,
+// survivalMs, deadline); the CONTRACT enforces that (entryNonce, seed) matches
+// the player's on-chain entry, so the validator only attests what it replayed.
+const SCORE_SIGNER_KEY = process.env.REEF_SCORE_SIGNER_KEY || '';
+const JACKPOT_ADDRESS = process.env.REEF_JACKPOT_ADDRESS || '';
+const JACKPOT_CHAIN_ID = Number(process.env.REEF_JACKPOT_CHAIN_ID || 0);
+const SIG_TTL_SEC = Number(process.env.REEF_SCORE_SIG_TTL_SEC || 3600);
+let scoreSigner = null;
+if (SCORE_SIGNER_KEY && JACKPOT_ADDRESS && JACKPOT_CHAIN_ID > 0) {
+  try {
+    scoreSigner = require('./_scoreSigner.cjs');
+    console.log(
+      `[reef-validator] jackpot score signing ENABLED — signer ${scoreSigner.signerAddress(SCORE_SIGNER_KEY)}, ` +
+        `contract ${JACKPOT_ADDRESS}, chain ${JACKPOT_CHAIN_ID}`,
+    );
+  } catch (err) {
+    console.error('[reef-validator] score signing DISABLED (_scoreSigner.cjs missing/broken):', err.message);
+  }
+} else {
+  console.log('[reef-validator] jackpot score signing disabled (no signer env)');
+}
+
+/** Attach a jackpot Score signature to an accepted verdict, if signing is on. */
+function maybeSignScore(proof, verdict) {
+  if (!scoreSigner || !verdict.valid || !verdict.walletAddress) return null;
+  const nonce = proof.entryNonce;
+  if (!Number.isInteger(nonce) || nonce <= 0 || nonce > Number.MAX_SAFE_INTEGER) return null;
+  const value = {
+    player: verdict.walletAddress,
+    entryNonce: nonce,
+    seed: proof.seed >>> 0,
+    survivalMs: Math.round(verdict.survivalSec * 1000), // replayed (authoritative) time
+    deadline: Math.floor(Date.now() / 1000) + SIG_TTL_SEC,
+  };
+  try {
+    const domain = scoreSigner.scoreDomain(JACKPOT_CHAIN_ID, JACKPOT_ADDRESS);
+    const signature = scoreSigner.signScore(SCORE_SIGNER_KEY, domain, value);
+    return { ...value, signature, signer: scoreSigner.signerAddress(SCORE_SIGNER_KEY) };
+  } catch (err) {
+    console.error('[reef-validator] score signing failed:', err.message);
+    return null;
+  }
+}
+
 const ACCEPTED_PATH =
   process.env.REEF_ACCEPTED_PATH ||
   join(dirname(fileURLToPath(import.meta.url)), 'accepted.jsonl');
@@ -170,7 +218,11 @@ const server = http.createServer((req, res) => {
     }
     try {
       const verdict = validateRunProof(proof);
-      if (verdict.valid) recordAccepted(proof, verdict);
+      if (verdict.valid) {
+        recordAccepted(proof, verdict);
+        const jackpot = maybeSignScore(proof, verdict);
+        if (jackpot) verdict.jackpot = jackpot;
+      }
       sendJson(res, 200, verdict);
     } catch (err) {
       console.error('[reef-validator] replay crashed:', err);
