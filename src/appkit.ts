@@ -20,15 +20,19 @@ const metadata = {
 // Type definitions for when modules are loaded
 let wagmiAdapter: any = null;
 let appKit: any = null;
+let initStarted = false;
 
 // Initialize AppKit for wallet connections
 export const initializeAppKit = () => {
-  // Check if already initialized
-  if (appKit || wagmiAdapter) {
+  // Synchronous guard: appKit/wagmiAdapter are only assigned after the async imports
+  // resolve, so two quick calls (e.g. StrictMode double-effect) both used to pass the
+  // old `if (appKit || wagmiAdapter)` check and create two AppKit instances.
+  if (initStarted) {
     dlog('[AppKit] Already initialized, skipping');
     return;
   }
-  
+  initStarted = true;
+
   dlog('[AppKit] Loading AppKit modules');
   
   // Use dynamic imports to load AppKit modules

@@ -1,3 +1,4 @@
+import './devFakeWallet'; // dev-only, inert in prod builds
 import { dlog } from './utils/devLog';
 // Firebase disabled — lawb.xyz runs without Firebase
 import React, { lazy, Suspense } from 'react';
@@ -57,27 +58,6 @@ const AppWithWagmi = () => {
     return () => clearInterval(interval);
   }, []);
   
-  // Poll for AppKit loading
-  React.useEffect(() => {
-    let attempts = 0;
-    const maxAttempts = 50; // Check for 5 seconds (50 * 100ms)
-    const interval = setInterval(() => {
-      attempts++;
-      if (wagmiAdapter && typeof wagmiAdapter === 'object' && 'wagmiConfig' in wagmiAdapter) {
-        const adapterConfig = (wagmiAdapter as any).wagmiConfig;
-        dlog('[main.tsx] AppKit loaded, switching to WagmiAdapter config');
-        setCurrentConfig(adapterConfig);
-        setConfigKey(prev => prev + 1); // Force WagmiProvider to re-initialize
-        clearInterval(interval);
-      } else if (attempts >= maxAttempts) {
-        console.warn('[main.tsx] AppKit did not load within timeout, using fallback config (connectors may be limited)');
-        clearInterval(interval);
-      }
-    }, 100);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const host = window.location.hostname;
@@ -88,7 +68,16 @@ const AppWithWagmi = () => {
   }, []);
 
   return (
-    <WagmiProvider key={configKey} config={currentConfig}>
+    // reconnectOnMount only after the swap to AppKit's config: if the throwaway boot
+    // config starts reconnecting, it wins the race against the adapter config (both
+    // persist to the same wagmi.store, with incompatible per-instance connector uids)
+    // and the app is left rendering a config that can never see the restored wallet —
+    // taskbar chip green (AppKit state) but useAccount() disconnected everywhere.
+    <WagmiProvider
+      key={configKey}
+      config={currentConfig}
+      reconnectOnMount={currentConfig !== wagmiConfig}
+    >
       <QueryClientProvider client={queryClient}>
         <LawbAudioProvider>
           <WalletConnectLeaderboardSync />
