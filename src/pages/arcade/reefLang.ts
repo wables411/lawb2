@@ -71,7 +71,10 @@ const en = {
     'Score = seconds survived. Watch two meters: Armor and O₂. Jellyfish and pufferfish sting armor + breath and slow you down; mines hit hard. The water darkens as you dive deeper — and the reef gets meaner. The statues and wrecks on the sides are scenery: only your three lanes can hurt you.',
   howtoGrab: '🧀 GRAB',
   howtoGrabBody:
-    'Air tank refills O₂ · Peptides restore armor (both cleanse slow) · Cheese = nitro burst · Trash a little armor · Coin +1 and a sip of O₂.',
+    'Air tank refills O₂ · Peptides restore armor (both also cleanse slow-down) · Cheese = nitro burst · Trash = +1 hauled and a bit of armor · Coin = +1 coin and a sip of O₂.',
+  howtoJackpot: '💰 JACKPOT',
+  howtoJackpotBody:
+    'Pay the CULT entry for one seeded run. Beat the survival bar and the whole pot pays out to your wallet, on-chain. Free runs are for fun and stats — they never touch the jackpot.',
   ok: 'OK',
 
   // Game over
@@ -162,7 +165,10 @@ const zh: ReefStrings = {
     '得分 = 存活秒数。注意两条量表：护甲和氧气。水母和河豚会削减护甲与氧气并让你变慢；水雷伤害很高。潜得越深，水越暗，礁石越凶。两侧的雕像和沉船只是景观：只有三条泳道里的东西会伤到你。',
   howtoGrab: '🧀 拾取',
   howtoGrabBody:
-    '氧气瓶回满氧气 · 肽恢复护甲（两者都能解除减速）· 奶酪 = 氮气冲刺 · 垃圾少量护甲 · 金币 +1 并补一口氧气。',
+    '氧气瓶回满氧气 · 肽恢复护甲（两者都能解除减速）· 奶酪 = 氮气冲刺 · 垃圾 = 打捞数 +1 并少量回复护甲 · 金币 = +1 金币并补一口氧气。',
+  howtoJackpot: '💰 奖池',
+  howtoJackpotBody:
+    '支付 CULT 入场费获得一次指定种子的挑战。打破生存纪录，整个奖池将直接链上打入你的钱包。免费游玩仅供娱乐和统计——与奖池无关。',
   ok: '好的',
 
   gameOver: '游戏结束',

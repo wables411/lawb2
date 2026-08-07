@@ -51,17 +51,19 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default',
   ];
 
   const vsClawbFlow = [
-    'From Chess Home, keep VS AI selected and press Start Match.',
-    'Pick your chess set, then Easy or Hard.',
+    'The chess page opens on the on-chain arena — switch to the ♟ VS Clawb tab for practice.',
+    'Press Start Match, pick your chess set, then Easy or Hard.',
     'Easy is great for learning. Hard is a serious chess engine — good luck.',
     'No wallet needed to play. Connect one if you want your wins saved to the leaderboard.',
   ];
 
   const pvpFlow = [
     'Connect your wallet (wagers use real tokens — this part is for grown-ups).',
-    'Open PvP, create a match with your wager, or join someone else’s.',
-    'When an opponent joins, the game starts — Blue always moves first.',
-    'Win the game, win the pot.',
+    'On the ⛓ tab, create a match with your wager and share the code, or join an open one.',
+    'When an opponent joins, the game starts. The match creator plays White; White moves first.',
+    'Both players are on a chess clock — run out of time and your opponent can claim the win.',
+    'Win by checkmate, resignation, or timeout — the contract pays the pot to the winner.',
+    'Anyone can open a match code to spectate a live game.',
   ];
 
   return (
@@ -76,9 +78,10 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default',
           </p>
         )}
         <p>
-          <strong>What is Lawb Chess?</strong> Chess, but lawbsters. Your Blue army starts at the
-          bottom, the Red army at the top. Blue always moves first. The goal: trap the other
-          team&apos;s King.
+          <strong>What is Lawb Chess?</strong> Chess, but lawbsters. In practice games your Blue
+          army starts at the bottom, the Red army at the top, and Blue moves first (in wager
+          matches the sides go by their classic names, White and Black). The goal: trap the
+          other team&apos;s King.
         </p>
 
         <p><strong>Never played chess? Three things to know:</strong></p>
@@ -109,10 +112,11 @@ export const HowToContent: React.FC<HowToContentProps> = ({ variant = 'default',
           ))}
         </ol>
         <p>
-          <strong>New — On-Chain Wagers (beta):</strong> the ⛓ tab on the chess page plays wager
-          chess where the blockchain itself is the referee and the bank: it checks every move,
-          holds both stakes, and pays the winner automatically. Live on Arbitrum ($DMT),
-          Ethereum ($CULT), and Base — plus ETH and NFT wagers.
+          <strong>On-Chain Wagers:</strong> the ⛓ tab on the chess page plays wager chess where
+          the blockchain itself is the referee and the bank: it checks every move, holds both
+          stakes, and pays the winner automatically. Live on Arbitrum ($DMT), Ethereum ($CULT),
+          and Base — plus ETH and NFT wagers. Rated matches adjust your on-chain ELO, shown on
+          the Lawb Leaderboard.
         </p>
 
         <p><strong>Meet the pieces:</strong></p>
