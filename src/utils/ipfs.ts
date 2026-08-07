@@ -4,11 +4,22 @@
  * Convert IPFS URL to HTTP gateway URL
  * Supports multiple IPFS gateways as fallbacks
  */
+// IPFS gateways that no longer resolve. Profile pictures store the gateway URL that was
+// current when the user picked them, so dead hosts keep coming back from the database
+// forever — rewrite them to a live public gateway at render time.
+const DEAD_IPFS_GATEWAY_HOSTS = new Set([
+  'd1kgk9u8ytew77.cloudfront.net', // OpenSea-era CDN, NXDOMAIN since ~2026-08
+]);
+
 export function ipfsToHttp(ipfsUrl: string | null | undefined): string {
   if (!ipfsUrl) return '';
-  
-  // If already HTTP, return as-is
+
+  // If already HTTP, return as-is (rewriting dead gateway hosts first)
   if (ipfsUrl.startsWith('http://') || ipfsUrl.startsWith('https://')) {
+    const match = ipfsUrl.match(/^https?:\/\/([^/]+)\/(ipfs\/.+)$/);
+    if (match && DEAD_IPFS_GATEWAY_HOSTS.has(match[1].toLowerCase())) {
+      return `https://ipfs.io/${match[2]}`;
+    }
     return ipfsUrl;
   }
   

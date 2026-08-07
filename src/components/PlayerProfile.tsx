@@ -19,6 +19,7 @@ import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useMultiChainBalances } from '../hooks/useMultiChainBalances';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { getDisplayName } from '../utils/displayName';
+import { ipfsToHttp } from '../utils/ipfs';
 import {
   linuxNotesButtonStyle,
   linuxNotesHeaderStyle,
@@ -1083,7 +1084,7 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
   const getBorderColor = () => '#d2d2cc';
 
   // Get profile image URL or default
-  const profileImageUrl = profile?.profile_picture?.image_url || '/images/sticker4.png';
+  const profileImageUrl = ipfsToHttp(profile?.profile_picture?.image_url) || '/images/sticker4.png';
 
   // Handle image load to get dimensions
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -1548,8 +1549,8 @@ export const PlayerProfile: React.FC<PlayerProfileProps> = ({ isMobile = false, 
         <h4 style={{ ...linuxNotesHeaderStyle(isMobile), marginBottom: 12 }}>Profile Picture</h4>
         {profile?.profile_picture ? (
             <div style={{ marginBottom: '12px' }}>
-              <img 
-                src={profile.profile_picture.image_url} 
+              <img
+                src={ipfsToHttp(profile.profile_picture.image_url)}
                 alt="Current profile picture"
                 onError={(e) => {
                   if (typeof window !== 'undefined' && window.console) {

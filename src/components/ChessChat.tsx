@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { database, getFirebaseDatabase } from '../firebaseApp';
 import { ref, push, onValue, set, query, orderByChild, limitToLast, get } from 'firebase/database';
 import { getDisplayName as getDisplayNameUtil } from '../utils/displayName';
+import { ipfsToHttp } from '../utils/ipfs';
 import { firebaseProfiles } from '../firebaseProfiles';
 import {
   sendClawbMessage,
@@ -312,7 +313,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           newNames[addr] = dn;
           try {
             const profile = await firebaseProfiles.getProfile(addr);
-            newPics[addr] = profile?.profile_picture?.image_url || '/images/sticker4.png';
+            newPics[addr] = ipfsToHttp(profile?.profile_picture?.image_url) || '/images/sticker4.png';
           } catch { newPics[addr] = '/images/sticker4.png'; }
         } catch {
           newNames[addr] = formatAddress(addr);
@@ -559,7 +560,7 @@ export const ChessChat: React.FC<ChessChatProps> = ({
           try {
             const profile = await firebaseProfiles.getProfile(addr);
             if (profile?.profile_picture?.image_url) {
-              newProfilePictureMap[addr] = profile.profile_picture.image_url;
+              newProfilePictureMap[addr] = ipfsToHttp(profile.profile_picture.image_url);
             } else {
               newProfilePictureMap[addr] = '/images/sticker4.png';
             }
