@@ -1,9 +1,11 @@
 // ReefRunJackpot contract config (REEFRUN_ONCHAIN_SPEC §7 frontend integration).
 //
-// INERT until VITE_REEF_JACKPOT is enabled: the flag defaults OFF, the jackpot tile
-// stays hidden, and no contract reads run. Same rollout pattern as lawbChessOnchain.ts.
+// PUBLIC since 2026-08-07: VITE_REEF_JACKPOT=true on Netlify (owner launch call,
+// entry 100 CULT for now). The flag still defaults OFF so local dev and forks stay
+// inert without the env var. Same rollout pattern as lawbChessOnchain.ts.
 //
 // Contract source: onchain-chess/src/ReefRunJackpot.sol (own git repo).
+// ETH mainnet impl verified on Etherscan (Exact Match): 0x5ae36c20...4da724.
 
 function readViteEnv(name: string): string {
   if (typeof import.meta === 'undefined' || !import.meta.env) return '';
