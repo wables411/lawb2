@@ -81,27 +81,32 @@ curl -fsS http://127.0.0.1:8787/health && echo ""
 # Wire nginx: proxy /reef/ -> the validator on every chess.lawb.xyz server block.
 # Backup + config test + rollback — never leaves nginx broken (same as elo deploy).
 NGINX_WIRED=no
+mkdir -p /root/nginx-backups
 for cfg in /etc/nginx/sites-enabled/*; do
     [ -f "$cfg" ] || continue
+    case "$cfg" in *.bak-reef*) continue ;; esac # never treat old backups as configs
     grep -q "chess.lawb.xyz" "$cfg" || continue
     if grep -q "location /reef/" "$cfg"; then
         echo "nginx: $cfg already proxies /reef/"
         NGINX_WIRED=yes
         continue
     fi
-    cp "$cfg" "$cfg.bak-reef"
+    # Back up OUTSIDE sites-enabled — a backup inside it is loaded by nginx as a
+    # duplicate config AND re-wired by the next deploy run (they used to stack).
+    BAK="/root/nginx-backups/$(basename "$cfg").bak-reef"
+    cp "$cfg" "$BAK"
     awk '{ print } /server_name[^;]*chess\.lawb\.xyz/ {
         print "    location /reef/ {";
         print "        proxy_pass http://127.0.0.1:8787/;";
         print "        proxy_set_header Host $host;";
         print "        client_max_body_size 1m;";
         print "    }";
-    }' "$cfg.bak-reef" > "$cfg"
+    }' "$BAK" > "$cfg"
     if nginx -t 2>/dev/null; then
         NGINX_WIRED=yes
         echo "nginx: wired /reef/ into $cfg"
     else
-        mv "$cfg.bak-reef" "$cfg"
+        cp "$BAK" "$cfg"
         echo "!! nginx config test FAILED after edit — restored $cfg untouched"
     fi
 done
