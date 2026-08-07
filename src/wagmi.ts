@@ -75,13 +75,18 @@ function baseFallbackTransport() {
   return urls.length === 1 ? http(urls[0]!, { batch: false }) : fallback(urls.map((u) => http(u, { batch: false })));
 }
 
-// Base Sepolia (testnet) is included for the on-chain chess path. It is surfaced in the
-// wallet UX only when the flag is on (gated in appkit.ts). VITE_ONCHAIN_CHESS_RPC lets a
-// local dev point its transport at an anvil fork.
-const baseSepoliaTransport = http(
-  viteRpc('VITE_ONCHAIN_CHESS_RPC') ?? 'https://base-sepolia-rpc.publicnode.com',
-  { batch: false },
-);
+// Base Sepolia (testnet) — on-chain chess + reef jackpot testing. Primary RPC must be
+// sepolia.base.org: it is the endpoint allowed by the prod CSP (publicnode was silently
+// CSP-blocked, discovered live 2026-08-06 when the jackpot panel's reads all failed).
+// VITE_ONCHAIN_CHESS_RPC lets a local dev point the transport at an anvil fork.
+const baseSepoliaTransport = (() => {
+  const override = viteRpc('VITE_ONCHAIN_CHESS_RPC');
+  if (override) return http(override, { batch: false });
+  return fallback([
+    http('https://sepolia.base.org', { batch: false }),
+    http('https://base-sepolia-rpc.publicnode.com', { batch: false }),
+  ]);
+})();
 
 // Per-chain transports. Shared with appkit.ts: the app swaps to AppKit's OWN wagmi config
 // after load (main.tsx), and without an explicit transports map the WagmiAdapter routes every
