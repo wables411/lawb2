@@ -70,7 +70,7 @@
       tile, zero RPC, free play regression-checked. On ship: remove free-run point award
       (locked decision) + redeploy droplet (fetches _scoreSigner.cjs + EnvironmentFile unit).
    d. **EVERYTHING LIVE FOR TESTNET (2026-08-06, all pushed + droplet redeployed).**
-      Full loop e2e-verified ON Base Sepolia incl. a real browser game run (18.5s crush →
+      SETTLEMENT = HYBRID (owner picked 2026-08-06): failed entries split — championShareBps (50% default, setChampionShare) drips to champion minus fee, rest builds the pot for the dethroner; ChampionDefended event. Both paths verified on-chain via the PROD droplet validator (win set bar 14.98s; failed 10.27s run dripped 4.75, pot kept 5). Earlier pure-jackpot proxy 0x24724b…a06B abandoned. Full loop also e2e-verified incl. a real browser game run (18.5s crush →
       validator signed → submitScore paid 9.5 mCULT; throwaway 0x677B…98eE is champion,
       bar 18.5s, pot 10 mCULT). Droplet signs for Base Sepolia (env in
       /root/reef-validator/env, key = TESTNET_SCORE_SIGNER_KEY in onchain-chess/.env).
