@@ -32,6 +32,20 @@
 - Winner metric = survival time only; pot −5% fee instant payout; 7-day stale reset
   (jackpot record only). See spec §7.
 
+## MAINNET LIVE (2026-08-07)
+- **ReefRunJackpot on ETH MAINNET: 0x0cfA2D2702523Dd7c95Bb90d8c4015018Fd7315d** (impl
+  0x5ae36c20…a724). Real , entry 100 CULT (raise toward locked 10k via
+  setEntryAmount), hybrid settlement 50% (setChampionShare), TTL 15min, owner/feeRecipient
+  = 0x1303…772A. Droplet signs for chain 1 (prod key MAINNET_SCORE_SIGNER_KEY in
+  onchain-chess/.env; rotate on-chain via setScoreSigner if ever needed).
+- Verified live: lawb.xyz/arcade?jackpot=1 panel reads the mainnet board (100 CULT entry,
+  pot 0, bar OPEN). First valid paid run takes the throne.
+- Still param-gated (?jackpot=1). To FULLY launch: set VITE_REEF_JACKPOT=true in Netlify
+  env AND remove the temporary free-run point award (locked decision) in
+  ReefArcadeMenu.onGameOver. Optionally seed the pot via fundPot().
+- Base Sepolia deployment remains for testing but the droplet now signs MAINNET only.
+- Etherscan source verification not yet done (forge verify-contract, etherscan v2 key).
+
 ## Next tasks, in order
 1. **Verified scores in the UI — DONE, committed 635e91d53 (unpushed, awaiting owner push).**
    `src/reefVerified.ts` reads `https://reef.lawb.xyz/verified` (one memoized fetch/session,
