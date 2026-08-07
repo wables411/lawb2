@@ -1418,6 +1418,10 @@ export class ArcadeSceneController {
   };
 
   private resetSelectionVisuals(): void {
+    // Invalidate any in-flight applySelectionAnimations: its async dance-FBX load could
+    // otherwise land AFTER this reset and show a danceRoot next to the re-shown idleRoot
+    // (seen live as a duplicate Clawb — one dancing, one idling — on the menu).
+    this.danceApplyGen++;
     for (const slot of this.slots.values()) {
       if (slot.idleRoot) slot.idleRoot.visible = true;
       if (slot.danceRoot) {
@@ -1525,6 +1529,9 @@ export class ArcadeSceneController {
       }
       if (this.disposed || gen !== this.danceApplyGen) return;
       if (slot.danceRoot) {
+        // Re-hide the idle mesh: the await above is a visibility-flip window (menu reset
+        // shows idleRoot again) and a visible pair reads as a duplicated character.
+        slot.idleRoot.visible = false;
         slot.danceRoot.visible = true;
         slot.danceAction?.reset().fadeIn(0.2).play();
       }
