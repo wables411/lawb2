@@ -32,7 +32,9 @@ export const ENABLE_REEF_JACKPOT =
  * single chain at a deployment without a code change (used for Base Sepolia / local anvil).
  */
 const PROXY_ADDRESS: Record<number, `0x${string}` | null> = {
-  1: null, // ETH mainnet ($CULT) — post-testnet
+  // ETH MAINNET — real $CULT. Deployed 2026-08-07, hybrid settlement, entry starts at
+  // 100 CULT (raise toward the locked 10k via setEntryAmount as confidence grows).
+  1: '0x0cfA2D2702523Dd7c95Bb90d8c4015018Fd7315d',
   // Hybrid settlement, deployed 2026-08-06 (MockCult 0xb1639eEef9D669b9f01cd1d7C076495915522961,
   // entry 10 mCULT, champion share 50%). Supersedes the pure-jackpot proxy 0x24724b…a06B.
   84532: '0xe3Fa502232F926ce233c6CB4d51Be6d6C2000332',
