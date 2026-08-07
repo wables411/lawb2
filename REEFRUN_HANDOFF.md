@@ -69,8 +69,16 @@
       window); validator signs each entry ONCE (signed-nonces.jsonl). Flag-off verified: no
       tile, zero RPC, free play regression-checked. On ship: remove free-run point award
       (locked decision) + redeploy droplet (fetches _scoreSigner.cjs + EnvironmentFile unit).
-   d. Live testing = owner on Base Sepolia after (b): connect wallet, PAY ENTRY & DIVE,
-      submit score, watch payout. Then mainnet: ETH ($CULT), low ENTRY_AMOUNT first.
+   d. **EVERYTHING LIVE FOR TESTNET (2026-08-06, all pushed + droplet redeployed).**
+      Full loop e2e-verified ON Base Sepolia incl. a real browser game run (18.5s crush →
+      validator signed → submitScore paid 9.5 mCULT; throwaway 0x677B…98eE is champion,
+      bar 18.5s, pot 10 mCULT). Droplet signs for Base Sepolia (env in
+      /root/reef-validator/env, key = TESTNET_SCORE_SIGNER_KEY in onchain-chess/.env).
+      CSP allows sepolia.base.org. **Owner test URL: https://lawb.xyz/arcade?jackpot=1**
+      (session-only enable, tile hidden without the param — verified both ways on prod),
+      wallet on Base Sepolia, 100k mCULT already minted to 0x00a6…724e.
+      Then mainnet: ETH ($CULT), low ENTRY_AMOUNT first; validator env switches to the
+      mainnet contract + a FRESH production signer key at that point.
 
 ## FIXED 2026-08-06 — long-run replay divergence (was TOP PRIORITY) + proof off-by-one
 Root causes found by instrumentation (per-step live-vs-replay fingerprint trace), both in
