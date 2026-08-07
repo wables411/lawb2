@@ -27,6 +27,8 @@ export type JackpotBoard = {
   champion: `0x${string}`;
   lastBeatenAt: number;
   entryAmount: bigint;
+  /** Share (bps) of a failed entry that pays the champion instantly (hybrid settlement). */
+  championShareBps: number;
 };
 
 export type JackpotEntry = { nonce: number; seed: number };
@@ -76,6 +78,7 @@ export function useReefJackpot() {
         champion: boardRead.data[2],
         lastBeatenAt: Number(boardRead.data[3]),
         entryAmount: boardRead.data[4],
+        championShareBps: Number(boardRead.data[5]),
       }
     : null;
 

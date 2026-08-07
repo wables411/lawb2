@@ -33,8 +33,9 @@ export const ENABLE_REEF_JACKPOT =
  */
 const PROXY_ADDRESS: Record<number, `0x${string}` | null> = {
   1: null, // ETH mainnet ($CULT) — post-testnet
-  // Deployed 2026-08-06 (MockCult 0xb1639eEef9D669b9f01cd1d7C076495915522961, entry 10 mCULT)
-  84532: '0x24724b3977De2Af6D287097B14e5bE8f4759a06B',
+  // Hybrid settlement, deployed 2026-08-06 (MockCult 0xb1639eEef9D669b9f01cd1d7C076495915522961,
+  // entry 10 mCULT, champion share 50%). Supersedes the pure-jackpot proxy 0x24724b…a06B.
+  84532: '0xe3Fa502232F926ce233c6CB4d51Be6d6C2000332',
 };
 
 const DEV_ADDRESS = readViteEnv('VITE_REEF_JACKPOT_ADDRESS');
@@ -63,6 +64,7 @@ export const REEF_JACKPOT_ABI = [
       { name: 'champion_', type: 'address' },
       { name: 'lastBeatenAt_', type: 'uint40' },
       { name: 'entryAmount_', type: 'uint256' },
+      { name: 'championShareBps_', type: 'uint16' },
     ],
   },
   {
@@ -82,6 +84,7 @@ export const REEF_JACKPOT_ABI = [
       { name: 'nonce', type: 'uint64' },
       { name: 'enteredAt', type: 'uint40' },
       { name: 'consumed', type: 'bool' },
+      { name: 'paid', type: 'uint256' },
     ],
   },
   { type: 'function', name: 'enter', stateMutability: 'nonpayable', inputs: [], outputs: [] },
@@ -124,6 +127,17 @@ export const REEF_JACKPOT_ABI = [
       { name: 'survivalMs', type: 'uint64', indexed: false },
       { name: 'barMs', type: 'uint64', indexed: false },
       { name: 'won', type: 'bool', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ChampionDefended',
+    inputs: [
+      { name: 'champion', type: 'address', indexed: true },
+      { name: 'challenger', type: 'address', indexed: true },
+      { name: 'challengerMs', type: 'uint64', indexed: false },
+      { name: 'payout', type: 'uint256', indexed: false },
+      { name: 'fee', type: 'uint256', indexed: false },
     ],
   },
   {

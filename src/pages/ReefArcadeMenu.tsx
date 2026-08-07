@@ -396,7 +396,7 @@ export default function ReefArcadeMenu() {
         );
       } else {
         setJackpotNote(
-          `Score ${formatSurvivalMs(jackpotVerdict.survivalMs)} submitted — bar not beaten, your entry stays in the pot.`,
+          `Score ${formatSurvivalMs(jackpotVerdict.survivalMs)} submitted — bar holds. Part of your entry paid the champion, the rest grew the pot.`,
         );
       }
     } catch (err) {
@@ -1194,8 +1194,11 @@ export default function ReefArcadeMenu() {
                         {jackpot.board ? formatTokenAmount(jackpot.board.entryAmount) : '…'}{' '}
                         {entryTokenLabel(jackpot.chainId)}
                       </strong>{' '}
-                      for one seeded run. Beat the survival bar and the whole pot pays out instantly
-                      (minus 5%). Lose and your entry grows the pot. Your run seed is assigned
+                      for one seeded run. <strong>Beat the survival bar</strong> → the whole pot
+                      pays out instantly and you become champion. <strong>Fall short</strong> →{' '}
+                      {jackpot.board ? Math.round(jackpot.board.championShareBps / 100) : 50}% of
+                      your entry pays the champion on the spot (defending the bar earns) and the
+                      rest grows the pot for whoever finally dethrones them. Seed is assigned
                       on-chain at entry — dive right away, entries expire after ~15 minutes.
                     </p>
                     <p className="ra-wallet-status">
