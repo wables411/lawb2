@@ -92,7 +92,7 @@ const en = {
   reasonCrush: 'Coral block collision — change lanes with A/D or touch lane controls.',
   reasonWrecked: 'Armor depleted — avoid jellyfish, pufferfish, and mines; grab peptides.',
   lbConnectHint:
-    'Connect a wallet to earn Lawb leaderboard points (1 pt if under 1 min, then 3 pts per full minute).',
+    'Connect a wallet to save your run stats, earn the ✓ verified badge, and enter the jackpot.',
 
   // In-run touch / HUD
   tapLeft: 'TAP LEFT',
@@ -179,7 +179,7 @@ const zh: ReefStrings = {
   reasonOxygen: '氧气耗尽——Milady/Radbro 需要靠氧气瓶续命。Clawb 在水下永远不会缺氧。',
   reasonCrush: '撞上珊瑚——用 A/D 或触屏切换泳道。',
   reasonWrecked: '护甲耗尽——躲开水母、河豚和水雷；拾取肽来恢复。',
-  lbConnectHint: '连接钱包即可赚取 Lawb 排行榜积分（不足 1 分钟得 1 分，之后每满 1 分钟得 3 分）。',
+  lbConnectHint: '连接钱包即可保存跑动数据、获得 ✓ 验证徽章并参加奖池。',
 
   tapLeft: '点左侧',
   tapRight: '点右侧',

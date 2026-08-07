@@ -1,10 +1,6 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  WALLET_CONNECT_LEADERBOARD_BONUS,
-  addEcosystemPoints,
-  normalizeLeaderboardPathKey,
-} from '../firebaseLeaderboard';
+import { WALLET_CONNECT_LEADERBOARD_BONUS } from '../firebaseLeaderboard';
 import { database } from '../firebaseApp';
 import { firebaseProfiles } from '../firebaseProfiles';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
@@ -15,7 +11,6 @@ import {
   formatSurvivalMs,
   type ReefJackpotVerdict,
 } from '../config/reefJackpotOnchain';
-import { reefRunLeaderboardPointsForRound } from '../utils/reefRunLeaderboardPoints';
 import { CHARACTER_STATS, starsRow } from './arcade/arcadeCharacterStats';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
 import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arcadeDifficulty';
@@ -254,32 +249,23 @@ export default function ReefArcadeMenu() {
         return;
       }
 
-      const pts = reefRunLeaderboardPointsForRound(survivalSec);
       const runHud = finalHud ?? runStatsHud;
-      // Single leaderboard sync per run (see reefRunLeaderboardPoints.ts) — avoids Firebase write spam.
+      // Jackpot launch (locked decision 2026-08-02): free runs award NO leaderboard
+      // points — only profile run stats are kept. Jackpot runs pay out on-chain instead.
       void (async () => {
-        const primary = await firebaseProfiles.getPrimaryWallet(connection.address!);
-        const key = normalizeLeaderboardPathKey(primary);
-        if (!key) {
-          setLastRunLbNote('Could not record points for this wallet address.');
-          return;
-        }
-        const [okPoints] = await Promise.all([
-          addEcosystemPoints(key, 'reef_run', pts),
-          firebaseProfiles.updateReefRunStats(primary, {
+        try {
+          const primary = await firebaseProfiles.getPrimaryWallet(connection.address!);
+          await firebaseProfiles.updateReefRunStats(primary, {
             characterId: selectedCharacterId,
             survivalSec,
             coinsCollected: runHud?.coins ?? 0,
             cheeseCollected: runHud?.cheeseCollected ?? 0,
             peptidesCollected: runHud?.peptidesCollected ?? 0,
             trashCollected: runHud?.trash ?? 0,
-          }),
-        ]);
-        const ok = okPoints;
-        if (ok) {
-          setLastRunLbNote(`+${pts} leaderboard pts (Reef Run). Synced to Firebase.`);
-        } else {
-          setLastRunLbNote('Could not save leaderboard points. Check connection and try again.');
+          });
+          setLastRunLbNote('Run stats saved to your profile.');
+        } catch {
+          setLastRunLbNote('Could not save run stats. Check connection and try again.');
         }
       })();
     },
@@ -1155,11 +1141,10 @@ export default function ReefArcadeMenu() {
               <>
                 <h2>WALLET CONNECT</h2>
                 <p>
-                  Connect the same wallet you use on lawb.xyz. <strong>Reef Run</strong> adds{' '}
-                  <strong>Games</strong> points to the same Firebase leaderboard as Chess and profile holdings:{' '}
-                  <strong>1 pt</strong> if your run is under one minute, then <strong>3 pts</strong> for each full
-                  minute survived (same value as a chess win per minute). Your first site-wide wallet connect can also
-                  add <strong>{WALLET_CONNECT_LEADERBOARD_BONUS} pts</strong> elsewhere on lawb.xyz.
+                  Connect the same wallet you use on lawb.xyz. Connecting saves your{' '}
+                  <strong>run stats</strong> to your profile, shows the ✓ verified badge on proven runs, and unlocks{' '}
+                  <strong>jackpot</strong> entry. Your first site-wide wallet connect can also add{' '}
+                  <strong>{WALLET_CONNECT_LEADERBOARD_BONUS} pts</strong> elsewhere on lawb.xyz.
                 </p>
                 {connection.connected && connection.address ? (
                   <p className="ra-wallet-status">CONNECTED · {shortenAddress(connection.address)}</p>
