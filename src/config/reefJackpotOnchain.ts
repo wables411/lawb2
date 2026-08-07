@@ -17,8 +17,14 @@ function readBooleanFlag(name: string, fallback: boolean): boolean {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
 }
 
-/** Master switch. Defaults OFF; flip with VITE_REEF_JACKPOT=true once proven on testnet. */
-export const ENABLE_REEF_JACKPOT = readBooleanFlag('VITE_REEF_JACKPOT', false);
+/**
+ * Master switch. Defaults OFF; flip with VITE_REEF_JACKPOT=true once proven on testnet.
+ * `?jackpot=1` enables it for a single session (same opt-in pattern as `?reefdet=0`) so
+ * the testnet flow is testable on prod without showing the tile to everyone.
+ */
+export const ENABLE_REEF_JACKPOT =
+  readBooleanFlag('VITE_REEF_JACKPOT', false) ||
+  (typeof window !== 'undefined' && /[?&]jackpot=1/.test(window.location.search));
 
 /**
  * Deployed UUPS proxy per chain (always the PROXY). `null` = not deployed there yet.
