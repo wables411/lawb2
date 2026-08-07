@@ -13,6 +13,7 @@ import {
 } from '../config/reefJackpotOnchain';
 import { CHARACTER_STATS, starsRow } from './arcade/arcadeCharacterStats';
 import type { ArcadeCharacterId } from './arcade/arcadeAssetConfig';
+import { parseUnits } from 'viem';
 import { reefRunHudFromSurvivalSec, type ReefRunHudPayload } from './arcade/arcadeDifficulty';
 import type { ArcadeRunHudState, RunEndReason } from './arcade/arcadePickupKinds';
 import type { ArcadeBootProgress, ArcadeGameScreen } from './arcade/ArcadeSceneController';
@@ -147,6 +148,8 @@ export default function ReefArcadeMenu() {
   /** Step label while a jackpot tx / flow is in flight (also disables buttons). */
   const [jackpotBusy, setJackpotBusy] = useState<string | null>(null);
   const [jackpotNote, setJackpotNote] = useState<string | null>(null);
+  /** Sponsor top-up amount (human units, e.g. "500" CULT). */
+  const [sponsorAmount, setSponsorAmount] = useState('');
   const toggleLang = useCallback(() => {
     setLang((prev) => {
       const next: ReefLang = prev === 'en' ? 'zh' : 'en';
@@ -323,6 +326,36 @@ export default function ReefArcadeMenu() {
     arcadeInputRef.current?.clearVirtualThrottle();
     setGameScreen('play');
   }, []);
+
+  /** Sponsor flow: approve (if needed) + fundPot(amount) — grows the pot, no entry. */
+  const sponsorPot = useCallback(async () => {
+    if (jackpotBusy) return;
+    setJackpotNote(null);
+    let amount: bigint;
+    try {
+      amount = parseUnits(sponsorAmount.trim() as `${number}`, 18);
+    } catch {
+      setJackpotNote('Enter a valid amount to sponsor.');
+      return;
+    }
+    if (amount <= 0n) {
+      setJackpotNote('Enter a valid amount to sponsor.');
+      return;
+    }
+    try {
+      setJackpotBusy('Confirm in wallet…');
+      await jackpot.fundPot(amount);
+      setJackpotBusy(null);
+      setSponsorAmount('');
+      setJackpotNote(
+        `🌊 Pot sponsored with ${sponsorAmount.trim()} ${entryTokenLabel(jackpot.chainId)} — thank you!`,
+      );
+    } catch (e) {
+      setJackpotBusy(null);
+      const msg = e instanceof Error ? e.message : String(e);
+      setJackpotNote(msg.length > 160 ? `${msg.slice(0, 160)}…` : msg);
+    }
+  }, [jackpot, jackpotBusy, sponsorAmount]);
 
   /** Validator verdict for the last run — the jackpot block carries the submitScore() sig. */
   const onRunVerdict = useCallback((verdict: Record<string, unknown>) => {
@@ -1218,6 +1251,28 @@ export default function ReefArcadeMenu() {
                       <p className="ra-wallet-status">ENTRY PAID · SEED ASSIGNED — DIVE BEFORE IT EXPIRES</p>
                     )}
                     {jackpotNote && <p style={{ fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>}
+                    {connection.connected && (
+                      <div className="ra-sponsor-row">
+                        <input
+                          className="ra-sponsor-input"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder={`Amount (${entryTokenLabel(jackpot.chainId)})`}
+                          value={sponsorAmount}
+                          onChange={(e) => setSponsorAmount(e.target.value)}
+                          aria-label="Sponsor amount"
+                          disabled={Boolean(jackpotBusy)}
+                        />
+                        <button
+                          type="button"
+                          className="ra-btn ra-btn-secondary ra-sponsor-btn"
+                          onClick={sponsorPot}
+                          disabled={Boolean(jackpotBusy) || !sponsorAmount.trim() || !jackpot.board}
+                        >
+                          SPONSOR THE POT
+                        </button>
+                      </div>
+                    )}
                     <div className="ra-panel-actions">
                       {jackpotVerdict ? (
                         <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
@@ -1266,6 +1321,12 @@ export default function ReefArcadeMenu() {
                     <p className="ra-howto-card-title">{t.howtoSurvive}</p>
                     <p>{t.howtoSurviveBody}</p>
                   </div>
+                  {jackpot.enabled && (
+                    <div className="ra-howto-card">
+                      <p className="ra-howto-card-title">{t.howtoJackpot}</p>
+                      <p>{t.howtoJackpotBody}</p>
+                    </div>
+                  )}
                   <div className="ra-howto-card">
                     <p className="ra-howto-card-title">{t.howtoGrab}</p>
                     <p>{t.howtoGrabBody}</p>

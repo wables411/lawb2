@@ -1334,6 +1334,43 @@
   margin-bottom: 12px;
 }
 
+/* Jackpot sponsor top-up: amount input + button on one row (wraps on narrow screens) */
+.ra-sponsor-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ra-sponsor-input {
+  flex: 1;
+  min-width: 130px;
+  padding: 11px 12px;
+  border: 1px solid rgba(46, 230, 255, 0.35);
+  border-radius: 4px;
+  background: rgba(2, 8, 16, 0.75);
+  color: #d7f4ff;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.ra-sponsor-input::placeholder {
+  color: rgba(215, 244, 255, 0.35);
+}
+
+.ra-sponsor-input:focus {
+  outline: none;
+  border-color: rgba(46, 230, 255, 0.75);
+}
+
+.ra-sponsor-btn {
+  flex: 1;
+  min-width: 150px;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  padding: 11px 12px;
+}
+
 /* Mobile: less compositing / paint work behind WebGL */
 @media (max-width: 767px) {
   .ra-bg {

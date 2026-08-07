@@ -136,6 +136,42 @@ export function useReefJackpot() {
   }, [contract, account, publicClient, tokenRead.data, board?.entryAmount, allowanceRead.data, writeContractAsync, refresh]);
 
   /**
+   * Sponsor top-up: approve (if needed) and fundPot(amount). Open to anyone; the
+   * deposit goes straight into the pot — no entry, no seed, no claim.
+   */
+  const fundPot = useCallback(
+    async (amount: bigint): Promise<void> => {
+      if (!contract) throw new Error('jackpot not deployed on this chain');
+      if (!account) throw new Error('connect a wallet first');
+      if (!publicClient) throw new Error('no rpc client');
+      if (amount <= 0n) throw new Error('amount must be positive');
+      const token = tokenRead.data as `0x${string}` | undefined;
+      if (!token) throw new Error('entry token unknown (still loading?)');
+
+      const allowance = (allowanceRead.data as bigint | undefined) ?? 0n;
+      if (allowance < amount) {
+        const approveHash = await writeContractAsync({
+          address: token,
+          abi: ERC20_ALLOWANCE_ABI,
+          functionName: 'approve',
+          args: [contract, amount],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
+      const fundHash = await writeContractAsync({
+        address: contract,
+        abi: REEF_JACKPOT_ABI,
+        functionName: 'fundPot',
+        args: [amount],
+      });
+      await publicClient.waitForTransactionReceipt({ hash: fundHash });
+      refresh();
+    },
+    [contract, account, publicClient, tokenRead.data, allowanceRead.data, writeContractAsync, refresh],
+  );
+
+  /**
    * Submit the validator-signed score on-chain. Returns whether the run took the pot
    * (parsed from ScoreSubmitted/JackpotWon in the receipt).
    */
@@ -178,6 +214,7 @@ export function useReefJackpot() {
     balance: (balanceRead.data as bigint | undefined) ?? null,
     boardLoading: boardRead.isLoading,
     enterJackpot,
+    fundPot,
     submitJackpotScore,
     refresh,
   };
