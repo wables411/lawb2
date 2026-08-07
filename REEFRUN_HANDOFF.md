@@ -34,7 +34,7 @@
 
 ## MAINNET LIVE (2026-08-07)
 - **ReefRunJackpot on ETH MAINNET: 0x0cfA2D2702523Dd7c95Bb90d8c4015018Fd7315d** (impl
-  0x5ae36c20…a724). Real , entry 100 CULT (raise toward locked 10k via
+  0x5ae36c20…a724). Real $CULT, entry 100 CULT (raise toward locked 10k via
   setEntryAmount), hybrid settlement 50% (setChampionShare), TTL 15min, owner/feeRecipient
   = 0x1303…772A. Droplet signs for chain 1 (prod key MAINNET_SCORE_SIGNER_KEY in
   onchain-chess/.env; rotate on-chain via setScoreSigner if ever needed).
