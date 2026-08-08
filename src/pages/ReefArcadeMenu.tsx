@@ -2,7 +2,8 @@ import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 
 import { useNavigate } from 'react-router-dom';
 import { WALLET_CONNECT_LEADERBOARD_BONUS } from '../firebaseLeaderboard';
 import { database } from '../firebaseApp';
-import { firebaseProfiles } from '../firebaseProfiles';
+import { firebaseProfiles, type ReefRunProfileStats } from '../firebaseProfiles';
+import { getBestReefVerified, type ReefVerifiedEntry } from '../reefVerified';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useReefJackpot } from '../hooks/useReefJackpot';
@@ -150,6 +151,46 @@ export default function ReefArcadeMenu() {
   const [jackpotNote, setJackpotNote] = useState<string | null>(null);
   /** Sponsor top-up amount (human units, e.g. "500" CULT). */
   const [sponsorAmount, setSponsorAmount] = useState('');
+
+  // ── Dive-device menu data: satchel stats + verified best (one fetch per connect) ──
+  const [reefStats, setReefStats] = useState<ReefRunProfileStats | null>(null);
+  const [verifiedBest, setVerifiedBest] = useState<ReefVerifiedEntry | null>(null);
+  const [surfaceTime, setSurfaceTime] = useState(() =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+  );
+  useEffect(() => {
+    const id = setInterval(
+      () => setSurfaceTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })),
+      30_000,
+    );
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    let stale = false;
+    if (!connection.connected || !connection.address) {
+      setReefStats(null);
+      setVerifiedBest(null);
+      return undefined;
+    }
+    void (async () => {
+      try {
+        const primary = await firebaseProfiles.getPrimaryWallet(connection.address!);
+        const [profile, best] = await Promise.all([
+          database ? firebaseProfiles.getProfile(primary) : Promise.resolve(null),
+          getBestReefVerified([primary, connection.address!]),
+        ]);
+        if (stale) return;
+        setReefStats(profile?.reef_run_stats ?? null);
+        setVerifiedBest(best);
+      } catch {
+        if (!stale) {
+          setReefStats(null);
+          setVerifiedBest(null);
+        }
+      }
+    })();
+    return () => { stale = true; };
+  }, [connection.connected, connection.address]);
   const toggleLang = useCallback(() => {
     setLang((prev) => {
       const next: ReefLang = prev === 'en' ? 'zh' : 'en';
@@ -744,124 +785,208 @@ export default function ReefArcadeMenu() {
         )}
 
         {phase === 'menu' && gameScreen === 'menu' && (
-          <div className="ra-menu">
-            <div className="ra-logo-block">
-              <div className="ra-logo-small">ARCADE</div>
-              <h1 className="ra-logo-main">REEF RUN</h1>
-              <p className="ra-logo-tag">Clawb · Radbro · Milady</p>
-            </div>
+          <div className="ra-menu rw-menu">
+            <div className="rw-device">
+              <span className="rw-screw rw-screw-tl" aria-hidden /><span className="rw-screw rw-screw-tr" aria-hidden />
+              <span className="rw-screw rw-screw-bl" aria-hidden /><span className="rw-screw rw-screw-br" aria-hidden />
 
-            <div className="ra-menu-status" aria-label="Session status">
-              <button
-                type="button"
-                className={`ra-status-chip ra-status-chip-wallet${connection.connected ? ' ra-status-chip-on' : ''}`}
-                onClick={() => { uiClick(); setModal('wallet'); }}
-                aria-label={connection.connected ? 'Wallet connected' : 'Connect wallet'}
-              >
-                <span className="ra-status-chip-dot" aria-hidden />
-                <span className="ra-status-chip-label">{t.wallet}</span>
-                <span className="ra-status-chip-value">
-                  {connection.connected
-                    ? connection.ens ?? (connection.address ? shortenAddress(connection.address) : 'Connected')
-                    : t.notConnected}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="ra-status-chip ra-status-chip-character"
-                onClick={() => {
-                  if (!sceneReady) return;
-                  setGameScreen('select');
-                }}
-                disabled={!sceneReady}
-                aria-label="Change swimmer"
-              >
-                <span
-                  className="ra-status-chip-dot"
-                  style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
-                  aria-hidden
-                />
-                <span className="ra-status-chip-label">{t.swimmer}</span>
-                <span className="ra-status-chip-value">
-                  {CHARACTERS.find((c) => c.id === selectedCharacterId)?.name ?? 'CLAWB'}
-                </span>
-              </button>
-            </div>
+              <div className="rw-brand-row">
+                <div className="rw-wordmark">REEF<span>RUN</span></div>
+                <div className="rw-model-no">LAWB INSTRUMENTS<br />RR-2K5 · 200m</div>
+              </div>
 
-            <div className="ra-tile-grid">
-              <button
-                type="button"
-                className="ra-tile ra-tile-primary"
-                onClick={beginRun}
-                disabled={!sceneReady}
-              >
-                <span className="ra-tile-icon" aria-hidden>▶</span>
-                <span className="ra-tile-label">{t.startRun}</span>
-                <span className="ra-tile-meta">{t.startMeta}</span>
-              </button>
-              {jackpot.enabled && (
-                <button
-                  type="button"
-                  className="ra-tile"
-                  onClick={() => { uiClick(); setModal('jackpot'); }}
-                  disabled={!sceneReady}
-                >
-                  <span className="ra-tile-icon" aria-hidden>💰</span>
-                  <span className="ra-tile-label">JACKPOT</span>
-                  <span className="ra-tile-meta">
-                    {jackpot.board
-                      ? `${formatTokenAmount(jackpot.board.pot)} ${entryTokenLabel(jackpot.chainId)} POT`
-                      : 'PAID RUNS · BEAT THE BAR'}
-                  </span>
-                </button>
-              )}
-              <button
-                type="button"
-                className="ra-tile"
-                onClick={() => {
-                  if (!sceneReady) return;
-                  setGameScreen('select');
-                }}
-                disabled={!sceneReady}
-              >
-                <span className="ra-tile-icon" aria-hidden>⚙</span>
-                <span className="ra-tile-label">{t.swimmer}</span>
-                <span className="ra-tile-meta">{t.pickCharacter}</span>
-              </button>
-              <button
-                type="button"
-                className="ra-tile"
-                onClick={() => { uiClick(); setModal('wallet'); }}
-              >
-                <span className="ra-tile-icon" aria-hidden>◈</span>
-                <span className="ra-tile-label">{t.wallet}</span>
-                <span className="ra-tile-meta">
-                  {connection.connected ? t.walletManage : t.walletConnect}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="ra-tile"
-                onClick={() => { uiClick(); setModal('difficulty'); }}
-              >
-                <span className="ra-tile-icon" aria-hidden>⌁</span>
-                <span className="ra-tile-label">{t.depth}</span>
-                <span className="ra-tile-meta">{t.depthMeta}</span>
-              </button>
-              <button
-                type="button"
-                className="ra-tile"
-                onClick={() => { uiClick(); setModal('howto'); }}
-              >
-                <span className="ra-tile-icon" aria-hidden>?</span>
-                <span className="ra-tile-label">{t.howTo}</span>
-                <span className="ra-tile-meta">{t.howToMeta}</span>
-              </button>
-              <button type="button" className="ra-tile" onClick={toggleSfx}>
-                <span className="ra-tile-icon" aria-hidden>{sfxMuted ? '🔇' : '🔊'}</span>
-                <span className="ra-tile-label">{t.sound}</span>
-                <span className="ra-tile-meta">{sfxMuted ? t.soundOff : t.soundOn} · M</span>
-              </button>
+              <div className="rw-screen">
+                <div className="rw-comps">
+                  <button
+                    type="button"
+                    className={`rw-comp${connection.connected ? ' rw-comp-on' : ''}`}
+                    onClick={() => { uiClick(); setModal('wallet'); }}
+                    aria-label={connection.connected ? 'Wallet connected' : 'Connect wallet'}
+                  >
+                    <span className="rw-comp-ico" aria-hidden>◈</span>
+                    <span>
+                      <b>{t.wallet}</b>
+                      <span>
+                        {connection.connected
+                          ? connection.ens ?? (connection.address ? shortenAddress(connection.address) : 'Connected')
+                          : t.notConnected}
+                      </span>
+                    </span>
+                  </button>
+                  {jackpot.enabled && (
+                    <button
+                      type="button"
+                      className="rw-comp"
+                      onClick={() => { uiClick(); setModal('jackpot'); }}
+                    >
+                      <span className="rw-comp-ico" aria-hidden>💰</span>
+                      <span>
+                        <b>JACKPOT</b>
+                        <span>
+                          {jackpot.board
+                            ? `${formatTokenAmount(jackpot.board.pot)} ${entryTokenLabel(jackpot.chainId)}`
+                            : '…'}
+                        </span>
+                      </span>
+                    </button>
+                  )}
+                  <button type="button" className="rw-comp" onClick={toggleSfx}>
+                    <span className="rw-comp-ico" aria-hidden>{sfxMuted ? '🔇' : '🔊'}</span>
+                    <span><b>{t.sound}</b><span>{sfxMuted ? t.soundOff : t.soundOn} · M</span></span>
+                  </button>
+                  <div className="rw-clock">
+                    {surfaceTime}
+                    <small>{t.deviceSurfaceTime}</small>
+                  </div>
+                </div>
+
+                <div className="rw-instruments">
+                  <div className="rw-gauges">
+                    <div className="rw-gauge">
+                      <div className="rw-gauge-lab">{t.deviceBestDive}</div>
+                      <div className="rw-seg">
+                        {verifiedBest
+                          ? <>{verifiedBest.best_survival_sec.toFixed(1)}<small>s ✓</small></>
+                          : reefStats
+                            ? <>{Math.floor(reefStats.longest_run_seconds)}<small>s</small></>
+                            : <>—</>}
+                      </div>
+                    </div>
+                    {jackpot.enabled && (
+                      <>
+                        <div className="rw-gauge">
+                          <div className="rw-gauge-lab">{t.deviceSurvivalBar}</div>
+                          <div className="rw-seg">
+                            {jackpot.board
+                              ? jackpot.board.highScoreMs > 0
+                                ? <>{(jackpot.board.highScoreMs / 1000).toFixed(1)}<small>s</small></>
+                                : <>{t.deviceBarOpen}</>
+                              : <>…</>}
+                          </div>
+                        </div>
+                        <div className="rw-gauge">
+                          <div className="rw-gauge-lab">{t.devicePot}</div>
+                          <div className="rw-seg">
+                            {jackpot.board
+                              ? <>{formatTokenAmount(jackpot.board.pot)}<small> {entryTokenLabel(jackpot.chainId)}</small></>
+                              : <>…</>}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="rw-center">
+                    <button type="button" className="rw-btn rw-btn-go" onClick={beginRun} disabled={!sceneReady}>
+                      <span className="rw-key">1</span>{t.startRun}<small>{t.startMeta}</small>
+                    </button>
+                    <button
+                      type="button"
+                      className="rw-btn"
+                      onClick={() => { if (sceneReady) setGameScreen('select'); }}
+                      disabled={!sceneReady}
+                    >
+                      <span className="rw-key">2</span>{t.swimmer}
+                      <small>{CHARACTERS.find((c) => c.id === selectedCharacterId)?.name ?? 'CLAWB'}</small>
+                    </button>
+                    <button type="button" className="rw-btn" onClick={() => { uiClick(); setModal('wallet'); }}>
+                      <span className="rw-key">3</span>{t.wallet}
+                      <small>{connection.connected ? t.walletManage : t.walletConnect}</small>
+                    </button>
+                    <button type="button" className="rw-btn" onClick={() => { uiClick(); setModal('difficulty'); }}>
+                      <span className="rw-key">4</span>{t.depth}<small>{t.depthMeta}</small>
+                    </button>
+                    <button type="button" className="rw-btn" onClick={() => { uiClick(); setModal('howto'); }}>
+                      <span className="rw-key">5</span>{t.howTo}<small>{t.howToMeta}</small>
+                    </button>
+                    {jackpot.enabled && (
+                      <button
+                        type="button"
+                        className="rw-btn rw-btn-pink"
+                        onClick={() => { uiClick(); setModal('jackpot'); }}
+                        disabled={!sceneReady}
+                      >
+                        <span className="rw-key" aria-hidden>💰</span>JACKPOT
+                        <small>
+                          {jackpot.board
+                            ? `${formatTokenAmount(jackpot.board.entryAmount)} ${entryTokenLabel(jackpot.chainId)} · BEAT THE BAR`
+                            : 'PAID RUNS · BEAT THE BAR'}
+                        </small>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="rw-idpane">
+                    <h4>{t.deviceDiver} <span className="rw-zh">· 潜水士証</span></h4>
+                    <div className="rw-idcard">
+                      <div className="rw-idcard-t">LAWB 珊瑚礁 潜水士</div>
+                      <div className="rw-idcard-main">
+                        <span
+                          className="rw-pfp"
+                          style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
+                          aria-hidden
+                        />
+                        <div className="rw-idf">
+                          <div className="rw-idf-v">
+                            {connection.connected
+                              ? connection.ens ?? (connection.address ? shortenAddress(connection.address) : '')
+                              : t.notConnected}
+                          </div>
+                          <div>
+                            {t.deviceLongestDive}:{' '}
+                            {reefStats ? `${Math.floor(reefStats.longest_run_seconds)}s` : '—'}
+                          </div>
+                          <div>
+                            {t.deviceRuns}:{' '}
+                            {reefStats
+                              ? Object.values(reefStats.character_runs || {}).reduce((a, b) => a + b, 0)
+                              : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rw-idcard-foot">
+                        <span>©Lawb.Corp:2K5</span>
+                        <span className="rw-stamp">PROPERTY OF THE REEF</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rw-drawer">
+                  <div className="rw-drawer-head">
+                    {t.deviceSatchel} <span className="rw-zh">· 潜水背包</span>
+                    <span className="rw-drawer-hint">{t.deviceSatchelHint}</span>
+                  </div>
+                  <div className="rw-satchel">
+                    {(!connection.connected || !reefStats) ? (
+                      <p className="rw-satchel-note">
+                        {connection.connected ? t.deviceSatchelEmpty : t.deviceSatchelConnect}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="rw-slot">
+                          <img src="/assets/satchel/trash.webp" alt="Trash hauled" loading="lazy" />
+                          <span>{reefStats.trash_collected ?? 0}</span>
+                        </div>
+                        <div className="rw-slot">
+                          <img src="/assets/satchel/coin.webp" alt="Coins" loading="lazy" />
+                          <span>{reefStats.coins_collected}</span>
+                        </div>
+                        <div className="rw-slot">
+                          <img src="/assets/satchel/cheese.webp" alt="Cheese" loading="lazy" />
+                          <span>{reefStats.cheese_collected}</span>
+                        </div>
+                        <div className="rw-slot">
+                          <img src="/assets/satchel/peptides.webp" alt="Peptides" loading="lazy" />
+                          <span>{reefStats.peptides_collected}</span>
+                        </div>
+                        <div className="rw-slot rw-slot-locked" aria-hidden><span>?</span></div>
+                        <div className="rw-slot rw-slot-locked" aria-hidden><span>?</span></div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <p className="ra-menu-kbd-hint">{t.kbdHint}</p>

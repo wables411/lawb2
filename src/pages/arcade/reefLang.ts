@@ -77,6 +77,20 @@ const en = {
     'Pay the CULT entry for one seeded run. Beat the survival bar and the whole pot pays out to your wallet, on-chain. Free runs are for fun and stats — they never touch the jackpot.',
   ok: 'OK',
 
+  // Dive-device menu
+  deviceBestDive: 'BEST DIVE',
+  deviceSurvivalBar: 'SURVIVAL BAR',
+  devicePot: 'POT',
+  deviceDiver: 'DIVER',
+  deviceSatchel: 'SATCHEL',
+  deviceSatchelHint: 'Hauls counted from your saved runs',
+  deviceSatchelConnect: 'Connect a wallet to fill your satchel.',
+  deviceSatchelEmpty: 'No haul yet — dive!',
+  deviceLongestDive: 'LONGEST DIVE',
+  deviceRuns: 'RUNS',
+  deviceSurfaceTime: 'SURFACE TIME',
+  deviceBarOpen: 'OPEN',
+
   // Game over
   gameOver: 'GAME OVER',
   depthReached: 'Depth reached',
@@ -170,6 +184,19 @@ const zh: ReefStrings = {
   howtoJackpotBody:
     '支付 CULT 入场费获得一次指定种子的挑战。打破生存纪录，整个奖池将直接链上打入你的钱包。免费游玩仅供娱乐和统计——与奖池无关。',
   ok: '好的',
+
+  deviceBestDive: '最佳潜水',
+  deviceSurvivalBar: '生存纪录',
+  devicePot: '奖池',
+  deviceDiver: '潜水员',
+  deviceSatchel: '背包',
+  deviceSatchelHint: '来自已保存跑动的拾取统计',
+  deviceSatchelConnect: '连接钱包以填充背包。',
+  deviceSatchelEmpty: '还没有收获——下潜吧！',
+  deviceLongestDive: '最长潜水',
+  deviceRuns: '次数',
+  deviceSurfaceTime: '水面时间',
+  deviceBarOpen: '开放',
 
   gameOver: '游戏结束',
   depthReached: '到达深度',
