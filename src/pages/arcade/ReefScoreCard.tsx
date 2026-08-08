@@ -19,8 +19,8 @@ export type ScoreCardData = {
   survivalSec: number;
   roman: string;
   hud: ArcadeRunHudState | null;
-  /** Data-URL snapshot from the engine, if capture succeeded. */
-  portrait?: string;
+  /** Player's profile picture URL (dead-gateway rewritten); null/undefined = guest "?". */
+  pfp?: string | null;
   /** Paid-entry (treasure) run → gold variant. */
   treasure: boolean;
   /** Validator-confirmed ms for treasure runs → VERIFIED stamp. */
@@ -28,6 +28,9 @@ export type ScoreCardData = {
   /** ENS / short address, or null for guest divers. */
   diver: string | null;
 };
+
+/** Rotating full-body swimmer strip (pre-rendered like the satchel item strips). */
+const swimmerStrip = (characterId: string): string => `/assets/satchel/strip_swimmer_${characterId}.webp`;
 
 type HaulRow = { key: string; strip: string; latin?: string; count: number };
 
@@ -67,10 +70,15 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-/** Load one image (data URL or path); resolves null on failure so export degrades gracefully. */
+/**
+ * Load one image; resolves null on failure so export degrades gracefully.
+ * crossOrigin so remote pfps (ipfs gateways) don't taint the export canvas —
+ * a tainted canvas would make toBlob throw and kill the whole SAVE.
+ */
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;
@@ -154,13 +162,17 @@ async function drawCardPng(
     }
   }
   c.restore();
-  const portraitImg = data.portrait ? await loadImage(data.portrait) : null;
-  if (portraitImg) {
+  const pfpImg = data.pfp ? await loadImage(data.pfp) : null;
+  if (pfpImg) {
     c.save();
     c.beginPath();
     c.roundRect(px + 3, py + 3, ps - 6, ps - 6, 10);
     c.clip();
-    c.drawImage(portraitImg, px + 3, py + 3, ps - 6, ps - 6);
+    // cover-fit the pfp
+    const s = Math.max((ps - 6) / pfpImg.width, (ps - 6) / pfpImg.height);
+    const dw = pfpImg.width * s;
+    const dh = pfpImg.height * s;
+    c.drawImage(pfpImg, px + 3 + (ps - 6 - dw) / 2, py + 3 + (ps - 6 - dh) / 2, dw, dh);
     c.restore();
   } else {
     c.fillStyle = pal.dim;
@@ -169,6 +181,9 @@ async function drawCardPng(
     c.fillText('?', px + ps / 2, py + ps / 2 + 22);
     c.textAlign = 'left';
   }
+  // Full-body swimmer (first frame of the rotation strip), top-right of the ID block.
+  const swim = await loadImage(swimmerStrip(data.characterId));
+  if (swim) c.drawImage(swim, 0, 0, swim.height, swim.height, W - 116, 118, 80, 80);
 
   const fx = px + ps + 28;
   const field = (label: string, value: string, y: number, big = false) => {
@@ -254,7 +269,6 @@ export function ReefScoreCard({
   /** Receipt print-in: how many rows are revealed; rows.length+1 = time stamped too. */
   const [printed, setPrinted] = useState(() => (prefersReducedMotion() ? rows.length + 1 : 0));
   const [saveNote, setSaveNote] = useState<string | null>(null);
-  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (prefersReducedMotion()) {
@@ -262,20 +276,27 @@ export function ReefScoreCard({
       return undefined;
     }
     setPrinted(0);
-    let i = 0;
-    const step = () => {
-      i += 1;
-      setPrinted(i);
-      // Each printed row plinks on the scale; the final stamp gets the coin motif.
-      reefSfx.play(i > rows.length ? 'coin' : 'ui');
-      if (i <= rows.length) {
-        timerRef.current = window.setTimeout(step, 240);
+    /**
+     * Elapsed-time driven, NOT a chain of one-shot timeouts: under main-thread jank
+     * (asset loads, GC) a chained 240ms step reveals one row per starved callback and
+     * the receipt looks frozen — computing the target from wall time always catches up.
+     */
+    const t0 = performance.now();
+    let last = 0;
+    const id = window.setInterval(() => {
+      const target = Math.min(
+        rows.length + 1,
+        Math.max(0, Math.floor((performance.now() - t0 - 420) / 240) + 1),
+      );
+      if (target > last) {
+        last = target;
+        setPrinted(target);
+        // Each printed row plinks on the scale; the final stamp gets the coin motif.
+        reefSfx.play(target > rows.length ? 'coin' : 'ui');
+        if (target >= rows.length + 1) window.clearInterval(id);
       }
-    };
-    timerRef.current = window.setTimeout(step, 420);
-    return () => {
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    };
+    }, 90);
+    return () => window.clearInterval(id);
   }, [rows.length, data.survivalSec]);
 
   const stamped = printed > rows.length;
@@ -318,8 +339,8 @@ export function ReefScoreCard({
 
       <div className="sc-id">
         <div className="sc-portrait">
-          {data.portrait ? (
-            <img src={data.portrait} alt={data.characterId} />
+          {data.pfp ? (
+            <img src={data.pfp} alt="" />
           ) : (
             <span aria-hidden>?</span>
           )}
@@ -343,6 +364,12 @@ export function ReefScoreCard({
             <div className="sc-verified">✓ {t.cardVerified}</div>
           )}
         </div>
+        <span
+          className="sc-swim-sprite"
+          style={{ backgroundImage: `url(${swimmerStrip(data.characterId)})` }}
+          role="img"
+          aria-label={data.characterId}
+        />
       </div>
 
       <div className="sc-haul">

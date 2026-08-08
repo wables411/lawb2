@@ -47,12 +47,7 @@ import {
   type RunState,
 } from './arcadePickupKinds';
 import { disposeObject3DResources } from './arcadePropPlacement';
-import {
-  cloneCoralObstacleVisual,
-  clonePickupVisual,
-  loadArcadePropGlbTemplates,
-  sanitizeSceneMaterials,
-} from './arcadeGlbProps';
+import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
 import { trashVariantIdFor, type TrashVariantId } from './arcadeTrashVariants';
 import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
 import { reefSfx } from './arcadeSounds';
@@ -416,12 +411,7 @@ export class ArcadeSceneController {
   private tunnelMaterial!: THREE.MeshStandardMaterial;
   private onPickCharacter: (id: ArcadeCharacterId) => void;
   /** Final survival time + how the run ended (UI + leaderboard). */
-  private onGameOver: (
-    survivalSec: number,
-    reason: RunEndReason,
-    finalHud?: ArcadeRunHudState,
-    portrait?: string,
-  ) => void;
+  private onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
   private onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   private onRunHud?: (hud: ArcadeRunHudState) => void;
   /** Fires as bootstrap milestones complete so the loading overlay can show % + label. */
@@ -460,12 +450,7 @@ export class ArcadeSceneController {
     container: HTMLElement,
     handlers: {
       onPickCharacter: (id: ArcadeCharacterId) => void;
-      onGameOver: (
-        survivalSec: number,
-        reason: RunEndReason,
-        finalHud?: ArcadeRunHudState,
-        portrait?: string,
-      ) => void;
+      onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
       onRunHud?: (hud: ArcadeRunHudState) => void;
       onBootProgress?: (p: ArcadeBootProgress) => void;
@@ -2352,141 +2337,6 @@ export class ArcadeSceneController {
     this.impactFx = [];
   }
 
-  /**
-   * Scorecard portrait: a clean STUDIO shot of the played character, not a gameplay
-   * frame — the run camera sits behind the swimmer and the death tumble is no poster
-   * pose. Clones the cached front-facing idle model (what the select screen shows)
-   * into a throwaway scene with the satchel-sprite studio lights, renders one frame
-   * to an offscreen target (visible canvas never flickers) and returns a transparent
-   * square PNG data URL. Browser-rendered, never canned art (milady-tracker
-   * philosophy). Best-effort: null on any failure.
-   */
-  private captureCharacterPortrait(size = 512): string | null {
-    const cid = this.runState?.characterId;
-    const slot = cid ? this.slots.get(cid) : undefined;
-    if (!slot?.idleRoot || !this.renderer) return null;
-    let holder: THREE.Group | null = null;
-    const pScene = new THREE.Scene();
-    try {
-      // Clone SHARES geometry with the cached slot — never dispose it here.
-      // Dance pose when loaded (the celebratory menu presentation), idle otherwise.
-      const src = slot.danceRoot ?? slot.idleRoot;
-      const root = SkeletonUtils.clone(src) as THREE.Group;
-      // Slot models are HIDDEN during runs and the clone inherits that —
-      // an invisible subject renders an empty portrait.
-      root.visible = true;
-      /**
-       * The arcade FBX materials carry PERMANENTLY-empty texture slots (the
-       * long-standing "no image data found" console warning). A blanket
-       * has-every-map-loaded guard therefore never passes — instead, clone the
-       * materials (so the live model is untouched) and strip only the broken refs,
-       * exactly what sanitizeSceneMaterials does for the GLB pickups. Real albedo
-       * maps are loaded minutes before game over, so the render stays correct.
-       */
-      root.traverse((obj) => {
-        const mesh = obj as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        mesh.material = Array.isArray(mesh.material)
-          ? mesh.material.map((m) => m.clone())
-          : mesh.material.clone();
-      });
-      sanitizeSceneMaterials(root);
-      root.position.set(0, 0, 0);
-      // FBX default facing is +Z (toward viewer); slight yaw = 3/4 hero angle.
-      root.rotation.set(0, Math.PI / 9, 0);
-      root.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(root);
-      const center = box.getCenter(new THREE.Vector3());
-      const modelH = box.max.y - box.min.y;
-      const modelW = box.max.x - box.min.x;
-      root.position.sub(center);
-      holder = new THREE.Group();
-      holder.add(root);
-      pScene.add(holder);
-      // Same soft studio as devSpriteRenderer: ambient + key + cool rim.
-      pScene.add(new THREE.AmbientLight(0xffffff, 0.9));
-      const key = new THREE.DirectionalLight(0xffffff, 1.6);
-      key.position.set(2.2, 3.0, 2.6);
-      pScene.add(key);
-      const rim = new THREE.DirectionalLight(0xbfe6f5, 0.9);
-      rim.position.set(-2.4, 1.2, -2.0);
-      pScene.add(rim);
-
-      /**
-       * BUST framing (owner pick, not full body): hang the focus a fixed fraction
-       * below the crown so big-headed characters center on the face, and widen the
-       * view for broad silhouettes (clawb's claws). Constants tuned visually against
-       * clawb + milady + radbro.
-       */
-      const cam = new THREE.PerspectiveCamera(32, 1, 0.01, 200);
-      const focusY = modelH / 2 - modelH * 0.26;
-      const view = Math.max(modelH * 0.58, modelW * 0.9);
-      const dist = (view * 0.5) / Math.tan((cam.fov * Math.PI) / 360);
-      cam.near = Math.max(dist / 100, 0.001);
-      cam.far = dist + modelH * 6;
-      cam.updateProjectionMatrix();
-      cam.position.set(0, focusY + modelH * 0.04, dist);
-      cam.lookAt(0, focusY, 0);
-
-      const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 });
-      const prevTarget = this.renderer.getRenderTarget();
-      const prevClearColor = new THREE.Color();
-      this.renderer.getClearColor(prevClearColor);
-      const prevClearAlpha = this.renderer.getClearAlpha();
-      this.renderer.setClearColor(0x000000, 0);
-      this.renderer.setRenderTarget(rt);
-      this.renderer.render(pScene, cam);
-      const px = new Uint8Array(size * size * 4);
-      this.renderer.readRenderTargetPixels(rt, 0, 0, size, size, px);
-      this.renderer.setRenderTarget(prevTarget);
-      this.renderer.setClearColor(prevClearColor, prevClearAlpha);
-      rt.dispose();
-      // GL reads bottom-up — flip rows into the 2D canvas. Render-target readback is
-      // LINEAR (the sRGB output transform only applies when drawing to the canvas), so
-      // without conversion the portrait comes out dark and lifeless — apply the sRGB
-      // transfer per channel to match what the live canvas shows.
-      const srgb = new Uint8ClampedArray(256);
-      for (let i = 0; i < 256; i++) {
-        const l = i / 255;
-        srgb[i] = Math.round(
-          255 * (l <= 0.0031308 ? l * 12.92 : 1.055 * Math.pow(l, 1 / 2.4) - 0.055),
-        );
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      const img = ctx.createImageData(size, size);
-      const rowBytes = size * 4;
-      for (let y = 0; y < size; y++) {
-        img.data.set(px.subarray((size - 1 - y) * rowBytes, (size - y) * rowBytes), y * rowBytes);
-      }
-      for (let i = 0; i < img.data.length; i += 4) {
-        img.data[i] = srgb[img.data[i]!]!;
-        img.data[i + 1] = srgb[img.data[i + 1]!]!;
-        img.data[i + 2] = srgb[img.data[i + 2]!]!;
-      }
-      ctx.putImageData(img, 0, 0);
-      return canvas.toDataURL('image/png');
-    } catch {
-      return null;
-    } finally {
-      if (holder) {
-        // Cloned materials are portrait-local — release their GPU programs (textures
-        // and geometry stay shared with the live slot; never disposed here).
-        holder.traverse((obj) => {
-          const mesh = obj as THREE.Mesh;
-          if (!mesh.isMesh) return;
-          for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
-            (m as THREE.Material).dispose();
-          }
-        });
-        pScene.remove(holder);
-      }
-    }
-  }
-
   private triggerGameOver(reason: RunEndReason): void {
     if (this.playEnded) return;
     this.playEnded = true;
@@ -2498,8 +2348,6 @@ export class ArcadeSceneController {
       ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
       : undefined;
     if (finalHud) finalHud.trashByKind = { ...this.trashVariantCounts };
-    // Snapshot BEFORE the death tumble starts so the card portrait is composed.
-    const portrait = this.captureCharacterPortrait();
     this.runParityCheck();
     this.submitRunProof();
 
@@ -2520,7 +2368,7 @@ export class ArcadeSceneController {
     this.deathNotifyTimer = window.setTimeout(() => {
       this.deathNotifyTimer = null;
       if (this.disposed) return;
-      this.onGameOver(this.runSurvivalSec, reason, finalHud, portrait ?? undefined);
+      this.onGameOver(this.runSurvivalSec, reason, finalHud);
     }, delayMs);
   }
 

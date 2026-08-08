@@ -160,9 +160,7 @@ export default function ReefArcadeMenu() {
   const [reefStats, setReefStats] = useState<ReefRunProfileStats | null>(null);
   /** Dive-log showcase: which satchel item's field notes are open (hover or tap). */
   const [logFocus, setLogFocus] = useState<string | null>(null);
-  /** Live engine snapshot of the character at run end (scorecard portrait). */
-  const [runPortrait, setRunPortrait] = useState<string | null>(null);
-  /** Player's profile picture for the diver ID card (dead-gateway rewritten). */
+  /** Player's profile picture for the diver ID card + scorecard (dead-gateway rewritten). */
   const [pfpUrl, setPfpUrl] = useState<string | null>(null);
   const [verifiedBest, setVerifiedBest] = useState<ReefVerifiedEntry | null>(null);
   /** Bumped when a run's stats finish saving, so the satchel refetches even if the
@@ -321,11 +319,10 @@ export default function ReefArcadeMenu() {
   }, []);
 
   const onGameOver = useCallback(
-    (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState, portrait?: string) => {
+    (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => {
       setRunHud(reefRunHudFromSurvivalSec(survivalSec));
       setLastRunEndReason(reason);
       if (finalHud) setRunStatsHud(finalHud);
-      setRunPortrait(portrait ?? null);
       setGameScreen('gameover');
 
       if (!connection.connected || !connection.address) {
@@ -1372,7 +1369,13 @@ export default function ReefArcadeMenu() {
                     survivalSec: runHud.survivalSec,
                     roman: runHud.roman,
                     hud: runStatsHud,
-                    portrait: runPortrait ?? undefined,
+                    // carddemo: a local image stands in for the pfp (the disconnect
+                    // effect wipes pfpUrl state in the walletless demo).
+                    pfp:
+                      pfpUrl ??
+                      (import.meta.env.DEV && window.location.search.includes('carddemo')
+                        ? '/images/GvRZb1uWgAE4g9k.jpeg'
+                        : null),
                     treasure: Boolean(jackpot.enabled && jackpotVerdict),
                     verifiedMs: jackpotVerdict?.survivalMs,
                     diver: connection.connected

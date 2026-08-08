@@ -1643,6 +1643,23 @@
 @media (prefers-reduced-motion: reduce) {
   .sc-time span { opacity: 1; transform: none; }
 }
+/* Rotating full-body swimmer (12-frame strip, same steps() spin as satchel items) */
+.sc-swim-sprite {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  background-size: 528px 44px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 2px 2px rgba(29, 58, 95, 0.2));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sc-swim-sprite { animation: sc-swim-spin 2.2s steps(12) infinite; }
+}
+@keyframes sc-swim-spin {
+  to { background-position: -528px 0; }
+}
+
 .sc-verified {
   align-self: flex-start; padding: 3px 9px; border: 2px solid var(--sc-navy); border-radius: 7px;
   font-size: 11px; font-weight: 800; color: var(--sc-navy); letter-spacing: 0.06em;
