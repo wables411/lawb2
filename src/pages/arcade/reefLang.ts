@@ -86,6 +86,10 @@ const en = {
   deviceSatchelHint: 'Hauls counted from your saved runs',
   deviceSatchelConnect: 'Connect a wallet to fill your satchel.',
   deviceSatchelEmpty: 'No haul yet — dive!',
+  satchelJunkLog: 'JUNK LOG',
+  satchelLogHint: 'Hover or tap a find for field notes',
+  satchelUndiscovered: 'UNDISCOVERED',
+  satchelHauled: 'hauled',
   deviceLongestDive: 'LONGEST DIVE',
   deviceRuns: 'RUNS',
   deviceSurfaceTime: 'SURFACE TIME',
@@ -193,6 +197,10 @@ const zh: ReefStrings = {
   deviceSatchelHint: '来自已保存跑动的拾取统计',
   deviceSatchelConnect: '连接钱包以填充背包。',
   deviceSatchelEmpty: '还没有收获——下潜吧！',
+  satchelJunkLog: '垃圾图鉴',
+  satchelLogHint: '悬停或点按查看图鉴',
+  satchelUndiscovered: '未发现',
+  satchelHauled: '已打捞',
   deviceLongestDive: '最长潜水',
   deviceRuns: '次数',
   deviceSurfaceTime: '水面时间',
@@ -236,3 +244,39 @@ const zh: ReefStrings = {
 };
 
 export const REEF_STRINGS: Record<ReefLang, ReefStrings> = { en, zh };
+
+/**
+ * Dive-log item names — keyed by satchel item key (supply kinds + canonical trash
+ * variant ids from `arcadeTrashVariants.ts`). Separate from ReefStrings because that
+ * type maps every key to a plain string.
+ */
+export const SATCHEL_ITEM_NAMES: Record<ReefLang, Record<string, string>> = {
+  en: {
+    trash: 'Trash Hauled',
+    coin: 'Coins',
+    cheese: 'Cheese',
+    peptides: 'Peptides',
+    trash1: 'Mystery Tin',
+    trash2: 'Rusty Drum',
+    cube: 'Junk Cube',
+    cigpack: 'Soggy Cig Pack',
+    energycan: 'Energy Can',
+    vape: 'Dead Vape',
+    bag: 'Trash Bag',
+    crt: 'Sunken CRT',
+  },
+  zh: {
+    trash: '垃圾总量',
+    coin: '金币',
+    cheese: '奶酪',
+    peptides: '肽',
+    trash1: '神秘罐头',
+    trash2: '锈蚀油桶',
+    cube: '垃圾方块',
+    cigpack: '湿透烟盒',
+    energycan: '能量饮料罐',
+    vape: '废弃电子烟',
+    bag: '垃圾袋',
+    crt: '沉没老电视',
+  },
+};

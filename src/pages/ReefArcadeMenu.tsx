@@ -23,9 +23,11 @@ import {
   loadReefLang,
   saveReefLang,
   REEF_STRINGS,
+  SATCHEL_ITEM_NAMES,
   type ReefLang,
   type ReefStrings,
 } from './arcade/reefLang';
+import { TRASH_VARIANTS } from './arcade/arcadeTrashVariants';
 import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
@@ -154,6 +156,8 @@ export default function ReefArcadeMenu() {
 
   // ── Dive-device menu data: satchel stats + verified best (one fetch per connect) ──
   const [reefStats, setReefStats] = useState<ReefRunProfileStats | null>(null);
+  /** Dive-log showcase: which satchel item's field notes are open (hover or tap). */
+  const [logFocus, setLogFocus] = useState<string | null>(null);
   const [verifiedBest, setVerifiedBest] = useState<ReefVerifiedEntry | null>(null);
   /** Bumped when a run's stats finish saving, so the satchel refetches even if the
    *  player reached the menu before the Firebase write landed. */
@@ -987,34 +991,97 @@ export default function ReefArcadeMenu() {
                     {t.deviceSatchel} <span className="rw-zh">· 潜水背包</span>
                     <span className="rw-drawer-hint">{t.deviceSatchelHint}</span>
                   </div>
-                  <div className="rw-satchel">
-                    {(!connection.connected || !reefStats) ? (
-                      <p className="rw-satchel-note">
-                        {connection.connected ? t.deviceSatchelEmpty : t.deviceSatchelConnect}
-                      </p>
-                    ) : (
+                  {(() => {
+                    /** DEV-only (`?satcheldemo`): fake stats so the dive log is inspectable
+                     *  without a wallet/Firebase. The flag is compiled out of prod builds. */
+                    const demoStats: ReefRunProfileStats | null =
+                      import.meta.env.DEV && window.location.search.includes('satcheldemo')
+                        ? {
+                            cheese_collected: 7, peptides_collected: 12, coins_collected: 88,
+                            trash_collected: 41, best_trash_run: 15, longest_run_seconds: 96,
+                            character_runs: { clawb: 4 }, favored_character: 'clawb',
+                            trash_by_kind: { trash1: 6, cube: 11, cigpack: 5, vape: 9, bag: 7, crt: 3 },
+                          }
+                        : null;
+                    const stats = demoStats ?? reefStats;
+                    if ((!connection.connected && !demoStats) || !stats) {
+                      return (
+                        <div className="rw-satchel">
+                          <p className="rw-satchel-note">
+                            {connection.connected ? t.deviceSatchelEmpty : t.deviceSatchelConnect}
+                          </p>
+                        </div>
+                      );
+                    }
+                    const reefStatsView = stats;
+                    const names = SATCHEL_ITEM_NAMES[lang];
+                    const byKind = reefStatsView.trash_by_kind ?? {};
+                    const supplies: { key: string; latin?: string; strip: string; count: number }[] = [
+                      { key: 'trash', strip: '/assets/satchel/strip_trash.webp', count: reefStatsView.trash_collected ?? 0 },
+                      { key: 'coin', strip: '/assets/satchel/strip_coin.webp', count: reefStatsView.coins_collected },
+                      { key: 'cheese', strip: '/assets/satchel/strip_cheese.webp', count: reefStatsView.cheese_collected },
+                      { key: 'peptides', strip: '/assets/satchel/strip_peptides.webp', count: reefStatsView.peptides_collected },
+                    ];
+                    const specimens = TRASH_VARIANTS.map((v) => ({
+                      key: v.id,
+                      latin: v.latin,
+                      strip: `/assets/satchel/strip_trash_${v.id}.webp`,
+                      count: byKind[v.id] ?? 0,
+                    }));
+                    const focused =
+                      [...supplies, ...specimens].find((e) => e.key === logFocus && e.count > 0) ?? null;
+                    const slot = (e: { key: string; strip: string; count: number }) => (
+                      <button
+                        key={e.key}
+                        type="button"
+                        className={`rw-slot rw-slot-btn${logFocus === e.key ? ' rw-slot-focus' : ''}`}
+                        onClick={() => { uiClick(); setLogFocus(e.key); }}
+                        onMouseEnter={() => setLogFocus(e.key)}
+                        aria-label={names[e.key] ?? e.key}
+                      >
+                        <span className="rw-sprite" style={{ backgroundImage: `url(${e.strip})` }} role="img" aria-hidden />
+                        <span>{e.count}</span>
+                      </button>
+                    );
+                    return (
                       <>
-                        <div className="rw-slot">
-                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_trash.webp)' }} role="img" aria-label="Trash hauled" />
-                          <span>{reefStats.trash_collected ?? 0}</span>
+                        <div className="rw-satchel">{supplies.map(slot)}</div>
+                        <div className="rw-log-sub">
+                          {t.satchelJunkLog}
+                          {lang === 'en' && <span className="rw-zh">· 垃圾图鉴</span>}
+                          <span className="rw-drawer-hint">{t.satchelLogHint}</span>
                         </div>
-                        <div className="rw-slot">
-                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_coin.webp)' }} role="img" aria-label="Coins" />
-                          <span>{reefStats.coins_collected}</span>
+                        <div className="rw-satchel rw-junklog">
+                          {specimens.map((e) =>
+                            e.count > 0 ? (
+                              slot(e)
+                            ) : (
+                              <div key={e.key} className="rw-slot rw-slot-locked" title={t.satchelUndiscovered}>
+                                <span>?</span>
+                              </div>
+                            ),
+                          )}
                         </div>
-                        <div className="rw-slot">
-                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_cheese.webp)' }} role="img" aria-label="Cheese" />
-                          <span>{reefStats.cheese_collected}</span>
-                        </div>
-                        <div className="rw-slot">
-                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_peptides.webp)' }} role="img" aria-label="Peptides" />
-                          <span>{reefStats.peptides_collected}</span>
-                        </div>
-                        <div className="rw-slot rw-slot-locked" aria-hidden><span>?</span></div>
-                        <div className="rw-slot rw-slot-locked" aria-hidden><span>?</span></div>
+                        {focused && (
+                          <div className="rw-lognote" aria-live="polite">
+                            <span
+                              className="rw-sprite rw-sprite-lg"
+                              style={{ backgroundImage: `url(${focused.strip})` }}
+                              role="img"
+                              aria-label={names[focused.key] ?? focused.key}
+                            />
+                            <div className="rw-lognote-text">
+                              <b>{names[focused.key] ?? focused.key}</b>
+                              {focused.latin ? <i>{focused.latin}</i> : null}
+                              <span>
+                                ×{focused.count} {t.satchelHauled}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

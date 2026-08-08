@@ -1544,6 +1544,31 @@
 .rw-slot-locked span { font-weight: 400; color: var(--rw-ink-dim); }
 .rw-satchel-note { grid-column: 1 / -1; font-size: 10px; color: var(--rw-ink-dim); letter-spacing: 0.06em; margin: 2px; }
 
+/* Dive log (Beetleboy-style junk log): interactive slots + field-notes showcase */
+.rw-slot-btn { cursor: pointer; font: inherit; padding: 0; transition: border-color 0.12s, transform 0.12s; }
+.rw-slot-btn:hover, .rw-slot-btn:focus-visible { border-color: var(--rw-navy); transform: translateY(-1px); }
+.rw-slot-focus { border-color: var(--rw-navy); box-shadow: 0 0 0 2px rgba(29, 58, 95, 0.16); }
+.rw-log-sub {
+  display: flex; align-items: center; gap: 8px; padding: 6px 13px 0;
+  font-size: 9.5px; font-weight: 700; color: var(--rw-navy); letter-spacing: 0.08em;
+}
+.rw-junklog { padding-top: 8px; }
+.rw-lognote {
+  display: flex; align-items: center; gap: 12px; margin: 0 13px 13px;
+  padding: 9px 12px; background: #fff; border: 1.5px solid var(--rw-line); border-radius: 10px;
+}
+.rw-sprite-lg { width: 64px; height: 64px; background-size: 768px 64px; flex: 0 0 auto; }
+@media (prefers-reduced-motion: no-preference) {
+  .rw-sprite-lg { animation: rw-item-spin-lg 2.2s steps(12) infinite; }
+}
+@keyframes rw-item-spin-lg {
+  to { background-position: -768px 0; }
+}
+.rw-lognote-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rw-lognote-text b { font-size: 11px; color: var(--rw-navy); letter-spacing: 0.05em; }
+.rw-lognote-text i { font-size: 9.5px; color: var(--rw-ink-dim); }
+.rw-lognote-text span { font-size: 9.5px; font-weight: 700; color: var(--rw-navy); font-variant-numeric: tabular-nums; }
+
 /* stacking for tablets / phones */
 @media (max-width: 840px) {
   .rw-instruments { grid-template-columns: 1fr; }
