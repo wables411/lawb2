@@ -1499,6 +1499,21 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
 }
 .rw-slot img { width: 38px; height: 38px; image-rendering: auto; filter: drop-shadow(0 2px 2px rgba(29, 58, 95, 0.2)); }
+/* Rotating item: 12-frame strip of the real 3D model, stepped like a game inventory */
+.rw-sprite {
+  display: block;
+  width: 38px;
+  height: 38px;
+  background-size: 456px 38px; /* 12 frames x 38px */
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 2px 2px rgba(29, 58, 95, 0.2));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rw-sprite { animation: rw-item-spin 2.2s steps(12) infinite; }
+}
+@keyframes rw-item-spin {
+  to { background-position: -456px 0; }
+}
 .rw-slot span { font-size: 9.5px; font-weight: 700; color: var(--rw-navy); font-variant-numeric: tabular-nums; }
 .rw-slot-locked { opacity: 0.4; border-style: dashed; }
 .rw-slot-locked span { font-weight: 400; color: var(--rw-ink-dim); }

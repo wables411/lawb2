@@ -1,9 +1,38 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+/**
+ * DEV-ONLY: lets the sprite harness (src/devSpriteRenderer.ts) save rendered
+ * pickup sprites straight into public/assets/satchel/ via POST
+ * /__dev/save-sprite?name=<kind>. Never part of the production build.
+ */
+function devSpriteSaver(): Plugin {
+  return {
+    name: 'dev-sprite-saver',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__dev/save-sprite', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end(); return; }
+        const name = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? '';
+        if (!/^[a-z0-9_-]{1,40}$/.test(name)) { res.statusCode = 400; res.end('bad name'); return; }
+        const chunks: Buffer[] = [];
+        req.on('data', (c) => chunks.push(c));
+        req.on('end', () => {
+          const dir = path.resolve(__dirname, 'public/assets/satchel');
+          fs.mkdirSync(dir, { recursive: true });
+          const file = path.join(dir, `${name}.webp`);
+          fs.writeFileSync(file, Buffer.concat(chunks));
+          res.end(`saved ${name} ${Buffer.concat(chunks).length}b`);
+        });
+      });
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), devSpriteSaver()],
   server: {
     port: Number(process.env.PORT) || 3000
   },

@@ -155,6 +155,9 @@ export default function ReefArcadeMenu() {
   // ── Dive-device menu data: satchel stats + verified best (one fetch per connect) ──
   const [reefStats, setReefStats] = useState<ReefRunProfileStats | null>(null);
   const [verifiedBest, setVerifiedBest] = useState<ReefVerifiedEntry | null>(null);
+  /** Bumped when a run's stats finish saving, so the satchel refetches even if the
+   *  player reached the menu before the Firebase write landed. */
+  const [statsVersion, setStatsVersion] = useState(0);
   const [surfaceTime, setSurfaceTime] = useState(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
   );
@@ -167,9 +170,13 @@ export default function ReefArcadeMenu() {
   }, []);
   useEffect(() => {
     let stale = false;
-    if (!connection.connected || !connection.address) {
-      setReefStats(null);
-      setVerifiedBest(null);
+    // Refetch on every return to the menu (gameScreen dep), not just on connect —
+    // otherwise a run's freshly saved haul doesn't show in the satchel until reload.
+    if (gameScreen !== 'menu' || !connection.connected || !connection.address) {
+      if (!connection.connected) {
+        setReefStats(null);
+        setVerifiedBest(null);
+      }
       return undefined;
     }
     void (async () => {
@@ -190,7 +197,7 @@ export default function ReefArcadeMenu() {
       }
     })();
     return () => { stale = true; };
-  }, [connection.connected, connection.address]);
+  }, [connection.connected, connection.address, gameScreen, statsVersion]);
   const toggleLang = useCallback(() => {
     setLang((prev) => {
       const next: ReefLang = prev === 'en' ? 'zh' : 'en';
@@ -308,6 +315,7 @@ export default function ReefArcadeMenu() {
             trashCollected: runHud?.trash ?? 0,
           });
           setLastRunLbNote('Run stats saved to your profile.');
+          setStatsVersion((v) => v + 1);
         } catch {
           setLastRunLbNote('Could not save run stats. Check connection and try again.');
         }
@@ -965,19 +973,19 @@ export default function ReefArcadeMenu() {
                     ) : (
                       <>
                         <div className="rw-slot">
-                          <img src="/assets/satchel/trash.webp" alt="Trash hauled" loading="lazy" />
+                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_trash.webp)' }} role="img" aria-label="Trash hauled" />
                           <span>{reefStats.trash_collected ?? 0}</span>
                         </div>
                         <div className="rw-slot">
-                          <img src="/assets/satchel/coin.webp" alt="Coins" loading="lazy" />
+                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_coin.webp)' }} role="img" aria-label="Coins" />
                           <span>{reefStats.coins_collected}</span>
                         </div>
                         <div className="rw-slot">
-                          <img src="/assets/satchel/cheese.webp" alt="Cheese" loading="lazy" />
+                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_cheese.webp)' }} role="img" aria-label="Cheese" />
                           <span>{reefStats.cheese_collected}</span>
                         </div>
                         <div className="rw-slot">
-                          <img src="/assets/satchel/peptides.webp" alt="Peptides" loading="lazy" />
+                          <span className="rw-sprite" style={{ backgroundImage: 'url(/assets/satchel/strip_peptides.webp)' }} role="img" aria-label="Peptides" />
                           <span>{reefStats.peptides_collected}</span>
                         </div>
                         <div className="rw-slot rw-slot-locked" aria-hidden><span>?</span></div>

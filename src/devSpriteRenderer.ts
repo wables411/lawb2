@@ -75,6 +75,79 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && localStorage.getItem
     window.console.log('[SPRITES] rendered', Object.keys(out).join(', '));
     return out;
   };
+
+  /**
+   * Rotation strips: N yaw frames per model laid out horizontally in one image,
+   * for CSS steps() spin animation in the satchel (no runtime 3D).
+   */
+  (window as any).__renderPickupSpriteStrips = async (
+    names: string[] = ['trash', 'coin', 'cheese', 'peptides'],
+    frames = 12,
+    size = 96,
+  ): Promise<Record<string, string>> => {
+    const THREE = await import('three');
+    const { createArcadeGltfLoader } = await import('./pages/arcade/arcadeGltfLoader');
+    const MODELS: Record<string, string> = {
+      trash: '/arcade-assets/trash-cube.glb',
+      coin: '/arcade-assets/coin.glb',
+      cheese: '/arcade-assets/cheese.glb',
+      peptides: '/arcade-assets/peptides.glb',
+      air_tank: '/arcade-assets/reef-o2-tank.glb',
+    };
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(size, size);
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 50);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+    const key = new THREE.DirectionalLight(0xffffff, 1.8);
+    key.position.set(2.2, 3.0, 2.6);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xbfe6f5, 1.1);
+    rim.position.set(-2.4, 1.2, -2.0);
+    scene.add(rim);
+
+    const strip = document.createElement('canvas');
+    strip.width = size * frames;
+    strip.height = size;
+    const ctx = strip.getContext('2d')!;
+
+    const loader = createArcadeGltfLoader();
+    const out: Record<string, string> = {};
+    for (const name of names) {
+      const url = MODELS[name];
+      if (!url) continue;
+      const gltf = await loader.loadAsync(url);
+      const root = gltf.scene;
+      const box = new THREE.Box3().setFromObject(root);
+      root.position.sub(box.getCenter(new THREE.Vector3()));
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const holder = new THREE.Group();
+      holder.add(root);
+      holder.rotation.x = 0.12;
+      scene.add(holder);
+      const dist = (sphere.radius * 1.15) / Math.tan((camera.fov * Math.PI) / 360);
+      camera.near = Math.max(dist / 100, 0.001);
+      camera.far = dist + sphere.radius * 6;
+      camera.updateProjectionMatrix();
+      camera.position.set(0, sphere.radius * 0.28, dist);
+      camera.lookAt(0, 0, 0);
+
+      ctx.clearRect(0, 0, strip.width, strip.height);
+      for (let f = 0; f < frames; f++) {
+        holder.rotation.y = (f / frames) * Math.PI * 2 + Math.PI / 5;
+        renderer.render(scene, camera);
+        ctx.drawImage(renderer.domElement, f * size, 0, size, size);
+      }
+      scene.remove(holder);
+      out[name] = strip.toDataURL('image/webp', 0.85);
+    }
+    renderer.dispose();
+    window.console.log('[SPRITES] strips rendered', Object.keys(out).join(', '));
+    return out;
+  };
   window.console.log('[SPRITES] dev sprite renderer armed — call window.__renderPickupSprites()');
 }
 
