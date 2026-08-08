@@ -1532,12 +1532,31 @@ export default function ReefArcadeMenu() {
                         {jackpot.board ? formatTokenAmount(jackpot.board.entryAmount) : '…'}{' '}
                         {entryTokenLabel(jackpot.chainId)}
                       </strong>{' '}
-                      for one seeded run. <strong>Beat the survival bar</strong> → the whole chest
-                      pays out instantly and you become champion. <strong>Fall short</strong> →{' '}
+                      for one seeded run.{' '}
+                      {jackpot.board &&
+                      jackpot.board.champion !== '0x0000000000000000000000000000000000000000' ? (
+                        <>Out-swim <strong>{shortenAddress(jackpot.board.champion)}</strong></>
+                      ) : (
+                        <><strong>Set the first bar</strong></>
+                      )}{' '}
+                      → treasure chest pays out instantly and you become king of the reef.{' '}
+                      <strong>Fall short</strong> →{' '}
                       {jackpot.board ? Math.round(jackpot.board.championShareBps / 100) : 50}% of
-                      your entry pays the champion on the spot (defending the bar earns) and the
-                      rest fills the chest for whoever finally dethrones them. Seed is assigned
-                      on-chain at entry — dive right away, entries expire after ~15 minutes.
+                      your entry pays the current KOR on the spot and the rest fills the chest for
+                      whoever finally dethrones them.
+                    </p>
+                    <p>
+                      Seed is assigned on-chain at entry. Dive right away — entries expire after
+                      ~15 minutes. Entry fee today is not entry fee tomorrow. This is just a silly
+                      game. Visit the{' '}
+                      <a
+                        href="/?tokens=faq"
+                        onClick={(e) => { e.preventDefault(); uiClick(); navigate('/?tokens=faq'); }}
+                        style={{ color: 'inherit', textDecoration: 'underline' }}
+                      >
+                        FAQ
+                      </a>{' '}
+                      for contract info.
                     </p>
                     <p className="ra-wallet-status">
                       CHEST:{' '}

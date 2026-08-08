@@ -54,9 +54,16 @@ function App() {
   
   const [activePopup, setActivePopup] = useState<string | null>(null);
   // Re-open Pixelawbs promo window on homepage load (skip stream mode).
+  // ?tokens=<tab> deep-links the tokens popup instead (arcade FAQ link uses ?tokens=faq).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const tokensTab = params.get('tokens');
+    if (tokensTab === 'lawb' || tokensTab === 'clawb' || tokensTab === 'faq') {
+      setLawbTab(tokensTab);
+      setActivePopup('lawb-popup');
+      return;
+    }
     if (params.get('stream') === '1') return;
     setActivePopup((current) => current ?? 'pixelawbs-popup');
   }, []);
@@ -712,9 +719,9 @@ function App() {
               fontFamily: 'monospace',
               wordBreak: 'break-all',
             }}>
-              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> 65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</p>
-              <p style={{marginBottom: '4px'}}><strong>(base)</strong> 0x7e18298b46A1F2399617cde083Fe11415A2ad15B</p>
-              <p style={{marginBottom: '4px'}}><strong>(arb)</strong> 0x741f8FbF42485E772D97f1955c31a5B8098aC962</p>
+              <p style={{marginBottom: '4px'}}><strong>(sol)</strong> <a href="https://solscan.io/token/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</a></p>
+              <p style={{marginBottom: '4px'}}><strong>(base)</strong> <a href="https://basescan.org/token/0x7e18298b46A1F2399617cde083Fe11415A2ad15B" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x7e18298b46A1F2399617cde083Fe11415A2ad15B</a></p>
+              <p style={{marginBottom: '4px'}}><strong>(arb)</strong> <a href="https://arbiscan.io/token/0x741f8FbF42485E772D97f1955c31a5B8098aC962" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x741f8FbF42485E772D97f1955c31a5B8098aC962</a></p>
               <p style={{marginBottom: '0'}}><strong>(sanko — chain sunset, legacy)</strong> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
             </div>
 
@@ -845,15 +852,52 @@ function App() {
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Ecosystem tokens ($DMT, $CULT &amp; $MS2)</p>
               <p style={{marginBottom: '6px'}}>
-                <strong>$DMT</strong> (Dream Machine Token, Arbitrum) — Arbitrum One. CA: 0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8
+                <strong>$DMT</strong> (Dream Machine Token, Arbitrum) — chess wager token on Arbitrum. CA:{' '}
+                <a href="https://arbiscan.io/token/0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x8B0E6f19Ee57089F7649A455D89D7bC6314D04e8</a>
               </p>
               <p style={{marginBottom: '6px'}}>
-                <strong>$CULT</strong> (Milady Cult Coin, Ethereum) — CA: 0x0000000000c5dc95539589fbD24BE07c6C14eCa4
+                <strong>$CULT</strong> (Milady Cult Coin, Ethereum) — chess wager token on Ethereum and the Sunken Treasure entry token. CA:{' '}
+                <a href="https://etherscan.io/token/0x0000000000c5dc95539589fbD24BE07c6C14eCa4" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x0000000000c5dc95539589fbD24BE07c6C14eCa4</a>
               </p>
               <p style={{marginBottom: '6px'}}>
-                <strong>$MS2</strong> (Station This, Ethereum) — CA: 0x98Ed411B8cf8536657c660Db8aA55D9D4bAAf820
+                <strong>$MS2</strong> (Station This, Ethereum) — token-priced NFT mints. CA:{' '}
+                <a href="https://etherscan.io/token/0x98Ed411B8cf8536657c660Db8aA55D9D4bAAf820" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x98Ed411B8cf8536657c660Db8aA55D9D4bAAf820</a>
               </p>
               <p style={{marginBottom: '0'}}>None of these tokens are issued by lawb — they are third-party tokens used in the ecosystem.</p>
+            </div>
+
+            <div style={{
+              background: '#f0f0f0',
+              border: '2px inset #808080',
+              padding: '8px',
+              marginBottom: '14px',
+              fontSize: isMobile ? '13px' : '12px',
+              lineHeight: '1.6',
+              wordBreak: 'break-all',
+            }}>
+              <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Game contracts</p>
+              <p style={{marginBottom: '6px'}}>
+                <strong>Lawb Chess</strong> — escrows wagered PvP matches (native ETH, allowlisted tokens, or NFTs), holds both stakes, pays the winner on-chain. One proxy per chain:
+              </p>
+              <p style={{marginBottom: '4px'}}>
+                Arbitrum:{' '}
+                <a href="https://arbiscan.io/address/0x3112AF5728520F52FD1C6710dD7bD52285a68e47" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x3112AF5728520F52FD1C6710dD7bD52285a68e47</a>
+              </p>
+              <p style={{marginBottom: '4px'}}>
+                Ethereum:{' '}
+                <a href="https://etherscan.io/address/0x6aa574B21212C6E7436Eb26A27542F1AEFfFad87" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x6aa574B21212C6E7436Eb26A27542F1AEFfFad87</a>
+              </p>
+              <p style={{marginBottom: '8px'}}>
+                Base:{' '}
+                <a href="https://basescan.org/address/0xBe0C68afE6f412d052C8fa306e9191D2b6371Aec" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0xBe0C68afE6f412d052C8fa306e9191D2b6371Aec</a>
+              </p>
+              <p style={{marginBottom: '6px'}}>
+                <strong>Reef Run — Sunken Treasure</strong> (Ethereum) — holds the treasure chest, assigns each paid run its seed at entry, and pays the king-of-the-reef / chest split on-chain. Runs are verified by the replay validator before any payout.
+              </p>
+              <p style={{marginBottom: '0'}}>
+                Ethereum:{' '}
+                <a href="https://etherscan.io/address/0x0cfA2D2702523Dd7c95Bb90d8c4015018Fd7315d" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x0cfA2D2702523Dd7c95Bb90d8c4015018Fd7315d</a>
+              </p>
             </div>
           </>
         )}
