@@ -2095,3 +2095,38 @@
     transition: none !important;
   }
 }
+
+/* ── Phone fit: the dive device is a full-bleed APP SCREEN, not a floating card ──
+   Owner: on mobile the container "slides around / floats / doesn't fit". Root cause:
+   the scroll container wraps the whole centered card, so every touch drags the entire
+   device inside the letterboxed shell. On phones: casing goes edge-to-edge and full
+   height, scrolling happens inside it like a normal app page, and horizontal panning
+   is disabled. (:has() shell override degrades gracefully to the old centered card on
+   very old browsers.) */
+@media (max-width: 700px) {
+  .ra-inner:has(.rw-menu) {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  .rw-menu {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 0;
+    touch-action: pan-y;
+    overscroll-behavior: none;
+  }
+  .rw-device {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    border-radius: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+}
