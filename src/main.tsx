@@ -1,4 +1,5 @@
 import './devFakeWallet'; // dev-only, inert in prod builds
+import './devSpriteRenderer'; // dev-only, inert in prod builds
 import { dlog } from './utils/devLog';
 // Firebase disabled — lawb.xyz runs without Firebase
 import React, { lazy, Suspense } from 'react';

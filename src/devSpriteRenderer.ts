@@ -1,0 +1,81 @@
+// DEV-ONLY tool: renders the arcade pickup GLBs to transparent sprite images for the
+// diver's satchel (one-time asset generation — the shipped satchel uses the static
+// sprites, never a live 3D viewer). Inert unless `vite dev` AND localStorage
+// DEV_SPRITE_RENDERER is set. Absent from production bundles (compile-time DEV guard).
+//
+// Usage (browser console / automation on the dev server):
+//   localStorage.setItem('DEV_SPRITE_RENDERER', '1'); reload
+//   await window.__renderPickupSprites()  →  { [name]: dataUrl }  (image/webp, 128px)
+
+if (import.meta.env.DEV && typeof window !== 'undefined' && localStorage.getItem('DEV_SPRITE_RENDERER')) {
+  (window as any).__renderPickupSprites = async (size = 128): Promise<Record<string, string>> => {
+    const THREE = await import('three');
+    const { createArcadeGltfLoader } = await import('./pages/arcade/arcadeGltfLoader');
+
+    const MODELS: Record<string, string> = {
+      trash: '/arcade-assets/trash-cube.glb',
+      coin: '/arcade-assets/coin.glb',
+      cheese: '/arcade-assets/cheese.glb',
+      peptides: '/arcade-assets/peptides.glb',
+      air_tank: '/arcade-assets/reef-o2-tank.glb',
+      jellyfish: '/arcade-assets/jellyfish.glb',
+      pufferfish: '/arcade-assets/puffer-fish.glb',
+      mine: '/arcade-assets/reef-mine.glb',
+    };
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(size, size);
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 50);
+    // Soft studio: key + fill + rim so the pastel UI gets readable, friendly sprites.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const key = new THREE.DirectionalLight(0xffffff, 1.6);
+    key.position.set(2.2, 3.0, 2.6);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xbfe6f5, 0.9);
+    rim.position.set(-2.4, 1.2, -2.0);
+    scene.add(rim);
+
+    const loader = createArcadeGltfLoader();
+    const out: Record<string, string> = {};
+
+    for (const [name, url] of Object.entries(MODELS)) {
+      const gltf = await loader.loadAsync(url);
+      const root = gltf.scene;
+      // Fit: center the model and frame it with a little margin.
+      const box = new THREE.Box3().setFromObject(root);
+      const center = box.getCenter(new THREE.Vector3());
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      root.position.sub(center);
+      const holder = new THREE.Group();
+      holder.add(root);
+      // 3/4 hero angle, slight top-down — consistent across all sprites.
+      holder.rotation.y = Math.PI / 5;
+      holder.rotation.x = 0.12;
+      scene.add(holder);
+
+      const dist = (sphere.radius * 1.15) / Math.tan((camera.fov * Math.PI) / 360);
+      // Authored scales vary wildly (coin.glb is ~30 units across, cheese ~0.5) — the
+      // clip planes must track the framing distance or big models vanish entirely.
+      camera.near = Math.max(dist / 100, 0.001);
+      camera.far = dist + sphere.radius * 6;
+      camera.updateProjectionMatrix();
+      camera.position.set(0, sphere.radius * 0.28, dist);
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+      out[name] = renderer.domElement.toDataURL('image/webp', 0.92);
+      scene.remove(holder);
+    }
+
+    renderer.dispose();
+    window.console.log('[SPRITES] rendered', Object.keys(out).join(', '));
+    return out;
+  };
+  window.console.log('[SPRITES] dev sprite renderer armed — call window.__renderPickupSprites()');
+}
+
+export {};
