@@ -528,6 +528,21 @@ export default function ReefArcadeMenu() {
     launchRun();
   }, [jackpotEntry, launchRun]);
 
+  /**
+   * Adopt a paid-but-unused entry straight from CONTRACT STATE. Rescues entries
+   * orphaned by reloads or flaky enter receipts (observed live 2026-08-08: entry
+   * landed on-chain, receipt had no logs, UI threw and the paid seed was lost).
+   * 14-min freshness window (contract expires entries at ~15) so we never offer
+   * a dive that can't be submitted in time.
+   */
+  useEffect(() => {
+    const pending = jackpot.pendingEntry;
+    if (!pending || jackpotEntry || jackpotVerdict) return;
+    if (Date.now() / 1000 - pending.enteredAt > 14 * 60) return;
+    setJackpotEntry({ nonce: pending.nonce, seed: pending.seed });
+    setJackpotNote('Found your paid entry on-chain — dive before it expires.');
+  }, [jackpot.pendingEntry, jackpotEntry, jackpotVerdict]);
+
   /** Submit the validator-signed score on-chain (win → instant payout). */
   const submitJackpotScore = useCallback(async () => {
     if (!jackpotVerdict || jackpotBusy) return;

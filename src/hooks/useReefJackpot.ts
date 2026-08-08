@@ -71,6 +71,24 @@ export function useReefJackpot() {
     query: { enabled: Boolean(contract && account && tokenRead.data) },
   });
 
+  // Live pending entry from CONTRACT STATE — survives page reloads and flaky
+  // receipts. A paid entry must never be reachable only through local React state.
+  const pendingRead = useReadContract({
+    address: contract ?? undefined,
+    abi: REEF_JACKPOT_ABI,
+    functionName: 'pendingEntry',
+    args: account ? [account] : undefined,
+    query: { enabled: Boolean(contract && account) },
+  });
+  const pendingRaw = pendingRead.data as
+    | readonly [number, bigint, number, boolean, bigint]
+    | undefined;
+  /** Unconsumed on-chain entry for this wallet, or null. Caller checks freshness vs expiry. */
+  const pendingEntry: (JackpotEntry & { enteredAt: number }) | null =
+    pendingRaw && pendingRaw[1] > 0n && !pendingRaw[3]
+      ? { seed: Number(pendingRaw[0]), nonce: Number(pendingRaw[1]), enteredAt: Number(pendingRaw[2]) }
+      : null;
+
   const board: JackpotBoard | null = boardRead.data
     ? {
         pot: boardRead.data[0],
@@ -86,7 +104,8 @@ export function useReefJackpot() {
     void boardRead.refetch();
     void allowanceRead.refetch();
     void balanceRead.refetch();
-  }, [boardRead, allowanceRead, balanceRead]);
+    void pendingRead.refetch();
+  }, [boardRead, allowanceRead, balanceRead, pendingRead]);
 
   /**
    * Pay the entry (approving first if needed) and return the contract-assigned
@@ -119,6 +138,9 @@ export function useReefJackpot() {
       args: [],
     });
     const receipt = await publicClient.waitForTransactionReceipt({ hash: enterHash });
+    if (receipt.status === 'reverted') {
+      throw new Error('entry transaction reverted — no CULT was taken');
+    }
     for (const log of receipt.logs) {
       if (log.address.toLowerCase() !== contract.toLowerCase()) continue;
       try {
@@ -132,7 +154,21 @@ export function useReefJackpot() {
         // not our event — keep scanning
       }
     }
-    throw new Error('entered, but Entered event not found in receipt');
+    // Flaky public RPCs can serve a successful receipt with missing/lagging logs
+    // (observed live 2026-08-08: entry landed on-chain, UI threw, paid run was lost).
+    // The contract state is authoritative — recover the entry from pendingEntry.
+    const pending = (await publicClient.readContract({
+      address: contract,
+      abi: REEF_JACKPOT_ABI,
+      functionName: 'pendingEntry',
+      args: [account],
+    })) as readonly [number, bigint, number, boolean, bigint];
+    const [seed, nonce, , consumed] = pending;
+    if (nonce > 0n && !consumed) {
+      refresh();
+      return { nonce: Number(nonce), seed: Number(seed) };
+    }
+    throw new Error('entered, but no pending entry found on-chain — check the transaction in your wallet');
   }, [contract, account, publicClient, tokenRead.data, board?.entryAmount, allowanceRead.data, writeContractAsync, refresh]);
 
   /**
@@ -213,6 +249,7 @@ export function useReefJackpot() {
     token: (tokenRead.data as `0x${string}` | undefined) ?? null,
     balance: (balanceRead.data as bigint | undefined) ?? null,
     boardLoading: boardRead.isLoading,
+    pendingEntry,
     enterJackpot,
     fundPot,
     submitJackpotScore,
