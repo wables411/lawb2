@@ -87,6 +87,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && localStorage.getItem
   ): Promise<Record<string, string>> => {
     const THREE = await import('three');
     const { createArcadeGltfLoader } = await import('./pages/arcade/arcadeGltfLoader');
+    const { TRASH_VARIANTS } = await import('./pages/arcade/arcadeTrashVariants');
     const MODELS: Record<string, string> = {
       trash: '/arcade-assets/trash-cube.glb',
       coin: '/arcade-assets/coin.glb',
@@ -94,6 +95,8 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && localStorage.getItem
       peptides: '/arcade-assets/peptides.glb',
       air_tank: '/arcade-assets/reef-o2-tank.glb',
     };
+    // Dive-log strips: one per canonical trash variant (satchel key: trash_<id>).
+    for (const v of TRASH_VARIANTS) MODELS[`trash_${v.id}`] = `/arcade-assets/${v.glb}`;
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(size, size);

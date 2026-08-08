@@ -48,6 +48,7 @@ import {
 } from './arcadePickupKinds';
 import { disposeObject3DResources } from './arcadePropPlacement';
 import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
+import { trashVariantIdFor, type TrashVariantId } from './arcadeTrashVariants';
 import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
 import { reefSfx } from './arcadeSounds';
 import { reefMusic } from './arcadeMusic';
@@ -111,6 +112,8 @@ type PickupEnt = {
   speed: number;
   hit: boolean;
   kind: PickupKind;
+  /** Canonical trash variant (dive-log tally) — trash pickups only. */
+  trashVariant?: TrashVariantId;
   sim?: SimPickup;
 };
 
@@ -305,6 +308,10 @@ export class ArcadeSceneController {
   }
   private obstacles: Obstacle[] = [];
   private pickups: PickupEnt[] = [];
+  /** N-th trash spawn this run — feeds `trashVariantIdFor(runSeed, n)` (dive log). */
+  private trashSpawnCount = 0;
+  /** Trash collected this run, by canonical variant (dive-log tally; visual layer only). */
+  private trashVariantCounts: Partial<Record<TrashVariantId, number>> = {};
   private impactFx: ImpactFx[] = [];
   private runState: RunState | null = null;
   private throttleSmoothed = 0;
@@ -1590,6 +1597,8 @@ export class ArcadeSceneController {
     this.runClockActive = false;
     this.hudEmitAcc = 0;
     this.lastEmittedTier = -1;
+    this.trashSpawnCount = 0;
+    this.trashVariantCounts = {};
 
     while (this.playerWorld.children.length) {
       this.playerWorld.remove(this.playerWorld.children[0]);
@@ -1819,13 +1828,19 @@ export class ArcadeSceneController {
   }
 
   private spawnPickupInLane(lane: number, kind: PickupKind, z: number = SPAWN_Z): void {
-    const root = clonePickupVisual(kind);
+    /**
+     * Trash variant: derived from (runSeed, nth trash spawn) — NOT from gameRng, whose
+     * draw sequence must stay in lockstep with reefRunSim for replay validation.
+     */
+    const trashVariant =
+      kind === 'trash' ? trashVariantIdFor(this.runSeed, this.trashSpawnCount++) : undefined;
+    const root = clonePickupVisual(kind, trashVariant);
     root.position.set(LANES[lane], OBSTACLE_CENTER_Y, z);
     root.visible = z > PICKUP_RENDER_START_Z;
     this.obstacleGroup.add(root);
     /** Slightly slower than coral so pickups are easier to read. */
     const speed = REEF_RUN_OBSTACLE_BASE_SPEED * (0.88 + this.gameRng() * 0.12) * 0.74;
-    this.pickups.push({ root, lane, speed, hit: false, kind });
+    this.pickups.push({ root, lane, speed, hit: false, kind, trashVariant });
   }
 
   /**
@@ -2332,6 +2347,7 @@ export class ArcadeSceneController {
     const finalHud = this.runState
       ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
       : undefined;
+    if (finalHud) finalHud.trashByKind = { ...this.trashVariantCounts };
     this.runParityCheck();
     this.submitRunProof();
 
@@ -2573,6 +2589,10 @@ export class ArcadeSceneController {
             p.lane === this.playerLane
           ) {
             p.hit = true;
+            if (p.trashVariant) {
+              this.trashVariantCounts[p.trashVariant] =
+                (this.trashVariantCounts[p.trashVariant] ?? 0) + 1;
+            }
             const impactPos = p.root.position.clone();
             this.triggerPickupImpactFx(p.kind, impactPos);
             if (isBeneficialPickup(p.kind)) {
@@ -2728,17 +2748,29 @@ export class ArcadeSceneController {
     const liveSimPkps = new Set(ss.pickups);
     this.pickups = this.pickups.filter((p) => {
       if (!p.sim || liveSimPkps.has(p.sim)) return true;
+      /**
+       * Sim removed this pickup this step: either collected (hit near HIT_Z) or
+       * recycled past the camera (hit with z > OBSTACLE_RECYCLE_Z). Only the
+       * collected case feeds the dive-log tally.
+       */
+      if (p.trashVariant && p.sim.hit && p.sim.z <= OBSTACLE_RECYCLE_Z) {
+        this.trashVariantCounts[p.trashVariant] =
+          (this.trashVariantCounts[p.trashVariant] ?? 0) + 1;
+      }
       this.obstacleGroup.remove(p.root);
       disposeObject3DResources(p.root);
       return false;
     });
     for (const sp of ss.pickups) {
       if (prevPickups.has(sp)) continue;
-      const root = clonePickupVisual(sp.kind);
+      /** Same seed-derived variant sequence as free play — sim spawn order is deterministic. */
+      const trashVariant =
+        sp.kind === 'trash' ? trashVariantIdFor(this.runSeed, this.trashSpawnCount++) : undefined;
+      const root = clonePickupVisual(sp.kind, trashVariant);
       root.position.set(LANES[sp.lane], OBSTACLE_CENTER_Y, sp.z);
       root.visible = sp.z > PICKUP_RENDER_START_Z;
       this.obstacleGroup.add(root);
-      this.pickups.push({ root, lane: sp.lane, speed: sp.speed, hit: sp.hit, kind: sp.kind, sim: sp });
+      this.pickups.push({ root, lane: sp.lane, speed: sp.speed, hit: sp.hit, kind: sp.kind, trashVariant, sim: sp });
     }
     for (const p of this.pickups) {
       if (!p.sim) continue;

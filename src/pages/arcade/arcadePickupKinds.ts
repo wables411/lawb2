@@ -1,4 +1,5 @@
 import type { ArcadeCharacterId } from './arcadeAssetConfig';
+import type { TrashVariantId } from './arcadeTrashVariants';
 import {
   armorMaxForStars,
   getCharacterStats,
@@ -44,6 +45,11 @@ export type ArcadeRunHudState = {
   relativeSpeed: number;
   cheeseSecLeft: number;
   dragSecLeft: number;
+  /**
+   * Trash hauled this run, by canonical variant (dive log). Set by the CONTROLLER on the
+   * final HUD only — the sim never populates it (variants are visual-layer, seed-derived).
+   */
+  trashByKind?: Partial<Record<TrashVariantId, number>>;
 };
 
 export function characterUsesOxygenMechanic(id: ArcadeCharacterId): boolean {

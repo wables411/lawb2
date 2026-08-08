@@ -4,6 +4,7 @@ import { createArcadeGltfLoader } from './arcadeGltfLoader';
 import { createPrimitivePickupMesh, PICKUP_VISUAL_SCALE } from './arcadePickupMesh';
 import type { PickupKind } from './arcadePickupKinds';
 import { fitReefObstacleVisual } from './arcadePropPlacement';
+import { TRASH_VARIANTS, type TrashVariantId } from './arcadeTrashVariants';
 
 const loader = createArcadeGltfLoader();
 
@@ -17,18 +18,22 @@ const PICKUP_GLB: Partial<Record<PickupKind, string>> = {
   pufferfish: `${ARCADE_ASSET_BASE}/puffer-fish.glb`,
 };
 
-/** Trash variants: each gets its own target max axis (new GLBs vary a lot in authored scale). */
-const TRASH_CONFIG = [
-  { url: `${ARCADE_ASSET_BASE}/trash1.glb`, maxExtent: 0.72 },
-  { url: `${ARCADE_ASSET_BASE}/trash2.glb`, maxExtent: 0.72 },
-  { url: `${ARCADE_ASSET_BASE}/trash-cube.glb`, maxExtent: 0.62 },
+/**
+ * Trash variants: each gets its own target max axis (new GLBs vary a lot in authored scale).
+ * Keyed by canonical id from `arcadeTrashVariants.ts` so the controller can request a
+ * SPECIFIC variant (dive-log tallies) — an omitted/failed GLB falls back to any loaded one.
+ */
+const TRASH_EXTENT: Record<TrashVariantId, number> = {
+  trash1: 0.72,
+  trash2: 0.72,
+  cube: 0.62,
   // Remilia-flavored ocean trash (Meshy round 3, ~70-165 KB each) — trash is the mission.
-  { url: `${ARCADE_ASSET_BASE}/trash-cigpack.glb`, maxExtent: 0.64 },
-  { url: `${ARCADE_ASSET_BASE}/trash-energycan.glb`, maxExtent: 0.58 },
-  { url: `${ARCADE_ASSET_BASE}/trash-vape.glb`, maxExtent: 0.66 },
-  { url: `${ARCADE_ASSET_BASE}/trash-bag.glb`, maxExtent: 0.76 },
-  { url: `${ARCADE_ASSET_BASE}/trash-crt.glb`, maxExtent: 0.74 },
-] as const;
+  cigpack: 0.64,
+  energycan: 0.58,
+  vape: 0.66,
+  bag: 0.76,
+  crt: 0.74,
+};
 
 const CORAL_GLB_VARIANTS = [
   `${ARCADE_ASSET_BASE}/coral1.glb`,
@@ -57,7 +62,7 @@ const SCENERY_GLB = {
 export type SceneryPropKind = keyof typeof SCENERY_GLB;
 
 const pickupTemplates: Partial<Record<PickupKind, THREE.Object3D>> = {};
-type TrashProp = { tpl: THREE.Object3D; maxExtent: number };
+type TrashProp = { id: TrashVariantId; tpl: THREE.Object3D; maxExtent: number };
 let trashProps: TrashProp[] = [];
 let coralTemplates: THREE.Object3D[] = [];
 const sceneryPropTemplates: Partial<Record<SceneryPropKind, THREE.Object3D>> = {};
@@ -192,11 +197,13 @@ export function loadArcadePropGlbTemplates(): Promise<void> {
       jobs.push(
         (async () => {
           const loaded = await Promise.all(
-            TRASH_CONFIG.filter(({ url }) => !isArcadeAssetOmitted(url)).map(({ url, maxExtent }) =>
-              loadSceneQuiet(url).then((sc) => {
+            TRASH_VARIANTS.filter(
+              ({ glb }) => !isArcadeAssetOmitted(`${ARCADE_ASSET_BASE}/${glb}`),
+            ).map(({ id, glb }) =>
+              loadSceneQuiet(`${ARCADE_ASSET_BASE}/${glb}`).then((sc) => {
                 if (!sc) return null;
                 sanitizeGlbTemplateMaterials(sc);
-                return { tpl: sc, maxExtent } as TrashProp;
+                return { id, tpl: sc, maxExtent: TRASH_EXTENT[id] } as TrashProp;
               }),
             ),
           );
@@ -248,13 +255,20 @@ const PICKUP_MAX_EXTENT: Partial<Record<PickupKind, number>> = {
 /** Coral obstacle: match `OBSTACLE_BOX_*` (~2.05 Y, 2.2 Z) so the mesh reads like the gameplay column. */
 const CORAL_MAX_EXTENT = 2.14;
 
-/** Spawn-ready pickup root (GLB clone + scale, or primitive mesh). */
-export function clonePickupVisual(kind: PickupKind): THREE.Object3D {
+/**
+ * Spawn-ready pickup root (GLB clone + scale, or primitive mesh).
+ * For trash, `trashVariant` selects the canonical variant (dive-log determinism);
+ * if that GLB is omitted/failed, any loaded trash template stands in visually —
+ * the TALLY still credits the requested variant. No variant → random loaded one.
+ */
+export function clonePickupVisual(kind: PickupKind, trashVariant?: TrashVariantId): THREE.Object3D {
   let tpl: THREE.Object3D | undefined;
   let extentOverride: number | undefined;
   if (kind === 'trash') {
     if (trashProps.length > 0) {
-      const pick = trashProps[Math.floor(Math.random() * trashProps.length)]!;
+      const pick =
+        (trashVariant ? trashProps.find((p) => p.id === trashVariant) : undefined) ??
+        trashProps[Math.floor(Math.random() * trashProps.length)]!;
       tpl = pick.tpl;
       extentOverride = pick.maxExtent;
     }

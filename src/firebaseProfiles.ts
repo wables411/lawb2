@@ -42,6 +42,8 @@ export interface ReefRunProfileStats {
   trash_collected?: number;
   /** Most trash hauled in a single run. */
   best_trash_run?: number;
+  /** Lifetime trash by canonical variant id (dive log) — see arcadeTrashVariants.ts. */
+  trash_by_kind?: Record<string, number>;
   longest_run_seconds: number;
   character_runs: Record<string, number>;
   favored_character: string | null;
@@ -290,6 +292,8 @@ export const firebaseProfiles = {
       peptidesCollected: number;
       coinsCollected: number;
       trashCollected: number;
+      /** This run's trash by canonical variant id (summed into lifetime trash_by_kind). */
+      trashByKind?: Record<string, number>;
     },
   ): Promise<void> {
     try {
@@ -321,12 +325,18 @@ export const firebaseProfiles = {
         }
       }
       const trashThisRun = Math.max(0, Math.floor(payload.trashCollected || 0));
+      const trashByKind = { ...(current.trash_by_kind ?? {}) };
+      for (const [variant, n] of Object.entries(payload.trashByKind ?? {})) {
+        const add = Math.max(0, Math.floor((n as number) || 0));
+        if (add > 0) trashByKind[variant] = (trashByKind[variant] ?? 0) + add;
+      }
       const updated: ReefRunProfileStats = {
         cheese_collected: current.cheese_collected + Math.max(0, Math.floor(payload.cheeseCollected || 0)),
         peptides_collected: current.peptides_collected + Math.max(0, Math.floor(payload.peptidesCollected || 0)),
         coins_collected: current.coins_collected + Math.max(0, Math.floor(payload.coinsCollected || 0)),
         trash_collected: (current.trash_collected ?? 0) + trashThisRun,
         best_trash_run: Math.max(current.best_trash_run ?? 0, trashThisRun),
+        ...(Object.keys(trashByKind).length ? { trash_by_kind: trashByKind } : {}),
         longest_run_seconds: Math.max(current.longest_run_seconds, Math.floor(Math.max(0, payload.survivalSec))),
         character_runs: characterRuns,
         favored_character: favored,

@@ -313,6 +313,7 @@ export default function ReefArcadeMenu() {
             cheeseCollected: runHud?.cheeseCollected ?? 0,
             peptidesCollected: runHud?.peptidesCollected ?? 0,
             trashCollected: runHud?.trash ?? 0,
+            trashByKind: runHud?.trashByKind,
           });
           setLastRunLbNote('Run stats saved to your profile.');
           setStatsVersion((v) => v + 1);
