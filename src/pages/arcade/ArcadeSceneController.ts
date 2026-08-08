@@ -2348,28 +2348,63 @@ export class ArcadeSceneController {
   }
 
   /**
-   * One-shot portrait of the character as they are RIGHT NOW in the live scene
-   * (milady-tracker philosophy: browser-side avatar rendering, no canned art).
-   * Renders to an offscreen target so the visible canvas never flickers; returns a
-   * square PNG data URL with the underwater scene as backdrop, or null best-effort.
+   * Scorecard portrait: a clean STUDIO shot of the played character, not a gameplay
+   * frame — the run camera sits behind the swimmer and the death tumble is no poster
+   * pose. Clones the cached front-facing idle model (what the select screen shows)
+   * into a throwaway scene with the satchel-sprite studio lights, renders one frame
+   * to an offscreen target (visible canvas never flickers) and returns a transparent
+   * square PNG data URL. Browser-rendered, never canned art (milady-tracker
+   * philosophy). Best-effort: null on any failure.
    */
   private captureCharacterPortrait(size = 512): string | null {
-    const root = this.swimRoot;
-    if (!root || !this.renderer || !this.scene) return null;
+    const cid = this.runState?.characterId;
+    const slot = cid ? this.slots.get(cid) : undefined;
+    if (!slot?.idleRoot || !this.renderer) return null;
+    let holder: THREE.Group | null = null;
+    const pScene = new THREE.Scene();
     try {
-      const p = new THREE.Vector3();
-      root.getWorldPosition(p);
-      const cam = new THREE.PerspectiveCamera(36, 1, 0.05, 90);
-      // 3/4 hero shot, slightly above, facing the swimmer's front (they face +Z: rotation.y = π).
-      cam.position.set(p.x + 0.85, p.y + 0.95, p.z + 2.05);
-      cam.lookAt(p.x, p.y + 0.5, p.z);
+      // Clone SHARES geometry/materials with the cached slot — never dispose them here.
+      const root = SkeletonUtils.clone(slot.idleRoot) as THREE.Group;
+      root.position.set(0, 0, 0);
+      // FBX default facing is +Z (toward viewer); slight yaw = 3/4 hero angle.
+      root.rotation.set(0, Math.PI / 9, 0);
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(root);
+      const center = box.getCenter(new THREE.Vector3());
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      root.position.sub(center);
+      holder = new THREE.Group();
+      holder.add(root);
+      pScene.add(holder);
+      // Same soft studio as devSpriteRenderer: ambient + key + cool rim.
+      pScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+      const key = new THREE.DirectionalLight(0xffffff, 1.6);
+      key.position.set(2.2, 3.0, 2.6);
+      pScene.add(key);
+      const rim = new THREE.DirectionalLight(0xbfe6f5, 0.9);
+      rim.position.set(-2.4, 1.2, -2.0);
+      pScene.add(rim);
+
+      const cam = new THREE.PerspectiveCamera(32, 1, 0.01, 200);
+      const dist = (sphere.radius * 1.18) / Math.tan((cam.fov * Math.PI) / 360);
+      cam.near = Math.max(dist / 100, 0.001);
+      cam.far = dist + sphere.radius * 6;
+      cam.updateProjectionMatrix();
+      cam.position.set(0, sphere.radius * 0.26, dist);
+      cam.lookAt(0, 0, 0);
+
       const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 });
       const prevTarget = this.renderer.getRenderTarget();
+      const prevClearColor = new THREE.Color();
+      this.renderer.getClearColor(prevClearColor);
+      const prevClearAlpha = this.renderer.getClearAlpha();
+      this.renderer.setClearColor(0x000000, 0);
       this.renderer.setRenderTarget(rt);
-      this.renderer.render(this.scene, cam);
+      this.renderer.render(pScene, cam);
       const px = new Uint8Array(size * size * 4);
       this.renderer.readRenderTargetPixels(rt, 0, 0, size, size, px);
       this.renderer.setRenderTarget(prevTarget);
+      this.renderer.setClearColor(prevClearColor, prevClearAlpha);
       rt.dispose();
       // GL reads bottom-up — flip rows into the 2D canvas.
       const canvas = document.createElement('canvas');
@@ -2386,6 +2421,8 @@ export class ArcadeSceneController {
       return canvas.toDataURL('image/png');
     } catch {
       return null;
+    } finally {
+      if (holder) pScene.remove(holder);
     }
   }
 
