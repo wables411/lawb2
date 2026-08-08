@@ -33,7 +33,12 @@ let musicBus: GainNode | null = null;
 /** Final output; mute lives here so it silences SFX and music together. */
 let outGain: GainNode | null = null;
 let muted = false;
-let ambienceNodes: { src: AudioBufferSourceNode; gain: GainNode; lfo: OscillatorNode } | null = null;
+let ambienceNodes: {
+  src: AudioBufferSourceNode;
+  gain: GainNode;
+  lfo: OscillatorNode;
+  drones: OscillatorNode[];
+} | null = null;
 let noiseBuf: AudioBuffer | null = null;
 
 try {
@@ -156,7 +161,27 @@ function noise(
   src.stop(opts.at + opts.dur + 0.05);
 }
 
-/** A few random rising bubble pops — the underwater seasoning. */
+/**
+ * RemiliaNET-style sound curation: every pitched SFX sits on the SOUNDTRACK's scale —
+ * D minor pentatonic (D F G A C), the same lattice as `arcadeMusic.ts` — categorized by
+ * UX type: loot/sustain = mid/high scale tones, hazards = low-register D roots (the one
+ * deliberately detuned exception is the jellyfish beat), UI = a single high plink.
+ * Random collisions of pickups, clicks and music then always harmonize; generative,
+ * zero audio files, gamic and meditative.
+ */
+const hzOf = (midi: number): number => 440 * Math.pow(2, (midi - 69) / 12);
+const P = {
+  D1: hzOf(26), A1: hzOf(33),
+  D2: hzOf(38), G2: hzOf(43), A2: hzOf(45),
+  D3: hzOf(50), F3: hzOf(53), G3: hzOf(55), A3: hzOf(57), C4: hzOf(60),
+  D4: hzOf(62), F4: hzOf(65), G4: hzOf(67), A4: hzOf(69), C5: hzOf(72),
+  D5: hzOf(74), F5: hzOf(77), G5: hzOf(79), A5: hzOf(81), C6: hzOf(84),
+  D6: hzOf(86),
+} as const;
+/** Every pentatonic degree bubbles are allowed to pop on (D minor pentatonic, low→high). */
+const PENTA_POOL = [P.D3, P.F3, P.G3, P.A3, P.C4, P.D4, P.F4, P.G4, P.A4, P.C5, P.D5, P.F5, P.G5, P.A5] as const;
+
+/** A few random rising bubble pops — the underwater seasoning, quantized to the scale. */
 function bubbles(
   c: AudioContext,
   out: AudioNode,
@@ -167,10 +192,14 @@ function bubbles(
   lowHz = 420,
   highHz = 980,
 ): void {
+  // Pentatonic degrees inside the requested band (fallback: whole pool).
+  const pool = PENTA_POOL.filter((f) => f >= lowHz && f <= highHz);
+  const notes = pool.length > 0 ? pool : PENTA_POOL;
   for (let i = 0; i < count; i++) {
     const t = at + Math.random() * spreadSec;
-    const f0 = lowHz + Math.random() * (highHz - lowHz);
-    tone(c, out, { type: 'sine', from: f0, to: f0 * 1.7, at: t, dur: 0.06 + Math.random() * 0.05, gain: gain * (0.6 + Math.random() * 0.4) });
+    const f0 = notes[Math.floor(Math.random() * notes.length)]!;
+    // Octave rise (f0 → 2·f0) so each pop starts AND ends on the scale.
+    tone(c, out, { type: 'sine', from: f0, to: f0 * 2, at: t, dur: 0.06 + Math.random() * 0.05, gain: gain * (0.6 + Math.random() * 0.4) });
   }
 }
 
@@ -270,18 +299,21 @@ export const reefSfx = {
     const t = c.currentTime;
     try {
       switch (name) {
+        // ── Loot: rising pentatonic intervals, high register ──
         case 'coin':
-          tone(c, master, { type: 'sine', from: 920, at: t, dur: 0.07, gain: 0.2 });
-          tone(c, master, { type: 'sine', from: 1380, at: t + 0.07, dur: 0.1, gain: 0.16 });
+          tone(c, master, { type: 'sine', from: P.A5, at: t, dur: 0.07, gain: 0.2 });
+          tone(c, master, { type: 'sine', from: P.D6, at: t + 0.07, dur: 0.1, gain: 0.16 });
           break;
         case 'trash':
-          tone(c, master, { type: 'triangle', from: 240, to: 170, at: t, dur: 0.12, gain: 0.28 });
+          // The mission thunk: G→D root fall, kept woody with the noise thud.
+          tone(c, master, { type: 'triangle', from: P.G3, to: P.D3, at: t, dur: 0.12, gain: 0.28 });
           noise(c, master, { at: t, dur: 0.09, gain: 0.1, from: 900, to: 300 });
           bubbles(c, master, t + 0.04, 2, 0.12, 0.08);
           break;
+        // ── Buffs/sustain: mid-register scale sweeps ──
         case 'cheese':
-          tone(c, master, { type: 'sawtooth', from: 320, to: 980, at: t, dur: 0.22, gain: 0.14 });
-          tone(c, master, { type: 'sine', from: 640, to: 1960, at: t + 0.03, dur: 0.2, gain: 0.1 });
+          tone(c, master, { type: 'sawtooth', from: P.D4, to: P.A5, at: t, dur: 0.22, gain: 0.14 });
+          tone(c, master, { type: 'sine', from: P.D5, to: P.D6, at: t + 0.03, dur: 0.2, gain: 0.1 });
           break;
         case 'air':
           bubbles(c, master, t, 6, 0.34, 0.16, 380, 900);
@@ -289,39 +321,42 @@ export const reefSfx = {
           break;
         case 'peptides':
           bubbles(c, master, t, 4, 0.25, 0.12, 260, 620);
-          tone(c, master, { type: 'sine', from: 520, to: 780, at: t + 0.1, dur: 0.18, gain: 0.14 });
+          tone(c, master, { type: 'sine', from: P.A4, to: P.D5, at: t + 0.1, dur: 0.18, gain: 0.14 });
           break;
+        // ── Hazards: low-register D roots; jelly keeps its detuned beat on purpose ──
         case 'jelly':
-          tone(c, master, { type: 'square', from: 130, at: t, dur: 0.22, gain: 0.12 });
-          tone(c, master, { type: 'square', from: 137, at: t, dur: 0.22, gain: 0.1 });
+          tone(c, master, { type: 'square', from: P.D3, at: t, dur: 0.22, gain: 0.12 });
+          tone(c, master, { type: 'square', from: P.D3 * 1.045, at: t, dur: 0.22, gain: 0.1 });
           noise(c, master, { at: t, dur: 0.2, gain: 0.08, filterType: 'bandpass', from: 2200, q: 3 });
           break;
         case 'puffer':
           noise(c, master, { at: t, dur: 0.2, gain: 0.22, from: 1400, to: 260 });
-          tone(c, master, { type: 'triangle', from: 480, to: 190, at: t, dur: 0.18, gain: 0.16 });
+          tone(c, master, { type: 'triangle', from: P.G4, to: P.G3, at: t, dur: 0.18, gain: 0.16 });
           break;
         case 'mine':
-          tone(c, master, { type: 'sine', from: 150, to: 42, at: t, dur: 0.5, gain: 0.42 });
+          tone(c, master, { type: 'sine', from: P.D3, to: P.D1, at: t, dur: 0.5, gain: 0.42 });
           noise(c, master, { at: t, dur: 0.45, gain: 0.3, from: 1800, to: 90 });
           bubbles(c, master, t + 0.12, 5, 0.4, 0.1);
           break;
         case 'crash':
-          tone(c, master, { type: 'sine', from: 130, to: 36, at: t, dur: 0.6, gain: 0.5 });
+          tone(c, master, { type: 'sine', from: P.D3, to: P.D1, at: t, dur: 0.6, gain: 0.5 });
           noise(c, master, { at: t, dur: 0.55, gain: 0.34, from: 1500, to: 70 });
           bubbles(c, master, t + 0.1, 9, 0.6, 0.13);
           break;
         case 'suffocate':
           bubbles(c, master, t, 10, 1.5, 0.12, 300, 760);
-          tone(c, master, { type: 'sine', from: 220, to: 90, at: t + 0.2, dur: 1.2, gain: 0.1 });
+          tone(c, master, { type: 'sine', from: P.A3, to: P.A1, at: t + 0.2, dur: 1.2, gain: 0.1 });
           break;
+        // ── Motion: unpitched noise (percussion section — no scale to break) ──
         case 'whoosh':
           noise(c, master, { at: t, dur: 0.28, gain: 0.16, filterType: 'bandpass', from: 500, to: 2400, q: 1.2 });
           break;
         case 'lane':
           noise(c, master, { at: t, dur: 0.09, gain: 0.07, filterType: 'bandpass', from: 900, to: 1800, q: 1 });
           break;
+        // ── UI: one high scale plink (menu + console clicks) ──
         case 'ui':
-          tone(c, master, { type: 'sine', from: 660, at: t, dur: 0.06, gain: 0.12 });
+          tone(c, master, { type: 'sine', from: P.D5, at: t, dur: 0.06, gain: 0.12 });
           break;
       }
     } catch {
@@ -355,7 +390,24 @@ export const reefSfx = {
       g.connect(master);
       src.start();
       lfo.start();
-      ambienceNodes = { src, gain: g, lfo };
+      // Barely-there D root + fifth drone under the noise bed — the ambience hums on the
+      // same D-minor-pentatonic lattice as the SFX and score (RemiliaNET-style curation).
+      const drones: OscillatorNode[] = [];
+      for (const [freq, gainV] of [
+        [P.D2, 0.014],
+        [P.A2, 0.009],
+      ] as const) {
+        const osc = c.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const og = c.createGain();
+        og.gain.value = gainV;
+        osc.connect(og);
+        og.connect(master);
+        osc.start();
+        drones.push(osc);
+      }
+      ambienceNodes = { src, gain: g, lfo, drones };
     } catch {
       ambienceNodes = null;
     }
@@ -366,6 +418,7 @@ export const reefSfx = {
     try {
       ambienceNodes.src.stop();
       ambienceNodes.lfo.stop();
+      for (const d of ambienceNodes.drones) d.stop();
     } catch {
       /* ignore */
     }
