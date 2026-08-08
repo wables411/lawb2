@@ -29,6 +29,7 @@ import {
 } from './arcade/reefLang';
 import { TRASH_VARIANTS } from './arcade/arcadeTrashVariants';
 import { ReefScoreCard } from './arcade/ReefScoreCard';
+import { ipfsToHttp } from '../utils/ipfs';
 import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
@@ -161,6 +162,8 @@ export default function ReefArcadeMenu() {
   const [logFocus, setLogFocus] = useState<string | null>(null);
   /** Live engine snapshot of the character at run end (scorecard portrait). */
   const [runPortrait, setRunPortrait] = useState<string | null>(null);
+  /** Player's profile picture for the diver ID card (dead-gateway rewritten). */
+  const [pfpUrl, setPfpUrl] = useState<string | null>(null);
   const [verifiedBest, setVerifiedBest] = useState<ReefVerifiedEntry | null>(null);
   /** Bumped when a run's stats finish saving, so the satchel refetches even if the
    *  player reached the menu before the Firebase write landed. */
@@ -182,6 +185,7 @@ export default function ReefArcadeMenu() {
     if (gameScreen !== 'menu' || !connection.connected || !connection.address) {
       if (!connection.connected) {
         setReefStats(null);
+        setPfpUrl(null);
         setVerifiedBest(null);
       }
       return undefined;
@@ -195,10 +199,14 @@ export default function ReefArcadeMenu() {
         ]);
         if (stale) return;
         setReefStats(profile?.reef_run_stats ?? null);
+        setPfpUrl(
+          profile?.profile_picture?.image_url ? ipfsToHttp(profile.profile_picture.image_url) : null,
+        );
         setVerifiedBest(best);
       } catch {
         if (!stale) {
           setReefStats(null);
+          setPfpUrl(null);
           setVerifiedBest(null);
         }
       }
@@ -980,11 +988,20 @@ export default function ReefArcadeMenu() {
                     <div className="rw-idcard">
                       <div className="rw-idcard-t">LAWB 珊瑚礁 潜水士</div>
                       <div className="rw-idcard-main">
-                        <span
-                          className="rw-pfp"
-                          style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
-                          aria-hidden
-                        />
+                        {pfpUrl ? (
+                          <img
+                            className="rw-pfp"
+                            src={pfpUrl}
+                            alt=""
+                            onError={() => setPfpUrl(null)}
+                          />
+                        ) : (
+                          <span
+                            className="rw-pfp"
+                            style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
+                            aria-hidden
+                          />
+                        )}
                         <div className="rw-idf">
                           <div className="rw-idf-v">
                             {connection.connected
@@ -1074,7 +1091,9 @@ export default function ReefArcadeMenu() {
                         <div className="rw-log-sub">
                           {t.satchelJunkLog}
                           {lang === 'en' && <span className="rw-zh">· 垃圾图鉴</span>}
-                          <span className="rw-drawer-hint">{t.satchelLogHint}</span>
+                          <span className="rw-drawer-hint">
+                            {touchUiEnabled ? t.satchelLogHintTouch : t.satchelLogHint}
+                          </span>
                         </div>
                         <div className="rw-satchel rw-junklog">
                           {specimens.map((e) =>

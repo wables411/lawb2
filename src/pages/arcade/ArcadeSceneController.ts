@@ -51,7 +51,7 @@ import {
   cloneCoralObstacleVisual,
   clonePickupVisual,
   loadArcadePropGlbTemplates,
-  textureHasImage,
+  sanitizeSceneMaterials,
 } from './arcadeGlbProps';
 import { trashVariantIdFor, type TrashVariantId } from './arcadeTrashVariants';
 import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
@@ -2365,23 +2365,30 @@ export class ArcadeSceneController {
     const cid = this.runState?.characterId;
     const slot = cid ? this.slots.get(cid) : undefined;
     if (!slot?.idleRoot || !this.renderer) return null;
-    // A material map without image data renders BLACK — better the card's "?"
-    // placeholder than a silhouette (possible on a slow connection + instant death).
-    let mapsPending = false;
-    slot.idleRoot.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
-        const map = (m as THREE.MeshStandardMaterial).map;
-        if (map && !textureHasImage(map)) mapsPending = true;
-      }
-    });
-    if (mapsPending) return null;
     let holder: THREE.Group | null = null;
     const pScene = new THREE.Scene();
     try {
-      // Clone SHARES geometry/materials with the cached slot — never dispose them here.
+      // Clone SHARES geometry with the cached slot — never dispose it here.
       const root = SkeletonUtils.clone(slot.idleRoot) as THREE.Group;
+      // The slot's idle model is HIDDEN during runs and the clone inherits that —
+      // an invisible subject renders an empty portrait.
+      root.visible = true;
+      /**
+       * The arcade FBX materials carry PERMANENTLY-empty texture slots (the
+       * long-standing "no image data found" console warning). A blanket
+       * has-every-map-loaded guard therefore never passes — instead, clone the
+       * materials (so the live model is untouched) and strip only the broken refs,
+       * exactly what sanitizeSceneMaterials does for the GLB pickups. Real albedo
+       * maps are loaded minutes before game over, so the render stays correct.
+       */
+      root.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.material = Array.isArray(mesh.material)
+          ? mesh.material.map((m) => m.clone())
+          : mesh.material.clone();
+      });
+      sanitizeSceneMaterials(root);
       root.position.set(0, 0, 0);
       // FBX default facing is +Z (toward viewer); slight yaw = 3/4 hero angle.
       root.rotation.set(0, Math.PI / 9, 0);
@@ -2448,7 +2455,18 @@ export class ArcadeSceneController {
     } catch {
       return null;
     } finally {
-      if (holder) pScene.remove(holder);
+      if (holder) {
+        // Cloned materials are portrait-local — release their GPU programs (textures
+        // and geometry stay shared with the live slot; never disposed here).
+        holder.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+            (m as THREE.Material).dispose();
+          }
+        });
+        pScene.remove(holder);
+      }
     }
   }
 
@@ -2785,7 +2803,6 @@ export class ArcadeSceneController {
     };
 
     const prevObstacles = new Set(ss.obstacles);
-    const prevPickups = new Set(ss.pickups);
 
     const events = stepSim(ss, dt, input);
     if (this.devTrace) this.devTrace.push(this.simFingerprint(ss));
@@ -2878,8 +2895,16 @@ export class ArcadeSceneController {
       disposeObject3DResources(p.root);
       return false;
     });
+    /**
+     * Build a visual for ANY sim pickup that lacks one — membership-checked against the
+     * live entity list, NOT prevPickups: opening loot is seeded inside createSimState
+     * BEFORE the first sync, so a prev-set check skips it forever. That made the first
+     * three pickups (always trash — the mission) INVISIBLE-but-collectible in every
+     * deterministic run, and starved the dive-log variant tally of opening hauls.
+     */
+    const knownSim = new Set(this.pickups.map((p) => p.sim));
     for (const sp of ss.pickups) {
-      if (prevPickups.has(sp)) continue;
+      if (knownSim.has(sp)) continue;
       /** Same seed-derived variant sequence as free play — sim spawn order is deterministic. */
       const trashVariant =
         sp.kind === 'trash' ? trashVariantIdFor(this.runSeed, this.trashSpawnCount++) : undefined;

@@ -16,7 +16,13 @@ type Props = {
   gameScreen: ArcadeGameScreen;
   selectedCharacterId: ArcadeCharacterId;
   onPickCharacter: (id: ArcadeCharacterId) => void;
-  onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
+  onGameOver: (
+    survivalSec: number,
+    reason: RunEndReason,
+    finalHud?: ArcadeRunHudState,
+    /** Engine studio snapshot of the played character (scorecard portrait). */
+    portrait?: string,
+  ) => void;
   /** Throttled (~5 Hz + on tier change) while the run clock is active. */
   onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   /** O₂, armor, collectibles, speed (~7 Hz). */
@@ -87,7 +93,7 @@ export const ArcadeThreeBackground = forwardRef<ArcadePlayInputHandle, Props>(fu
 
     const engine = new ArcadeSceneController(container, {
       onPickCharacter: (id) => pickRef.current(id),
-      onGameOver: (sec, reason, finalHud) => overRef.current(sec, reason, finalHud),
+      onGameOver: (sec, reason, finalHud, portrait) => overRef.current(sec, reason, finalHud, portrait),
       onRunDifficulty: (p) => diffRef.current?.(p),
       onRunHud: (h) => hudRef.current?.(h),
       onBootProgress: (p) => bootProgressRef.current?.(p),
