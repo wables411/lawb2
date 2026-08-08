@@ -88,8 +88,8 @@ async function drawCardPng(
   const W = 720;
   const gold = data.treasure;
   const pal = gold
-    ? { case: '#f6efdc', lcd: '#f3e9c9', head: '#e7d9a8', line: '#c9a94e', navy: '#6b4d12', ink: '#5a4a20', dim: '#9c8a55' }
-    : { case: '#f4f8f7', lcd: '#dff0e9', head: '#bfe3d6', line: '#8fc9b6', navy: '#1d3a5f', ink: '#2c4a43', dim: '#6d8f86' };
+    ? { case: '#f6efdc', lcd: '#f3e9c9', head: '#e7d9a8', line: '#c9a94e', navy: '#6b4d12', ink: '#5a4a20', dim: '#9c8a55', dot: '#e9dfb8' }
+    : { case: '#f4f8f7', lcd: '#dff0e9', head: '#bfe3d6', line: '#8fc9b6', navy: '#1d3a5f', ink: '#2c4a43', dim: '#6d8f86', dot: '#cfe8df' };
 
   const rowH = 46;
   const haulTop = 424;
@@ -133,13 +133,27 @@ async function drawCardPng(
   const px = 36;
   const py = 112;
   const ps = 240;
-  c.fillStyle = '#ffffff';
+  c.fillStyle = '#fbfdfc';
   c.strokeStyle = pal.line;
   c.lineWidth = 2.5;
   c.beginPath();
   c.roundRect(px, py, ps, ps, 12);
   c.fill();
   c.stroke();
+  // Pearlescent dither behind the bust (matches .sc-portrait).
+  c.save();
+  c.beginPath();
+  c.roundRect(px + 2, py + 2, ps - 4, ps - 4, 10);
+  c.clip();
+  c.fillStyle = pal.dot;
+  for (let dy = py + 6; dy < py + ps; dy += 11) {
+    for (let dx = px + 6; dx < px + ps; dx += 11) {
+      c.beginPath();
+      c.arc(dx, dy, 1.1, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+  c.restore();
   const portraitImg = data.portrait ? await loadImage(data.portrait) : null;
   if (portraitImg) {
     c.save();

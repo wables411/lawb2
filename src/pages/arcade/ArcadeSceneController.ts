@@ -2388,7 +2388,8 @@ export class ArcadeSceneController {
       root.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(root);
       const center = box.getCenter(new THREE.Vector3());
-      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const modelH = box.max.y - box.min.y;
+      const modelW = box.max.x - box.min.x;
       root.position.sub(center);
       holder = new THREE.Group();
       holder.add(root);
@@ -2402,13 +2403,21 @@ export class ArcadeSceneController {
       rim.position.set(-2.4, 1.2, -2.0);
       pScene.add(rim);
 
+      /**
+       * BUST framing (owner pick, not full body): hang the focus a fixed fraction
+       * below the crown so big-headed characters center on the face, and widen the
+       * view for broad silhouettes (clawb's claws). Constants tuned visually against
+       * clawb + milady + radbro.
+       */
       const cam = new THREE.PerspectiveCamera(32, 1, 0.01, 200);
-      const dist = (sphere.radius * 1.18) / Math.tan((cam.fov * Math.PI) / 360);
+      const focusY = modelH / 2 - modelH * 0.26;
+      const view = Math.max(modelH * 0.58, modelW * 0.9);
+      const dist = (view * 0.5) / Math.tan((cam.fov * Math.PI) / 360);
       cam.near = Math.max(dist / 100, 0.001);
-      cam.far = dist + sphere.radius * 6;
+      cam.far = dist + modelH * 6;
       cam.updateProjectionMatrix();
-      cam.position.set(0, sphere.radius * 0.26, dist);
-      cam.lookAt(0, 0, 0);
+      cam.position.set(0, focusY + modelH * 0.04, dist);
+      cam.lookAt(0, focusY, 0);
 
       const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 });
       const prevTarget = this.renderer.getRenderTarget();

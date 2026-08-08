@@ -1577,6 +1577,7 @@
   --sc-navy: #1d3a5f;
   --sc-ink: #2c4a43;
   --sc-dim: #6d8f86;
+  --sc-dot: #cfe8df;
   width: min(430px, 92vw);
   margin: 10px auto 0;
   background: var(--sc-lcd);
@@ -1594,6 +1595,7 @@
   --sc-navy: #6b4d12;
   --sc-ink: #5a4a20;
   --sc-dim: #9c8a55;
+  --sc-dot: #e9dfb8;
 }
 .sc-head {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -1605,7 +1607,11 @@
 .sc-id { display: flex; gap: 12px; padding: 12px 14px 6px; }
 .sc-portrait {
   width: 108px; height: 108px; flex: 0 0 auto;
-  background: #fff; border: 2px solid var(--sc-line); border-radius: 10px;
+  /* Pearlescent dither behind the bust (RemiliaNET pastel panel language). */
+  background-color: #fbfdfc;
+  background-image: radial-gradient(var(--sc-dot) 1.1px, transparent 1.1px);
+  background-size: 11px 11px;
+  border: 2px solid var(--sc-line); border-radius: 10px;
   display: grid; place-items: center; overflow: hidden;
 }
 .sc-portrait img { width: 100%; height: 100%; object-fit: cover; }
