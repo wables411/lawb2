@@ -411,7 +411,12 @@ export class ArcadeSceneController {
   private tunnelMaterial!: THREE.MeshStandardMaterial;
   private onPickCharacter: (id: ArcadeCharacterId) => void;
   /** Final survival time + how the run ended (UI + leaderboard). */
-  private onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
+  private onGameOver: (
+    survivalSec: number,
+    reason: RunEndReason,
+    finalHud?: ArcadeRunHudState,
+    portrait?: string,
+  ) => void;
   private onRunDifficulty?: (payload: ReefRunHudPayload) => void;
   private onRunHud?: (hud: ArcadeRunHudState) => void;
   /** Fires as bootstrap milestones complete so the loading overlay can show % + label. */
@@ -450,7 +455,12 @@ export class ArcadeSceneController {
     container: HTMLElement,
     handlers: {
       onPickCharacter: (id: ArcadeCharacterId) => void;
-      onGameOver: (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => void;
+      onGameOver: (
+        survivalSec: number,
+        reason: RunEndReason,
+        finalHud?: ArcadeRunHudState,
+        portrait?: string,
+      ) => void;
       onRunDifficulty?: (payload: ReefRunHudPayload) => void;
       onRunHud?: (hud: ArcadeRunHudState) => void;
       onBootProgress?: (p: ArcadeBootProgress) => void;
@@ -2337,6 +2347,48 @@ export class ArcadeSceneController {
     this.impactFx = [];
   }
 
+  /**
+   * One-shot portrait of the character as they are RIGHT NOW in the live scene
+   * (milady-tracker philosophy: browser-side avatar rendering, no canned art).
+   * Renders to an offscreen target so the visible canvas never flickers; returns a
+   * square PNG data URL with the underwater scene as backdrop, or null best-effort.
+   */
+  private captureCharacterPortrait(size = 512): string | null {
+    const root = this.swimRoot;
+    if (!root || !this.renderer || !this.scene) return null;
+    try {
+      const p = new THREE.Vector3();
+      root.getWorldPosition(p);
+      const cam = new THREE.PerspectiveCamera(36, 1, 0.05, 90);
+      // 3/4 hero shot, slightly above, facing the swimmer's front (they face +Z: rotation.y = π).
+      cam.position.set(p.x + 0.85, p.y + 0.95, p.z + 2.05);
+      cam.lookAt(p.x, p.y + 0.5, p.z);
+      const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 });
+      const prevTarget = this.renderer.getRenderTarget();
+      this.renderer.setRenderTarget(rt);
+      this.renderer.render(this.scene, cam);
+      const px = new Uint8Array(size * size * 4);
+      this.renderer.readRenderTargetPixels(rt, 0, 0, size, size, px);
+      this.renderer.setRenderTarget(prevTarget);
+      rt.dispose();
+      // GL reads bottom-up — flip rows into the 2D canvas.
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      const img = ctx.createImageData(size, size);
+      const rowBytes = size * 4;
+      for (let y = 0; y < size; y++) {
+        img.data.set(px.subarray((size - 1 - y) * rowBytes, (size - y) * rowBytes), y * rowBytes);
+      }
+      ctx.putImageData(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }
+
   private triggerGameOver(reason: RunEndReason): void {
     if (this.playEnded) return;
     this.playEnded = true;
@@ -2348,6 +2400,8 @@ export class ArcadeSceneController {
       ? runStateToHud(this.runState, this.clock.elapsedTime, 1)
       : undefined;
     if (finalHud) finalHud.trashByKind = { ...this.trashVariantCounts };
+    // Snapshot BEFORE the death tumble starts so the card portrait is composed.
+    const portrait = this.captureCharacterPortrait();
     this.runParityCheck();
     this.submitRunProof();
 
@@ -2368,7 +2422,7 @@ export class ArcadeSceneController {
     this.deathNotifyTimer = window.setTimeout(() => {
       this.deathNotifyTimer = null;
       if (this.disposed) return;
-      this.onGameOver(this.runSurvivalSec, reason, finalHud);
+      this.onGameOver(this.runSurvivalSec, reason, finalHud, portrait ?? undefined);
     }, delayMs);
   }
 

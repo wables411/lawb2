@@ -1569,6 +1569,94 @@
 .rw-lognote-text i { font-size: 9.5px; color: var(--rw-ink-dim); }
 .rw-lognote-text span { font-size: 9.5px; font-weight: 700; color: var(--rw-navy); font-variant-numeric: tabular-nums; }
 
+/* ── End-of-run scorecard (dive report ID card; sc-card-gold = paid treasure run) ── */
+.sc-card {
+  --sc-lcd: #dff0e9;
+  --sc-head: #bfe3d6;
+  --sc-line: #8fc9b6;
+  --sc-navy: #1d3a5f;
+  --sc-ink: #2c4a43;
+  --sc-dim: #6d8f86;
+  width: min(430px, 92vw);
+  margin: 10px auto 0;
+  background: var(--sc-lcd);
+  border: 2px solid var(--sc-line);
+  border-radius: 16px;
+  overflow: hidden;
+  text-align: left;
+  color: var(--sc-ink);
+  font-family: 'Courier New', Courier, monospace;
+}
+.sc-card-gold {
+  --sc-lcd: #f3e9c9;
+  --sc-head: #e7d9a8;
+  --sc-line: #c9a94e;
+  --sc-navy: #6b4d12;
+  --sc-ink: #5a4a20;
+  --sc-dim: #9c8a55;
+}
+.sc-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 9px 14px; background: var(--sc-head);
+}
+.sc-head b { font-size: 16px; font-weight: 800; color: var(--sc-navy); letter-spacing: 0.04em; }
+.sc-head > span { text-align: right; font-size: 10px; font-weight: 700; color: var(--sc-navy); }
+.sc-head small { display: block; font-size: 8.5px; font-weight: 400; color: var(--sc-dim); }
+.sc-id { display: flex; gap: 12px; padding: 12px 14px 6px; }
+.sc-portrait {
+  width: 108px; height: 108px; flex: 0 0 auto;
+  background: #fff; border: 2px solid var(--sc-line); border-radius: 10px;
+  display: grid; place-items: center; overflow: hidden;
+}
+.sc-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.sc-portrait span { font-size: 40px; color: var(--sc-dim); font-weight: 700; }
+.sc-fields { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+.sc-field label { display: block; font-size: 8.5px; font-weight: 700; color: var(--sc-dim); letter-spacing: 0.1em; }
+.sc-field span { font-size: 13px; font-weight: 700; color: var(--sc-navy); overflow-wrap: anywhere; }
+.sc-time span { font-size: 21px; font-weight: 800; opacity: 0; transform: scale(1.5); }
+.sc-time-stamped span {
+  display: inline-block; opacity: 1; transform: scale(1);
+  transition: opacity 0.16s ease-out, transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-time span { opacity: 1; transform: none; }
+}
+.sc-verified {
+  align-self: flex-start; padding: 3px 9px; border: 2px solid var(--sc-navy); border-radius: 7px;
+  font-size: 11px; font-weight: 800; color: var(--sc-navy); letter-spacing: 0.06em;
+  transform: rotate(-3deg);
+}
+.sc-haul { padding: 4px 14px 8px; }
+.sc-haul-head {
+  font-size: 10.5px; font-weight: 800; color: var(--sc-navy); letter-spacing: 0.08em;
+  border-bottom: 1.5px solid var(--sc-line); padding-bottom: 4px; margin-bottom: 4px;
+}
+.sc-none { font-size: 11px; color: var(--sc-dim); margin: 6px 0; }
+.sc-row {
+  display: flex; align-items: center; gap: 9px; padding: 3px 0;
+  opacity: 0; transform: translateY(5px);
+}
+.sc-row-in { opacity: 1; transform: none; transition: opacity 0.18s ease-out, transform 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .sc-row { opacity: 1; transform: none; }
+}
+.sc-row .rw-sprite { width: 30px; height: 30px; background-size: 360px 30px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sc-row .rw-sprite { animation-name: sc-item-spin; }
+}
+@keyframes sc-item-spin {
+  to { background-position: -360px 0; }
+}
+.sc-row-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; color: var(--sc-ink); }
+.sc-row-name i { display: block; font-size: 9.5px; font-weight: 400; color: var(--sc-dim); }
+.sc-row b { font-size: 14px; font-weight: 800; color: var(--sc-navy); font-variant-numeric: tabular-nums; }
+.sc-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 14px 12px;
+}
+.sc-foot small { font-size: 8px; color: var(--sc-dim); letter-spacing: 0.06em; text-align: right; }
+.sc-save { font-size: 12px; }
+
 /* stacking for tablets / phones */
 @media (max-width: 840px) {
   .rw-instruments { grid-template-columns: 1fr; }

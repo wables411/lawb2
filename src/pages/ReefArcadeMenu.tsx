@@ -28,6 +28,7 @@ import {
   type ReefStrings,
 } from './arcade/reefLang';
 import { TRASH_VARIANTS } from './arcade/arcadeTrashVariants';
+import { ReefScoreCard } from './arcade/ReefScoreCard';
 import type { ArcadePlayInputHandle } from './ArcadeThreeBackground';
 import './reefArcadeMenu.css';
 
@@ -158,6 +159,8 @@ export default function ReefArcadeMenu() {
   const [reefStats, setReefStats] = useState<ReefRunProfileStats | null>(null);
   /** Dive-log showcase: which satchel item's field notes are open (hover or tap). */
   const [logFocus, setLogFocus] = useState<string | null>(null);
+  /** Live engine snapshot of the character at run end (scorecard portrait). */
+  const [runPortrait, setRunPortrait] = useState<string | null>(null);
   const [verifiedBest, setVerifiedBest] = useState<ReefVerifiedEntry | null>(null);
   /** Bumped when a run's stats finish saving, so the satchel refetches even if the
    *  player reached the menu before the Firebase write landed. */
@@ -212,6 +215,27 @@ export default function ReefArcadeMenu() {
   const t = REEF_STRINGS[lang];
 
   const skipIntro = useCallback(() => setPhase('menu'), []);
+
+  /** DEV-only (`?carddemo`): jump straight to the game-over scorecard with fake haul
+   *  data so the card is inspectable without playing a run. Compiled out of prod. */
+  useEffect(() => {
+    if (!import.meta.env.DEV || !window.location.search.includes('carddemo')) return undefined;
+    // Defer past mount: the gameScreen-reset effect nulls runHud while the initial
+    // screen is still 'menu', which would clobber the demo hud set synchronously here.
+    const id = window.setTimeout(() => {
+      setPhase('menu');
+      setRunHud(reefRunHudFromSurvivalSec(97));
+      setRunStatsHud({
+        oxygen: 0, oxygenMax: 100, oxygenInfinite: true, armor: 0, armorMax: 60,
+        coins: 23, trash: 17, cheeseCollected: 3, peptidesCollected: 2,
+        relativeSpeed: 1, cheeseSecLeft: 0, dragSecLeft: 0,
+        trashByKind: { cube: 5, vape: 4, crt: 2, cigpack: 3, bag: 3 },
+      });
+      setLastRunEndReason('wrecked');
+      setGameScreen('gameover');
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     if (phase !== 'intro') return;
@@ -289,10 +313,11 @@ export default function ReefArcadeMenu() {
   }, []);
 
   const onGameOver = useCallback(
-    (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => {
+    (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState, portrait?: string) => {
       setRunHud(reefRunHudFromSurvivalSec(survivalSec));
       setLastRunEndReason(reason);
       if (finalHud) setRunStatsHud(finalHud);
+      setRunPortrait(portrait ?? null);
       setGameScreen('gameover');
 
       if (!connection.connected || !connection.address) {
@@ -1316,22 +1341,27 @@ export default function ReefArcadeMenu() {
           <div className="ra-gameover-layer">
             <div className="ra-gameover-panel">
               <h2 className="ra-gameover-title">{t.gameOver}</h2>
-              {runHud && (
-                <p className="ra-gameover-depth">
-                  {t.depthReached} · <span className="ra-gameover-roman">{runHud.roman}</span>
-                  <span className="ra-gameover-time"> · {Math.floor(runHud.survivalSec)}s {t.run}</span>
-                </p>
-              )}
               <p className="ra-gameover-sub">
                 {lastRunEndReason ? runEndSummary(lastRunEndReason, t) : t.swimAgain}
               </p>
-              {runStatsHud && (
-                <p style={{ margin: '8px 0 0', fontSize: 13 }}>
-                  🗑 <strong>{t.thankYou.replace('{n}', String(runStatsHud.trash))}</strong>
-                  <span style={{ opacity: 0.85, display: 'block', marginTop: 2 }}>
-                    {runStatsHud.coins} {t.coins}
-                  </span>
-                </p>
+              {runHud && (
+                <ReefScoreCard
+                  t={t}
+                  lang={lang}
+                  data={{
+                    characterId: selectedCharacterId,
+                    survivalSec: runHud.survivalSec,
+                    roman: runHud.roman,
+                    hud: runStatsHud,
+                    portrait: runPortrait ?? undefined,
+                    treasure: Boolean(jackpot.enabled && jackpotVerdict),
+                    verifiedMs: jackpotVerdict?.survivalMs,
+                    diver: connection.connected
+                      ? connection.ens ??
+                        (connection.address ? shortenAddress(connection.address) : null)
+                      : null,
+                  }}
+                />
               )}
               {lastRunLbNote && (
                 <p className="ra-gameover-lb-note" style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>
