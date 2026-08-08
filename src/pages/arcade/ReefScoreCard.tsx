@@ -140,7 +140,7 @@ async function drawCardPng(
   c.fillText('REEF RUN', W - 36, 48);
   c.fillStyle = pal.dim;
   c.font = `400 11px ${mono}`;
-  c.fillText('lawb.xyz/arcade', W - 36, 68);
+  c.fillText('lawb.xyz/reefrun', W - 36, 68);
   c.textAlign = 'left';
 
   // Portrait (left) + ID fields (right)
@@ -342,7 +342,7 @@ export function ReefScoreCard({
         <b>{data.treasure ? t.cardTitleTreasure : t.cardTitleFree}</b>
         <span>
           REEF RUN
-          <small>lawb.xyz/arcade</small>
+          <small>lawb.xyz/reefrun</small>
         </span>
       </div>
 

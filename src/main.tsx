@@ -15,7 +15,7 @@ import './index.css';
 import './walletModal.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import { wagmiAdapter, initializeAppKit } from './appkit.ts';
 import { config as wagmiConfig } from './wagmi';
@@ -27,6 +27,12 @@ const queryClient = new QueryClient();
 const Root = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
   return isMobile ? <Mobile /> : <App />;
+};
+
+/** /arcade → /reefrun keeping query + hash (?jackpot=1, ?carddemo, … must survive). */
+const ArcadeRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/reefrun${location.search}${location.hash}`} replace />;
 };
 
 // Component that handles dynamic config updates
@@ -85,8 +91,11 @@ const AppWithWagmi = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Root />} />
+              {/* Canonical Reef Run route; /arcade lives on as a redirect so every
+                  pre-rename link (portals, socials, bookmarks) keeps working. */}
+              <Route path="/arcade" element={<ArcadeRedirect />} />
               <Route
-                path="/arcade"
+                path="/reefrun"
                 element={
                   <Suspense
                     fallback={

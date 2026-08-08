@@ -776,7 +776,7 @@ export const PLANETS: Planet[] = [
     blurb:
       'Endless underwater runner in Three.js: pick Clawb, Milady, or Radbro, dodge the reef, and haul as much ocean trash as you can before your air runs out. Synthesized 80s soundtrack, EN/中文, and a standalone Radbro build at radreefrun.lawb.xyz.',
     links: [
-      { label: 'Play', url: 'https://lawb.xyz/arcade' },
+      { label: 'Play', url: 'https://lawb.xyz/reefrun' },
       { label: 'Radbro build', url: 'https://radreefrun.lawb.xyz' },
     ],
     contributors: [

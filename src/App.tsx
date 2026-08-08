@@ -230,7 +230,7 @@ function App() {
       });
       setActivePopup('leaderboard-popup');
     } else if (action === 'arcade') {
-      navigate('/arcade');
+      navigate('/reefrun');
     } else if (action === 'chess') {
       navigate('/chess');
     }

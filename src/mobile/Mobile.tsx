@@ -296,7 +296,7 @@ const Mobile = () => {
     { label: 'Remilia', icon: '/assets/remilia-folder.webp', action: () => setShowRemiliaFolder(true) },
     { label: 'Lawb NFT Gallery', icon: '/assets/evmfolder.png', action: () => navigate('/gallery') },
     { label: 'Meme Generator', icon: '/assets/meme.webp', action: () => setShowMemeGenerator(true) },
-    { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/arcade') },
+    { label: 'Reef Run', icon: '/assets/reef-arcade.svg', action: () => navigate('/reefrun') },
     { label: 'Lawb Chess', icon: '/assets/chess.svg', action: () => navigate('/chess') },
     { label: 'Lawb Profile', icon: '/assets/wallet.png', action: () => setShowProfilePopup(true) },
     { label: 'Leaderboard', icon: '/images/sticker3.png', action: () => setShowLeaderboardPopup(true) },
