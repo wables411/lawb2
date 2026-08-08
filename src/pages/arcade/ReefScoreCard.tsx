@@ -16,6 +16,8 @@ import { reefSfx } from './arcadeSounds';
 
 export type ScoreCardData = {
   characterId: string;
+  /** Display label from the character def (ARCADE_CHARACTERS), not a derived id. */
+  characterLabel: string;
   survivalSec: number;
   roman: string;
   hud: ArcadeRunHudState | null;
@@ -111,7 +113,8 @@ async function drawCardPng(
   canvas.height = H;
   const c = canvas.getContext('2d');
   if (!c) return null;
-  const mono = '"Courier New", Courier, monospace';
+  // Match the on-screen card / dive-device font stack.
+  const mono = '"M PLUS 1 Code", "MS Gothic", monospace';
 
   // Case + LCD panel
   c.fillStyle = pal.case;
@@ -198,7 +201,7 @@ async function drawCardPng(
     c.fillText(value, fx, y + (big ? 40 : 24));
   };
   field(t.cardDiver, data.diver ?? t.cardGuest, 140);
-  field('SWIMMER', data.characterId.toUpperCase(), 196);
+  field('SWIMMER', data.characterLabel, 196);
   field(t.cardDate, dateStr, 252);
   field(`${t.cardDiveTime} · ${t.depth} ${data.roman}`, fmtDiveTime(data.survivalSec), 300, true);
   if (gold && data.verifiedMs !== undefined) {
@@ -305,6 +308,8 @@ export function ReefScoreCard({
   const stamped = printed > rows.length;
 
   const saveCard = async (): Promise<void> => {
+    // uiClick convention: resume() nudges the mobile audio unlock before the blip.
+    reefSfx.resume();
     reefSfx.play('ui');
     const dateStr = new Date().toISOString().slice(0, 10);
     const blob = await drawCardPng(data, rows, names, t, dateStr);
@@ -316,9 +321,10 @@ export function ReefScoreCard({
         await navigator.share({ files: [file], title: 'REEF RUN' });
         return;
       }
-    } catch {
-      /* user cancelled the sheet — fall through to nothing, not a forced download */
-      return;
+    } catch (e) {
+      // User closing the sheet is not an error; anything else falls back to a
+      // download so SAVE never silently does nothing (MemeGenerator convention).
+      if ((e as DOMException)?.name === 'AbortError') return;
     }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -357,7 +363,7 @@ export function ReefScoreCard({
           </div>
           <div className="sc-field">
             <label>SWIMMER</label>
-            <span>{data.characterId.toUpperCase()}</span>
+            <span>{data.characterLabel}</span>
           </div>
           <div className={`sc-field sc-time${stamped ? ' sc-time-stamped' : ''}`}>
             <label>

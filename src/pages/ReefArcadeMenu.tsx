@@ -1361,6 +1361,9 @@ export default function ReefArcadeMenu() {
                   lang={lang}
                   data={{
                     characterId: selectedCharacterId,
+                    characterLabel:
+                      CHARACTERS.find((c) => c.id === selectedCharacterId)?.name ??
+                      selectedCharacterId.toUpperCase(),
                     survivalSec: runHud.survivalSec,
                     roman: runHud.roman,
                     hud: runStatsHud,

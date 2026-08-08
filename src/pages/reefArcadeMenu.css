@@ -1602,7 +1602,8 @@
   overflow: hidden;
   text-align: left;
   color: var(--sc-ink);
-  font-family: 'Courier New', Courier, monospace;
+  /* Same rounded-mono stack as the dive device (rw-*), not an invented one. */
+  font-family: 'M PLUS 1 Code', 'MS Gothic', ui-monospace, monospace;
 }
 .sc-card-gold {
   --sc-lcd: #f3e9c9;
