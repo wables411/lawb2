@@ -1374,6 +1374,19 @@
 /* ═══════════ Dive-device menu (rw-*) — pastel instrument over the live 3D sea ═══════════ */
 .rw-menu { max-width: none; }
 
+/* The arcade shell is fixed + overflow:hidden, so the MENU itself must scroll when the
+   stacked device is taller than the screen (phones, and especially saved-to-home-screen
+   standalone mode where there is no browser chrome to escape with). dvh tracks the real
+   visible height when the URL bar is gone. */
+.rw-menu {
+  max-height: calc(100vh - 12px);
+  max-height: calc(100dvh - 12px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 6px 2px 18px;
+}
+
 .rw-device,
 .rw-device *,
 .rw-device *::before,

@@ -842,6 +842,19 @@ export default function ReefArcadeMenu() {
                     <span className="rw-comp-ico" aria-hidden>{sfxMuted ? '🔇' : '🔊'}</span>
                     <span><b>{t.sound}</b><span>{sfxMuted ? t.soundOff : t.soundOn} · M</span></span>
                   </button>
+                  <button type="button" className="rw-comp" onClick={toggleLang} aria-label="Switch language">
+                    <span className="rw-comp-ico" aria-hidden>文</span>
+                    <span><b>{lang === 'en' ? '中文' : 'EN'}</b></span>
+                  </button>
+                  <button
+                    type="button"
+                    className="rw-comp"
+                    onClick={() => { uiClick(); navigate('/'); }}
+                    aria-label="Exit to lawb.xyz desktop"
+                  >
+                    <span className="rw-comp-ico" aria-hidden>⏏</span>
+                    <span><b>EXIT</b><span>lawb.xyz</span></span>
+                  </button>
                   <div className="rw-clock">
                     {surfaceTime}
                     <small>{t.deviceSurfaceTime}</small>
