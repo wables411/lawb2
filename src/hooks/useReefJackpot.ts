@@ -132,11 +132,15 @@ export function useReefJackpot() {
 
     const allowance = (allowanceRead.data as bigint | undefined) ?? 0n;
     if (allowance < entryAmount) {
+      // Approve a BATCH of entries, not one: the approve+enter double-prompt per
+      // dive is the slowest part of the flow, and the TTL race starts right after.
+      // 20 entries' worth keeps the allowance bounded (no "unlimited" wallet scare)
+      // while making the next ~19 dives single-signature.
       const approveHash = await writeContractAsync({
         address: token,
         abi: ERC20_ALLOWANCE_ABI,
         functionName: 'approve',
-        args: [contract, entryAmount],
+        args: [contract, entryAmount * 20n],
       });
       await publicClient.waitForTransactionReceipt({ hash: approveHash });
     }
