@@ -150,10 +150,44 @@ export default function ReefArcadeMenu() {
 
   // ── Jackpot (VITE_REEF_JACKPOT, spec §7) ──────────────────────────────────
   const jackpot = useReefJackpot();
-  /** Paid entry not yet run: dive uses its seed; cleared when a run consumes it. */
-  const [jackpotEntry, setJackpotEntry] = useState<{ nonce: number; seed: number } | null>(null);
+  /** Paid entry: dive uses its seed. KEPT after the run (enteredAt gates the submit
+   *  countdown — the contract's TTL covers pay→dive→submit as one window). */
+  const [jackpotEntry, setJackpotEntry] = useState<{ nonce: number; seed: number; enteredAt: number } | null>(null);
   /** Validator signature block for the last jackpot run (submit on-chain from game over). */
-  const [jackpotVerdict, setJackpotVerdict] = useState<ReefJackpotVerdict | null>(null);
+  const [jackpotVerdict, setJackpotVerdict] = useState<ReefJackpotVerdict | null>(() => {
+    // Survive reloads: a signed verdict is money — it must not live only in React state.
+    try {
+      const raw = sessionStorage.getItem('reef_jackpot_verdict_v1');
+      if (!raw) return null;
+      const saved = JSON.parse(raw) as ReefJackpotVerdict;
+      return Date.now() / 1000 < saved.deadline ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (jackpotVerdict) sessionStorage.setItem('reef_jackpot_verdict_v1', JSON.stringify(jackpotVerdict));
+      else sessionStorage.removeItem('reef_jackpot_verdict_v1');
+    } catch { /* storage unavailable — degrade to in-memory only */ }
+  }, [jackpotVerdict]);
+  /** 1s ticker while a paid entry / unsubmitted verdict is racing the TTL clock. */
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    if (!jackpotEntry && !jackpotVerdict) return undefined;
+    const id = window.setInterval(() => setNowSec(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [jackpotEntry, jackpotVerdict]);
+  /** Seconds left to act (dive and/or submit). null = nothing pending. */
+  const jackpotSecLeft: number | null = (() => {
+    if (!jackpotEntry && !jackpotVerdict) return null;
+    let deadline = Infinity;
+    if (jackpotEntry) deadline = jackpotEntry.enteredAt + jackpot.entryTtlSec;
+    if (jackpotVerdict) deadline = Math.min(deadline, jackpotVerdict.deadline);
+    return deadline === Infinity ? null : Math.max(0, Math.floor(deadline - nowSec));
+  })();
+  const jackpotExpired = jackpotSecLeft !== null && jackpotSecLeft <= 0;
+  const fmtSecLeft = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   /** Step label while a jackpot tx / flow is in flight (also disables buttons). */
   const [jackpotBusy, setJackpotBusy] = useState<string | null>(null);
   const [jackpotNote, setJackpotNote] = useState<string | null>(null);
@@ -496,7 +530,8 @@ export default function ReefArcadeMenu() {
     if (typeof j.signature === 'string') {
       setJackpotVerdict(j);
       setJackpotNote(null);
-      setJackpotEntry(null); // the paid entry has been run; what remains is the signed score
+      // NOTE: jackpotEntry is deliberately KEPT — its enteredAt drives the submit
+      // countdown (contract TTL spans pay→dive→submit; learned the hard way 2026-08-08).
     }
   }, []);
 
@@ -508,7 +543,7 @@ export default function ReefArcadeMenu() {
     try {
       setJackpotBusy('Confirm in wallet…');
       const entry = await jackpot.enterJackpot();
-      setJackpotEntry(entry);
+      setJackpotEntry({ ...entry, enteredAt: Math.floor(Date.now() / 1000) });
       setJackpotBusy(null);
       arcadeInputRef.current?.setJackpotRun(entry.seed, entry.nonce);
       setModal(null);
@@ -537,11 +572,20 @@ export default function ReefArcadeMenu() {
    */
   useEffect(() => {
     const pending = jackpot.pendingEntry;
-    if (!pending || jackpotEntry || jackpotVerdict) return;
-    if (Date.now() / 1000 - pending.enteredAt > 14 * 60) return;
-    setJackpotEntry({ nonce: pending.nonce, seed: pending.seed });
+    if (!pending || jackpotEntry) return;
+    if (jackpotVerdict) {
+      // Reload with a saved verdict: re-attach the matching entry purely for its
+      // enteredAt (the TTL countdown) — never adopt a different entry over a verdict.
+      if (jackpotVerdict.entryNonce !== pending.nonce) return;
+      setJackpotEntry({ nonce: pending.nonce, seed: pending.seed, enteredAt: pending.enteredAt });
+      return;
+    }
+    // Leave at least 60s of TTL — adopting a nearly-dead entry offers a dive
+    // whose score could never be submitted in time.
+    if (Date.now() / 1000 - pending.enteredAt > jackpot.entryTtlSec - 60) return;
+    setJackpotEntry({ nonce: pending.nonce, seed: pending.seed, enteredAt: pending.enteredAt });
     setJackpotNote('Found your paid entry on-chain — dive before it expires.');
-  }, [jackpot.pendingEntry, jackpotEntry, jackpotVerdict]);
+  }, [jackpot.pendingEntry, jackpot.entryTtlSec, jackpotEntry, jackpotVerdict]);
 
   /** Submit the validator-signed score on-chain (win → instant payout). */
   const submitJackpotScore = useCallback(async () => {
@@ -1462,8 +1506,18 @@ export default function ReefArcadeMenu() {
               {jackpot.enabled && jackpotNote && !jackpotVerdict && (
                 <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>
               )}
+              {jackpot.enabled && jackpotVerdict && jackpotSecLeft !== null && !jackpotExpired && (
+                <p style={{ margin: '10px 0 0', fontSize: 13, fontWeight: 700, color: jackpotSecLeft < 60 ? '#ff5566' : undefined }} aria-live="polite">
+                  ⏱ SUBMIT WITHIN {fmtSecLeft(jackpotSecLeft)} OR THE ENTRY EXPIRES
+                </p>
+              )}
+              {jackpot.enabled && jackpotVerdict && jackpotExpired && (
+                <p style={{ margin: '10px 0 0', fontSize: 13, color: '#ff5566' }}>
+                  ENTRY EXPIRED — this score can no longer be submitted on-chain.
+                </p>
+              )}
               <div className="ra-gameover-actions">
-                {jackpot.enabled && jackpotVerdict && (
+                {jackpot.enabled && jackpotVerdict && !jackpotExpired && (
                   <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
                     {jackpotBusy ?? '⚓ SUBMIT TO THE TREASURE'}
                   </button>
@@ -1601,8 +1655,20 @@ export default function ReefArcadeMenu() {
                         UNSUBMITTED SCORE: <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
                       </p>
                     )}
-                    {jackpotEntry && !jackpotVerdict && (
-                      <p className="ra-wallet-status">ENTRY PAID · SEED ASSIGNED — DIVE BEFORE IT EXPIRES</p>
+                    {jackpotEntry && !jackpotVerdict && !jackpotExpired && jackpotSecLeft !== null && (
+                      <p className="ra-wallet-status">
+                        ENTRY PAID · SEED ASSIGNED — DIVE NOW ·{' '}
+                        <strong style={jackpotSecLeft < 60 ? { color: '#ff5566' } : undefined}>
+                          {fmtSecLeft(jackpotSecLeft)}
+                        </strong>{' '}
+                        LEFT TO DIVE <em>AND</em> SUBMIT
+                      </p>
+                    )}
+                    {(jackpotEntry || jackpotVerdict) && jackpotExpired && (
+                      <p className="ra-wallet-status" style={{ color: '#ff5566' }}>
+                        {jackpotVerdict ? 'ENTRY EXPIRED — THAT SCORE CAN NO LONGER BE SUBMITTED' : 'ENTRY EXPIRED UNUSED'}
+                        {' — '}THE CULT STAYS IN THE CHEST
+                      </p>
                     )}
                     {jackpotNote && <p style={{ fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>}
                     {connection.connected && (
@@ -1628,11 +1694,11 @@ export default function ReefArcadeMenu() {
                       </div>
                     )}
                     <div className="ra-panel-actions">
-                      {jackpotVerdict ? (
+                      {jackpotVerdict && !jackpotExpired ? (
                         <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
-                          {jackpotBusy ?? 'SUBMIT SCORE ON-CHAIN'}
+                          {jackpotBusy ?? `SUBMIT SCORE ON-CHAIN${jackpotSecLeft !== null ? ` · ${fmtSecLeft(jackpotSecLeft)}` : ''}`}
                         </button>
-                      ) : jackpotEntry ? (
+                      ) : jackpotEntry && !jackpotExpired ? (
                         <button type="button" className="ra-btn" onClick={diveWithPaidEntry} disabled={!sceneReady}>
                           DIVE (ENTRY PAID)
                         </button>

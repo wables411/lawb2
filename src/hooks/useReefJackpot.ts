@@ -71,6 +71,16 @@ export function useReefJackpot() {
     query: { enabled: Boolean(contract && account && tokenRead.data) },
   });
 
+  // Entry-submission window (contract-tunable via setEntryTtl). The WHOLE cycle
+  // pay -> dive -> submitScore must fit inside it — the UI counts down against this.
+  const ttlRead = useReadContract({
+    address: contract ?? undefined,
+    abi: REEF_JACKPOT_ABI,
+    functionName: 'entryTtlSec',
+    query: { enabled: Boolean(contract) },
+  });
+  const entryTtlSec = ttlRead.data !== undefined ? Number(ttlRead.data) : 15 * 60;
+
   // Live pending entry from CONTRACT STATE — survives page reloads and flaky
   // receipts. A paid entry must never be reachable only through local React state.
   const pendingRead = useReadContract({
@@ -250,6 +260,7 @@ export function useReefJackpot() {
     balance: (balanceRead.data as bigint | undefined) ?? null,
     boardLoading: boardRead.isLoading,
     pendingEntry,
+    entryTtlSec,
     enterJackpot,
     fundPot,
     submitJackpotScore,

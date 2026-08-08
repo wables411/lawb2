@@ -80,6 +80,13 @@ export const REEF_JACKPOT_ABI = [
   },
   {
     type: 'function',
+    name: 'entryTtlSec',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint40' }],
+  },
+  {
+    type: 'function',
     name: 'pendingEntry',
     stateMutability: 'view',
     inputs: [{ name: '', type: 'address' }],
