@@ -985,20 +985,15 @@ export default function ReefArcadeMenu() {
                     <div className="rw-idcard">
                       <div className="rw-idcard-t">LAWB 珊瑚礁 潜水士</div>
                       <div className="rw-idcard-main">
-                        {pfpUrl ? (
-                          <img
-                            className="rw-pfp"
-                            src={pfpUrl}
-                            alt=""
-                            onError={() => setPfpUrl(null)}
-                          />
-                        ) : (
-                          <span
-                            className="rw-pfp"
-                            style={{ background: CHARACTERS.find((c) => c.id === selectedCharacterId)?.color ?? '#ff6b35' }}
-                            aria-hidden
-                          />
-                        )}
+                        <img
+                          className="rw-pfp"
+                          src={pfpUrl ?? '/images/sticker4.png'}
+                          alt=""
+                          onError={(e) => {
+                            // Sitewide default pfp convention (PlayerProfile/ChessChat).
+                            e.currentTarget.src = '/images/sticker4.png';
+                          }}
+                        />
                         <div className="rw-idf">
                           <div className="rw-idf-v">
                             {connection.connected
@@ -1369,13 +1364,7 @@ export default function ReefArcadeMenu() {
                     survivalSec: runHud.survivalSec,
                     roman: runHud.roman,
                     hud: runStatsHud,
-                    // carddemo: a local image stands in for the pfp (the disconnect
-                    // effect wipes pfpUrl state in the walletless demo).
-                    pfp:
-                      pfpUrl ??
-                      (import.meta.env.DEV && window.location.search.includes('carddemo')
-                        ? '/images/GvRZb1uWgAE4g9k.jpeg'
-                        : null),
+                    pfp: pfpUrl,
                     treasure: Boolean(jackpot.enabled && jackpotVerdict),
                     verifiedMs: jackpotVerdict?.survivalMs,
                     diver: connection.connected

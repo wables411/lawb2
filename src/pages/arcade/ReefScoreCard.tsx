@@ -19,7 +19,7 @@ export type ScoreCardData = {
   survivalSec: number;
   roman: string;
   hud: ArcadeRunHudState | null;
-  /** Player's profile picture URL (dead-gateway rewritten); null/undefined = guest "?". */
+  /** Player's profile picture URL (dead-gateway rewritten); null/undefined = site default. */
   pfp?: string | null;
   /** Paid-entry (treasure) run → gold variant. */
   treasure: boolean;
@@ -31,6 +31,9 @@ export type ScoreCardData = {
 
 /** Rotating full-body swimmer strip (pre-rendered like the satchel item strips). */
 const swimmerStrip = (characterId: string): string => `/assets/satchel/strip_swimmer_${characterId}.webp`;
+
+/** Sitewide default pfp — same convention as PlayerProfile/ChessChat. */
+const DEFAULT_PFP = '/images/sticker4.png';
 
 type HaulRow = { key: string; strip: string; latin?: string; count: number };
 
@@ -162,7 +165,7 @@ async function drawCardPng(
     }
   }
   c.restore();
-  const pfpImg = data.pfp ? await loadImage(data.pfp) : null;
+  const pfpImg = (await loadImage(data.pfp || DEFAULT_PFP)) ?? (await loadImage(DEFAULT_PFP));
   if (pfpImg) {
     c.save();
     c.beginPath();
@@ -339,11 +342,13 @@ export function ReefScoreCard({
 
       <div className="sc-id">
         <div className="sc-portrait">
-          {data.pfp ? (
-            <img src={data.pfp} alt="" />
-          ) : (
-            <span aria-hidden>?</span>
-          )}
+          <img
+            src={data.pfp || DEFAULT_PFP}
+            alt=""
+            onError={(e) => {
+              e.currentTarget.src = DEFAULT_PFP;
+            }}
+          />
         </div>
         <div className="sc-fields">
           <div className="sc-field">
