@@ -2369,8 +2369,10 @@ export class ArcadeSceneController {
     const pScene = new THREE.Scene();
     try {
       // Clone SHARES geometry with the cached slot — never dispose it here.
-      const root = SkeletonUtils.clone(slot.idleRoot) as THREE.Group;
-      // The slot's idle model is HIDDEN during runs and the clone inherits that —
+      // Dance pose when loaded (the celebratory menu presentation), idle otherwise.
+      const src = slot.danceRoot ?? slot.idleRoot;
+      const root = SkeletonUtils.clone(src) as THREE.Group;
+      // Slot models are HIDDEN during runs and the clone inherits that —
       // an invisible subject renders an empty portrait.
       root.visible = true;
       /**
@@ -2439,7 +2441,17 @@ export class ArcadeSceneController {
       this.renderer.setRenderTarget(prevTarget);
       this.renderer.setClearColor(prevClearColor, prevClearAlpha);
       rt.dispose();
-      // GL reads bottom-up — flip rows into the 2D canvas.
+      // GL reads bottom-up — flip rows into the 2D canvas. Render-target readback is
+      // LINEAR (the sRGB output transform only applies when drawing to the canvas), so
+      // without conversion the portrait comes out dark and lifeless — apply the sRGB
+      // transfer per channel to match what the live canvas shows.
+      const srgb = new Uint8ClampedArray(256);
+      for (let i = 0; i < 256; i++) {
+        const l = i / 255;
+        srgb[i] = Math.round(
+          255 * (l <= 0.0031308 ? l * 12.92 : 1.055 * Math.pow(l, 1 / 2.4) - 0.055),
+        );
+      }
       const canvas = document.createElement('canvas');
       canvas.width = size;
       canvas.height = size;
@@ -2449,6 +2461,11 @@ export class ArcadeSceneController {
       const rowBytes = size * 4;
       for (let y = 0; y < size; y++) {
         img.data.set(px.subarray((size - 1 - y) * rowBytes, (size - y) * rowBytes), y * rowBytes);
+      }
+      for (let i = 0; i < img.data.length; i += 4) {
+        img.data[i] = srgb[img.data[i]!]!;
+        img.data[i + 1] = srgb[img.data[i + 1]!]!;
+        img.data[i + 2] = srgb[img.data[i + 2]!]!;
       }
       ctx.putImageData(img, 0, 0);
       return canvas.toDataURL('image/png');

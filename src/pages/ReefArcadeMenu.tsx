@@ -1358,7 +1358,7 @@ export default function ReefArcadeMenu() {
 
         {phase === 'menu' && gameScreen === 'gameover' && (
           <div className="ra-gameover-layer">
-            <div className="ra-gameover-panel">
+            <div className="ra-gameover-panel ra-report-panel">
               <h2 className="ra-gameover-title">{t.gameOver}</h2>
               <p className="ra-gameover-sub">
                 {lastRunEndReason ? runEndSummary(lastRunEndReason, t) : t.swimAgain}

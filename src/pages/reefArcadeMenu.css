@@ -831,6 +831,20 @@
     0 24px 80px rgba(0, 0, 0, 0.65);
 }
 
+/* Game-over report: the scorecard can be taller than a phone screen — the whole panel
+   scrolls (unlike the how-to, whose title/buttons stay pinned) so SAVE CARD is always
+   reachable. */
+.ra-report-panel {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+/* The panel is a flex column: without this it SHRINKS the card and the card's own
+   overflow:hidden eats the bottom (SAVE button) instead of the panel scrolling. */
+.ra-report-panel > * {
+  flex-shrink: 0;
+}
+
 /* Short viewports (phone landscape, small tablets): tighten the longest panels so the
    mission brief and how-to usually fit without needing to scroll at all. */
 @media (max-height: 780px) {
@@ -1578,7 +1592,9 @@
   --sc-ink: #2c4a43;
   --sc-dim: #6d8f86;
   --sc-dot: #cfe8df;
-  width: min(430px, 92vw);
+  /* Container-relative, NOT viewport units: 92vw overflowed the narrower game-over
+     panel to the right instead of centering inside it. */
+  width: min(430px, 100%);
   margin: 10px auto 0;
   background: var(--sc-lcd);
   border: 2px solid var(--sc-line);
