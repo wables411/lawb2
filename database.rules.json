@@ -34,7 +34,7 @@
     "profiles": {
       ".read": true,
       "$walletAddress": {
-        ".write": "auth != null && auth.uid === $walletAddress",
+        ".write": "auth != null && (auth.uid === $walletAddress || root.child('wallet_links').child(auth.uid).child('primary_wallet').val() === $walletAddress)",
         ".validate": "(!newData.hasChild('wallet_address') || (newData.child('wallet_address').isString() && newData.child('wallet_address').val() === $walletAddress)) && (!newData.hasChild('username') || (newData.child('username').isString() && newData.child('username').val().length >= 3 && newData.child('username').val().length <= 20)) && (!newData.hasChild('created_at') || newData.child('created_at').isString()) && (!newData.hasChild('updated_at') || newData.child('updated_at').isString())",
         "game_stats": {
           ".validate": "newData.hasChildren(['total_games', 'wins', 'losses', 'draws', 'total_points', 'win_rate']) && newData.child('total_games').isNumber() && newData.child('wins').isNumber() && newData.child('losses').isNumber() && newData.child('draws').isNumber() && newData.child('total_points').isNumber() && newData.child('win_rate').isNumber() && newData.child('total_games').val() >= 0 && newData.child('wins').val() >= 0 && newData.child('losses').val() >= 0 && newData.child('draws').val() >= 0 && newData.child('total_points').val() >= 0 && newData.child('win_rate').val() >= 0"
