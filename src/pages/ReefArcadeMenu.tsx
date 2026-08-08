@@ -785,9 +785,17 @@ export default function ReefArcadeMenu() {
       <div className="ra-inner">
         {phase === 'intro' && (
           <div className="ra-intro">
-            <p className="ra-intro-eyebrow">LAWB.XYZ</p>
-            <h1 className="ra-intro-title">REEF RUN</h1>
-            <p className="ra-intro-sub">ENDLESS SWIM · ARCADE EDITION</p>
+            <p className="ra-intro-eyebrow">MADE WITH LAWB</p>
+            <h1 className="ra-intro-title-gif-wrap">
+              <img
+                className="ra-intro-title-gif"
+                src="/arcade-assets/reefrun-title.gif"
+                alt="REEF RUN"
+                width={533}
+                height={93}
+              />
+            </h1>
+            <p className="ra-intro-sub">CLEAN UP THE OCEAN AND DONT DIE!</p>
             <p className="ra-intro-hint">{t.pressAny}</p>
           </div>
         )}

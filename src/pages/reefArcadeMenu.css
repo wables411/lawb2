@@ -264,6 +264,18 @@
   animation: ra-title-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }
 
+.ra-intro-title-gif-wrap {
+  margin: 0 0 0.5rem;
+  animation: ra-title-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.ra-intro-title-gif {
+  width: min(533px, 86vw);
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 24px rgba(46, 230, 255, 0.35));
+}
+
 .ra-intro-sub {
   font-size: clamp(13px, 2.4vw, 15px);
   color: rgba(232, 244, 255, 0.55);
