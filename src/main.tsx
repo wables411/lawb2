@@ -161,6 +161,37 @@ const AppWithWagmi = () => {
                   </Suspense>
                 }
               />
+              <Route
+                path="*"
+                element={
+                  <div
+                    style={{
+                      minHeight: '100vh',
+                      background: '#000',
+                      color: '#00ff99',
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontFamily: '"Courier New", Courier, monospace',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    <div
+                      style={{
+                        border: '2px solid #00ff99',
+                        padding: '16px 20px',
+                        background: 'rgba(0, 255, 153, 0.06)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <p style={{ margin: '0 0 12px' }}>404 Not Found</p>
+                      <a href="/" style={{ color: '#00ff99' }}>
+                        ← back to lawb.xyz
+                      </a>
+                    </div>
+                  </div>
+                }
+              />
             </Routes>
           </BrowserRouter>
           <LawbMiniPlayer />
