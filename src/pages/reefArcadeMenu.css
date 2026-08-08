@@ -1521,6 +1521,80 @@
   .rw-btn small { font-size: 8px; }
 }
 
+/* ── Console-page transitions: menus feel like the device changing screens ── */
+@keyframes rw-page-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rw-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rw-device { animation: rw-page-in 260ms cubic-bezier(0.22, 0.9, 0.3, 1); }
+  .ra-select-panel { animation: rw-page-in 260ms cubic-bezier(0.22, 0.9, 0.3, 1); }
+  .ra-overlay:has(.rw-console-page) { animation: rw-backdrop-in 200ms ease; }
+  .rw-console-page { animation: rw-page-in 240ms cubic-bezier(0.22, 0.9, 0.3, 1); }
+}
+
+/* The menu panels render as the SAME dive instrument showing a different page:
+   mint LCD face with the pale casing ring around it (matches .rw-device). */
+.ra-panel.rw-console-page {
+  --rw-lcd: #dff0e9;
+  --rw-lcd-deep: #cfe8df;
+  --rw-lcd-head: #bfe3d6;
+  --rw-line: #8fc9b6;
+  --rw-navy: #1d3a5f;
+  --rw-ink: #2c4a43;
+  --rw-ink-dim: #6d8f86;
+  background: var(--rw-lcd);
+  border: 2px solid var(--rw-line);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, 0.5),
+    0 0 0 9px #f4f8f7,
+    0 0 0 11.5px #c2d4cd,
+    0 18px 44px rgba(2, 12, 22, 0.5);
+  color: var(--rw-ink);
+  font-family: 'M PLUS 1 Code', 'MS Gothic', ui-monospace, monospace;
+}
+.rw-console-page h2 {
+  color: var(--rw-navy);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  border-bottom: 1.5px solid var(--rw-line);
+  padding-bottom: 8px;
+}
+.rw-console-page p { color: var(--rw-ink); }
+.rw-console-page strong { color: var(--rw-navy); }
+.rw-console-page .ra-wallet-status { color: #2e7d5b; }
+.rw-console-page .ra-btn {
+  background: #fff;
+  border: 2px solid var(--rw-line);
+  border-radius: 9px;
+  color: var(--rw-navy);
+  box-shadow: none;
+  text-shadow: none;
+}
+.rw-console-page .ra-btn:hover:not(:disabled) { background: var(--rw-lcd-deep); transform: none; }
+.rw-console-page .ra-btn-secondary { background: var(--rw-lcd-deep); }
+.rw-console-page .ra-howto-card {
+  background: #fff;
+  border: 1.5px solid var(--rw-line);
+  border-radius: 9px;
+}
+.rw-console-page .ra-howto-card-title { color: var(--rw-navy) !important; }
+.rw-console-page .ra-sponsor-input {
+  background: #fff;
+  border: 1.5px solid var(--rw-line);
+  color: var(--rw-ink);
+}
+.rw-console-page .ra-sponsor-input::placeholder { color: var(--rw-ink-dim); }
+.ra-overlay:has(.rw-console-page) {
+  background: rgba(3, 10, 18, 0.55);
+  backdrop-filter: blur(3px);
+}
+
 /* Mobile: less compositing / paint work behind WebGL */
 @media (max-width: 767px) {
   .ra-bg {

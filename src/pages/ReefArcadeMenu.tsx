@@ -389,7 +389,7 @@ export default function ReefArcadeMenu() {
       setJackpotBusy(null);
       setSponsorAmount('');
       setJackpotNote(
-        `🌊 Pot sponsored with ${sponsorAmount.trim()} ${entryTokenLabel(jackpot.chainId)} — thank you!`,
+        `🌊 Treasure grown by ${sponsorAmount.trim()} ${entryTokenLabel(jackpot.chainId)} — thank you!`,
       );
     } catch (e) {
       setJackpotBusy(null);
@@ -452,11 +452,11 @@ export default function ReefArcadeMenu() {
       setJackpotEntry(null);
       if (won && payout !== null) {
         setJackpotNote(
-          `🏆 JACKPOT! ${formatSurvivalMs(jackpotVerdict.survivalMs)} takes the pot — ${formatTokenAmount(payout)} ${entryTokenLabel(jackpot.chainId)} paid out.`,
+          `🏆 TREASURE! ${formatSurvivalMs(jackpotVerdict.survivalMs)} takes the chest — ${formatTokenAmount(payout)} ${entryTokenLabel(jackpot.chainId)} paid out.`,
         );
       } else {
         setJackpotNote(
-          `Score ${formatSurvivalMs(jackpotVerdict.survivalMs)} submitted — bar holds. Part of your entry paid the champion, the rest grew the pot.`,
+          `Score ${formatSurvivalMs(jackpotVerdict.survivalMs)} submitted — bar holds. Part of your entry paid the champion, the rest filled the chest.`,
         );
       }
     } catch (err) {
@@ -819,9 +819,9 @@ export default function ReefArcadeMenu() {
                       className="rw-comp"
                       onClick={() => { uiClick(); setModal('jackpot'); }}
                     >
-                      <span className="rw-comp-ico" aria-hidden>💰</span>
+                      <span className="rw-comp-ico" aria-hidden>⚓</span>
                       <span>
-                        <b>JACKPOT</b>
+                        <b>TREASURE</b>
                         <span>
                           {jackpot.board
                             ? `${formatTokenAmount(jackpot.board.pot)} ${entryTokenLabel(jackpot.chainId)}`
@@ -906,7 +906,7 @@ export default function ReefArcadeMenu() {
                         onClick={() => { uiClick(); setModal('jackpot'); }}
                         disabled={!sceneReady}
                       >
-                        <span className="rw-key" aria-hidden>💰</span>JACKPOT
+                        <span className="rw-key" aria-hidden>⚓</span>TREASURE
                         <small>
                           {jackpot.board
                             ? `${formatTokenAmount(jackpot.board.entryAmount)} ${entryTokenLabel(jackpot.chainId)} · BEAT THE BAR`
@@ -945,8 +945,8 @@ export default function ReefArcadeMenu() {
                         </div>
                       </div>
                       <div className="rw-idcard-foot">
-                        <span>©Lawb.Corp:2K5</span>
-                        <span className="rw-stamp">PROPERTY OF THE REEF</span>
+                        <span>Lawb Inc. 2023</span>
+                        <span className="rw-stamp">PROOF OF LAWB</span>
                       </div>
                     </div>
                   </div>
@@ -1255,7 +1255,7 @@ export default function ReefArcadeMenu() {
               <div className="ra-gameover-actions">
                 {jackpot.enabled && jackpotVerdict && (
                   <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
-                    {jackpotBusy ?? '💰 SUBMIT TO JACKPOT'}
+                    {jackpotBusy ?? '⚓ SUBMIT TO THE TREASURE'}
                   </button>
                 )}
                 <button type="button" className="ra-btn" onClick={beginRun}>
@@ -1275,7 +1275,7 @@ export default function ReefArcadeMenu() {
 
       {modal && (
         <div className="ra-overlay" role="dialog" aria-modal="true" onClick={() => { uiClick(); setModal(null); }}>
-          <div className="ra-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="ra-panel rw-console-page" onClick={(e) => e.stopPropagation()}>
             {modal === 'difficulty' && (
               <>
                 <h2>DEPTH & SPEED</h2>
@@ -1324,10 +1324,10 @@ export default function ReefArcadeMenu() {
 
             {modal === 'jackpot' && (
               <>
-                <h2>💰 REEF JACKPOT</h2>
+                <h2>⚓ SUNKEN TREASURE</h2>
                 {!jackpot.contract ? (
                   <p>
-                    The jackpot contract is not deployed on this chain. Switch your wallet network
+                    The treasure contract is not deployed on this chain. Switch your wallet network
                     and try again.
                   </p>
                 ) : (
@@ -1337,15 +1337,15 @@ export default function ReefArcadeMenu() {
                         {jackpot.board ? formatTokenAmount(jackpot.board.entryAmount) : '…'}{' '}
                         {entryTokenLabel(jackpot.chainId)}
                       </strong>{' '}
-                      for one seeded run. <strong>Beat the survival bar</strong> → the whole pot
+                      for one seeded run. <strong>Beat the survival bar</strong> → the whole chest
                       pays out instantly and you become champion. <strong>Fall short</strong> →{' '}
                       {jackpot.board ? Math.round(jackpot.board.championShareBps / 100) : 50}% of
                       your entry pays the champion on the spot (defending the bar earns) and the
-                      rest grows the pot for whoever finally dethrones them. Seed is assigned
+                      rest fills the chest for whoever finally dethrones them. Seed is assigned
                       on-chain at entry — dive right away, entries expire after ~15 minutes.
                     </p>
                     <p className="ra-wallet-status">
-                      POT:{' '}
+                      CHEST:{' '}
                       <strong>
                         {jackpot.board ? formatTokenAmount(jackpot.board.pot) : '…'}{' '}
                         {entryTokenLabel(jackpot.chainId)}
@@ -1394,7 +1394,7 @@ export default function ReefArcadeMenu() {
                           onClick={sponsorPot}
                           disabled={Boolean(jackpotBusy) || !sponsorAmount.trim() || !jackpot.board}
                         >
-                          SPONSOR THE POT
+                          SPONSOR THE TREASURE
                         </button>
                       </div>
                     )}

@@ -72,15 +72,15 @@ const en = {
   howtoGrab: '🧀 GRAB',
   howtoGrabBody:
     'Air tank refills O₂ · Peptides restore armor (both also cleanse slow-down) · Cheese = nitro burst · Trash = +1 hauled and a bit of armor · Coin = +1 coin and a sip of O₂.',
-  howtoJackpot: '💰 JACKPOT',
+  howtoJackpot: '⚓ SUNKEN TREASURE',
   howtoJackpotBody:
-    'Pay the CULT entry for one seeded run. Beat the survival bar and the whole pot pays out to your wallet, on-chain. Free runs are for fun and stats — they never touch the jackpot.',
+    'Pay the CULT entry for one seeded run. Beat the survival bar and the whole treasure chest pays out to your wallet, on-chain. Free runs are for fun and stats — they never touch the treasure.',
   ok: 'OK',
 
   // Dive-device menu
   deviceBestDive: 'BEST DIVE',
   deviceSurvivalBar: 'SURVIVAL BAR',
-  devicePot: 'POT',
+  devicePot: 'CHEST',
   deviceDiver: 'DIVER',
   deviceSatchel: 'SATCHEL',
   deviceSatchelHint: 'Hauls counted from your saved runs',
@@ -180,14 +180,14 @@ const zh: ReefStrings = {
   howtoGrab: '🧀 拾取',
   howtoGrabBody:
     '氧气瓶回满氧气 · 肽恢复护甲（两者都能解除减速）· 奶酪 = 氮气冲刺 · 垃圾 = 打捞数 +1 并少量回复护甲 · 金币 = +1 金币并补一口氧气。',
-  howtoJackpot: '💰 奖池',
+  howtoJackpot: '⚓ 海底宝藏',
   howtoJackpotBody:
-    '支付 CULT 入场费获得一次指定种子的挑战。打破生存纪录，整个奖池将直接链上打入你的钱包。免费游玩仅供娱乐和统计——与奖池无关。',
+    '支付 CULT 入场费获得一次指定种子的挑战。打破生存纪录，整个宝箱将直接链上打入你的钱包。免费游玩仅供娱乐和统计——与宝藏无关。',
   ok: '好的',
 
   deviceBestDive: '最佳潜水',
   deviceSurvivalBar: '生存纪录',
-  devicePot: '奖池',
+  devicePot: '宝箱',
   deviceDiver: '潜水员',
   deviceSatchel: '背包',
   deviceSatchelHint: '来自已保存跑动的拾取统计',
