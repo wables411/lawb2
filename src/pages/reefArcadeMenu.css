@@ -839,6 +839,14 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+/* Desktop: the shared 400px panel clamp is phone sizing — it squeezed the 430px
+   dive card to ~337px inside a scrolling column (owner: "tiny box"). Give the
+   report enough width for the card's designed size plus panel padding. */
+@media (min-width: 720px) {
+  .ra-report-panel {
+    max-width: 520px;
+  }
+}
 /* The panel is a flex column: without this it SHRINKS the card and the card's own
    overflow:hidden eats the bottom (SAVE button) instead of the panel scrolling. */
 .ra-report-panel > * {
