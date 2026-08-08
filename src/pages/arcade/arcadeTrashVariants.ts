@@ -35,7 +35,9 @@ export function trashVariantIndexFor(runSeed: number, trashSpawnIndex: number): 
   let h = (runSeed ^ Math.imul(trashSpawnIndex + 1, 0x9e3779b9)) >>> 0;
   h ^= h >>> 16;
   h = Math.imul(h, 0x45d9f3b) >>> 0;
-  h ^= h >>> 16;
+  // Final XOR runs on SIGNED int32 — force back to unsigned or ~half of all
+  // spawns index the roster negatively and crash the game loop.
+  h = (h ^ (h >>> 16)) >>> 0;
   return h % TRASH_VARIANTS.length;
 }
 
