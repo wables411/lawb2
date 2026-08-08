@@ -64,6 +64,14 @@ const CHARACTERS: { id: ArcadeCharacterId; name: string; color: string }[] = [
   { id: 'milady', name: 'MILADY', color: '#9eddcf' },
 ];
 
+/** Render a string-table template, replacing {slot} markers with React nodes (i18n-safe word order). */
+function tSlots(template: string, slots: Record<string, React.ReactNode>): React.ReactNode {
+  return template.split(/(\{\w+\})/g).map((part, i) => {
+    const m = /^\{(\w+)\}$/.exec(part);
+    return m ? <React.Fragment key={i}>{slots[m[1]!] ?? ''}</React.Fragment> : part;
+  });
+}
+
 function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
@@ -389,17 +397,14 @@ export default function ReefArcadeMenu() {
       }
       const primary = authed ? await firebaseProfiles.getPrimaryWallet(address) : null;
       const saved = primary ? await firebaseProfiles.updateReefRunStats(primary, payload) : false;
+      const s = REEF_STRINGS[loadReefLang()];
       if (saved) {
         setPendingSave(null);
-        setLastRunLbNote('Run stats saved to your profile.');
+        setLastRunLbNote(s.noteStatsSaved);
         setStatsVersion((v) => v + 1);
       } else {
         setPendingSave(payload);
-        setLastRunLbNote(
-          authed
-            ? 'Could not save run stats. Check connection and try again.'
-            : 'Sign the wallet login (free, no transaction) to save your haul.',
-        );
+        setLastRunLbNote(authed ? s.noteStatsFailed : s.noteSignToSave);
       }
     },
     [connection.address, signLoginMessage],
@@ -417,7 +422,7 @@ export default function ReefArcadeMenu() {
         return;
       }
       if (!database) {
-        setLastRunLbNote('Leaderboard unavailable (Firebase not configured).');
+        setLastRunLbNote(REEF_STRINGS[loadReefLang()].noteLbUnavailable);
         return;
       }
 
@@ -497,20 +502,23 @@ export default function ReefArcadeMenu() {
     try {
       amount = parseUnits(sponsorAmount.trim() as `${number}`, 18);
     } catch {
-      setJackpotNote('Enter a valid amount to sponsor.');
+      setJackpotNote(REEF_STRINGS[loadReefLang()].noteSponsorInvalid);
       return;
     }
     if (amount <= 0n) {
-      setJackpotNote('Enter a valid amount to sponsor.');
+      setJackpotNote(REEF_STRINGS[loadReefLang()].noteSponsorInvalid);
       return;
     }
     try {
-      setJackpotBusy('Confirm in wallet…');
+      setJackpotBusy(REEF_STRINGS[loadReefLang()].busyConfirmWallet);
       await jackpot.fundPot(amount);
       setJackpotBusy(null);
       setSponsorAmount('');
       setJackpotNote(
-        `🌊 Treasure grown by ${sponsorAmount.trim()} ${entryTokenLabel(jackpot.chainId)} — thank you!`,
+        REEF_STRINGS[loadReefLang()].noteSponsorThanks.replace(
+          '{amount}',
+          `${sponsorAmount.trim()} ${entryTokenLabel(jackpot.chainId)}`,
+        ),
       );
     } catch (e) {
       setJackpotBusy(null);
@@ -524,7 +532,7 @@ export default function ReefArcadeMenu() {
     const j = verdict.jackpot as (ReefJackpotVerdict & { alreadySigned?: boolean }) | undefined;
     if (!j) return;
     if (j.alreadySigned) {
-      setJackpotNote('This entry was already signed once — one submitted attempt per entry.');
+      setJackpotNote(REEF_STRINGS[loadReefLang()].noteAlreadySigned);
       return;
     }
     if (typeof j.signature === 'string') {
@@ -541,7 +549,7 @@ export default function ReefArcadeMenu() {
     setJackpotNote(null);
     setJackpotVerdict(null);
     try {
-      setJackpotBusy('Confirm in wallet…');
+      setJackpotBusy(REEF_STRINGS[loadReefLang()].busyConfirmWallet);
       const entry = await jackpot.enterJackpot();
       setJackpotEntry({ ...entry, enteredAt: Math.floor(Date.now() / 1000) });
       setJackpotBusy(null);
@@ -584,26 +592,27 @@ export default function ReefArcadeMenu() {
     // whose score could never be submitted in time.
     if (Date.now() / 1000 - pending.enteredAt > jackpot.entryTtlSec - 60) return;
     setJackpotEntry({ nonce: pending.nonce, seed: pending.seed, enteredAt: pending.enteredAt });
-    setJackpotNote('Found your paid entry on-chain — dive before it expires.');
+    setJackpotNote(REEF_STRINGS[loadReefLang()].noteFoundEntry);
   }, [jackpot.pendingEntry, jackpot.entryTtlSec, jackpotEntry, jackpotVerdict]);
 
   /** Submit the validator-signed score on-chain (win → instant payout). */
   const submitJackpotScore = useCallback(async () => {
     if (!jackpotVerdict || jackpotBusy) return;
     try {
-      setJackpotBusy('Submitting score…');
+      setJackpotBusy(REEF_STRINGS[loadReefLang()].busySubmitting);
       const { won, payout } = await jackpot.submitJackpotScore(jackpotVerdict);
       setJackpotBusy(null);
       setJackpotVerdict(null);
       setJackpotEntry(null);
+      const s = REEF_STRINGS[loadReefLang()];
       if (won && payout !== null) {
         setJackpotNote(
-          `🏆 TREASURE! ${formatSurvivalMs(jackpotVerdict.survivalMs)} takes the chest — ${formatTokenAmount(payout)} ${entryTokenLabel(jackpot.chainId)} paid out.`,
+          s.noteWon
+            .replace('{time}', formatSurvivalMs(jackpotVerdict.survivalMs))
+            .replace('{amount}', `${formatTokenAmount(payout)} ${entryTokenLabel(jackpot.chainId)}`),
         );
       } else {
-        setJackpotNote(
-          `Score ${formatSurvivalMs(jackpotVerdict.survivalMs)} submitted — bar holds. Part of your entry paid the champion, the rest filled the chest.`,
-        );
+        setJackpotNote(s.noteBarHolds.replace('{time}', formatSurvivalMs(jackpotVerdict.survivalMs)));
       }
     } catch (err) {
       setJackpotBusy(null);
@@ -933,7 +942,7 @@ export default function ReefArcadeMenu() {
                 height={93}
               />
             </h1>
-            <p className="ra-intro-sub">CLEAN UP THE OCEAN AND DONT DIE!</p>
+            <p className="ra-intro-sub">{t.introTagline}</p>
             <p className="ra-intro-hint">{t.pressAny}</p>
           </div>
         )}
@@ -975,7 +984,7 @@ export default function ReefArcadeMenu() {
                     >
                       <span className="rw-comp-ico" aria-hidden>⚓</span>
                       <span>
-                        <b>TREASURE</b>
+                        <b>{t.jpTreasureName}</b>
                         <span>
                           {jackpot.board
                             ? `${formatTokenAmount(jackpot.board.pot)} ${entryTokenLabel(jackpot.chainId)}`
@@ -1073,11 +1082,11 @@ export default function ReefArcadeMenu() {
                         onClick={() => { uiClick(); setModal('jackpot'); }}
                         disabled={!sceneReady}
                       >
-                        <span className="rw-key" aria-hidden>⚓</span>TREASURE
+                        <span className="rw-key" aria-hidden>⚓</span>{t.jpTreasureName}
                         <small>
                           {jackpot.board
-                            ? `${formatTokenAmount(jackpot.board.entryAmount)} ${entryTokenLabel(jackpot.chainId)} · BEAT THE BAR`
-                            : 'PAID RUNS · BEAT THE BAR'}
+                            ? `${formatTokenAmount(jackpot.board.entryAmount)} ${entryTokenLabel(jackpot.chainId)} · ${t.jpTileMeta}`
+                            : t.jpTilePaid}
                         </small>
                       </button>
                     )}
@@ -1299,7 +1308,7 @@ export default function ReefArcadeMenu() {
                   {t.confirm}
                 </button>
                 <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setGameScreen('menu'); }}>
-                  BACK
+                  {t.back}
                 </button>
               </div>
             </div>
@@ -1490,16 +1499,16 @@ export default function ReefArcadeMenu() {
                       style={{ marginLeft: 10 }}
                       onClick={() => { uiClick(); void saveRunStats(pendingSave); }}
                     >
-                      SAVE HAUL
+                      {t.saveHaul}
                     </button>
                   )}
                 </p>
               )}
               {jackpot.enabled && jackpotVerdict && (
                 <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>
-                  💰 Jackpot run verified: <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
+                  {t.goVerified} <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
                   {jackpot.board && jackpot.board.highScoreMs > 0 && (
-                    <> · bar {formatSurvivalMs(jackpot.board.highScoreMs)}</>
+                    <> · {t.goVerifiedBar} {formatSurvivalMs(jackpot.board.highScoreMs)}</>
                   )}
                 </p>
               )}
@@ -1508,18 +1517,18 @@ export default function ReefArcadeMenu() {
               )}
               {jackpot.enabled && jackpotVerdict && jackpotSecLeft !== null && !jackpotExpired && (
                 <p style={{ margin: '10px 0 0', fontSize: 13, fontWeight: 700, color: jackpotSecLeft < 60 ? '#ff5566' : undefined }} aria-live="polite">
-                  ⏱ SUBMIT WITHIN {fmtSecLeft(jackpotSecLeft)} OR THE ENTRY EXPIRES
+                  {tSlots(t.goSubmitWithin, { time: fmtSecLeft(jackpotSecLeft) })}
                 </p>
               )}
               {jackpot.enabled && jackpotVerdict && jackpotExpired && (
                 <p style={{ margin: '10px 0 0', fontSize: 13, color: '#ff5566' }}>
-                  ENTRY EXPIRED — this score can no longer be submitted on-chain.
+                  {t.goExpired}
                 </p>
               )}
               <div className="ra-gameover-actions">
                 {jackpot.enabled && jackpotVerdict && !jackpotExpired && (
                   <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
-                    {jackpotBusy ?? '⚓ SUBMIT TO THE TREASURE'}
+                    {jackpotBusy ?? t.goSubmitTreasure}
                   </button>
                 )}
                 <button type="button" className="ra-btn" onClick={beginRun}>
@@ -1542,45 +1551,33 @@ export default function ReefArcadeMenu() {
           <div className="ra-panel rw-console-page" onClick={(e) => e.stopPropagation()}>
             {modal === 'difficulty' && (
               <>
-                <h2>DEPTH & SPEED</h2>
-                <p>
-                  <strong>W / S</strong> throttle forward swim. <strong>Milady / Radbro:</strong> faster swim burns O₂
-                  faster. <strong>Clawb</strong> is underwater indefinitely — no O₂ fail. <strong>A / D</strong> change
-                  lanes. Mobile touch: <strong>tap left/right</strong> to lane shift, then <strong>hold + swipe up/down</strong>{' '}
-                  to boost/slow. The reef tube <strong>banks and sways</strong> as you dive deeper.
-                </p>
-                <p>
-                  The longer you survive, the faster the baseline current. Every <strong>45 seconds</strong> you cross a
-                  new <strong>depth mark</strong> (Roman numerals). <strong>O₂ tanks</strong> for Milady/Radbro spawn on
-                  a schedule (wider gaps at depth) plus random pickups — never zero in the table, but timing gets urgent.
-                  Collect cheese for a nitro burst, peptides for armor + cleanse, and note that jellyfish/puffers/mines
-                  damage armor while also draining some O₂ on non-Clawb swimmers.
-                </p>
+                <h2>{t.depthModalTitle}</h2>
+                <p>{t.depthModalP1}</p>
+                <p>{t.depthModalP2}</p>
               </>
             )}
 
             {modal === 'wallet' && (
               <>
-                <h2>WALLET CONNECT</h2>
+                <h2>{t.walletModalTitle}</h2>
                 <p>
-                  Connect the same wallet you use on lawb.xyz. Connecting saves your{' '}
-                  <strong>run stats</strong> to your profile, shows the ✓ verified badge on proven runs, and unlocks{' '}
-                  <strong>jackpot</strong> entry. Your first site-wide wallet connect can also add{' '}
-                  <strong>{WALLET_CONNECT_LEADERBOARD_BONUS} pts</strong> elsewhere on lawb.xyz.
+                  {tSlots(t.walletModalBody, {
+                    pts: <strong>{WALLET_CONNECT_LEADERBOARD_BONUS}</strong>,
+                  })}
                 </p>
                 {connection.connected && connection.address ? (
-                  <p className="ra-wallet-status">CONNECTED · {shortenAddress(connection.address)}</p>
+                  <p className="ra-wallet-status">{t.walletConnectedPrefix} {shortenAddress(connection.address)}</p>
                 ) : (
                   <p className="ra-wallet-status" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                    NOT CONNECTED
+                    {t.walletStatusNot}
                   </p>
                 )}
                 <div className="ra-panel-actions">
                   <button type="button" className="ra-btn" onClick={goConnect}>
-                    {connection.connected ? 'MANAGE WALLET' : 'CONNECT'}
+                    {connection.connected ? t.manageWallet : t.connectBtn}
                   </button>
                   <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setModal(null); }}>
-                    BACK
+                    {t.back}
                   </button>
                 </div>
               </>
@@ -1588,86 +1585,86 @@ export default function ReefArcadeMenu() {
 
             {modal === 'jackpot' && (
               <>
-                <h2>⚓ SUNKEN TREASURE</h2>
+                <h2>{t.howtoJackpot}</h2>
                 {!jackpot.contract ? (
-                  <p>
-                    The treasure contract is not deployed on this chain. Switch your wallet network
-                    and try again.
-                  </p>
+                  <p>{t.jpNotDeployed}</p>
                 ) : (
                   <>
                     <p>
-                      Pay <strong>
-                        {jackpot.board ? formatTokenAmount(jackpot.board.entryAmount) : '…'}{' '}
-                        {entryTokenLabel(jackpot.chainId)}
-                      </strong>{' '}
-                      for one seeded run.{' '}
-                      {jackpot.board &&
-                      jackpot.board.champion !== '0x0000000000000000000000000000000000000000' ? (
-                        <>Out-swim <strong>{shortenAddress(jackpot.board.champion)}</strong></>
-                      ) : (
-                        <><strong>Set the first bar</strong></>
-                      )}{' '}
-                      → treasure chest pays out instantly and you become king of the reef.{' '}
-                      <strong>Fall short</strong> →{' '}
-                      {jackpot.board ? Math.round(jackpot.board.championShareBps / 100) : 50}% of
-                      your entry pays the current KOR on the spot and the rest fills the chest for
-                      whoever finally dethrones them.
+                      {tSlots(t.jpIntro, {
+                        amount: (
+                          <strong>
+                            {jackpot.board ? formatTokenAmount(jackpot.board.entryAmount) : '…'}{' '}
+                            {entryTokenLabel(jackpot.chainId)}
+                          </strong>
+                        ),
+                        challenge:
+                          jackpot.board &&
+                          jackpot.board.champion !== '0x0000000000000000000000000000000000000000' ? (
+                            <>{tSlots(t.jpOutswim, { champ: <strong>{shortenAddress(jackpot.board.champion)}</strong> })}</>
+                          ) : (
+                            <strong>{t.jpSetBar}</strong>
+                          ),
+                        fallShort: <strong>{t.jpFallShort}</strong>,
+                        share: jackpot.board ? Math.round(jackpot.board.championShareBps / 100) : 50,
+                      })}
                     </p>
                     <p>
-                      Seed is assigned on-chain at entry. Dive right away — entries expire after
-                      ~15 minutes. Entry fee today is not entry fee tomorrow. This is just a silly
-                      game. Visit the{' '}
-                      <a
-                        href="/?tokens=faq"
-                        onClick={(e) => { e.preventDefault(); uiClick(); navigate('/?tokens=faq'); }}
-                        style={{ color: 'inherit', textDecoration: 'underline' }}
-                      >
-                        FAQ
-                      </a>{' '}
-                      for contract info.
+                      {tSlots(t.jpRules, {
+                        faq: (
+                          <a
+                            href="/?tokens=faq"
+                            onClick={(e) => { e.preventDefault(); uiClick(); navigate('/?tokens=faq'); }}
+                            style={{ color: 'inherit', textDecoration: 'underline' }}
+                          >
+                            {t.jpFaqWord}
+                          </a>
+                        ),
+                      })}
                     </p>
                     <p className="ra-wallet-status">
-                      CHEST:{' '}
+                      {t.devicePot}:{' '}
                       <strong>
                         {jackpot.board ? formatTokenAmount(jackpot.board.pot) : '…'}{' '}
                         {entryTokenLabel(jackpot.chainId)}
                       </strong>
-                      {' · '}BAR:{' '}
+                      {' · '}{t.jpBar}:{' '}
                       <strong>
                         {jackpot.board
                           ? jackpot.board.highScoreMs > 0
                             ? formatSurvivalMs(jackpot.board.highScoreMs)
-                            : 'OPEN (any run wins)'
+                            : t.jpBarOpen
                           : '…'}
                       </strong>
                       {jackpot.board && jackpot.board.champion !== '0x0000000000000000000000000000000000000000' && (
-                        <> {' · '}CHAMPION: <strong>{shortenAddress(jackpot.board.champion)}</strong></>
+                        <> {' · '}{t.jpChampion}: <strong>{shortenAddress(jackpot.board.champion)}</strong></>
                       )}
                     </p>
                     {!connection.connected && (
                       <p className="ra-wallet-status" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        CONNECT A WALLET TO ENTER
+                        {t.jpConnectToEnter}
                       </p>
                     )}
                     {jackpotVerdict && (
                       <p className="ra-wallet-status">
-                        UNSUBMITTED SCORE: <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
+                        {t.jpUnsubmitted} <strong>{formatSurvivalMs(jackpotVerdict.survivalMs)}</strong>
                       </p>
                     )}
                     {jackpotEntry && !jackpotVerdict && !jackpotExpired && jackpotSecLeft !== null && (
                       <p className="ra-wallet-status">
-                        ENTRY PAID · SEED ASSIGNED — DIVE NOW ·{' '}
-                        <strong style={jackpotSecLeft < 60 ? { color: '#ff5566' } : undefined}>
-                          {fmtSecLeft(jackpotSecLeft)}
-                        </strong>{' '}
-                        LEFT TO DIVE <em>AND</em> SUBMIT
+                        {tSlots(t.jpCountdownLine, {
+                          time: (
+                            <strong style={jackpotSecLeft < 60 ? { color: '#ff5566' } : undefined}>
+                              {fmtSecLeft(jackpotSecLeft)}
+                            </strong>
+                          ),
+                        })}
                       </p>
                     )}
                     {(jackpotEntry || jackpotVerdict) && jackpotExpired && (
                       <p className="ra-wallet-status" style={{ color: '#ff5566' }}>
-                        {jackpotVerdict ? 'ENTRY EXPIRED — THAT SCORE CAN NO LONGER BE SUBMITTED' : 'ENTRY EXPIRED UNUSED'}
-                        {' — '}THE CULT STAYS IN THE CHEST
+                        {jackpotVerdict ? t.jpExpiredScore : t.jpExpiredUnused}
+                        {t.jpExpiredTail}
                       </p>
                     )}
                     {jackpotNote && <p style={{ fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>}
@@ -1677,7 +1674,7 @@ export default function ReefArcadeMenu() {
                           className="ra-sponsor-input"
                           type="text"
                           inputMode="decimal"
-                          placeholder={`Amount (${entryTokenLabel(jackpot.chainId)})`}
+                          placeholder={t.jpSponsorAmount.replace('{token}', entryTokenLabel(jackpot.chainId))}
                           value={sponsorAmount}
                           onChange={(e) => setSponsorAmount(e.target.value)}
                           aria-label="Sponsor amount"
@@ -1689,18 +1686,18 @@ export default function ReefArcadeMenu() {
                           onClick={sponsorPot}
                           disabled={Boolean(jackpotBusy) || !sponsorAmount.trim() || !jackpot.board}
                         >
-                          SPONSOR THE TREASURE
+                          {t.jpSponsorBtn}
                         </button>
                       </div>
                     )}
                     <div className="ra-panel-actions">
                       {jackpotVerdict && !jackpotExpired ? (
                         <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
-                          {jackpotBusy ?? `SUBMIT SCORE ON-CHAIN${jackpotSecLeft !== null ? ` · ${fmtSecLeft(jackpotSecLeft)}` : ''}`}
+                          {jackpotBusy ?? `${t.jpSubmitBtn}${jackpotSecLeft !== null ? ` · ${fmtSecLeft(jackpotSecLeft)}` : ''}`}
                         </button>
                       ) : jackpotEntry && !jackpotExpired ? (
                         <button type="button" className="ra-btn" onClick={diveWithPaidEntry} disabled={!sceneReady}>
-                          DIVE (ENTRY PAID)
+                          {t.jpDivePaid}
                         </button>
                       ) : connection.connected ? (
                         <button
@@ -1709,15 +1706,15 @@ export default function ReefArcadeMenu() {
                           onClick={enterJackpotAndDive}
                           disabled={Boolean(jackpotBusy) || !sceneReady || !jackpot.board}
                         >
-                          {jackpotBusy ?? 'PAY ENTRY & DIVE'}
+                          {jackpotBusy ?? t.jpPayDive}
                         </button>
                       ) : (
                         <button type="button" className="ra-btn" onClick={goConnect}>
-                          CONNECT
+                          {t.connectBtn}
                         </button>
                       )}
                       <button type="button" className="ra-btn ra-btn-secondary" onClick={() => { uiClick(); setModal(null); }}>
-                        BACK
+                        {t.back}
                       </button>
                     </div>
                   </>

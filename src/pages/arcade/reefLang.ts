@@ -142,6 +142,89 @@ const en = {
   selectHint: 'Click models, tap chips, or use keyboard (←/→ to swap, Enter confirm).',
   confirm: 'CONFIRM',
 
+  // Intro
+  introTagline: 'CLEAN UP THE OCEAN AND DONT DIE!',
+
+  // Depth & speed modal
+  depthModalTitle: 'DEPTH & SPEED',
+  depthModalP1:
+    'W / S throttle forward swim. Milady / Radbro: faster swim burns O₂ faster. Clawb is underwater indefinitely — no O₂ fail. A / D change lanes. Mobile touch: tap left/right to lane shift, then hold + swipe up/down to boost/slow. The reef tube banks and sways as you dive deeper.',
+  depthModalP2:
+    'The longer you survive, the faster the baseline current. Every 45 seconds you cross a new depth mark (Roman numerals). O₂ tanks for Milady/Radbro spawn on a schedule (wider gaps at depth) plus random pickups — never zero in the table, but timing gets urgent. Collect cheese for a nitro burst, peptides for armor + cleanse, and note that jellyfish/puffers/mines damage armor while also draining some O₂ on non-Clawb swimmers.',
+
+  // Wallet modal
+  walletModalTitle: 'WALLET CONNECT',
+  /** {pts} = WALLET_CONNECT_LEADERBOARD_BONUS */
+  walletModalBody:
+    'Connect the same wallet you use on lawb.xyz. Connecting saves your run stats to your profile, shows the ✓ verified badge on proven runs, and unlocks jackpot entry. Your first site-wide wallet connect can also add {pts} pts elsewhere on lawb.xyz.',
+  walletConnectedPrefix: 'CONNECTED ·',
+  walletStatusNot: 'NOT CONNECTED',
+  manageWallet: 'MANAGE WALLET',
+  connectBtn: 'CONNECT',
+
+  // Sunken Treasure modal (title reuses howtoJackpot)
+  jpNotDeployed:
+    'The treasure contract is not deployed on this chain. Switch your wallet network and try again.',
+  /** Slots: {amount} {challenge} {fallShort} {share} */
+  jpIntro:
+    'Pay {amount} for one seeded run. {challenge} → treasure chest pays out instantly and you become king of the reef. {fallShort} → {share}% of your entry pays the current KOR on the spot and the rest fills the chest for whoever finally dethrones them.',
+  /** {champ} = current champion address */
+  jpOutswim: 'Out-swim {champ}',
+  jpSetBar: 'Set the first bar',
+  jpFallShort: 'Fall short',
+  /** {faq} = FAQ link */
+  jpRules:
+    'Seed is assigned on-chain at entry. Dive right away — entries expire after ~15 minutes. Entry fee today is not entry fee tomorrow. This is just a silly game. Visit the {faq} for contract info.',
+  jpFaqWord: 'FAQ',
+  jpBar: 'BAR',
+  jpChampion: 'CHAMPION',
+  jpBarOpen: 'OPEN (any run wins)',
+  jpConnectToEnter: 'CONNECT A WALLET TO ENTER',
+  jpUnsubmitted: 'UNSUBMITTED SCORE:',
+  /** {time} = m:ss countdown */
+  jpCountdownLine: 'ENTRY PAID — DIVE NOW · {time} LEFT TO DIVE AND SUBMIT',
+  jpExpiredScore: 'ENTRY EXPIRED — THAT SCORE CAN NO LONGER BE SUBMITTED',
+  jpExpiredUnused: 'ENTRY EXPIRED UNUSED',
+  jpExpiredTail: ' — THE CULT STAYS IN THE CHEST',
+  /** {token} = entry token label */
+  jpSponsorAmount: 'Amount ({token})',
+  jpSponsorBtn: 'SPONSOR THE TREASURE',
+  jpSubmitBtn: 'SUBMIT SCORE ON-CHAIN',
+  jpDivePaid: 'DIVE (ENTRY PAID)',
+  jpPayDive: 'PAY ENTRY & DIVE',
+  jpTileMeta: 'BEAT THE BAR',
+  jpTilePaid: 'PAID RUNS · BEAT THE BAR',
+  jpTreasureName: 'TREASURE',
+
+  // Jackpot flow notes / busy labels
+  busyConfirmWallet: 'Confirm in wallet…',
+  busySubmitting: 'Submitting score…',
+  noteSponsorInvalid: 'Enter a valid amount to sponsor.',
+  noteAlreadySigned: 'This entry was already signed once — one submitted attempt per entry.',
+  noteFoundEntry: 'Found your paid entry on-chain — dive before it expires.',
+  /** {amount} */
+  noteSponsorThanks: '🌊 Treasure grown by {amount} — thank you!',
+  /** {time} {amount} */
+  noteWon: '🏆 TREASURE! {time} takes the chest — {amount} paid out.',
+  /** {time} */
+  noteBarHolds:
+    'Score {time} submitted — bar holds. Part of your entry paid the champion, the rest filled the chest.',
+
+  // Game over — jackpot strip
+  goSubmitTreasure: '⚓ SUBMIT TO THE TREASURE',
+  /** {time} */
+  goSubmitWithin: '⏱ SUBMIT WITHIN {time} OR THE ENTRY EXPIRES',
+  goExpired: 'ENTRY EXPIRED — this score can no longer be submitted on-chain.',
+  goVerified: '💰 Jackpot run verified:',
+  goVerifiedBar: 'bar',
+
+  // Run-stat save notes
+  noteStatsSaved: 'Run stats saved to your profile.',
+  noteStatsFailed: 'Could not save run stats. Check connection and try again.',
+  noteSignToSave: 'Sign the wallet login (free, no transaction) to save your haul.',
+  saveHaul: 'SAVE HAUL',
+  noteLbUnavailable: 'Leaderboard unavailable (Firebase not configured).',
+
   // Standalone extras
   presents: 'LAWBSTERS PRESENT',
   saMenuHint: 'ENTER START · C SWAP SWIMMER · H HOW TO · M SOUND',
@@ -259,6 +342,70 @@ const zh: ReefStrings = {
   selectTitle: '选择你的泳手',
   selectHint: '点击模型、点按标签，或用键盘（←/→ 切换，回车确认）。',
   confirm: '确认',
+
+  introTagline: '清理海洋，别死掉！',
+
+  depthModalTitle: '深度与速度',
+  depthModalP1:
+    'W / S 控制前进速度。Milady / Radbro：游得越快，氧气消耗越快。Clawb 可以无限期待在水下——不会因缺氧失败。A / D 切换泳道。触屏：点按左/右半屏切换泳道，按住上下滑动加速/减速。潜得越深，珊瑚隧道摇摆得越厉害。',
+  depthModalP2:
+    '存活越久，水流基准速度越快。每 45 秒跨过一个新的深度标记（罗马数字）。Milady/Radbro 的氧气瓶按计划刷新（越深间隔越大）外加随机掉落——永远不会为零，但时机会越来越紧。奶酪 = 氮气冲刺，肽 = 恢复护甲并解除减速；注意水母/河豚/水雷在伤害护甲的同时也会消耗非 Clawb 泳手的氧气。',
+
+  walletModalTitle: '钱包连接',
+  walletModalBody:
+    '连接你在 lawb.xyz 使用的同一个钱包。连接后可将跑动数据保存到档案、为已验证成绩显示 ✓ 徽章，并解锁夺宝入场。首次全站连接钱包还可在 lawb.xyz 其他板块获得 {pts} 分。',
+  walletConnectedPrefix: '已连接 ·',
+  walletStatusNot: '未连接',
+  manageWallet: '管理钱包',
+  connectBtn: '连接钱包',
+
+  jpNotDeployed: '该链上尚未部署宝藏合约。请切换钱包网络后重试。',
+  jpIntro:
+    '支付 {amount} 参加一次指定种子的挑战。{challenge} → 宝箱立刻全额打入你的钱包，你将成为礁中之王。{fallShort} → 入场费的 {share}% 当场付给现任礁王（KOR），其余留在宝箱，等着最终把他拉下王座的人。',
+  jpOutswim: '游得比 {champ} 更久',
+  jpSetBar: '创下第一个纪录',
+  jpFallShort: '挑战失败',
+  jpRules:
+    '种子在入场时链上分配。请立即下潜——入场资格约 15 分钟后过期。今天的入场费不等于明天的入场费。这只是个小游戏。合约信息见 {faq}。',
+  jpFaqWord: 'FAQ',
+  jpBar: '纪录',
+  jpChampion: '礁王',
+  jpBarOpen: '空缺（任何成绩即可夺宝）',
+  jpConnectToEnter: '连接钱包即可参赛',
+  jpUnsubmitted: '未提交成绩：',
+  jpCountdownLine: '已入场——立即下潜 · 剩余 {time} 完成下潜与提交',
+  jpExpiredScore: '入场已过期——该成绩已无法提交',
+  jpExpiredUnused: '入场已过期未使用',
+  jpExpiredTail: '——CULT 留在宝箱中',
+  jpSponsorAmount: '数量（{token}）',
+  jpSponsorBtn: '赞助宝箱',
+  jpSubmitBtn: '链上提交成绩',
+  jpDivePaid: '下潜（已入场）',
+  jpPayDive: '支付入场费并下潜',
+  jpTileMeta: '打破纪录',
+  jpTilePaid: '付费挑战 · 打破纪录',
+  jpTreasureName: '宝藏',
+
+  busyConfirmWallet: '请在钱包中确认…',
+  busySubmitting: '正在提交成绩…',
+  noteSponsorInvalid: '请输入有效的赞助数量。',
+  noteAlreadySigned: '该入场已签名过一次——每次入场只能提交一次。',
+  noteFoundEntry: '在链上找到你已支付的入场——请在过期前下潜。',
+  noteSponsorThanks: '🌊 宝箱增加了 {amount}——谢谢！',
+  noteWon: '🏆 夺宝成功！{time} 拿下宝箱——{amount} 已到账。',
+  noteBarHolds: '成绩 {time} 已提交——纪录未被打破。入场费一部分付给了礁王，其余进入宝箱。',
+
+  goSubmitTreasure: '⚓ 提交夺宝成绩',
+  goSubmitWithin: '⏱ 请在 {time} 内提交，否则入场过期',
+  goExpired: '入场已过期——该成绩已无法链上提交。',
+  goVerified: '💰 夺宝成绩已验证：',
+  goVerifiedBar: '纪录',
+
+  noteStatsSaved: '跑动数据已保存到你的档案。',
+  noteStatsFailed: '保存失败。请检查连接后重试。',
+  noteSignToSave: '签署钱包登录（免费、无交易）即可保存收获。',
+  saveHaul: '保存收获',
+  noteLbUnavailable: '排行榜不可用（Firebase 未配置）。',
 
   presents: 'LAWBSTERS 出品',
   saMenuHint: '回车开始 · C 换泳手 · H 玩法 · M 音效',
