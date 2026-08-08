@@ -15,8 +15,40 @@
  *   FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_DATABASE_URL
  */
 const admin = require('firebase-admin');
-const { verifyMessage } = require('ethers');
+const { recoverMessageAddress, createPublicClient, http } = require('viem');
 const nacl = require('tweetnacl');
+
+// Smart-wallet (ERC-1271/6492) verification needs an RPC per chain the wallet may
+// live on. Public endpoints by default; override via env if they misbehave.
+const EVM_RPC_URLS = [
+  process.env.WALLET_AUTH_RPC_ETH || 'https://ethereum-rpc.publicnode.com',
+  process.env.WALLET_AUTH_RPC_BASE || 'https://mainnet.base.org',
+  process.env.WALLET_AUTH_RPC_ARB || 'https://arb1.arbitrum.io/rpc',
+];
+
+/**
+ * EVM proof of control. EOA fast path first (pure ecrecover, no RPC), then
+ * viem's verifyMessage per chain — that covers ERC-1271 (deployed smart wallets:
+ * Safe, Coinbase Smart Wallet, …) and ERC-6492 (counterfactual, not yet deployed),
+ * which plain ecrecover rejects with a wrong-address result every time.
+ */
+async function verifyEvmSignature(key, message, signature) {
+  try {
+    const recovered = await recoverMessageAddress({ message, signature });
+    if (recovered.toLowerCase() === key) return true;
+  } catch {
+    /* not an EOA-style signature — fall through to smart-wallet verification */
+  }
+  for (const url of EVM_RPC_URLS) {
+    try {
+      const client = createPublicClient({ transport: http(url, { timeout: 5000 }) });
+      if (await client.verifyMessage({ address: key, message, signature })) return true;
+    } catch {
+      /* RPC hiccup or wallet not on this chain — try the next */
+    }
+  }
+  return false;
+}
 
 const MESSAGE_PREFIX = 'lawb.xyz wallet login';
 const MAX_MESSAGE_AGE_MS = 10 * 60 * 1000;
@@ -135,8 +167,8 @@ exports.handler = async (event) => {
       if (!ok) return json(401, { error: 'Bad signature' });
     } else {
       if (!key.startsWith('0x')) return json(400, { error: 'Non-EVM address with evm chain' });
-      const recovered = verifyMessage(message, signature);
-      if (recovered.toLowerCase() !== key) return json(401, { error: 'Bad signature' });
+      const ok = await verifyEvmSignature(key, message, signature);
+      if (!ok) return json(401, { error: 'Bad signature' });
     }
   } catch (err) {
     return json(401, { error: 'Signature verification failed' });
