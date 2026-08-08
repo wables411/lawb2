@@ -1,5 +1,5 @@
 import { database, getFirebaseDatabaseForKey } from './firebaseApp';
-import { ref, set, get, update, remove } from 'firebase/database';
+import { ref, set, get, update, remove, runTransaction } from 'firebase/database';
 import type { NFTInventory } from './utils/nftInventory';
 import { setHoldingsPoints } from './firebaseLeaderboard';
 import { computeHoldingsLeaderboardScore } from './utils/leaderboardHoldingsScore';
@@ -295,7 +295,10 @@ export const firebaseProfiles = {
       /** This run's trash by canonical variant id (summed into lifetime trash_by_kind). */
       trashByKind?: Record<string, number>;
     },
-  ): Promise<void> {
+  ): Promise<boolean> {
+    // Returns true only when the write actually landed. Rules-rejected writes
+    // (unauthed wallet, linked-wallet mismatch) MUST surface as false — the
+    // game-over note and its retry path depend on it.
     try {
       const normalized = normalizeWalletAddress(walletAddress);
       const db = getDatabaseOrThrow(normalized);
@@ -303,50 +306,57 @@ export const firebaseProfiles = {
       const snapshot = await get(profileRef);
       if (!snapshot.exists()) {
         await this.upsertProfile(normalized, {});
-        return this.updateReefRunStats(normalized, payload);
       }
-      const profile = snapshot.val() as PlayerProfile;
-      const current: ReefRunProfileStats = profile.reef_run_stats || {
-        cheese_collected: 0,
-        peptides_collected: 0,
-        coins_collected: 0,
-        longest_run_seconds: 0,
-        character_runs: {},
-        favored_character: null,
-      };
-      const characterRuns = { ...(current.character_runs || {}) };
-      characterRuns[payload.characterId] = (characterRuns[payload.characterId] || 0) + 1;
-      let favored: string | null = current.favored_character || null;
-      let favoredCount = favored ? characterRuns[favored] || 0 : -1;
-      for (const [cid, count] of Object.entries(characterRuns)) {
-        if (count > favoredCount) {
-          favored = cid;
-          favoredCount = count;
+      // Transaction, not read-modify-write: two runs finishing near-simultaneously
+      // (second tab / second device) must both land their haul.
+      const statsRef = ref(db, `profiles/${normalized}/reef_run_stats`);
+      const result = await runTransaction(statsRef, (value: ReefRunProfileStats | null) => {
+        const current: ReefRunProfileStats = value || {
+          cheese_collected: 0,
+          peptides_collected: 0,
+          coins_collected: 0,
+          longest_run_seconds: 0,
+          character_runs: {},
+          favored_character: null,
+        };
+        const characterRuns = { ...(current.character_runs || {}) };
+        characterRuns[payload.characterId] = (characterRuns[payload.characterId] || 0) + 1;
+        let favored: string | null = current.favored_character || null;
+        let favoredCount = favored ? characterRuns[favored] || 0 : -1;
+        for (const [cid, count] of Object.entries(characterRuns)) {
+          if (count > favoredCount) {
+            favored = cid;
+            favoredCount = count;
+          }
         }
-      }
-      const trashThisRun = Math.max(0, Math.floor(payload.trashCollected || 0));
-      const trashByKind = { ...(current.trash_by_kind ?? {}) };
-      for (const [variant, n] of Object.entries(payload.trashByKind ?? {})) {
-        const add = Math.max(0, Math.floor((n as number) || 0));
-        if (add > 0) trashByKind[variant] = (trashByKind[variant] ?? 0) + add;
-      }
-      const updated: ReefRunProfileStats = {
-        cheese_collected: current.cheese_collected + Math.max(0, Math.floor(payload.cheeseCollected || 0)),
-        peptides_collected: current.peptides_collected + Math.max(0, Math.floor(payload.peptidesCollected || 0)),
-        coins_collected: current.coins_collected + Math.max(0, Math.floor(payload.coinsCollected || 0)),
-        trash_collected: (current.trash_collected ?? 0) + trashThisRun,
-        best_trash_run: Math.max(current.best_trash_run ?? 0, trashThisRun),
-        ...(Object.keys(trashByKind).length ? { trash_by_kind: trashByKind } : {}),
-        longest_run_seconds: Math.max(current.longest_run_seconds, Math.floor(Math.max(0, payload.survivalSec))),
-        character_runs: characterRuns,
-        favored_character: favored,
-      };
-      await update(profileRef, {
-        reef_run_stats: updated,
-        updated_at: new Date().toISOString(),
+        const trashThisRun = Math.max(0, Math.floor(payload.trashCollected || 0));
+        const trashByKind = { ...(current.trash_by_kind ?? {}) };
+        for (const [variant, n] of Object.entries(payload.trashByKind ?? {})) {
+          const add = Math.max(0, Math.floor((n as number) || 0));
+          if (add > 0) trashByKind[variant] = (trashByKind[variant] ?? 0) + add;
+        }
+        const updated: ReefRunProfileStats = {
+          cheese_collected: current.cheese_collected + Math.max(0, Math.floor(payload.cheeseCollected || 0)),
+          peptides_collected: current.peptides_collected + Math.max(0, Math.floor(payload.peptidesCollected || 0)),
+          coins_collected: current.coins_collected + Math.max(0, Math.floor(payload.coinsCollected || 0)),
+          trash_collected: (current.trash_collected ?? 0) + trashThisRun,
+          best_trash_run: Math.max(current.best_trash_run ?? 0, trashThisRun),
+          ...(Object.keys(trashByKind).length ? { trash_by_kind: trashByKind } : {}),
+          longest_run_seconds: Math.max(current.longest_run_seconds, Math.floor(Math.max(0, payload.survivalSec))),
+          character_runs: characterRuns,
+          favored_character: favored,
+        };
+        return updated;
       });
+      if (!result.committed) return false;
+      // Best-effort timestamp — stats already landed, so a failure here is not a lost run.
+      try {
+        await update(profileRef, { updated_at: new Date().toISOString() });
+      } catch { /* noop */ }
+      return true;
     } catch (error) {
       console.error('[FIREBASE] Error updating Reef Run stats:', error);
+      return false;
     }
   },
 

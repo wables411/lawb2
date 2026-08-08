@@ -1,8 +1,11 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSignMessage } from 'wagmi';
 import { WALLET_CONNECT_LEADERBOARD_BONUS } from '../firebaseLeaderboard';
 import { database } from '../firebaseApp';
 import { firebaseProfiles, type ReefRunProfileStats } from '../firebaseProfiles';
+import { ensureWalletDbAuth, waitForWalletDbAuth, base58Encode } from '../firebaseWalletAuth';
+import { appKit } from '../appkit';
 import { getBestReefVerified, type ReefVerifiedEntry } from '../reefVerified';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
@@ -44,6 +47,7 @@ const LazyArcadeLoadingPeptides = lazy(async () => {
 
 type Phase = 'intro' | 'menu';
 type ModalKind = 'difficulty' | 'wallet' | 'howto' | 'jackpot' | null;
+type ReefRunSavePayload = Parameters<typeof firebaseProfiles.updateReefRunStats>[1];
 
 function formatTokenAmount(raw: bigint, decimals = 18): string {
   const whole = raw / 10n ** BigInt(decimals);
@@ -318,6 +322,55 @@ export default function ReefArcadeMenu() {
     setRunStatsHud(hud);
   }, []);
 
+  /** Haul waiting for a successful save (auth pending/declined/rejected) — powers the retry button. */
+  const [pendingSave, setPendingSave] = useState<ReefRunSavePayload | null>(null);
+  const { signMessageAsync } = useSignMessage();
+  /** Login-message signer for whichever chain the connected wallet is on (mirrors WalletConnectLeaderboardSync). */
+  const signLoginMessage = useCallback(
+    async (message: string): Promise<string> => {
+      if (connection.address?.startsWith('0x')) return signMessageAsync({ message });
+      const provider = appKit?.getProvider('solana') as
+        | { signMessage?: (m: Uint8Array) => Promise<Uint8Array> }
+        | undefined;
+      if (!provider?.signMessage) throw new Error('Wallet cannot sign messages');
+      return base58Encode(await provider.signMessage(new TextEncoder().encode(message)));
+    },
+    [connection.address, signMessageAsync],
+  );
+
+  const saveRunStats = useCallback(
+    async (payload: ReefRunSavePayload) => {
+      const address = connection.address;
+      if (!address || !database) return;
+      // The connect-time sign-in prompt may still be open (short first runs) — wait
+      // for it briefly, then re-prompt ourselves rather than writing into a rules
+      // rejection. Rules only accept writes from the authed wallet's own session.
+      let authed = await waitForWalletDbAuth(address, 4000);
+      if (!authed) {
+        authed = await ensureWalletDbAuth(
+          address,
+          address.startsWith('0x') ? 'evm' : 'solana',
+          signLoginMessage,
+        );
+      }
+      const primary = authed ? await firebaseProfiles.getPrimaryWallet(address) : null;
+      const saved = primary ? await firebaseProfiles.updateReefRunStats(primary, payload) : false;
+      if (saved) {
+        setPendingSave(null);
+        setLastRunLbNote('Run stats saved to your profile.');
+        setStatsVersion((v) => v + 1);
+      } else {
+        setPendingSave(payload);
+        setLastRunLbNote(
+          authed
+            ? 'Could not save run stats. Check connection and try again.'
+            : 'Sign the wallet login (free, no transaction) to save your haul.',
+        );
+      }
+    },
+    [connection.address, signLoginMessage],
+  );
+
   const onGameOver = useCallback(
     (survivalSec: number, reason: RunEndReason, finalHud?: ArcadeRunHudState) => {
       setRunHud(reefRunHudFromSurvivalSec(survivalSec));
@@ -337,26 +390,17 @@ export default function ReefArcadeMenu() {
       const runHud = finalHud ?? runStatsHud;
       // Jackpot launch (locked decision 2026-08-02): free runs award NO leaderboard
       // points — only profile run stats are kept. Jackpot runs pay out on-chain instead.
-      void (async () => {
-        try {
-          const primary = await firebaseProfiles.getPrimaryWallet(connection.address!);
-          await firebaseProfiles.updateReefRunStats(primary, {
-            characterId: selectedCharacterId,
-            survivalSec,
-            coinsCollected: runHud?.coins ?? 0,
-            cheeseCollected: runHud?.cheeseCollected ?? 0,
-            peptidesCollected: runHud?.peptidesCollected ?? 0,
-            trashCollected: runHud?.trash ?? 0,
-            trashByKind: runHud?.trashByKind,
-          });
-          setLastRunLbNote('Run stats saved to your profile.');
-          setStatsVersion((v) => v + 1);
-        } catch {
-          setLastRunLbNote('Could not save run stats. Check connection and try again.');
-        }
-      })();
+      void saveRunStats({
+        characterId: selectedCharacterId,
+        survivalSec,
+        coinsCollected: runHud?.coins ?? 0,
+        cheeseCollected: runHud?.cheeseCollected ?? 0,
+        peptidesCollected: runHud?.peptidesCollected ?? 0,
+        trashCollected: runHud?.trash ?? 0,
+        trashByKind: runHud?.trashByKind,
+      });
     },
-    [connection.connected, connection.address, runStatsHud, selectedCharacterId],
+    [connection.connected, connection.address, runStatsHud, selectedCharacterId, saveRunStats],
   );
 
   const onRunDifficulty = useCallback((payload: ReefRunHudPayload) => {
@@ -1380,6 +1424,16 @@ export default function ReefArcadeMenu() {
               {lastRunLbNote && (
                 <p className="ra-gameover-lb-note" style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.45 }}>
                   {lastRunLbNote}
+                  {pendingSave && (
+                    <button
+                      type="button"
+                      className="ra-link-quiet"
+                      style={{ marginLeft: 10 }}
+                      onClick={() => { uiClick(); void saveRunStats(pendingSave); }}
+                    >
+                      SAVE HAUL
+                    </button>
+                  )}
                 </p>
               )}
               {jackpot.enabled && jackpotVerdict && (
