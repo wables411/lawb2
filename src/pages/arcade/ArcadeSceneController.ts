@@ -47,7 +47,12 @@ import {
   type RunState,
 } from './arcadePickupKinds';
 import { disposeObject3DResources } from './arcadePropPlacement';
-import { cloneCoralObstacleVisual, clonePickupVisual, loadArcadePropGlbTemplates } from './arcadeGlbProps';
+import {
+  cloneCoralObstacleVisual,
+  clonePickupVisual,
+  loadArcadePropGlbTemplates,
+  textureHasImage,
+} from './arcadeGlbProps';
 import { trashVariantIdFor, type TrashVariantId } from './arcadeTrashVariants';
 import { ReefSceneryLayer, REEF_FLOOR_Y } from './arcadeReefScenery';
 import { reefSfx } from './arcadeSounds';
@@ -2360,6 +2365,18 @@ export class ArcadeSceneController {
     const cid = this.runState?.characterId;
     const slot = cid ? this.slots.get(cid) : undefined;
     if (!slot?.idleRoot || !this.renderer) return null;
+    // A material map without image data renders BLACK — better the card's "?"
+    // placeholder than a silhouette (possible on a slow connection + instant death).
+    let mapsPending = false;
+    slot.idleRoot.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        const map = (m as THREE.MeshStandardMaterial).map;
+        if (map && !textureHasImage(map)) mapsPending = true;
+      }
+    });
+    if (mapsPending) return null;
     let holder: THREE.Group | null = null;
     const pScene = new THREE.Scene();
     try {
