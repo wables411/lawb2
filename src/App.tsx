@@ -22,6 +22,7 @@ const NFTGallery = lazy(() => import('./components/NFTGallery'));
 const MemeGenerator = lazy(() => import('./components/MemeGenerator'));
 const DesktopBackground = lazy(() => import('./components/DesktopLobsterBackground'));
 const PlayerProfile = lazy(() => import('./components/PlayerProfile').then((m) => ({ default: m.PlayerProfile })));
+const LawbBridge = lazy(() => import('./components/LawbBridge'));
 const LawbLeaderboardPanel = lazy(() =>
   import('./components/LawbLeaderboardPanel').then((m) => ({ default: m.LawbLeaderboardPanel })),
 );
@@ -70,6 +71,7 @@ function App() {
   
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [lawbTab, setLawbTab] = useState<'lawb' | 'clawb' | 'faq'>('lawb');
+  const [showLawbBridge, setShowLawbBridge] = useState(false);
 
   const [minimizedPopups, setMinimizedPopups] = useState<Set<string>>(new Set());
   const [showMintPopup, setShowMintPopup] = useState(false);
@@ -710,6 +712,21 @@ function App() {
                 touchAction: 'manipulation'
               }}>$LAWB</a>
             </h2>
+            <p style={{marginBottom: '8px', fontSize: isMobile ? '14px' : '13px', fontWeight: 'bold'}}>THERE IS NO MEME WE $LAWB YOU</p>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>
+              <span
+                onClick={() => setShowLawbBridge((v) => !v)}
+                style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer', touchAction: 'manipulation' }}
+              >
+                click here to bridge your $lawb off of solana
+              </span>
+            </p>
+            {showLawbBridge && (
+              <Suspense fallback={<div style={{ padding: '12px', fontSize: isMobile ? '14px' : '13px' }}>loading bridge…</div>}>
+                <LawbBridge />
+              </Suspense>
+            )}
+
             <div style={{
               background: '#f0f0f0',
               border: '2px inset #808080',
@@ -720,16 +737,15 @@ function App() {
               wordBreak: 'break-all',
             }}>
               <p style={{marginBottom: '4px'}}><strong>(sol)</strong> <a href="https://solscan.io/token/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6</a></p>
-              <p style={{marginBottom: '4px'}}><strong>(base)</strong> <a href="https://basescan.org/token/0x7e18298b46A1F2399617cde083Fe11415A2ad15B" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x7e18298b46A1F2399617cde083Fe11415A2ad15B</a></p>
               <p style={{marginBottom: '4px'}}><strong>(arb)</strong> <a href="https://arbiscan.io/token/0x741f8FbF42485E772D97f1955c31a5B8098aC962" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>0x741f8FbF42485E772D97f1955c31a5B8098aC962</a></p>
-              <p style={{marginBottom: '0'}}><strong>(sanko — chain sunset, legacy)</strong> 0xA7DA528a3F4AD9441CaE97e1C33D49db91c82b9F</p>
+              <p style={{marginBottom: '4px'}}><strong>(sanko)</strong> rip</p>
+              <p style={{marginBottom: '0'}}><strong>(uwu)</strong> rip</p>
             </div>
 
             <p style={{marginBottom: isMobile ? '12px' : '10px', fontSize: isMobile ? '14px' : '13px', lineHeight: '1.5'}}>
               $lawb seems nice but a lawbster token on the Solana blockchain will never achieve anything without a roadmap. Token created 03.15.24 on <a href="https://www.pump.fun/65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>pump.fun</a>.
             </p>
-            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>$lawb airdropped to LawbStation holders 03.19.24. Now multichain across Solana, Base, and Arbitrum. (A Sanko deployment exists, but that chain has sunset.)</p>
-            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px', fontWeight: 'bold'}}>THERE IS NO MEME WE $LAWB YOU</p>
+            <p style={{marginBottom: '10px', fontSize: isMobile ? '14px' : '13px'}}>$lawb airdropped to LawbStation holders 03.19.24. Bridge to arb built 04.02.24. Bridge to sanko built &apos;24 (rip).</p>
 
             <img src="/assets/lawbticker.webp" alt="ticker $lawb" style={{ width: '100%', marginBottom: '10px', marginTop: '6px' }} />
 
@@ -833,7 +849,7 @@ function App() {
             }}>
               <p style={{marginBottom: '6px', fontWeight: 'bold'}}>Bridge Guide (SOL &rarr; ARB)</p>
               <p style={{marginBottom: '4px'}}>
-                Visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>portalbridge.com</a> to bridge $lawb from Solana to Arbitrum.
+                Bridge in-app from the $LAWB tab (&quot;click here to bridge your $lawb off of solana&quot;), or visit <a href="https://portalbridge.com/" target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>portalbridge.com</a> — both use the same Wormhole route.
               </p>
               <p style={{marginBottom: '4px'}}>1. Connect Solana wallet, select $lawb token</p>
               <p style={{marginBottom: '4px'}}>2. Connect Arbitrum wallet, select $lawb token</p>
