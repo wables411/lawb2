@@ -31,12 +31,22 @@ One chain (Ethereum). No new token. No new contracts to write — just one facto
 
 ## Step 2 — get the LAWB side of the pool (owner, ~1 hour)
 
-- [ ] Decide seed size — **the only real decision in this file.** Spec's illustrative shape:
-      ~25 pixels + ~5 LAWB opens at 0.2 LAWB/pixel. Scale to taste; start small, add later.
-- [ ] Mint the LAWB: deposit spare lawbsters into the NFTX vault `0xDB98...6A05`
-      (0.95 LAWB per lawbster, immutable, live) — or use LAWB already held.
+**Name check, because two tokens are called LAWB:** the pool's token side is the **NFTX vault
+LAWB** (`0xDB98...6A05`, Ethereum, backed 1:1 by Lawbsters locked in the vault) — NOT the
+bridged memecoin $lawb, which has no Ethereum deployment and is not part of this plan.
+
+**Live inventory, wables.eth, 2026-08-20:** 5 Lawbsters · 0.67 vault LAWB · 12 Pixelawbsters.
+
+- [ ] Decide seed size — **the only real decision in this file.** With current inventory the
+      realistic ceiling is ~5.4 LAWB (0.67 held + 5 bros × 0.95) and 12 pixels — e.g.
+      **10 pixels + 2 LAWB** opens at 0.2 LAWB/pixel. Small is fine; add later.
+- [ ] Mint the LAWB: deposit spare Lawbsters (the 420 collection, NOT pixels) into the NFTX
+      vault (0.95 LAWB credited each, immutable, live).
+- [ ] Optional pixel inventory top-up while mint is open: self-minting pixels costs ~0.00045 ETH
+      net each (95% of the 0.009 mint price returns to owner) — but each one raises the final
+      "supply fixed at N" number. Scarcity story vs pool inventory; owner's trade-off.
 - [ ] Set the opening price on launch day from real floors: pixels-per-LAWB ≈
-      (lawbster floor in ETH) ÷ (pixel floor in ETH). Don't precompute it today.
+      (pixel floor in ETH) ÷ (lawbster floor in ETH). Don't precompute it today.
 
 ## Step 3 — build the piggy bank (one transaction)
 
