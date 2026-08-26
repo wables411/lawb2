@@ -527,6 +527,25 @@ export default function ReefArcadeMenu() {
     }
   }, [jackpot, jackpotBusy, sponsorAmount]);
 
+  /**
+   * Open a bar nobody has beaten in 7 days. Permissionless on-chain, so the reef's own
+   * divers can open it from here instead of the chest quietly going to a chain-watcher.
+   */
+  const openStaleBar = useCallback(async () => {
+    if (jackpotBusy) return;
+    setJackpotNote(null);
+    try {
+      setJackpotBusy(REEF_STRINGS[loadReefLang()].jpBarStaleBusy);
+      await jackpot.resetStaleBar();
+      setJackpotBusy(null);
+      setJackpotNote(REEF_STRINGS[loadReefLang()].jpBarStaleDone);
+    } catch (e) {
+      setJackpotBusy(null);
+      const msg = e instanceof Error ? e.message : String(e);
+      setJackpotNote(msg.length > 160 ? `${msg.slice(0, 160)}…` : msg);
+    }
+  }, [jackpot, jackpotBusy]);
+
   /** Validator verdict for the last run — the jackpot block carries the submitScore() sig. */
   const onRunVerdict = useCallback((verdict: Record<string, unknown>) => {
     const j = verdict.jackpot as (ReefJackpotVerdict & { alreadySigned?: boolean }) | undefined;
@@ -1667,6 +1686,11 @@ export default function ReefArcadeMenu() {
                         {t.jpExpiredTail}
                       </p>
                     )}
+                    {jackpot.barIsStale && (
+                      <p className="ra-wallet-status" style={{ color: '#ffcc55' }}>
+                        {t.jpBarStale}
+                      </p>
+                    )}
                     {jackpotNote && <p style={{ fontSize: 13, lineHeight: 1.45 }}>{jackpotNote}</p>}
                     {connection.connected && (
                       <div className="ra-sponsor-row">
@@ -1691,7 +1715,16 @@ export default function ReefArcadeMenu() {
                       </div>
                     )}
                     <div className="ra-panel-actions">
-                      {jackpotVerdict && !jackpotExpired ? (
+                      {jackpot.barIsStale && connection.connected && !jackpotEntry && !jackpotVerdict ? (
+                        <button
+                          type="button"
+                          className="ra-btn"
+                          onClick={openStaleBar}
+                          disabled={Boolean(jackpotBusy)}
+                        >
+                          {jackpotBusy ?? t.jpBarStaleBtn}
+                        </button>
+                      ) : jackpotVerdict && !jackpotExpired ? (
                         <button type="button" className="ra-btn" onClick={submitJackpotScore} disabled={Boolean(jackpotBusy)}>
                           {jackpotBusy ?? `${t.jpSubmitBtn}${jackpotSecLeft !== null ? ` · ${fmtSecLeft(jackpotSecLeft)}` : ''}`}
                         </button>

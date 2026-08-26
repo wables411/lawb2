@@ -99,6 +99,10 @@ export const REEF_JACKPOT_ABI = [
     ],
   },
   { type: 'function', name: 'enter', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+  // Permissionless safety valve: after STALE_AFTER (7d) unbeaten the bar drops to 0 so the
+  // standing pot becomes winnable again. Anyone may call it — surfaced here so the reef's own
+  // divers can open the bar, not just whoever happens to be watching the chain.
+  { type: 'function', name: 'resetIfStale', stateMutability: 'nonpayable', inputs: [], outputs: [] },
   {
     type: 'function',
     name: 'submitScore',

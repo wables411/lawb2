@@ -110,6 +110,15 @@ export function useReefJackpot() {
       }
     : null;
 
+  /**
+   * Contract's STALE_AFTER: 7 days unbeaten and the bar may be reset to 0 by anyone,
+   * which makes the standing pot winnable again. Mirrors ReefRunJackpot.resetIfStale().
+   */
+  const barStaleAfterSec = 7 * 24 * 60 * 60;
+  const barStaleAt = board && board.highScoreMs > 0 ? board.lastBeatenAt + barStaleAfterSec : null;
+  /** True when resetIfStale() would succeed right now (bar set, and past the 7-day mark). */
+  const barIsStale = barStaleAt !== null && Date.now() / 1000 > barStaleAt;
+
   const refresh = useCallback(() => {
     void boardRead.refetch();
     void allowanceRead.refetch();
@@ -222,6 +231,26 @@ export function useReefJackpot() {
   );
 
   /**
+   * Open a stale bar (7 days unbeaten) so the standing pot is winnable again.
+   * Permissionless on-chain; costs only gas. No-op guard here mirrors the contract's
+   * requires so we never send a tx that is certain to revert.
+   */
+  const resetStaleBar = useCallback(async (): Promise<void> => {
+    if (!contract) throw new Error('jackpot not deployed on this chain');
+    if (!account) throw new Error('connect a wallet first');
+    if (!publicClient) throw new Error('no rpc client');
+    if (!barIsStale) throw new Error('bar is not stale yet');
+    const hash = await writeContractAsync({
+      address: contract,
+      abi: REEF_JACKPOT_ABI,
+      functionName: 'resetIfStale',
+      args: [],
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    refresh();
+  }, [contract, account, publicClient, barIsStale, writeContractAsync, refresh]);
+
+  /**
    * Submit the validator-signed score on-chain. Returns whether the run took the pot
    * (parsed from ScoreSubmitted/JackpotWon in the receipt).
    */
@@ -265,6 +294,9 @@ export function useReefJackpot() {
     boardLoading: boardRead.isLoading,
     pendingEntry,
     entryTtlSec,
+    barStaleAt,
+    barIsStale,
+    resetStaleBar,
     enterJackpot,
     fundPot,
     submitJackpotScore,
