@@ -163,9 +163,13 @@ export default function ReefArcadeMenu() {
   const [jackpotEntry, setJackpotEntry] = useState<{ nonce: number; seed: number; enteredAt: number } | null>(null);
   /** Validator signature block for the last jackpot run (submit on-chain from game over). */
   const [jackpotVerdict, setJackpotVerdict] = useState<ReefJackpotVerdict | null>(() => {
-    // Survive reloads: a signed verdict is money — it must not live only in React state.
+    // Survive reloads AND tab closes: a signed verdict is money — it must not live
+    // only in React state. localStorage (not sessionStorage) because the validator
+    // signs each entry exactly ONCE — a user who closes the tab while topping up
+    // gas would otherwise burn their only signature. The deadline check below (and
+    // the contract's entry TTL) still bounds how long a stashed verdict is usable.
     try {
-      const raw = sessionStorage.getItem('reef_jackpot_verdict_v1');
+      const raw = localStorage.getItem('reef_jackpot_verdict_v1');
       if (!raw) return null;
       const saved = JSON.parse(raw) as ReefJackpotVerdict;
       return Date.now() / 1000 < saved.deadline ? saved : null;
@@ -175,8 +179,8 @@ export default function ReefArcadeMenu() {
   });
   useEffect(() => {
     try {
-      if (jackpotVerdict) sessionStorage.setItem('reef_jackpot_verdict_v1', JSON.stringify(jackpotVerdict));
-      else sessionStorage.removeItem('reef_jackpot_verdict_v1');
+      if (jackpotVerdict) localStorage.setItem('reef_jackpot_verdict_v1', JSON.stringify(jackpotVerdict));
+      else localStorage.removeItem('reef_jackpot_verdict_v1');
     } catch { /* storage unavailable — degrade to in-memory only */ }
   }, [jackpotVerdict]);
   /** 1s ticker while a paid entry / unsubmitted verdict is racing the TTL clock. */

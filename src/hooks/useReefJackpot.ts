@@ -139,6 +139,30 @@ export function useReefJackpot() {
     const entryAmount = board?.entryAmount;
     if (!entryAmount) throw new Error('entry amount unknown (still loading?)');
 
+    // Gas preflight BEFORE any wallet prompt or payment: the contract's TTL spans
+    // pay→dive→submit as one window, so a player who discovers mid-flow that they
+    // can't afford the submitScore gas loses the entry while off topping up
+    // (observed live 2026-08-08, owner's own 100 CULT). Budget covers approve +
+    // enter + the later submitScore (~400k gas, 1.5x headroom). Fail-open on RPC
+    // flake — only block when we positively know the balance can't cover it.
+    try {
+      const [ethBalance, gasPrice] = await Promise.all([
+        publicClient.getBalance({ address: account }),
+        publicClient.getGasPrice(),
+      ]);
+      const needWei = gasPrice * 400_000n * 3n / 2n;
+      if (ethBalance < needWei) {
+        const fmt = (wei: bigint) => (Number(wei) / 1e18).toFixed(5);
+        throw new Error(
+          `not enough ETH for gas — you have ${fmt(ethBalance)} ETH, the full enter+submit flow needs ~${fmt(needWei)} ETH. ` +
+            'Top up BEFORE entering: the paid entry expires on a timer, so a gas top-up mid-flow forfeits it.',
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('not enough ETH')) throw err;
+      // preflight RPC hiccup — proceed; the wallet will surface real gas errors
+    }
+
     const allowance = (allowanceRead.data as bigint | undefined) ?? 0n;
     if (allowance < entryAmount) {
       // Approve a BATCH of entries, not one: the approve+enter double-prompt per
