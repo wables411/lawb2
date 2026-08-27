@@ -102,3 +102,6 @@ onchain-chess/
 tools/
 dist-radbro
 reefrun-radbro.zip
+
+# Local pre-merge backups from mergeZombieLeaderboardKeys.mjs
+scripts/leaderboard-backup-*.json
