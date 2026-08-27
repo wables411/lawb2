@@ -598,8 +598,9 @@ export default function ReefArcadeMenu() {
    * Adopt a paid-but-unused entry straight from CONTRACT STATE. Rescues entries
    * orphaned by reloads or flaky enter receipts (observed live 2026-08-08: entry
    * landed on-chain, receipt had no logs, UI threw and the paid seed was lost).
-   * 14-min freshness window (contract expires entries at ~15) so we never offer
-   * a dive that can't be submitted in time.
+   * Freshness window = the contract's live entryTtlSec minus 60s (owner raised the
+   * TTL to 30 min on 2026-08-27 via setEntryTtl; no client constant to keep in sync)
+   * so we never offer a dive that can't be submitted in time.
    */
   useEffect(() => {
     const pending = jackpot.pendingEntry;
