@@ -153,7 +153,15 @@ async function scanJackpot() {
   const all = existsSync(cachePath)
     ? readFileSync(cachePath, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))
     : [];
-  return all;
+  // Dedupe by (block, logIndex): a first run racing the 2-min cron (both seeing an
+  // empty cursor) double-appends — observed on the droplet's first install.
+  const seen = new Set();
+  return all.filter((e) => {
+    const k = `${e.blockNumber}:${e.logIndex}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 // ------------------------------------------------------------------- chess
