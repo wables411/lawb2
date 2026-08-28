@@ -2,6 +2,7 @@ import WormholeConnect, {
   type config,
   type WormholeConnectTheme,
 } from '@wormhole-foundation/wormhole-connect';
+import './LawbBridge.css';
 
 const LAWB_SOL = '65GVcFcSqQcaMNeBkYcen4ozeT83tr13CeDLU4sUUdV6';
 const LAWB_ARB = '0x741f8FbF42485E772D97f1955c31a5B8098aC962';
@@ -38,15 +39,28 @@ const bridgeConfig: config.WormholeConnectConfig = {
   },
 };
 
+// Win95 palette, matching the site's desktop chrome. Every field the official theme
+// API exposes is a color (formBorder/input included) plus one font — bevels and square
+// corners are out of its reach, so LawbBridge.css layers those on via MUI slot classes.
 const bridgeTheme: WormholeConnectTheme = {
   mode: 'light',
-  primary: '#c0c0c0',
+  background: '#c0c0c0',
+  formBackground: '#c0c0c0',
+  formBorder: '#808080',
+  input: '#ffffff',
+  inputFillTreatment: false,
+  primary: '#000080',
+  secondary: '#808080',
+  text: '#000000',
+  textSecondary: '#404040',
+  error: '#aa0000',
+  success: '#008000',
   font: '"MS Sans Serif", Arial, sans-serif',
 };
 
 export default function LawbBridge() {
   return (
-    <div style={{ width: '100%', minHeight: '540px', background: '#f0f0f0', border: '2px inset #808080', marginBottom: '12px' }}>
+    <div className="lawb-bridge-win95" style={{ width: '100%', minHeight: '540px', background: '#c0c0c0', border: '2px inset #808080', marginBottom: '12px' }}>
       <WormholeConnect config={bridgeConfig} theme={bridgeTheme} />
     </div>
   );

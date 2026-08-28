@@ -1,0 +1,50 @@
+/* Win95 skin for the Wormhole Connect widget (scoped under .lawb-bridge-win95).
+ *
+ * Layer 2 of the theming: LawbBridge.tsx's WormholeConnectTheme handles every color
+ * the official API exposes; this file adds what the API cannot express — square
+ * corners and beveled borders. It targets stable MUI slot classes (.MuiButton-root
+ * etc.), not emotion hashes, but it is still coupled to wormhole-connect's markup:
+ * after a version bump, eyeball the widget. Worst case is cosmetic (modern look
+ * leaks back), never functional.
+ */
+
+/* Square every corner in the widget. */
+.lawb-bridge-win95 * {
+  border-radius: 0 !important;
+}
+
+/* Buttons: silver face, outset bevel; pressed = inset (classic 95 click). */
+.lawb-bridge-win95 .MuiButton-root,
+.lawb-bridge-win95 .MuiIconButton-root {
+  border: 2px outset #ffffff !important;
+  background-color: #c0c0c0 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+}
+.lawb-bridge-win95 .MuiButton-root:hover,
+.lawb-bridge-win95 .MuiIconButton-root:hover {
+  background-color: #d4d0c8 !important;
+}
+.lawb-bridge-win95 .MuiButton-root:active,
+.lawb-bridge-win95 .MuiIconButton-root:active {
+  border-style: inset !important;
+}
+
+/* Cards / panels (asset pickers, route list): raised silver panels. */
+.lawb-bridge-win95 .MuiCard-root,
+.lawb-bridge-win95 .MuiPaper-root {
+  border: 2px outset #ffffff !important;
+  background-color: #c0c0c0 !important;
+  box-shadow: none !important;
+}
+
+/* Inputs: white wells with the sunken bevel. */
+.lawb-bridge-win95 .MuiInputBase-root,
+.lawb-bridge-win95 input {
+  background-color: #ffffff !important;
+  border: 2px inset #808080 !important;
+}
+.lawb-bridge-win95 .MuiInputBase-root input {
+  border: none !important; /* well is on the wrapper; no double bevel */
+}
