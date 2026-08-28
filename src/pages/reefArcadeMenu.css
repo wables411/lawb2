@@ -2297,3 +2297,24 @@
     inset 0 2px 5px rgba(0, 0, 0, 0.35),
     inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
+
+/* ── Dive-console vertical fit: the whole console must fit the viewport with no
+   internal scroll on desktop (owner directive 2026-08-27). On wide-enough screens
+   SATCHEL and TIDES sit side-by-side (the design canvas's tray+rail layout) and
+   the chrome tightens a notch. Flag-scoped: classic view untouched. ── */
+.ra-dc .rw-menu { padding: 4px 2px 8px; }
+.ra-dc .rw-device { padding: 10px 14px 12px; }
+.ra-dc .rw-brand-row { padding: 0 8px 6px; }
+.ra-dc .rw-comps { padding: 6px 12px; }
+.ra-dc .rw-gauges { padding: 10px; gap: 9px; }
+.ra-dc .rw-satchel { padding: 8px 13px 10px; gap: 6px; }
+.ra-dc .ra-tides-list { max-height: 110px; }
+
+@media (min-width: 1000px) {
+  .ra-dc .rw-screen { display: grid; grid-template-columns: 3fr 2fr; align-items: stretch; }
+  .ra-dc .rw-comps,
+  .ra-dc .rw-instruments { grid-column: 1 / -1; }
+  .ra-dc .rw-screen > .rw-drawer:not(.ra-tides) { border-right: 1.5px solid var(--rw-line); }
+}
+.ra-dc .ra-menu-kbd-hint { margin: 6px 0 0; font-size: 9px; }
+.ra-dc .ra-footer-row { margin-top: 8px; }
