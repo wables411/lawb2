@@ -114,7 +114,7 @@ for (const p of patches) {
   const patchFile = join(tmp, `${p.lower}.json`);
   writeFileSync(patchFile, JSON.stringify({ [p.lower]: p.merged, [p.zombie]: null }));
   console.log(`[apply] PATCH /leaderboard { ${p.lower}: merged, ${p.zombie}: null }`);
-  fb(['database:update', '/leaderboard', patchFile, '-y']);
+  fb(['database:update', '/leaderboard', patchFile, '-f']); // -f: skip confirm prompt (this CLI has no -y)
 }
 
 console.log(`\n[done] ${patches.length} zombie key(s) merged. Backup kept at ${backupPath}.`);
