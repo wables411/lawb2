@@ -31,6 +31,8 @@ cd /root/elo-indexer
 
 echo "fetching indexer.mjs from lawb2@main..."
 curl -fsS -o indexer.mjs https://raw.githubusercontent.com/wables411/lawb2/main/elo-indexer/indexer.mjs
+# Tides activity feed (dive-console overhaul step 2) — separate cron, same state dir.
+curl -fsS -o tides.mjs https://raw.githubusercontent.com/wables411/lawb2/main/elo-indexer/tides.mjs
 
 # Smoke test (no Firebase write): scans all three chains and replays.
 echo "smoke test (dry run)..."
@@ -72,9 +74,38 @@ for cfg in /etc/nginx/sites-enabled/*; do
         echo "!! nginx config test FAILED after edit — restored $cfg untouched"
     fi
 done
-if [ "$NGINX_WIRED" = yes ]; then
+# Same treatment for /tides.json (shorter cache — it's an activity ticker).
+TIDES_WIRED=no
+for cfg in /etc/nginx/sites-enabled/*; do
+    [ -f "$cfg" ] || continue
+    grep -q "chess.lawb.xyz" "$cfg" || continue
+    if grep -q "location = /tides.json" "$cfg"; then
+        echo "nginx: $cfg already serves /tides.json"
+        TIDES_WIRED=yes
+        continue
+    fi
+    cp "$cfg" "$cfg.bak-tides"
+    awk '{ print } /server_name[^;]*chess\.lawb\.xyz/ {
+        print "    location = /tides.json {";
+        print "        alias /var/www/elo/tides.json;";
+        print "        default_type application/json;";
+        print "        add_header Access-Control-Allow-Origin *;";
+        print "        add_header Cache-Control \"public, max-age=30\";";
+        print "    }";
+    }' "$cfg.bak-tides" > "$cfg"
+    if nginx -t 2>/dev/null; then
+        TIDES_WIRED=yes
+        echo "nginx: wired /tides.json into $cfg"
+    else
+        mv "$cfg.bak-tides" "$cfg"
+        echo "!! nginx config test FAILED after edit — restored $cfg untouched"
+    fi
+done
+
+if [ "$NGINX_WIRED" = yes ] || [ "$TIDES_WIRED" = yes ]; then
     systemctl reload nginx && echo "nginx reloaded"
-else
+fi
+if [ "$NGINX_WIRED" != yes ]; then
     echo "!! no chess.lawb.xyz nginx config found/wired — elo.json will not be public (Firebase fallback still works)"
 fi
 
@@ -88,17 +119,36 @@ ELO_OUT_DIR=/var/www/elo node indexer.mjs >> indexer.log 2>&1
 EOF
 chmod +x run.sh
 
+# Tides cron wrapper (same log-cap discipline, own log).
+cat > run-tides.sh << 'EOF'
+#!/bin/bash
+cd /root/elo-indexer
+[ -f tides.log ] && [ "$(stat -c%s tides.log)" -gt 1000000 ] && tail -c 200000 tides.log > tides.log.tmp && mv tides.log.tmp tides.log
+echo "--- $(date -u '+%F %T')" >> tides.log
+TIDES_OUT_DIR=/var/www/elo node tides.mjs >> tides.log 2>&1
+EOF
+chmod +x run-tides.sh
+
 # First real publish right now (also proves the whole path before the cron takes over).
 ELO_OUT_DIR=/var/www/elo node indexer.mjs
+TIDES_OUT_DIR=/var/www/elo node tides.mjs
 echo -n "public check: "
 curl -s -o /dev/null -w "https://chess.lawb.xyz/elo.json -> HTTP %{http_code}\n" https://chess.lawb.xyz/elo.json || true
+echo -n "public check: "
+curl -s -o /dev/null -w "https://chess.lawb.xyz/tides.json -> HTTP %{http_code}\n" https://chess.lawb.xyz/tides.json || true
 
-# Install the cron line once (marker-based, idempotent).
+# Install the cron lines once (marker-based, idempotent).
 if ! crontab -l 2>/dev/null | grep -q 'elo-indexer/run.sh'; then
     (crontab -l 2>/dev/null; echo "*/10 * * * * /root/elo-indexer/run.sh") | crontab -
     echo "cron installed: every 10 minutes"
 else
     echo "cron already installed"
+fi
+if ! crontab -l 2>/dev/null | grep -q 'elo-indexer/run-tides.sh'; then
+    (crontab -l 2>/dev/null; echo "*/2 * * * * /root/elo-indexer/run-tides.sh") | crontab -
+    echo "tides cron installed: every 2 minutes"
+else
+    echo "tides cron already installed"
 fi
 
 echo ""
