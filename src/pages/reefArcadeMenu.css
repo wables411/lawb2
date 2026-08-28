@@ -1406,7 +1406,12 @@
 }
 
 /* ═══════════ Dive-device menu (rw-*) — pastel instrument over the live 3D sea ═══════════ */
-.rw-menu { max-width: none; }
+/* .ra-menu.rw-menu (0,2,0): the width-cap media queries later in this file
+   (.ra-menu { max-width: 360/560/368px }) share (0,1,0) specificity with a bare
+   .rw-menu and win on source order — which squeezed the 880px device into a 560px
+   box and produced a clipped right edge + horizontal scrollbar (owner report
+   2026-08-27, root-caused via headless viewport audit). Two classes outrank them all. */
+.ra-menu.rw-menu { max-width: none; }
 
 /* The arcade shell is fixed + overflow:hidden, so the MENU itself must scroll when the
    stacked device is taller than the screen (phones, and especially saved-to-home-screen
@@ -1439,7 +1444,9 @@
   --rw-case: #f4f8f7;
   --rw-case-edge: #c2d4cd;
   position: relative;
-  width: min(880px, 94vw);
+  /* 100%, not 94vw: the parent already carries .ra-inner's clamp() padding, so a
+     vw-based width overflowed it at mid-size windows (e.g. 900px wide). */
+  width: min(880px, 100%);
   margin: 0 auto;
   background: linear-gradient(180deg, #fbfdfc, var(--rw-case));
   border: 2.5px solid var(--rw-case-edge);
