@@ -10,6 +10,8 @@ import { getBestReefVerified, type ReefVerifiedEntry } from '../reefVerified';
 import { useAppKitSafe } from '../hooks/useAppKitSafe';
 import { useConnectionDisplay } from '../hooks/useConnectionDisplay';
 import { useReefJackpot } from '../hooks/useReefJackpot';
+import { ENABLE_DIVE_CONSOLE } from '../config/diveConsole';
+import TidesRail from './arcade/TidesRail';
 import {
   entryTokenLabel,
   formatSurvivalMs,
@@ -888,7 +890,7 @@ export default function ReefArcadeMenu() {
   }, [phase, modal, gameScreen, beginRun, cycleCharacter, goMainMenu, navigate, sceneReady, showBrief, diveFromBrief, toggleSfx]);
 
   return (
-    <div className="ra-root" role="application" aria-label="Reef Run arcade menu">
+    <div className={`ra-root${ENABLE_DIVE_CONSOLE ? ' ra-dc' : ''}`} role="application" aria-label="Reef Run arcade menu">
       <Suspense fallback={null}>
         <LazyArcadeThree
           key={bootAttempt}
@@ -911,6 +913,10 @@ export default function ReefArcadeMenu() {
       <div className="ra-scanlines" aria-hidden />
       <div className="ra-vignette" aria-hidden />
       <div className="ra-grain" aria-hidden />
+      {/* Dive-console: living pixel static (RemiliaNET technique — per-frame re-rolled
+          ordered noise, pure CSS, no asset). Rides ABOVE the grade layers so the whole
+          scene shimmers; see .ra-livegrain in reefArcadeMenu.css. */}
+      {ENABLE_DIVE_CONSOLE && <div className="ra-livegrain" aria-hidden />}
       {loadingOverlayVisible && (
         <div
           className={`ra-loading-overlay${sceneReady ? ' ra-loading-overlay-ready' : ''}${bootError ? ' ra-loading-overlay-error' : ''}`}
@@ -1255,6 +1261,8 @@ export default function ReefArcadeMenu() {
                     );
                   })()}
                 </div>
+
+                {ENABLE_DIVE_CONSOLE && <TidesRail lang={lang} />}
               </div>
             </div>
 
