@@ -23,7 +23,7 @@
 
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const STATE_DIR = join(ROOT, 'state');
@@ -263,7 +263,9 @@ async function main() {
 }
 
 // Only run when executed directly — tests import decodeJackpotLog without side effects.
-if (process.argv[1] && import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href) {
+// pathToFileURL, not hand-built file:// strings: the hand-built form broke on Linux
+// (four slashes -> no match -> main() never ran; caught live on the droplet 2026-08-27).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error('[tides] fatal:', err);
     process.exitCode = 1;
